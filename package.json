@@ -1,0 +1,31 @@
+{
+  "name": "ai-game-maker-p0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "packages/runtime-adapters/*"
+  ],
+  "scripts": {
+    "maker:setup": "node scripts/setup.mjs",
+    "maker:doctor": "node scripts/doctor.mjs",
+    "maker:start": "npm run maker:setup && node scripts/dev.mjs",
+    "maker:clean": "node scripts/clean.mjs",
+    "test": "npm run test:contracts && npm run test:workspace",
+    "test:contracts": "vitest run tests/contracts",
+    "test:workspace": "vitest run tests/workspace",
+    "typecheck": "npm run typecheck:root && npm run typecheck --workspace @ai-game-maker/maker-api && npm run typecheck --workspace @ai-game-maker/maker-workbench",
+    "typecheck:root": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "phaser": "^3.90.0",
+    "playwright": "^1.60.0",
+    "typescript": "^5.8.0",
+    "vitest": "^2.0.0"
+  }
+}

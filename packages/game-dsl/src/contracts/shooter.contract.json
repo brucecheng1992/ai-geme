@@ -1,0 +1,28 @@
+{
+  "contract_version": "mechanic-contract-v0.1",
+  "genre": "shooter",
+  "required_mechanics": [
+    "player.can_move",
+    "player.can_fire",
+    "projectile.exists",
+    "enemy.exists",
+    "collision.projectile_hits_enemy",
+    "enemy.can_take_damage",
+    "enemy.can_be_cleared",
+    "score_or_objective_progress.exists",
+    "lose.player_health_zero"
+  ],
+  "allowed_win_types": ["enemy_cleared", "target_score"],
+  "required_telemetry_all": [
+    "game.started",
+    "input.received",
+    "player.moved",
+    "player.fired",
+    "projectile.spawned",
+    "enemy.hit",
+    "game.restarted"
+  ],
+  "required_telemetry_any_groups": [
+    ["enemy.cleared", "score.changed"]
+  ]
+}

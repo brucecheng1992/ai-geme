@@ -1,0 +1,31 @@
+{
+  "adapter": "phaser-adapter-v0.1",
+  "engine": "phaser",
+  "supports": {
+    "dimension": ["2d"],
+    "camera": ["top_down"],
+    "movement": [
+      "static",
+      "eight_direction",
+      "horizontal",
+      "vertical",
+      "chase_player",
+      "move_left",
+      "move_right",
+      "fall_down",
+      "patrol"
+    ],
+    "collision": ["overlap", "projectile_hit"],
+    "actions": ["shoot_projectile", "collect", "restart"],
+    "objectives": ["target_score", "enemy_cleared", "survive_duration", "player_health_zero", "time_up", "none"],
+    "telemetry": true
+  },
+  "unsupported": [
+    "3d",
+    "network_multiplayer",
+    "platformer_physics",
+    "ragdoll_physics",
+    "tilemap",
+    "multi_level"
+  ]
+}

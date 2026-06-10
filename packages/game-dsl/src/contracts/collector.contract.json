@@ -1,0 +1,22 @@
+{
+  "contract_version": "mechanic-contract-v0.1",
+  "genre": "collector",
+  "required_mechanics": [
+    "player.can_move",
+    "collectible.exists",
+    "collision.player_collects_item",
+    "score.changed",
+    "win.target_score"
+  ],
+  "allowed_lose_types": ["none", "time_up"],
+  "required_telemetry_all": [
+    "game.started",
+    "input.received",
+    "player.moved",
+    "item.spawned",
+    "item.collected",
+    "score.changed",
+    "game.restarted"
+  ],
+  "required_telemetry_any_groups": []
+}

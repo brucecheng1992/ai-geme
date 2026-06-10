@@ -1,0 +1,50 @@
+{
+  "gate_version": "playable-qa-gate-v0.1",
+  "common_required_events_all": [
+    "game.ready",
+    "game.started",
+    "input.received",
+    "game.restarted"
+  ],
+  "genre_required_events": {
+    "collector": {
+      "all": [
+        "game.started",
+        "input.received",
+        "player.moved",
+        "item.spawned",
+        "item.collected",
+        "score.changed",
+        "game.restarted"
+      ],
+      "any_groups": []
+    },
+    "dodger": {
+      "all": [
+        "game.started",
+        "input.received",
+        "player.moved",
+        "hazard.spawned",
+        "game.restarted"
+      ],
+      "any_groups": [
+        ["collision.detected", "player.damaged"],
+        ["survival_time.changed", "game.lost"]
+      ]
+    },
+    "shooter": {
+      "all": [
+        "game.started",
+        "input.received",
+        "player.moved",
+        "player.fired",
+        "projectile.spawned",
+        "enemy.hit",
+        "game.restarted"
+      ],
+      "any_groups": [
+        ["enemy.cleared", "score.changed"]
+      ]
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "template_id": "dodger_v1",
+  "genre": "dodger",
+  "runtime": "phaser",
+  "required_systems": [
+    "InputSystem",
+    "MovementSystem",
+    "SpawnSystem",
+    "CollisionSystem",
+    "ScoreSystem",
+    "ObjectiveSystem",
+    "TelemetrySystem",
+    "GameStateSystem",
+    "QaBridge"
+  ],
+  "parameter_contract": "DodgerTemplateParams",
+  "deterministic_qa": true,
+  "source_files": ["src/main.ts", "src/GameScene.ts", "src/template-params.ts"],
+  "shared_files": ["../shared/kernel.ts"],
+  "required_telemetry_all": [
+    "game.started",
+    "input.received",
+    "player.moved",
+    "hazard.spawned",
+    "game.restarted"
+  ],
+  "required_telemetry_any_groups": [
+    ["collision.detected", "player.damaged"],
+    ["survival_time.changed", "game.lost"]
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "name": "@ai-game-maker/runtime-adapter-phaser",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts"
+}

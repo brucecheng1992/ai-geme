@@ -1,0 +1,32 @@
+{
+  "template_id": "shooter_v1",
+  "genre": "shooter",
+  "runtime": "phaser",
+  "required_systems": [
+    "InputSystem",
+    "MovementSystem",
+    "SpawnSystem",
+    "CollisionSystem",
+    "ScoreSystem",
+    "ObjectiveSystem",
+    "TelemetrySystem",
+    "GameStateSystem",
+    "QaBridge"
+  ],
+  "parameter_contract": "ShooterTemplateParams",
+  "deterministic_qa": true,
+  "source_files": ["src/main.ts", "src/GameScene.ts", "src/template-params.ts"],
+  "shared_files": ["../shared/kernel.ts"],
+  "required_telemetry_all": [
+    "game.started",
+    "input.received",
+    "player.moved",
+    "player.fired",
+    "projectile.spawned",
+    "enemy.hit",
+    "game.restarted"
+  ],
+  "required_telemetry_any_groups": [
+    ["enemy.cleared", "score.changed"]
+  ]
+}

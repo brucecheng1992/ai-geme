@@ -1,0 +1,24 @@
+{
+  "contract_version": "mechanic-contract-v0.1",
+  "genre": "dodger",
+  "required_mechanics": [
+    "player.can_move",
+    "hazard.exists",
+    "hazard.spawn",
+    "collision.player_hits_hazard",
+    "player.damaged_or_game_lost",
+    "win.survive_duration"
+  ],
+  "allowed_lose_types": ["player_health_zero", "time_up"],
+  "required_telemetry_all": [
+    "game.started",
+    "input.received",
+    "player.moved",
+    "hazard.spawned",
+    "game.restarted"
+  ],
+  "required_telemetry_any_groups": [
+    ["collision.detected", "player.damaged"],
+    ["survival_time.changed", "game.lost"]
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "template_id": "collector_v1",
+  "genre": "collector",
+  "runtime": "phaser",
+  "required_systems": [
+    "InputSystem",
+    "MovementSystem",
+    "SpawnSystem",
+    "CollisionSystem",
+    "ScoreSystem",
+    "ObjectiveSystem",
+    "TelemetrySystem",
+    "GameStateSystem",
+    "QaBridge"
+  ],
+  "parameter_contract": "CollectorTemplateParams",
+  "deterministic_qa": true,
+  "source_files": ["src/main.ts", "src/GameScene.ts", "src/template-params.ts"],
+  "shared_files": ["../shared/kernel.ts"],
+  "required_telemetry_all": [
+    "game.started",
+    "input.received",
+    "player.moved",
+    "item.spawned",
+    "item.collected",
+    "score.changed",
+    "game.restarted"
+  ],
+  "required_telemetry_any_groups": []
+}

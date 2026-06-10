@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+local-data/
+generated-projects/
+coverage/
+.DS_Store
