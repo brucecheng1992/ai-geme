@@ -15,7 +15,7 @@
   ],
   "parameter_contract": "ShooterTemplateParams",
   "deterministic_qa": true,
-  "source_files": ["src/main.ts", "src/GameScene.ts", "src/template-params.ts"],
+  "source_files": ["src/main.ts", "src/GameScene.ts", "src/template-params.ts", "src/template-params.generated.json"],
   "shared_files": ["../shared/kernel.ts"],
   "required_telemetry_all": [
     "game.started",

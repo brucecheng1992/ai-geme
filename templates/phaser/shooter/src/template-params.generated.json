@@ -1,0 +1,31 @@
+{
+  "world": {
+    "width": 960,
+    "height": 540
+  },
+  "player": {
+    "label": "Cat",
+    "health": 3,
+    "speedPxPerSec": 260,
+    "startX": 160,
+    "startY": 270
+  },
+  "projectile": {
+    "label": "Bolt",
+    "speedPxPerSec": 520,
+    "damage": 1
+  },
+  "enemy": {
+    "label": "Alien",
+    "health": 1,
+    "speedPxPerSec": 120,
+    "count": 6
+  },
+  "scoring": {
+    "scorePerEnemy": 1
+  },
+  "objective": {
+    "winType": "enemy_cleared",
+    "targetCount": 6
+  }
+}

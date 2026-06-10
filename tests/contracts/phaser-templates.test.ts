@@ -84,6 +84,18 @@ describe('Phaser templates', () => {
     expect(shooterMain).toContain('scene.hitEnemy()');
   });
 
+  it('passes generated model params into each playable template entrypoint', async () => {
+    for (const { genre } of manifests) {
+      const main = await readFile(new URL(`${genre}/src/main.ts`, root), 'utf8');
+
+      expect(main).toContain("from './template-params.generated.json'");
+      expect(main).toContain(`new ${capitalizeGenre(genre)}GameScene(${genre}Params)`);
+      expect(main).toContain(`${genre}Params.world.width`);
+      expect(main).toContain(`${genre}Params.world.height`);
+      expect(main).not.toContain(`new ${capitalizeGenre(genre)}GameScene(default`);
+    }
+  });
+
   it('exposes telemetry and QA bridge from the shared template kernel', async () => {
     const kernel = await readFile(new URL('shared/kernel.ts', root), 'utf8');
 
@@ -195,4 +207,8 @@ async function readGenreScene(genre: 'collector' | 'dodger' | 'shooter') {
 
 async function readSharedKernel() {
   return await readFile(new URL('shared/kernel.ts', root), 'utf8');
+}
+
+function capitalizeGenre(genre: 'collector' | 'dodger' | 'shooter') {
+  return `${genre[0].toUpperCase()}${genre.slice(1)}`;
 }

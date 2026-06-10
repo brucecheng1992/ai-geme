@@ -1,9 +1,11 @@
 import Phaser from 'phaser';
 
 import { CollectorGameScene } from './GameScene.js';
-import { defaultCollectorParams } from './template-params.js';
+import generatedParams from './template-params.generated.json';
+import { defaultCollectorParams, type CollectorTemplateParams } from './template-params.js';
 
-const scene = new CollectorGameScene(defaultCollectorParams);
+const collectorParams = mergeCollectorParams(generatedParams as Partial<CollectorTemplateParams>);
+const scene = new CollectorGameScene(collectorParams);
 
 if (typeof window !== 'undefined') {
   class CollectorPhaserScene extends Phaser.Scene {
@@ -19,8 +21,8 @@ if (typeof window !== 'undefined') {
   new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
-    width: defaultCollectorParams.world.width,
-    height: defaultCollectorParams.world.height,
+    width: collectorParams.world.width,
+    height: collectorParams.world.height,
     backgroundColor: '#07111f',
     scene: CollectorPhaserScene
   });
@@ -43,3 +45,14 @@ if (typeof window !== 'undefined') {
 }
 
 export { scene };
+
+function mergeCollectorParams(params: Partial<CollectorTemplateParams>): CollectorTemplateParams {
+  return {
+    ...defaultCollectorParams,
+    ...params,
+    world: { ...defaultCollectorParams.world, ...params.world },
+    player: { ...defaultCollectorParams.player, ...params.player },
+    collectible: { ...defaultCollectorParams.collectible, ...params.collectible },
+    objective: { ...defaultCollectorParams.objective, ...params.objective }
+  };
+}

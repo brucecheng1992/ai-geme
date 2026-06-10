@@ -1,9 +1,11 @@
 import Phaser from 'phaser';
 
 import { DodgerGameScene } from './GameScene.js';
-import { defaultDodgerParams } from './template-params.js';
+import generatedParams from './template-params.generated.json';
+import { defaultDodgerParams, type DodgerTemplateParams } from './template-params.js';
 
-const scene = new DodgerGameScene(defaultDodgerParams);
+const dodgerParams = mergeDodgerParams(generatedParams as Partial<DodgerTemplateParams>);
+const scene = new DodgerGameScene(dodgerParams);
 
 if (typeof window !== 'undefined') {
   class DodgerPhaserScene extends Phaser.Scene {
@@ -19,8 +21,8 @@ if (typeof window !== 'undefined') {
   new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
-    width: defaultDodgerParams.world.width,
-    height: defaultDodgerParams.world.height,
+    width: dodgerParams.world.width,
+    height: dodgerParams.world.height,
     backgroundColor: '#07111f',
     scene: DodgerPhaserScene
   });
@@ -47,3 +49,14 @@ if (typeof window !== 'undefined') {
 }
 
 export { scene };
+
+function mergeDodgerParams(params: Partial<DodgerTemplateParams>): DodgerTemplateParams {
+  return {
+    ...defaultDodgerParams,
+    ...params,
+    world: { ...defaultDodgerParams.world, ...params.world },
+    player: { ...defaultDodgerParams.player, ...params.player },
+    hazard: { ...defaultDodgerParams.hazard, ...params.hazard },
+    objective: { ...defaultDodgerParams.objective, ...params.objective }
+  };
+}

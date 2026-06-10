@@ -1,0 +1,20 @@
+{
+  "world": {
+    "width": 960,
+    "height": 540
+  },
+  "player": {
+    "label": "Hero",
+    "speedPxPerSec": 240,
+    "startX": 480,
+    "startY": 270
+  },
+  "collectible": {
+    "label": "Gem",
+    "count": 8,
+    "scorePerItem": 1
+  },
+  "objective": {
+    "targetScore": 8
+  }
+}
