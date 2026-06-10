@@ -6,6 +6,14 @@ type DslCollision = RawGameDsl['rules']['collisions'][number];
 
 const noMovement = new Set(['static']);
 
+/**
+ * Validates that a DSL keeps its genre's base gameplay loop inside the current
+ * P0 template envelope.
+ *
+ * The prompt may describe mixed ideas, but the validator only accepts objective
+ * combinations that the selected Phaser template can currently realize without
+ * dropping semantics.
+ */
 export function validateMechanicContract(raw: RawGameDsl): DslValidationIssue[] {
   if (raw.game.genre === 'collector') {
     return validateCollector(raw);
@@ -24,8 +32,7 @@ export function validateObjectiveReachability(raw: RawGameDsl): DslValidationIss
   }
 
   const scoreKind = raw.game.genre === 'collector' ? 'collectible' : 'enemy';
-  const maxScore = maxReachableScoreForKind(raw, scoreKind);
-  const reachable = maxScore >= (raw.objectives.win.target ?? 1);
+  const reachable = maxReachableScoreForKind(raw, scoreKind) >= (raw.objectives.win.target ?? 1);
 
   return reachable
     ? []

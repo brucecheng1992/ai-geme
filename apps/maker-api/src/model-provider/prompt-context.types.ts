@@ -28,6 +28,7 @@ export type RawDslPromptContext = {
   invalid_examples_summary: string[];
   p0_scope: string[];
   anti_shell_rules: string[];
+  composable_mechanics: string[];
 };
 
 export type BuildRawDslPromptContextParams = {

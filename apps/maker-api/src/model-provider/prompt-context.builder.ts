@@ -184,9 +184,9 @@ export function buildRawDslPromptContext(params: BuildRawDslPromptContextParams)
       'Do not add fields outside the schema. Use cooldown_ms and spawns on player.actions; use movement.speed_px_per_sec, not entity-level speed.',
       'Collision effects only support type and optional value. Do not add target inside effects.',
       'Objectives support type and optional target only. Do not add duration_sec.',
-      'For shooter in P0, output exactly one projectile entity and exactly one enemy entity. Use win.type enemy_cleared with target no greater than enemy.count.',
+      'For shooter in P0, include one primary projectile entity and one primary enemy entity that form the required fire-hit-clear loop.',
       'If shooter uses target_score instead, target must be less than or equal to the sum of every scoring collision score_add value multiplied by its target entity count.',
-      'For shooter in P0, do not include collectibles or multiple enemy kinds because the current runtime template does not consume them.',
+      'For shooter in P0, do not include collectibles or multiple enemy kinds because the current runtime template only consumes one primary projectile and one primary enemy.',
       'Do not output a different genre by renaming entities while keeping incompatible mechanics.',
       'Do not invent unsupported mechanics when they cannot be represented by game-dsl-v0.1.'
     ],
@@ -200,6 +200,11 @@ export function buildRawDslPromptContext(params: BuildRawDslPromptContextParams)
       'Do not simulate one genre by renaming another genre.',
       'If genre is shooter, the game must include real fire, projectile or hitscan, enemy hit, enemy clear or score progress.',
       'If required mechanics cannot be represented, return unsupported instead of inventing code.'
+    ],
+    composable_mechanics: [
+      'Select genre from the base loop, not from skin or wording alone: collector must still collect for score, dodger must still avoid hazards, and shooter must still fire at clearable enemies.',
+      'When an idea mixes themes, keep the selected genre objective inside the current P0 template envelope instead of declaring a win or lose type that the template cannot realize.',
+      'Use labels, theme and movement to express mixed ideas within the selected template; do not add extra entities to carry scoring, win or lose semantics that the current template will not consume.'
     ]
   };
 }

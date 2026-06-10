@@ -357,4 +357,26 @@ describe('DSL Validator and Normalizer', () => {
       });
     }
   });
+
+  it('still rejects a collector whose base loop is broken (no scoring collision)', () => {
+    const brokenCollector = {
+      ...createCollectorRawDsl(),
+      rules: {
+        collisions: [
+          { id: 'collect_gem', source: 'player', target: 'gem', type: 'overlap', effects: [{ type: 'destroy' }] }
+        ]
+      }
+    };
+
+    expectIssue(validateRawGameDsl(brokenCollector), 'MECHANIC_CONTRACT_FAILED', 'score.changed');
+  });
+
+  it('still rejects an unreachable collector target_score', () => {
+    const unreachable = {
+      ...createCollectorRawDsl(),
+      objectives: { win: { type: 'target_score', target: 9999 }, lose: { type: 'none' } }
+    };
+
+    expectIssue(validateRawGameDsl(unreachable), 'UNREACHABLE_OBJECTIVE');
+  });
 });

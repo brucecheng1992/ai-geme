@@ -83,8 +83,9 @@ describe('buildRawDslPromptContext', () => {
     expect((context.valid_example as { entities: Array<{ kind: string }> }).entities.some((entity) => entity.kind === 'collectible')).toBe(false);
     expect(context.forbidden_fields).toEqual(expect.arrayContaining(['projectile_id', 'cooldown_sec', 'duration_sec']));
     expect(context.invalid_examples_summary.join('\n')).toContain('Collision effects only support type and optional value.');
-    expect(context.invalid_examples_summary.join('\n')).toContain('Use win.type enemy_cleared');
+    expect(context.invalid_examples_summary.join('\n')).toContain('required fire-hit-clear loop');
     expect(context.invalid_examples_summary.join('\n')).toContain('target must be less than or equal to the sum');
+    expect(context.composable_mechanics.join('\n')).toContain('Select genre from the base loop');
   });
 });
 
