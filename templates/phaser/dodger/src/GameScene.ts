@@ -22,6 +22,18 @@ type Hitbox = {
   bottom: number;
 };
 
+type HazardSprite = {
+  graphics: Phaser.GameObjects.Graphics;
+  label: Phaser.GameObjects.Text;
+  x: number;
+  laneIndex: number;
+  yOffset: number;
+  speedPxPerSec: number;
+  resolved: boolean;
+  impactHoldMs: number;
+  active: boolean;
+};
+
 export class DodgerGameScene {
   private readonly state;
   private readonly telemetry;
@@ -35,20 +47,14 @@ export class DodgerGameScene {
   private phaserScene?: Phaser.Scene;
   private playerGraphics?: Phaser.GameObjects.Graphics;
   private playerLabel?: Phaser.GameObjects.Text;
-  private hazardGraphics?: Phaser.GameObjects.Graphics;
-  private hazardLabel?: Phaser.GameObjects.Text;
   private scoreText?: Phaser.GameObjects.Text;
   private statusText?: Phaser.GameObjects.Text;
   private playerLaneIndex = 1;
-  private hazardLaneIndex = 1;
-  private hazardX = 0;
-  private nextHazardDelayMs = 0;
-  private hazardWaveIndex = 0;
+  private readonly hazards: HazardSprite[] = [];
+  private nextHazardSpawnMs = 0;
+  private lastHazardLaneIndex = -1;
   private survivalElapsedMs = 0;
   private survivalHudSeconds = 0;
-  private hazardResolved = false;
-  private hazardImpactHoldMs = 0;
-  private hazardActive = false;
 
   constructor(private readonly params: DodgerTemplateParams) {
     this.state = createRuntimeState(params.player.health);
@@ -72,7 +78,8 @@ export class DodgerGameScene {
       this.state,
       new QaBridge(this.state, () => this.start(), () => this.restart(), () => ({
         player: { x: this.params.player.startX, y: this.playerY, lane: this.playerLaneIndex },
-        hazard: { x: this.hazardX, y: this.hazardY, lane: this.hazardLaneIndex, active: this.hazardActive }
+        hazard: this.primaryHazardSnapshot,
+        hazards: this.hazards.map((hazard) => this.hazardSnapshot(hazard))
       }))
     );
     this.renderFirstFrame();
@@ -133,7 +140,8 @@ export class DodgerGameScene {
     this.gameState.restart();
     this.survivalElapsedMs = 0;
     this.survivalHudSeconds = 0;
-    this.hazardWaveIndex = 0;
+    this.lastHazardLaneIndex = -1;
+    this.clearHazards();
     this.movePlayerToLane(1);
     this.spawnNextHazard();
     this.start();
@@ -172,10 +180,9 @@ export class DodgerGameScene {
     if (this.params.collectible) {
       this.drawCollectible(this.params.world.width - 360, this.params.player.startY);
     }
-    this.spawnNextHazard();
-    this.drawHazard(this.hazardX, this.hazardY);
     this.scoreText = scene.add.text(40, 32, '', { fontFamily: 'Arial, sans-serif', fontSize: '28px', color: '#f8fbff' });
     this.statusText = scene.add.text(40, this.params.world.height - 74, '', { fontFamily: 'Arial, sans-serif', fontSize: '20px', color: '#f8fbff' });
+    this.spawnNextHazard();
     this.renderHud();
   }
 
@@ -200,35 +207,45 @@ export class DodgerGameScene {
     this.playerLabel = scene.add.text(x - 44, y + 54, this.params.player.label, { fontFamily: 'Arial, sans-serif', fontSize: '18px', color: '#ffe8bc' });
   }
 
-  private drawHazard(x: number, y: number): void {
+  private createHazardSprite(x: number, laneIndex: number): HazardSprite | undefined {
     const scene = this.phaserScene;
     if (scene === undefined) {
-      return;
+      return undefined;
     }
 
-    this.hazardGraphics = scene.add
-      .graphics();
-    this.renderHazardShape(false);
-    this.hazardLabel = scene.add.text(x - 48, y + 54, this.params.hazard.label, { fontFamily: 'Arial, sans-serif', fontSize: '18px', color: '#e5e7eb' });
+    const hazard: HazardSprite = {
+      graphics: scene.add.graphics(),
+      label: scene.add.text(x - 48, this.hazardY(laneIndex, 0) + 54, this.params.hazard.label, {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '18px',
+        color: '#e5e7eb'
+      }),
+      x,
+      laneIndex,
+      yOffset: randomBetween(-18, 18),
+      speedPxPerSec: this.params.hazard.speedPxPerSec * randomBetween(0.82, 1.22),
+      resolved: false,
+      impactHoldMs: 0,
+      active: true
+    };
+    this.renderHazardShape(hazard, false);
+    return hazard;
   }
 
-  private renderHazardShape(isImpact: boolean): void {
-    if (this.hazardGraphics === undefined) {
-      return;
-    }
-
-    const x = this.hazardX;
-    const y = this.hazardY;
+  private renderHazardShape(hazard: HazardSprite, isImpact: boolean): void {
+    const x = hazard.x;
+    const y = this.hazardY(hazard.laneIndex, hazard.yOffset);
     const outerColor = isImpact ? 0xff4f5f : 0x9ca3af;
     const innerColor = isImpact ? 0x7f1d1d : 0x4b5563;
 
-    this.hazardGraphics
+    hazard.graphics
       .clear()
-      .fillStyle(0x9ca3af, 1)
       .fillStyle(outerColor, 1)
       .fillTriangle(x - 48, y + 36, x - 6, y - 50, x + 54, y + 28)
       .fillStyle(innerColor, 1)
       .fillTriangle(x - 28, y + 24, x + 6, y - 28, x + 34, y + 20);
+    hazard.label.setX(x - 48);
+    hazard.label.setY(y + 54);
   }
 
   private drawCollectible(x: number, y: number): void {
@@ -267,62 +284,93 @@ export class DodgerGameScene {
   }
 
   private advanceHazard(deltaMs: number): void {
-    if (this.hazardImpactHoldMs > 0) {
-      this.hazardImpactHoldMs = Math.max(0, this.hazardImpactHoldMs - deltaMs);
-      if (this.hazardImpactHoldMs === 0) {
-        this.hideHazardForNextSpawn();
+    this.nextHazardSpawnMs = Math.max(0, this.nextHazardSpawnMs - deltaMs);
+    if (this.nextHazardSpawnMs === 0 && this.activeHazardCount < 3) {
+      this.spawnNextHazard();
+    }
+
+    for (const hazard of this.hazards) {
+      if (hazard.impactHoldMs > 0) {
+        hazard.impactHoldMs = Math.max(0, hazard.impactHoldMs - deltaMs);
+        if (hazard.impactHoldMs === 0) {
+          this.hideHazard(hazard);
+        }
+        continue;
       }
-      return;
-    }
 
-    if (!this.hazardActive) {
-      this.nextHazardDelayMs = Math.max(0, this.nextHazardDelayMs - deltaMs);
-      if (this.nextHazardDelayMs === 0) {
-        this.spawnNextHazard();
+      if (!hazard.active) {
+        continue;
       }
-      return;
+
+      hazard.x -= (hazard.speedPxPerSec * deltaMs) / 1000;
+      this.resolveHazardCollision(hazard);
+
+      if (hazard.x < -90) {
+        this.hideHazard(hazard);
+        continue;
+      }
+
+      if (!hazard.resolved) {
+        this.renderHazardShape(hazard, false);
+      }
     }
 
-    this.hazardX -= (this.params.hazard.speedPxPerSec * deltaMs) / 1000;
-    this.resolveHazardCollision();
-
-    if (this.hazardX < 70) {
-      this.hideHazardForNextSpawn();
-      return;
-    }
-
-    if (!this.hazardResolved) {
-      this.renderHazardShape(false);
-    }
-    this.hazardLabel?.setX(this.hazardX - 48);
+    this.removeInactiveHazards();
   }
 
   private spawnNextHazard(): void {
-    this.hazardX = this.params.world.width + 90;
-    this.hazardLaneIndex = this.nextHazardLaneIndex();
-    this.hazardResolved = false;
-    this.hazardImpactHoldMs = 0;
-    this.hazardActive = true;
-    this.nextHazardDelayMs = 0;
-    this.renderHazardShape(false);
-    this.hazardGraphics?.setVisible(true);
-    this.hazardLabel?.setX(this.hazardX - 48);
-    this.hazardLabel?.setY(this.hazardY + 54);
-    this.hazardLabel?.setVisible(true);
+    const hazard = this.createHazardSprite(this.nextHazardStartX, this.nextHazardLaneIndex());
+    if (hazard === undefined) {
+      return;
+    }
+
+    this.hazards.push(hazard);
+    this.nextHazardSpawnMs = this.nextHazardIntervalMs;
     this.spawn.spawn('hazard');
   }
 
-  private hideHazardForNextSpawn(): void {
-    this.hazardActive = false;
-    this.hazardResolved = false;
-    this.nextHazardDelayMs = Math.max(260, this.params.hazard.spawnIntervalMs * 0.45);
-    this.hazardGraphics?.setVisible(false);
-    this.hazardLabel?.setVisible(false);
+  private hideHazard(hazard: HazardSprite): void {
+    hazard.active = false;
+    hazard.resolved = false;
+    hazard.impactHoldMs = 0;
+    hazard.graphics.setVisible(false);
+    hazard.label.setVisible(false);
+  }
+
+  private removeInactiveHazards(): void {
+    for (let index = this.hazards.length - 1; index >= 0; index -= 1) {
+      const hazard = this.hazards[index];
+      if (hazard !== undefined && !hazard.active && hazard.impactHoldMs === 0) {
+        hazard.graphics.destroy();
+        hazard.label.destroy();
+        this.hazards.splice(index, 1);
+      }
+    }
+  }
+
+  private clearHazards(): void {
+    for (const hazard of this.hazards) {
+      hazard.graphics.destroy();
+      hazard.label.destroy();
+    }
+    this.hazards.length = 0;
+    this.nextHazardSpawnMs = 0;
   }
 
   private nextHazardLaneIndex(): number {
-    const laneIndex = (this.hazardWaveIndex + 1) % this.laneYValues.length;
-    this.hazardWaveIndex += 1;
+    const activeLaneCounts = this.laneYValues.map((_laneY, index) => this.hazards.filter((hazard) => hazard.active && hazard.laneIndex === index).length);
+    let candidates = this.laneYValues
+      .map((_laneY, index) => index)
+      .filter((index) => activeLaneCounts[index] < 2 && index !== this.lastHazardLaneIndex);
+    if (candidates.length === 0) {
+      candidates = this.laneYValues.map((_laneY, index) => index).filter((index) => activeLaneCounts[index] < 2);
+    }
+    if (candidates.length === 0) {
+      candidates = this.laneYValues.map((_laneY, index) => index);
+    }
+
+    const laneIndex = candidates[Math.floor(Math.random() * candidates.length)] ?? 1;
+    this.lastHazardLaneIndex = laneIndex;
     return laneIndex;
   }
 
@@ -350,14 +398,14 @@ export class DodgerGameScene {
     this.movement.move({ lane: this.playerLaneIndex, y: this.playerY });
   }
 
-  private resolveHazardCollision(): void {
-    if (!this.hazardActive || this.hazardResolved || !hitboxesOverlap(this.playerHitbox, this.hazardHitbox)) {
+  private resolveHazardCollision(hazard: HazardSprite): void {
+    if (!hazard.active || hazard.resolved || !hitboxesOverlap(this.playerHitbox, this.hazardHitbox(hazard))) {
       return;
     }
 
-    this.hazardResolved = true;
-    this.hazardImpactHoldMs = 1200;
-    this.renderHazardShape(true);
+    hazard.resolved = true;
+    hazard.impactHoldMs = 1200;
+    this.renderHazardShape(hazard, true);
     this.hitHazard();
   }
 
@@ -369,8 +417,8 @@ export class DodgerGameScene {
     return this.laneYValues[this.playerLaneIndex] ?? this.params.player.startY;
   }
 
-  private get hazardY(): number {
-    return this.laneYValues[this.hazardLaneIndex] ?? this.params.player.startY;
+  private hazardY(laneIndex: number, yOffset: number): number {
+    return (this.laneYValues[laneIndex] ?? this.params.player.startY) + yOffset;
   }
 
   private get playerHitbox(): Hitbox {
@@ -382,16 +430,48 @@ export class DodgerGameScene {
     };
   }
 
-  private get hazardHitbox(): Hitbox {
+  private hazardHitbox(hazard: HazardSprite): Hitbox {
+    const y = this.hazardY(hazard.laneIndex, hazard.yOffset);
     return {
-      left: this.hazardX - 24,
-      right: this.hazardX + 30,
-      top: this.hazardY - 24,
-      bottom: this.hazardY + 26
+      left: hazard.x - 24,
+      right: hazard.x + 30,
+      top: y - 24,
+      bottom: y + 26
+    };
+  }
+
+  private get activeHazardCount(): number {
+    return this.hazards.filter((hazard) => hazard.active).length;
+  }
+
+  private get nextHazardIntervalMs(): number {
+    const baseIntervalMs = Math.max(360, this.params.hazard.spawnIntervalMs * 0.55);
+    return baseIntervalMs + Math.random() * 220;
+  }
+
+  private get nextHazardStartX(): number {
+    return this.params.world.width + randomBetween(70, 230);
+  }
+
+  private get primaryHazardSnapshot(): { x: number; y: number; lane: number; active: boolean } {
+    const hazard = this.hazards.find((candidate) => candidate.active) ?? this.hazards[0];
+    return hazard === undefined ? { x: this.params.world.width + 90, y: this.params.player.startY, lane: -1, active: false } : this.hazardSnapshot(hazard);
+  }
+
+  private hazardSnapshot(hazard: HazardSprite): { x: number; y: number; lane: number; active: boolean } {
+    return {
+      x: hazard.x,
+      y: this.hazardY(hazard.laneIndex, hazard.yOffset),
+      lane: hazard.laneIndex,
+      active: hazard.active
     };
   }
 }
 
 function hitboxesOverlap(a: Hitbox, b: Hitbox): boolean {
   return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+}
+
+function randomBetween(min: number, max: number): number {
+  return min + Math.random() * (max - min);
 }
