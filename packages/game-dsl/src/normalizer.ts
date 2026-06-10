@@ -169,6 +169,9 @@ function buildTemplateParams(raw: RawGameDsl): Record<string, unknown> {
   if (raw.game.genre === 'dodger') {
     const hazard = raw.entities.find((entity) => entity.kind === 'hazard');
     const hazardCollision = hazard ? findCollision(raw, raw.player.id, hazard.id, 'overlap') : undefined;
+    const collectible = raw.entities.find((entity) => entity.kind === 'collectible');
+    const collectCollision = collectible ? findCollision(raw, raw.player.id, collectible.id, 'overlap') : undefined;
+    const collectibleScore = scoreAddValue(collectCollision);
 
     return {
       ...base,
@@ -178,6 +181,15 @@ function buildTemplateParams(raw: RawGameDsl): Record<string, unknown> {
         spawnIntervalMs: 1000,
         damage: damageValue(hazardCollision) || hazard?.damage || 1
       },
+      ...(collectible && collectibleScore > 0
+        ? {
+            collectible: {
+              label: collectible.label,
+              count: collectible.count ?? 1,
+              scorePerItem: collectibleScore
+            }
+          }
+        : {}),
       objective: {
         surviveDurationMs: (raw.objectives.win.target ?? raw.game.target_play_time_sec) * 1000
       }

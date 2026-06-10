@@ -23,6 +23,13 @@ const shooterBrief: GameBrief = {
   core_loop: ['Move around the arena.', 'Fire projectiles at enemies.', 'Clear enemies to win.']
 };
 
+const dodgerBrief: GameBrief = {
+  ...brief,
+  title: 'Road Dodge',
+  genre: 'dodger',
+  core_loop: ['Move across lanes.', 'Avoid falling barriers.', 'Survive the timer.']
+};
+
 const requestBase = {
   projectId: 'proj_20260609_153000_abcd',
   runId: 'run_20260609_153000_abcd',
@@ -86,6 +93,21 @@ describe('buildRawDslPromptContext', () => {
     expect(context.invalid_examples_summary.join('\n')).toContain('required fire-hit-clear loop');
     expect(context.invalid_examples_summary.join('\n')).toContain('target must be less than or equal to the sum');
     expect(context.composable_mechanics.join('\n')).toContain('Select genre from the base loop');
+  });
+
+  it('selects a dodger-shaped valid example for dodger prompts', () => {
+    const context = buildRawDslPromptContext({ idea: 'make a road dodger', language: requestBase.language, brief: dodgerBrief });
+
+    expect(context.selected_contract).toMatchObject({
+      genre: 'dodger',
+      required_mechanics: expect.arrayContaining(['hazard.exists', 'win.survive_duration'])
+    });
+    expect(context.valid_example).toMatchObject({
+      game: { genre: 'dodger' },
+      objectives: { win: { type: 'survive_duration' }, lose: { type: 'player_health_zero' } }
+    });
+    expect((context.valid_example as { entities: Array<{ kind: string }> }).entities.some((entity) => entity.kind === 'hazard')).toBe(true);
+    expect((context.valid_example as { entities: Array<{ kind: string }> }).entities.some((entity) => entity.kind === 'collectible')).toBe(false);
   });
 });
 

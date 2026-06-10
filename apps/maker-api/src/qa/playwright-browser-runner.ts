@@ -325,6 +325,18 @@ function requiredTelemetryObserved(observedEvents: string[], requiredEvents: QaR
 
 async function runDeterministicInteraction(page: Page, genre: QaGenre, timeoutMs: number): Promise<{ ok: boolean; message?: string }> {
   if (genre !== 'shooter') {
+    if (genre === 'dodger') {
+      const autoProgress = await verifyDodgerAutoProgress(page);
+      if (!autoProgress.ok) {
+        return autoProgress;
+      }
+
+      const movementAssertion = await verifyDodgerMovement(page);
+      if (!movementAssertion.ok) {
+        return movementAssertion;
+      }
+    }
+
     for (const key of GENRE_KEYS[genre]) {
       await page.keyboard.press(key);
     }
@@ -348,6 +360,40 @@ async function runDeterministicInteraction(page: Page, genre: QaGenre, timeoutMs
 
 async function readQaSnapshot(page: Page): Promise<unknown> {
   return await page.evaluate(() => (globalThis as BrowserQaGlobal).__GAME_QA__?.snapshot());
+}
+
+async function verifyDodgerAutoProgress(page: Page): Promise<{ ok: boolean; message?: string }> {
+  const beforeFrame = readSnapshotFrame(await readQaSnapshot(page));
+  await page.waitForTimeout(1200);
+  const afterFrame = readSnapshotFrame(await readQaSnapshot(page));
+
+  if (beforeFrame !== undefined && afterFrame !== undefined && afterFrame > beforeFrame) {
+    return { ok: true };
+  }
+
+  return { ok: false, message: 'Dodger QA expected survival frame to advance automatically after preview load.' };
+}
+
+async function verifyDodgerMovement(page: Page): Promise<{ ok: boolean; message?: string }> {
+  const beforeMove = await readQaSnapshot(page);
+  await page.keyboard.press('ArrowDown');
+  const afterMove = await readQaSnapshot(page);
+  if (!movedVertically(beforeMove, afterMove, 20)) {
+    await page.keyboard.press('ArrowUp');
+    const afterFallbackMove = await readQaSnapshot(page);
+    if (!movedVertically(afterMove, afterFallbackMove, 20)) {
+      return { ok: false, message: 'Dodger QA expected player.y to change after pressing ArrowDown or ArrowUp.' };
+    }
+  }
+
+  const healthAfterMove = readSnapshotHealth(await readQaSnapshot(page));
+  await page.waitForTimeout(900);
+  const healthAfterHazardPass = readSnapshotHealth(await readQaSnapshot(page));
+  if (healthAfterMove !== undefined && healthAfterHazardPass !== undefined && healthAfterHazardPass < healthAfterMove) {
+    return { ok: false, message: 'Dodger QA expected a lane dodge to avoid hazard damage.' };
+  }
+
+  return { ok: true };
 }
 
 async function verifyShooterMovement(page: Page): Promise<{ ok: boolean; message?: string }> {
@@ -417,6 +463,17 @@ function movedHorizontally(before: unknown, after: unknown, minDelta: number): b
   return Math.abs(afterPlayer.x - beforePlayer.x) >= minDelta;
 }
 
+function movedVertically(before: unknown, after: unknown, minDelta: number): boolean {
+  const beforePlayer = readSnapshotPlayer(before);
+  const afterPlayer = readSnapshotPlayer(after);
+
+  if (beforePlayer === undefined || afterPlayer === undefined) {
+    return false;
+  }
+
+  return Math.abs(afterPlayer.y - beforePlayer.y) >= minDelta;
+}
+
 function readSnapshotPlayer(snapshot: unknown): { x: number; y: number } | undefined {
   if (typeof snapshot !== 'object' || snapshot === null || !('player' in snapshot)) {
     return undefined;
@@ -429,6 +486,24 @@ function readSnapshotPlayer(snapshot: unknown): { x: number; y: number } | undef
 
   const { x, y } = player as { x?: unknown; y?: unknown };
   return typeof x === 'number' && typeof y === 'number' ? { x, y } : undefined;
+}
+
+function readSnapshotFrame(snapshot: unknown): number | undefined {
+  if (typeof snapshot !== 'object' || snapshot === null || !('frame' in snapshot)) {
+    return undefined;
+  }
+
+  const { frame } = snapshot as { frame?: unknown };
+  return typeof frame === 'number' ? frame : undefined;
+}
+
+function readSnapshotHealth(snapshot: unknown): number | undefined {
+  if (typeof snapshot !== 'object' || snapshot === null || !('health' in snapshot)) {
+    return undefined;
+  }
+
+  const { health } = snapshot as { health?: unknown };
+  return typeof health === 'number' ? health : undefined;
 }
 
 function withQaParams(previewUrl: string, seed: string): string {

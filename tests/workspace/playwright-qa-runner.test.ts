@@ -130,6 +130,31 @@ describe('Playable QA gate and runner', () => {
     },
     30_000
   );
+
+  it(
+    'fails dodger QA when telemetry exists but the survival frame does not advance',
+    async () => {
+      const server = await startStaticDodgerPreviewServer();
+      const port = (server.address() as AddressInfo).port;
+      const runner = new PlaywrightQaRunnerService(workspace, gate);
+
+      try {
+        const report = await runner.run({ projectId, runId, genre: 'dodger', previewUrl: `http://127.0.0.1:${port}/index.html`, timeoutMs: 10_000 });
+
+        expect(report).toMatchObject({
+          status: 'QA_FAILED',
+          visual_status: 'PASSED',
+          code: 'QA_RUNNER_FAILED',
+          message: 'Dodger QA expected survival frame to advance automatically after preview load.'
+        });
+        expect(report.missing_events).toEqual([]);
+        expect(report.missing_any_groups).toEqual([]);
+      } finally {
+        await closeServer(server);
+      }
+    },
+    30_000
+  );
 });
 
 function missingObservedBase(): TelemetryEvent['type'][] {
@@ -162,6 +187,65 @@ async function startBlankTelemetryPreviewServer(): Promise<Server> {
 
   await new Promise<void>((resolveListen) => server.listen(0, '127.0.0.1', resolveListen));
   return server;
+}
+
+async function startStaticDodgerPreviewServer(): Promise<Server> {
+  const telemetry = dodgerObservedBase()
+    .map((type, index) => ({ type, timestamp_ms: index, frame: 0 }))
+    .map((event) => JSON.stringify(event))
+    .join(',');
+  const html = `<!doctype html>
+<html>
+  <body style="margin:0;background:#07111f">
+    <canvas id="game" width="640" height="360" style="width:640px;height:360px"></canvas>
+    <script>
+      const canvas = document.getElementById('game');
+      const context = canvas.getContext('2d');
+      context.fillStyle = '#07111f';
+      context.fillRect(0, 0, 640, 360);
+      context.fillStyle = '#2a2438';
+      context.fillRect(24, 24, 592, 312);
+      context.fillStyle = '#ffd28a';
+      context.beginPath();
+      context.arc(250, 180, 40, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = '#9ca3af';
+      context.beginPath();
+      context.moveTo(450, 210);
+      context.lineTo(500, 100);
+      context.lineTo(550, 210);
+      context.closePath();
+      context.fill();
+      const telemetry = [${telemetry}];
+      window.__GAME_TELEMETRY__ = { events: telemetry, state: { gameStatus: 'PLAYING', score: 0, health: 3, frame: 0 } };
+      window.__GAME_QA__ = {
+        snapshot() { return window.__GAME_TELEMETRY__.state; },
+        telemetry() { return telemetry; }
+      };
+    </script>
+  </body>
+</html>`;
+  const server = createServer((_request, response) => {
+    response.writeHead(200, { 'content-type': 'text/html' });
+    response.end(html);
+  });
+
+  await new Promise<void>((resolveListen) => server.listen(0, '127.0.0.1', resolveListen));
+  return server;
+}
+
+function dodgerObservedBase(): TelemetryEvent['type'][] {
+  return [
+    'game.ready',
+    'game.started',
+    'input.received',
+    'game.restarted',
+    'player.moved',
+    'hazard.spawned',
+    'collision.detected',
+    'player.damaged',
+    'survival_time.changed'
+  ];
 }
 
 async function closeServer(server: Server): Promise<void> {

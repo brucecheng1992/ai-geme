@@ -64,6 +64,61 @@ const validCollectorExample: RawGameDsl = {
   }
 };
 
+const validDodgerExample: RawGameDsl = {
+  dsl_version: 'game-dsl-v0.1',
+  metadata: {
+    title: 'Road Dodge',
+    description: 'Move across the road, avoid hazards, and survive the timer.',
+    language: 'en'
+  },
+  game: {
+    genre: 'dodger',
+    camera: 'top_down',
+    difficulty: 'normal',
+    target_play_time_sec: 60
+  },
+  world: {
+    width: 960,
+    height: 540,
+    visual_theme: 'urban street'
+  },
+  player: {
+    id: 'player',
+    label: 'Runner',
+    health: 3,
+    movement: { type: 'horizontal', speed_px_per_sec: 300 },
+    actions: []
+  },
+  entities: [
+    {
+      id: 'barrier',
+      kind: 'hazard',
+      label: 'Barrier',
+      count: 6,
+      movement: { type: 'fall_down', speed_px_per_sec: 180 }
+    }
+  ],
+  rules: {
+    collisions: [
+      {
+        id: 'player_hits_barrier',
+        source: 'player',
+        target: 'barrier',
+        type: 'overlap',
+        effects: [{ type: 'damage', value: 1 }, { type: 'destroy' }]
+      }
+    ]
+  },
+  objectives: {
+    win: { type: 'survive_duration' },
+    lose: { type: 'player_health_zero' }
+  },
+  ui: {
+    hud: ['health', 'timer'],
+    restart: true
+  }
+};
+
 const validShooterExample: RawGameDsl = {
   dsl_version: 'game-dsl-v0.1',
   metadata: {
@@ -136,6 +191,7 @@ const validShooterExample: RawGameDsl = {
 
 const validExamplesByGenre: Partial<Record<SupportedGameGenre, RawGameDsl>> = {
   collector: validCollectorExample,
+  dodger: validDodgerExample,
   shooter: validShooterExample
 };
 

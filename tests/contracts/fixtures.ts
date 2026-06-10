@@ -60,6 +60,80 @@ export function createCollectorRawDsl() {
   };
 }
 
+export function createDodgerRawDsl() {
+  return {
+    dsl_version: 'game-dsl-v0.1',
+    metadata: {
+      title: 'Road Run',
+      description: 'Survive traffic while picking up coins.',
+      language: 'en'
+    },
+    game: {
+      genre: 'dodger',
+      camera: 'top_down',
+      difficulty: 'normal',
+      target_play_time_sec: 60
+    },
+    world: {
+      width: 960,
+      height: 540,
+      visual_theme: 'urban street'
+    },
+    player: {
+      id: 'player',
+      label: 'Runner',
+      health: 3,
+      movement: {
+        type: 'horizontal',
+        speed_px_per_sec: 300
+      },
+      actions: [{ id: 'collect', type: 'collect' }]
+    },
+    entities: [
+      {
+        id: 'coin',
+        kind: 'collectible',
+        label: 'Coin',
+        count: 10,
+        movement: { type: 'static' }
+      },
+      {
+        id: 'obstacle',
+        kind: 'hazard',
+        label: 'Obstacle',
+        count: 5,
+        movement: { type: 'fall_down' }
+      }
+    ],
+    rules: {
+      collisions: [
+        {
+          id: 'collect_coin',
+          source: 'player',
+          target: 'coin',
+          type: 'overlap',
+          effects: [{ type: 'score_add', value: 1 }, { type: 'destroy' }]
+        },
+        {
+          id: 'hit_obstacle',
+          source: 'player',
+          target: 'obstacle',
+          type: 'overlap',
+          effects: [{ type: 'damage', value: 1 }, { type: 'destroy' }]
+        }
+      ]
+    },
+    objectives: {
+      win: { type: 'survive_duration' },
+      lose: { type: 'player_health_zero' }
+    },
+    ui: {
+      hud: ['score', 'health', 'timer'],
+      restart: true
+    }
+  };
+}
+
 export function createShooterRawDsl() {
   return {
     dsl_version: 'game-dsl-v0.1',

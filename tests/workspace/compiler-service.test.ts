@@ -7,7 +7,7 @@ import { TemplateCompilerService } from '../../apps/maker-api/src/compiler/templ
 import { ViteBuildRunnerService } from '../../apps/maker-api/src/compiler/vite-build-runner.service.js';
 import { LocalWorkspaceService } from '../../apps/maker-api/src/workspace/local-workspace.service.js';
 import { validateAndNormalizeRawGameDsl } from '../../packages/game-dsl/src/index.js';
-import { createCollectorRawDsl, createShooterRawDsl } from '../contracts/fixtures.js';
+import { createCollectorRawDsl, createDodgerRawDsl, createShooterRawDsl } from '../contracts/fixtures.js';
 
 const projectId = 'proj_20260610_020000_abcd';
 const runId = 'run_20260610_020000_abcd';
@@ -90,6 +90,19 @@ describe('Compiler + Build + Preview services', () => {
     await expect(readFile(join(second.outputDir, 'shooter/src/GameScene.ts'), 'utf8')).resolves.toContain('ShooterGameScene');
     await expect(readFile(join(second.outputDir, 'shooter/src/template-visuals.ts'), 'utf8')).resolves.toContain('drawShooterPlayer');
     await expect(readFile(join(second.outputDir, 'collector/src/GameScene.ts'), 'utf8')).rejects.toThrow();
+  });
+
+  it('writes optional dodger collectible params when the DSL includes coins', async () => {
+    const normalized = validateAndNormalizeRawGameDsl(createDodgerRawDsl());
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const result = await new TemplateCompilerService(workspace, templateRoot).compile({ projectId, runId, ir: normalized.ir });
+
+    await expect(readFile(join(result.outputDir, 'dodger/src/template-params.generated.json'), 'utf8')).resolves.toContain('"collectible"');
+    await expect(readFile(join(result.outputDir, 'dodger/src/GameScene.ts'), 'utf8')).resolves.toContain('collectItem()');
   });
 
   it('runs the injectable Vite build command and writes build logs', async () => {

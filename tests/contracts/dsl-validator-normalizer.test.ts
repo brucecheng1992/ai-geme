@@ -7,7 +7,7 @@ import {
   validateAndNormalizeRawGameDsl,
   validateRawGameDsl
 } from '../../packages/game-dsl/src/index.js';
-import { createCollectorRawDsl, createShooterRawDsl } from './fixtures.js';
+import { createCollectorRawDsl, createDodgerRawDsl, createShooterRawDsl } from './fixtures.js';
 
 function expectIssue(result: ReturnType<typeof validateRawGameDsl>, code: string, messagePart?: string) {
   expect(result.ok).toBe(false);
@@ -243,6 +243,24 @@ describe('DSL Validator and Normalizer', () => {
       });
       expect(result.ir.runtime_requirements.actions).toEqual(['shoot_projectile', 'restart']);
       expect(result.ir.runtime_requirements.collision).toEqual(['projectile_hit']);
+    }
+  });
+
+  it('preserves optional dodger collectible scoring in template params', () => {
+    const result = validateAndNormalizeRawGameDsl(createDodgerRawDsl());
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.ir.template_params).toMatchObject({
+        template_id: 'dodger_v1',
+        params: {
+          player: { label: 'Runner', speedPxPerSec: 300 },
+          hazard: { label: 'Obstacle', damage: 1 },
+          collectible: { label: 'Coin', count: 10, scorePerItem: 1 },
+          objective: { surviveDurationMs: 60000 }
+        }
+      });
+      expect(result.ir.runtime_requirements.actions).toEqual(['collect', 'restart']);
     }
   });
 

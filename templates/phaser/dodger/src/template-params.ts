@@ -2,6 +2,7 @@ export type DodgerTemplateParams = {
   world: { width: number; height: number };
   player: { label: string; health: number; speedPxPerSec: number; startX: number; startY: number };
   hazard: { label: string; speedPxPerSec: number; spawnIntervalMs: number; damage: number };
+  collectible?: { label: string; count: number; scorePerItem: number };
   objective: { surviveDurationMs: number };
 };
 

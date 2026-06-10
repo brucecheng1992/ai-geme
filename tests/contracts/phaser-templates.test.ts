@@ -79,6 +79,9 @@ describe('Phaser templates', () => {
     expect(collectorMain).toContain("event.key === 'ArrowRight'");
     expect(collectorMain).toContain('scene.collectItem()');
     expect(dodgerMain).toContain('scene.dodgeFrame()');
+    expect(dodgerMain).toContain('scene.update(delta)');
+    expect(dodgerMain).toContain('scene.moveUp()');
+    expect(dodgerMain).toContain('scene.moveDown()');
     expect(dodgerMain).toContain('scene.hitHazard()');
     expect(shooterMain).toContain('scene.fire()');
     expect(shooterMain).toContain('scene.setMoveInput');
@@ -149,9 +152,23 @@ describe('Phaser templates', () => {
       expect(source).toContain(event);
     }
     expect(scene).toContain('dodgeFrame()');
+    expect(scene).toContain('update(deltaMs: number)');
+    expect(scene).toContain('this.advanceHazard(deltaMs)');
+    expect(scene).toContain('movePlayerToLane');
+    expect(scene).toContain('resolveHazardCollision');
+    expect(scene).toContain('spawnNextHazard');
+    expect(scene).toContain('hideHazardForNextSpawn');
+    expect(scene).toContain('nextHazardLaneIndex');
+    expect(scene).toContain('hitboxesOverlap(this.playerHitbox, this.hazardHitbox)');
+    expect(scene).toContain('hazardImpactHoldMs');
+    expect(scene).toContain('player: { x: this.params.player.startX, y: this.playerY');
+    expect(scene).toContain('hazard: { x: this.hazardX, y: this.hazardY');
     expect(scene).toContain('hitHazard()');
+    expect(scene).toContain('collectItem()');
     expect(scene).toContain("this.spawn.spawn('hazard')");
+    expect(scene).toContain("this.spawn.spawn('item')");
     expect(scene).toContain("this.telemetry.emit('player.damaged'");
+    expect(scene).toContain("this.telemetry.emit('item.collected'");
   });
 
   it('shooter template preserves the real fire, projectile, enemy-hit chain', async () => {

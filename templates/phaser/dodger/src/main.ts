@@ -16,6 +16,10 @@ if (typeof window !== 'undefined') {
     create(): void {
       scene.create(this);
     }
+
+    update(_time: number, delta: number): void {
+      scene.update(delta);
+    }
   }
 
   new Phaser.Game({
@@ -36,8 +40,20 @@ if (typeof window !== 'undefined') {
       scene.dodgeFrame();
     }
 
+    if (event.key === 'ArrowUp' || event.key.toLowerCase() === 'w') {
+      scene.moveUp();
+    }
+
+    if (event.key === 'ArrowDown' || event.key.toLowerCase() === 's') {
+      scene.moveDown();
+    }
+
     if (event.key.toLowerCase() === 'h') {
       scene.hitHazard();
+    }
+
+    if (event.key.toLowerCase() === 'c') {
+      scene.collectItem();
     }
 
     if (event.key.toLowerCase() === 'r') {
@@ -57,6 +73,7 @@ function mergeDodgerParams(params: Partial<DodgerTemplateParams>): DodgerTemplat
     world: { ...defaultDodgerParams.world, ...params.world },
     player: { ...defaultDodgerParams.player, ...params.player },
     hazard: { ...defaultDodgerParams.hazard, ...params.hazard },
+    ...(params.collectible ? { collectible: params.collectible } : {}),
     objective: { ...defaultDodgerParams.objective, ...params.objective }
   };
 }
