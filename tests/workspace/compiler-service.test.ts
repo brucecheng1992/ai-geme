@@ -89,6 +89,8 @@ describe('Compiler + Build + Preview services', () => {
     const second = await compiler.compile({ projectId, runId, ir: shooter.ir });
     await expect(readFile(join(second.outputDir, 'shooter/src/GameScene.ts'), 'utf8')).resolves.toContain('ShooterGameScene');
     await expect(readFile(join(second.outputDir, 'shooter/src/template-visuals.ts'), 'utf8')).resolves.toContain('drawShooterPlayer');
+    await expect(readFile(join(second.outputDir, 'shooter/src/runtime-plan.generated.json'), 'utf8')).resolves.toContain('"enemy_waves"');
+    await expect(readFile(join(second.outputDir, 'shooter/src/main.ts'), 'utf8')).resolves.toContain('runtime-plan.generated.json');
     await expect(readFile(join(second.outputDir, 'collector/src/GameScene.ts'), 'utf8')).rejects.toThrow();
   });
 
@@ -102,7 +104,10 @@ describe('Compiler + Build + Preview services', () => {
     const result = await new TemplateCompilerService(workspace, templateRoot).compile({ projectId, runId, ir: normalized.ir });
 
     await expect(readFile(join(result.outputDir, 'dodger/src/template-params.generated.json'), 'utf8')).resolves.toContain('"collectible"');
+    await expect(readFile(join(result.outputDir, 'dodger/src/runtime-plan.generated.json'), 'utf8')).resolves.toContain('"spawn_rules"');
+    await expect(readFile(join(result.outputDir, 'dodger/src/runtime-plan.generated.json'), 'utf8')).resolves.toContain('"entity_id": "obstacle"');
     await expect(readFile(join(result.outputDir, 'dodger/src/GameScene.ts'), 'utf8')).resolves.toContain('collectItem()');
+    await expect(readFile(join(result.outputDir, 'dodger/src/main.ts'), 'utf8')).resolves.toContain('runtime-plan.generated.json');
   });
 
   it('runs the injectable Vite build command and writes build logs', async () => {

@@ -100,7 +100,7 @@ export class MovementSystem {
 export class SpawnSystem {
   constructor(private readonly telemetry: TelemetrySystem) {}
 
-  spawn(type: 'enemy' | 'item' | 'hazard' | 'projectile'): void {
+  spawn(type: 'enemy' | 'item' | 'hazard' | 'projectile', payload?: Record<string, unknown>): void {
     const eventByType: Partial<Record<typeof type, string>> = {
       item: 'item.spawned',
       hazard: 'hazard.spawned',
@@ -109,7 +109,7 @@ export class SpawnSystem {
     const event = eventByType[type];
 
     if (event !== undefined) {
-      this.telemetry.emit(event);
+      this.telemetry.emit(event, payload);
     }
   }
 }

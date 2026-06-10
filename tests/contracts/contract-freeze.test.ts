@@ -76,6 +76,196 @@ describe('Contract Freeze', () => {
     expect(() => NormalizedGameIrSchema.parse(createIrForGenre('shooter', shooterContract))).not.toThrow();
   });
 
+  it('keeps runtime plan spawn rules strict and enum-bounded', () => {
+    const validIr = createIrForGenre('dodger', dodgerContract);
+
+    expect(() =>
+      NormalizedGameIrSchema.parse({
+        ...validIr,
+        runtime_plan: {
+          spawn_rules: [
+            {
+              entity_id: 'obstacle',
+              entity_kind: 'hazard',
+              strategy: 'right_edge_wave',
+              count: 5,
+              max_active: 3,
+              interval_ms: 700,
+              lane_count: 3
+            }
+          ]
+        }
+      })
+    ).not.toThrow();
+
+    expect(() =>
+      NormalizedGameIrSchema.parse({
+        ...validIr,
+        runtime_plan: {
+          spawn_rules: [
+            {
+              entity_id: 'obstacle',
+              entity_kind: 'hazard',
+              strategy: 'scripted_spawn',
+              count: 5,
+              max_active: 3,
+              interval_ms: 700
+            }
+          ]
+        }
+      })
+    ).toThrow();
+
+    expect(() =>
+      NormalizedGameIrSchema.parse({
+        ...validIr,
+        runtime_plan: {
+          spawn_rules: [
+            {
+              entity_id: 'obstacle',
+              entity_kind: 'hazard',
+              strategy: 'right_edge_wave',
+              count: 5,
+              max_active: 3,
+              interval_ms: 700,
+              expression: 'Math.random()'
+            }
+          ]
+        }
+      })
+    ).toThrow();
+  });
+
+  it('keeps runtime plan difficulty curve strict and genre-gated', () => {
+    const validIr = createIrForGenre('dodger', dodgerContract);
+    const difficultyCurve = {
+      derived_from: ['game.difficulty', 'game.target_play_time_sec'],
+      level: 'easy',
+      speed_multiplier_start: 0.9,
+      speed_multiplier_end: 1,
+      spawn_interval_multiplier_start: 1.15,
+      spawn_interval_multiplier_end: 1.05,
+      ramp_duration_ms: 60000
+    };
+
+    expect(() =>
+      NormalizedGameIrSchema.parse({
+        ...validIr,
+        runtime_plan: {
+          spawn_rules: [],
+          difficulty_curve: difficultyCurve
+        }
+      })
+    ).not.toThrow();
+
+    expect(() =>
+      NormalizedGameIrSchema.parse({
+        ...validIr,
+        runtime_plan: {
+          spawn_rules: [],
+          difficulty_curve: { ...difficultyCurve, script: 'Math.random()' }
+        }
+      })
+    ).toThrow();
+
+    expect(() =>
+      NormalizedGameIrSchema.parse({
+        ...createIrForGenre('collector', collectorContract),
+        runtime_plan: {
+          spawn_rules: [],
+          difficulty_curve: difficultyCurve
+        }
+      })
+    ).toThrow();
+  });
+
+  it('keeps shooter runtime plan enemy waves strict, genre-gated, and single-wave', () => {
+    const shooterIr = createIrForGenre('shooter', shooterContract);
+    const enemyWave = {
+      derived_from: [
+        'entities.enemy.id',
+        'entities.enemy.count',
+        'entities.enemy.health',
+        'entities.enemy.movement.speed_px_per_sec',
+        'game.difficulty',
+        'game.target_play_time_sec'
+      ],
+      entity_id: 'alien',
+      strategy: 'right_edge_wave',
+      count: 6,
+      max_active: 3,
+      interval_ms: 800,
+      speed_multiplier: 1.15
+    };
+
+    expect(() =>
+      NormalizedGameIrSchema.parse({
+        ...shooterIr,
+        runtime_plan: {
+          spawn_rules: [],
+          enemy_waves: [enemyWave]
+        }
+      })
+    ).not.toThrow();
+
+    expect(() =>
+      NormalizedGameIrSchema.parse({
+        ...shooterIr,
+        runtime_plan: {
+          spawn_rules: [],
+          enemy_waves: [{ ...enemyWave, script: 'Math.random()' }]
+        }
+      })
+    ).toThrow();
+
+    expect(() =>
+      NormalizedGameIrSchema.parse({
+        ...shooterIr,
+        runtime_plan: {
+          spawn_rules: [],
+          enemy_waves: [enemyWave, { ...enemyWave, entity_id: 'alien_two' }]
+        }
+      })
+    ).toThrow();
+
+    expect(() =>
+      NormalizedGameIrSchema.parse({
+        ...createIrForGenre('collector', collectorContract),
+        runtime_plan: {
+          spawn_rules: [],
+          enemy_waves: [enemyWave]
+        }
+      })
+    ).toThrow();
+  });
+
+  it('rejects non-dodger normalized IR with spawn rules in runtime plan v0', () => {
+    const collectorIr = createIrForGenre('collector', collectorContract);
+    const shooterIr = createIrForGenre('shooter', shooterContract);
+    const spawnRule = {
+      entity_id: 'obstacle',
+      entity_kind: 'hazard',
+      strategy: 'right_edge_wave',
+      count: 5,
+      max_active: 3,
+      interval_ms: 700
+    };
+
+    expect(() =>
+      NormalizedGameIrSchema.parse({
+        ...collectorIr,
+        runtime_plan: { spawn_rules: [spawnRule] }
+      })
+    ).toThrow();
+
+    expect(() =>
+      NormalizedGameIrSchema.parse({
+        ...shooterIr,
+        runtime_plan: { spawn_rules: [spawnRule] }
+      })
+    ).toThrow();
+  });
+
   it('rejects normalized IR when genre, template, telemetry, and QA contracts drift', () => {
     const validIr = createIrForGenre('collector', collectorContract);
 

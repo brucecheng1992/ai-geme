@@ -16,6 +16,9 @@ const numericPaths = new Set([
   'entities.health',
   'entities.damage',
   'entities.movement.speed_px_per_sec',
+  'entities.spawn.max_active',
+  'entities.spawn.interval_ms',
+  'entities.spawn.lane_count',
   'rules.collisions.effects.value',
   'objectives.win.target',
   'objectives.lose.target'

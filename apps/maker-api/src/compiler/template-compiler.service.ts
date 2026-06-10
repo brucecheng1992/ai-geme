@@ -37,11 +37,14 @@ export class TemplateCompilerService {
       'src/main.ts',
       `${genre}/src/main.ts`,
       `${genre}/src/GameScene.ts`,
+      ...(genre === 'dodger' ? [`${genre}/src/dodger-runtime-plan.ts`] : []),
       ...(genre === 'shooter' ? [`${genre}/src/shooter-runtime.ts`] : []),
+      ...(genre === 'shooter' ? [`${genre}/src/shooter-runtime-plan.ts`] : []),
       ...(genre === 'shooter' ? [`${genre}/src/shooter-renderer.ts`] : []),
       ...(genre === 'shooter' ? [`${genre}/src/template-visuals.ts`] : []),
       `${genre}/src/template-params.ts`,
       'shared/kernel.ts',
+      ...(genre === 'dodger' || genre === 'shooter' ? [`${genre}/src/runtime-plan.generated.json`] : []),
       `${genre}/src/template-params.generated.json`
     ];
 
@@ -51,6 +54,9 @@ export class TemplateCompilerService {
     await cp(join(this.templateRoot, 'shared'), join(outputDir, 'shared'), { recursive: true });
     await mkdir(join(outputDir, 'src'), { recursive: true });
     await writeFile(join(outputDir, `${genre}`, 'src', 'template-params.generated.json'), JSON.stringify(ir.template_params.params, null, 2));
+    if (genre === 'dodger' || genre === 'shooter') {
+      await writeFile(join(outputDir, `${genre}`, 'src', 'runtime-plan.generated.json'), JSON.stringify(ir.runtime_plan, null, 2));
+    }
     await writeFile(join(outputDir, 'package.json'), this.renderPackageJson(input.projectId));
     await writeFile(join(outputDir, 'index.html'), this.renderIndexHtml());
     await writeFile(join(outputDir, 'src', 'main.ts'), this.renderMainEntry(genre));

@@ -8,11 +8,306 @@
 
 ## 当前阶段
 
-P0 主链路修复和模型 DSL 视觉执行复核修复已完成。
+DSL-first P1 Step 6 已完成：shooter Raw DSL 现在通过 normalizer 派生为 `runtime_plan.enemy_waves`，并由 shooter runtime 执行 enemy wave spawn budget / maxActive / interval / speed multiplier，QA 通过 snapshot 与 `enemy.hit` / `enemy.cleared` payload 证明执行。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：P0 实施文档范围已完成；后续扩展应新开 P1/P2 阶段。
+当前下一步：DSL-first P1 Step 7 继续扩展一个新的可执行可玩性薄片；候选是 collector 小闭环，或在 shooter enemy_wave 基础上做二阶增强。
+
+### 2.5 DSL-first dodger difficulty curve runtime_plan
+
+完成时间：2026-06-11
+
+已完成内容：
+
+- `NormalizedGameIrSchema` 新增 `runtime_plan.difficulty_curve`，字段包括 `derived_from`、`level`、speed / spawn interval multiplier start/end 和 `ramp_duration_ms`。
+- `runtime_plan.difficulty_curve` 当前只允许 dodger；collector / shooter 携带该字段会被 schema 拒绝。
+- `normalizer` 不新增 Raw DSL 字段，而是从模型已生成的 `game.difficulty` 与 `game.target_play_time_sec` 派生 deterministic runtime hints。
+- dodger runtime 新增 difficulty resolver 与 interpolation；hazard 创建时使用当前 curve 计算 speed multiplier，并用 spawn interval multiplier 计算下一次 hazard spawn delay。
+- `DodgerGameScene` 在 QA snapshot 暴露 `difficultyPlan`，并在 `hazard.spawned` payload 暴露 `difficultyLevel`、`difficultySource`、`rampProgress`、`speedMultiplier`、`spawnIntervalMultiplier` 和 `effectiveIntervalMs`。
+- Playwright QA 对 `difficultyPlan.source === "runtime_plan"` 做独立语义门禁：不依赖 `spawnPlan.hazard.source`，必须观察到任意 `hazard.spawned` event 携带合法 difficulty metadata。
+- prompt context 增加 `difficulty_runtime_guidance`，说明 dodger difficulty 会派生 runtime curve，同时禁止模型输出 `runtime_plan`、`template_params`、`difficulty_curve`、multiplier 或 ramp 字段。
+- QA visual gate 截图前等待两个 `requestAnimationFrame`，稳定全量测试中的 canvas 绘制时序；dodger movement QA 改为短窗口验证移动后不会立即受伤，避免把后续正常难度压力误判为 lane dodge 失败。
+
+阶段结果：
+
+- 解决层级：IR contract + normalizer 派生 + dodger runtime 解释 + QA 语义门禁 + prompt/provider 边界；没有新增 Raw DSL 字段，也没有让模型输出模板私有参数。
+- DSL-first 边界：大模型仍只生成 Raw DSL 的 `game.difficulty` / `target_play_time_sec`；normalizer 生成 `runtime_plan.difficulty_curve`；生成项目写入 `runtime-plan.generated.json`；dodger runtime 执行；QA 证明 runtime_plan difficulty metadata 被 hazard spawn 消费。
+- 当前 difficulty 语义为 spawn-time tuning：新生成 hazard 使用当时 curve multiplier，已有 hazard 的速度在创建时固化。
+- 当前 curve：
+  - `easy`: speed 0.9 -> 1.0，spawn interval 1.15 -> 1.05。
+  - `normal`: speed 1.0 -> 1.25，spawn interval 1.0 -> 0.8。
+  - `ramp_duration_ms = game.target_play_time_sec * 1000`。
+- 未改范围：未新增 Raw DSL difficulty curve 字段；未新增 telemetry event type；未扩展 collector / shooter；未把全量 telemetry payload 持久化到 QA report。
+
+已通过验证：
+
+    npx vitest run tests/contracts/phaser-templates.test.ts tests/contracts/dsl-validator-normalizer.test.ts tests/contracts/contract-freeze.test.ts
+    # 3 个测试文件，55 个测试全部通过
+
+    npx vitest run tests/workspace/playwright-qa-runner.test.ts tests/workspace/game-dsl-provider.test.ts
+    # 2 个测试文件，44 个测试全部通过
+
+    npm test
+    # 11 个测试文件，91 个测试全部通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查均通过
+
+    git diff --check
+    # 无输出
+
+    npx tsx "<DeepSeek dodger Raw DSL -> normalize -> compile -> Vite build -> Playwright QA>"
+    # DeepSeek deepseek-v4-flash 生成 dodger Raw DSL，genre=dodger，difficulty=normal
+    # runtime-plan.generated.json 包含 coin fixed_positions、barrier right_edge_wave 和 normal difficulty_curve
+    # compile=true；build=true；QA rerun PASS；visual PASS
+    # 产物：proj_20260611_step5_20260610161928
+    # QA report: data/local-data/qa-reports/proj_20260611_step5_20260610161928/run_20260611_step5_20260610161928_rerun3.json
+    # runtime plan: data/generated-projects/proj_20260611_step5_20260610161928/dodger/src/runtime-plan.generated.json
+
+审查门禁结论：
+
+- Oracle 方案审查：P0 无；允许执行 Step 5；要求 difficulty QA 独立证明，避免连续 multiplier 精确相等；要求 genre gate、派生值冻结、restart reset 覆盖。
+- Oracle 首轮代码审查：P0 无；P1 指出 difficulty QA 依赖 `spawnPlan.hazard.source === "runtime_plan"`，当只有 difficulty_curve 来自 runtime_plan 时证明不足；P2 建议明确 spawn-time tuning 或改 per-frame multiplier，并补 ramp 后新 hazard 调度测试；P3 建议补 forbidden_fields。
+- 已修复：新增独立 `verifyDodgerRuntimePlanDifficulty`；补 `difficultyPlan.source=runtime_plan` 但 hazard telemetry 缺 metadata 的负例；补 ramp 后新 hazard `effectiveIntervalMs` / multiplier 集成测试；`forbidden_fields` 增加 difficulty / multiplier / ramp 字段。
+- Oracle 复审：P0/P1/P2/P3 均无，Step 5 代码门禁通过。
+- 审查模式：Oracle 复用
+
+下一步建议：
+
+- DSL-first P1 Step 6：优先选择 shooter 或 collector 的一个小型可执行薄片，继续按 contract -> normalizer/IR -> runtime -> QA -> prompt/provider -> real E2E 的顺序推进。
+- 如果继续 dodger，应优先扩展已验证 runtime_plan 能力，而不是新增 Raw DSL 自由数值字段。
+
+### 2.4 DSL-first dodger collectible fixed_positions spawn
+
+完成时间：2026-06-10
+
+已完成内容：
+
+- dodger fixture/golden 将 collectible spawn 收敛为 `fixed_positions`，hazard 继续使用 `right_edge_wave`。
+- dodger runtime 解释 `runtime_plan.spawn_rules` 中的 collectible `fixed_positions`：模型控制 `count`、`max_active`、`interval_ms`，runtime 根据 world/lane 几何派生固定 slot pool。
+- `DodgerGameScene` 新增 collectible runtime object、spawn budget、max active、interval 补发、收集后隐藏与补发节奏；`dodgeFrame()` 与真实 `update()` 一样推进 collectible runtime。
+- `item.spawned` payload 暴露 `entityId`、`strategy`、`source`、`count`、`maxActive`、`intervalMs`；`item.collected` payload 暴露 `entityId`、`source`、`slotIndex`。
+- Playwright QA 对 `spawnPlan.hazard` 和 `spawnPlan.collectible` 分别做 semantic check；hazard 必须是 `right_edge_wave + laneCount`，collectible 必须是 `fixed_positions` 且无 `laneCount`。
+- provider scope gate 只放行两个模型可生成 slice：`dodger hazard right_edge_wave` 与 `dodger collectible fixed_positions`。
+- provider 拒绝 duplicate same-kind spawn、spawn-bearing entity 与 template primary entity 不一致、collectible 携带 `lane_count`、collectible 缺少 `player <overlap> collectible` 且 `score_add > 0` 的可执行收集语义。
+- dodger prompt valid example 增加 collectible、collect action、collect collision 和 fixed_positions guidance；修复真实模型验证暴露的 prompt example action/collision 重复 id。
+
+阶段结果：
+
+- 解决层级：数据契约 golden + 模板 runtime 解释 + QA 语义门禁 + 模型 prompt/provider 边界；没有新增 genre，也没有让模型输出 `runtime_plan` 或 `template_params`。
+- DSL-first 边界：模型生成 Raw DSL 的 `entity.spawn`；normalizer 写入 `ir.runtime_plan.spawn_rules`；dodger runtime 解释执行；QA 通过 snapshot/telemetry 证明 runtime_plan 行为发生。
+- 当前 executable + prompt-exposed subset：
+  - `dodger` / `hazard` / `right_edge_wave`，count 5..12、max_active 2..4、interval_ms 600..1200、lane_count 3..4。
+  - `dodger` / `collectible` / `fixed_positions`，count 3..10、max_active 1..3、interval_ms 700..1600，必须省略 lane_count，且必须有正向 collect scoring collision。
+- 未改范围：未开放 collector/shooter spawn、hazard fixed_positions、hazard top_edge_stream、collectible right_edge_wave、collectible top_edge_stream，也未允许多 primary hazard/collectible。
+
+已通过验证：
+
+    npx vitest run tests/contracts/dsl-validator-normalizer.test.ts tests/contracts/phaser-templates.test.ts
+    # 2 个测试文件，37 个测试全部通过
+
+    npm run test:contracts
+    # 3 个测试文件，50 个测试全部通过
+
+    npx vitest run tests/workspace/game-dsl-provider.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/compiler-service.test.ts
+    # 3 个测试文件，49 个测试全部通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查均通过
+
+    git diff --check
+    # 无输出
+
+    npx tsx --eval "<DeepSeek dodger Raw DSL -> normalize -> compile -> Vite build -> Playwright QA>"
+    # 第一次真实模型验证暴露 prompt valid example action/collision id 重复，已修复为 collect_action / collect_coin
+    # 第二次 DeepSeek deepseek-v4-flash 生成 dodger Raw DSL；collectible spawn 为 fixed_positions；hazard spawn 为 right_edge_wave
+    # runtime_plan.spawn_rules 写入 coin fixed_positions 与 barrier right_edge_wave；compile=true；build=true；QA PASSED；observed_events=23
+    # 产物：proj_20260610_step4_20260610t155627 / run_20260610_step4_20260610t155627
+    # QA report: data/local-data/qa-reports/proj_20260610_step4_20260610t155627/run_20260610_step4_20260610t155627.json
+    # screenshot: data/generated-projects/proj_20260610_step4_20260610t155627/qa/screenshot.png
+    # 本命令为本地一次性 eval 验证，未固化为仓库脚本
+
+审查门禁结论：
+
+- Oracle 计划审查：P0 无；P1 要求收紧 provider 范围、定义 fixed_positions 语义、QA 独立检查 collectible、旧兼容按 entity kind 保留；P2/P3 建议补数值/策略/文档约束。
+- Oracle 首轮代码审查：P0 无；P1 指出 spawn-bearing entity 与 template primary entity 可能不一致，导致 runtime 混用或忽略模型语义；P2 建议加强调度测试、QA 策略白名单、`item.collected.slotIndex`。
+- 已修复：provider 要求 spawn-bearing hazard/collectible 在 DSL 中是唯一 primary entity；补 duplicate、primary mismatch、range、lane_count、缺 collect scoring collision 负例；QA 增加 hazard/collectible 策略白名单和 malformed/mismatch 负例；runtime 补 count/maxActive/interval 调度测试。
+- Oracle 二次代码复审：P1 指出 collectible fixed_positions 未要求 collect scoring collision，normalizer 可能不生成 `template_params.collectible`，runtime/QA 会跳过。
+- 已修复：provider 要求 player overlap collectible collision 且 `score_add > 0`；补 missing collision、missing score_add、score_add=0 三个负例；补 hazard unsupported strategy QA 负例。
+- Oracle 最终代码复审：P0/P1/P2/P3 均无，Step 4 代码门禁通过。
+- 审查模式：Oracle 复用
+
+下一步建议：
+
+- DSL-first P1 Step 5：继续用同样顺序扩展一个薄片，优先考虑 dodger 难度曲线 runtime 字段；也可以选择 shooter/collector 的一个小 contract/runtime/QA/prompt 闭环。
+- 进入下一步前继续保持规则：先 contract/runtime/QA，再 prompt/provider，最后真实模型链路验证。
+
+### 2.3 DSL-first prompt/context: verified dodger spawn generation
+
+完成时间：2026-06-10
+
+已完成内容：
+
+- `RawDslPromptContext` 新增 `spawn_generation_guidance`，避免把 IR 字段名 `runtime_plan` 暴露成模型可输出字段。
+- dodger prompt valid example 的 hazard 增加 `spawn: { strategy: "right_edge_wave", max_active: 3, interval_ms: 800, lane_count: 3 }`。
+- prompt context 对 collector/shooter 明确禁止 `entity.spawn`；对 dodger 只允许 hazard 使用 `right_edge_wave`，并给出 `count`、`max_active`、`interval_ms`、`lane_count` 的已验证范围。
+- `GameDslProviderService` 删除 `rules.spawns` 静默剥离逻辑，Raw DSL 直接进入 strict schema；模型输出 `rules.spawns` 会失败。
+- provider 在 schema 通过后、brief mismatch 检查前新增 `checkRawDslMatchesVerifiedPromptScope`：只放行 `dodger + hazard + right_edge_wave`，并硬校验 count 5..12、max_active 2..4、interval_ms 600..1200、lane_count 3..4。
+- provider 测试覆盖 prompt guidance、dodger 成功路径、collectible spawn 拒绝、`fixed_positions` / `top_edge_stream` 拒绝、各数值范围独立拒绝、`rules.spawns` strict schema 拒绝。
+
+阶段结果：
+
+- 解决层级：模型 prompt/context + provider 边界校验；没有修改 runtime/template 已通过门禁的执行逻辑。
+- DSL-first 边界：大模型现在可以生成 Raw DSL 的 `entity.spawn`，但 provider 只允许进入当前已由 contract + runtime + QA 验证过的 dodger hazard `right_edge_wave` 子集。
+- 当前 executable + prompt-exposed subset：`dodger` / `hazard` / `right_edge_wave`，范围为 count 5..12、max_active 2..4、interval_ms 600..1200、lane_count 3..4。
+- 未改范围：未开放 collectible spawn、collector/shooter spawn、`fixed_positions`、`top_edge_stream`，也未把 `runtime_plan` 或 `template_params` 作为 Raw DSL 输出字段。
+
+已通过验证：
+
+    npx vitest run tests/workspace/game-dsl-provider.test.ts
+    # 1 个测试文件，19 个测试全部通过
+
+    npm run test:contracts
+    # 3 个测试文件，48 个测试全部通过
+
+    npx vitest run tests/workspace/game-dsl-provider.test.ts tests/workspace/generation-pipeline.service.test.ts tests/workspace/generation-pipeline.smoke.test.ts
+    # 3 个测试文件，27 个测试全部通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查均通过
+
+    git diff --check
+    # 无输出
+
+    npx tsx --eval "<DeepSeek provider prompt shape check>"
+    # dodger context 输出 spawn_generation_guidance；valid example hazard spawn 为 right_edge_wave；prompt 明确禁止 runtime_plan/template_params
+    # 本命令为本地一次性 eval 验证，未固化为仓库脚本
+
+    npx tsx --eval "<DeepSeek dodger Raw DSL -> normalize -> compile -> Vite build -> Playwright QA>"
+    # DeepSeek deepseek-v4-flash 生成 dodger Raw DSL；hazard spawn 为 right_edge_wave；runtime_plan.spawn_rules 写入 obstacle；compile=true；build=true；QA PASSED
+    # 产物：proj_20260610_232000_step3_e2e / run_20260610_232000_step3_e2e
+    # QA report: data/local-data/qa-reports/proj_20260610_232000_step3_e2e/run_20260610_232000_step3_e2e.json
+    # 本命令为本地一次性 eval 验证，未固化为仓库脚本
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出 `rules.spawns` 仍会被 provider 静默剥离、prompt 数值范围未在 provider 硬校验；P2 建议补 `fixed_positions/top_edge_stream` 和独立范围分支测试；P3 建议避免 `runtime_plan_guidance` 诱导模型输出 IR 字段。
+- 已修复：删除 `rules.spawns` 剥离；provider 硬校验 count/max_active/interval_ms/lane_count；字段改为 `spawn_generation_guidance`；prompt 明确禁止 `runtime_plan/template_params`；补 strategy/range/`rules.spawns` 测试。
+- Oracle 二次复审：P0/P1/P2/P3 均无，Step 3 代码门禁通过。
+- 审查模式：Oracle 复用
+
+下一步建议：
+
+- DSL-first P1 Step 4：继续用同样方式扩展一个可执行薄片，优先从 `collectible spawn` 或 dodger 难度曲线中选一个；必须先 contract/runtime/QA，再 prompt。
+- 若选择继续提升 dodger 可玩性，应让模型字段进入 runtime 可观察行为，并用 Playwright QA 或 template runtime 单测证明。
+
+### 2.2 DSL-first runtime_plan v0: dodger runtime/semantic QA
+
+完成时间：2026-06-10
+
+已完成内容：
+
+- `TemplateCompilerService` 现在为 dodger 生成项目复制 `dodger-runtime-plan.ts` / `runtime-plan.generated.json`，并把 `ir.runtime_plan` 原样写入生成项目。
+- dodger `main.ts` import `runtime-plan.generated.json`，合并后传入 `DodgerGameScene`；模型 DSL/IR 仍是事实来源，模板只解释 runtime plan。
+- 新增 `templates/phaser/dodger/src/dodger-runtime-plan.ts`，把 `runtime_plan.spawn_rules` 解析为 dodger runtime 可执行的 `ResolvedDodgerSpawnRule`。
+- `DodgerGameScene` 当前只执行 `hazard + right_edge_wave` 薄片：使用 `count`、`maxActive`、`intervalMs`、`laneCount` 控制 hazard 入场，并在 `hazard.spawned` payload 和 QA snapshot 中暴露 `entityId`、`strategy`、`source`、`maxActive`、`laneCount`。
+- `SpawnSystem.spawn(...)` 支持透传 payload 到 telemetry。
+- Playwright QA 增加 dodger semantic check：当 snapshot 声明 `spawnPlan.hazard.source === "runtime_plan"` 时，必须观察到匹配 `source/entityId/strategy/maxActive/laneCount` 的 `hazard.spawned` telemetry；runtime_plan snapshot 缺字段会失败，而不是跳过。
+- 合同/工作区测试覆盖 runtime plan 解析、unsupported strategy 不冒充已执行、fallback lane 几何不漂移、编译器落盘、QA mismatch 和 malformed snapshot 负例。
+
+阶段结果：
+
+- 解决层级：IR 编译边界 + 模板运行时解释 + QA 语义门禁；没有把 prompt 直接扩展到尚未可执行的字段。
+- DSL-first 边界：`runtime_plan.spawn_rules` 已能从模型 DSL 归一化结果进入生成项目，并真实影响 dodger hazard 的入场节奏、最大活跃数和轨道数。
+- 当前 executable subset：`dodger` / `hazard` / `right_edge_wave`；`fixed_positions` 与 `top_edge_stream` 仍保留在合同枚举中，但不会被 dodger runtime 标记为 `source: "runtime_plan"` 执行。
+- 旧兼容：没有 runtime plan 时保留模板默认 3 lane 几何 `[startY - 110, startY, startY + 110]`。
+- 未改范围：本步未更新 prompt、未要求模型开始生成 spawn 字段、未实现 collectible spawn 或其他 genre 的 runtime_plan 执行。
+
+已通过验证：
+
+    npx vitest run tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts
+    # 2 个测试文件，21 个测试全部通过
+
+    npm run test:contracts
+    # 3 个测试文件，48 个测试全部通过
+
+    npx vitest run tests/workspace/compiler-service.test.ts tests/workspace/playwright-qa-runner.test.ts
+    # 2 个测试文件，16 个测试全部通过
+
+    npm run typecheck:root
+    # tsc --noEmit -p tsconfig.json 通过
+
+    npm run typecheck --workspace @ai-game-maker/maker-api
+    # maker-api 类型检查通过
+
+    git diff --check
+    # 无输出
+
+    npx tsx --eval "<dodger compile + Vite build quick check>"
+    # compile=true, build=true；临时生成项目和 build log 已清理
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出 runtime 把所有 strategy 标记为 `runtime_plan`，但实际只执行 `right_edge_wave`；P2 指出 fallback lane 几何漂移、QA 未比对 `maxActive/laneCount`。
+- 已修复：`resolveDodgerSpawnRule` 只在 strategy 等于当前 executable fallback strategy 时返回 `source: "runtime_plan"`；fallback 3 lane 恢复旧几何；QA 比对 `maxActive/laneCount`。
+- Oracle 二次复审：P0/P1 无；P2 指出 malformed runtime_plan snapshot 会被折叠成 no-op。
+- 已修复：`readSnapshotDodgerSpawnPlan` 改为 `absent/not_runtime_plan/malformed/runtime_plan` 四态；`source: "runtime_plan"` 但缺必需字段时 QA 失败；补缺 `laneCount` 负例。
+- Oracle 最终复审：P0/P1/P2/P3 均无，Step 2.2 代码门禁通过。
+- 审查模式：Oracle 复用
+
+下一步建议：
+
+- DSL-first P1 Step 3：更新模型 prompt/context，只允许生成 `dodger` 的 `entity.spawn.strategy = "right_edge_wave"`，并明确 `max_active/interval_ms/lane_count` 范围与可玩性目标。
+- DSL-first P1 Step 3 后必须跑真实模型生成链路，检查 raw DSL、IR、生成项目、QA report 和 Workbench 状态，而不是只看 prompt 文案。
+
+### 2.1 DSL-first runtime_plan v0: dodger spawn contract/golden
+
+完成时间：2026-06-10
+
+已完成内容：
+
+- 在 Raw Game DSL 的 entity 上新增可选 `spawn` 语义，当前仅允许 `dodger` 使用；`collector` / `shooter` 携带 `entity.spawn` 会稳定拒绝。
+- 在 Normalized IR 中新增 `runtime_plan.spawn_rules`，用于保留模型生成的入场语义，避免只压入模板私有 `template_params`。
+- `normalizer` 新增 `buildRuntimePlan(...)`，把 `raw.entities[].spawn` 映射为结构化 `spawn_rules`；缺省 `max_active` / `interval_ms` 明确为 normalizer-derived runtime hints，不是模型事实。
+- `NormalizedGameIrSchema` 同步限制：当前 `runtime_plan.spawn_rules` 只允许 `dodger`，直接构造 collector/shooter IR 携带 spawn plan 会被拒绝。
+- 合同测试新增 dodger spawn golden、非 dodger spawn 负例、spawn 数值范围 code、partial spawn 缺省值、runtime_plan 严格枚举与额外字段拒绝。
+
+阶段结果：
+
+- 解决层级：数据契约 + IR contract；本步未修改 prompt、Phaser runtime、QA runner 或 Workbench。
+- DSL-first 边界：`spawn` 从 Raw DSL contract 进入 `ir.runtime_plan.spawn_rules`；测试断言 `template_params.params` 不包含 `"spawn"`。
+- 当前只承诺 contract/golden：`runtime_plan.spawn_rules` 已可被验证和编译输入解析，但模板尚未解释执行，QA 尚未证明 spawn 语义发生。
+- 文件规模：`raw-game-dsl-v0.1.schema.ts` 183 行、`normalized-game-ir-v0.1.schema.ts` 153 行、`normalizer.ts` 280 行；`normalizer.ts` 超过 220 行但本步只在数据契约边界增加局部函数，未继续扩展模板职责。
+
+已通过验证：
+
+    npx vitest run tests/contracts/dsl-validator-normalizer.test.ts
+    # 22 个测试全部通过
+
+    npx vitest run tests/contracts/contract-freeze.test.ts
+    # 13 个测试全部通过
+
+    npm run test:contracts
+    # 3 个测试文件，45 个测试全部通过
+
+    npm run typecheck:root
+    # tsc --noEmit -p tsconfig.json 通过
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出 `spawn` 实际放开到所有 genre/entity kind，超出 dodger 薄片边界；P2 指出 normalizer 缺省值语义未冻结、runtime_plan 缺少 freeze 负例；P3 建议后续拆 explicit spawn fixture。
+- 已修复：Raw DSL 限制 `entity.spawn` 当前仅 dodger 可用；补充非 dodger spawn 拒绝、spawn 数值范围、template_params 不含 spawn、runtime_plan 严格枚举/额外字段拒绝测试。
+- Oracle 二次复审：P1 指出 Normalized IR 入口仍允许非 dodger `runtime_plan.spawn_rules`；P2 建议冻结缺省值，并让 Raw schema superRefine 同时检查 engine leakage 和 spawn genre 边界。
+- 已修复：Normalized IR 拒绝 collector/shooter spawn_rules；补 partial spawn 缺省值 golden；Raw schema superRefine 不再提前 return。
+- Oracle 最终复审：P0/P1/P2/P3 均无，Step 2.1 代码门禁通过，可以进入文档沉淀。
+- 审查模式：Oracle 复用
+
+下一步建议：
+
+- Step 2.2：让 dodger runtime 读取并解释 `runtime_plan.spawn_rules`，旧默认行为保持兼容。
+- Step 2.2 同步新增最小 semantic QA：当 IR 声明 spawn rule 时，QA report 能证明对应 entity spawn event 或 snapshot 状态变化发生。
+- DSL-first P1 Step 3：runtime 和 semantic QA 通过后，再更新 prompt context，让模型开始生成当前已验证的 `spawn` 字段。
 
 ### 1.24 Shooter 模板真实移动与 QA 可玩性门禁
 
@@ -1058,3 +1353,68 @@ Step 9 阶段结果：
 最终结果：
 
 - P0 复核缺口已关闭：当前链路不再只是“模型换 label”，而是 `LLM Raw DSL -> validated IR template_params -> Phaser primitive visual execution -> browser playable -> QA PASSED`。
+
+### 12. DSL-first P1 Step 6：Shooter enemy wave runtime_plan 薄片
+
+完成时间：2026-06-11
+
+目标与边界：
+
+- 选择 shooter 做一个小但收益高的闭环：大模型仍只生成 Raw Game DSL；normalizer 从 Raw DSL 的 enemy count / health / movement speed、`game.difficulty`、`target_play_time_sec` 派生 `runtime_plan.enemy_waves`；Phaser shooter runtime 执行该 IR；QA 证明玩法链路真实消费了 runtime_plan。
+- 不新增 Raw DSL 字段，不允许模型输出 `runtime_plan` / `enemy_waves`，不新增 `enemy.spawned` telemetry，不把模板改成绕过 DSL 的“完美模板”。
+
+已完成内容：
+
+- `NormalizedGameIrSchema` 新增 shooter-only `runtime_plan.enemy_waves`，严格限定 `derived_from` 字段列表、`right_edge_wave` strategy、数值范围、最多 1 条 wave，并拒绝非 shooter genre 携带 enemy waves。
+- `normalizer` 新增 `buildShooterEnemyWaves(...)`，从现有 Raw DSL 派生 `entity_id`、`count`、`max_active`、`interval_ms`、`speed_multiplier`，并保持 `template_params.enemy` 只作为 label/visual/base stats/default fallback。
+- compiler 为 shooter 复制 `shooter-runtime-plan.ts` 并写入 `shooter/src/runtime-plan.generated.json`。
+- shooter runtime 新增 `resolveShooterEnemyWave(...)`，`advanceShooterWorld(...)` 用 resolved wave 控制 spawn budget、`maxActive`、interval 和 enemy speed multiplier。
+- enemy 实例保存 `entityId`、`waveSource`、`strategy`、`speedMultiplier`；`enemy.hit` / `enemy.cleared` payload 从 enemy state 发出，QA 不依赖全局猜测。
+- `GameScene` 的 QA snapshot 新增 `enemyWavePlan`，Playwright QA 在 source 为 `runtime_plan` 时验证 `maxActive` 与 hit/clear telemetry 元数据匹配。
+- prompt context 仅轻量提示模型不要输出 runtime fields，并说明 shooter enemy pressure 由 runtime 从 Raw DSL facts 派生。
+
+已通过验证：
+
+    npm run test:contracts
+    # 3 个测试文件，58 个测试通过
+
+    npm run test:workspace -- --run tests/workspace/compiler-service.test.ts tests/workspace/game-dsl-provider.test.ts tests/workspace/playwright-qa-runner.test.ts
+    # 11 个测试文件，94 个测试通过，包含 shooter enemyWavePlan QA 正负例
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查均通过
+
+    npx tsx "<临时真实 DeepSeek shooter 端到端脚本>"
+    # DeepSeek deepseek-v4-flash 生成 Game Brief / Raw DSL，未走 deterministic fallback
+    # projectId = proj_20260611_step6_shooter_20260610170325
+    # runId = run_20260611_step6_shooter_20260610170325
+    # Raw DSL: genre=shooter, title=小猫太空射击, enemy alien count=12, hasRuntimePlan=false
+    # runtime-plan.generated.json: enemy_waves[0] entity_id=alien, count=12, max_active=3, interval_ms=600, speed_multiplier=1.15
+    # QA report: status=PASSED, visual_status=PASSED；observed enemy.hit / enemy.cleared / score.changed / game.restarted
+
+阶段结果：
+
+- 当前 shooter 链路已经是 `LLM Raw DSL -> validator/normalizer -> runtime_plan.enemy_waves -> compiler generated runtime plan -> shooter runtime execution -> Playwright QA PASSED`。
+- QA report 只保存 observed events 与 snapshot，不保存完整 telemetry payload；payload 匹配由 `tests/workspace/playwright-qa-runner.test.ts` 的正负例覆盖。
+
+审查门禁结论：
+
+- Oracle 首轮复审发现 P1：shooter 的 `runtime_plan.enemy_waves[0].count` 与胜利目标未绑定，可能出现 enemy wave 最多刷 6 个但 `enemy_cleared.target=99` 或 `target_score` 依赖 secondary enemy 的不可胜利 DSL。
+- 已修复：`validateObjectiveReachability` 增加 shooter 分支，`enemy_cleared.target` 必须小于等于 primary enemy count；`target_score` 只能按 primary enemy `projectile_hit` score budget 判断可达。
+- 已修复：shooter mechanic contract 要求当前 P0 runtime envelope 下恰好一个 primary enemy 和一个 primary projectile；provider prompt scope 同步拒绝模型输出多个 shooter enemy/projectile。
+- 已修复：provider 的 unreachable shooter `target_score` normalize 逻辑改为只按 primary enemy score budget 计算，并同步更新 prompt 文案。
+- 已补测试：`enemy_cleared target > primary enemy count` 负例、multi-enemy `target_score` 负例、primary enemy budget 可达正例，以及 provider 多 enemy 拒绝用例。
+- P1 修复后验证：
+
+    npm run test:contracts
+    # 3 个测试文件，60 个测试通过
+
+    npm run test:workspace -- --run tests/workspace/game-dsl-provider.test.ts tests/workspace/compiler-service.test.ts tests/workspace/playwright-qa-runner.test.ts
+    # 11 个测试文件，95 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查均通过
+
+- Oracle 复审：原 P1 已关闭，未发现新的 P0/P1/P2，代码门禁通过。
+- Oracle 只读复现确认：`enemy_cleared target=99` 返回 `UNREACHABLE_OBJECTIVE`；multi-enemy `target_score=14` 返回 `enemy.single_primary` 和 primary wave 不可达错误；multi-projectile 返回 `projectile.single_primary`；primary enemy 可达 `target_score=6` 仍可通过；provider unreachable `target_score=10` 会 normalize 为 `enemy_cleared target=6`。
+- P3：provider 对 shooter 多 enemy/projectile 的顶层 message 仍复用 `Raw Game DSL uses unsupported spawn generation scope.`，但 `issues` 中已有精确原因，不阻塞本次门禁。

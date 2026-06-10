@@ -1,4 +1,5 @@
 import type { ShooterTemplateParams } from './template-params.js';
+import type { ResolvedShooterEnemyWave } from './shooter-runtime-plan.js';
 
 export type ShooterDirection = 'left' | 'right' | 'up' | 'down';
 
@@ -9,6 +10,10 @@ export type ShooterPosition = {
 
 export type ShooterEnemyState = ShooterPosition & {
   id: number;
+  entityId: string;
+  waveSource: ResolvedShooterEnemyWave['source'];
+  waveStrategy: ResolvedShooterEnemyWave['strategy'];
+  speedMultiplier: number;
   health: number;
   active: boolean;
 };
@@ -33,7 +38,15 @@ export type ShooterRuntimeState = {
 
 export type ShooterStepResult = {
   spawnedEnemy?: ShooterEnemyState;
-  hits: Array<{ enemyId: number; projectileId: number; cleared: boolean }>;
+  hits: Array<{
+    enemyId: number;
+    projectileId: number;
+    cleared: boolean;
+    entityId: string;
+    waveSource: ResolvedShooterEnemyWave['source'];
+    waveStrategy: ResolvedShooterEnemyWave['strategy'];
+    speedMultiplier: number;
+  }>;
   playerHits: number[];
 };
 
@@ -53,9 +66,13 @@ export function createShooterRuntimeState(params: ShooterTemplateParams): Shoote
     enemiesCleared: 0,
     nextEnemyId: 1,
     nextProjectileId: 1,
-    lastEnemySpawnAtMs: -params.enemy.spawnIntervalMs,
+    lastEnemySpawnAtMs: 0,
     lastFireAtMs: -fireCooldownMs(params)
   };
+}
+
+export function primeShooterEnemyWave(state: ShooterRuntimeState, enemyWave: ResolvedShooterEnemyWave): void {
+  state.lastEnemySpawnAtMs = -enemyWave.intervalMs;
 }
 
 export function moveShooterPlayer(
@@ -84,17 +101,22 @@ export function moveShooterPlayer(
   return previous.x !== state.player.x || previous.y !== state.player.y;
 }
 
-export function trySpawnShooterEnemy(state: ShooterRuntimeState, params: ShooterTemplateParams, elapsedMs: number): ShooterEnemyState | undefined {
-  if (state.enemiesSpawned >= params.enemy.count) {
+export function trySpawnShooterEnemy(
+  state: ShooterRuntimeState,
+  params: ShooterTemplateParams,
+  enemyWave: ResolvedShooterEnemyWave,
+  elapsedMs: number
+): ShooterEnemyState | undefined {
+  if (state.enemiesSpawned >= enemyWave.count || state.enemies.filter((enemy) => enemy.active).length >= enemyWave.maxActive) {
     return undefined;
   }
 
   const hasActiveEnemy = state.enemies.some((enemy) => enemy.active);
-  if (hasActiveEnemy && elapsedMs - state.lastEnemySpawnAtMs < params.enemy.spawnIntervalMs) {
+  if (hasActiveEnemy && elapsedMs - state.lastEnemySpawnAtMs < enemyWave.intervalMs) {
     return undefined;
   }
 
-  const enemy = createEnemy(state, params);
+  const enemy = createEnemy(state, params, enemyWave);
   state.enemies.push(enemy);
   state.enemiesSpawned += 1;
   state.lastEnemySpawnAtMs = elapsedMs;
@@ -118,10 +140,16 @@ export function tryFireShooterProjectile(state: ShooterRuntimeState, params: Sho
   return projectile;
 }
 
-export function advanceShooterWorld(state: ShooterRuntimeState, params: ShooterTemplateParams, deltaMs: number, elapsedMs: number): ShooterStepResult {
-  const spawnedEnemy = trySpawnShooterEnemy(state, params, elapsedMs);
+export function advanceShooterWorld(
+  state: ShooterRuntimeState,
+  params: ShooterTemplateParams,
+  enemyWave: ResolvedShooterEnemyWave,
+  deltaMs: number,
+  elapsedMs: number
+): ShooterStepResult {
+  const spawnedEnemy = trySpawnShooterEnemy(state, params, enemyWave, elapsedMs);
   const projectileDistance = params.projectile.speedPxPerSec * (deltaMs / 1000);
-  const enemyDistance = params.enemy.speedPxPerSec * (deltaMs / 1000);
+  const enemyDistance = params.enemy.speedPxPerSec * enemyWave.speedMultiplier * (deltaMs / 1000);
   const hits: ShooterStepResult['hits'] = [];
   const playerHits: number[] = [];
 
@@ -164,7 +192,15 @@ export function advanceShooterWorld(state: ShooterRuntimeState, params: ShooterT
       enemy.active = false;
       state.enemiesCleared += 1;
     }
-    hits.push({ enemyId: enemy.id, projectileId: projectile.id, cleared });
+    hits.push({
+      enemyId: enemy.id,
+      projectileId: projectile.id,
+      cleared,
+      entityId: enemy.entityId,
+      waveSource: enemy.waveSource,
+      waveStrategy: enemy.waveStrategy,
+      speedMultiplier: enemy.speedMultiplier
+    });
   }
 
   state.projectiles = state.projectiles.filter((projectile) => projectile.active);
@@ -173,7 +209,7 @@ export function advanceShooterWorld(state: ShooterRuntimeState, params: ShooterT
   return { spawnedEnemy, hits, playerHits };
 }
 
-function createEnemy(state: ShooterRuntimeState, params: ShooterTemplateParams): ShooterEnemyState {
+function createEnemy(state: ShooterRuntimeState, params: ShooterTemplateParams, enemyWave: ResolvedShooterEnemyWave): ShooterEnemyState {
   const verticalSpan = params.world.height - ENEMY_RADIUS * 2;
   const centerY = params.world.height / 2;
   const spawnOffsets = [0, -0.28, 0.28, -0.42, 0.42];
@@ -182,6 +218,10 @@ function createEnemy(state: ShooterRuntimeState, params: ShooterTemplateParams):
 
   return {
     id: state.nextEnemyId++,
+    entityId: enemyWave.entityId,
+    waveSource: enemyWave.source,
+    waveStrategy: enemyWave.strategy,
+    speedMultiplier: enemyWave.speedMultiplier,
     x: params.world.width - ENEMY_RADIUS - 24,
     y,
     health: params.enemy.health,

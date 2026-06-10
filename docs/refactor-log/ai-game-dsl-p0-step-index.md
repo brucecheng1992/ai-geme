@@ -1,14 +1,14 @@
 # AI Game DSL P0 Step Index
 
-完成时间：2026-06-10
+最新维护时间：2026-06-11
 
 ## 1. 扫描结论
 
-- 当前本步新增/修改的 shooter 运行模板文件未超过 220 行；既有测试文件、`normalizer.ts` 和 Playwright runner 超过 220 行，按职责检查保留。
+- 当前本步新增/修改的 dodger runtime 相关文件已按职责检查；既有测试文件、`normalizer.ts`、`GameScene.ts` 和 Playwright runner 超过 220 行，按职责集中保留并由针对性测试覆盖。
 - 仓库非依赖文件中当前最大文件是 `docs/ai_game_dsl_p0_local_implementation.md`，约 2880 行，属于实施规格文档。
 - 现有阶段记录位于 `docs/refactor-log/ai-game-dsl-p0-review-gated.md`。
-- 当前已完成阶段：P0 主链路修复 + 模型 DSL 视觉执行复核修复。
-- 当前下一步：P0 实施文档范围已完成；后续扩展应新开 P1/P2 阶段。
+- 当前已完成阶段：P0 主链路修复 + 模型 DSL 视觉执行复核修复 + DSL-first P1 Step 6 shooter enemy_wave runtime_plan。
+- 当前下一步：DSL-first P1 Step 7 继续扩展一个可执行可玩性薄片；优先考虑 collector 小闭环，或在 shooter enemy_wave 基础上做二阶增强。
 
 ## 2. 大文档拆分索引
 
@@ -91,7 +91,7 @@ Step 1 不一次性实现完整业务，只建立可启动骨架和健康检查�
 
 ## 5. 当前状态
 
-Step 0 到 Step 9、P0 主链路修复及模型 DSL 视觉执行复核修复已完成。
+Step 0 到 Step 9、P0 主链路修复及模型 DSL 视觉执行复核修复已完成。DSL-first P1 扩展已开始，当前完成 Step 6：模型生成的 shooter Raw DSL 通过 normalizer 派生为 `runtime_plan.enemy_waves`，由 shooter runtime 执行 enemy wave spawn budget / maxActive / interval / speed multiplier，并由 QA snapshot 与 `enemy.hit` / `enemy.cleared` payload 证明；真实 DeepSeek 生成链路已通过 normalize/compile/build/QA。
 
 完成结果：
 
@@ -99,7 +99,12 @@ Step 0 到 Step 9、P0 主链路修复及模型 DSL 视觉执行复核修复已�
 - 每步均已完成本地验证、Sentinel/Oracle 只读审查和阶段文档记录。
 - 当前 P0 文档范围不再有未执行步骤。
 
-后续如继续扩展，应新开独立阶段或新文档，避免把 P1/P2 能力混入 P0 收尾：
+当前下一步：
+
+- DSL-first P1 Step 7：可继续选择 collector 的一个小闭环，或在 shooter 已验证的 enemy wave 基础上做更小的二阶增强。
+- 任一扩展都必须继续遵守顺序：contract/runtime/QA 先于 prompt，真实模型链路验证后再沉淀文档。
+
+后续如继续扩展，应继续作为独立 P1/P2 阶段推进，避免把扩展能力混入 P0 收尾：
 
 - 模型端到端真实生成质量增强。
 - Workbench 重新运行 QA / 清理本地数据按钮。

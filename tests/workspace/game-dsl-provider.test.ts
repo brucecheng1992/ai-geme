@@ -4,7 +4,7 @@ import { GameDslProviderService } from '../../apps/maker-api/src/model-provider/
 import { buildRawDslPromptContext } from '../../apps/maker-api/src/model-provider/prompt-context.builder.js';
 import type { GenerateJsonResult, JsonChatParams } from '../../apps/maker-api/src/model-provider/model-provider.types.js';
 import type { GameBrief } from '../../packages/game-dsl/src/index.js';
-import { createCollectorRawDsl, createShooterRawDsl } from '../contracts/fixtures.js';
+import { createCollectorRawDsl, createDodgerRawDsl, createShooterRawDsl } from '../contracts/fixtures.js';
 
 const brief: GameBrief = {
   brief_version: 'game-brief-v0.1',
@@ -27,7 +27,8 @@ const dodgerBrief: GameBrief = {
   ...brief,
   title: 'Road Dodge',
   genre: 'dodger',
-  core_loop: ['Move across lanes.', 'Avoid falling barriers.', 'Survive the timer.']
+  core_loop: ['Move across lanes.', 'Avoid falling barriers.', 'Survive the timer.'],
+  difficulty: 'normal'
 };
 
 const requestBase = {
@@ -55,6 +56,11 @@ function success(json: unknown): GenerateJsonResult {
   };
 }
 
+function omitSpawn<T extends { spawn?: unknown }>(entity: T): Omit<T, 'spawn'> {
+  const { spawn: _spawn, ...rest } = entity;
+  return rest;
+}
+
 describe('buildRawDslPromptContext', () => {
   it('includes selected contract, schema enums, forbidden lists and anti-shell rules', () => {
     const context = buildRawDslPromptContext({ idea: requestBase.idea, language: requestBase.language, brief });
@@ -70,9 +76,22 @@ describe('buildRawDslPromptContext', () => {
     expect(context.allowed_enums.action_types).toContain('shoot_projectile');
     expect(context.forbidden_terms).toContain('phaser');
     expect(context.forbidden_fields).toContain('onUpdate');
+    expect(context.forbidden_fields).toEqual(
+      expect.arrayContaining([
+        'runtime_plan',
+        'template_params',
+        'enemy_waves',
+        'waveSource',
+        'difficulty_curve',
+        'speed_multiplier',
+        'spawn_interval_multiplier',
+        'ramp_duration_ms'
+      ])
+    );
     expect(context.invalid_examples_summary.join(' ')).toContain('unsupported mechanics');
     expect(context.anti_shell_rules.join('\n')).toContain('Do not simulate one genre by renaming another genre.');
     expect(context.anti_shell_rules.join('\n')).toContain('If genre is shooter');
+    expect(context.spawn_generation_guidance).toEqual(expect.arrayContaining(['Do not output entity.spawn for this genre.']));
   });
 
   it('selects the matching genre contract for shooter prompts', () => {
@@ -91,8 +110,11 @@ describe('buildRawDslPromptContext', () => {
     expect(context.forbidden_fields).toEqual(expect.arrayContaining(['projectile_id', 'cooldown_sec', 'duration_sec']));
     expect(context.invalid_examples_summary.join('\n')).toContain('Collision effects only support type and optional value.');
     expect(context.invalid_examples_summary.join('\n')).toContain('required fire-hit-clear loop');
-    expect(context.invalid_examples_summary.join('\n')).toContain('target must be less than or equal to the sum');
+    expect(context.invalid_examples_summary.join('\n')).toContain('primary enemy projectile_hit score_add value multiplied by the primary enemy count');
     expect(context.composable_mechanics.join('\n')).toContain('Select genre from the base loop');
+    expect(context.spawn_generation_guidance).toEqual(expect.arrayContaining(['Do not output entity.spawn for this genre.']));
+    expect(context.enemy_wave_runtime_guidance.join('\n')).toContain('runtime derives the enemy wave pressure');
+    expect(context.enemy_wave_runtime_guidance.join('\n')).toContain('Do not output runtime_plan, enemy_waves');
   });
 
   it('selects a dodger-shaped valid example for dodger prompts', () => {
@@ -104,10 +126,23 @@ describe('buildRawDslPromptContext', () => {
     });
     expect(context.valid_example).toMatchObject({
       game: { genre: 'dodger' },
-      objectives: { win: { type: 'survive_duration' }, lose: { type: 'player_health_zero' } }
+      objectives: { win: { type: 'survive_duration' }, lose: { type: 'player_health_zero' } },
+      entities: [
+        expect.objectContaining({ kind: 'collectible', spawn: { strategy: 'fixed_positions', max_active: 2, interval_ms: 1000 } }),
+        expect.objectContaining({ kind: 'hazard', spawn: { strategy: 'right_edge_wave', max_active: 3, interval_ms: 800, lane_count: 3 } })
+      ]
     });
     expect((context.valid_example as { entities: Array<{ kind: string }> }).entities.some((entity) => entity.kind === 'hazard')).toBe(true);
-    expect((context.valid_example as { entities: Array<{ kind: string }> }).entities.some((entity) => entity.kind === 'collectible')).toBe(false);
+    expect((context.valid_example as { entities: Array<{ kind: string }> }).entities.some((entity) => entity.kind === 'collectible')).toBe(true);
+    expect(context.invalid_examples_summary.join('\n')).toContain('Only dodger hazard right_edge_wave and dodger collectible fixed_positions may use spawn');
+    expect(context.p0_scope.join('\n')).toContain(
+      'Runtime plan spawn execution is currently verified for dodger hazard right_edge_wave, dodger collectible fixed_positions, and shooter enemy right_edge_wave.'
+    );
+    expect(context.spawn_generation_guidance.join('\n')).toContain('For dodger hazards, the only executable spawn strategy is right_edge_wave.');
+    expect(context.spawn_generation_guidance.join('\n')).toContain('For dodger collectibles, the only executable spawn strategy is fixed_positions.');
+    expect(context.spawn_generation_guidance.join('\n')).toContain('max_active between 2 and 4');
+    expect(context.difficulty_runtime_guidance.join('\n')).toContain('runtime derives a dodger difficulty curve from game.difficulty and target_play_time_sec');
+    expect(context.difficulty_runtime_guidance.join('\n')).toContain('Do not output runtime_plan, template_params, difficulty_curve');
   });
 });
 
@@ -182,6 +217,336 @@ describe('GameDslProviderService', () => {
     });
   });
 
+  it('accepts dodger Raw Game DSL with the verified right_edge_wave hazard spawn slice', async () => {
+    const calls: JsonChatParams[] = [];
+    const rawDsl = createDodgerRawDsl();
+    const service = new GameDslProviderService(createModelClient(success(rawDsl), calls));
+
+    await expect(service.generateRawGameDsl({ ...requestBase, brief: dodgerBrief })).resolves.toMatchObject({
+      ok: true,
+      value: {
+        game: { genre: 'dodger' },
+        entities: [
+          expect.objectContaining({ kind: 'collectible', spawn: { strategy: 'fixed_positions', max_active: 2, interval_ms: 900 } }),
+          expect.objectContaining({
+            kind: 'hazard',
+            spawn: { strategy: 'right_edge_wave', max_active: 3, interval_ms: 700, lane_count: 3 }
+          })
+        ]
+      }
+    });
+    expect(calls[0]?.user).toMatchObject({
+      brief: dodgerBrief,
+      spawn_generation_guidance: expect.arrayContaining([expect.stringContaining('right_edge_wave')])
+    });
+  });
+
+  it('rejects model Raw Game DSL spawn outside the verified entity scope', async () => {
+    const base = createDodgerRawDsl();
+    const rawDsl = {
+      ...base,
+      entities: base.entities.map((entity) =>
+        entity.kind === 'collectible' ? { ...entity, spawn: { ...entity.spawn, strategy: 'right_edge_wave' as const, lane_count: 3 } } : entity
+      )
+    };
+    const service = new GameDslProviderService(createModelClient(success(rawDsl)));
+
+    const result = await service.generateRawGameDsl({ ...requestBase, brief: dodgerBrief });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'MODEL_SCHEMA_VALIDATION_FAILED',
+      message: 'Raw Game DSL uses unsupported spawn generation scope.'
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok && 'issues' in result) {
+      expect(result.issues).toContain('entities.0.spawn: only dodger hazard right_edge_wave and dodger collectible fixed_positions are currently exposed to model generation');
+    }
+  });
+
+  it.each(['fixed_positions', 'top_edge_stream'] as const)('rejects schema-valid dodger hazard spawn strategy %s outside the verified prompt scope', async (strategy) => {
+    const base = createDodgerRawDsl();
+    const rawDsl = {
+      ...base,
+      entities: base.entities.map((entity) =>
+        entity.kind === 'hazard' ? { ...entity, spawn: { ...entity.spawn, strategy } } : omitSpawn(entity)
+      )
+    };
+    const service = new GameDslProviderService(createModelClient(success(rawDsl)));
+
+    const result = await service.generateRawGameDsl({ ...requestBase, brief: dodgerBrief });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'MODEL_SCHEMA_VALIDATION_FAILED',
+      message: 'Raw Game DSL uses unsupported spawn generation scope.'
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok && 'issues' in result) {
+      expect(result.issues).toContain('entities.1.spawn: only dodger hazard right_edge_wave and dodger collectible fixed_positions are currently exposed to model generation');
+    }
+  });
+
+  it.each([
+    {
+      label: 'count',
+      patch: { count: 50 },
+      issue: 'entities.1.count: dodger hazard spawn count must be between 5 and 12 for the verified prompt scope'
+    },
+    {
+      label: 'max_active',
+      patch: { spawn: { max_active: 12 } },
+      issue: 'entities.1.spawn.max_active: must be between 2 and 4 for the verified prompt scope'
+    },
+    {
+      label: 'interval_ms',
+      patch: { spawn: { interval_ms: 200 } },
+      issue: 'entities.1.spawn.interval_ms: must be between 600 and 1200 for the verified prompt scope'
+    },
+    {
+      label: 'lane_count',
+      patch: { spawn: { lane_count: 1 } },
+      issue: 'entities.1.spawn.lane_count: must be between 3 and 4 for the verified prompt scope'
+    }
+  ])('rejects dodger hazard spawn %s outside the verified prompt range', async ({ patch, issue }) => {
+    const base = createDodgerRawDsl();
+    const rawDsl = {
+      ...base,
+      entities: base.entities.map((entity) =>
+        entity.kind === 'hazard'
+          ? {
+              ...entity,
+              ...('count' in patch ? { count: patch.count } : {}),
+              spawn: { ...entity.spawn, strategy: 'right_edge_wave' as const, ...('spawn' in patch ? patch.spawn : {}) }
+            }
+          : entity
+      )
+    };
+    const service = new GameDslProviderService(createModelClient(success(rawDsl)));
+
+    const result = await service.generateRawGameDsl({ ...requestBase, brief: dodgerBrief });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'MODEL_SCHEMA_VALIDATION_FAILED',
+      message: 'Raw Game DSL uses unsupported spawn generation scope.'
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok && 'issues' in result) {
+      expect(result.issues).toContain(issue);
+    }
+  });
+
+  it.each([
+    {
+      label: 'count',
+      patch: { count: 50 },
+      issue: 'entities.0.count: dodger collectible spawn count must be between 3 and 10 for the verified prompt scope'
+    },
+    {
+      label: 'max_active',
+      patch: { spawn: { max_active: 12 } },
+      issue: 'entities.0.spawn.max_active: must be between 1 and 3 for the verified prompt scope'
+    },
+    {
+      label: 'interval_ms',
+      patch: { spawn: { interval_ms: 200 } },
+      issue: 'entities.0.spawn.interval_ms: must be between 700 and 1600 for the verified prompt scope'
+    },
+    {
+      label: 'lane_count',
+      patch: { spawn: { lane_count: 3 } },
+      issue: 'entities.0.spawn.lane_count: must be omitted for dodger collectible fixed_positions'
+    }
+  ])('rejects dodger collectible spawn %s outside the verified prompt range', async ({ patch, issue }) => {
+    const base = createDodgerRawDsl();
+    const rawDsl = {
+      ...base,
+      entities: base.entities.map((entity) =>
+        entity.kind === 'collectible'
+          ? {
+              ...entity,
+              ...('count' in patch ? { count: patch.count } : {}),
+              spawn: { ...entity.spawn, strategy: 'fixed_positions' as const, ...('spawn' in patch ? patch.spawn : {}) }
+            }
+          : entity
+      )
+    };
+    const service = new GameDslProviderService(createModelClient(success(rawDsl)));
+
+    const result = await service.generateRawGameDsl({ ...requestBase, brief: dodgerBrief });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'MODEL_SCHEMA_VALIDATION_FAILED',
+      message: 'Raw Game DSL uses unsupported spawn generation scope.'
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok && 'issues' in result) {
+      expect(result.issues).toContain(issue);
+    }
+  });
+
+  it('rejects duplicate dodger spawn rules for the same entity kind', async () => {
+    const base = createDodgerRawDsl();
+    const rawDsl = {
+      ...base,
+      entities: [
+        ...base.entities,
+        {
+          id: 'bonus_coin',
+          kind: 'collectible' as const,
+          label: 'Bonus Coin',
+          count: 3,
+          movement: { type: 'static' as const },
+          spawn: { strategy: 'fixed_positions' as const, max_active: 1, interval_ms: 1200 }
+        }
+      ]
+    };
+    const service = new GameDslProviderService(createModelClient(success(rawDsl)));
+
+    const result = await service.generateRawGameDsl({ ...requestBase, brief: dodgerBrief });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'MODEL_SCHEMA_VALIDATION_FAILED',
+      message: 'Raw Game DSL uses unsupported spawn generation scope.'
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok && 'issues' in result) {
+      expect(result.issues).toContain('entities.2.spawn: duplicate collectible spawn rules are not supported by the verified runtime scope');
+    }
+  });
+
+  it('rejects spawn-bearing dodger entities when the same kind has a different primary entity', async () => {
+    const base = createDodgerRawDsl();
+    const rawDsl = {
+      ...base,
+      entities: [
+        omitSpawn(base.entities[0]),
+        base.entities[1],
+        {
+          id: 'bonus_coin',
+          kind: 'collectible' as const,
+          label: 'Bonus Coin',
+          count: 3,
+          movement: { type: 'static' as const },
+          spawn: { strategy: 'fixed_positions' as const, max_active: 1, interval_ms: 1200 }
+        }
+      ]
+    };
+    const service = new GameDslProviderService(createModelClient(success(rawDsl)));
+
+    const result = await service.generateRawGameDsl({ ...requestBase, brief: dodgerBrief });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'MODEL_SCHEMA_VALIDATION_FAILED',
+      message: 'Raw Game DSL uses unsupported spawn generation scope.'
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok && 'issues' in result) {
+      expect(result.issues).toContain('entities.2.spawn: dodger collectible spawn requires exactly one collectible entity in the verified runtime scope');
+    }
+  });
+
+  it('rejects spawn-bearing dodger hazards when the same kind has a different primary entity', async () => {
+    const base = createDodgerRawDsl();
+    const rawDsl = {
+      ...base,
+      entities: [
+        base.entities[0],
+        omitSpawn(base.entities[1]),
+        {
+          id: 'bonus_hazard',
+          kind: 'hazard' as const,
+          label: 'Bonus Hazard',
+          count: 5,
+          movement: { type: 'fall_down' as const },
+          spawn: { strategy: 'right_edge_wave' as const, max_active: 2, interval_ms: 900, lane_count: 3 }
+        }
+      ]
+    };
+    const service = new GameDslProviderService(createModelClient(success(rawDsl)));
+
+    const result = await service.generateRawGameDsl({ ...requestBase, brief: dodgerBrief });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'MODEL_SCHEMA_VALIDATION_FAILED',
+      message: 'Raw Game DSL uses unsupported spawn generation scope.'
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok && 'issues' in result) {
+      expect(result.issues).toContain('entities.2.spawn: dodger hazard spawn requires exactly one hazard entity in the verified runtime scope');
+    }
+  });
+
+  it.each([
+    {
+      label: 'missing collect collision',
+      patch: (rawDsl: ReturnType<typeof createDodgerRawDsl>) => ({
+        ...rawDsl,
+        rules: { collisions: rawDsl.rules.collisions.filter((collision) => collision.target !== 'coin') }
+      })
+    },
+    {
+      label: 'missing score_add',
+      patch: (rawDsl: ReturnType<typeof createDodgerRawDsl>) => ({
+        ...rawDsl,
+        rules: {
+          collisions: rawDsl.rules.collisions.map((collision) =>
+            collision.target === 'coin' ? { ...collision, effects: [{ type: 'destroy' as const }] } : collision
+          )
+        }
+      })
+    },
+    {
+      label: 'zero score_add',
+      patch: (rawDsl: ReturnType<typeof createDodgerRawDsl>) => ({
+        ...rawDsl,
+        rules: {
+          collisions: rawDsl.rules.collisions.map((collision) =>
+            collision.target === 'coin' ? { ...collision, effects: [{ type: 'score_add' as const, value: 0 }, { type: 'destroy' as const }] } : collision
+          )
+        }
+      })
+    }
+  ])('rejects dodger collectible fixed_positions spawn when scoring collect semantics are invalid: $label', async ({ patch }) => {
+    const service = new GameDslProviderService(createModelClient(success(patch(createDodgerRawDsl()))));
+
+    const result = await service.generateRawGameDsl({ ...requestBase, brief: dodgerBrief });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'MODEL_SCHEMA_VALIDATION_FAILED',
+      message: 'Raw Game DSL uses unsupported spawn generation scope.'
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok && 'issues' in result) {
+      expect(result.issues).toContain('entities.0.spawn: dodger collectible fixed_positions requires a player overlap collision with score_add greater than 0');
+    }
+  });
+
+  it('rejects model Raw Game DSL that puts spawn semantics under rules.spawns', async () => {
+    const rawDsl = createDodgerRawDsl();
+    const service = new GameDslProviderService(
+      createModelClient(success({ ...rawDsl, rules: { ...rawDsl.rules, spawns: [{ entity: 'obstacle', strategy: 'right_edge_wave' }] } }))
+    );
+
+    const result = await service.generateRawGameDsl({ ...requestBase, brief: dodgerBrief });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'MODEL_SCHEMA_VALIDATION_FAILED',
+      message: 'Raw Game DSL schema validation failed.'
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok && 'issues' in result) {
+      expect(result.issues.join('\n')).toContain('Unrecognized key');
+    }
+  });
+
   it('normalizes unreachable shooter target_score to enemy_cleared for the P0 runtime', async () => {
     const rawDsl = {
       ...createShooterRawDsl(),
@@ -196,6 +561,30 @@ describe('GameDslProviderService', () => {
         objectives: { win: { type: 'enemy_cleared', target: 6 } }
       }
     });
+  });
+
+  it('rejects shooter model DSL with multiple enemies outside the verified runtime scope', async () => {
+    const rawDsl = {
+      ...createShooterRawDsl(),
+      game: { ...createShooterRawDsl().game, difficulty: shooterBrief.difficulty, target_play_time_sec: shooterBrief.target_play_time_sec },
+      entities: [
+        ...createShooterRawDsl().entities,
+        { id: 'fast_alien', kind: 'enemy' as const, label: 'Fast Alien', count: 4, health: 1, movement: { type: 'chase_player' as const, speed_px_per_sec: 180 } }
+      ]
+    };
+    const service = new GameDslProviderService(createModelClient(success(rawDsl)));
+
+    const result = await service.generateRawGameDsl({ ...requestBase, brief: shooterBrief });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'MODEL_SCHEMA_VALIDATION_FAILED',
+      message: 'Raw Game DSL uses unsupported spawn generation scope.'
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok && 'issues' in result) {
+      expect(result.issues).toContain('entities: shooter model generation requires exactly one primary enemy in the verified runtime scope');
+    }
   });
 
   it('rejects Raw Game DSL that violates schema or forbidden engine terms', async () => {

@@ -98,6 +98,7 @@ function buildNormalizedGameIr(raw: RawGameDsl) {
       objectives: unique([raw.objectives.win.type, raw.objectives.lose.type]),
       telemetry: true
     },
+    runtime_plan: buildRuntimePlan(raw),
     template_params: {
       template_id: templateIds[raw.game.genre],
       params: buildTemplateParams(raw)
@@ -113,6 +114,92 @@ function buildNormalizedGameIr(raw: RawGameDsl) {
       required_events_any_groups: contract.required_telemetry_any_groups
     }
   };
+}
+
+function buildRuntimePlan(raw: RawGameDsl) {
+  return {
+    spawn_rules: raw.entities.filter((entity) => entity.spawn !== undefined).map((entity) => ({
+      entity_id: entity.id,
+      entity_kind: entity.kind,
+      strategy: entity.spawn?.strategy ?? 'fixed_positions',
+      count: entity.count ?? 1,
+      max_active: entity.spawn?.max_active ?? defaultMaxActive(entity.kind),
+      interval_ms: entity.spawn?.interval_ms ?? defaultSpawnIntervalMs(entity.kind),
+      ...(entity.spawn?.lane_count !== undefined ? { lane_count: entity.spawn.lane_count } : {})
+    })),
+    ...(raw.game.genre === 'dodger' ? { difficulty_curve: buildDodgerDifficultyCurve(raw) } : {}),
+    ...(raw.game.genre === 'shooter' ? { enemy_waves: buildShooterEnemyWaves(raw) } : {})
+  };
+}
+
+/** Difficulty is model-authored, but runtime multipliers stay deterministic normalizer hints. */
+function buildDodgerDifficultyCurve(raw: RawGameDsl) {
+  const rampDurationMs = raw.game.target_play_time_sec * 1000;
+  const curveByDifficulty = {
+    easy: {
+      speed_multiplier_start: 0.9,
+      speed_multiplier_end: 1,
+      spawn_interval_multiplier_start: 1.15,
+      spawn_interval_multiplier_end: 1.05
+    },
+    normal: {
+      speed_multiplier_start: 1,
+      speed_multiplier_end: 1.25,
+      spawn_interval_multiplier_start: 1,
+      spawn_interval_multiplier_end: 0.8
+    }
+  } as const;
+
+  return {
+    derived_from: ['game.difficulty', 'game.target_play_time_sec'] as const,
+    level: raw.game.difficulty,
+    ...curveByDifficulty[raw.game.difficulty],
+    ramp_duration_ms: rampDurationMs
+  };
+}
+
+/** Defaults are normalizer-derived runtime hints, not model-authored DSL facts. */
+function defaultMaxActive(kind: RawGameDsl['entities'][number]['kind']): number {
+  return kind === 'collectible' ? 3 : 2;
+}
+
+function defaultSpawnIntervalMs(kind: RawGameDsl['entities'][number]['kind']): number {
+  return kind === 'collectible' ? 1200 : 1000;
+}
+
+/** Shooter wave pressure is derived from the primary enemy DSL facts, not model-authored runtime fields. */
+function buildShooterEnemyWaves(raw: RawGameDsl) {
+  const enemy = raw.entities.find((entity) => entity.kind === 'enemy');
+  if (enemy === undefined) {
+    return [];
+  }
+
+  const count = enemy.count ?? raw.objectives.win.target ?? 6;
+  const baseIntervalMs = Math.round((raw.game.target_play_time_sec * 1000) / Math.max(1, count) / 8);
+  const difficulty = {
+    easy: { maxActive: 2, intervalMultiplier: 1.15, speedMultiplier: 0.95 },
+    normal: { maxActive: 3, intervalMultiplier: 0.85, speedMultiplier: 1.15 }
+  } as const;
+  const tuning = difficulty[raw.game.difficulty];
+
+  return [
+    {
+      derived_from: [
+        'entities.enemy.id',
+        'entities.enemy.count',
+        'entities.enemy.health',
+        'entities.enemy.movement.speed_px_per_sec',
+        'game.difficulty',
+        'game.target_play_time_sec'
+      ] as const,
+      entity_id: enemy.id,
+      strategy: 'right_edge_wave' as const,
+      count,
+      max_active: Math.min(count, tuning.maxActive),
+      interval_ms: clampInt(Math.round(baseIntervalMs * tuning.intervalMultiplier), 600, 1600),
+      speed_multiplier: tuning.speedMultiplier
+    }
+  ];
 }
 
 function validateRuntimeRequirements(requirements: RuntimeRequirements): DslValidationIssue[] {
@@ -231,6 +318,10 @@ function buildTemplateParams(raw: RawGameDsl): Record<string, unknown> {
 
 function unique<T extends string>(values: T[]): T[] {
   return [...new Set(values)];
+}
+
+function clampInt(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
 
 function findCollision(raw: RawGameDsl, a: string, b: string, type: RawGameDsl['rules']['collisions'][number]['type']) {

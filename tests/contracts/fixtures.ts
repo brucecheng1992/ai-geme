@@ -95,14 +95,16 @@ export function createDodgerRawDsl() {
         kind: 'collectible',
         label: 'Coin',
         count: 10,
-        movement: { type: 'static' }
+        movement: { type: 'static' },
+        spawn: { strategy: 'fixed_positions', max_active: 2, interval_ms: 900 }
       },
       {
         id: 'obstacle',
         kind: 'hazard',
         label: 'Obstacle',
         count: 5,
-        movement: { type: 'fall_down' }
+        movement: { type: 'fall_down' },
+        spawn: { strategy: 'right_edge_wave', max_active: 3, interval_ms: 700, lane_count: 3 }
       }
     ],
     rules: {
@@ -200,6 +202,9 @@ export function createIrForGenre(genre: IrGenre, contract: ContractTelemetry) {
       actions: ['collect', 'restart'],
       objectives: [...objectivesByGenre[genre]],
       telemetry: true
+    },
+    runtime_plan: {
+      spawn_rules: []
     },
     template_params: {
       template_id: templateIdByGenre[genre],

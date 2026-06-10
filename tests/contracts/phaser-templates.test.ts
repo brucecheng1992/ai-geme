@@ -112,7 +112,15 @@ describe('Phaser templates', () => {
       const main = await readFile(new URL(`${genre}/src/main.ts`, root), 'utf8');
 
       expect(main).toContain("from './template-params.generated.json'");
-      expect(main).toContain(`new ${capitalizeGenre(genre)}GameScene(${genre}Params)`);
+      if (genre === 'dodger') {
+        expect(main).toContain("from './runtime-plan.generated.json'");
+        expect(main).toContain('new DodgerGameScene(dodgerParams, dodgerRuntimePlan)');
+      } else if (genre === 'shooter') {
+        expect(main).toContain("from './runtime-plan.generated.json'");
+        expect(main).toContain('new ShooterGameScene(shooterParams, shooterRuntimePlan)');
+      } else {
+        expect(main).toContain(`new ${capitalizeGenre(genre)}GameScene(${genre}Params)`);
+      }
       expect(main).toContain(`${genre}Params.world.width`);
       expect(main).toContain(`${genre}Params.world.height`);
       expect(main).not.toContain(`new ${capitalizeGenre(genre)}GameScene(default`);
@@ -158,7 +166,7 @@ describe('Phaser templates', () => {
     expect(scene).toContain('resolveHazardCollision');
     expect(scene).toContain('spawnNextHazard');
     expect(scene).toContain('hideHazard(hazard)');
-    expect(scene).toContain('activeHazardCount < 3');
+    expect(scene).toContain('activeHazardCount < spawnRule.maxActive');
     expect(scene).toContain('nextHazardLaneIndex');
     expect(scene).toContain('Math.random()');
     expect(scene).toContain('randomBetween');
@@ -171,12 +179,382 @@ describe('Phaser templates', () => {
     expect(scene).toContain('impactHoldMs');
     expect(scene).toContain('player: { x: this.params.player.startX, y: this.playerY');
     expect(scene).toContain('hazards: this.hazards.map');
+    expect(scene).toContain('spawnPlan');
+    expect(scene).toContain('resolveDodgerSpawnRule(this.runtimePlan');
     expect(scene).toContain('hitHazard()');
     expect(scene).toContain('collectItem()');
-    expect(scene).toContain("this.spawn.spawn('hazard')");
-    expect(scene).toContain("this.spawn.spawn('item')");
+    expect(scene).toContain("this.spawn.spawn('hazard', {");
+    expect(scene).toContain("this.spawn.spawn('item', {");
     expect(scene).toContain("this.telemetry.emit('player.damaged'");
     expect(scene).toContain("this.telemetry.emit('item.collected'");
+  });
+
+  it('resolves dodger spawn rules from runtime_plan before falling back to template defaults', async () => {
+    const { resolveDodgerSpawnRule } = await import('../../templates/phaser/dodger/src/dodger-runtime-plan.js');
+
+    expect(
+      resolveDodgerSpawnRule(
+        {
+          spawn_rules: [
+            {
+              entity_id: 'obstacle',
+              entity_kind: 'hazard',
+              strategy: 'right_edge_wave',
+              count: 5,
+              max_active: 2,
+              interval_ms: 700,
+              lane_count: 4
+            }
+          ]
+        },
+        'hazard',
+        { entityId: 'hazard', strategy: 'right_edge_wave', count: 99, maxActive: 3, intervalMs: 1000, laneCount: 3 }
+      )
+    ).toEqual({
+      entityId: 'obstacle',
+      entityKind: 'hazard',
+      strategy: 'right_edge_wave',
+      count: 5,
+      maxActive: 2,
+      intervalMs: 700,
+      laneCount: 4,
+      source: 'runtime_plan'
+    });
+
+    expect(
+      resolveDodgerSpawnRule(
+        { spawn_rules: [] },
+        'hazard',
+        { entityId: 'hazard', strategy: 'right_edge_wave', count: 99, maxActive: 3, intervalMs: 1000, laneCount: 3 }
+      )
+    ).toMatchObject({ entityId: 'hazard', source: 'template_default' });
+
+    expect(
+      resolveDodgerSpawnRule(
+        {
+          spawn_rules: [
+            {
+              entity_id: 'obstacle',
+              entity_kind: 'hazard',
+              strategy: 'top_edge_stream',
+              count: 5,
+              max_active: 2,
+              interval_ms: 700,
+              lane_count: 4
+            }
+          ]
+        },
+        'hazard',
+        { entityId: 'hazard', strategy: 'right_edge_wave', count: 99, maxActive: 3, intervalMs: 1000, laneCount: 3 }
+      )
+    ).toMatchObject({ entityId: 'hazard', strategy: 'right_edge_wave', source: 'template_default' });
+
+    expect(
+      resolveDodgerSpawnRule(
+        {
+          spawn_rules: [
+            {
+              entity_id: 'coin',
+              entity_kind: 'collectible',
+              strategy: 'fixed_positions',
+              count: 6,
+              max_active: 2,
+              interval_ms: 900
+            }
+          ]
+        },
+        'collectible',
+        { entityId: 'collectible', strategy: 'fixed_positions', count: 1, maxActive: 1, intervalMs: 1200 }
+      )
+    ).toEqual({
+      entityId: 'coin',
+      entityKind: 'collectible',
+      strategy: 'fixed_positions',
+      count: 6,
+      maxActive: 2,
+      intervalMs: 900,
+      source: 'runtime_plan'
+    });
+  });
+
+  it('resolves dodger difficulty curves from runtime_plan and interpolates over survival time', async () => {
+    const { resolveDodgerDifficultyCurve, resolveDodgerDifficultyState } = await import('../../templates/phaser/dodger/src/dodger-runtime-plan.js');
+    const curve = resolveDodgerDifficultyCurve({
+      difficulty_curve: {
+        derived_from: ['game.difficulty', 'game.target_play_time_sec'],
+        level: 'normal',
+        speed_multiplier_start: 1,
+        speed_multiplier_end: 1.25,
+        spawn_interval_multiplier_start: 1,
+        spawn_interval_multiplier_end: 0.8,
+        ramp_duration_ms: 60000
+      }
+    });
+
+    expect(curve).toMatchObject({ level: 'normal', source: 'runtime_plan' });
+    expect(resolveDodgerDifficultyState(curve, 0)).toMatchObject({
+      rampProgress: 0,
+      speedMultiplier: 1,
+      spawnIntervalMultiplier: 1
+    });
+    expect(resolveDodgerDifficultyState(curve, 30000)).toMatchObject({
+      rampProgress: 0.5,
+      speedMultiplier: 1.125,
+      spawnIntervalMultiplier: 0.9
+    });
+    expect(resolveDodgerDifficultyState(curve, 60000)).toMatchObject({
+      rampProgress: 1,
+      speedMultiplier: 1.25,
+      spawnIntervalMultiplier: 0.8
+    });
+  });
+
+  it('exposes dodger runtime_plan spawn metadata through the QA snapshot', async () => {
+    const { DodgerGameScene } = await import('../../templates/phaser/dodger/src/GameScene.js');
+    const { defaultDodgerParams } = await import('../../templates/phaser/dodger/src/template-params.js');
+    const scene = new DodgerGameScene(
+      { ...defaultDodgerParams, collectible: { label: 'Coin', count: 6, scorePerItem: 1 } },
+      {
+        spawn_rules: [
+        {
+          entity_id: 'obstacle',
+          entity_kind: 'hazard',
+          strategy: 'right_edge_wave',
+          count: 5,
+          max_active: 2,
+          interval_ms: 700,
+          lane_count: 4
+        },
+        {
+          entity_id: 'coin',
+          entity_kind: 'collectible',
+          strategy: 'fixed_positions',
+          count: 6,
+          max_active: 2,
+          interval_ms: 900
+        }
+        ]
+      }
+    );
+
+    scene.create();
+
+    const snapshot = globalThis.__GAME_QA__?.snapshot() as { spawnPlan?: { hazard?: Record<string, unknown>; collectible?: Record<string, unknown> } } | undefined;
+    expect(snapshot?.spawnPlan?.hazard).toMatchObject({
+      entityId: 'obstacle',
+      strategy: 'right_edge_wave',
+      count: 5,
+      maxActive: 2,
+      intervalMs: 700,
+      laneCount: 4,
+      source: 'runtime_plan'
+    });
+    expect(snapshot?.spawnPlan?.collectible).toMatchObject({
+      entityId: 'coin',
+      strategy: 'fixed_positions',
+      count: 6,
+      maxActive: 2,
+      intervalMs: 900,
+      source: 'runtime_plan'
+    });
+  });
+
+  it('executes dodger difficulty curve in hazard spawn telemetry and resets it on restart', async () => {
+    const { DodgerGameScene } = await import('../../templates/phaser/dodger/src/GameScene.js');
+    const { defaultDodgerParams } = await import('../../templates/phaser/dodger/src/template-params.js');
+    const scene = new DodgerGameScene(defaultDodgerParams, {
+      spawn_rules: [
+        {
+          entity_id: 'obstacle',
+          entity_kind: 'hazard',
+          strategy: 'right_edge_wave',
+          count: 3,
+          max_active: 1,
+          interval_ms: 1000,
+          lane_count: 3
+        }
+      ],
+      difficulty_curve: {
+        derived_from: ['game.difficulty', 'game.target_play_time_sec'],
+        level: 'normal',
+        speed_multiplier_start: 2,
+        speed_multiplier_end: 2,
+        spawn_interval_multiplier_start: 0.5,
+        spawn_interval_multiplier_end: 0.5,
+        ramp_duration_ms: 1000
+      }
+    });
+
+    scene.create(createPhaserSceneMock() as unknown as Parameters<typeof scene.create>[0]);
+    scene.update(16);
+
+    expect(globalThis.__GAME_QA__?.snapshot()).toMatchObject({
+      difficultyPlan: expect.objectContaining({
+        level: 'normal',
+        source: 'runtime_plan',
+        speedMultiplier: 2,
+        spawnIntervalMultiplier: 0.5
+      })
+    });
+    expect(globalThis.__GAME_QA__?.telemetry()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'hazard.spawned',
+          payload: expect.objectContaining({
+            entityId: 'obstacle',
+            difficultyLevel: 'normal',
+            difficultySource: 'runtime_plan',
+            speedMultiplier: 2,
+            spawnIntervalMultiplier: 0.5,
+            effectiveIntervalMs: 500
+          })
+        })
+      ])
+    );
+
+    scene.update(1000);
+    expect(globalThis.__GAME_QA__?.snapshot()).toMatchObject({
+      difficultyPlan: expect.objectContaining({ rampProgress: 1 })
+    });
+    scene.restart();
+    expect(globalThis.__GAME_QA__?.snapshot()).toMatchObject({
+      difficultyPlan: expect.objectContaining({ rampProgress: 0 })
+    });
+  });
+
+  it('uses the ramped dodger difficulty curve for later hazard spawn scheduling', async () => {
+    const { DodgerGameScene } = await import('../../templates/phaser/dodger/src/GameScene.js');
+    const { defaultDodgerParams } = await import('../../templates/phaser/dodger/src/template-params.js');
+    const scene = new DodgerGameScene(defaultDodgerParams, {
+      spawn_rules: [
+        {
+          entity_id: 'obstacle',
+          entity_kind: 'hazard',
+          strategy: 'right_edge_wave',
+          count: 3,
+          max_active: 3,
+          interval_ms: 1000,
+          lane_count: 3
+        }
+      ],
+      difficulty_curve: {
+        derived_from: ['game.difficulty', 'game.target_play_time_sec'],
+        level: 'normal',
+        speed_multiplier_start: 1,
+        speed_multiplier_end: 1.5,
+        spawn_interval_multiplier_start: 1,
+        spawn_interval_multiplier_end: 0.5,
+        ramp_duration_ms: 1000
+      }
+    });
+
+    scene.create(createPhaserSceneMock() as unknown as Parameters<typeof scene.create>[0]);
+    scene.update(16);
+    scene.update(1000);
+
+    const hazardSpawnPayloads = globalThis.__GAME_QA__?.telemetry().filter((event) => event.type === 'hazard.spawned').map((event) => event.payload) ?? [];
+    expect(hazardSpawnPayloads).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ rampProgress: expect.closeTo(1, 5), speedMultiplier: 1.5, spawnIntervalMultiplier: 0.5, effectiveIntervalMs: 500 })
+      ])
+    );
+  });
+
+  it('emits dodger collectible runtime_plan spawn telemetry before collection', async () => {
+    const { DodgerGameScene } = await import('../../templates/phaser/dodger/src/GameScene.js');
+    const { defaultDodgerParams } = await import('../../templates/phaser/dodger/src/template-params.js');
+    const scene = new DodgerGameScene(
+      { ...defaultDodgerParams, collectible: { label: 'Coin', count: 6, scorePerItem: 1 } },
+      {
+        spawn_rules: [
+          {
+            entity_id: 'coin',
+            entity_kind: 'collectible',
+            strategy: 'fixed_positions',
+            count: 6,
+            max_active: 2,
+            interval_ms: 900
+          }
+        ]
+      }
+    );
+
+    scene.create();
+    scene.collectItem();
+
+    expect(globalThis.__GAME_QA__?.telemetry()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'item.spawned',
+          payload: expect.objectContaining({
+            entityId: 'coin',
+            strategy: 'fixed_positions',
+            source: 'runtime_plan',
+            count: 6,
+            maxActive: 2,
+            intervalMs: 900
+          })
+        }),
+        expect.objectContaining({
+          type: 'item.collected',
+          payload: expect.objectContaining({ entityId: 'coin', source: 'runtime_plan', slotIndex: expect.any(Number) })
+        })
+      ])
+    );
+  });
+
+  it('uses dodger collectible runtime_plan count, maxActive and interval as spawn scheduling limits', async () => {
+    const { DodgerGameScene } = await import('../../templates/phaser/dodger/src/GameScene.js');
+    const { defaultDodgerParams } = await import('../../templates/phaser/dodger/src/template-params.js');
+    const scene = new DodgerGameScene(
+      { ...defaultDodgerParams, collectible: { label: 'Coin', count: 3, scorePerItem: 1 } },
+      {
+        spawn_rules: [
+          {
+            entity_id: 'coin',
+            entity_kind: 'collectible',
+            strategy: 'fixed_positions',
+            count: 3,
+            max_active: 2,
+            interval_ms: 900
+          }
+        ]
+      }
+    );
+
+    scene.create();
+    expect(spawnedItems()).toHaveLength(1);
+    scene.update(899);
+    expect(spawnedItems()).toHaveLength(1);
+    scene.update(1);
+    expect(spawnedItems()).toHaveLength(2);
+    scene.update(900);
+    expect(spawnedItems()).toHaveLength(2);
+    scene.collectItem();
+    scene.update(899);
+    expect(spawnedItems()).toHaveLength(2);
+    scene.update(1);
+    expect(spawnedItems()).toHaveLength(3);
+    scene.collectItem();
+    scene.collectItem();
+    scene.update(900);
+    expect(spawnedItems()).toHaveLength(3);
+  });
+
+  it('preserves the dodger fallback lane geometry without a runtime_plan rule', async () => {
+    const { DodgerGameScene } = await import('../../templates/phaser/dodger/src/GameScene.js');
+    const { defaultDodgerParams } = await import('../../templates/phaser/dodger/src/template-params.js');
+    const scene = new DodgerGameScene(defaultDodgerParams);
+
+    scene.create();
+    scene.moveDown();
+    const afterMoveDown = globalThis.__GAME_QA__?.snapshot() as { player?: { y?: number }; spawnPlan?: { hazard?: Record<string, unknown> } } | undefined;
+    scene.moveUp();
+    const afterMoveUp = globalThis.__GAME_QA__?.snapshot() as { player?: { y?: number } } | undefined;
+
+    expect(afterMoveDown?.player?.y).toBe(defaultDodgerParams.player.startY + 110);
+    expect(afterMoveUp?.player?.y).toBe(defaultDodgerParams.player.startY);
+    expect(afterMoveDown?.spawnPlan?.hazard).toMatchObject({ laneCount: 3, source: 'template_default' });
   });
 
   it('shooter template preserves the real fire, projectile, enemy-hit chain', async () => {
@@ -194,6 +572,120 @@ describe('Phaser templates', () => {
     expect(scene).toContain('advanceShooterWorld');
     expect(scene).toContain("this.telemetry.emit('enemy.hit'");
     expect(scene).toContain("this.telemetry.emit('enemy.cleared'");
+  });
+
+  it('resolves shooter enemy waves from runtime_plan before falling back to template defaults', async () => {
+    const { resolveShooterEnemyWave } = await import('../../templates/phaser/shooter/src/shooter-runtime-plan.js');
+    const { defaultShooterParams } = await import('../../templates/phaser/shooter/src/template-params.js');
+    const derivedFrom: [
+      'entities.enemy.id',
+      'entities.enemy.count',
+      'entities.enemy.health',
+      'entities.enemy.movement.speed_px_per_sec',
+      'game.difficulty',
+      'game.target_play_time_sec'
+    ] = [
+      'entities.enemy.id',
+      'entities.enemy.count',
+      'entities.enemy.health',
+      'entities.enemy.movement.speed_px_per_sec',
+      'game.difficulty',
+      'game.target_play_time_sec'
+    ];
+
+    expect(
+      resolveShooterEnemyWave(
+        {
+          enemy_waves: [
+            {
+              derived_from: derivedFrom,
+              entity_id: 'alien',
+              strategy: 'right_edge_wave',
+              count: 4,
+              max_active: 1,
+              interval_ms: 700,
+              speed_multiplier: 1.4
+            }
+          ]
+        },
+        defaultShooterParams
+      )
+    ).toEqual({
+      derivedFrom,
+      entityId: 'alien',
+      strategy: 'right_edge_wave',
+      count: 4,
+      maxActive: 1,
+      intervalMs: 700,
+      speedMultiplier: 1.4,
+      source: 'runtime_plan'
+    });
+
+    expect(resolveShooterEnemyWave({ enemy_waves: [] }, defaultShooterParams)).toMatchObject({
+      entityId: 'enemy',
+      count: defaultShooterParams.enemy.count,
+      maxActive: defaultShooterParams.enemy.count,
+      intervalMs: defaultShooterParams.enemy.spawnIntervalMs,
+      speedMultiplier: 1,
+      source: 'template_default'
+    });
+  });
+
+  it('uses shooter runtime_plan enemy wave maxActive and speed multiplier during simulation', async () => {
+    const { advanceShooterWorld, createShooterRuntimeState } = await import('../../templates/phaser/shooter/src/shooter-runtime.js');
+    const { resolveShooterEnemyWave } = await import('../../templates/phaser/shooter/src/shooter-runtime-plan.js');
+    const { defaultShooterParams } = await import('../../templates/phaser/shooter/src/template-params.js');
+    const derivedFrom: [
+      'entities.enemy.id',
+      'entities.enemy.count',
+      'entities.enemy.health',
+      'entities.enemy.movement.speed_px_per_sec',
+      'game.difficulty',
+      'game.target_play_time_sec'
+    ] = [
+      'entities.enemy.id',
+      'entities.enemy.count',
+      'entities.enemy.health',
+      'entities.enemy.movement.speed_px_per_sec',
+      'game.difficulty',
+      'game.target_play_time_sec'
+    ];
+    const runtimeWave = resolveShooterEnemyWave(
+      {
+        enemy_waves: [
+          {
+            derived_from: derivedFrom,
+            entity_id: 'alien',
+            strategy: 'right_edge_wave',
+            count: 3,
+            max_active: 1,
+            interval_ms: 500,
+            speed_multiplier: 2
+          }
+        ]
+      },
+      defaultShooterParams
+    );
+    const fallbackWave = resolveShooterEnemyWave({ enemy_waves: [] }, defaultShooterParams);
+
+    const state = createShooterRuntimeState(defaultShooterParams);
+    advanceShooterWorld(state, defaultShooterParams, runtimeWave, 16, 0);
+    advanceShooterWorld(state, defaultShooterParams, runtimeWave, 16, 1000);
+    expect(state.enemiesSpawned).toBe(1);
+    expect(state.enemies).toHaveLength(1);
+    expect(state.enemies[0]).toMatchObject({
+      entityId: 'alien',
+      waveSource: 'runtime_plan',
+      waveStrategy: 'right_edge_wave',
+      speedMultiplier: 2
+    });
+
+    const slowState = createShooterRuntimeState(defaultShooterParams);
+    const fastState = createShooterRuntimeState(defaultShooterParams);
+    advanceShooterWorld(slowState, defaultShooterParams, fallbackWave, 100, 0);
+    advanceShooterWorld(fastState, defaultShooterParams, runtimeWave, 100, 0);
+
+    expect(fastState.enemies[0].x).toBeLessThan(slowState.enemies[0].x);
   });
 
   it('exposes telemetry as read-only snapshots through QA bridge', async () => {
@@ -232,19 +724,21 @@ describe('Phaser templates', () => {
       moveShooterPlayer,
       tryFireShooterProjectile
     } = await import('../../templates/phaser/shooter/src/shooter-runtime.js');
+    const { resolveShooterEnemyWave } = await import('../../templates/phaser/shooter/src/shooter-runtime-plan.js');
     const { defaultShooterParams } = await import('../../templates/phaser/shooter/src/template-params.js');
     const state = createShooterRuntimeState(defaultShooterParams);
+    const enemyWave = resolveShooterEnemyWave({ enemy_waves: [] }, defaultShooterParams);
 
     const originalX = state.player.x;
     expect(moveShooterPlayer(state, defaultShooterParams, { right: true }, 250)).toBe(true);
     expect(state.player.x).toBeGreaterThan(originalX);
 
-    expect(advanceShooterWorld(state, defaultShooterParams, 16, 0).hits).toHaveLength(0);
+    expect(advanceShooterWorld(state, defaultShooterParams, enemyWave, 16, 0).hits).toHaveLength(0);
     expect(tryFireShooterProjectile(state, defaultShooterParams, 500)).toBeTruthy();
 
     let hits = 0;
     for (let frame = 1; frame <= 80 && hits === 0; frame += 1) {
-      hits = advanceShooterWorld(state, defaultShooterParams, 16, frame * 16).hits.length;
+      hits = advanceShooterWorld(state, defaultShooterParams, enemyWave, 16, frame * 16).hits.length;
     }
 
     expect(hits).toBeGreaterThan(0);
@@ -262,4 +756,41 @@ async function readSharedKernel() {
 
 function capitalizeGenre(genre: 'collector' | 'dodger' | 'shooter') {
   return `${genre[0].toUpperCase()}${genre.slice(1)}`;
+}
+
+function spawnedItems(): TemplateTelemetryEvent[] {
+  return globalThis.__GAME_QA__?.telemetry().filter((event) => event.type === 'item.spawned') ?? [];
+}
+
+function createPhaserSceneMock() {
+  type ChainMock = Record<string, (...args: unknown[]) => unknown>;
+  const graphics: ChainMock = {
+    fillStyle: () => graphics,
+    fillRect: () => graphics,
+    fillRoundedRect: () => graphics,
+    fillCircle: () => graphics,
+    fillTriangle: () => graphics,
+    lineStyle: () => graphics,
+    lineBetween: () => graphics,
+    strokeRoundedRect: () => graphics,
+    clear: () => graphics,
+    setVisible: () => graphics,
+    setY: () => graphics,
+    destroy: () => undefined
+  };
+  const text: ChainMock = {
+    setText: () => text,
+    setX: () => text,
+    setY: () => text,
+    setVisible: () => text,
+    destroy: () => undefined
+  };
+
+  return {
+    cameras: { main: { setBackgroundColor: () => undefined } },
+    add: {
+      graphics: () => graphics,
+      text: () => text
+    }
+  };
 }

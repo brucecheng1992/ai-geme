@@ -13,6 +13,15 @@ import {
   createRuntimeState,
   exposeRuntime
 } from '../../shared/kernel.js';
+import {
+  defaultDodgerRuntimePlan,
+  resolveDodgerDifficultyCurve,
+  resolveDodgerDifficultyState,
+  resolveDodgerSpawnRule,
+  type DodgerDifficultyState,
+  type DodgerRuntimePlan,
+  type ResolvedDodgerSpawnRule
+} from './dodger-runtime-plan.js';
 import type { DodgerTemplateParams } from './template-params.js';
 
 type Hitbox = {
@@ -31,6 +40,15 @@ type HazardSprite = {
   speedPxPerSec: number;
   resolved: boolean;
   impactHoldMs: number;
+  active: boolean;
+};
+
+type CollectibleSprite = {
+  graphics?: Phaser.GameObjects.Graphics;
+  label?: Phaser.GameObjects.Text;
+  x: number;
+  y: number;
+  slotIndex: number;
   active: boolean;
 };
 
@@ -53,10 +71,18 @@ export class DodgerGameScene {
   private readonly hazards: HazardSprite[] = [];
   private nextHazardSpawnMs = 0;
   private lastHazardLaneIndex = -1;
+  private hazardsSpawned = 0;
+  private readonly collectibles: CollectibleSprite[] = [];
+  private nextCollectibleSpawnMs = 0;
+  private nextCollectibleSlotIndex = 0;
+  private collectiblesSpawned = 0;
   private survivalElapsedMs = 0;
   private survivalHudSeconds = 0;
 
-  constructor(private readonly params: DodgerTemplateParams) {
+  constructor(
+    private readonly params: DodgerTemplateParams,
+    private readonly runtimePlan: DodgerRuntimePlan = defaultDodgerRuntimePlan
+  ) {
     this.state = createRuntimeState(params.player.health);
     this.telemetry = new TelemetrySystem(this.state);
     this.input = new InputSystem(this.telemetry);
@@ -71,18 +97,24 @@ export class DodgerGameScene {
   create(phaserScene?: Phaser.Scene): void {
     this.phaserScene = phaserScene;
     this.gameState.ready();
-    if (this.params.collectible) {
-      this.spawn.spawn('item');
-    }
     exposeRuntime(
       this.state,
       new QaBridge(this.state, () => this.start(), () => this.restart(), () => ({
         player: { x: this.params.player.startX, y: this.playerY, lane: this.playerLaneIndex },
         hazard: this.primaryHazardSnapshot,
-        hazards: this.hazards.map((hazard) => this.hazardSnapshot(hazard))
+        hazards: this.hazards.map((hazard) => this.hazardSnapshot(hazard)),
+        collectibles: this.collectibles.map((collectible) => this.collectibleSnapshot(collectible)),
+        difficultyPlan: this.difficultySnapshot(this.currentDifficultyState),
+        spawnPlan: {
+          hazard: this.spawnRuleSnapshot(this.hazardSpawnRule),
+          ...(this.params.collectible ? { collectible: this.spawnRuleSnapshot(this.collectibleSpawnRule) } : {})
+        }
       }))
     );
     this.renderFirstFrame();
+    if (this.phaserScene === undefined) {
+      this.spawnNextCollectible();
+    }
     this.start();
   }
 
@@ -103,6 +135,7 @@ export class DodgerGameScene {
 
     this.advanceSurvival(deltaMs);
     this.advanceHazard(deltaMs);
+    this.advanceCollectible(deltaMs);
     this.renderHud();
   }
 
@@ -111,6 +144,7 @@ export class DodgerGameScene {
     this.movePlayerToLane(this.playerLaneIndex === 1 ? 2 : 1);
     this.advanceSurvival(1000);
     this.advanceHazard(200);
+    this.advanceCollectible(200);
     this.renderHud();
   }
 
@@ -127,11 +161,25 @@ export class DodgerGameScene {
       return;
     }
 
+    const collectible = this.collectibles.find((candidate) => candidate.active);
+    if (collectible === undefined) {
+      this.spawnNextCollectible();
+      return;
+    }
+
     this.input.receive('move');
     this.movement.move();
-    this.collision.collide({ source: 'player', target: 'collectible' });
-    this.telemetry.emit('item.collected', { label: this.params.collectible.label });
+    this.collision.collide({ source: 'player', target: this.collectibleSpawnRule.entityId });
+    this.telemetry.emit('item.collected', {
+      entityId: this.collectibleSpawnRule.entityId,
+      label: this.params.collectible.label,
+      source: this.collectibleSpawnRule.source,
+      slotIndex: collectible.slotIndex
+    });
     this.score.add(this.params.collectible.scorePerItem);
+    this.hideCollectible(collectible);
+    this.removeInactiveCollectibles();
+    this.nextCollectibleSpawnMs = Math.max(this.nextCollectibleSpawnMs, this.collectibleSpawnRule.intervalMs);
     this.renderHud();
   }
 
@@ -141,9 +189,15 @@ export class DodgerGameScene {
     this.survivalElapsedMs = 0;
     this.survivalHudSeconds = 0;
     this.lastHazardLaneIndex = -1;
+    this.hazardsSpawned = 0;
+    this.collectiblesSpawned = 0;
+    this.nextCollectibleSpawnMs = 0;
+    this.nextCollectibleSlotIndex = 0;
     this.clearHazards();
+    this.clearCollectibles();
     this.movePlayerToLane(1);
     this.spawnNextHazard();
+    this.spawnNextCollectible();
     this.start();
   }
 
@@ -177,12 +231,10 @@ export class DodgerGameScene {
 
     this.drawLaneGuides();
     this.drawCatPlayer(this.params.player.startX, this.playerY);
-    if (this.params.collectible) {
-      this.drawCollectible(this.params.world.width - 360, this.params.player.startY);
-    }
     this.scoreText = scene.add.text(40, 32, '', { fontFamily: 'Arial, sans-serif', fontSize: '28px', color: '#f8fbff' });
     this.statusText = scene.add.text(40, this.params.world.height - 74, '', { fontFamily: 'Arial, sans-serif', fontSize: '20px', color: '#f8fbff' });
     this.spawnNextHazard();
+    this.spawnNextCollectible();
     this.renderHud();
   }
 
@@ -223,7 +275,7 @@ export class DodgerGameScene {
       x,
       laneIndex,
       yOffset: randomBetween(-18, 18),
-      speedPxPerSec: this.params.hazard.speedPxPerSec * randomBetween(0.82, 1.22),
+      speedPxPerSec: this.params.hazard.speedPxPerSec * randomBetween(0.82, 1.22) * this.currentDifficultyState.speedMultiplier,
       resolved: false,
       impactHoldMs: 0,
       active: true
@@ -248,26 +300,30 @@ export class DodgerGameScene {
     hazard.label.setY(y + 54);
   }
 
-  private drawCollectible(x: number, y: number): void {
+  private drawCollectible(collectible: CollectibleSprite): void {
     const scene = this.phaserScene;
     if (scene === undefined || !this.params.collectible) {
       return;
     }
 
-    scene.add
+    collectible.graphics = scene.add
       .graphics()
       .fillStyle(0xffd95a, 1)
-      .fillCircle(x, y, 36)
+      .fillCircle(collectible.x, collectible.y, 36)
       .lineStyle(5, 0xfff0a3, 1)
-      .strokeCircle(x, y, 26)
+      .strokeCircle(collectible.x, collectible.y, 26)
       .lineStyle(4, 0x8f5a00, 1)
-      .lineBetween(x - 14, y, x + 14, y);
-    scene.add.text(x - 38, y + 50, this.params.collectible.label, { fontFamily: 'Arial, sans-serif', fontSize: '18px', color: '#fff0a3' });
+      .lineBetween(collectible.x - 14, collectible.y, collectible.x + 14, collectible.y);
+    collectible.label = scene.add.text(collectible.x - 38, collectible.y + 50, this.params.collectible.label, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '18px',
+      color: '#fff0a3'
+    });
   }
 
   private renderHud(): void {
     const collectHint = this.params.collectible ? '  C collect' : '';
-    this.scoreText?.setText(this.params.collectible ? `Score ${this.state.score}/${this.params.collectible.count}` : '');
+    this.scoreText?.setText(this.params.collectible ? `Score ${this.state.score}/${this.collectibleSpawnRule.count}` : '');
     this.statusText?.setText(`Health ${this.state.health}  Time ${this.state.frame}s  Running  ArrowUp/Down dodge  ArrowRight quick dodge  H hit${collectHint}  R restart`);
   }
 
@@ -284,9 +340,10 @@ export class DodgerGameScene {
   }
 
   private advanceHazard(deltaMs: number): void {
+    const spawnRule = this.hazardSpawnRule;
     this.nextHazardSpawnMs = Math.max(0, this.nextHazardSpawnMs - deltaMs);
-    if (this.nextHazardSpawnMs === 0 && this.activeHazardCount < 3) {
-      this.spawnNextHazard();
+    if (this.nextHazardSpawnMs === 0 && this.activeHazardCount < spawnRule.maxActive && this.hazardsSpawned < spawnRule.count) {
+      this.spawnNextHazard(spawnRule);
     }
 
     for (const hazard of this.hazards) {
@@ -318,15 +375,76 @@ export class DodgerGameScene {
     this.removeInactiveHazards();
   }
 
-  private spawnNextHazard(): void {
-    const hazard = this.createHazardSprite(this.nextHazardStartX, this.nextHazardLaneIndex());
+  private advanceCollectible(deltaMs: number): void {
+    if (!this.params.collectible) {
+      return;
+    }
+
+    const spawnRule = this.collectibleSpawnRule;
+    this.nextCollectibleSpawnMs = Math.max(0, this.nextCollectibleSpawnMs - deltaMs);
+    if (this.nextCollectibleSpawnMs === 0 && this.activeCollectibleCount < spawnRule.maxActive && this.collectiblesSpawned < spawnRule.count) {
+      this.spawnNextCollectible(spawnRule);
+    }
+  }
+
+  private spawnNextHazard(spawnRule = this.hazardSpawnRule): void {
+    if (this.activeHazardCount >= spawnRule.maxActive || this.hazardsSpawned >= spawnRule.count) {
+      return;
+    }
+
+    const hazard = this.createHazardSprite(this.nextHazardStartX, this.nextHazardLaneIndex(spawnRule));
     if (hazard === undefined) {
       return;
     }
 
     this.hazards.push(hazard);
-    this.nextHazardSpawnMs = this.nextHazardIntervalMs;
-    this.spawn.spawn('hazard');
+    this.hazardsSpawned += 1;
+    const difficulty = this.currentDifficultyState;
+    const effectiveIntervalMs = this.effectiveHazardIntervalMs(spawnRule, difficulty);
+    this.nextHazardSpawnMs = effectiveIntervalMs;
+    this.spawn.spawn('hazard', {
+      entityId: spawnRule.entityId,
+      strategy: spawnRule.strategy,
+      source: spawnRule.source,
+      spawned: this.hazardsSpawned,
+      count: spawnRule.count,
+      maxActive: spawnRule.maxActive,
+      intervalMs: spawnRule.intervalMs,
+      effectiveIntervalMs,
+      laneCount: spawnRule.laneCount,
+      difficultyLevel: difficulty.level,
+      difficultySource: difficulty.source,
+      rampProgress: difficulty.rampProgress,
+      speedMultiplier: difficulty.speedMultiplier,
+      spawnIntervalMultiplier: difficulty.spawnIntervalMultiplier
+    });
+  }
+
+  private spawnNextCollectible(spawnRule = this.collectibleSpawnRule): void {
+    if (!this.params.collectible || this.activeCollectibleCount >= spawnRule.maxActive || this.collectiblesSpawned >= spawnRule.count) {
+      return;
+    }
+
+    const slot = this.nextCollectibleSlot;
+    const collectible: CollectibleSprite = {
+      x: slot.x,
+      y: slot.y,
+      slotIndex: slot.index,
+      active: true
+    };
+    this.drawCollectible(collectible);
+    this.collectibles.push(collectible);
+    this.collectiblesSpawned += 1;
+    this.nextCollectibleSpawnMs = spawnRule.intervalMs;
+    this.spawn.spawn('item', {
+      entityId: spawnRule.entityId,
+      strategy: spawnRule.strategy,
+      source: spawnRule.source,
+      spawned: this.collectiblesSpawned,
+      count: spawnRule.count,
+      maxActive: spawnRule.maxActive,
+      intervalMs: spawnRule.intervalMs
+    });
   }
 
   private hideHazard(hazard: HazardSprite): void {
@@ -335,6 +453,12 @@ export class DodgerGameScene {
     hazard.impactHoldMs = 0;
     hazard.graphics.setVisible(false);
     hazard.label.setVisible(false);
+  }
+
+  private hideCollectible(collectible: CollectibleSprite): void {
+    collectible.active = false;
+    collectible.graphics?.setVisible(false);
+    collectible.label?.setVisible(false);
   }
 
   private removeInactiveHazards(): void {
@@ -357,13 +481,34 @@ export class DodgerGameScene {
     this.nextHazardSpawnMs = 0;
   }
 
-  private nextHazardLaneIndex(): number {
+  private removeInactiveCollectibles(): void {
+    for (let index = this.collectibles.length - 1; index >= 0; index -= 1) {
+      const collectible = this.collectibles[index];
+      if (collectible !== undefined && !collectible.active) {
+        collectible.graphics?.destroy();
+        collectible.label?.destroy();
+        this.collectibles.splice(index, 1);
+      }
+    }
+  }
+
+  private clearCollectibles(): void {
+    for (const collectible of this.collectibles) {
+      collectible.graphics?.destroy();
+      collectible.label?.destroy();
+    }
+    this.collectibles.length = 0;
+    this.nextCollectibleSpawnMs = 0;
+  }
+
+  private nextHazardLaneIndex(spawnRule: ResolvedDodgerSpawnRule): number {
     const activeLaneCounts = this.laneYValues.map((_laneY, index) => this.hazards.filter((hazard) => hazard.active && hazard.laneIndex === index).length);
+    const maxPerLane = Math.max(1, Math.ceil(spawnRule.maxActive / Math.max(1, spawnRule.laneCount ?? 3)));
     let candidates = this.laneYValues
       .map((_laneY, index) => index)
-      .filter((index) => activeLaneCounts[index] < 2 && index !== this.lastHazardLaneIndex);
+      .filter((index) => activeLaneCounts[index] < maxPerLane && index !== this.lastHazardLaneIndex);
     if (candidates.length === 0) {
-      candidates = this.laneYValues.map((_laneY, index) => index).filter((index) => activeLaneCounts[index] < 2);
+      candidates = this.laneYValues.map((_laneY, index) => index).filter((index) => activeLaneCounts[index] < maxPerLane);
     }
     if (candidates.length === 0) {
       candidates = this.laneYValues.map((_laneY, index) => index);
@@ -410,7 +555,19 @@ export class DodgerGameScene {
   }
 
   private get laneYValues(): number[] {
-    return [this.params.player.startY - 110, this.params.player.startY, this.params.player.startY + 110];
+    const spawnRule = this.hazardSpawnRule;
+    const laneCount = spawnRule.laneCount ?? 3;
+    if (laneCount <= 1) {
+      return [this.params.player.startY];
+    }
+
+    if (spawnRule.source === 'template_default' && laneCount === 3) {
+      return [this.params.player.startY - 110, this.params.player.startY, this.params.player.startY + 110];
+    }
+
+    const laneSpacing = 110;
+    const centerOffset = (laneCount - 1) / 2;
+    return Array.from({ length: laneCount }, (_value, index) => this.params.player.startY + (index - centerOffset) * laneSpacing);
   }
 
   private get playerY(): number {
@@ -444,13 +601,30 @@ export class DodgerGameScene {
     return this.hazards.filter((hazard) => hazard.active).length;
   }
 
-  private get nextHazardIntervalMs(): number {
-    const baseIntervalMs = Math.max(360, this.params.hazard.spawnIntervalMs * 0.55);
-    return baseIntervalMs + Math.random() * 220;
+  private get activeCollectibleCount(): number {
+    return this.collectibles.filter((collectible) => collectible.active).length;
   }
 
   private get nextHazardStartX(): number {
     return this.params.world.width + randomBetween(70, 230);
+  }
+
+  private get nextCollectibleSlot(): { index: number; x: number; y: number } {
+    const slots = this.collectibleSlots;
+    const slot = slots[this.nextCollectibleSlotIndex % slots.length] ?? slots[0];
+    this.nextCollectibleSlotIndex += 1;
+    return slot;
+  }
+
+  private get collectibleSlots(): Array<{ index: number; x: number; y: number }> {
+    const xPositions = [this.params.world.width - 360, this.params.world.width - 250, this.params.world.width - 470];
+    return this.laneYValues.flatMap((laneY, laneIndex) =>
+      xPositions.map((x, xIndex) => ({
+        index: laneIndex * xPositions.length + xIndex,
+        x,
+        y: laneY
+      }))
+    );
   }
 
   private get primaryHazardSnapshot(): { x: number; y: number; lane: number; active: boolean } {
@@ -464,6 +638,76 @@ export class DodgerGameScene {
       y: this.hazardY(hazard.laneIndex, hazard.yOffset),
       lane: hazard.laneIndex,
       active: hazard.active
+    };
+  }
+
+  private collectibleSnapshot(collectible: CollectibleSprite): { x: number; y: number; slot: number; active: boolean } {
+    return {
+      x: collectible.x,
+      y: collectible.y,
+      slot: collectible.slotIndex,
+      active: collectible.active
+    };
+  }
+
+  private get hazardSpawnRule(): ResolvedDodgerSpawnRule {
+    return resolveDodgerSpawnRule(this.runtimePlan, 'hazard', {
+      entityId: 'hazard',
+      strategy: 'right_edge_wave',
+      count: Number.MAX_SAFE_INTEGER,
+      maxActive: 3,
+      intervalMs: this.params.hazard.spawnIntervalMs,
+      laneCount: 3
+    });
+  }
+
+  private get collectibleSpawnRule(): ResolvedDodgerSpawnRule {
+    return resolveDodgerSpawnRule(this.runtimePlan, 'collectible', {
+      entityId: 'collectible',
+      strategy: 'fixed_positions',
+      count: this.params.collectible?.count ?? 1,
+      maxActive: 1,
+      intervalMs: 1200
+    });
+  }
+
+  private get currentDifficultyState(): DodgerDifficultyState {
+    return resolveDodgerDifficultyState(resolveDodgerDifficultyCurve(this.runtimePlan), this.survivalElapsedMs);
+  }
+
+  private effectiveHazardIntervalMs(rule: ResolvedDodgerSpawnRule, difficulty: DodgerDifficultyState): number {
+    return Math.max(200, Math.round(rule.intervalMs * difficulty.spawnIntervalMultiplier));
+  }
+
+  private spawnRuleSnapshot(rule: ResolvedDodgerSpawnRule): Record<string, string | number> {
+    const snapshot: Record<string, string | number> = {
+      entityId: rule.entityId,
+      strategy: rule.strategy,
+      count: rule.count,
+      maxActive: rule.maxActive,
+      intervalMs: rule.intervalMs,
+      source: rule.source,
+      spawned: rule.entityKind === 'hazard' ? this.hazardsSpawned : this.collectiblesSpawned
+    };
+    if (rule.laneCount !== undefined) {
+      snapshot.laneCount = rule.laneCount;
+    }
+    return snapshot;
+  }
+
+  private difficultySnapshot(difficulty: DodgerDifficultyState): Record<string, string | number> {
+    return {
+      level: difficulty.level,
+      source: difficulty.source,
+      derivedFrom: difficulty.derivedFrom.join(','),
+      rampDurationMs: difficulty.rampDurationMs,
+      rampProgress: difficulty.rampProgress,
+      speedMultiplierStart: difficulty.speedMultiplierStart,
+      speedMultiplierEnd: difficulty.speedMultiplierEnd,
+      speedMultiplier: difficulty.speedMultiplier,
+      spawnIntervalMultiplierStart: difficulty.spawnIntervalMultiplierStart,
+      spawnIntervalMultiplierEnd: difficulty.spawnIntervalMultiplierEnd,
+      spawnIntervalMultiplier: difficulty.spawnIntervalMultiplier
     };
   }
 }

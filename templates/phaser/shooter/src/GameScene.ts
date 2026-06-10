@@ -17,10 +17,17 @@ import {
   advanceShooterWorld,
   createShooterRuntimeState,
   moveShooterPlayer,
+  primeShooterEnemyWave,
   tryFireShooterProjectile,
   type ShooterDirection,
   type ShooterRuntimeState
 } from './shooter-runtime.js';
+import {
+  defaultShooterRuntimePlan,
+  resolveShooterEnemyWave,
+  type ResolvedShooterEnemyWave,
+  type ShooterRuntimePlan
+} from './shooter-runtime-plan.js';
 import { ShooterRenderer } from './shooter-renderer.js';
 import type { ShooterTemplateParams } from './template-params.js';
 
@@ -35,11 +42,12 @@ export class ShooterGameScene {
   private readonly gameState;
   private readonly objective;
   private readonly renderer;
+  private readonly enemyWave: ResolvedShooterEnemyWave;
   private runtime: ShooterRuntimeState;
   private readonly moveInput: Record<ShooterDirection, boolean> = { left: false, right: false, up: false, down: false };
   private phaserScene?: Phaser.Scene;
 
-  constructor(private readonly params: ShooterTemplateParams) {
+  constructor(private readonly params: ShooterTemplateParams, runtimePlan: ShooterRuntimePlan = defaultShooterRuntimePlan) {
     this.state = createRuntimeState(params.player.health);
     this.telemetry = new TelemetrySystem(this.state);
     this.input = new InputSystem(this.telemetry);
@@ -50,7 +58,9 @@ export class ShooterGameScene {
     this.gameState = new GameStateSystem(this.state, this.telemetry);
     this.objective = new ObjectiveSystem(this.state, this.gameState);
     this.renderer = new ShooterRenderer(params);
+    this.enemyWave = resolveShooterEnemyWave(runtimePlan, params);
     this.runtime = createShooterRuntimeState(params);
+    primeShooterEnemyWave(this.runtime, this.enemyWave);
   }
 
   create(phaserScene?: Phaser.Scene): void {
@@ -62,7 +72,8 @@ export class ShooterGameScene {
         player: { ...this.runtime.player },
         enemiesActive: this.runtime.enemies.length,
         projectilesActive: this.runtime.projectiles.length,
-        enemiesCleared: this.runtime.enemiesCleared
+        enemiesCleared: this.runtime.enemiesCleared,
+        enemyWavePlan: this.enemyWaveSnapshot()
       }))
     );
     this.renderFirstFrame();
@@ -101,7 +112,7 @@ export class ShooterGameScene {
 
     this.state.frame += 1;
     this.movePlayer(deltaMs);
-    const step = advanceShooterWorld(this.runtime, this.params, deltaMs, timeMs);
+    const step = advanceShooterWorld(this.runtime, this.params, this.enemyWave, deltaMs, timeMs);
     if (step.spawnedEnemy !== undefined) {
       this.spawn.spawn('enemy');
       this.renderer.renderEnemy(this.requireScene(), step.spawnedEnemy);
@@ -109,11 +120,25 @@ export class ShooterGameScene {
 
     for (const hit of step.hits) {
       this.collision.collide({ source: 'projectile', target: 'enemy', projectileId: hit.projectileId, enemyId: hit.enemyId });
-      this.telemetry.emit('enemy.hit', { damage: this.params.projectile.damage, enemyId: hit.enemyId });
+      this.telemetry.emit('enemy.hit', {
+        damage: this.params.projectile.damage,
+        enemyId: hit.enemyId,
+        entityId: hit.entityId,
+        waveSource: hit.waveSource,
+        strategy: hit.waveStrategy,
+        speedMultiplier: hit.speedMultiplier
+      });
       this.renderer.destroyProjectile(hit.projectileId);
 
       if (hit.cleared) {
-        this.telemetry.emit('enemy.cleared', { count: this.runtime.enemiesCleared, enemyId: hit.enemyId });
+        this.telemetry.emit('enemy.cleared', {
+          count: this.runtime.enemiesCleared,
+          enemyId: hit.enemyId,
+          entityId: hit.entityId,
+          waveSource: hit.waveSource,
+          strategy: hit.waveStrategy,
+          speedMultiplier: hit.speedMultiplier
+        });
         this.score.add(this.params.scoring.scorePerEnemy);
         this.renderer.destroyEnemy(hit.enemyId);
       }
@@ -135,6 +160,7 @@ export class ShooterGameScene {
   restart(): void {
     this.input.receive('restart');
     this.runtime = createShooterRuntimeState(this.params);
+    primeShooterEnemyWave(this.runtime, this.enemyWave);
     this.resetMoveInput();
     this.renderer.clearDynamicObjects();
     this.renderer.setPlayerPosition(this.runtime.player.x, this.runtime.player.y);
@@ -192,5 +218,20 @@ export class ShooterGameScene {
 
   private renderHud(): void {
     this.renderer.renderHud(this.state.score, this.state.health);
+  }
+
+  private enemyWaveSnapshot() {
+    return {
+      derivedFrom: this.enemyWave.derivedFrom.join(','),
+      entityId: this.enemyWave.entityId,
+      strategy: this.enemyWave.strategy,
+      count: this.enemyWave.count,
+      maxActive: this.enemyWave.maxActive,
+      intervalMs: this.enemyWave.intervalMs,
+      speedMultiplier: this.enemyWave.speedMultiplier,
+      source: this.enemyWave.source,
+      spawned: this.runtime.enemiesSpawned,
+      active: this.runtime.enemies.length
+    };
   }
 }

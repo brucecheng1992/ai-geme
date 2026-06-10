@@ -29,6 +29,9 @@ export type RawDslPromptContext = {
   p0_scope: string[];
   anti_shell_rules: string[];
   composable_mechanics: string[];
+  spawn_generation_guidance: string[];
+  difficulty_runtime_guidance: string[];
+  enemy_wave_runtime_guidance: string[];
 };
 
 export type BuildRawDslPromptContextParams = {

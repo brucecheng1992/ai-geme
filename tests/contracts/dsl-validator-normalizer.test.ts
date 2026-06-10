@@ -180,14 +180,14 @@ describe('DSL Validator and Normalizer', () => {
         objectives: { ...shooterDsl.objectives, win: { type: 'target_score', target: 100 } }
       }),
       'UNREACHABLE_OBJECTIVE',
-      'target_score cannot be reached from scoring rules'
+      'target_score cannot be reached from primary shooter enemy wave'
     );
   });
 
-  it('accepts shooter target_score when multiple enemy scoring rules can reach the target', () => {
+  it('rejects shooter target_score that depends on secondary enemies outside the runtime envelope', () => {
     const shooterDsl = createShooterRawDsl();
 
-    expect(
+    expectIssue(
       validateRawGameDsl({
         ...shooterDsl,
         entities: [
@@ -207,6 +207,32 @@ describe('DSL Validator and Normalizer', () => {
           ]
         },
         objectives: { ...shooterDsl.objectives, win: { type: 'target_score', target: 14 } }
+      }),
+      'MECHANIC_CONTRACT_FAILED',
+      'enemy.single_primary'
+    );
+  });
+
+  it('rejects shooter enemy_cleared targets above the primary enemy wave budget', () => {
+    const shooterDsl = createShooterRawDsl();
+
+    expectIssue(
+      validateRawGameDsl({
+        ...shooterDsl,
+        objectives: { ...shooterDsl.objectives, win: { type: 'enemy_cleared', target: 99 } }
+      }),
+      'UNREACHABLE_OBJECTIVE',
+      'enemy_cleared target cannot exceed primary enemy count'
+    );
+  });
+
+  it('accepts shooter target_score when the primary enemy wave budget can reach the target', () => {
+    const shooterDsl = createShooterRawDsl();
+
+    expect(
+      validateRawGameDsl({
+        ...shooterDsl,
+        objectives: { ...shooterDsl.objectives, win: { type: 'target_score', target: 6 } }
       }).ok
     ).toBe(true);
   });
@@ -243,6 +269,25 @@ describe('DSL Validator and Normalizer', () => {
       });
       expect(result.ir.runtime_requirements.actions).toEqual(['shoot_projectile', 'restart']);
       expect(result.ir.runtime_requirements.collision).toEqual(['projectile_hit']);
+      expect(result.ir.runtime_plan.enemy_waves).toEqual([
+        {
+          derived_from: [
+            'entities.enemy.id',
+            'entities.enemy.count',
+            'entities.enemy.health',
+            'entities.enemy.movement.speed_px_per_sec',
+            'game.difficulty',
+            'game.target_play_time_sec'
+          ],
+          entity_id: 'alien',
+          strategy: 'right_edge_wave',
+          count: 6,
+          max_active: 3,
+          interval_ms: 1594,
+          speed_multiplier: 1.15
+        }
+      ]);
+      expect(JSON.stringify(result.ir.template_params.params)).not.toContain('enemy_waves');
     }
   });
 
@@ -261,6 +306,118 @@ describe('DSL Validator and Normalizer', () => {
         }
       });
       expect(result.ir.runtime_requirements.actions).toEqual(['collect', 'restart']);
+    }
+  });
+
+  it('preserves dodger entity spawn semantics in runtime plan instead of template-only params', () => {
+    const result = validateAndNormalizeRawGameDsl(createDodgerRawDsl());
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.ir.runtime_plan.spawn_rules).toEqual([
+        {
+          entity_id: 'coin',
+          entity_kind: 'collectible',
+          strategy: 'fixed_positions',
+          count: 10,
+          max_active: 2,
+          interval_ms: 900
+        },
+        {
+          entity_id: 'obstacle',
+          entity_kind: 'hazard',
+          strategy: 'right_edge_wave',
+          count: 5,
+          max_active: 3,
+          interval_ms: 700,
+          lane_count: 3
+        }
+      ]);
+      expect(JSON.stringify(result.ir.template_params.params)).not.toContain('"spawn"');
+    }
+  });
+
+  it('derives dodger difficulty curve runtime hints from model-authored game fields', () => {
+    const result = validateAndNormalizeRawGameDsl(createDodgerRawDsl());
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.ir.runtime_plan.difficulty_curve).toEqual({
+        derived_from: ['game.difficulty', 'game.target_play_time_sec'],
+        level: 'normal',
+        speed_multiplier_start: 1,
+        speed_multiplier_end: 1.25,
+        spawn_interval_multiplier_start: 1,
+        spawn_interval_multiplier_end: 0.8,
+        ramp_duration_ms: 60000
+      });
+      expect(JSON.stringify(result.ir.template_params.params)).not.toContain('difficulty_curve');
+    }
+  });
+
+  it('rejects spawn semantics outside the current dodger runtime plan slice', () => {
+    const shooterDsl = createShooterRawDsl();
+
+    expectIssue(
+      validateRawGameDsl({
+        ...shooterDsl,
+        entities: [
+          { ...shooterDsl.entities[0], spawn: { strategy: 'right_edge_wave', max_active: 2, interval_ms: 800 } },
+          shooterDsl.entities[1]
+        ]
+      }),
+      'SCHEMA_VALIDATION_FAILED',
+      'entity.spawn is currently supported only for dodger'
+    );
+  });
+
+  it('maps spawn numeric range failures to stable issue codes', () => {
+    const dodgerDsl = createDodgerRawDsl();
+
+    expectIssue(
+      validateRawGameDsl({
+        ...dodgerDsl,
+        entities: [
+          { ...dodgerDsl.entities[0], spawn: { strategy: 'right_edge_wave', interval_ms: 50 } },
+          dodgerDsl.entities[1]
+        ]
+      }),
+      'NUMERIC_RANGE_INVALID',
+      'Too small'
+    );
+  });
+
+  it('uses stable normalizer-derived defaults for partial dodger spawn rules', () => {
+    const dodgerDsl = createDodgerRawDsl();
+
+    const result = validateAndNormalizeRawGameDsl({
+      ...dodgerDsl,
+      entities: [
+        { ...dodgerDsl.entities[0], spawn: { strategy: 'fixed_positions' } },
+        { ...dodgerDsl.entities[1], spawn: { strategy: 'right_edge_wave' } }
+      ]
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.ir.runtime_plan.spawn_rules).toEqual([
+        {
+          entity_id: 'coin',
+          entity_kind: 'collectible',
+          strategy: 'fixed_positions',
+          count: 10,
+          max_active: 3,
+          interval_ms: 1200
+        },
+        {
+          entity_id: 'obstacle',
+          entity_kind: 'hazard',
+          strategy: 'right_edge_wave',
+          count: 5,
+          max_active: 2,
+          interval_ms: 1000
+        }
+      ]);
     }
   });
 

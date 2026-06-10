@@ -98,13 +98,18 @@ export class GameDslProviderService {
       maxTokens: 3500
     });
 
-    const parsed = this.parseSchemaResult(this.stripUnsupportedRawDslFields(result), RawGameDslSchema, 'Raw Game DSL schema validation failed.');
+    const parsed = this.parseSchemaResult(result, RawGameDslSchema, 'Raw Game DSL schema validation failed.');
 
     if (!parsed.ok) {
       return parsed;
     }
 
-    return this.checkRawDslMatchesBrief(this.normalizeRawDslForP0Runtime(parsed), params.brief);
+    const scoped = this.checkRawDslMatchesVerifiedPromptScope(parsed);
+    if (!scoped.ok) {
+      return scoped;
+    }
+
+    return this.checkRawDslMatchesBrief(this.normalizeRawDslForP0Runtime(scoped), params.brief);
   }
 
   private parseSchemaResult<T>(
@@ -166,20 +171,121 @@ export class GameDslProviderService {
     return actual === expected ? null : `${path}: expected ${expected}, received ${actual}`;
   }
 
-  private stripUnsupportedRawDslFields(result: GenerateJsonResult): GenerateJsonResult {
-    if (!result.ok || !isRecord(result.json) || !isRecord(result.json.rules) || !('spawns' in result.json.rules)) {
+  private checkRawDslMatchesVerifiedPromptScope(result: GameDslProviderSuccess<RawGameDsl>): GameDslProviderResult<RawGameDsl> {
+    const seenSpawnKinds = new Set<RawGameDsl['entities'][number]['kind']>();
+    const entityKindCounts = countEntityKinds(result.value.entities);
+    const shooterScopeIssues =
+      result.value.game.genre === 'shooter'
+        ? [
+            ...(entityKindCounts.enemy === 1 ? [] : ['entities: shooter model generation requires exactly one primary enemy in the verified runtime scope']),
+            ...(entityKindCounts.projectile === 1 ? [] : ['entities: shooter model generation requires exactly one primary projectile in the verified runtime scope'])
+          ]
+        : [];
+    const issues = [
+      ...shooterScopeIssues,
+      ...result.value.entities.flatMap((entity, index) => {
+        if (entity.spawn === undefined) {
+          return [];
+        }
+
+        const prefix = `entities.${index}.spawn`;
+        const duplicateIssue = seenSpawnKinds.has(entity.kind) ? [`${prefix}: duplicate ${entity.kind} spawn rules are not supported by the verified runtime scope`] : [];
+        seenSpawnKinds.add(entity.kind);
+
+        const primaryEntityIssue =
+          (entity.kind === 'hazard' || entity.kind === 'collectible') && entityKindCounts[entity.kind] !== 1
+            ? [`${prefix}: dodger ${entity.kind} spawn requires exactly one ${entity.kind} entity in the verified runtime scope`]
+            : [];
+
+        return [...duplicateIssue, ...primaryEntityIssue, ...this.checkDodgerSpawnScope(result.value, entity, index)];
+      })
+    ];
+
+    if (issues.length === 0) {
       return result;
     }
 
-    const { spawns: _spawns, ...rules } = result.json.rules;
-
     return {
-      ...result,
-      json: {
-        ...result.json,
-        rules
-      }
+      ok: false,
+      code: 'MODEL_SCHEMA_VALIDATION_FAILED',
+      message: 'Raw Game DSL uses unsupported spawn generation scope.',
+      rawText: result.rawText,
+      rawOutputPath: result.rawOutputPath,
+      issues
     };
+  }
+
+  private checkDodgerSpawnScope(
+    raw: RawGameDsl,
+    entity: RawGameDsl['entities'][number],
+    index: number
+  ): string[] {
+    const prefix = `entities.${index}.spawn`;
+    if (raw.game.genre !== 'dodger') {
+      return [`${prefix}: entity.spawn is currently exposed only for dodger model generation`];
+    }
+
+    if (entity.kind === 'hazard' && entity.spawn?.strategy === 'right_edge_wave') {
+      return this.checkDodgerHazardSpawnScope(entity, index);
+    }
+
+    if (entity.kind === 'collectible' && entity.spawn?.strategy === 'fixed_positions') {
+      return this.checkDodgerCollectibleSpawnScope(raw, entity, index);
+    }
+
+    return [`${prefix}: only dodger hazard right_edge_wave and dodger collectible fixed_positions are currently exposed to model generation`];
+  }
+
+  private checkDodgerHazardSpawnScope(entity: RawGameDsl['entities'][number], index: number): string[] {
+    const prefix = `entities.${index}.spawn`;
+    const issues: string[] = [];
+    if ((entity.count ?? 1) < 5 || (entity.count ?? 1) > 12) {
+      issues.push(`entities.${index}.count: dodger hazard spawn count must be between 5 and 12 for the verified prompt scope`);
+    }
+
+    const maxActive = entity.spawn?.max_active ?? 2;
+    if (maxActive < 2 || maxActive > 4) {
+      issues.push(`${prefix}.max_active: must be between 2 and 4 for the verified prompt scope`);
+    }
+
+    const intervalMs = entity.spawn?.interval_ms ?? 1000;
+    if (intervalMs < 600 || intervalMs > 1200) {
+      issues.push(`${prefix}.interval_ms: must be between 600 and 1200 for the verified prompt scope`);
+    }
+
+    if ((entity.spawn?.lane_count ?? 3) < 3 || (entity.spawn?.lane_count ?? 3) > 4) {
+      issues.push(`${prefix}.lane_count: must be between 3 and 4 for the verified prompt scope`);
+    }
+
+    return issues;
+  }
+
+  private checkDodgerCollectibleSpawnScope(raw: RawGameDsl, entity: RawGameDsl['entities'][number], index: number): string[] {
+    const prefix = `entities.${index}.spawn`;
+    const issues: string[] = [];
+    if ((entity.count ?? 1) < 3 || (entity.count ?? 1) > 10) {
+      issues.push(`entities.${index}.count: dodger collectible spawn count must be between 3 and 10 for the verified prompt scope`);
+    }
+
+    const maxActive = entity.spawn?.max_active ?? 3;
+    if (maxActive < 1 || maxActive > 3) {
+      issues.push(`${prefix}.max_active: must be between 1 and 3 for the verified prompt scope`);
+    }
+
+    const intervalMs = entity.spawn?.interval_ms ?? 1200;
+    if (intervalMs < 700 || intervalMs > 1600) {
+      issues.push(`${prefix}.interval_ms: must be between 700 and 1600 for the verified prompt scope`);
+    }
+
+    if (entity.spawn?.lane_count !== undefined) {
+      issues.push(`${prefix}.lane_count: must be omitted for dodger collectible fixed_positions`);
+    }
+
+    if (collectibleScoreAddValue(raw, entity.id) <= 0) {
+      issues.push(`${prefix}: dodger collectible fixed_positions requires a player overlap collision with score_add greater than 0`);
+    }
+
+    return issues;
   }
 
   /** Keeps valid model DSL inside the current P0 runtime envelope without weakening core validation. */
@@ -188,9 +294,10 @@ export class GameDslProviderService {
       return result;
     }
 
-    const enemyCount = totalEntityCount(result.value, 'enemy');
+    const enemy = result.value.entities.find((entity) => entity.kind === 'enemy');
+    const enemyCount = enemy?.count ?? 0;
 
-    if (enemyCount === 0 || maxReachableScore(result.value, 'enemy') >= (result.value.objectives.win.target ?? 1)) {
+    if (enemy === undefined || maxReachablePrimaryShooterScore(result.value, enemy.id) >= (result.value.objectives.win.target ?? 1)) {
       return result;
     }
 
@@ -207,22 +314,40 @@ export class GameDslProviderService {
   }
 }
 
-function totalEntityCount(raw: RawGameDsl, kind: RawGameDsl['entities'][number]['kind']): number {
-  return raw.entities.filter((entity) => entity.kind === kind).reduce((sum, entity) => sum + (entity.count ?? 1), 0);
+function countEntityKinds(entities: RawGameDsl['entities']): Record<RawGameDsl['entities'][number]['kind'], number> {
+  return entities.reduce(
+    (counts, entity) => ({
+      ...counts,
+      [entity.kind]: counts[entity.kind] + 1
+    }),
+    { enemy: 0, projectile: 0, collectible: 0, hazard: 0 }
+  );
 }
 
-function maxReachableScore(raw: RawGameDsl, kind: RawGameDsl['entities'][number]['kind']): number {
-  return raw.entities
-    .filter((entity) => entity.kind === kind)
-    .reduce((sum, entity) => {
-      const score = raw.rules.collisions
-        .filter((collision) => collision.source === entity.id || collision.target === entity.id)
-        .reduce((best, collision) => Math.max(best, collision.effects.find((effect) => effect.type === 'score_add')?.value ?? 0), 0);
+function collectibleScoreAddValue(raw: RawGameDsl, collectibleId: string): number {
+  const collision = raw.rules.collisions.find((rule) => {
+    if (rule.type !== 'overlap') {
+      return false;
+    }
 
-      return sum + (entity.count ?? 1) * score;
-    }, 0);
+    return (
+      (rule.source === raw.player.id && rule.target === collectibleId) ||
+      (rule.source === collectibleId && rule.target === raw.player.id)
+    );
+  });
+
+  return collision?.effects.find((effect) => effect.type === 'score_add')?.value ?? 0;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+function maxReachablePrimaryShooterScore(raw: RawGameDsl, enemyId: string): number {
+  const enemy = raw.entities.find((entity) => entity.id === enemyId && entity.kind === 'enemy');
+  if (enemy === undefined) {
+    return 0;
+  }
+
+  const score = raw.rules.collisions
+    .filter((collision) => collision.type === 'projectile_hit' && collision.target === enemyId)
+    .reduce((best, collision) => Math.max(best, collision.effects.find((effect) => effect.type === 'score_add')?.value ?? 0), 0);
+
+  return (enemy.count ?? 1) * score;
 }
