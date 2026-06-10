@@ -49,6 +49,7 @@ type CollectibleSprite = {
   x: number;
   y: number;
   slotIndex: number;
+  speedPxPerSec: number;
   active: boolean;
 };
 
@@ -67,6 +68,7 @@ export class DodgerGameScene {
   private playerLabel?: Phaser.GameObjects.Text;
   private scoreText?: Phaser.GameObjects.Text;
   private statusText?: Phaser.GameObjects.Text;
+  private resultText?: Phaser.GameObjects.Text;
   private playerLaneIndex = 1;
   private readonly hazards: HazardSprite[] = [];
   private nextHazardSpawnMs = 0;
@@ -161,25 +163,9 @@ export class DodgerGameScene {
       return;
     }
 
-    const collectible = this.collectibles.find((candidate) => candidate.active);
-    if (collectible === undefined) {
-      this.spawnNextCollectible();
-      return;
-    }
-
     this.input.receive('move');
     this.movement.move();
-    this.collision.collide({ source: 'player', target: this.collectibleSpawnRule.entityId });
-    this.telemetry.emit('item.collected', {
-      entityId: this.collectibleSpawnRule.entityId,
-      label: this.params.collectible.label,
-      source: this.collectibleSpawnRule.source,
-      slotIndex: collectible.slotIndex
-    });
-    this.score.add(this.params.collectible.scorePerItem);
-    this.hideCollectible(collectible);
-    this.removeInactiveCollectibles();
-    this.nextCollectibleSpawnMs = Math.max(this.nextCollectibleSpawnMs, this.collectibleSpawnRule.intervalMs);
+    this.collectOverlappingItem();
     this.renderHud();
   }
 
@@ -306,25 +292,65 @@ export class DodgerGameScene {
       return;
     }
 
-    collectible.graphics = scene.add
-      .graphics()
+    collectible.graphics = scene.add.graphics();
+    collectible.label = scene.add.text(collectible.x - 38, collectible.y + 50, this.params.collectible.label, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '18px',
+      color: '#fff0a3'
+    });
+    this.renderCollectibleShape(collectible);
+  }
+
+  private renderCollectibleShape(collectible: CollectibleSprite): void {
+    collectible.graphics
+      ?.clear()
       .fillStyle(0xffd95a, 1)
       .fillCircle(collectible.x, collectible.y, 36)
       .lineStyle(5, 0xfff0a3, 1)
       .strokeCircle(collectible.x, collectible.y, 26)
       .lineStyle(4, 0x8f5a00, 1)
       .lineBetween(collectible.x - 14, collectible.y, collectible.x + 14, collectible.y);
-    collectible.label = scene.add.text(collectible.x - 38, collectible.y + 50, this.params.collectible.label, {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '18px',
-      color: '#fff0a3'
-    });
+    collectible.label?.setX(collectible.x - 38);
+    collectible.label?.setY(collectible.y + 50);
   }
 
   private renderHud(): void {
-    const collectHint = this.params.collectible ? '  C collect' : '';
-    this.scoreText?.setText(this.params.collectible ? `Score ${this.state.score}/${this.collectibleSpawnRule.count}` : '');
+    const collectHint = this.params.collectible ? '  Touch coins' : '';
+    this.scoreText?.setText(this.params.collectible ? `Score ${this.state.score}/${this.collectibleTargetScore}` : '');
+
+    if (this.state.gameStatus === 'WON') {
+      this.statusText?.setText(`Health ${this.state.health}  Time ${this.state.frame}s  COMPLETE  R restart`);
+      this.renderResultText('CLEAR!');
+      return;
+    }
+
+    if (this.state.gameStatus === 'LOST') {
+      this.statusText?.setText(`Health ${this.state.health}  Time ${this.state.frame}s  GAME OVER  R restart`);
+      this.renderResultText('GAME OVER');
+      return;
+    }
+
+    this.resultText?.setVisible(false);
     this.statusText?.setText(`Health ${this.state.health}  Time ${this.state.frame}s  Running  ArrowUp/Down dodge  ArrowRight quick dodge  H hit${collectHint}  R restart`);
+  }
+
+  private renderResultText(label: string): void {
+    const scene = this.phaserScene;
+    if (scene === undefined) {
+      return;
+    }
+
+    if (this.resultText === undefined) {
+      this.resultText = scene.add.text(this.params.world.width / 2 - 92, this.params.world.height / 2 - 36, label, {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '42px',
+        color: '#fff7c2'
+      });
+      return;
+    }
+
+    this.resultText.setText(label);
+    this.resultText.setVisible(true);
   }
 
   private advanceSurvival(deltaMs: number): void {
@@ -382,9 +408,29 @@ export class DodgerGameScene {
 
     const spawnRule = this.collectibleSpawnRule;
     this.nextCollectibleSpawnMs = Math.max(0, this.nextCollectibleSpawnMs - deltaMs);
-    if (this.nextCollectibleSpawnMs === 0 && this.activeCollectibleCount < spawnRule.maxActive && this.collectiblesSpawned < spawnRule.count) {
+    if (this.nextCollectibleSpawnMs === 0 && this.activeCollectibleCount < spawnRule.maxActive && this.collectiblesSpawned < this.collectibleSpawnBudget(spawnRule)) {
       this.spawnNextCollectible(spawnRule);
     }
+
+    for (const collectible of this.collectibles) {
+      if (!collectible.active) {
+        continue;
+      }
+
+      collectible.x -= (collectible.speedPxPerSec * deltaMs) / 1000;
+      if (this.collectOverlappingItem(collectible)) {
+        continue;
+      }
+
+      if (collectible.x < -70) {
+        this.hideCollectible(collectible);
+        continue;
+      }
+
+      this.renderCollectibleShape(collectible);
+    }
+
+    this.removeInactiveCollectibles();
   }
 
   private spawnNextHazard(spawnRule = this.hazardSpawnRule): void {
@@ -421,15 +467,17 @@ export class DodgerGameScene {
   }
 
   private spawnNextCollectible(spawnRule = this.collectibleSpawnRule): void {
-    if (!this.params.collectible || this.activeCollectibleCount >= spawnRule.maxActive || this.collectiblesSpawned >= spawnRule.count) {
+    const spawnBudget = this.collectibleSpawnBudget(spawnRule);
+    if (!this.params.collectible || this.activeCollectibleCount >= spawnRule.maxActive || this.collectiblesSpawned >= spawnBudget) {
       return;
     }
 
     const slot = this.nextCollectibleSlot;
     const collectible: CollectibleSprite = {
-      x: slot.x,
+      x: this.nextCollectibleStartX,
       y: slot.y,
       slotIndex: slot.index,
+      speedPxPerSec: this.params.player.speedPxPerSec * randomBetween(0.72, 1.08),
       active: true
     };
     this.drawCollectible(collectible);
@@ -441,10 +489,31 @@ export class DodgerGameScene {
       strategy: spawnRule.strategy,
       source: spawnRule.source,
       spawned: this.collectiblesSpawned,
-      count: spawnRule.count,
+      count: spawnBudget,
       maxActive: spawnRule.maxActive,
       intervalMs: spawnRule.intervalMs
     });
+  }
+
+  private collectOverlappingItem(
+    collectible = this.collectibles.find((candidate) => candidate.active && hitboxesOverlap(this.playerHitbox, this.collectibleHitbox(candidate)))
+  ): boolean {
+    if (!this.params.collectible || collectible === undefined || !collectible.active || !hitboxesOverlap(this.playerHitbox, this.collectibleHitbox(collectible))) {
+      return false;
+    }
+
+    this.collision.collide({ source: 'player', target: this.collectibleSpawnRule.entityId });
+    this.telemetry.emit('item.collected', {
+      entityId: this.collectibleSpawnRule.entityId,
+      label: this.params.collectible.label,
+      source: this.collectibleSpawnRule.source,
+      slotIndex: collectible.slotIndex
+    });
+    this.score.add(this.params.collectible.scorePerItem);
+    this.hideCollectible(collectible);
+    this.nextCollectibleSpawnMs = Math.max(this.nextCollectibleSpawnMs, this.collectibleSpawnRule.intervalMs);
+    this.objective.completeWhen(this.state.score >= this.collectibleTargetScore);
+    return true;
   }
 
   private hideHazard(hazard: HazardSprite): void {
@@ -597,6 +666,15 @@ export class DodgerGameScene {
     };
   }
 
+  private collectibleHitbox(collectible: CollectibleSprite): Hitbox {
+    return {
+      left: collectible.x - 28,
+      right: collectible.x + 28,
+      top: collectible.y - 28,
+      bottom: collectible.y + 28
+    };
+  }
+
   private get activeHazardCount(): number {
     return this.hazards.filter((hazard) => hazard.active).length;
   }
@@ -605,26 +683,39 @@ export class DodgerGameScene {
     return this.collectibles.filter((collectible) => collectible.active).length;
   }
 
+  private get collectibleTargetScore(): number {
+    return this.params.collectible === undefined ? 0 : this.params.collectible.count * this.params.collectible.scorePerItem;
+  }
+
+  private collectibleSpawnBudget(spawnRule: ResolvedDodgerSpawnRule): number {
+    if (this.params.collectible === undefined) {
+      return spawnRule.count;
+    }
+
+    const targetItems = Math.ceil(this.collectibleTargetScore / this.params.collectible.scorePerItem);
+    return Math.max(spawnRule.count, targetItems * 2, targetItems + spawnRule.maxActive + 2);
+  }
+
   private get nextHazardStartX(): number {
     return this.params.world.width + randomBetween(70, 230);
   }
 
-  private get nextCollectibleSlot(): { index: number; x: number; y: number } {
+  private get nextCollectibleStartX(): number {
+    return this.params.world.width + randomBetween(80, 260);
+  }
+
+  private get nextCollectibleSlot(): { index: number; y: number } {
     const slots = this.collectibleSlots;
     const slot = slots[this.nextCollectibleSlotIndex % slots.length] ?? slots[0];
     this.nextCollectibleSlotIndex += 1;
     return slot;
   }
 
-  private get collectibleSlots(): Array<{ index: number; x: number; y: number }> {
-    const xPositions = [this.params.world.width - 360, this.params.world.width - 250, this.params.world.width - 470];
-    return this.laneYValues.flatMap((laneY, laneIndex) =>
-      xPositions.map((x, xIndex) => ({
-        index: laneIndex * xPositions.length + xIndex,
-        x,
-        y: laneY
-      }))
-    );
+  private get collectibleSlots(): Array<{ index: number; y: number }> {
+    return this.laneYValues.map((laneY, index) => ({
+      index,
+      y: laneY
+    }));
   }
 
   private get primaryHazardSnapshot(): { x: number; y: number; lane: number; active: boolean } {
@@ -641,11 +732,12 @@ export class DodgerGameScene {
     };
   }
 
-  private collectibleSnapshot(collectible: CollectibleSprite): { x: number; y: number; slot: number; active: boolean } {
+  private collectibleSnapshot(collectible: CollectibleSprite): { x: number; y: number; slot: number; speedPxPerSec: number; active: boolean } {
     return {
       x: collectible.x,
       y: collectible.y,
       slot: collectible.slotIndex,
+      speedPxPerSec: collectible.speedPxPerSec,
       active: collectible.active
     };
   }
@@ -680,10 +772,11 @@ export class DodgerGameScene {
   }
 
   private spawnRuleSnapshot(rule: ResolvedDodgerSpawnRule): Record<string, string | number> {
+    const count = rule.entityKind === 'collectible' ? this.collectibleSpawnBudget(rule) : rule.count;
     const snapshot: Record<string, string | number> = {
       entityId: rule.entityId,
       strategy: rule.strategy,
-      count: rule.count,
+      count,
       maxActive: rule.maxActive,
       intervalMs: rule.intervalMs,
       source: rule.source,

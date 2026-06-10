@@ -176,6 +176,9 @@ describe('Phaser templates', () => {
     expect(scene).toContain('lastHazardLaneIndex');
     expect(scene).toContain('activeLaneCounts');
     expect(scene).toContain('hitboxesOverlap(this.playerHitbox, this.hazardHitbox(hazard))');
+    expect(scene).toContain('hitboxesOverlap(this.playerHitbox, this.collectibleHitbox');
+    expect(scene).toContain('collectOverlappingItem');
+    expect(scene).toContain('renderCollectibleShape');
     expect(scene).toContain('impactHoldMs');
     expect(scene).toContain('player: { x: this.params.player.startX, y: this.playerY');
     expect(scene).toContain('hazards: this.hazards.map');
@@ -352,7 +355,7 @@ describe('Phaser templates', () => {
     expect(snapshot?.spawnPlan?.collectible).toMatchObject({
       entityId: 'coin',
       strategy: 'fixed_positions',
-      count: 6,
+      count: 12,
       maxActive: 2,
       intervalMs: 900,
       source: 'runtime_plan'
@@ -460,7 +463,7 @@ describe('Phaser templates', () => {
     );
   });
 
-  it('emits dodger collectible runtime_plan spawn telemetry before collection', async () => {
+  it('moves dodger runtime_plan collectibles into player overlap before collecting them', async () => {
     const { DodgerGameScene } = await import('../../templates/phaser/dodger/src/GameScene.js');
     const { defaultDodgerParams } = await import('../../templates/phaser/dodger/src/template-params.js');
     const scene = new DodgerGameScene(
@@ -480,7 +483,15 @@ describe('Phaser templates', () => {
     );
 
     scene.create();
-    scene.collectItem();
+    scene.moveUp();
+    const beforeMove = globalThis.__GAME_QA__?.snapshot() as { collectibles?: Array<{ x: number }> } | undefined;
+    scene.update(1000);
+    const afterMove = globalThis.__GAME_QA__?.snapshot() as { collectibles?: Array<{ x: number }> } | undefined;
+    expect(afterMove?.collectibles?.[0]?.x).toBeLessThan(beforeMove?.collectibles?.[0]?.x ?? Number.POSITIVE_INFINITY);
+
+    for (let frame = 0; frame < 80 && !(globalThis.__GAME_QA__?.telemetry().some((event) => event.type === 'item.collected') ?? false); frame += 1) {
+      scene.update(100);
+    }
 
     expect(globalThis.__GAME_QA__?.telemetry()).toEqual(
       expect.arrayContaining([
@@ -490,7 +501,7 @@ describe('Phaser templates', () => {
             entityId: 'coin',
             strategy: 'fixed_positions',
             source: 'runtime_plan',
-            count: 6,
+            count: 12,
             maxActive: 2,
             intervalMs: 900
           })
@@ -498,12 +509,15 @@ describe('Phaser templates', () => {
         expect.objectContaining({
           type: 'item.collected',
           payload: expect.objectContaining({ entityId: 'coin', source: 'runtime_plan', slotIndex: expect.any(Number) })
+        }),
+        expect.objectContaining({
+          type: 'score.changed'
         })
       ])
     );
   });
 
-  it('uses dodger collectible runtime_plan count, maxActive and interval as spawn scheduling limits', async () => {
+  it('uses dodger collectible runtime_plan count as the score target while keeping extra spawn budget', async () => {
     const { DodgerGameScene } = await import('../../templates/phaser/dodger/src/GameScene.js');
     const { defaultDodgerParams } = await import('../../templates/phaser/dodger/src/template-params.js');
     const scene = new DodgerGameScene(
@@ -530,15 +544,59 @@ describe('Phaser templates', () => {
     expect(spawnedItems()).toHaveLength(2);
     scene.update(900);
     expect(spawnedItems()).toHaveLength(2);
-    scene.collectItem();
-    scene.update(899);
-    expect(spawnedItems()).toHaveLength(2);
-    scene.update(1);
-    expect(spawnedItems()).toHaveLength(3);
-    scene.collectItem();
-    scene.collectItem();
+    scene.moveUp();
+    for (let frame = 0; frame < 80 && spawnedItems().length < 4; frame += 1) {
+      scene.update(100);
+    }
+    expect(spawnedItems()).toHaveLength(4);
     scene.update(900);
-    expect(spawnedItems()).toHaveLength(3);
+    expect(spawnedItems()).toHaveLength(4);
+    expect(spawnedItems()[0]?.payload).toMatchObject({ count: 7 });
+  });
+
+  it('wins the dodger collectible objective when the score target is reached', async () => {
+    const { DodgerGameScene } = await import('../../templates/phaser/dodger/src/GameScene.js');
+    const { defaultDodgerParams } = await import('../../templates/phaser/dodger/src/template-params.js');
+    const scene = new DodgerGameScene(
+      { ...defaultDodgerParams, collectible: { label: 'Coin', count: 3, scorePerItem: 1 } },
+      {
+        spawn_rules: [
+          {
+            entity_id: 'coin',
+            entity_kind: 'collectible',
+            strategy: 'fixed_positions',
+            count: 3,
+            max_active: 2,
+            interval_ms: 300
+          }
+        ]
+      }
+    );
+
+    scene.create();
+    for (let frame = 0; frame < 140 && globalThis.__GAME_QA__?.snapshot().gameStatus !== 'WON'; frame += 1) {
+      const snapshot = globalThis.__GAME_QA__?.snapshot() as
+        | (TemplateSnapshot & {
+            player?: { x: number; y: number };
+            collectibles?: Array<{ x: number; y: number; active: boolean }>;
+          })
+        | undefined;
+      const activeCollectible = snapshot?.collectibles
+        ?.filter((collectible) => collectible.active)
+        .sort((left, right) => Math.abs(left.x - (snapshot.player?.x ?? 0)) - Math.abs(right.x - (snapshot.player?.x ?? 0)))[0];
+      if (activeCollectible !== undefined && snapshot?.player !== undefined) {
+        if (activeCollectible.y < snapshot.player.y) {
+          scene.moveUp();
+        } else if (activeCollectible.y > snapshot.player.y) {
+          scene.moveDown();
+        }
+      }
+      scene.update(100);
+    }
+
+    const snapshot = globalThis.__GAME_QA__?.snapshot();
+    expect(snapshot).toMatchObject({ gameStatus: 'WON', score: 3 });
+    expect(globalThis.__GAME_QA__?.telemetry().map((event) => event.type)).toEqual(expect.arrayContaining(['objective.completed', 'game.won']));
   });
 
   it('preserves the dodger fallback lane geometry without a runtime_plan rule', async () => {
@@ -772,6 +830,7 @@ function createPhaserSceneMock() {
     fillTriangle: () => graphics,
     lineStyle: () => graphics,
     lineBetween: () => graphics,
+    strokeCircle: () => graphics,
     strokeRoundedRect: () => graphics,
     clear: () => graphics,
     setVisible: () => graphics,
