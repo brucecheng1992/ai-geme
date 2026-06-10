@@ -14,6 +14,55 @@ P0 主链路修复和模型 DSL 视觉执行复核修复已完成。
 
 当前下一步：P0 实施文档范围已完成；后续扩展应新开 P1/P2 阶段。
 
+### 1.24 Shooter 模板真实移动与 QA 可玩性门禁
+
+完成时间：2026-06-10
+
+已完成内容：
+
+- 将 shooter 模板从 `ArrowRight` 触发一次性 `hitEnemy()` 改为真实方向输入：支持 Arrow/WASD 持续移动，`Space` 发射。
+- 新增 `templates/phaser/shooter/src/shooter-runtime.ts`，维护玩家坐标、敌人生成、子弹推进、敌人追踪、碰撞、清除、计分和玩家受伤/失败。
+- 新增 `templates/phaser/shooter/src/shooter-renderer.ts`，集中管理 Phaser 可移动对象、敌人/子弹映射和 HUD。
+- `GameScene` 降为流程编排层，负责 start/fire/update/restart、遥测和目标判定。
+- `template-visuals.ts` 改为返回可移动 `Container` / 局部坐标 projectile，避免静态绘制后无法移动。
+- `QaBridge.snapshot()` 支持模板追加 `player/enemiesActive/projectilesActive/enemiesCleared`，`player.moved` payload 改为扁平 `fromX/fromY/toX/toY`。
+- Playwright QA 对 shooter 先校验 `snapshot.player.x` 真实变化，再重复发射直到观察到 `enemy.cleared` 或 `score.changed`。
+- 编译器文件清单、shooter manifest 和合约测试已同步新增 runtime/renderer 文件。
+
+阶段结果：
+
+- 解决层级：状态建模 + 模板运行时 + QA 门禁；没有只在展示层或遥测层兜底。
+- `GameScene.ts` 从 154 行调整为 188 行，仍保留编排职责；新增 `shooter-runtime.ts` 202 行、`shooter-renderer.ts` 103 行、`template-visuals.ts` 198 行。
+- 当前运行中的本地 `localhost:3000` API 进程若未重启，仍可能使用旧 QA runner；源码验证路径已通过，当前 Workbench 页面需要重启 dev server 后再生成才能使用新 QA 逻辑。
+- 工作区存在另一组 `local-data/result` 相关源码 diff，不属于本步范围，本步未纳入审查和说明。
+
+已通过验证：
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查均通过
+
+    npm run test:contracts
+    # 3 个测试文件，36 个测试全部通过
+
+    npm run test:workspace
+    # 11 个测试文件，60 个测试全部通过，包含 Playwright QA runner 和 generation pipeline smoke
+
+    npm test
+    # contracts + workspace 全量通过
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 发现 shooter 单次 Space / 单次命中只等待 `enemy.hit`，不能保证满足 `enemy.cleared` 或 `score.changed`；P2 发现移动断言方向脆弱、gate failure code 不清晰、嵌套 telemetry payload 浅克隆泄漏；P3 发现 restart 未清空持续输入。
+- 已修复：QA 循环射击直到进度事件、左右方向兜底移动断言、`REQUIRED_TELEMETRY_MISSING` failure code、扁平 movement payload、restart 清空 move input。
+- Oracle 复审：P0/P1/P2 均无；P3 建议移动失败时直接返回，避免额外等待 timeout。
+- 已修复 P3 并最终复审：P0/P1/P2/P3 均无。
+- 审查模式：Oracle 复用
+
+下一步建议：
+
+- 重启本地 `npm run maker:start`，在 Workbench 重新 Generate 一个 shooter 项目，确认当前浏览器页面加载的是新 API runner。
+- 后续 P1/P2 可继续扩展：多敌人类型、道具、关卡波次、失败/胜利反馈和更细的 QA 视觉回归。
+
 ### 0. Contract Freeze
 
 完成时间：2026-06-09

@@ -85,6 +85,26 @@ export class LocalWorkspaceService {
     );
   }
 
+  /** Resolves model-generated Raw DSL snapshots under data/local-data/result grouped by UTC date. */
+  getResultRawDslPath(projectId: string, runId: string, createdAt = new Date()): string {
+    const timestamp = createdAt.toISOString();
+    const [date] = timestamp.split('T');
+    const [year, month, day] = date.split('-');
+    const fileTimestamp = timestamp.replace(/[:.]/g, '-');
+
+    return this.resolveInsideWorkspace(
+      LOCAL_DATA_DIR,
+      LOCAL_DATA_SUBDIRS.result,
+      year,
+      month,
+      day,
+      this.assertSafeFileName(
+        `${fileTimestamp}__${this.assertSafeSegment(projectId, 'projectId')}__${this.assertSafeSegment(runId, 'runId')}__raw-game-dsl.json`,
+        'resultRawDslFileName'
+      )
+    );
+  }
+
   getBuildLogPath(projectId: string, runId: string): string {
     return this.resolveInsideWorkspace(
       LOCAL_DATA_DIR,

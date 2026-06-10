@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 
 import { ShooterGameScene } from './GameScene.js';
+import type { ShooterDirection } from './shooter-runtime.js';
 import generatedParams from './template-params.generated.json';
 import { defaultShooterParams, type ShooterTemplateParams } from './template-params.js';
 
@@ -15,6 +16,10 @@ if (typeof window !== 'undefined') {
 
     create(): void {
       scene.create(this);
+    }
+
+    update(time: number, delta: number): void {
+      scene.update(time, delta);
     }
   }
 
@@ -33,15 +38,25 @@ if (typeof window !== 'undefined') {
     }
 
     if (event.key === ' ') {
+      event.preventDefault();
       scene.fire();
     }
 
-    if (event.key === 'ArrowRight') {
-      scene.hitEnemy();
+    const direction = directionFromKey(event.key);
+    if (direction !== undefined) {
+      event.preventDefault();
+      scene.setMoveInput(direction, true);
     }
 
     if (event.key.toLowerCase() === 'r') {
       scene.restart();
+    }
+  });
+
+  window.addEventListener('keyup', (event) => {
+    const direction = directionFromKey(event.key);
+    if (direction !== undefined) {
+      scene.setMoveInput(direction, false);
     }
   });
 } else {
@@ -61,4 +76,25 @@ function mergeShooterParams(params: Partial<ShooterTemplateParams>): ShooterTemp
     scoring: { ...defaultShooterParams.scoring, ...params.scoring },
     objective: { ...defaultShooterParams.objective, ...params.objective }
   };
+}
+
+function directionFromKey(key: string): ShooterDirection | undefined {
+  const normalized = key.toLowerCase();
+  if (normalized === 'arrowleft' || normalized === 'a') {
+    return 'left';
+  }
+
+  if (normalized === 'arrowright' || normalized === 'd') {
+    return 'right';
+  }
+
+  if (normalized === 'arrowup' || normalized === 'w') {
+    return 'up';
+  }
+
+  if (normalized === 'arrowdown' || normalized === 's') {
+    return 'down';
+  }
+
+  return undefined;
 }

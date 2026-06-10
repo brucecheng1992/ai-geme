@@ -99,6 +99,7 @@ export class GenerationPipelineService {
       }
 
       if (raw.ok) {
+        await this.writeModelGeneratedRawDsl(input, raw.value);
         await this.setStatus(input.projectId, input.runId, 'DSL_GENERATED', 'dsl-generation', 'DONE');
         return { ok: true, value: raw.value };
       }
@@ -237,6 +238,13 @@ export class GenerationPipelineService {
     await this.setStatus(input.projectId, input.runId, 'DSL_GENERATED', 'dsl-generation', 'DONE');
     await this.appendEvent(input.runId, 'model.fallback', `Using deterministic local DSL fallback because model generation failed: ${reason}`);
     return fallback;
+  }
+
+  private async writeModelGeneratedRawDsl(input: GenerationPipelineInput, rawDsl: RawGameDsl): Promise<void> {
+    const resultPath = this.workspace.getResultRawDslPath(input.projectId, input.runId);
+
+    await mkdir(dirname(resultPath), { recursive: true });
+    await writeFile(resultPath, `${JSON.stringify(rawDsl, null, 2)}\n`, 'utf8');
   }
 
   private async writeQaFailureReport(input: GenerationPipelineInput, genre: QaGenre, previewUrl: string, message: string): Promise<QaReport> {

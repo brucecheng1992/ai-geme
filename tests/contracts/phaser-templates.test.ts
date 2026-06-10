@@ -81,19 +81,20 @@ describe('Phaser templates', () => {
     expect(dodgerMain).toContain('scene.dodgeFrame()');
     expect(dodgerMain).toContain('scene.hitHazard()');
     expect(shooterMain).toContain('scene.fire()');
-    expect(shooterMain).toContain('scene.hitEnemy()');
+    expect(shooterMain).toContain('scene.setMoveInput');
+    expect(shooterMain).toContain('directionFromKey');
   });
 
   it('lets shooter template render generated primitive visuals instead of fixed shells', async () => {
-    const scene = await readGenreScene('shooter');
+    const renderer = await readFile(new URL('shooter/src/shooter-renderer.ts', root), 'utf8');
     const visuals = await readFile(new URL('shooter/src/template-visuals.ts', root), 'utf8');
     const params = await readFile(new URL('shooter/src/template-params.ts', root), 'utf8');
 
-    expect(scene).toContain('drawShooterPlayer');
-    expect(scene).toContain('drawShooterEnemy');
-    expect(scene).toContain('drawShooterProjectile');
-    expect(scene).not.toContain('drawCatPlayer');
-    expect(scene).not.toContain('drawAlienEnemy');
+    expect(renderer).toContain('drawShooterPlayer');
+    expect(renderer).toContain('drawShooterEnemy');
+    expect(renderer).toContain('drawShooterProjectile');
+    expect(renderer).not.toContain('drawCatPlayer');
+    expect(renderer).not.toContain('drawAlienEnemy');
     expect(visuals).toContain("visual.kind === 'tank'");
     expect(visuals).toContain("visual.kind === 'cat'");
     expect(visuals).toContain("visual.kind === 'alien'");
@@ -161,9 +162,11 @@ describe('Phaser templates', () => {
       expect(source).toContain(event);
     }
     expect(scene).toContain('fire()');
+    expect(scene).toContain('setMoveInput');
+    expect(scene).toContain('moveShooterPlayer');
     expect(scene).toContain("this.telemetry.emit('player.fired')");
     expect(scene).toContain("this.spawn.spawn('projectile')");
-    expect(scene).toContain('hitEnemy()');
+    expect(scene).toContain('advanceShooterWorld');
     expect(scene).toContain("this.telemetry.emit('enemy.hit'");
     expect(scene).toContain("this.telemetry.emit('enemy.cleared'");
   });
@@ -197,26 +200,30 @@ describe('Phaser templates', () => {
     expect(qa?.snapshot().gameStatus).not.toBe('LOST');
   });
 
-  it('restart restores deterministic state and shooter requires fire before hit', async () => {
-    const { ShooterGameScene } = await import('../../templates/phaser/shooter/src/GameScene.js');
+  it('shooter runtime requires real movement and projectile collision before enemy clear', async () => {
+    const {
+      advanceShooterWorld,
+      createShooterRuntimeState,
+      moveShooterPlayer,
+      tryFireShooterProjectile
+    } = await import('../../templates/phaser/shooter/src/shooter-runtime.js');
     const { defaultShooterParams } = await import('../../templates/phaser/shooter/src/template-params.js');
-    const scene = new ShooterGameScene(defaultShooterParams);
+    const state = createShooterRuntimeState(defaultShooterParams);
 
-    scene.create();
-    scene.start();
-    scene.hitEnemy();
-    expect(globalThis.__GAME_QA__?.telemetry().some((event) => event.type === 'enemy.hit')).toBe(false);
+    const originalX = state.player.x;
+    expect(moveShooterPlayer(state, defaultShooterParams, { right: true }, 250)).toBe(true);
+    expect(state.player.x).toBeGreaterThan(originalX);
 
-    scene.fire();
-    scene.hitEnemy();
-    expect(globalThis.__GAME_QA__?.snapshot().score).toBe(1);
+    expect(advanceShooterWorld(state, defaultShooterParams, 16, 0).hits).toHaveLength(0);
+    expect(tryFireShooterProjectile(state, defaultShooterParams, 500)).toBeTruthy();
 
-    scene.restart();
-    expect(globalThis.__GAME_QA__?.snapshot()).toMatchObject({ gameStatus: 'READY', score: 0, health: 3, frame: 0 });
+    let hits = 0;
+    for (let frame = 1; frame <= 80 && hits === 0; frame += 1) {
+      hits = advanceShooterWorld(state, defaultShooterParams, 16, frame * 16).hits.length;
+    }
 
-    scene.start();
-    scene.hitEnemy();
-    expect(globalThis.__GAME_QA__?.telemetry().filter((event) => event.type === 'enemy.hit')).toHaveLength(1);
+    expect(hits).toBeGreaterThan(0);
+    expect(state.enemiesCleared).toBe(1);
   });
 });
 

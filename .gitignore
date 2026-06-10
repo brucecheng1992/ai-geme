@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .env
+data/
 local-data/
 generated-projects/
 coverage/

@@ -20,7 +20,7 @@ describe('Project and run stores', () => {
     await rm(root, { recursive: true, force: true });
   });
 
-  it('writes and reads project.json and latest-run.json inside local-data', async () => {
+  it('writes and reads project.json and latest-run.json inside data/local-data', async () => {
     const projectStore = new ProjectStoreService(workspace);
     const runStore = new RunStoreService(workspace);
     const projectId = 'proj_20260609_153000_abcd';
@@ -40,7 +40,7 @@ describe('Project and run stores', () => {
     await expect(projectStore.readProject(projectId)).resolves.toEqual(project);
     await expect(projectStore.readLatestRun(projectId)).resolves.toEqual(run);
 
-    const projectJson = await readFile(resolve(root, 'local-data/projects/proj_20260609_153000_abcd/project.json'), 'utf8');
+    const projectJson = await readFile(resolve(root, 'data/local-data/projects/proj_20260609_153000_abcd/project.json'), 'utf8');
     expect(JSON.parse(projectJson)).toEqual(project);
   });
 
@@ -78,7 +78,7 @@ describe('Project and run stores', () => {
       }
     ]);
 
-    const eventsJsonl = await readFile(resolve(root, 'local-data/runs/run_20260609_153000_0001/events.jsonl'), 'utf8');
+    const eventsJsonl = await readFile(resolve(root, 'data/local-data/runs/run_20260609_153000_0001/events.jsonl'), 'utf8');
     expect(eventsJsonl.trim().split('\n')).toHaveLength(2);
   });
 
@@ -111,8 +111,8 @@ describe('Project and run stores', () => {
   it('rejects records whose file content id does not match the requested path', async () => {
     const projectStore = new ProjectStoreService(workspace);
     const runStore = new RunStoreService(workspace);
-    const projectDir = resolve(root, 'local-data/projects/proj_a');
-    const runDir = resolve(root, 'local-data/runs/run_a');
+    const projectDir = resolve(root, 'data/local-data/projects/proj_a');
+    const runDir = resolve(root, 'data/local-data/runs/run_a');
 
     await mkdir(projectDir, { recursive: true });
     await mkdir(runDir, { recursive: true });
@@ -148,7 +148,7 @@ describe('Project and run stores', () => {
 
   it('rejects malformed run steps and event records read from disk', async () => {
     const runStore = new RunStoreService(workspace);
-    const runDir = resolve(root, 'local-data/runs/run_bad');
+    const runDir = resolve(root, 'data/local-data/runs/run_bad');
 
     await mkdir(runDir, { recursive: true });
     await writeFile(

@@ -12,7 +12,7 @@ export type GameSnapshot = {
   score: number;
   health: number;
   frame: number;
-};
+} & Record<string, unknown>;
 
 export type RuntimeState = GameSnapshot & {
   maxHealth: number;
@@ -92,8 +92,8 @@ export class InputSystem {
 export class MovementSystem {
   constructor(private readonly telemetry: TelemetrySystem) {}
 
-  move(): void {
-    this.telemetry.emit('player.moved');
+  move(payload?: Record<string, unknown>): void {
+    this.telemetry.emit('player.moved', payload);
   }
 }
 
@@ -157,7 +157,8 @@ export class QaBridge {
   constructor(
     private readonly state: RuntimeState,
     private readonly onStart: () => void,
-    private readonly onRestart: () => void
+    private readonly onRestart: () => void,
+    private readonly getSnapshotExtras: () => Record<string, unknown> = () => ({})
   ) {}
 
   start(): void {
@@ -170,7 +171,7 @@ export class QaBridge {
 
   snapshot(): GameSnapshot {
     const { gameStatus, score, health, frame } = this.state;
-    return { gameStatus, score, health, frame };
+    return { gameStatus, score, health, frame, ...this.getSnapshotExtras() };
   }
 
   telemetry(): TelemetryEvent[] {

@@ -1,14 +1,16 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { createCollectorRawDsl } from '../contracts/fixtures.js';
 import { GenerationPipelineService } from '../../apps/maker-api/src/projects/generation-pipeline.service.js';
 import { ProjectStoreService } from '../../apps/maker-api/src/projects/project-store.service.js';
 import { RunStoreService } from '../../apps/maker-api/src/projects/run-store.service.js';
 import { LocalWorkspaceService } from '../../apps/maker-api/src/workspace/local-workspace.service.js';
 import type { RuntimeCompileResult } from '../../apps/maker-api/src/compiler/compiler.types.js';
 import type { QaGenre } from '../../apps/maker-api/src/qa/qa.types.js';
+import { GameBriefSchema, RawGameDslSchema } from '../../packages/game-dsl/src/index.js';
 
 const projectId = 'proj_20260610_050000_pipe';
 const runId = 'run_20260610_050000_pipe';
@@ -67,6 +69,53 @@ describe('GenerationPipelineService failure states', () => {
     await expect(runPipeline(pipeline)).resolves.toBe('PLAYABLE');
     await expect(projectStore.readProject(projectId)).resolves.toMatchObject({ status: 'PLAYABLE' });
     await expect(runStore.readEvents(runId)).resolves.toEqual(expect.arrayContaining([expect.objectContaining({ type: 'model.fallback' })]));
+  });
+
+  it('stores model-generated raw DSL snapshots under data/local-data/result by time', async () => {
+    const rawDsl = RawGameDslSchema.parse(createCollectorRawDsl());
+    const brief = GameBriefSchema.parse({
+      brief_version: 'game-brief-v0.1',
+      title: rawDsl.metadata.title,
+      genre: rawDsl.game.genre,
+      camera: rawDsl.game.camera,
+      core_loop: ['Collect stars before the timer ends.', 'Avoid hazards to keep the score growing.'],
+      difficulty: rawDsl.game.difficulty,
+      target_play_time_sec: rawDsl.game.target_play_time_sec
+    });
+    const pipeline = createPipeline({
+      modelProvider: {
+        async generateGameBrief() {
+          return {
+            ok: true,
+            value: brief,
+            rawText: '{}',
+            rawOutputPath: workspace.getModelOutputPath(projectId, runId, 'game-brief.raw.json')
+          };
+        },
+        async generateRawGameDsl() {
+          return {
+            ok: true,
+            value: rawDsl,
+            rawText: JSON.stringify(rawDsl),
+            rawOutputPath: workspace.getModelOutputPath(projectId, runId, 'raw-game-dsl.raw.json')
+          };
+        }
+      },
+      compiler: { compile: compileWithDist },
+      buildRunner: {
+        async build() {
+          return { ok: true, projectId, distDir: workspace.getGeneratedProjectDistDir(projectId), logPath: workspace.getBuildLogPath(projectId, runId) };
+        }
+      }
+    });
+
+    await expect(runPipeline(pipeline)).resolves.toBe('PLAYABLE');
+
+    const resultFiles = await collectFiles(join(root, 'data/local-data/result'));
+    expect(resultFiles).toHaveLength(1);
+    expect(resultFiles[0]).toContain('/data/local-data/result/');
+    expect(resultFiles[0]).toContain(`__${projectId}__${runId}__raw-game-dsl.json`);
+    await expect(readFile(resultFiles[0], 'utf8')).resolves.toContain(`"title": "${rawDsl.metadata.title}"`);
   });
 
   it('fails production generation instead of falling back when the model returns invalid DSL', async () => {
@@ -226,3 +275,15 @@ describe('GenerationPipelineService failure states', () => {
     };
   }
 });
+
+async function collectFiles(dir: string): Promise<string[]> {
+  const entries = await readdir(dir, { withFileTypes: true });
+  const files = await Promise.all(
+    entries.map(async (entry) => {
+      const path = join(dir, entry.name);
+      return entry.isDirectory() ? await collectFiles(path) : [path];
+    })
+  );
+
+  return files.flat();
+}

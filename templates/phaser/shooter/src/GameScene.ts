@@ -13,8 +13,16 @@ import {
   createRuntimeState,
   exposeRuntime
 } from '../../shared/kernel.js';
+import {
+  advanceShooterWorld,
+  createShooterRuntimeState,
+  moveShooterPlayer,
+  tryFireShooterProjectile,
+  type ShooterDirection,
+  type ShooterRuntimeState
+} from './shooter-runtime.js';
+import { ShooterRenderer } from './shooter-renderer.js';
 import type { ShooterTemplateParams } from './template-params.js';
-import { drawShooterEnemy, drawShooterPlayer, drawShooterProjectile } from './template-visuals.js';
 
 export class ShooterGameScene {
   private readonly state;
@@ -26,12 +34,10 @@ export class ShooterGameScene {
   private readonly score;
   private readonly gameState;
   private readonly objective;
-  private enemiesCleared = 0;
-  private projectileInFlight = false;
+  private readonly renderer;
+  private runtime: ShooterRuntimeState;
+  private readonly moveInput: Record<ShooterDirection, boolean> = { left: false, right: false, up: false, down: false };
   private phaserScene?: Phaser.Scene;
-  private scoreText?: Phaser.GameObjects.Text;
-  private statusText?: Phaser.GameObjects.Text;
-  private projectileGraphics?: Phaser.GameObjects.Graphics;
 
   constructor(private readonly params: ShooterTemplateParams) {
     this.state = createRuntimeState(params.player.health);
@@ -43,13 +49,22 @@ export class ShooterGameScene {
     this.score = new ScoreSystem(this.state, this.telemetry);
     this.gameState = new GameStateSystem(this.state, this.telemetry);
     this.objective = new ObjectiveSystem(this.state, this.gameState);
+    this.renderer = new ShooterRenderer(params);
+    this.runtime = createShooterRuntimeState(params);
   }
 
   create(phaserScene?: Phaser.Scene): void {
     this.phaserScene = phaserScene;
     this.gameState.ready();
-    this.spawn.spawn('enemy');
-    exposeRuntime(this.state, new QaBridge(this.state, () => this.start(), () => this.restart()));
+    exposeRuntime(
+      this.state,
+      new QaBridge(this.state, () => this.start(), () => this.restart(), () => ({
+        player: { ...this.runtime.player },
+        enemiesActive: this.runtime.enemies.length,
+        projectilesActive: this.runtime.projectiles.length,
+        enemiesCleared: this.runtime.enemiesCleared
+      }))
+    );
     this.renderFirstFrame();
   }
 
@@ -61,35 +76,69 @@ export class ShooterGameScene {
 
   fire(): void {
     this.input.receive('fire');
-    this.telemetry.emit('player.fired');
-    this.spawn.spawn('projectile');
-    this.projectileInFlight = true;
-    this.renderProjectile(true);
-  }
-
-  hitEnemy(): void {
-    if (!this.projectileInFlight) {
+    if (this.state.gameStatus !== 'PLAYING') {
       return;
     }
 
-    this.projectileInFlight = false;
-    this.movement.move();
-    this.collision.collide({ source: 'projectile', target: 'enemy' });
-    this.telemetry.emit('enemy.hit', { damage: this.params.projectile.damage });
-    this.enemiesCleared += 1;
-    this.telemetry.emit('enemy.cleared', { count: this.enemiesCleared });
-    this.score.add(this.params.scoring.scorePerEnemy);
-    this.objective.completeWhen(this.enemiesCleared >= (this.params.objective.targetCount ?? this.params.enemy.count));
-    this.renderProjectile(false);
+    const projectile = tryFireShooterProjectile(this.runtime, this.params, this.nowMs());
+    if (projectile === undefined) {
+      return;
+    }
+
+    this.telemetry.emit('player.fired');
+    this.spawn.spawn('projectile');
+    this.renderer.renderProjectile(this.requireScene(), projectile);
+  }
+
+  setMoveInput(direction: ShooterDirection, pressed: boolean): void {
+    this.moveInput[direction] = pressed;
+  }
+
+  update(timeMs: number, deltaMs: number): void {
+    if (this.state.gameStatus !== 'PLAYING') {
+      return;
+    }
+
+    this.state.frame += 1;
+    this.movePlayer(deltaMs);
+    const step = advanceShooterWorld(this.runtime, this.params, deltaMs, timeMs);
+    if (step.spawnedEnemy !== undefined) {
+      this.spawn.spawn('enemy');
+      this.renderer.renderEnemy(this.requireScene(), step.spawnedEnemy);
+    }
+
+    for (const hit of step.hits) {
+      this.collision.collide({ source: 'projectile', target: 'enemy', projectileId: hit.projectileId, enemyId: hit.enemyId });
+      this.telemetry.emit('enemy.hit', { damage: this.params.projectile.damage, enemyId: hit.enemyId });
+      this.renderer.destroyProjectile(hit.projectileId);
+
+      if (hit.cleared) {
+        this.telemetry.emit('enemy.cleared', { count: this.runtime.enemiesCleared, enemyId: hit.enemyId });
+        this.score.add(this.params.scoring.scorePerEnemy);
+        this.renderer.destroyEnemy(hit.enemyId);
+      }
+    }
+
+    for (const enemyId of step.playerHits) {
+      this.collision.collide({ source: 'enemy', target: 'player', enemyId });
+      this.state.health = Math.max(0, this.state.health - 1);
+      this.telemetry.emit('player.damaged', { health: this.state.health, enemyId });
+      this.renderer.destroyEnemy(enemyId);
+    }
+
+    this.renderer.syncEntityPositions(this.requireScene(), this.runtime);
+    this.objective.completeWhen(this.objectiveReached());
+    this.objective.loseWhen(this.state.health <= 0);
     this.renderHud();
   }
 
   restart(): void {
     this.input.receive('restart');
-    this.enemiesCleared = 0;
-    this.projectileInFlight = false;
+    this.runtime = createShooterRuntimeState(this.params);
+    this.resetMoveInput();
+    this.renderer.clearDynamicObjects();
+    this.renderer.setPlayerPosition(this.runtime.player.x, this.runtime.player.y);
     this.gameState.restart();
-    this.renderProjectile(false);
     this.renderHud();
   }
 
@@ -99,56 +148,49 @@ export class ShooterGameScene {
       return;
     }
 
-    scene.cameras.main.setBackgroundColor('#07111f');
-    scene.add
-      .graphics()
-      .fillStyle(0x07111f, 1)
-      .fillRect(0, 0, this.params.world.width, this.params.world.height)
-      .fillStyle(0x152945, 1)
-      .fillRoundedRect(24, 24, this.params.world.width - 48, this.params.world.height - 48, 24)
-      .lineStyle(4, 0x74d7ff, 0.45)
-      .strokeRoundedRect(24, 24, this.params.world.width - 48, this.params.world.height - 48, 24);
-
-    drawShooterPlayer(scene, this.params.player.startX, this.params.player.startY, this.params.player.label, this.params.player.visual);
-    drawShooterEnemy(scene, this.params.world.width - 180, this.params.player.startY, this.params.enemy.label, this.params.enemy.visual);
-
-    this.scoreText = scene.add.text(40, 32, '', {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '28px',
-      color: '#f8fbff'
-    });
-    this.statusText = scene.add.text(40, this.params.world.height - 74, '', {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '20px',
-      color: '#d6ecff'
-    });
+    this.renderer.renderFirstFrame(scene, this.runtime);
     this.renderHud();
   }
 
-  private renderProjectile(visible: boolean): void {
-    const scene = this.phaserScene;
-    if (scene === undefined) {
+  private movePlayer(deltaMs: number): void {
+    const previous = { ...this.runtime.player };
+    const moved = moveShooterPlayer(this.runtime, this.params, this.moveInput, deltaMs);
+    if (!moved) {
       return;
     }
 
-    this.projectileGraphics?.destroy();
-    this.projectileGraphics = undefined;
+    this.renderer.setPlayerPosition(this.runtime.player.x, this.runtime.player.y);
+    this.movement.move({ fromX: previous.x, fromY: previous.y, toX: this.runtime.player.x, toY: this.runtime.player.y });
+  }
 
-    if (!visible) {
-      return;
+  private resetMoveInput(): void {
+    this.moveInput.left = false;
+    this.moveInput.right = false;
+    this.moveInput.up = false;
+    this.moveInput.down = false;
+  }
+
+  private objectiveReached(): boolean {
+    if (this.params.objective.winType === 'target_score') {
+      return this.state.score >= (this.params.objective.targetScore ?? 1);
     }
 
-    this.projectileGraphics = drawShooterProjectile(
-      scene,
-      this.params.player.startX + 62,
-      this.params.player.startY,
-      420,
-      this.params.projectile.visual
-    );
+    return this.runtime.enemiesCleared >= (this.params.objective.targetCount ?? this.params.enemy.count);
+  }
+
+  private requireScene(): Phaser.Scene {
+    if (this.phaserScene === undefined) {
+      throw new Error('Shooter scene is not initialized.');
+    }
+
+    return this.phaserScene;
+  }
+
+  private nowMs(): number {
+    return this.phaserScene?.time.now ?? Date.now();
   }
 
   private renderHud(): void {
-    this.scoreText?.setText(`Score ${this.state.score}`);
-    this.statusText?.setText('Enter start  Space fire  ArrowRight hit  R restart');
+    this.renderer.renderHud(this.state.score, this.state.health);
   }
 }

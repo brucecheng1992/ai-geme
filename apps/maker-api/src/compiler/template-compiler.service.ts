@@ -37,6 +37,8 @@ export class TemplateCompilerService {
       'src/main.ts',
       `${genre}/src/main.ts`,
       `${genre}/src/GameScene.ts`,
+      ...(genre === 'shooter' ? [`${genre}/src/shooter-runtime.ts`] : []),
+      ...(genre === 'shooter' ? [`${genre}/src/shooter-renderer.ts`] : []),
       ...(genre === 'shooter' ? [`${genre}/src/template-visuals.ts`] : []),
       `${genre}/src/template-params.ts`,
       'shared/kernel.ts',

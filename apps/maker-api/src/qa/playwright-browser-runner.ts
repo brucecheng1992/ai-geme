@@ -67,9 +67,7 @@ export const runPlaywrightQaBrowser: QaBrowserRunner = async (input, requiredEve
       return failedInteractionResult(consoleErrors.length > 0 ? 'FATAL_CONSOLE_ERROR' : 'QA_BRIDGE_MISSING', consoleErrors, visualGate, error);
     }
 
-    for (const key of GENRE_KEYS[input.genre]) {
-      await page.keyboard.press(key);
-    }
+    const interactionAssertion = await runDeterministicInteraction(page, input.genre, timeoutMs);
 
     await page
       .waitForFunction(
@@ -99,16 +97,18 @@ export const runPlaywrightQaBrowser: QaBrowserRunner = async (input, requiredEve
     });
     const telemetry = result.telemetry.map((event) => TelemetryEventSchema.parse(event));
     const gateReady = requiredTelemetryObserved(telemetry.map((event) => event.type), requiredEvents);
+    const interactionReady = consoleErrors.length === 0 && gateReady && interactionAssertion.ok;
 
     return {
-      ok: consoleErrors.length === 0 && gateReady && visualGate.ok,
+      ok: interactionReady && visualGate.ok,
       visual_ok: visualGate.ok,
-      interaction_ok: consoleErrors.length === 0 && gateReady,
+      interaction_ok: interactionReady,
       observed_events: telemetry.map((event) => event.type),
       telemetry,
       snapshot: result.snapshot,
       console_errors: consoleErrors,
-      failure_code: consoleErrors.length > 0 ? 'FATAL_CONSOLE_ERROR' : undefined,
+      failure_code: consoleErrors.length > 0 ? 'FATAL_CONSOLE_ERROR' : !gateReady ? 'REQUIRED_TELEMETRY_MISSING' : interactionAssertion.ok ? undefined : 'QA_RUNNER_FAILED',
+      message: interactionAssertion.message,
       screenshot_path: visualGate.screenshot_path,
       visual_metrics: visualGate.visual_metrics
     };
@@ -321,6 +321,114 @@ type BrowserAnalysisContext = {
 function requiredTelemetryObserved(observedEvents: string[], requiredEvents: QaRequiredEvents): boolean {
   const observed = new Set(observedEvents);
   return requiredEvents.all.every((event) => observed.has(event)) && requiredEvents.any_groups.every((group) => group.some((event) => observed.has(event)));
+}
+
+async function runDeterministicInteraction(page: Page, genre: QaGenre, timeoutMs: number): Promise<{ ok: boolean; message?: string }> {
+  if (genre !== 'shooter') {
+    for (const key of GENRE_KEYS[genre]) {
+      await page.keyboard.press(key);
+    }
+    return { ok: true };
+  }
+
+  await page.keyboard.press('Enter');
+  const movementAssertion = await verifyShooterMovement(page);
+  if (!movementAssertion.ok) {
+    await page.keyboard.press('r');
+    return movementAssertion;
+  }
+
+  const progressed = await fireUntilShooterProgress(page, timeoutMs);
+  await page.keyboard.press('r');
+
+  return progressed
+    ? { ok: true }
+    : { ok: false, message: 'Shooter QA expected repeated firing to produce enemy.cleared or score.changed.' };
+}
+
+async function readQaSnapshot(page: Page): Promise<unknown> {
+  return await page.evaluate(() => (globalThis as BrowserQaGlobal).__GAME_QA__?.snapshot());
+}
+
+async function verifyShooterMovement(page: Page): Promise<{ ok: boolean; message?: string }> {
+  if (await tryHorizontalMove(page, 'ArrowRight', 12)) {
+    return { ok: true };
+  }
+
+  if (await tryHorizontalMove(page, 'ArrowLeft', 12)) {
+    return { ok: true };
+  }
+
+  return { ok: false, message: 'Shooter QA expected player.x to change after holding ArrowRight or ArrowLeft.' };
+}
+
+async function tryHorizontalMove(page: Page, key: 'ArrowLeft' | 'ArrowRight', minDelta: number): Promise<boolean> {
+  const beforeMove = await readQaSnapshot(page);
+  await page.keyboard.down(key);
+  await page.waitForTimeout(300);
+  await page.keyboard.up(key);
+  const afterMove = await readQaSnapshot(page);
+  return movedHorizontally(beforeMove, afterMove, minDelta);
+}
+
+async function fireUntilShooterProgress(page: Page, timeoutMs: number): Promise<boolean> {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    await page.keyboard.press(' ');
+    const observed = await page
+      .waitForFunction(
+        () => {
+          const qa = (globalThis as BrowserQaGlobal).__GAME_QA__;
+          return (
+            qa?.telemetry().some((event) => {
+              if (typeof event !== 'object' || event === null || !('type' in event)) {
+                return false;
+              }
+
+              return event.type === 'enemy.cleared' || event.type === 'score.changed';
+            }) === true
+          );
+        },
+        undefined,
+        { timeout: Math.min(600, Math.max(100, timeoutMs - (Date.now() - startedAt))) }
+      )
+      .then(() => true)
+      .catch(() => false);
+
+    if (observed) {
+      return true;
+    }
+
+    await page.waitForTimeout(350);
+  }
+
+  return false;
+}
+
+function movedHorizontally(before: unknown, after: unknown, minDelta: number): boolean {
+  const beforePlayer = readSnapshotPlayer(before);
+  const afterPlayer = readSnapshotPlayer(after);
+
+  if (beforePlayer === undefined || afterPlayer === undefined) {
+    return false;
+  }
+
+  return Math.abs(afterPlayer.x - beforePlayer.x) >= minDelta;
+}
+
+function readSnapshotPlayer(snapshot: unknown): { x: number; y: number } | undefined {
+  if (typeof snapshot !== 'object' || snapshot === null || !('player' in snapshot)) {
+    return undefined;
+  }
+
+  const player = (snapshot as { player?: unknown }).player;
+  if (typeof player !== 'object' || player === null || !('x' in player) || !('y' in player)) {
+    return undefined;
+  }
+
+  const { x, y } = player as { x?: unknown; y?: unknown };
+  return typeof x === 'number' && typeof y === 'number' ? { x, y } : undefined;
 }
 
 function withQaParams(previewUrl: string, seed: string): string {

@@ -4,16 +4,17 @@ import { resolve } from 'node:path';
 
 const root = resolve('.');
 const requiredDirectories = [
-  'local-data/projects',
-  'local-data/runs',
-  'local-data/logs',
-  'local-data/artifacts',
-  'local-data/qa-reports',
-  'local-data/telemetry',
-  'local-data/model-outputs',
-  'local-data/build-logs',
-  'local-data/repair-reports',
-  'generated-projects'
+  'data/local-data/projects',
+  'data/local-data/runs',
+  'data/local-data/logs',
+  'data/local-data/artifacts',
+  'data/local-data/qa-reports',
+  'data/local-data/telemetry',
+  'data/local-data/result',
+  'data/local-data/model-outputs',
+  'data/local-data/build-logs',
+  'data/local-data/repair-reports',
+  'data/generated-projects'
 ];
 const requiredEnvKeys = [
   'PORT',

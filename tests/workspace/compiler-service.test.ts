@@ -65,11 +65,11 @@ describe('Compiler + Build + Preview services', () => {
       process.chdir(join(repoRoot, 'apps/maker-api'));
       const result = await new TemplateCompilerService(new LocalWorkspaceService()).compile({ projectId: cwdProjectId, runId, ir: normalized.ir });
 
-      expect(result.outputDir).toBe(join(repoRoot, 'generated-projects', cwdProjectId));
+      expect(result.outputDir).toBe(join(repoRoot, 'data/generated-projects', cwdProjectId));
       await expect(readFile(join(result.outputDir, 'collector/src/GameScene.ts'), 'utf8')).resolves.toContain('CollectorGameScene');
     } finally {
       process.chdir(originalCwd);
-      await rm(join(repoRoot, 'generated-projects', cwdProjectId), { recursive: true, force: true });
+      await rm(join(repoRoot, 'data/generated-projects', cwdProjectId), { recursive: true, force: true });
     }
   });
 
