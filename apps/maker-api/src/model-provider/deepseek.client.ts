@@ -1,9 +1,21 @@
+import { Logger } from '@nestjs/common';
+
 import { JsonFileStore } from '../projects/json-file-store.js';
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
 import { readDeepSeekConfig } from './model-provider.config.js';
 import type { DeepSeekClientConfig, GenerateJsonFailure, GenerateJsonResult, JsonChatParams } from './model-provider.types.js';
 
 type FetchLike = typeof fetch;
+type ModelRequestLogger = Pick<Logger, 'log' | 'warn' | 'error'>;
+
+type ChatCompletionRequest = {
+  model: string;
+  messages: Array<{ role: 'system' | 'user'; content: string }>;
+  thinking: { type: 'disabled' };
+  response_format: { type: 'json_object' };
+  temperature: number;
+  max_tokens: number;
+};
 
 type ChatCompletionResponse = {
   choices?: Array<{
@@ -29,7 +41,8 @@ export class DeepSeekClient {
   constructor(
     private readonly workspace = new LocalWorkspaceService(),
     private readonly config: DeepSeekClientConfig = readDeepSeekConfig(),
-    private readonly fetchImpl: FetchLike = fetch
+    private readonly fetchImpl: FetchLike = fetch,
+    private readonly logger: ModelRequestLogger = new Logger(DeepSeekClient.name)
   ) {
     this.files = new JsonFileStore(workspace);
   }
@@ -99,28 +112,33 @@ export class DeepSeekClient {
 
   private async requestModel(params: JsonChatParams, apiKey: string): Promise<ProviderHttpResponse | GenerateJsonFailure> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), params.timeoutMs ?? this.config.defaultTimeoutMs);
+    const timeoutMs = params.timeoutMs ?? this.config.defaultTimeoutMs;
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    const endpoint = `${this.config.baseUrl}/chat/completions`;
+    const startedAt = Date.now();
 
     try {
-      const response = await this.fetchImpl(`${this.config.baseUrl}/chat/completions`, {
+      const body = this.buildChatCompletionRequest(params);
+      const summary = this.buildRequestLogSummary(params, endpoint, body, timeoutMs);
+
+      this.logger.log(JSON.stringify({ event: 'model.request.started', ...summary }));
+
+      const response = await this.fetchImpl(endpoint, {
         method: 'POST',
         headers: {
           authorization: `Bearer ${apiKey}`,
           'content-type': 'application/json'
         },
-        body: JSON.stringify({
-          model: params.model ?? this.config.defaultModel,
-          messages: [
-            { role: 'system', content: params.system },
-            { role: 'user', content: JSON.stringify(params.user) }
-          ],
-          thinking: { type: 'disabled' },
-          response_format: { type: 'json_object' },
-          temperature: params.temperature ?? 0.2,
-          max_tokens: params.maxTokens ?? 2000
-        }),
+        body: JSON.stringify(body),
         signal: controller.signal
       });
+      const completedSummary = { ...summary, status: response.status, durationMs: Date.now() - startedAt };
+
+      if (response.ok) {
+        this.logger.log(JSON.stringify({ event: 'model.request.completed', ...completedSummary }));
+      } else {
+        this.logger.warn(JSON.stringify({ event: 'model.request.failed', ...completedSummary }));
+      }
 
       return {
         status: response.status,
@@ -128,6 +146,20 @@ export class DeepSeekClient {
         bodyText: await response.text()
       };
     } catch (error) {
+      this.logger.error(
+        JSON.stringify({
+          event: 'model.request.failed',
+          endpoint,
+          projectId: params.projectId,
+          runId: params.runId,
+          outputName: params.outputName,
+          model: params.model ?? this.config.defaultModel,
+          timeoutMs,
+          durationMs: Date.now() - startedAt,
+          error: error instanceof Error ? error.message : 'Model provider request failed.'
+        })
+      );
+
       if (this.isAbortError(error)) {
         return this.failure('MODEL_TIMEOUT', 'Model provider request timed out.');
       }
@@ -136,6 +168,46 @@ export class DeepSeekClient {
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  private buildChatCompletionRequest(params: JsonChatParams): ChatCompletionRequest {
+    return {
+      model: params.model ?? this.config.defaultModel,
+      messages: [
+        { role: 'system', content: params.system },
+        { role: 'user', content: JSON.stringify(params.user) }
+      ],
+      thinking: { type: 'disabled' },
+      response_format: { type: 'json_object' },
+      temperature: params.temperature ?? 0.2,
+      max_tokens: params.maxTokens ?? 2000
+    };
+  }
+
+  /**
+   * Logs the model call chain and final provider parameters without recording prompts, API keys,
+   * or provider response bodies.
+   */
+  private buildRequestLogSummary(
+    params: JsonChatParams,
+    endpoint: string,
+    body: ChatCompletionRequest,
+    timeoutMs: number
+  ): Record<string, string | number> {
+    return {
+      provider: 'deepseek',
+      endpoint,
+      projectId: params.projectId,
+      runId: params.runId,
+      outputName: params.outputName,
+      model: body.model,
+      temperature: body.temperature,
+      maxTokens: body.max_tokens,
+      timeoutMs,
+      systemPromptLength: params.system.length,
+      userPromptLength: body.messages.find((message) => message.role === 'user')?.content.length ?? 0,
+      callPath: 'ProjectsController.generateProject>GenerationPipelineService.generateRawDsl>GameDslProviderService>DeepSeekClient.generateJson'
+    };
   }
 
   private isAbortError(error: unknown): boolean {

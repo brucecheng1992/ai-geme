@@ -14,6 +14,12 @@ const params = {
   outputName: 'brief.raw.json'
 };
 
+const silentLogger = {
+  log() {},
+  warn() {},
+  error() {}
+};
+
 describe('DeepSeekClient', () => {
   let root: string;
   let workspace: LocalWorkspaceService;
@@ -40,7 +46,8 @@ describe('DeepSeekClient', () => {
           }),
           { status: 200, headers: { 'content-type': 'application/json' } }
         );
-      }
+      },
+      silentLogger
     );
 
     const result = await client.generateJson(params);
@@ -60,6 +67,55 @@ describe('DeepSeekClient', () => {
     }
   });
 
+  it('logs model request parameters and call path without secrets or prompt bodies', async () => {
+    const logs: string[] = [];
+    const client = new DeepSeekClient(
+      workspace,
+      { apiKey: 'test-key', baseUrl: 'https://example.test', defaultModel: 'deepseek-test', defaultTimeoutMs: 1000 },
+      async () =>
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: '{"ok":true}' } }]
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        ),
+      {
+        log(message: string) {
+          logs.push(message);
+        },
+        warn(message: string) {
+          logs.push(message);
+        },
+        error(message: string) {
+          logs.push(message);
+        }
+      }
+    );
+
+    await expect(client.generateJson(params)).resolves.toMatchObject({ ok: true });
+
+    const started = JSON.parse(logs.find((entry) => entry.includes('model.request.started')) ?? '{}') as Record<string, unknown>;
+    const completed = JSON.parse(logs.find((entry) => entry.includes('model.request.completed')) ?? '{}') as Record<string, unknown>;
+    const joinedLogs = logs.join('\n');
+
+    expect(started).toMatchObject({
+      provider: 'deepseek',
+      endpoint: 'https://example.test/chat/completions',
+      projectId: params.projectId,
+      runId: params.runId,
+      outputName: params.outputName,
+      model: 'deepseek-test',
+      temperature: 0.2,
+      maxTokens: 2000,
+      timeoutMs: 1000
+    });
+    expect(started.callPath).toContain('GenerationPipelineService.generateRawDsl');
+    expect(completed).toMatchObject({ status: 200 });
+    expect(joinedLogs).not.toContain('test-key');
+    expect(joinedLogs).not.toContain(params.system);
+    expect(joinedLogs).not.toContain('cat shooter');
+  });
+
   it('retries once for empty content and then reports MODEL_EMPTY_CONTENT', async () => {
     let calls = 0;
     const client = new DeepSeekClient(
@@ -68,7 +124,8 @@ describe('DeepSeekClient', () => {
       async () => {
         calls += 1;
         return new Response(JSON.stringify({ choices: [{ message: { content: '' } }] }), { status: 200 });
-      }
+      },
+      silentLogger
     );
 
     await expect(client.generateJson(params)).resolves.toMatchObject({ ok: false, code: 'MODEL_EMPTY_CONTENT' });
@@ -79,7 +136,8 @@ describe('DeepSeekClient', () => {
     const invalidJsonClient = new DeepSeekClient(
       workspace,
       { apiKey: 'test-key', baseUrl: 'https://example.test', defaultModel: 'deepseek-test', defaultTimeoutMs: 1000 },
-      async () => new Response(JSON.stringify({ choices: [{ message: { content: 'not json' } }] }), { status: 200 })
+      async () => new Response(JSON.stringify({ choices: [{ message: { content: 'not json' } }] }), { status: 200 }),
+      silentLogger
     );
     const result = await invalidJsonClient.generateJson(params);
 
@@ -93,14 +151,16 @@ describe('DeepSeekClient', () => {
     const rateLimitedClient = new DeepSeekClient(
       workspace,
       { apiKey: 'test-key', baseUrl: 'https://example.test', defaultModel: 'deepseek-test', defaultTimeoutMs: 1000 },
-      async () => new Response('too many requests', { status: 429 })
+      async () => new Response('too many requests', { status: 429 }),
+      silentLogger
     );
     await expect(rateLimitedClient.generateJson(params)).resolves.toMatchObject({ ok: false, code: 'MODEL_RATE_LIMITED' });
 
     const failedClient = new DeepSeekClient(
       workspace,
       { apiKey: 'test-key', baseUrl: 'https://example.test', defaultModel: 'deepseek-test', defaultTimeoutMs: 1000 },
-      async () => new Response('bad gateway', { status: 502 })
+      async () => new Response('bad gateway', { status: 502 }),
+      silentLogger
     );
     await expect(failedClient.generateJson(params)).resolves.toMatchObject({
       ok: false,
@@ -113,7 +173,8 @@ describe('DeepSeekClient', () => {
     const client = new DeepSeekClient(
       workspace,
       { apiKey: 'test-key', baseUrl: 'https://example.test', defaultModel: 'deepseek-test', defaultTimeoutMs: 1000 },
-      async () => new Response('not provider json', { status: 200 })
+      async () => new Response('not provider json', { status: 200 }),
+      silentLogger
     );
     const result = await client.generateJson(params);
 
@@ -132,7 +193,8 @@ describe('DeepSeekClient', () => {
           init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
         });
         throw new Error('unreachable');
-      }
+      },
+      silentLogger
     );
     await expect(timeoutClient.generateJson(params)).resolves.toMatchObject({ ok: false, code: 'MODEL_TIMEOUT' });
 
