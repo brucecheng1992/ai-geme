@@ -14,6 +14,7 @@ import {
   exposeRuntime
 } from '../../shared/kernel.js';
 import type { ShooterTemplateParams } from './template-params.js';
+import { drawShooterEnemy, drawShooterPlayer, drawShooterProjectile } from './template-visuals.js';
 
 export class ShooterGameScene {
   private readonly state;
@@ -108,8 +109,8 @@ export class ShooterGameScene {
       .lineStyle(4, 0x74d7ff, 0.45)
       .strokeRoundedRect(24, 24, this.params.world.width - 48, this.params.world.height - 48, 24);
 
-    this.drawCatPlayer(this.params.player.startX, this.params.player.startY);
-    this.drawAlienEnemy(this.params.world.width - 180, this.params.player.startY);
+    drawShooterPlayer(scene, this.params.player.startX, this.params.player.startY, this.params.player.label, this.params.player.visual);
+    drawShooterEnemy(scene, this.params.world.width - 180, this.params.player.startY, this.params.enemy.label, this.params.enemy.visual);
 
     this.scoreText = scene.add.text(40, 32, '', {
       fontFamily: 'Arial, sans-serif',
@@ -122,63 +123,6 @@ export class ShooterGameScene {
       color: '#d6ecff'
     });
     this.renderHud();
-  }
-
-  private drawCatPlayer(x: number, y: number): void {
-    const scene = this.phaserScene;
-    if (scene === undefined) {
-      return;
-    }
-
-    const graphics = scene.add.graphics();
-    graphics
-      .fillStyle(0xffc36b, 1)
-      .fillTriangle(x - 34, y - 38, x - 16, y - 72, x + 2, y - 36)
-      .fillTriangle(x + 34, y - 38, x + 16, y - 72, x - 2, y - 36)
-      .fillStyle(0xffd28a, 1)
-      .fillCircle(x, y, 44)
-      .fillStyle(0xffffff, 1)
-      .fillCircle(x - 15, y - 8, 8)
-      .fillCircle(x + 15, y - 8, 8)
-      .fillStyle(0x122033, 1)
-      .fillCircle(x - 15, y - 8, 4)
-      .fillCircle(x + 15, y - 8, 4)
-      .fillStyle(0xff7aa7, 1)
-      .fillTriangle(x - 6, y + 8, x + 6, y + 8, x, y + 18)
-      .lineStyle(4, 0xffd28a, 1)
-      .strokeCircle(x - 42, y + 24, 16);
-    scene.add.text(x - 48, y + 56, this.params.player.label, {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '18px',
-      color: '#ffe8bc'
-    });
-  }
-
-  private drawAlienEnemy(x: number, y: number): void {
-    const scene = this.phaserScene;
-    if (scene === undefined) {
-      return;
-    }
-
-    const graphics = scene.add.graphics();
-    graphics
-      .lineStyle(5, 0x86ffb7, 1)
-      .lineBetween(x - 22, y - 42, x - 50, y - 74)
-      .lineBetween(x + 22, y - 42, x + 50, y - 74)
-      .fillStyle(0x72f28f, 1)
-      .fillCircle(x - 54, y - 78, 8)
-      .fillCircle(x + 54, y - 78, 8)
-      .fillRoundedRect(x - 54, y - 42, 108, 86, 34)
-      .fillStyle(0x102334, 1)
-      .fillCircle(x - 20, y - 8, 10)
-      .fillCircle(x + 20, y - 8, 10)
-      .lineStyle(4, 0x102334, 1)
-      .lineBetween(x - 20, y + 22, x + 20, y + 22);
-    scene.add.text(x - 42, y + 56, this.params.enemy.label, {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '18px',
-      color: '#c9ffd7'
-    });
   }
 
   private renderProjectile(visible: boolean): void {
@@ -194,12 +138,13 @@ export class ShooterGameScene {
       return;
     }
 
-    this.projectileGraphics = scene.add.graphics();
-    this.projectileGraphics
-      .fillStyle(0x89e7ff, 1)
-      .fillRoundedRect(this.params.player.startX + 62, this.params.player.startY - 8, 420, 16, 8)
-      .fillStyle(0xffffff, 1)
-      .fillCircle(this.params.world.width - 230, this.params.player.startY, 14);
+    this.projectileGraphics = drawShooterProjectile(
+      scene,
+      this.params.player.startX + 62,
+      this.params.player.startY,
+      420,
+      this.params.projectile.visual
+    );
   }
 
   private renderHud(): void {

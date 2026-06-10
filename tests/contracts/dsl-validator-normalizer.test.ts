@@ -245,4 +245,116 @@ describe('DSL Validator and Normalizer', () => {
       expect(result.ir.runtime_requirements.collision).toEqual(['projectile_hit']);
     }
   });
+
+  it('derives shooter primitive visuals from DSL labels and theme', () => {
+    const shooterDsl = {
+      ...createShooterRawDsl(),
+      metadata: { title: 'Tank Battle', description: 'Tank duel.', language: 'en' },
+      world: { width: 960, height: 540, visual_theme: 'battlefield' },
+      player: {
+        ...createShooterRawDsl().player,
+        label: '坦克',
+        actions: [{ id: 'fire', type: 'shoot_projectile', cooldown_ms: 500, spawns: 'shell' }]
+      },
+      entities: [
+        { id: 'shell', kind: 'projectile', label: '炮弹', damage: 1, movement: { type: 'move_right', speed_px_per_sec: 400 } },
+        { id: 'enemy_tank', kind: 'enemy', label: '敌方坦克', count: 8, health: 1, movement: { type: 'chase_player', speed_px_per_sec: 100 } }
+      ],
+      rules: {
+        collisions: [
+          {
+            id: 'shell_hits_enemy',
+            source: 'shell',
+            target: 'enemy_tank',
+            type: 'projectile_hit',
+            effects: [{ type: 'damage', value: 1 }, { type: 'destroy' }, { type: 'score_add', value: 1 }]
+          }
+        ]
+      },
+      objectives: { win: { type: 'enemy_cleared', target: 8 }, lose: { type: 'player_health_zero' } }
+    };
+
+    const result = validateAndNormalizeRawGameDsl(shooterDsl);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.ir.template_params.params).toMatchObject({
+        player: { label: '坦克', visual: { kind: 'tank' } },
+        projectile: { label: '炮弹', visual: { kind: 'shell' } },
+        enemy: { label: '敌方坦克', visual: { kind: 'tank' } }
+      });
+    }
+  });
+
+  it('keeps explicit shooter labels ahead of broad visual themes', () => {
+    const shooterDsl = {
+      ...createShooterRawDsl(),
+      world: { width: 960, height: 540, visual_theme: 'battlefield' },
+      player: {
+        ...createShooterRawDsl().player,
+        actions: [{ id: 'fire', type: 'shoot_projectile', cooldown_ms: 300, spawns: 'laser' }]
+      },
+      entities: [
+        { id: 'laser', kind: 'projectile', label: 'Laser', damage: 1, movement: { type: 'move_right', speed_px_per_sec: 520 } },
+        { id: 'alien', kind: 'enemy', label: 'Alien', count: 6, health: 1, movement: { type: 'chase_player', speed_px_per_sec: 120 } }
+      ],
+      rules: {
+        collisions: [
+          {
+            id: 'laser_hits_alien',
+            source: 'laser',
+            target: 'alien',
+            type: 'projectile_hit',
+            effects: [{ type: 'damage', value: 1 }, { type: 'destroy' }, { type: 'score_add', value: 1 }]
+          }
+        ]
+      }
+    };
+
+    const result = validateAndNormalizeRawGameDsl(shooterDsl);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.ir.template_params.params).toMatchObject({
+        player: { label: 'Cat', visual: { kind: 'cat' } },
+        projectile: { label: 'Laser', visual: { kind: 'beam' } },
+        enemy: { label: 'Alien', visual: { kind: 'alien' } }
+      });
+    }
+  });
+
+  it('uses shooter projectile theme fallback only when the label has no visual signal', () => {
+    const shooterDsl = {
+      ...createShooterRawDsl(),
+      world: { width: 960, height: 540, visual_theme: 'battlefield' },
+      player: {
+        ...createShooterRawDsl().player,
+        actions: [{ id: 'fire', type: 'shoot_projectile', cooldown_ms: 300, spawns: 'round' }]
+      },
+      entities: [
+        { id: 'round', kind: 'projectile', label: 'Round', damage: 1, movement: { type: 'move_right', speed_px_per_sec: 520 } },
+        { id: 'alien', kind: 'enemy', label: 'Alien', count: 6, health: 1, movement: { type: 'chase_player', speed_px_per_sec: 120 } }
+      ],
+      rules: {
+        collisions: [
+          {
+            id: 'round_hits_alien',
+            source: 'round',
+            target: 'alien',
+            type: 'projectile_hit',
+            effects: [{ type: 'damage', value: 1 }, { type: 'destroy' }, { type: 'score_add', value: 1 }]
+          }
+        ]
+      }
+    };
+
+    const result = validateAndNormalizeRawGameDsl(shooterDsl);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.ir.template_params.params).toMatchObject({
+        projectile: { label: 'Round', visual: { kind: 'shell' } }
+      });
+    }
+  });
 });

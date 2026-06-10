@@ -84,6 +84,25 @@ describe('Phaser templates', () => {
     expect(shooterMain).toContain('scene.hitEnemy()');
   });
 
+  it('lets shooter template render generated primitive visuals instead of fixed shells', async () => {
+    const scene = await readGenreScene('shooter');
+    const visuals = await readFile(new URL('shooter/src/template-visuals.ts', root), 'utf8');
+    const params = await readFile(new URL('shooter/src/template-params.ts', root), 'utf8');
+
+    expect(scene).toContain('drawShooterPlayer');
+    expect(scene).toContain('drawShooterEnemy');
+    expect(scene).toContain('drawShooterProjectile');
+    expect(scene).not.toContain('drawCatPlayer');
+    expect(scene).not.toContain('drawAlienEnemy');
+    expect(visuals).toContain("visual.kind === 'tank'");
+    expect(visuals).toContain("visual.kind === 'cat'");
+    expect(visuals).toContain("visual.kind === 'alien'");
+    expect(visuals).toContain("visual.kind === 'ship'");
+    expect(visuals).toContain("visual.kind === 'shell'");
+    expect(visuals).toContain('drawCircleEntity');
+    expect(params).toContain('visual: ShooterEntityVisualParams');
+  });
+
   it('passes generated model params into each playable template entrypoint', async () => {
     for (const { genre } of manifests) {
       const main = await readFile(new URL(`${genre}/src/main.ts`, root), 'utf8');

@@ -4,10 +4,10 @@
 
 ## 1. 扫描结论
 
-- 当前源码 TS/TSX 文件未超过 220 行；暂不需要拆分源码文件。
+- 当前本步新增/修改的 shooter 运行模板文件未超过 220 行；既有测试文件、`normalizer.ts` 和 Playwright runner 超过 220 行，按职责检查保留。
 - 仓库非依赖文件中当前最大文件是 `docs/ai_game_dsl_p0_local_implementation.md`，约 2880 行，属于实施规格文档。
 - 现有阶段记录位于 `docs/refactor-log/ai-game-dsl-p0-review-gated.md`。
-- 当前已完成阶段：P0 主链路修复。
+- 当前已完成阶段：P0 主链路修复 + 模型 DSL 视觉执行复核修复。
 - 当前下一步：P0 实施文档范围已完成；后续扩展应新开 P1/P2 阶段。
 
 ## 2. 大文档拆分索引
@@ -27,6 +27,7 @@
 | Step 8 | 29 | Auto Repair | DSL patch、最多 2 次修复、repair report |
 | Step 9 | 32-33, 35 | Workbench UI 收尾 | 状态轮询、preview iframe、QA/Telemetry/build log 展示 |
 | P0 Fix | 37 | 主链路修复 | Generate 完整执行 DSL、IR、生成项目、build、preview、QA，并收敛失败状态 |
+| P0 Review Fix | 24, 37, 40 | 模型 DSL 视觉执行复核修复 | shooter 模板执行 DSL 派生 primitive visual，避免只换 label |
 
 横切参考章节：
 
@@ -90,11 +91,11 @@ Step 1 不一次性实现完整业务，只建立可启动骨架和健康检查�
 
 ## 5. 当前状态
 
-Step 0 到 Step 9 及 P0 主链路修复已完成。
+Step 0 到 Step 9、P0 主链路修复及模型 DSL 视觉执行复核修复已完成。
 
 完成结果：
 
-- Contract Freeze、Monorepo + 一键启动、Local Workspace Storage、Model Provider、DSL Validator / IR Normalizer、Phaser Templates、Compiler + Build + Preview、Playwright QA、Auto Repair、Workbench UI 收尾和 Generate 主链路修复均已落地。
+- Contract Freeze、Monorepo + 一键启动、Local Workspace Storage、Model Provider、DSL Validator / IR Normalizer、Phaser Templates、Compiler + Build + Preview、Playwright QA、Auto Repair、Workbench UI 收尾、Generate 主链路修复和模型 DSL 视觉执行复核修复均已落地。
 - 每步均已完成本地验证、Sentinel/Oracle 只读审查和阶段文档记录。
 - 当前 P0 文档范围不再有未执行步骤。
 

@@ -88,6 +88,7 @@ describe('Compiler + Build + Preview services', () => {
 
     const second = await compiler.compile({ projectId, runId, ir: shooter.ir });
     await expect(readFile(join(second.outputDir, 'shooter/src/GameScene.ts'), 'utf8')).resolves.toContain('ShooterGameScene');
+    await expect(readFile(join(second.outputDir, 'shooter/src/template-visuals.ts'), 'utf8')).resolves.toContain('drawShooterPlayer');
     await expect(readFile(join(second.outputDir, 'collector/src/GameScene.ts'), 'utf8')).rejects.toThrow();
   });
 

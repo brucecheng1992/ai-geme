@@ -8,7 +8,7 @@
 
 ## 当前阶段
 
-P0 主链路修复已完成。
+P0 主链路修复和模型 DSL 视觉执行复核修复已完成。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
@@ -958,3 +958,54 @@ Step 9 阶段结果：
 最终结果：
 
 - Step 0 到 Step 9 加 P0 主链路修复均已按 review-gated 流程完成代码实现、验证、Sentinel/Oracle 审查和文档沉淀。
+
+### 11. P0 模型 DSL 视觉执行复核修复
+
+完成时间：2026-06-10
+
+已完成内容：
+
+- 复核真实模型“做一个坦克大战小游戏”链路，确认模型 Raw DSL 已输出 `坦克`、`炮弹`、`敌方坦克`、`battlefield`，但旧 shooter 模板硬编码 `drawCatPlayer` / `drawAlienEnemy`，导致浏览器画面只改 label、不执行 DSL 视觉语义。
+- 新增 `packages/game-dsl/src/template-visual-params.ts`，在 validated Raw DSL 到 IR template params 的边界层，按 label 优先、theme 兜底派生 shooter primitive visual：`cat`、`alien`、`tank`、`ship`、`circle` 以及 projectile 的 `bolt`、`shell`、`beam`。
+- `packages/game-dsl/src/normalizer.ts` 在 shooter `template_params.params` 写入 `player.visual`、`projectile.visual`、`enemy.visual`，让模型 DSL 中的实体语义进入 Phaser deterministic template。
+- 新增 `templates/phaser/shooter/src/template-visuals.ts`，使用 P0 允许的 circle / rectangle / triangle / text label / simple color 绘制不同 primitive visual；`GameScene.ts` 移除固定猫/外星人绘图，改为执行 `drawShooterPlayer`、`drawShooterEnemy`、`drawShooterProjectile`。
+- `templates/phaser/shooter/src/main.ts` 对 nested `visual` 做默认值深合并，保证旧 generated params 缺少 visual 时仍可用默认 primitive visual。
+- `templates/phaser/shooter/template-manifest.json` 和 `TemplateCompilerService` 纳入 `template-visuals.ts`，确保生成项目复制并报告新增模板源码。
+- 扩展合同测试，覆盖坦克大战 DSL 派生 `tank/shell/tank`、label 优先于 broad theme、projectile theme fallback、shooter renderer 不再固定猫/外星人、compiler 复制 `template-visuals.ts`。
+
+阶段结果：
+
+- 真实模型链路现在可从 DeepSeek Raw DSL 生成 `坦克/炮弹/敌方坦克` template params，并在浏览器预览中显示双方坦克和炮弹 primitive shape。
+- 本次只修复 shooter 模板执行 DSL 视觉参数的 P0 缺口；未让 LLM 生成 Phaser 源码，未引入图片、外部 URL、素材下载、新依赖或新玩法。
+- Telemetry、QA gate、project/run 状态机和 Workbench API 契约保持不变。
+
+已通过验证：
+
+    npx vitest run tests/contracts/dsl-validator-normalizer.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/compiler-service.test.ts
+    # 3 个测试文件，32 个测试通过
+
+    npm test
+    # contract tests 36 个通过；workspace tests 59 个通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查均通过
+
+    npx tsx "<临时真实 DeepSeek 坦克大战端到端 smoke 脚本>"
+    # DeepSeek deepseek-v4-flash 生成 Game Brief / Raw DSL
+    # result.status = PLAYABLE
+    # generated labels: 坦克 / 炮弹 / 敌方坦克
+    # generated visuals: tank / shell / tank
+    # QA status = PASSED，visual_status = PASSED，screenshot_size = 21806
+
+审查门禁结论：
+
+- Oracle 首轮审查发现 P1：renderer 未覆盖完整 `cat | alien | tank | ship | circle` entity visual kind；projectile visual 仍可能被 theme 覆盖 label。
+- 已修复：player/enemy 绘制统一进入 `drawEntity`，完整覆盖 `tank`、`alien`、`cat`、`ship` 并默认 `circle`；projectile visual 改为 label 优先、theme 兜底。
+- Oracle 复审发现 P2：缺少 `circle` 默认渲染路径和 projectile theme fallback 测试。
+- 已修复：补充 `drawCircleEntity` 合同断言，以及 `Round + battlefield -> shell` normalizer 测试。
+- Oracle 最终复审：P0/P1/P2/P3 均无。
+- 审查模式：Oracle 复用
+
+最终结果：
+
+- P0 复核缺口已关闭：当前链路不再只是“模型换 label”，而是 `LLM Raw DSL -> validated IR template_params -> Phaser primitive visual execution -> browser playable -> QA PASSED`。

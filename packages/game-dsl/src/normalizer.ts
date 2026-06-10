@@ -4,6 +4,7 @@ import dodgerContract from './contracts/dodger.contract.json' with { type: 'json
 import shooterContract from './contracts/shooter.contract.json' with { type: 'json' };
 import { NormalizedGameIrSchema, type NormalizedGameIr } from './schemas/normalized-game-ir-v0.1.schema.js';
 import type { RawGameDsl } from './schemas/raw-game-dsl-v0.1.schema.js';
+import { buildShooterVisualParams } from './template-visual-params.js';
 import { validateRawGameDsl } from './dsl-validator.js';
 import { DslValidationError, type DslValidationIssue, type ValidateAndNormalizeResult } from './validation.types.js';
 
@@ -186,13 +187,15 @@ function buildTemplateParams(raw: RawGameDsl): Record<string, unknown> {
   const projectile = raw.entities.find((entity) => entity.kind === 'projectile');
   const enemy = raw.entities.find((entity) => entity.kind === 'enemy');
   const hitCollision = projectile && enemy ? findCollision(raw, projectile.id, enemy.id, 'projectile_hit') : undefined;
+  const visuals = buildShooterVisualParams(raw);
 
   return {
     ...base,
     projectile: {
       label: projectile?.label ?? 'Projectile',
       damage: projectile?.damage ?? (damageValue(hitCollision) || 1),
-      speedPxPerSec: projectile?.movement.speed_px_per_sec ?? 520
+      speedPxPerSec: projectile?.movement.speed_px_per_sec ?? 520,
+      visual: visuals.projectile
     },
     enemy: {
       label: enemy?.label ?? 'Enemy',
@@ -200,8 +203,10 @@ function buildTemplateParams(raw: RawGameDsl): Record<string, unknown> {
       speedPxPerSec: enemy?.movement.speed_px_per_sec ?? 120,
       count: enemy?.count ?? raw.objectives.win.target ?? 6,
       spawnIntervalMs: 800,
-      spawnArea: 'right_edge'
+      spawnArea: 'right_edge',
+      visual: visuals.enemy
     },
+    player: { ...base.player, visual: visuals.player },
     scoring: {
       scorePerEnemy: scoreAddValue(hitCollision) || 1
     },

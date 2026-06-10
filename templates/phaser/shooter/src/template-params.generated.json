@@ -8,18 +8,33 @@
     "health": 3,
     "speedPxPerSec": 260,
     "startX": 160,
-    "startY": 270
+    "startY": 270,
+    "visual": {
+      "kind": "cat",
+      "fillColor": 16765578,
+      "accentColor": 16761707
+    }
   },
   "projectile": {
     "label": "Bolt",
     "speedPxPerSec": 520,
-    "damage": 1
+    "damage": 1,
+    "visual": {
+      "kind": "bolt",
+      "fillColor": 9037823,
+      "accentColor": 16777215
+    }
   },
   "enemy": {
     "label": "Alien",
     "health": 1,
     "speedPxPerSec": 120,
-    "count": 6
+    "count": 6,
+    "visual": {
+      "kind": "alien",
+      "fillColor": 7533199,
+      "accentColor": 8847287
+    }
   },
   "scoring": {
     "scorePerEnemy": 1

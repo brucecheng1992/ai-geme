@@ -55,9 +55,9 @@ function mergeShooterParams(params: Partial<ShooterTemplateParams>): ShooterTemp
     ...defaultShooterParams,
     ...params,
     world: { ...defaultShooterParams.world, ...params.world },
-    player: { ...defaultShooterParams.player, ...params.player },
-    projectile: { ...defaultShooterParams.projectile, ...params.projectile },
-    enemy: { ...defaultShooterParams.enemy, ...params.enemy },
+    player: { ...defaultShooterParams.player, ...params.player, visual: { ...defaultShooterParams.player.visual, ...params.player?.visual } },
+    projectile: { ...defaultShooterParams.projectile, ...params.projectile, visual: { ...defaultShooterParams.projectile.visual, ...params.projectile?.visual } },
+    enemy: { ...defaultShooterParams.enemy, ...params.enemy, visual: { ...defaultShooterParams.enemy.visual, ...params.enemy?.visual } },
     scoring: { ...defaultShooterParams.scoring, ...params.scoring },
     objective: { ...defaultShooterParams.objective, ...params.objective }
   };
