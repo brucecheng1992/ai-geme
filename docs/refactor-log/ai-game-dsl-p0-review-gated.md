@@ -8,11 +8,117 @@
 
 ## 当前阶段
 
-Asset Pipeline P0 Step 5 已完成第一小步：仓库内接入一个 tiny local asset pack，collector 生成项目会优先选择同一资源包内的 `background_main`、`player`、`collectible`，并在 QA report / Workbench Assets 面板中展示 source pack 与 license。
+Asset Semantic Fidelity Step 2 已完成：local asset pack 现在有 pack-level profile、asset-level semantic metadata 和 metadata index；下一步进入 Step 3：Resolver semantic hard gate。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：可继续扩展第二个 tiny pack 或把真实第三方资源包切片接入同一 provider；仍不要全量导入 Kenney / itch.io / OpenGameArt。
+当前下一步：在 resolver 层使用 Step 1 plan semantic constraint 与 Step 2 local pack metadata 做 hard semantic mismatch gate；仍不要改变 QA / Workbench 判定，且不要全量导入 Kenney / itch.io / OpenGameArt。
+
+### 2.13 Asset Semantic Fidelity Step 2: Local pack metadata profile
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- 新增 `packages/asset-pipeline/src/local-asset-pack.schema.ts`，把 local pack schema 从 provider 文件拆出，并新增 `AssetPackProfileSchema`、asset-level `semantic` metadata schema 和 `indexLocalAssetPackMetadata`。
+- `LocalAssetPackSchema` 支持 pack-level `profile`，字段包含 `version`、`packId`、`taxonomyVersion`、`priority`、`primaryGenre`、`primaryTheme`、`styleTags`、`camera`、`subjectCoverageByRole`、`incompatibleConcepts` 和 `notes`。
+- `PackAssetSchema` 支持 optional `semantic.subjectTags/themeTags/forbiddenTags`。
+- `LocalAssetPackSchema.superRefine` 新增 metadata lint：profile `packId` 必须匹配 pack id；profile `priority` 必须匹配 pack priority；asset id 不允许重复；`profile.subjectCoverageByRole` 与 asset-level `semantic.subjectTags` 必须双向一致。
+- `kenney-tiny-shooter-tanks` 增加明确的 tank/battlefield/top_down shooter profile：player/enemy 暴露 `tank` / `vehicle` / `turret`，background 暴露 `battlefield` / `road` / `grassland`，projectile 只暴露 `projectile` / `shell`，`tank` 只作为 projectile theme tag。
+- `local-asset-pack-provider.ts` 只改为导入 schema 和 metadata index；`selectCompletePackAssets` 仍只按 `id` / `role` / `format` 判断完整覆盖，不读取 semantic score，不过滤，不改变 fallback。
+- `tests/contracts/asset-pipeline.test.ts` 增加 pack profile/index 断言、非法 metadata lint 断言，并保留现有 shooter selection 结果仍为 `kenney-tiny-shooter-tanks`。
+
+阶段结果：
+
+- 解决层级：local asset pack 数据契约 + metadata lint。
+- 结构变化：`local-asset-pack-provider.ts` 从 189 行降到 138 行；新增 `local-asset-pack.schema.ts` 为 199 行；`schemas.ts` 保持 210 行；既有合同测试文件集中保留并扩展到 506 行。
+- 行为边界：未修改 resolver ranking / selection / fallback 行为；未启用 semantic hard gate；未修改 `AssetManifestAssetSchema`、QA、Workbench 或 Phaser runtime。
+- 未改范围：尚未实现 resolver hard gate、manifest `semanticFit`、`asset_resolution_report.json`、QA semantic status 或 Workbench semantic display。
+- 注意：当前工作区仍有 Step 1 基线改动和 provider `survive_duration` 修复改动；本步没有触碰 provider 修复文件。
+
+已通过验证：
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts
+    # 1 个测试文件，16 个测试全部通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check -- packages/asset-pipeline/src/local-asset-pack.schema.ts packages/asset-pipeline/src/local-asset-pack-provider.ts packages/asset-pipeline/src/schemas.ts packages/asset-pipeline/src/index.ts assets/asset-packs/kenney-tiny-shooter-tanks/pack.json tests/contracts/asset-pipeline.test.ts docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md docs/refactor-log/ai-game-dsl-p0-step-index.md docs/refactor-log/ai-game-dsl-p0-review-gated.md
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出 Step 1 既有未提交基线容易被误判为本步越界；P2 指出 metadata index 依赖 asset id 唯一，且 hard gate 前需要校验 pack-level coverage 与 asset-level tags 一致；P3 建议测试名可更宽。
+- 已处理：向 Oracle 明确 Step 1 是本轮既有基线；补充 duplicate asset id lint；补充 `subjectCoverageByRole` 与 asset-level `subjectTags` 双向一致性校验；补对应负例测试。
+- Oracle 复审：P0/P1/P2 均无；P3 仅保留测试名可更宽的轻微建议，不阻塞 Step 2。
+- 审查模式：Oracle 复用
+
+### 2.12 Asset Semantic Fidelity Step 1: Taxonomy and AssetPlan semantic constraint
+
+完成时间：2026-06-11
+
+已完成内容：
+
+- `AssetPlanItemSchema` 新增 optional `semantic` 字段，字段包含 `expectedConcept`、`expectedAnyTags`、`forbiddenTags` 和 `strictness`。
+- 新增 `packages/asset-pipeline/src/taxonomy.ts`，最小覆盖 `cat`、`alien`、`tank`、`space`、`battlefield` canonical tags 和中英文同义词。
+- `buildAssetPlanFromIr` 在生成 plan item 时写入 semantic hints；player/enemy 明确核心实体为 hard，background 主题为 medium，非核心和泛化角色保持 soft。
+- background semantic 会读取 `template_params.params.world.visual_theme` 作为 style hint。
+- 合同测试覆盖 cat/alien hard、tank hard、`caterpillar` / `tankard` 英文子串负例、非核心 projectile 含 tank 仍 soft、space background medium。
+
+阶段结果：
+
+- 解决层级：AssetPlan 数据契约 + taxonomy 纯规则。
+- 行为边界：未修改 `selectLocalAssetPack`、manifest、QA、Workbench 或 Phaser runtime；当前 resolver 仍不消费 `semantic`。
+- 未改范围：尚未给 local asset pack 补 subject/theme metadata；尚未实现 semantic hard gate、manifest `semanticFit` 或 QA semantic status。
+
+已通过验证：
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts
+    # 1 个测试文件，14 个测试全部通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check -- packages/asset-pipeline/src/schemas.ts packages/asset-pipeline/src/plan.ts packages/asset-pipeline/src/taxonomy.ts packages/asset-pipeline/src/index.ts tests/contracts/asset-pipeline.test.ts
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0/P1 无；P2 指出非 background 角色统一套 core hard rules 会让 projectile/collectible/hazard 误变 hard；P2 指出英文 `includes` 会让 `caterpillar` / `tankard` 误命中；P3 建议 `expectedConcept` 复用 tag schema，并把 `world.visual_theme` 传给 background。
+- 已修复：core hard rules 仅限 `player_character` / `enemy`；英文 concept/alias 改为 token matching；非核心角色保持 soft；`expectedConcept` 复用 `SemanticTagSchema`；background 读取 style theme；补充负例与背景测试。
+- Oracle 复审：P0/P1/P2/P3 均无，Step 1 可通过代码审查门禁。
+- 审查模式：Oracle 复用
+
+### 2.11 Asset Semantic Fidelity Step 0: requirement split and execution plan
+
+完成时间：2026-06-11
+
+已完成内容：
+
+- 读取 `AGM_Asset_Semantic_Fidelity_Markdown_Folder.zip`，确认核心问题是资源加载成功但语义错配，而不是 `ASSET_LOAD_FAILED`。
+- 新增 `docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md`，把方案拆成 Step 0 到 Step 7：taxonomy、pack metadata、resolver hard gate、manifest semanticFit、QA/Workbench、repair loop、回归验收。
+- 更新 `docs/refactor-log/ai-game-dsl-p0-step-index.md`，把当前下一步切到 Asset Semantic Fidelity Step 1。
+
+阶段结果：
+
+- 解决层级：文档规则 + 后续数据契约执行计划。
+- 行为边界：未修改 asset resolver、manifest schema、QA、Workbench 或 Phaser runtime。
+- 未改范围：尚未实现 taxonomy、semantic hard gate、manifest semanticFit 或 Workbench semantic display。
+- 注意：当前工作区另有未提交 provider 修复改动，属于 shooter `survive_duration` 归一化；本步文档没有触碰这些文件。
+
+已通过验证：
+
+    unzip -l /Users/dahufa/Documents/workspace/AGM_Asset_Semantic_Fidelity_Markdown_Folder.zip
+    rg -n "Asset Semantic|semantic|asset|DSL|QA|Workbench|P0|Step" /Users/dahufa/.codex/memories/MEMORY.md
+    rg -n "AssetPlan|AssetManifest|semantic|fallback|priority|selectCompletePackAssets|asset_report" packages/asset-pipeline/src apps/maker-api/src/qa apps/maker-workbench/src docs/refactor-log -g "*.ts" -g "*.tsx" -g "*.md"
+    git diff --check -- docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md docs/refactor-log/ai-game-dsl-p0-step-index.md docs/refactor-log/ai-game-dsl-p0-review-gated.md
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0/P1 无；P2 指出 `step-index` 顶部完成状态仍停在 Asset Pipeline Step 4.1，和后文 Step 5.1 完成记录不一致；P3 建议补充 scoped `git diff --check` 验证记录。
+- 已修复：顶部完成状态改为 Asset Pipeline P0 Step 1-5（含 Step 5.1），并补充 scoped `git diff --check` 验证命令。
+- 审查模式：Oracle 新建
 
 ### 2.10 Asset Pipeline P0 Step 5.1: tiny local asset pack slice
 

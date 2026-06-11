@@ -1,14 +1,15 @@
 # AI Game DSL P0 Step Index
 
-最新维护时间：2026-06-11
+最新维护时间：2026-06-12
 
 ## 1. 扫描结论
 
-- 当前 Asset Pipeline P0 Step 4.1 新增 Workbench Assets 面板，直接消费 QA report `asset_report` 展示 manifest summary、runtime loaded / failed 和结构化 failure reason；既有测试文件、`App.tsx`、`normalizer.ts`、`GameScene.ts` 和 Playwright runner 超过 220 行，按职责集中保留并由针对性测试或浏览器烟测覆盖。
+- Asset Pipeline P0 Step 1-5 已完成，Workbench Assets 面板直接消费 QA report `asset_report` 展示 manifest summary、runtime loaded / failed、结构化 failure reason、source pack 和 license；既有测试文件、`App.tsx`、`normalizer.ts`、`GameScene.ts` 和 Playwright runner 超过 220 行，按职责集中保留并由针对性测试或浏览器烟测覆盖。
+- 新增 Asset Semantic Fidelity 阶段，用于修复“资源加载成功但语义错配”；执行计划见 `docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md`。
 - 仓库非依赖文件中当前最大文件是 `docs/ai_game_dsl_p0_local_implementation.md`，约 2880 行，属于实施规格文档。
 - 现有阶段记录位于 `docs/refactor-log/ai-game-dsl-p0-review-gated.md`。
-- 当前已完成阶段：P0 主链路修复 + 模型 DSL 视觉执行复核修复 + DSL-first P1 Step 6 shooter enemy_wave runtime_plan + Asset Pipeline P0 Step 1 artifact gate + Asset Pipeline P0 Step 2 dodger manifest preload / runtime asset gate + Asset Pipeline P0 Step 3 QA asset report enrichment + Asset Pipeline P0 Step 4.1 Workbench asset status panel。
-- 当前下一步：Asset Pipeline P0 Step 4.2 Workbench Assets 面板真实 run 桌面 / 移动端验收。
+- 当前已完成阶段：P0 主链路修复 + 模型 DSL 视觉执行复核修复 + DSL-first P1 Step 6 shooter enemy_wave runtime_plan + Asset Pipeline P0 Step 1-5（含 Step 5.1 tiny local asset pack slice）+ Asset Semantic Fidelity Step 1-2。
+- 当前下一步：Asset Semantic Fidelity Step 3：Resolver semantic hard gate；在 resolver 层拒绝 hard semantic mismatch，但仍不改变 QA / Workbench 判定。
 
 ## 2. 大文档拆分索引
 
@@ -122,6 +123,7 @@ Asset Pipeline P0 v0.2 已开始，当前完成 Step 1、Step 2、Step 3、Step 
 
 - 当前下一步：
 
+- 当前进入 Asset Semantic Fidelity 阶段；外部方案包已拆成项目内计划文档 `docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md`。Step 1 已落地 Taxonomy + AssetPlan semantic constraint，Step 2 已落地 local pack metadata profile / asset-level semantic tags / metadata index；下一步落 Step 3：Resolver semantic hard gate，保持 manifest / QA / Workbench 行为不变。
 - 后续可作为独立 Step 6 接入第二个 tiny pack 或真实第三方资源包切片；继续保持小包白名单，不做全量导入。
 - 若转回 DSL-first P1 Step 7，应作为独立扩展继续遵守顺序：contract/runtime/QA 先于 prompt，真实模型链路验证后再沉淀文档。
 

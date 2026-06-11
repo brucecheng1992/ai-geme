@@ -1,15 +1,24 @@
 import { NormalizedGameIrSchema, type NormalizedGameIr } from '../../game-dsl/src/index.js';
 import { AssetPlanItemSchema, AssetPlanSchema, type AssetPlan, type AssetPlanItem } from './schemas.js';
+import { inferAssetSemanticConstraint } from './taxonomy.js';
 
 export function buildAssetPlanFromIr(projectId: string, input: NormalizedGameIr): AssetPlan {
   const ir = NormalizedGameIrSchema.parse(input);
   const params = asRecord(ir.template_params.params) ?? {};
+  const world = asRecord(params.world);
+  const styleTheme = readOptionalString(world, 'visual_theme');
   const player = asRecord(params.player);
   const items: AssetPlanItem[] = [
-    createItem('background_main', 'background', `${ir.metadata.title} ${ir.game.genre} background`, {
-      w: ir.world.width,
-      h: ir.world.height
-    }),
+    createItem(
+      'background_main',
+      'background',
+      `${ir.metadata.title} ${ir.game.genre} background`,
+      {
+        w: ir.world.width,
+        h: ir.world.height
+      },
+      styleTheme
+    ),
     createItem('player', 'player_character', readLabel(player, 'Player'), { w: 64, h: 64 })
   ];
 
@@ -46,11 +55,12 @@ export function buildAssetPlanFromIr(projectId: string, input: NormalizedGameIr)
   });
 }
 
-function createItem(id: string, role: AssetPlanItem['role'], subject: string, size: AssetPlanItem['size']): AssetPlanItem {
+function createItem(id: string, role: AssetPlanItem['role'], subject: string, size: AssetPlanItem['size'], styleTheme?: string): AssetPlanItem {
   return AssetPlanItemSchema.parse({
     id,
     role,
     subject,
+    semantic: inferAssetSemanticConstraint({ role, subject, styleTheme }),
     view: 'top_down',
     size,
     format: 'svg',
@@ -61,6 +71,11 @@ function createItem(id: string, role: AssetPlanItem['role'], subject: string, si
 
 function readLabel(record: Record<string, unknown> | undefined, fallback: string): string {
   return typeof record?.label === 'string' && record.label.trim().length > 0 ? record.label : fallback;
+}
+
+function readOptionalString(record: Record<string, unknown> | undefined, key: string): string | undefined {
+  const value = record?.[key];
+  return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {

@@ -3,9 +3,10 @@ import { isAbsolute } from 'node:path';
 import { z } from 'zod';
 
 const AssetIdSchema = z.string().regex(/^[a-z][a-z0-9_]{1,39}$/);
-const AssetRoleSchema = z.enum(['player_character', 'enemy', 'projectile', 'collectible', 'hazard', 'background', 'ui_panel']);
+export const AssetRoleSchema = z.enum(['player_character', 'enemy', 'projectile', 'collectible', 'hazard', 'background', 'ui_panel']);
 const AssetProviderSchema = z.enum(['local_asset_pack', 'template_svg', 'placeholder']);
 const AssetLoadKeySchema = z.string().regex(/^agm\.[a-z][a-z0-9_]{1,39}$/);
+export const SemanticTagSchema = z.string().regex(/^[a-z][a-z0-9_]{1,39}$/);
 const AssetSizeSchema = z.strictObject({
   w: z.number().int().min(1).max(1920),
   h: z.number().int().min(1).max(1080)
@@ -15,10 +16,18 @@ const SafeAssetPathSchema = z.string().min(1).refine(isSafeRelativeAssetPath, {
   message: 'asset path must be relative and must not contain .., URL schemes, or absolute path segments'
 });
 
+export const AssetSemanticConstraintSchema = z.strictObject({
+  expectedConcept: SemanticTagSchema,
+  expectedAnyTags: z.array(SemanticTagSchema).min(1).max(12),
+  forbiddenTags: z.array(SemanticTagSchema).max(16).default([]),
+  strictness: z.enum(['hard', 'medium', 'soft'])
+});
+
 export const AssetPlanItemSchema = z.strictObject({
   id: AssetIdSchema,
   role: AssetRoleSchema,
   subject: z.string().min(1).max(120),
+  semantic: AssetSemanticConstraintSchema.optional(),
   view: z.enum(['top_down']).default('top_down'),
   size: AssetSizeSchema,
   format: z.literal('svg'),
@@ -113,6 +122,7 @@ export const AssetManifestSchema = z
 
 export type AssetPlan = z.infer<typeof AssetPlanSchema>;
 export type AssetPlanItem = z.infer<typeof AssetPlanItemSchema>;
+export type AssetSemanticConstraint = z.infer<typeof AssetSemanticConstraintSchema>;
 export type AssetManifest = z.infer<typeof AssetManifestSchema>;
 export type AssetManifestAsset = z.infer<typeof AssetManifestAssetSchema>;
 

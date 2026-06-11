@@ -3,6 +3,25 @@
   "id": "kenney-tiny-shooter-tanks",
   "label": "Kenney Tiny Shooter Tanks",
   "priority": 100,
+  "profile": {
+    "version": "asset-pack-profile-v0.1",
+    "packId": "kenney-tiny-shooter-tanks",
+    "displayName": "Kenney Tiny Shooter Tanks",
+    "taxonomyVersion": "asset-taxonomy-v0.1",
+    "priority": 100,
+    "primaryGenre": ["shooter"],
+    "primaryTheme": ["tank", "battlefield"],
+    "styleTags": ["kenney", "tank", "vehicle", "arcade", "top_down"],
+    "camera": ["top_down"],
+    "subjectCoverageByRole": {
+      "background": ["battlefield", "road", "grassland"],
+      "player_character": ["tank", "vehicle", "turret"],
+      "enemy": ["tank", "vehicle", "turret"],
+      "projectile": ["projectile", "shell"]
+    },
+    "incompatibleConcepts": ["cat", "kitten", "feline", "alien", "extraterrestrial", "ufo_creature", "space", "stars", "galaxy", "cosmic"],
+    "notes": "Tank-themed top-down shooter pack. Step 2 metadata is indexed only; resolver gates are introduced later."
+  },
   "license": {
     "id": "CC0-1.0",
     "name": "Creative Commons CC0 1.0 Universal",
@@ -20,6 +39,11 @@
       "role": "background",
       "file": "background_main.svg",
       "format": "svg",
+      "semantic": {
+        "subjectTags": ["battlefield", "road", "grassland"],
+        "themeTags": ["tank", "vehicle", "top_down"],
+        "forbiddenTags": ["space", "stars", "galaxy", "cosmic"]
+      },
       "license": {
         "id": "CC0-1.0",
         "name": "Creative Commons CC0 1.0 Universal",
@@ -31,19 +55,34 @@
       "id": "player",
       "role": "player_character",
       "file": "player.svg",
-      "format": "svg"
+      "format": "svg",
+      "semantic": {
+        "subjectTags": ["tank", "vehicle", "turret"],
+        "themeTags": ["battlefield", "top_down"],
+        "forbiddenTags": ["cat", "kitten", "feline", "alien", "extraterrestrial", "ufo_creature"]
+      }
     },
     {
       "id": "enemy",
       "role": "enemy",
       "file": "enemy.svg",
-      "format": "svg"
+      "format": "svg",
+      "semantic": {
+        "subjectTags": ["tank", "vehicle", "turret"],
+        "themeTags": ["battlefield", "top_down"],
+        "forbiddenTags": ["cat", "kitten", "feline", "alien", "extraterrestrial", "ufo_creature"]
+      }
     },
     {
       "id": "projectile",
       "role": "projectile",
       "file": "projectile.svg",
-      "format": "svg"
+      "format": "svg",
+      "semantic": {
+        "subjectTags": ["projectile", "shell"],
+        "themeTags": ["tank", "battlefield"],
+        "forbiddenTags": []
+      }
     }
   ]
 }

@@ -7,6 +7,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   AssetManifestSchema,
   buildAssetPlanFromIr,
+  indexLocalAssetPackMetadata,
+  LocalAssetPackSchema,
   validateGeneratedProjectAssets,
   writeAssetArtifacts
 } from '../../packages/asset-pipeline/src/index.js';
@@ -34,11 +36,93 @@ describe('Asset pipeline contracts', () => {
     }
 
     const plan = buildAssetPlanFromIr(projectId, normalized.ir);
+    const planById = new Map(plan.items.map((item) => [item.id, item]));
 
     expect(plan.items.map((item) => item.id)).toEqual(['background_main', 'player', 'enemy', 'projectile']);
+    expect(planById.get('player')?.semantic).toMatchObject({
+      expectedConcept: 'cat',
+      expectedAnyTags: ['cat', 'kitten', 'feline'],
+      forbiddenTags: ['tank', 'vehicle', 'spaceship', 'robot', 'turret'],
+      strictness: 'hard'
+    });
+    expect(planById.get('enemy')?.semantic).toMatchObject({
+      expectedConcept: 'alien',
+      expectedAnyTags: ['alien', 'extraterrestrial', 'ufo_creature'],
+      forbiddenTags: ['tank', 'vehicle', 'soldier', 'turret'],
+      strictness: 'hard'
+    });
     expect(plan.items.every((item) => item.provider_priority.includes('template_svg'))).toBe(true);
     expect(JSON.stringify(plan)).not.toContain('../');
     expect(JSON.stringify(plan)).not.toContain('http://');
+  });
+
+  it('derives tank semantic constraints for tank shooter briefs', () => {
+    const rawDsl = createShooterRawDsl();
+    rawDsl.metadata.title = 'Tank Battle';
+    rawDsl.player.label = 'Tank';
+    rawDsl.entities = rawDsl.entities.map((entity) => (entity.kind === 'enemy' ? { ...entity, id: 'enemy_tank', label: 'Tank' } : entity));
+    rawDsl.rules.collisions = rawDsl.rules.collisions.map((collision) => ({ ...collision, target: 'enemy_tank' }));
+    const normalized = validateAndNormalizeRawGameDsl(rawDsl);
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const plan = buildAssetPlanFromIr(projectId, normalized.ir);
+    const planById = new Map(plan.items.map((item) => [item.id, item]));
+
+    expect(planById.get('player')?.semantic).toMatchObject({
+      expectedConcept: 'tank',
+      expectedAnyTags: ['tank', 'vehicle'],
+      strictness: 'hard'
+    });
+    expect(planById.get('enemy')?.semantic).toMatchObject({
+      expectedConcept: 'tank',
+      expectedAnyTags: ['tank', 'vehicle'],
+      strictness: 'hard'
+    });
+  });
+
+  it('keeps generic and non-core shooter asset semantics soft instead of inventing hard entity constraints', () => {
+    const normalized = validateAndNormalizeRawGameDsl(createShooterRawDsl());
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const params = normalized.ir.template_params.params as {
+      player: { label: string };
+      enemy: { label: string };
+      projectile: { label: string };
+      world: { visual_theme: string };
+    };
+    params.player.label = 'Caterpillar';
+    params.enemy.label = 'Tankard';
+    params.projectile.label = 'Tank Shell';
+    params.world.visual_theme = 'deep space stars';
+    const plan = buildAssetPlanFromIr(projectId, normalized.ir);
+    const planById = new Map(plan.items.map((item) => [item.id, item]));
+
+    expect(planById.get('background_main')?.semantic).toMatchObject({
+      expectedConcept: 'space',
+      expectedAnyTags: ['space', 'stars', 'galaxy', 'cosmic'],
+      strictness: 'medium'
+    });
+    expect(planById.get('player')?.semantic).toMatchObject({
+      expectedConcept: 'player',
+      expectedAnyTags: ['player'],
+      strictness: 'soft'
+    });
+    expect(planById.get('enemy')?.semantic).toMatchObject({
+      expectedConcept: 'enemy',
+      expectedAnyTags: ['enemy'],
+      strictness: 'soft'
+    });
+    expect(planById.get('projectile')?.semantic).toMatchObject({
+      expectedConcept: 'projectile',
+      expectedAnyTags: ['projectile'],
+      strictness: 'soft'
+    });
   });
 
   it('writes template SVG assets and validates the generated manifest files', async () => {
@@ -117,6 +201,76 @@ describe('Asset pipeline contracts', () => {
     await expect(readFile(join(root, 'public/assets/enemy.svg'), 'utf8')).resolves.toContain('Kenney grey tank enemy sprite');
     await expect(readFile(join(root, 'public/assets/projectile.svg'), 'utf8')).resolves.toContain('data:image/png;base64');
     await expect(validateGeneratedProjectAssets({ projectId, projectDir: root })).resolves.toMatchObject({ ok: true });
+  });
+
+  it('indexes the Kenney shooter tank pack profile and asset semantic metadata', async () => {
+    const pack = await readLocalPackFixture('kenney-tiny-shooter-tanks');
+    const index = indexLocalAssetPackMetadata(pack);
+
+    expect(pack.profile).toMatchObject({
+      version: 'asset-pack-profile-v0.1',
+      packId: 'kenney-tiny-shooter-tanks',
+      taxonomyVersion: 'asset-taxonomy-v0.1',
+      primaryGenre: ['shooter'],
+      primaryTheme: ['tank', 'battlefield'],
+      subjectCoverageByRole: {
+        player_character: ['tank', 'vehicle', 'turret'],
+        enemy: ['tank', 'vehicle', 'turret'],
+        projectile: ['projectile', 'shell'],
+        background: ['battlefield', 'road', 'grassland']
+      }
+    });
+    expect(index.semanticByAssetId.get('player')?.subjectTags).toEqual(expect.arrayContaining(['tank', 'vehicle']));
+    expect(index.semanticByAssetId.get('enemy')?.subjectTags).toEqual(expect.arrayContaining(['tank', 'vehicle']));
+    expect(index.semanticByAssetId.get('background_main')?.subjectTags).toEqual(expect.arrayContaining(['battlefield', 'road', 'grassland']));
+    expect(index.semanticByAssetId.get('projectile')?.subjectTags).toEqual(['projectile', 'shell']);
+    expect(index.semanticByAssetId.get('projectile')?.subjectTags).not.toContain('tank');
+  });
+
+  it('rejects local asset pack metadata with mismatched profile identity or non-canonical tags', async () => {
+    const pack = await readLocalPackFixture('kenney-tiny-shooter-tanks');
+    expect(pack.profile).toBeDefined();
+    if (pack.profile === undefined) {
+      return;
+    }
+
+    expect(
+      LocalAssetPackSchema.safeParse({
+        ...pack,
+        profile: { ...pack.profile, packId: 'other-pack' }
+      }).success
+    ).toBe(false);
+
+    expect(
+      LocalAssetPackSchema.safeParse({
+        ...pack,
+        assets: pack.assets.map((asset) =>
+          asset.id === 'player' && asset.semantic !== undefined
+            ? { ...asset, semantic: { ...asset.semantic, subjectTags: ['Tank'] } }
+            : asset
+        )
+      }).success
+    ).toBe(false);
+
+    expect(
+      LocalAssetPackSchema.safeParse({
+        ...pack,
+        assets: [...pack.assets, { ...pack.assets[0] }]
+      }).success
+    ).toBe(false);
+
+    expect(
+      LocalAssetPackSchema.safeParse({
+        ...pack,
+        profile: {
+          ...pack.profile,
+          subjectCoverageByRole: {
+            ...pack.profile.subjectCoverageByRole,
+            projectile: ['projectile', 'shell', 'tank']
+          }
+        }
+      }).success
+    ).toBe(false);
   });
 
   it('falls back to template SVG assets when no local pack fully covers the plan', async () => {
@@ -344,4 +498,9 @@ async function writeManifest(projectDir: string, assets: TestAsset[]): Promise<v
     )}\n`,
     'utf8'
   );
+}
+
+async function readLocalPackFixture(packId: string) {
+  const raw = JSON.parse(await readFile(join(process.cwd(), 'assets/asset-packs', packId, 'pack.json'), 'utf8'));
+  return LocalAssetPackSchema.parse(raw);
 }

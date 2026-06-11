@@ -1,47 +1,8 @@
 import { copyFile, readdir, readFile, stat } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve } from 'node:path';
 
-import { z } from 'zod';
-
 import type { AssetManifestAsset, AssetPlan } from './schemas.js';
-
-const PackAssetSchema = z.strictObject({
-  id: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/),
-  role: z.enum(['player_character', 'enemy', 'projectile', 'collectible', 'hazard', 'background', 'ui_panel']),
-  file: z.string().min(1).refine(isSafePackAssetFile, {
-    message: 'asset file must be a relative .svg path inside the local pack'
-  }),
-  format: z.literal('svg'),
-  license: z
-    .strictObject({
-      id: z.string().min(1).max(40),
-      name: z.string().min(1).max(120),
-      attribution: z.string().min(1).max(160),
-      sourceUrl: z.string().url()
-    })
-    .optional()
-});
-
-const LocalAssetPackSchema = z.strictObject({
-  version: z.literal('local-asset-pack-v0.1'),
-  id: z.string().regex(/^[a-z][a-z0-9_-]{1,63}$/),
-  label: z.string().min(1).max(120),
-  priority: z.number().int().min(0).max(1000).optional(),
-  license: z.strictObject({
-    id: z.string().min(1).max(40),
-    name: z.string().min(1).max(120),
-    attribution: z.string().min(1).max(160),
-    sourceUrl: z.string().url()
-  }),
-  style: z.strictObject({
-    genres: z.array(z.enum(['collector', 'dodger', 'shooter'])).min(1),
-    camera: z.literal('top_down'),
-    tags: z.array(z.string().min(1).max(40)).min(1)
-  }),
-  assets: z.array(PackAssetSchema).min(1)
-});
-
-type LocalAssetPack = z.infer<typeof LocalAssetPackSchema>;
+import { indexLocalAssetPackMetadata, LocalAssetPackSchema, type LocalAssetPack } from './local-asset-pack.schema.js';
 
 export type LocalAssetSelection = {
   manifestAssets: AssetManifestAsset[];
@@ -145,7 +106,7 @@ function compareLocalAssetPacks(left: LocalAssetPack, right: LocalAssetPack): nu
 }
 
 function selectCompletePackAssets(plan: AssetPlan, pack: LocalAssetPack) {
-  const assetsById = new Map(pack.assets.map((asset) => [asset.id, asset]));
+  const { assetsById } = indexLocalAssetPackMetadata(pack);
   const selected = [];
 
   for (const planItem of plan.items) {
@@ -174,16 +135,4 @@ function assertInside(root: string, candidate: string, label: string): void {
   if (pathFromRoot === '' || pathFromRoot.startsWith('..') || isAbsolute(pathFromRoot)) {
     throw new Error(`Local asset pack ${label} must stay inside ${root}.`);
   }
-}
-
-function isSafePackAssetFile(value: string): boolean {
-  if (isAbsolute(value) || value.includes('\\') || /^[a-z][a-z0-9+.-]*:/i.test(value)) {
-    return false;
-  }
-
-  if (!value.endsWith('.svg')) {
-    return false;
-  }
-
-  return value.split('/').every((segment) => segment.length > 0 && segment !== '.' && segment !== '..');
 }
