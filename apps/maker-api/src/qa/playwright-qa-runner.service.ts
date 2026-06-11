@@ -48,6 +48,34 @@ export class PlaywrightQaRunnerService {
       return report;
     }
 
+    const previewAssetGate = await validateGeneratedProjectAssets({
+      projectId: input.projectId,
+      projectDir: this.workspace.getGeneratedProjectDir(input.projectId),
+      assetRootDir: this.workspace.getGeneratedProjectDistDir(input.projectId)
+    });
+
+    if (!previewAssetGate.ok) {
+      const report: QaReport = {
+        status: 'QA_FAILED',
+        project_id: input.projectId,
+        run_id: input.runId,
+        genre: input.genre,
+        preview_url: input.previewUrl,
+        seed,
+        required_events: requiredEvents,
+        observed_events: [],
+        missing_events: [],
+        missing_any_groups: [],
+        console_errors: [],
+        code: previewAssetGate.code,
+        message: `Preview asset validation failed: ${previewAssetGate.message}`,
+        started_at: startedAt,
+        completed_at: new Date().toISOString()
+      };
+      await this.writeReport(input.projectId, input.runId, report);
+      return report;
+    }
+
     const browserResult = await this.browserRunner({ ...input, seed, screenshotPath: this.workspace.getQaScreenshotPath(input.projectId, input.runId) }, requiredEvents);
     const gateResult = this.gate.evaluate(browserResult.observed_events, requiredEvents);
     const visualGatePassed = browserResult.visual_ok;
@@ -69,7 +97,7 @@ export class PlaywrightQaRunnerService {
       code: status === 'QA_FAILED' ? this.resolveFailureCode(browserResult.failure_code, gateResult.passed) : undefined,
       message: browserResult.message,
       visual_status: visualGatePassed ? 'PASSED' : 'VISUAL_QA_FAILED',
-      asset_manifest_summary: assetGate.manifest.summary,
+      asset_manifest_summary: previewAssetGate.manifest.summary,
       screenshot_path: browserResult.screenshot_path,
       visual_metrics: browserResult.visual_metrics,
       started_at: startedAt,

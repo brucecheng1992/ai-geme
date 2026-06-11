@@ -90,6 +90,32 @@ describe('Playable QA gate and runner', () => {
     await expect(readFile(workspace.getQaReportPath(projectId, runId), 'utf8')).resolves.toContain('"code": "ASSET_MANIFEST_INVALID"');
   });
 
+  it('fails before browser QA when preview build assets are missing', async () => {
+    let browserCalled = false;
+    await rm(workspace.getGeneratedProjectDistDir(projectId), { recursive: true, force: true });
+    const browserRunner: QaBrowserRunner = async () => {
+      browserCalled = true;
+      return {
+        ok: true,
+        visual_ok: true,
+        interaction_ok: true,
+        telemetry: missingObservedBase().map((type, index) => ({ type, timestamp_ms: index, frame: index })),
+        observed_events: missingObservedBase(),
+        console_errors: []
+      };
+    };
+    const runner = new PlaywrightQaRunnerService(workspace, gate, browserRunner);
+
+    const report = await runner.run({ projectId, runId, genre: 'shooter', previewUrl: 'http://localhost:3000/preview/proj/index.html' });
+
+    expect(browserCalled).toBe(false);
+    expect(report).toMatchObject({
+      status: 'QA_FAILED',
+      code: 'ASSET_MANIFEST_INVALID',
+      message: expect.stringContaining('Preview asset validation failed')
+    });
+  });
+
   it('writes a QA_FAILED report when required telemetry is missing', async () => {
     const browserRunner: QaBrowserRunner = async () => ({
       ok: true,
@@ -625,7 +651,11 @@ async function writeValidAssetManifest(workspace: LocalWorkspaceService, id: str
   ] as const;
   const projectDir = workspace.getGeneratedProjectDir(id);
   const publicDir = workspace.getGeneratedProjectPublicDir(id);
-  await mkdir(join(publicDir, 'assets'), { recursive: true });
+  const distDir = workspace.getGeneratedProjectDistDir(id);
+  const assetRoots = [publicDir, distDir];
+  for (const assetRoot of assetRoots) {
+    await mkdir(join(assetRoot, 'assets'), { recursive: true });
+  }
   await writeFile(
     join(projectDir, 'asset_plan.json'),
     `${JSON.stringify(
@@ -649,21 +679,22 @@ async function writeValidAssetManifest(workspace: LocalWorkspaceService, id: str
     )}\n`,
     'utf8'
   );
-  for (const asset of assets) {
+  for (const assetRoot of assetRoots) {
+    for (const asset of assets) {
+      await writeFile(
+        join(assetRoot, `assets/${asset.id}.svg`),
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${asset.size.w}" height="${asset.size.h}"></svg>`,
+        'utf8'
+      );
+    }
     await writeFile(
-      join(publicDir, `assets/${asset.id}.svg`),
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${asset.size.w}" height="${asset.size.h}"></svg>`,
-      'utf8'
-    );
-  }
-  await writeFile(
-    join(publicDir, 'asset_manifest.json'),
-    `${JSON.stringify(
-      {
-        version: 'asset-manifest-v0.1',
-        projectId: id,
-        strict: true,
-        assets: assets.map((asset) => ({
+      join(assetRoot, 'asset_manifest.json'),
+      `${JSON.stringify(
+        {
+          version: 'asset-manifest-v0.1',
+          projectId: id,
+          strict: true,
+          assets: assets.map((asset) => ({
             id: asset.id,
             role: asset.role,
             type: 'image',
@@ -674,13 +705,14 @@ async function writeValidAssetManifest(workspace: LocalWorkspaceService, id: str
             status: 'ready',
             size: asset.size
           })),
-        summary: { required: assets.length, ready: assets.length, fallback_used: 0, missing: 0, placeholder_used: 0 }
-      },
-      null,
-      2
-    )}\n`,
-    'utf8'
-  );
+          summary: { required: assets.length, ready: assets.length, fallback_used: 0, missing: 0, placeholder_used: 0 }
+        },
+        null,
+        2
+      )}\n`,
+      'utf8'
+    );
+  }
 }
 
 async function startBlankTelemetryPreviewServer(): Promise<Server> {

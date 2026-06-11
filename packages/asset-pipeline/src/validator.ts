@@ -12,15 +12,16 @@ type AssetContractCheckResult = { ok: true } | { ok: false; code: AssetManifestF
 export async function validateGeneratedProjectAssets(input: {
   projectId: string;
   projectDir: string;
+  assetRootDir?: string;
   allowPlaceholderPlayable?: boolean;
 }): Promise<AssetManifestValidationResult> {
-  const publicDir = join(input.projectDir, 'public');
+  const assetRootDir = input.assetRootDir ?? join(input.projectDir, 'public');
   const plan = await readAssetPlan(input.projectId, input.projectDir);
   if (!plan.ok) {
     return plan;
   }
 
-  const manifest = await readAssetManifest(input.projectId, publicDir);
+  const manifest = await readAssetManifest(input.projectId, assetRootDir);
   if (!manifest.ok) {
     return manifest;
   }
@@ -48,7 +49,7 @@ export async function validateGeneratedProjectAssets(input: {
       };
     }
 
-    const fileResult = await validateAssetFile(publicDir, asset);
+    const fileResult = await validateAssetFile(assetRootDir, asset);
     if (!fileResult.ok) {
       return fileResult;
     }
