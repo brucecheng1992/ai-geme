@@ -6,6 +6,10 @@ import type { ShooterTemplateParams } from './template-params.js';
 import { drawShooterEnemy, drawShooterPlayer, drawShooterProjectile } from './template-visuals.js';
 
 type ShooterRenderObject = Phaser.GameObjects.Container | Phaser.GameObjects.Image | Phaser.GameObjects.Graphics;
+type OrientableRenderObject = ShooterRenderObject & {
+  setFlipX?: (value: boolean) => ShooterRenderObject;
+  setScale?: (x: number, y?: number) => ShooterRenderObject;
+};
 
 export class ShooterRenderer {
   private scoreText?: Phaser.GameObjects.Text;
@@ -55,12 +59,14 @@ export class ShooterRenderer {
 
   renderEnemy(scene: Phaser.Scene, enemy: ShooterEnemyState): void {
     const image = this.art?.addImage(scene, 'enemy', enemy.x, enemy.y, 88, 70);
-    this.enemyObjects.set(enemy.id, image ?? drawShooterEnemy(scene, enemy.x, enemy.y, this.params.enemy.label, this.params.enemy.visual));
+    const enemyObject = image ?? drawShooterEnemy(scene, enemy.x, enemy.y, this.params.enemy.label, this.params.enemy.visual);
+    this.enemyObjects.set(enemy.id, faceObjectX(enemyObject, -1));
   }
 
   renderProjectile(scene: Phaser.Scene, projectile: ShooterProjectileState): void {
     const image = this.art?.addImage(scene, 'projectile', projectile.x, projectile.y, 36, 18);
-    this.projectileObjects.set(projectile.id, image ?? drawShooterProjectile(scene, projectile.x, projectile.y, 46, this.params.projectile.visual));
+    const projectileObject = image ?? drawShooterProjectile(scene, projectile.x, projectile.y, 46, this.params.projectile.visual);
+    this.projectileObjects.set(projectile.id, faceObjectX(projectileObject, projectile.velocityX < 0 ? -1 : 1));
   }
 
   syncEntityPositions(scene: Phaser.Scene, runtime: ShooterRuntimeState): void {
@@ -114,4 +120,15 @@ export class ShooterRenderer {
     this.scoreText?.setText(`Score ${score}  HP ${health}`);
     this.statusText?.setText('Enter start  Arrow/WASD move  Space fire  R restart');
   }
+}
+
+function faceObjectX(object: ShooterRenderObject, facingX: 1 | -1): ShooterRenderObject {
+  const orientable = object as OrientableRenderObject;
+  if (typeof orientable.setFlipX === 'function') {
+    orientable.setFlipX(facingX < 0);
+    return object;
+  }
+
+  orientable.setScale?.(facingX, 1);
+  return object;
 }

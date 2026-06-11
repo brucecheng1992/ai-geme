@@ -77,6 +77,7 @@ export class ShooterGameScene {
         player: { ...this.runtime.player },
         enemiesActive: this.runtime.enemies.length,
         projectilesActive: this.runtime.projectiles.length,
+        enemyProjectilesActive: this.runtime.projectiles.filter((projectile) => projectile.owner === 'enemy').length,
         enemiesCleared: this.runtime.enemiesCleared,
         enemyWavePlan: this.enemyWaveSnapshot()
       })),
@@ -124,6 +125,12 @@ export class ShooterGameScene {
       this.renderer.renderEnemy(this.requireScene(), step.spawnedEnemy);
     }
 
+    for (const projectile of step.enemyShots) {
+      this.telemetry.emit('enemy.fired', { enemyId: projectile.sourceEnemyId, projectileId: projectile.id });
+      this.spawn.spawn('projectile', { owner: 'enemy', enemyId: projectile.sourceEnemyId });
+      this.renderer.renderProjectile(this.requireScene(), projectile);
+    }
+
     for (const hit of step.hits) {
       this.collision.collide({ source: 'projectile', target: 'enemy', projectileId: hit.projectileId, enemyId: hit.enemyId });
       this.telemetry.emit('enemy.hit', {
@@ -155,6 +162,13 @@ export class ShooterGameScene {
       this.state.health = Math.max(0, this.state.health - 1);
       this.telemetry.emit('player.damaged', { health: this.state.health, enemyId });
       this.renderer.destroyEnemy(enemyId);
+    }
+
+    for (const projectile of step.playerProjectileHits) {
+      this.collision.collide({ source: 'enemy_projectile', target: 'player', projectileId: projectile.id, enemyId: projectile.sourceEnemyId });
+      this.state.health = Math.max(0, this.state.health - 1);
+      this.telemetry.emit('player.damaged', { health: this.state.health, enemyId: projectile.sourceEnemyId, projectileId: projectile.id });
+      this.renderer.destroyProjectile(projectile.id);
     }
 
     this.renderer.syncEntityPositions(this.requireScene(), this.runtime);

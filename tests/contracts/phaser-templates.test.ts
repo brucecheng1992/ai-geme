@@ -673,6 +673,8 @@ describe('Phaser templates', () => {
     expect(scene).toContain('advanceShooterWorld');
     expect(scene).toContain("this.telemetry.emit('enemy.hit'");
     expect(scene).toContain("this.telemetry.emit('enemy.cleared'");
+    expect(scene).toContain("this.telemetry.emit('enemy.fired'");
+    expect(scene).toContain("source: 'enemy_projectile'");
   });
 
   it('resolves shooter enemy waves from runtime_plan before falling back to template defaults', async () => {
@@ -869,6 +871,41 @@ describe('Phaser templates', () => {
 
     expect(hits).toBeGreaterThan(0);
     expect(state.enemiesCleared).toBe(1);
+  });
+
+  it('shooter enemies fire projectiles that can damage the player', async () => {
+    const { advanceShooterWorld, createShooterRuntimeState } = await import('../../templates/phaser/shooter/src/shooter-runtime.js');
+    const { resolveShooterEnemyWave } = await import('../../templates/phaser/shooter/src/shooter-runtime-plan.js');
+    const { defaultShooterParams } = await import('../../templates/phaser/shooter/src/template-params.js');
+    const state = createShooterRuntimeState(defaultShooterParams);
+    const enemyWave = resolveShooterEnemyWave({ enemy_waves: [] }, defaultShooterParams);
+
+    expect(advanceShooterWorld(state, defaultShooterParams, enemyWave, 16, 0).enemyShots).toHaveLength(0);
+    for (let frame = 1; frame <= 40; frame += 1) {
+      const earlyStep = advanceShooterWorld(state, defaultShooterParams, enemyWave, 16, frame * 16);
+      expect(earlyStep.enemyShots).toHaveLength(0);
+      expect(earlyStep.playerProjectileHits).toHaveLength(0);
+    }
+
+    let enemyShot;
+    for (let frame = 41; frame <= 80 && enemyShot === undefined; frame += 1) {
+      enemyShot = advanceShooterWorld(state, defaultShooterParams, enemyWave, 16, frame * 16).enemyShots[0];
+    }
+
+    expect(enemyShot).toMatchObject({ owner: 'enemy', velocityX: expect.any(Number), active: true });
+    expect(enemyShot?.velocityX).toBeLessThan(0);
+    expect(advanceShooterWorld(state, defaultShooterParams, enemyWave, 16, 81 * 16).enemyShots).toHaveLength(0);
+
+    let projectileHits = 0;
+    let hitProjectileId: number | undefined;
+    for (let frame = 1; frame <= 140 && projectileHits === 0; frame += 1) {
+      const step = advanceShooterWorld(state, defaultShooterParams, enemyWave, 16, (81 + frame) * 16);
+      projectileHits = step.playerProjectileHits.length;
+      hitProjectileId = step.playerProjectileHits[0]?.id;
+    }
+
+    expect(projectileHits).toBeGreaterThan(0);
+    expect(state.projectiles.some((projectile) => projectile.id === hitProjectileId)).toBe(false);
   });
 });
 

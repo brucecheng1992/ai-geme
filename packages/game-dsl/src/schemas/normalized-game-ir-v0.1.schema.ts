@@ -11,6 +11,7 @@ const TelemetryEventNameSchema = z.enum([
   'player.fired',
   'projectile.spawned',
   'collision.detected',
+  'enemy.fired',
   'enemy.hit',
   'enemy.cleared',
   'item.spawned',

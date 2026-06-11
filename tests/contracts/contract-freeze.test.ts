@@ -327,6 +327,11 @@ describe('Contract Freeze', () => {
     }
   });
 
+  it('allows optional shooter enemy fire telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'enemy.fired', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(shooterContract.required_telemetry_all).not.toContain('enemy.fired');
+  });
+
   it('freezes QA gate all and any_groups evaluation semantics', () => {
     const shooterGate = qaGate.genre_required_events.shooter;
     const observedWithScore = [...shooterGate.all, 'score.changed'];
