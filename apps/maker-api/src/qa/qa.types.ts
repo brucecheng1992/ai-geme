@@ -42,6 +42,7 @@ export type QaBrowserResult = {
   message?: string;
   screenshot_path?: string;
   visual_metrics?: QaVisualMetrics;
+  asset_runtime?: QaAssetRuntimeTelemetry;
 };
 
 export type RunQaInput = {
@@ -81,6 +82,7 @@ export type QaReport = {
   message?: string;
   visual_status?: QaVisualStatus;
   asset_manifest_summary?: AssetManifest['summary'];
+  asset_report?: QaAssetReport;
   screenshot_path?: string;
   visual_metrics?: QaVisualMetrics;
   started_at: string;
@@ -88,3 +90,32 @@ export type QaReport = {
 };
 
 export type QaBrowserRunner = (input: RunQaInput, requiredEvents: QaRequiredEvents) => Promise<QaBrowserResult>;
+
+export type QaAssetRuntimeTelemetry = {
+  manifest_loaded: boolean;
+  required: string[];
+  loaded: string[];
+  failed: string[];
+  fallback_used: string[];
+  placeholder_used: string[];
+  missing: string[];
+  missing_required_roles: string[];
+};
+
+export type QaAssetReport = {
+  manifest_summary?: AssetManifest['summary'];
+  required: string[];
+  ready: string[];
+  fallback_used: string[];
+  placeholder_used: string[];
+  missing: string[];
+  runtime?: QaAssetRuntimeTelemetry;
+  failures: QaAssetFailure[];
+};
+
+export type QaAssetFailure = {
+  code: Extract<QaFailureCode, 'ASSET_MANIFEST_INVALID' | 'ASSET_MISSING' | 'REQUIRED_CORE_ASSET_PLACEHOLDER_USED' | 'ASSET_LOAD_FAILED'>;
+  message: string;
+  asset_ids: string[];
+  roles: string[];
+};

@@ -4,7 +4,16 @@ import { dirname } from 'node:path';
 import type { Browser, Page } from 'playwright';
 
 import { TelemetryEventSchema } from '../../../../packages/runtime-core/src/index.js';
-import type { QaBrowserResult, QaBrowserRunner, QaFailureCode, QaGenre, QaRequiredEvents, QaVisualMetrics, RunQaInput } from './qa.types.js';
+import type {
+  QaAssetRuntimeTelemetry,
+  QaBrowserResult,
+  QaBrowserRunner,
+  QaFailureCode,
+  QaGenre,
+  QaRequiredEvents,
+  QaVisualMetrics,
+  RunQaInput
+} from './qa.types.js';
 
 const GENRE_KEYS: Record<QaGenre, string[]> = {
   collector: ['Enter', 'ArrowRight', 'r'],
@@ -69,7 +78,7 @@ export const runPlaywrightQaBrowser: QaBrowserRunner = async (input, requiredEve
 
     const assetAssertion = await verifyRuntimeAssetsLoaded(page, input.genre);
     if (!assetAssertion.ok) {
-      return failedInteractionResult('ASSET_LOAD_FAILED', consoleErrors, visualGate, assetAssertion.message);
+      return failedInteractionResult('ASSET_LOAD_FAILED', consoleErrors, visualGate, assetAssertion.message, assetAssertion.telemetry);
     }
 
     const interactionAssertion = await runDeterministicInteraction(page, input.genre, timeoutMs);
@@ -115,7 +124,8 @@ export const runPlaywrightQaBrowser: QaBrowserRunner = async (input, requiredEve
       failure_code: consoleErrors.length > 0 ? 'FATAL_CONSOLE_ERROR' : !gateReady ? 'REQUIRED_TELEMETRY_MISSING' : interactionAssertion.ok ? undefined : 'QA_RUNNER_FAILED',
       message: interactionAssertion.message,
       screenshot_path: visualGate.screenshot_path,
-      visual_metrics: visualGate.visual_metrics
+      visual_metrics: visualGate.visual_metrics,
+      asset_runtime: assetAssertion.telemetry
     };
   } catch (error) {
     return {
@@ -150,7 +160,8 @@ function failedInteractionResult(
   failureCode: QaBrowserResult['failure_code'],
   consoleErrors: string[],
   visualGate: Extract<VisualGateResult, { ok: true }>,
-  error: unknown
+  error: unknown,
+  assetRuntime?: QaAssetRuntimeTelemetry
 ): QaBrowserResult {
   return {
     ok: false,
@@ -162,7 +173,8 @@ function failedInteractionResult(
     failure_code: failureCode,
     message: errorMessage(error, 'Playwright interaction QA failed'),
     screenshot_path: visualGate.screenshot_path,
-    visual_metrics: visualGate.visual_metrics
+    visual_metrics: visualGate.visual_metrics,
+    asset_runtime: assetRuntime
   };
 }
 
@@ -383,7 +395,7 @@ async function readQaSnapshot(page: Page): Promise<unknown> {
   return await page.evaluate(() => (globalThis as BrowserQaGlobal).__GAME_QA__?.snapshot());
 }
 
-async function verifyRuntimeAssetsLoaded(page: Page, genre: QaGenre): Promise<{ ok: boolean; message?: string }> {
+async function verifyRuntimeAssetsLoaded(page: Page, genre: QaGenre): Promise<{ ok: boolean; message?: string; telemetry?: QaAssetRuntimeTelemetry }> {
   if (genre !== 'dodger') {
     return { ok: true };
   }
@@ -400,36 +412,37 @@ async function verifyRuntimeAssetsLoaded(page: Page, genre: QaGenre): Promise<{ 
   if (assets === undefined) {
     return { ok: false, message: 'Dodger QA expected __GAME_TELEMETRY__.assets from the manifest loader.' };
   }
+  const assetRuntime = toQaAssetRuntimeTelemetry(assets);
 
   if (!assets.manifestLoaded) {
-    return { ok: false, message: 'Dodger QA expected asset manifest telemetry to report manifestLoaded=true.' };
+    return { ok: false, message: 'Dodger QA expected asset manifest telemetry to report manifestLoaded=true.', telemetry: assetRuntime };
   }
 
   if (assets.required.length === 0) {
-    return { ok: false, message: 'Dodger QA expected at least one required runtime asset.' };
+    return { ok: false, message: 'Dodger QA expected at least one required runtime asset.', telemetry: assetRuntime };
   }
 
   const loaded = new Set(assets.loaded);
   const missingRequired = assets.required.filter((id) => !loaded.has(id));
   if (missingRequired.length > 0) {
-    return { ok: false, message: `Dodger QA expected required assets to load: ${missingRequired.join(', ')}` };
+    return { ok: false, message: `Dodger QA expected required assets to load: ${missingRequired.join(', ')}`, telemetry: assetRuntime };
   }
 
   const failed = new Set(assets.failed);
   const failedRequired = assets.required.filter((id) => failed.has(id));
   if (failedRequired.length > 0) {
-    return { ok: false, message: `Dodger QA observed failed required assets: ${failedRequired.join(', ')}` };
+    return { ok: false, message: `Dodger QA observed failed required assets: ${failedRequired.join(', ')}`, telemetry: assetRuntime };
   }
 
   if (assets.missing.length > 0) {
-    return { ok: false, message: `Dodger QA observed missing manifest assets: ${assets.missing.join(', ')}` };
+    return { ok: false, message: `Dodger QA observed missing manifest assets: ${assets.missing.join(', ')}`, telemetry: assetRuntime };
   }
 
   if (assets.missingRequiredRoles.length > 0) {
-    return { ok: false, message: `Dodger QA observed missing required asset roles: ${assets.missingRequiredRoles.join(', ')}` };
+    return { ok: false, message: `Dodger QA observed missing required asset roles: ${assets.missingRequiredRoles.join(', ')}`, telemetry: assetRuntime };
   }
 
-  return { ok: true };
+  return { ok: true, telemetry: assetRuntime };
 }
 
 async function verifyDodgerAutoProgress(page: Page): Promise<{ ok: boolean; message?: string }> {
@@ -1005,6 +1018,8 @@ function readAssetTelemetry(value: unknown): RuntimeAssetTelemetry | undefined {
     !Array.isArray(assets.required) ||
     !Array.isArray(assets.loaded) ||
     !Array.isArray(assets.failed) ||
+    !Array.isArray(assets.fallbackUsed) ||
+    !Array.isArray(assets.placeholderUsed) ||
     !Array.isArray(assets.missing) ||
     !Array.isArray(assets.missingRequiredRoles)
   ) {
@@ -1014,13 +1029,23 @@ function readAssetTelemetry(value: unknown): RuntimeAssetTelemetry | undefined {
   const required = readStringArray(assets.required);
   const loaded = readStringArray(assets.loaded);
   const failed = readStringArray(assets.failed);
+  const fallbackUsed = readStringArray(assets.fallbackUsed);
+  const placeholderUsed = readStringArray(assets.placeholderUsed);
   const missing = readStringArray(assets.missing);
   const missingRequiredRoles = readStringArray(assets.missingRequiredRoles);
-  if (required === undefined || loaded === undefined || failed === undefined || missing === undefined || missingRequiredRoles === undefined) {
+  if (
+    required === undefined ||
+    loaded === undefined ||
+    failed === undefined ||
+    fallbackUsed === undefined ||
+    placeholderUsed === undefined ||
+    missing === undefined ||
+    missingRequiredRoles === undefined
+  ) {
     return undefined;
   }
 
-  return { manifestLoaded: assets.manifestLoaded, required, loaded, failed, missing, missingRequiredRoles };
+  return { manifestLoaded: assets.manifestLoaded, required, loaded, failed, fallbackUsed, placeholderUsed, missing, missingRequiredRoles };
 }
 
 function readStringArray(value: unknown[]): string[] | undefined {
@@ -1055,6 +1080,21 @@ type RuntimeAssetTelemetry = {
   required: string[];
   loaded: string[];
   failed: string[];
+  fallbackUsed: string[];
+  placeholderUsed: string[];
   missing: string[];
   missingRequiredRoles: string[];
 };
+
+function toQaAssetRuntimeTelemetry(assets: RuntimeAssetTelemetry): QaAssetRuntimeTelemetry {
+  return {
+    manifest_loaded: assets.manifestLoaded,
+    required: [...assets.required],
+    loaded: [...assets.loaded],
+    failed: [...assets.failed],
+    fallback_used: [...assets.fallbackUsed],
+    placeholder_used: [...assets.placeholderUsed],
+    missing: [...assets.missing],
+    missing_required_roles: [...assets.missingRequiredRoles]
+  };
+}

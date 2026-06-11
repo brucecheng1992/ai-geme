@@ -60,8 +60,17 @@ describe('Playable QA gate and runner', () => {
 
     expect(report.status).toBe('PASSED');
     expect(report.code).toBeUndefined();
+    expect(report.asset_report).toMatchObject({
+      required: ['background_main', 'player', 'enemy', 'projectile'],
+      ready: ['background_main', 'player', 'enemy', 'projectile'],
+      fallback_used: [],
+      placeholder_used: [],
+      missing: [],
+      failures: []
+    });
     await expect(readFile(workspace.getQaReportPath(projectId, runId), 'utf8')).resolves.toContain('"status": "PASSED"');
     await expect(readFile(workspace.getQaReportPath(projectId, runId), 'utf8')).resolves.toContain('"asset_manifest_summary"');
+    await expect(readFile(workspace.getQaReportPath(projectId, runId), 'utf8')).resolves.toContain('"asset_report"');
   });
 
   it('fails before browser QA when the generated asset manifest is missing', async () => {
@@ -87,6 +96,14 @@ describe('Playable QA gate and runner', () => {
       status: 'QA_FAILED',
       code: 'ASSET_MANIFEST_INVALID'
     });
+    expect(report.asset_report?.failures).toEqual([
+      {
+        code: 'ASSET_MANIFEST_INVALID',
+        message: expect.stringContaining('Asset manifest is missing or unreadable'),
+        asset_ids: [],
+        roles: []
+      }
+    ]);
     await expect(readFile(workspace.getQaReportPath(projectId, runId), 'utf8')).resolves.toContain('"code": "ASSET_MANIFEST_INVALID"');
   });
 
@@ -113,6 +130,88 @@ describe('Playable QA gate and runner', () => {
       status: 'QA_FAILED',
       code: 'ASSET_MANIFEST_INVALID',
       message: expect.stringContaining('Preview asset validation failed')
+    });
+    expect(report.asset_report).toMatchObject({
+      required: ['background_main', 'player', 'enemy', 'projectile'],
+      failures: [
+        {
+          code: 'ASSET_MANIFEST_INVALID',
+          message: expect.stringContaining('Preview asset validation failed'),
+          asset_ids: [],
+          roles: []
+        }
+      ]
+    });
+  });
+
+  it('reports structured asset ids when a preview asset file is missing', async () => {
+    let browserCalled = false;
+    await rm(join(workspace.getGeneratedProjectDistDir(projectId), 'assets/player.svg'), { force: true });
+    const browserRunner: QaBrowserRunner = async () => {
+      browserCalled = true;
+      return {
+        ok: true,
+        visual_ok: true,
+        interaction_ok: true,
+        telemetry: missingObservedBase().map((type, index) => ({ type, timestamp_ms: index, frame: index })),
+        observed_events: missingObservedBase(),
+        console_errors: []
+      };
+    };
+    const runner = new PlaywrightQaRunnerService(workspace, gate, browserRunner);
+
+    const report = await runner.run({ projectId, runId, genre: 'shooter', previewUrl: 'http://localhost:3000/preview/proj/index.html' });
+
+    expect(browserCalled).toBe(false);
+    expect(report).toMatchObject({
+      status: 'QA_FAILED',
+      code: 'ASSET_MISSING',
+      asset_report: {
+        failures: [
+          {
+            code: 'ASSET_MISSING',
+            message: 'Preview asset validation failed: Asset file is missing for player: assets/player.svg',
+            asset_ids: ['player'],
+            roles: ['player_character']
+          }
+        ]
+      }
+    });
+  });
+
+  it('reports structured asset ids when a core placeholder blocks QA', async () => {
+    let browserCalled = false;
+    await rewriteManifestAsset(workspace.getGeneratedProjectPublicDir(projectId), 'player', { source: 'placeholder' });
+    await rewriteManifestAsset(workspace.getGeneratedProjectDistDir(projectId), 'player', { source: 'placeholder' });
+    const browserRunner: QaBrowserRunner = async () => {
+      browserCalled = true;
+      return {
+        ok: true,
+        visual_ok: true,
+        interaction_ok: true,
+        telemetry: missingObservedBase().map((type, index) => ({ type, timestamp_ms: index, frame: index })),
+        observed_events: missingObservedBase(),
+        console_errors: []
+      };
+    };
+    const runner = new PlaywrightQaRunnerService(workspace, gate, browserRunner);
+
+    const report = await runner.run({ projectId, runId, genre: 'shooter', previewUrl: 'http://localhost:3000/preview/proj/index.html' });
+
+    expect(browserCalled).toBe(false);
+    expect(report).toMatchObject({
+      status: 'QA_FAILED',
+      code: 'REQUIRED_CORE_ASSET_PLACEHOLDER_USED',
+      asset_report: {
+        failures: [
+          {
+            code: 'REQUIRED_CORE_ASSET_PLACEHOLDER_USED',
+            message: 'Required core asset player uses placeholder provider.',
+            asset_ids: ['player'],
+            roles: ['player_character']
+          }
+        ]
+      }
     });
   });
 
@@ -160,6 +259,37 @@ describe('Playable QA gate and runner', () => {
     await expect(readFile(workspace.getQaReportPath(projectId, runId), 'utf8')).resolves.toContain('"code": "QA_BRIDGE_MISSING"');
   });
 
+  it('fails dodger QA when an injected browser runner omits runtime asset telemetry', async () => {
+    const browserRunner: QaBrowserRunner = async () => ({
+      ok: true,
+      visual_ok: true,
+      interaction_ok: true,
+      telemetry: dodgerObservedBase().map((type, index) => ({ type, timestamp_ms: index, frame: index })),
+      observed_events: dodgerObservedBase(),
+      snapshot: { gameStatus: 'READY', score: 1, health: 3, frame: 0 },
+      console_errors: []
+    });
+    const runner = new PlaywrightQaRunnerService(workspace, gate, browserRunner);
+
+    const report = await runner.run({ projectId, runId, genre: 'dodger', previewUrl: 'http://localhost:3000/preview/proj/index.html' });
+
+    expect(report).toMatchObject({
+      status: 'QA_FAILED',
+      code: 'ASSET_LOAD_FAILED',
+      message: 'Dodger QA expected runtime asset telemetry in browser result.',
+      asset_report: {
+        failures: [
+          {
+            code: 'ASSET_LOAD_FAILED',
+            message: 'Dodger QA expected runtime asset telemetry in browser result.',
+            asset_ids: [],
+            roles: []
+          }
+        ]
+      }
+    });
+  });
+
   it(
     'p0_false_playable_blank_preview',
     async () => {
@@ -201,6 +331,21 @@ describe('Playable QA gate and runner', () => {
           code: 'ASSET_LOAD_FAILED',
           message: 'Dodger QA expected required assets to load: player'
         });
+        expect(report.asset_report).toMatchObject({
+          runtime: {
+            manifest_loaded: true,
+            required: ['background_main', 'player', 'hazard'],
+            loaded: ['background_main', 'hazard']
+          },
+          failures: [
+            {
+              code: 'ASSET_LOAD_FAILED',
+              message: 'Dodger QA expected required assets to load: player',
+              asset_ids: ['player'],
+              roles: []
+            }
+          ]
+        });
       } finally {
         await closeServer(server);
       }
@@ -224,6 +369,14 @@ describe('Playable QA gate and runner', () => {
           code: 'ASSET_LOAD_FAILED',
           message: 'Dodger QA observed missing manifest assets: player'
         });
+        expect(report.asset_report?.failures).toEqual([
+          {
+            code: 'ASSET_LOAD_FAILED',
+            message: 'Dodger QA observed missing manifest assets: player',
+            asset_ids: ['player'],
+            roles: []
+          }
+        ]);
       } finally {
         await closeServer(server);
       }
@@ -247,6 +400,14 @@ describe('Playable QA gate and runner', () => {
           code: 'ASSET_LOAD_FAILED',
           message: 'Dodger QA observed missing required asset roles: player_character'
         });
+        expect(report.asset_report?.failures).toEqual([
+          {
+            code: 'ASSET_LOAD_FAILED',
+            message: 'Dodger QA observed missing required asset roles: player_character',
+            asset_ids: [],
+            roles: ['player_character']
+          }
+        ]);
       } finally {
         await closeServer(server);
       }
@@ -1312,6 +1473,32 @@ function dodgerRuntimeAssetsJson(
     missing: options.missing ?? [],
     missingRequiredRoles: options.missingRequiredRoles ?? []
   });
+}
+
+async function rewriteManifestAsset(
+  assetRoot: string,
+  assetId: string,
+  patch: { source?: 'template_svg' | 'placeholder'; status?: 'ready' | 'fallback_used' | 'missing' }
+): Promise<void> {
+  const manifestPath = join(assetRoot, 'asset_manifest.json');
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as {
+    assets: Array<{ id: string; source: string; status: string }>;
+    summary: { required: number; ready: number; fallback_used: number; missing: number; placeholder_used: number };
+  };
+  const asset = manifest.assets.find((candidate) => candidate.id === assetId);
+  if (asset === undefined) {
+    throw new Error(`Unable to find test asset ${assetId}`);
+  }
+
+  Object.assign(asset, patch);
+  manifest.summary = {
+    required: manifest.assets.filter((candidate) => candidate.status !== 'missing').length,
+    ready: manifest.assets.filter((candidate) => candidate.status === 'ready').length,
+    fallback_used: manifest.assets.filter((candidate) => candidate.status === 'fallback_used').length,
+    missing: manifest.assets.filter((candidate) => candidate.status === 'missing').length,
+    placeholder_used: manifest.assets.filter((candidate) => candidate.source === 'placeholder').length
+  };
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
 }
 
 async function closeServer(server: Server): Promise<void> {

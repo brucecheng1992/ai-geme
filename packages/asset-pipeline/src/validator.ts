@@ -6,8 +6,15 @@ import { AssetManifestSchema, AssetPlanSchema, type AssetManifest, type AssetMan
 export type AssetManifestFailureCode = 'ASSET_MANIFEST_INVALID' | 'ASSET_MISSING' | 'REQUIRED_CORE_ASSET_PLACEHOLDER_USED';
 export type AssetManifestValidationResult =
   | { ok: true; manifest: AssetManifest }
-  | { ok: false; code: AssetManifestFailureCode; message: string };
-type AssetContractCheckResult = { ok: true } | { ok: false; code: AssetManifestFailureCode; message: string };
+  | AssetManifestValidationFailure;
+export type AssetManifestValidationFailure = {
+  ok: false;
+  code: AssetManifestFailureCode;
+  message: string;
+  assetId?: string;
+  role?: AssetManifestAsset['role'];
+};
+type AssetContractCheckResult = { ok: true } | AssetManifestValidationFailure;
 
 export async function validateGeneratedProjectAssets(input: {
   projectId: string;
@@ -37,7 +44,9 @@ export async function validateGeneratedProjectAssets(input: {
       return {
         ok: false,
         code: 'ASSET_MANIFEST_INVALID',
-        message: `Required asset ${asset.id} is not ready.`
+        message: `Required asset ${asset.id} is not ready.`,
+        assetId: asset.id,
+        role: asset.role
       };
     }
 
@@ -45,7 +54,9 @@ export async function validateGeneratedProjectAssets(input: {
       return {
         ok: false,
         code: 'REQUIRED_CORE_ASSET_PLACEHOLDER_USED',
-        message: `Required core asset ${asset.id} uses placeholder provider.`
+        message: `Required core asset ${asset.id} uses placeholder provider.`,
+        assetId: asset.id,
+        role: asset.role
       };
     }
 
@@ -138,7 +149,9 @@ function validateRequiredPlanAssets(
       return {
         ok: false,
         code: 'ASSET_MANIFEST_INVALID',
-        message: `Required asset ${item.id} from asset_plan.json is missing from asset_manifest.json.`
+        message: `Required asset ${item.id} from asset_plan.json is missing from asset_manifest.json.`,
+        assetId: item.id,
+        role: item.role
       };
     }
 
@@ -146,7 +159,9 @@ function validateRequiredPlanAssets(
       return {
         ok: false,
         code: 'ASSET_MANIFEST_INVALID',
-        message: `Required asset ${item.id} from asset_plan.json is not ready in asset_manifest.json.`
+        message: `Required asset ${item.id} from asset_plan.json is not ready in asset_manifest.json.`,
+        assetId: item.id,
+        role: item.role
       };
     }
 
@@ -154,7 +169,9 @@ function validateRequiredPlanAssets(
       return {
         ok: false,
         code: 'ASSET_MANIFEST_INVALID',
-        message: `Required asset ${item.id} manifest metadata does not match asset_plan.json.`
+        message: `Required asset ${item.id} manifest metadata does not match asset_plan.json.`,
+        assetId: item.id,
+        role: item.role
       };
     }
   }
@@ -169,14 +186,18 @@ async function validateAssetFile(publicDir: string, asset: AssetManifestAsset): 
       return {
         ok: false,
         code: 'ASSET_MISSING',
-        message: `Asset path is not a regular file for ${asset.id}: ${asset.path}`
+        message: `Asset path is not a regular file for ${asset.id}: ${asset.path}`,
+        assetId: asset.id,
+        role: asset.role
       };
     }
   } catch {
     return {
       ok: false,
       code: 'ASSET_MISSING',
-      message: `Asset file is missing for ${asset.id}: ${asset.path}`
+      message: `Asset file is missing for ${asset.id}: ${asset.path}`,
+      assetId: asset.id,
+      role: asset.role
     };
   }
 

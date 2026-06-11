@@ -8,11 +8,56 @@
 
 ## 当前阶段
 
-Asset Pipeline P0 Step 2 已完成：dodger 生成项目现在写入 `dodger/src/asset-manifest.generated.json`，Phaser runtime 从 manifest `loadKey` preload / render 主资源，并通过 `__GAME_TELEMETRY__.assets` 与 Playwright QA required-loaded gate 证明 required assets 被 runtime 加载，避免只在文件层通过门禁。
+Asset Pipeline P0 Step 3 已完成：QA report 现在写入 `asset_report`，包含 manifest summary 派生的资源明细、dodger runtime asset telemetry，以及 `ASSET_MISSING`、`REQUIRED_CORE_ASSET_PLACEHOLDER_USED`、`ASSET_LOAD_FAILED` 的结构化 failure 明细，为 Workbench Assets 面板铺路。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Asset Pipeline P0 Step 3 丰富 QA report asset 明细和失败原因，为 Workbench Assets 面板提供 required / loaded / failed / placeholder / missing 状态。
+当前下一步：Asset Pipeline P0 Step 4 Workbench asset status panel，消费 QA report `asset_report` 展示 required / loaded / failed / placeholder / missing 和 failure reason。
+
+### 2.8 Asset Pipeline P0 Step 3: QA asset report enrichment
+
+完成时间：2026-06-11
+
+已完成内容：
+
+- `QaReport` 新增 `asset_report`，保留既有 `asset_manifest_summary` 兼容字段。
+- `asset_report` 汇总 manifest 派生的 `required`、`ready`、`fallback_used`、`placeholder_used`、`missing`、runtime asset telemetry 和结构化 `failures`。
+- `runPlaywrightQaBrowser` 将 `__GAME_TELEMETRY__.assets` 规范化为 snake_case `asset_runtime`，并在 `ASSET_LOAD_FAILED` 分支带出 runtime telemetry。
+- `validateGeneratedProjectAssets` 的可定位失败带出 `assetId` 和 `role`，QA service 将其写入 `asset_report.failures[].asset_ids/roles`。
+- `PlaywrightQaRunnerService` 对 dodger alternate runner 增加 service-level guard：当 browser runner 报告通过但缺少 runtime asset telemetry 时，report 以 `ASSET_LOAD_FAILED` 失败。
+- 测试覆盖 passed report 的 asset 明细、manifest 缺失、preview asset missing、core placeholder、runtime required not loaded、runtime missing asset、missing required role 和 alternate runner 缺 runtime telemetry。
+
+阶段结果：
+
+- 解决层级：QA report 数据契约 + browser runner 边界适配 + asset validator failure metadata。
+- Workbench 铺路结果：后续 UI 可直接读取 `asset_report.manifest_summary`、`asset_report.runtime` 和 `asset_report.failures`，不需要解析 message。
+- DSL-first 边界：未新增 Raw DSL asset path / URL / base64 字段；未改资源 provider；未改 Phaser 模板；未接 Workbench UI。
+- 未改范围：Workbench Assets 面板仍未接入；QA report 还未展示 license / attribution 细节；collector / shooter runtime asset telemetry 仍待后续分步接入。
+
+已通过验证：
+
+    npx vitest run tests/workspace/playwright-qa-runner.test.ts
+    # 1 个测试文件，26 个测试全部通过
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/compiler-service.test.ts tests/workspace/playwright-qa-runner.test.ts && npm run typecheck
+    # 4 个测试文件，63 个测试全部通过；root、maker-api、maker-workbench 三段类型检查均通过
+
+    npm test
+    # 11 个测试文件，104 个测试全部通过
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出 `asset_report.fallback_used` 把 `source=template_svg` 误判为 fallback，与 manifest `summary.fallback_used` 语义不一致；P2 指出 asset gate failure 缺结构化 asset id / role；P2 指出 injected browser runner 缺 runtime asset telemetry 时 service 层可能误判 PASSED；P3 建议文档沉淀。
+- 已修复：`asset_report.fallback_used` 改为只按 `status === "fallback_used"`；validator 可定位失败返回 `assetId` / `role`；QA service 写入结构化 failure ids / roles；dodger alternate runner 缺 `asset_runtime` 时 service 层返回 `ASSET_LOAD_FAILED`；补 preview `ASSET_MISSING`、core placeholder 和缺 runtime telemetry 测试。
+- Oracle 复审：P0/P1/P2/P3 均无，Step 3 代码门禁通过。
+- 审查模式：Oracle 新建
+
+下一步建议：
+
+- Asset Pipeline P0 Step 4：Workbench asset status panel，优先消费 `asset_report`，避免前端解析 QA failure message。
 
 ### 2.7 Asset Pipeline P0 Step 2: dodger manifest preload / runtime asset gate
 

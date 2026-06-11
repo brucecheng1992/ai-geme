@@ -4,11 +4,11 @@
 
 ## 1. 扫描结论
 
-- 当前 Asset Pipeline P0 Step 2 新增/修改的资源 manifest `loadKey`、dodger manifest loader 和 QA runtime asset gate 文件已按职责检查；既有测试文件、`normalizer.ts`、`GameScene.ts` 和 Playwright runner 超过 220 行，按职责集中保留并由针对性测试覆盖。
+- 当前 Asset Pipeline P0 Step 3 新增/修改的 QA asset report 合同、runtime telemetry 汇总和 asset failure 明细已按职责检查；既有测试文件、`normalizer.ts`、`GameScene.ts` 和 Playwright runner 超过 220 行，按职责集中保留并由针对性测试覆盖。
 - 仓库非依赖文件中当前最大文件是 `docs/ai_game_dsl_p0_local_implementation.md`，约 2880 行，属于实施规格文档。
 - 现有阶段记录位于 `docs/refactor-log/ai-game-dsl-p0-review-gated.md`。
-- 当前已完成阶段：P0 主链路修复 + 模型 DSL 视觉执行复核修复 + DSL-first P1 Step 6 shooter enemy_wave runtime_plan + Asset Pipeline P0 Step 1 artifact gate + Asset Pipeline P0 Step 2 dodger manifest preload / runtime asset gate。
-- 当前下一步：Asset Pipeline P0 Step 3 丰富 QA report 中的 required / loaded / failed / placeholder 资源明细和失败码。
+- 当前已完成阶段：P0 主链路修复 + 模型 DSL 视觉执行复核修复 + DSL-first P1 Step 6 shooter enemy_wave runtime_plan + Asset Pipeline P0 Step 1 artifact gate + Asset Pipeline P0 Step 2 dodger manifest preload / runtime asset gate + Asset Pipeline P0 Step 3 QA asset report enrichment。
+- 当前下一步：Asset Pipeline P0 Step 4 Workbench asset status panel。
 
 ## 2. 大文档拆分索引
 
@@ -97,8 +97,8 @@ Step 1 不一次性实现完整业务，只建立可启动骨架和健康检查�
 | --- | --- | --- | --- |
 | Asset Step 1 | AssetPlan / AssetManifest artifact gate | `packages/asset-pipeline`、`asset_plan.json`、`public/asset_manifest.json`、`public/assets/*.svg`、QA browser 前置 asset gate | 已完成 |
 | Asset Step 2 | Phaser manifest preload / consume | generated `asset-manifest.generated.json` 或 loader、template preload、asset loaded / failed telemetry、QA required asset loaded gate | 已完成 |
-| Asset Step 3 | Asset QA report enrichment | QA report 中展示 required / loaded / failed / placeholder 资源明细，区分 `ASSET_MISSING`、`REQUIRED_CORE_ASSET_PLACEHOLDER_USED` 与 runtime load failure | 下一步 |
-| Asset Step 4 | Workbench asset status panel | Workbench 展示 manifest summary、asset failure reason，避免 report 404 噪音回归 | 待执行 |
+| Asset Step 3 | Asset QA report enrichment | QA report 中展示 required / loaded / failed / placeholder 资源明细，区分 `ASSET_MISSING`、`REQUIRED_CORE_ASSET_PLACEHOLDER_USED` 与 runtime load failure | 已完成 |
+| Asset Step 4 | Workbench asset status panel | Workbench 展示 manifest summary、asset failure reason，避免 report 404 噪音回归 | 下一步 |
 
 执行约束：
 
@@ -111,7 +111,7 @@ Step 1 不一次性实现完整业务，只建立可启动骨架和健康检查�
 
 Step 0 到 Step 9、P0 主链路修复及模型 DSL 视觉执行复核修复已完成。DSL-first P1 扩展已完成到 Step 6：模型生成的 shooter Raw DSL 通过 normalizer 派生为 `runtime_plan.enemy_waves`，由 shooter runtime 执行 enemy wave spawn budget / maxActive / interval / speed multiplier，并由 QA snapshot 与 `enemy.hit` / `enemy.cleared` payload 证明；真实 DeepSeek 生成链路已通过 normalize/compile/build/QA。
 
-Asset Pipeline P0 v0.2 已开始，当前完成 Step 1 和 Step 2：生成项目写入 `asset_plan.json`、`public/asset_manifest.json` 和 `public/assets/*.svg`；Playwright QA 在浏览器前用 `asset_plan` 反查 manifest required 资源并确认文件是普通文件；dodger 生成项目写入 `dodger/src/asset-manifest.generated.json`，Phaser runtime 从 manifest `loadKey` preload / render 主资源，并由 QA 读取 `__GAME_TELEMETRY__.assets` 验证 required asset loaded。
+Asset Pipeline P0 v0.2 已开始，当前完成 Step 1、Step 2 和 Step 3：生成项目写入 `asset_plan.json`、`public/asset_manifest.json` 和 `public/assets/*.svg`；Playwright QA 在浏览器前用 `asset_plan` 反查 manifest required 资源并确认文件是普通文件；dodger 生成项目写入 `dodger/src/asset-manifest.generated.json`，Phaser runtime 从 manifest `loadKey` preload / render 主资源，并由 QA 读取 `__GAME_TELEMETRY__.assets` 验证 required asset loaded；QA report 现在写入 `asset_report`，包含 manifest 派生资源明细、runtime asset telemetry 和结构化 asset failure。
 
 完成结果：
 
@@ -121,7 +121,7 @@ Asset Pipeline P0 v0.2 已开始，当前完成 Step 1 和 Step 2：生成项目
 
 当前下一步：
 
-- Asset Pipeline P0 Step 3：丰富 QA report asset 明细和失败原因，让 Workbench 后续可展示 required / loaded / failed / placeholder / missing 的资产状态。
+- Asset Pipeline P0 Step 4：Workbench asset status panel，消费 `asset_report` 展示 required / loaded / failed / placeholder / missing 与 failure reason。
 - 若转回 DSL-first P1 Step 7，应作为独立扩展继续遵守顺序：contract/runtime/QA 先于 prompt，真实模型链路验证后再沉淀文档。
 
 后续如继续扩展，应继续作为独立 P1/P2 阶段推进，避免把扩展能力混入 P0 收尾：

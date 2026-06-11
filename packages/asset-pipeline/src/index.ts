@@ -9,5 +9,5 @@ export {
   type AssetPlan,
   type AssetPlanItem
 } from './schemas.js';
-export { validateGeneratedProjectAssets, type AssetManifestFailureCode, type AssetManifestValidationResult } from './validator.js';
+export { validateGeneratedProjectAssets, type AssetManifestFailureCode, type AssetManifestValidationFailure, type AssetManifestValidationResult } from './validator.js';
 export { writeAssetArtifacts, type WriteAssetArtifactsResult } from './writer.js';
