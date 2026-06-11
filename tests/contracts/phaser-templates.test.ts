@@ -40,9 +40,22 @@ type TemplateSnapshot = {
   frame: number;
 };
 
+type TemplateAssetTelemetry = {
+  manifestLoaded: boolean;
+  required: string[];
+  loaded: string[];
+  failed: string[];
+  fallbackUsed: string[];
+  placeholderUsed: string[];
+  missing: string[];
+  missingRequiredRoles: string[];
+};
+
 declare global {
   // eslint-disable-next-line no-var
-  var __GAME_TELEMETRY__: { readonly events: TemplateTelemetryEvent[]; readonly state: TemplateSnapshot } | undefined;
+  var __GAME_TELEMETRY__:
+    | { readonly events: TemplateTelemetryEvent[]; readonly state: TemplateSnapshot; readonly assets?: unknown }
+    | undefined;
   // eslint-disable-next-line no-var
   var __GAME_QA__:
     | {
@@ -803,6 +816,31 @@ describe('Phaser templates', () => {
       state.gameStatus = 'LOST';
     }
     expect(qa?.snapshot().gameStatus).not.toBe('LOST');
+  });
+
+  it('exposes shooter asset telemetry through the runtime bridge', async () => {
+    const { ShooterGameScene } = await import('../../templates/phaser/shooter/src/GameScene.js');
+    const { defaultShooterParams } = await import('../../templates/phaser/shooter/src/template-params.js');
+    const expectedAssets: TemplateAssetTelemetry = {
+      manifestLoaded: true,
+      required: ['background_main', 'player', 'enemy', 'projectile'],
+      loaded: ['background_main', 'player', 'enemy', 'projectile'],
+      failed: [],
+      fallbackUsed: [],
+      placeholderUsed: [],
+      missing: [],
+      missingRequiredRoles: []
+    };
+    const scene = new ShooterGameScene(defaultShooterParams, undefined, {
+      preload: () => undefined,
+      addImage: () => undefined,
+      drawBackground: () => false,
+      telemetry: () => expectedAssets
+    });
+
+    scene.create();
+
+    expect(globalThis.__GAME_TELEMETRY__?.assets).toEqual(expectedAssets);
   });
 
   it('shooter runtime requires real movement and projectile collision before enemy clear', async () => {

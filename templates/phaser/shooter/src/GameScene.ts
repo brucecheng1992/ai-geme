@@ -79,10 +79,8 @@ export class ShooterGameScene {
         projectilesActive: this.runtime.projectiles.length,
         enemiesCleared: this.runtime.enemiesCleared,
         enemyWavePlan: this.enemyWaveSnapshot()
-      }),
-      () => ({
-        assets: this.art?.telemetry()
-      }))
+      })),
+      () => ({ assets: this.art?.telemetry() })
     );
     this.renderFirstFrame();
   }
