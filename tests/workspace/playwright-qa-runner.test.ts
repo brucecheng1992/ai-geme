@@ -186,6 +186,75 @@ describe('Playable QA gate and runner', () => {
   );
 
   it(
+    'fails dodger QA when required runtime assets are not loaded',
+    async () => {
+      const server = await startStaticDodgerPreviewServer(dodgerRuntimeAssetsJson({ loaded: ['background_main', 'hazard'] }));
+      const port = (server.address() as AddressInfo).port;
+      const runner = new PlaywrightQaRunnerService(workspace, gate);
+
+      try {
+        const report = await runner.run({ projectId, runId, genre: 'dodger', previewUrl: `http://127.0.0.1:${port}/index.html`, timeoutMs: 10_000 });
+
+        expect(report).toMatchObject({
+          status: 'QA_FAILED',
+          visual_status: 'PASSED',
+          code: 'ASSET_LOAD_FAILED',
+          message: 'Dodger QA expected required assets to load: player'
+        });
+      } finally {
+        await closeServer(server);
+      }
+    },
+    30_000
+  );
+
+  it(
+    'fails dodger QA when runtime asset telemetry reports missing assets',
+    async () => {
+      const server = await startStaticDodgerPreviewServer(dodgerRuntimeAssetsJson({ missing: ['player'] }));
+      const port = (server.address() as AddressInfo).port;
+      const runner = new PlaywrightQaRunnerService(workspace, gate);
+
+      try {
+        const report = await runner.run({ projectId, runId, genre: 'dodger', previewUrl: `http://127.0.0.1:${port}/index.html`, timeoutMs: 10_000 });
+
+        expect(report).toMatchObject({
+          status: 'QA_FAILED',
+          visual_status: 'PASSED',
+          code: 'ASSET_LOAD_FAILED',
+          message: 'Dodger QA observed missing manifest assets: player'
+        });
+      } finally {
+        await closeServer(server);
+      }
+    },
+    30_000
+  );
+
+  it(
+    'fails dodger QA when required manifest roles are absent from runtime assets',
+    async () => {
+      const server = await startStaticDodgerPreviewServer(dodgerRuntimeAssetsJson({ required: ['background_main', 'hazard'], loaded: ['background_main', 'hazard'], missingRequiredRoles: ['player_character'] }));
+      const port = (server.address() as AddressInfo).port;
+      const runner = new PlaywrightQaRunnerService(workspace, gate);
+
+      try {
+        const report = await runner.run({ projectId, runId, genre: 'dodger', previewUrl: `http://127.0.0.1:${port}/index.html`, timeoutMs: 10_000 });
+
+        expect(report).toMatchObject({
+          status: 'QA_FAILED',
+          visual_status: 'PASSED',
+          code: 'ASSET_LOAD_FAILED',
+          message: 'Dodger QA observed missing required asset roles: player_character'
+        });
+      } finally {
+        await closeServer(server);
+      }
+    },
+    30_000
+  );
+
+  it(
     'fails dodger QA when telemetry exists but the survival frame does not advance',
     async () => {
       const server = await startStaticDodgerPreviewServer();
@@ -696,6 +765,7 @@ async function writeValidAssetManifest(workspace: LocalWorkspaceService, id: str
           strict: true,
           assets: assets.map((asset) => ({
             id: asset.id,
+            loadKey: `agm.${asset.id}`,
             role: asset.role,
             type: 'image',
             format: 'svg',
@@ -743,7 +813,7 @@ async function startBlankTelemetryPreviewServer(): Promise<Server> {
   return server;
 }
 
-async function startStaticDodgerPreviewServer(): Promise<Server> {
+async function startStaticDodgerPreviewServer(assetTelemetry = dodgerRuntimeAssetsJson()): Promise<Server> {
   const telemetry = dodgerObservedBase()
     .map((type, index) => ({ type, timestamp_ms: index, frame: 0 }))
     .map((event) => JSON.stringify(event))
@@ -771,7 +841,8 @@ async function startStaticDodgerPreviewServer(): Promise<Server> {
       context.closePath();
       context.fill();
       const telemetry = [${telemetry}];
-      window.__GAME_TELEMETRY__ = { events: telemetry, state: { gameStatus: 'PLAYING', score: 0, health: 3, frame: 0 } };
+      const assets = ${assetTelemetry};
+      window.__GAME_TELEMETRY__ = { events: telemetry, state: { gameStatus: 'PLAYING', score: 0, health: 3, frame: 0 }, assets };
       window.__GAME_QA__ = {
         snapshot() { return window.__GAME_TELEMETRY__.state; },
         telemetry() { return telemetry; }
@@ -824,6 +895,7 @@ async function startRuntimePlanMismatchDodgerPreviewServer(): Promise<Server> {
       context.closePath();
       context.fill();
       const telemetry = [${telemetry}];
+      const assets = ${dodgerRuntimeAssetsJson()};
       const state = {
         gameStatus: 'PLAYING',
         score: 0,
@@ -853,7 +925,7 @@ async function startRuntimePlanMismatchDodgerPreviewServer(): Promise<Server> {
           state.player.y -= 80;
         }
       });
-      window.__GAME_TELEMETRY__ = { events: telemetry, state };
+      window.__GAME_TELEMETRY__ = { events: telemetry, state, assets };
       window.__GAME_QA__ = {
         snapshot() { return state; },
         telemetry() { return telemetry; }
@@ -906,6 +978,7 @@ async function startIncompleteRuntimePlanDodgerPreviewServer(): Promise<Server> 
       context.closePath();
       context.fill();
       const telemetry = [${telemetry}];
+      const assets = ${dodgerRuntimeAssetsJson()};
       const state = {
         gameStatus: 'PLAYING',
         score: 0,
@@ -933,7 +1006,7 @@ async function startIncompleteRuntimePlanDodgerPreviewServer(): Promise<Server> 
           state.player.y -= 80;
         }
       });
-      window.__GAME_TELEMETRY__ = { events: telemetry, state };
+      window.__GAME_TELEMETRY__ = { events: telemetry, state, assets };
       window.__GAME_QA__ = {
         snapshot() { return state; },
         telemetry() { return telemetry; }
@@ -1105,6 +1178,7 @@ function dodgerRuntimePlanHtml(telemetry: string, spawnPlan: Record<string, unkn
       context.closePath();
       context.fill();
       const telemetry = [${telemetry}];
+      const assets = ${dodgerRuntimeAssetsJson()};
       const state = {
         gameStatus: 'PLAYING',
         score: 0,
@@ -1125,7 +1199,7 @@ function dodgerRuntimePlanHtml(telemetry: string, spawnPlan: Record<string, unkn
           state.player.y -= 80;
         }
       });
-      window.__GAME_TELEMETRY__ = { events: telemetry, state };
+      window.__GAME_TELEMETRY__ = { events: telemetry, state, assets };
       window.__GAME_QA__ = {
         snapshot() { return state; },
         telemetry() { return telemetry; }
@@ -1221,6 +1295,23 @@ function dodgerObservedBase(): TelemetryEvent['type'][] {
     'item.spawned',
     'survival_time.changed'
   ];
+}
+
+function dodgerRuntimeAssetsJson(
+  options: { collectible?: boolean; required?: string[]; loaded?: string[]; missing?: string[]; missingRequiredRoles?: string[] } = {}
+): string {
+  const required = options.required ?? ['background_main', 'player', 'hazard', ...(options.collectible === true ? ['collectible'] : [])];
+  const loaded = options.loaded ?? required;
+  return JSON.stringify({
+    manifestLoaded: true,
+    required,
+    loaded,
+    failed: [],
+    fallbackUsed: required,
+    placeholderUsed: [],
+    missing: options.missing ?? [],
+    missingRequiredRoles: options.missingRequiredRoles ?? []
+  });
 }
 
 async function closeServer(server: Server): Promise<void> {

@@ -80,6 +80,8 @@ describe('Phaser templates', () => {
     expect(collectorMain).toContain('scene.collectItem()');
     expect(dodgerMain).toContain('scene.dodgeFrame()');
     expect(dodgerMain).toContain('scene.update(delta)');
+    expect(dodgerMain).toContain('asset-manifest.generated.json');
+    expect(dodgerMain).toContain('dodgerArt.preload(this, { collectible: dodgerParams.collectible !== undefined })');
     expect(dodgerMain).toContain('scene.moveUp()');
     expect(dodgerMain).toContain('scene.moveDown()');
     expect(dodgerMain).toContain('scene.hitHazard()');
@@ -114,7 +116,7 @@ describe('Phaser templates', () => {
       expect(main).toContain("from './template-params.generated.json'");
       if (genre === 'dodger') {
         expect(main).toContain("from './runtime-plan.generated.json'");
-        expect(main).toContain('new DodgerGameScene(dodgerParams, dodgerRuntimePlan)');
+        expect(main).toContain('new DodgerGameScene(dodgerParams, dodgerRuntimePlan, dodgerArt)');
       } else if (genre === 'shooter') {
         expect(main).toContain("from './runtime-plan.generated.json'");
         expect(main).toContain('new ShooterGameScene(shooterParams, shooterRuntimePlan)');
@@ -179,6 +181,10 @@ describe('Phaser templates', () => {
     expect(scene).toContain('hitboxesOverlap(this.playerHitbox, this.collectibleHitbox');
     expect(scene).toContain('collectOverlappingItem');
     expect(scene).toContain('renderCollectibleShape');
+    expect(scene).toContain("this.art.addImage(scene, 'player_character'");
+    expect(scene).toContain('emitCoinSpark');
+    expect(scene).toContain('emitClearBurst');
+    expect(scene).toContain('Math.min(this.state.score, this.collectibleTargetScore)');
     expect(scene).toContain('impactHoldMs');
     expect(scene).toContain('player: { x: this.params.player.startX, y: this.playerY');
     expect(scene).toContain('hazards: this.hazards.map');
@@ -597,6 +603,22 @@ describe('Phaser templates', () => {
     const snapshot = globalThis.__GAME_QA__?.snapshot();
     expect(snapshot).toMatchObject({ gameStatus: 'WON', score: 3 });
     expect(globalThis.__GAME_QA__?.telemetry().map((event) => event.type)).toEqual(expect.arrayContaining(['objective.completed', 'game.won']));
+  });
+
+  it('loses dodger collectible runs when time expires before the score target', async () => {
+    const { DodgerGameScene } = await import('../../templates/phaser/dodger/src/GameScene.js');
+    const { defaultDodgerParams } = await import('../../templates/phaser/dodger/src/template-params.js');
+    const scene = new DodgerGameScene({
+      ...defaultDodgerParams,
+      collectible: { label: 'Coin', count: 3, scorePerItem: 1 },
+      objective: { surviveDurationMs: 1000 }
+    });
+
+    scene.create();
+    scene.update(1000);
+
+    expect(globalThis.__GAME_QA__?.snapshot()).toMatchObject({ gameStatus: 'LOST', score: 0 });
+    expect(globalThis.__GAME_QA__?.telemetry().map((event) => event.type)).toContain('game.lost');
   });
 
   it('preserves the dodger fallback lane geometry without a runtime_plan rule', async () => {

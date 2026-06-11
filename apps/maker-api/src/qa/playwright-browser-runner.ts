@@ -67,6 +67,11 @@ export const runPlaywrightQaBrowser: QaBrowserRunner = async (input, requiredEve
       return failedInteractionResult(consoleErrors.length > 0 ? 'FATAL_CONSOLE_ERROR' : 'QA_BRIDGE_MISSING', consoleErrors, visualGate, error);
     }
 
+    const assetAssertion = await verifyRuntimeAssetsLoaded(page, input.genre);
+    if (!assetAssertion.ok) {
+      return failedInteractionResult('ASSET_LOAD_FAILED', consoleErrors, visualGate, assetAssertion.message);
+    }
+
     const interactionAssertion = await runDeterministicInteraction(page, input.genre, timeoutMs);
 
     await page
@@ -155,7 +160,7 @@ function failedInteractionResult(
     telemetry: [],
     console_errors: consoleErrors,
     failure_code: failureCode,
-    message: error instanceof Error ? error.message : 'Playwright interaction QA failed',
+    message: errorMessage(error, 'Playwright interaction QA failed'),
     screenshot_path: visualGate.screenshot_path,
     visual_metrics: visualGate.visual_metrics
   };
@@ -376,6 +381,55 @@ async function runDeterministicInteraction(page: Page, genre: QaGenre, timeoutMs
 
 async function readQaSnapshot(page: Page): Promise<unknown> {
   return await page.evaluate(() => (globalThis as BrowserQaGlobal).__GAME_QA__?.snapshot());
+}
+
+async function verifyRuntimeAssetsLoaded(page: Page, genre: QaGenre): Promise<{ ok: boolean; message?: string }> {
+  if (genre !== 'dodger') {
+    return { ok: true };
+  }
+
+  const telemetry = await page.evaluate(() => {
+    const target = (globalThis as BrowserQaGlobal).__GAME_TELEMETRY__;
+    if (typeof target !== 'object' || target === null || !('assets' in target)) {
+      return undefined;
+    }
+    return (target as { assets?: unknown }).assets;
+  });
+
+  const assets = readAssetTelemetry(telemetry);
+  if (assets === undefined) {
+    return { ok: false, message: 'Dodger QA expected __GAME_TELEMETRY__.assets from the manifest loader.' };
+  }
+
+  if (!assets.manifestLoaded) {
+    return { ok: false, message: 'Dodger QA expected asset manifest telemetry to report manifestLoaded=true.' };
+  }
+
+  if (assets.required.length === 0) {
+    return { ok: false, message: 'Dodger QA expected at least one required runtime asset.' };
+  }
+
+  const loaded = new Set(assets.loaded);
+  const missingRequired = assets.required.filter((id) => !loaded.has(id));
+  if (missingRequired.length > 0) {
+    return { ok: false, message: `Dodger QA expected required assets to load: ${missingRequired.join(', ')}` };
+  }
+
+  const failed = new Set(assets.failed);
+  const failedRequired = assets.required.filter((id) => failed.has(id));
+  if (failedRequired.length > 0) {
+    return { ok: false, message: `Dodger QA observed failed required assets: ${failedRequired.join(', ')}` };
+  }
+
+  if (assets.missing.length > 0) {
+    return { ok: false, message: `Dodger QA observed missing manifest assets: ${assets.missing.join(', ')}` };
+  }
+
+  if (assets.missingRequiredRoles.length > 0) {
+    return { ok: false, message: `Dodger QA observed missing required asset roles: ${assets.missingRequiredRoles.join(', ')}` };
+  }
+
+  return { ok: true };
 }
 
 async function verifyDodgerAutoProgress(page: Page): Promise<{ ok: boolean; message?: string }> {
@@ -940,6 +994,47 @@ function readSnapshotDodgerSpawnPlan(snapshot: unknown, entityKind: 'hazard' | '
       };
 }
 
+function readAssetTelemetry(value: unknown): RuntimeAssetTelemetry | undefined {
+  if (typeof value !== 'object' || value === null) {
+    return undefined;
+  }
+
+  const assets = value as Record<string, unknown>;
+  if (
+    typeof assets.manifestLoaded !== 'boolean' ||
+    !Array.isArray(assets.required) ||
+    !Array.isArray(assets.loaded) ||
+    !Array.isArray(assets.failed) ||
+    !Array.isArray(assets.missing) ||
+    !Array.isArray(assets.missingRequiredRoles)
+  ) {
+    return undefined;
+  }
+
+  const required = readStringArray(assets.required);
+  const loaded = readStringArray(assets.loaded);
+  const failed = readStringArray(assets.failed);
+  const missing = readStringArray(assets.missing);
+  const missingRequiredRoles = readStringArray(assets.missingRequiredRoles);
+  if (required === undefined || loaded === undefined || failed === undefined || missing === undefined || missingRequiredRoles === undefined) {
+    return undefined;
+  }
+
+  return { manifestLoaded: assets.manifestLoaded, required, loaded, failed, missing, missingRequiredRoles };
+}
+
+function readStringArray(value: unknown[]): string[] | undefined {
+  return value.every((item) => typeof item === 'string') ? (value as string[]) : undefined;
+}
+
+function errorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return typeof error === 'string' && error.length > 0 ? error : fallback;
+}
+
 function withQaParams(previewUrl: string, seed: string): string {
   const url = new URL(previewUrl);
   url.searchParams.set('qa', '1');
@@ -953,4 +1048,13 @@ type BrowserQaGlobal = typeof globalThis & {
     telemetry(): unknown[];
   };
   __GAME_TELEMETRY__?: unknown;
+};
+
+type RuntimeAssetTelemetry = {
+  manifestLoaded: boolean;
+  required: string[];
+  loaded: string[];
+  failed: string[];
+  missing: string[];
+  missingRequiredRoles: string[];
 };

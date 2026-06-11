@@ -1,19 +1,26 @@
 import Phaser from 'phaser';
 
 import { DodgerGameScene } from './GameScene.js';
+import generatedAssetManifest from './asset-manifest.generated.json';
 import generatedRuntimePlan from './runtime-plan.generated.json';
 import generatedParams from './template-params.generated.json';
+import { createDodgerArtRuntime } from './dodger-art-library.js';
 import { defaultDodgerRuntimePlan, type DodgerRuntimePlan } from './dodger-runtime-plan.js';
 import { defaultDodgerParams, type DodgerTemplateParams } from './template-params.js';
 
 const dodgerParams = mergeDodgerParams(generatedParams as Partial<DodgerTemplateParams>);
 const dodgerRuntimePlan = mergeDodgerRuntimePlan(generatedRuntimePlan as Partial<DodgerRuntimePlan>);
-const scene = new DodgerGameScene(dodgerParams, dodgerRuntimePlan);
+const dodgerArt = createDodgerArtRuntime(generatedAssetManifest);
+const scene = new DodgerGameScene(dodgerParams, dodgerRuntimePlan, dodgerArt);
 
 if (typeof window !== 'undefined') {
   class DodgerPhaserScene extends Phaser.Scene {
     constructor() {
       super('DodgerPhaserScene');
+    }
+
+    preload(): void {
+      dodgerArt.preload(this, { collectible: dodgerParams.collectible !== undefined });
     }
 
     create(): void {

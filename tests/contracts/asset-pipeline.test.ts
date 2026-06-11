@@ -66,6 +66,7 @@ describe('Asset pipeline contracts', () => {
       assets: [
         {
           id: 'player',
+          loadKey: 'agm.player',
           role: 'player_character',
           type: 'image',
           format: 'svg',
@@ -124,6 +125,7 @@ describe('Asset pipeline contracts', () => {
           assets: [
             {
               id: 'player',
+              loadKey: 'agm.player',
               role: 'player_character',
               type: 'image',
               format: 'svg',
@@ -189,6 +191,7 @@ async function writeManifest(projectDir: string, assets: TestAsset[]): Promise<v
         strict: true,
         assets: assets.map((asset) => ({
           ...asset,
+          loadKey: `agm.${asset.id}`,
           type: 'image',
           format: 'svg',
           path: `assets/${asset.id}.svg`,

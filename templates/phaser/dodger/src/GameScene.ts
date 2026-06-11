@@ -13,6 +13,7 @@ import {
   createRuntimeState,
   exposeRuntime
 } from '../../shared/kernel.js';
+import { createDodgerArtRuntime, emitClearBurst, emitCoinSpark, type DodgerArtRuntime } from './dodger-art-library.js';
 import {
   defaultDodgerRuntimePlan,
   resolveDodgerDifficultyCurve,
@@ -32,7 +33,8 @@ type Hitbox = {
 };
 
 type HazardSprite = {
-  graphics: Phaser.GameObjects.Graphics;
+  graphics?: Phaser.GameObjects.Graphics;
+  image?: Phaser.GameObjects.Image;
   label: Phaser.GameObjects.Text;
   x: number;
   laneIndex: number;
@@ -45,6 +47,7 @@ type HazardSprite = {
 
 type CollectibleSprite = {
   graphics?: Phaser.GameObjects.Graphics;
+  image?: Phaser.GameObjects.Image;
   label?: Phaser.GameObjects.Text;
   x: number;
   y: number;
@@ -65,6 +68,7 @@ export class DodgerGameScene {
   private readonly objective;
   private phaserScene?: Phaser.Scene;
   private playerGraphics?: Phaser.GameObjects.Graphics;
+  private playerImage?: Phaser.GameObjects.Image;
   private playerLabel?: Phaser.GameObjects.Text;
   private scoreText?: Phaser.GameObjects.Text;
   private statusText?: Phaser.GameObjects.Text;
@@ -83,7 +87,8 @@ export class DodgerGameScene {
 
   constructor(
     private readonly params: DodgerTemplateParams,
-    private readonly runtimePlan: DodgerRuntimePlan = defaultDodgerRuntimePlan
+    private readonly runtimePlan: DodgerRuntimePlan = defaultDodgerRuntimePlan,
+    private readonly art: DodgerArtRuntime = createDodgerArtRuntime({ version: 'asset-manifest-v0.1', assets: [] })
   ) {
     this.state = createRuntimeState(params.player.health);
     this.telemetry = new TelemetrySystem(this.state);
@@ -111,7 +116,8 @@ export class DodgerGameScene {
           hazard: this.spawnRuleSnapshot(this.hazardSpawnRule),
           ...(this.params.collectible ? { collectible: this.spawnRuleSnapshot(this.collectibleSpawnRule) } : {})
         }
-      }))
+      })),
+      () => ({ assets: this.art.telemetry() })
     );
     this.renderFirstFrame();
     if (this.phaserScene === undefined) {
@@ -206,11 +212,13 @@ export class DodgerGameScene {
     }
 
     scene.cameras.main.setBackgroundColor('#07111f');
-    scene.add
-      .graphics()
-      .fillStyle(0x07111f, 1)
-      .fillRect(0, 0, this.params.world.width, this.params.world.height)
-      .fillStyle(0x2a2438, 1)
+    const hasBackgroundImage = this.art.drawBackground(scene, this.params.world.width, this.params.world.height);
+    const frameGraphics = scene.add.graphics();
+    if (!hasBackgroundImage) {
+      frameGraphics.fillStyle(0x07111f, 1).fillRect(0, 0, this.params.world.width, this.params.world.height);
+    }
+    frameGraphics
+      .fillStyle(0x2a2438, 0.94)
       .fillRoundedRect(24, 24, this.params.world.width - 48, this.params.world.height - 48, 24)
       .lineStyle(4, 0xffcf6b, 0.5)
       .strokeRoundedRect(24, 24, this.params.world.width - 48, this.params.world.height - 48, 24);
@@ -227,6 +235,12 @@ export class DodgerGameScene {
   private drawCatPlayer(x: number, y: number): void {
     const scene = this.phaserScene;
     if (scene === undefined) {
+      return;
+    }
+
+    this.playerImage = this.art.addImage(scene, 'player_character', x, y, 86, 86);
+    if (this.playerImage !== undefined) {
+      this.playerLabel = scene.add.text(x - 44, y + 54, this.params.player.label, { fontFamily: 'Arial, sans-serif', fontSize: '18px', color: '#ffe8bc' });
       return;
     }
 
@@ -252,7 +266,6 @@ export class DodgerGameScene {
     }
 
     const hazard: HazardSprite = {
-      graphics: scene.add.graphics(),
       label: scene.add.text(x - 48, this.hazardY(laneIndex, 0) + 54, this.params.hazard.label, {
         fontFamily: 'Arial, sans-serif',
         fontSize: '18px',
@@ -266,6 +279,10 @@ export class DodgerGameScene {
       impactHoldMs: 0,
       active: true
     };
+    hazard.image = this.art.addImage(scene, 'hazard', x, this.hazardY(laneIndex, hazard.yOffset), 78, 78);
+    if (hazard.image === undefined) {
+      hazard.graphics = scene.add.graphics();
+    }
     this.renderHazardShape(hazard, false);
     return hazard;
   }
@@ -276,8 +293,14 @@ export class DodgerGameScene {
     const outerColor = isImpact ? 0xff4f5f : 0x9ca3af;
     const innerColor = isImpact ? 0x7f1d1d : 0x4b5563;
 
+    hazard.image?.setPosition(x, y);
+    if (isImpact) {
+      hazard.image?.setTint(0xff6b6b);
+    } else {
+      hazard.image?.clearTint();
+    }
     hazard.graphics
-      .clear()
+      ?.clear()
       .fillStyle(outerColor, 1)
       .fillTriangle(x - 48, y + 36, x - 6, y - 50, x + 54, y + 28)
       .fillStyle(innerColor, 1)
@@ -292,7 +315,10 @@ export class DodgerGameScene {
       return;
     }
 
-    collectible.graphics = scene.add.graphics();
+    collectible.image = this.art.addImage(scene, 'collectible', collectible.x, collectible.y, 58, 58);
+    if (collectible.image === undefined) {
+      collectible.graphics = scene.add.graphics();
+    }
     collectible.label = scene.add.text(collectible.x - 38, collectible.y + 50, this.params.collectible.label, {
       fontFamily: 'Arial, sans-serif',
       fontSize: '18px',
@@ -302,6 +328,7 @@ export class DodgerGameScene {
   }
 
   private renderCollectibleShape(collectible: CollectibleSprite): void {
+    collectible.image?.setPosition(collectible.x, collectible.y);
     collectible.graphics
       ?.clear()
       .fillStyle(0xffd95a, 1)
@@ -316,7 +343,7 @@ export class DodgerGameScene {
 
   private renderHud(): void {
     const collectHint = this.params.collectible ? '  Touch coins' : '';
-    this.scoreText?.setText(this.params.collectible ? `Score ${this.state.score}/${this.collectibleTargetScore}` : '');
+    this.scoreText?.setText(this.params.collectible ? `Score ${Math.min(this.state.score, this.collectibleTargetScore)}/${this.collectibleTargetScore}` : '');
 
     if (this.state.gameStatus === 'WON') {
       this.statusText?.setText(`Health ${this.state.health}  Time ${this.state.frame}s  COMPLETE  R restart`);
@@ -346,9 +373,15 @@ export class DodgerGameScene {
         fontSize: '42px',
         color: '#fff7c2'
       });
+      if (label === 'CLEAR!') {
+        emitClearBurst(scene, this.params.world.width, this.params.world.height);
+      }
       return;
     }
 
+    if (label === 'CLEAR!' && this.resultText.text !== label) {
+      emitClearBurst(scene, this.params.world.width, this.params.world.height);
+    }
     this.resultText.setText(label);
     this.resultText.setVisible(true);
   }
@@ -361,7 +394,11 @@ export class DodgerGameScene {
       this.survivalHudSeconds = nextHudSeconds;
       this.state.frame = nextHudSeconds;
       this.telemetry.emit('survival_time.changed', { frame: this.state.frame });
-      this.objective.completeWhen(this.survivalElapsedMs >= this.params.objective.surviveDurationMs);
+      if (this.params.collectible === undefined) {
+        this.objective.completeWhen(this.survivalElapsedMs >= this.params.objective.surviveDurationMs);
+      } else {
+        this.objective.loseWhen(this.survivalElapsedMs >= this.params.objective.surviveDurationMs && this.state.score < this.collectibleTargetScore);
+      }
     }
   }
 
@@ -498,10 +535,18 @@ export class DodgerGameScene {
   private collectOverlappingItem(
     collectible = this.collectibles.find((candidate) => candidate.active && hitboxesOverlap(this.playerHitbox, this.collectibleHitbox(candidate)))
   ): boolean {
-    if (!this.params.collectible || collectible === undefined || !collectible.active || !hitboxesOverlap(this.playerHitbox, this.collectibleHitbox(collectible))) {
+    if (
+      this.state.gameStatus !== 'PLAYING' ||
+      !this.params.collectible ||
+      collectible === undefined ||
+      !collectible.active ||
+      this.state.score >= this.collectibleTargetScore ||
+      !hitboxesOverlap(this.playerHitbox, this.collectibleHitbox(collectible))
+    ) {
       return false;
     }
 
+    const scoreToAdd = Math.min(this.params.collectible.scorePerItem, this.collectibleTargetScore - this.state.score);
     this.collision.collide({ source: 'player', target: this.collectibleSpawnRule.entityId });
     this.telemetry.emit('item.collected', {
       entityId: this.collectibleSpawnRule.entityId,
@@ -509,7 +554,8 @@ export class DodgerGameScene {
       source: this.collectibleSpawnRule.source,
       slotIndex: collectible.slotIndex
     });
-    this.score.add(this.params.collectible.scorePerItem);
+    this.score.add(scoreToAdd);
+    emitCoinSpark(this.phaserScene, collectible.x, collectible.y);
     this.hideCollectible(collectible);
     this.nextCollectibleSpawnMs = Math.max(this.nextCollectibleSpawnMs, this.collectibleSpawnRule.intervalMs);
     this.objective.completeWhen(this.state.score >= this.collectibleTargetScore);
@@ -520,13 +566,15 @@ export class DodgerGameScene {
     hazard.active = false;
     hazard.resolved = false;
     hazard.impactHoldMs = 0;
-    hazard.graphics.setVisible(false);
+    hazard.graphics?.setVisible(false);
+    hazard.image?.setVisible(false);
     hazard.label.setVisible(false);
   }
 
   private hideCollectible(collectible: CollectibleSprite): void {
     collectible.active = false;
     collectible.graphics?.setVisible(false);
+    collectible.image?.setVisible(false);
     collectible.label?.setVisible(false);
   }
 
@@ -534,7 +582,8 @@ export class DodgerGameScene {
     for (let index = this.hazards.length - 1; index >= 0; index -= 1) {
       const hazard = this.hazards[index];
       if (hazard !== undefined && !hazard.active && hazard.impactHoldMs === 0) {
-        hazard.graphics.destroy();
+        hazard.graphics?.destroy();
+        hazard.image?.destroy();
         hazard.label.destroy();
         this.hazards.splice(index, 1);
       }
@@ -543,7 +592,8 @@ export class DodgerGameScene {
 
   private clearHazards(): void {
     for (const hazard of this.hazards) {
-      hazard.graphics.destroy();
+      hazard.graphics?.destroy();
+      hazard.image?.destroy();
       hazard.label.destroy();
     }
     this.hazards.length = 0;
@@ -555,6 +605,7 @@ export class DodgerGameScene {
       const collectible = this.collectibles[index];
       if (collectible !== undefined && !collectible.active) {
         collectible.graphics?.destroy();
+        collectible.image?.destroy();
         collectible.label?.destroy();
         this.collectibles.splice(index, 1);
       }
@@ -564,6 +615,7 @@ export class DodgerGameScene {
   private clearCollectibles(): void {
     for (const collectible of this.collectibles) {
       collectible.graphics?.destroy();
+      collectible.image?.destroy();
       collectible.label?.destroy();
     }
     this.collectibles.length = 0;
@@ -608,6 +660,7 @@ export class DodgerGameScene {
 
     this.playerLaneIndex = boundedLaneIndex;
     this.playerGraphics?.setY(this.playerY - this.params.player.startY);
+    this.playerImage?.setY(this.playerY);
     this.playerLabel?.setY(this.playerY + 54);
     this.movement.move({ lane: this.playerLaneIndex, y: this.playerY });
   }

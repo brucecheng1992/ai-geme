@@ -44,6 +44,7 @@ export async function writeAssetArtifacts(input: {
 function buildTemplateSvgManifest(plan: AssetPlan): AssetManifest {
   const assets: AssetManifestAsset[] = plan.items.map((item) => ({
     id: item.id,
+    loadKey: `agm.${item.id}`,
     role: item.role,
     type: 'image',
     format: item.format,

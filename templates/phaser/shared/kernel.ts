@@ -14,6 +14,8 @@ export type GameSnapshot = {
   frame: number;
 } & Record<string, unknown>;
 
+export type GameTelemetryExtras = Record<string, unknown>;
+
 export type RuntimeState = GameSnapshot & {
   maxHealth: number;
   events: TelemetryEvent[];
@@ -179,9 +181,9 @@ export class QaBridge {
   }
 }
 
-export function exposeRuntime(state: RuntimeState, qa: QaBridge): void {
+export function exposeRuntime(state: RuntimeState, qa: QaBridge, getTelemetryExtras: () => GameTelemetryExtras = () => ({})): void {
   const target = globalThis as typeof globalThis & {
-    __GAME_TELEMETRY__?: { readonly events: TelemetryEvent[]; readonly state: GameSnapshot };
+    __GAME_TELEMETRY__?: { readonly events: TelemetryEvent[]; readonly state: GameSnapshot } & GameTelemetryExtras;
     __GAME_QA__?: QaBridge;
   };
 
@@ -192,6 +194,9 @@ export function exposeRuntime(state: RuntimeState, qa: QaBridge): void {
     get state() {
       const { gameStatus, score, health, frame } = state;
       return { gameStatus, score, health, frame };
+    },
+    get assets() {
+      return getTelemetryExtras().assets;
     }
   });
   target.__GAME_QA__ = qa;

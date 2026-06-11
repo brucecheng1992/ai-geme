@@ -113,8 +113,33 @@ describe('Compiler + Build + Preview services', () => {
     await expect(readFile(join(result.outputDir, 'dodger/src/template-params.generated.json'), 'utf8')).resolves.toContain('"collectible"');
     await expect(readFile(join(result.outputDir, 'dodger/src/runtime-plan.generated.json'), 'utf8')).resolves.toContain('"spawn_rules"');
     await expect(readFile(join(result.outputDir, 'dodger/src/runtime-plan.generated.json'), 'utf8')).resolves.toContain('"entity_id": "obstacle"');
+    await expect(readFile(join(result.outputDir, 'dodger/src/asset-manifest.generated.json'), 'utf8')).resolves.toContain('"loadKey": "agm.hazard"');
     await expect(readFile(join(result.outputDir, 'dodger/src/GameScene.ts'), 'utf8')).resolves.toContain('collectItem()');
+    await expect(readFile(join(result.outputDir, 'dodger/src/dodger-art-library.ts'), 'utf8')).resolves.toContain('createDodgerArtRuntime');
     await expect(readFile(join(result.outputDir, 'dodger/src/main.ts'), 'utf8')).resolves.toContain('runtime-plan.generated.json');
+    await expect(readFile(join(result.outputDir, 'public/assets/hazard.svg'), 'utf8')).resolves.toContain('<svg');
+    await expect(readFile(join(result.outputDir, 'public/assets/collectible.svg'), 'utf8')).resolves.toContain('<svg');
+  });
+
+  it('does not emit or preload collectible assets for dodger games without coins', async () => {
+    const raw = createDodgerRawDsl();
+    raw.player.actions = [];
+    raw.entities = raw.entities.filter((entity) => entity.kind !== 'collectible');
+    raw.rules.collisions = raw.rules.collisions.filter((collision) => collision.target !== 'coin');
+    raw.ui.hud = ['health', 'timer'];
+    const normalized = validateAndNormalizeRawGameDsl(raw);
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const result = await new TemplateCompilerService(workspace, templateRoot).compile({ projectId, runId, ir: normalized.ir });
+
+    await expect(readFile(join(result.outputDir, 'dodger/src/template-params.generated.json'), 'utf8')).resolves.not.toContain('"collectible"');
+    await expect(readFile(join(result.outputDir, 'public/assets/hazard.svg'), 'utf8')).resolves.toContain('<svg');
+    await expect(readFile(join(result.outputDir, 'public/assets/collectible.svg'), 'utf8')).rejects.toThrow();
+    await expect(readFile(join(result.outputDir, 'dodger/src/main.ts'), 'utf8')).resolves.toContain('dodgerParams.collectible !== undefined');
+    await expect(readFile(join(result.outputDir, 'dodger/src/asset-manifest.generated.json'), 'utf8')).resolves.not.toContain('"id": "collectible"');
   });
 
   it('runs the injectable Vite build command and writes build logs', async () => {

@@ -38,6 +38,7 @@ export class TemplateCompilerService {
       'src/main.ts',
       `${genre}/src/main.ts`,
       `${genre}/src/GameScene.ts`,
+      ...(genre === 'dodger' ? [`${genre}/src/dodger-art-library.ts`] : []),
       ...(genre === 'dodger' ? [`${genre}/src/dodger-runtime-plan.ts`] : []),
       ...(genre === 'shooter' ? [`${genre}/src/shooter-runtime.ts`] : []),
       ...(genre === 'shooter' ? [`${genre}/src/shooter-runtime-plan.ts`] : []),
@@ -45,6 +46,7 @@ export class TemplateCompilerService {
       ...(genre === 'shooter' ? [`${genre}/src/template-visuals.ts`] : []),
       `${genre}/src/template-params.ts`,
       'shared/kernel.ts',
+      ...(genre === 'dodger' ? [`${genre}/src/asset-manifest.generated.json`] : []),
       ...(genre === 'dodger' || genre === 'shooter' ? [`${genre}/src/runtime-plan.generated.json`] : []),
       `${genre}/src/template-params.generated.json`
     ];
@@ -57,6 +59,9 @@ export class TemplateCompilerService {
     const assetArtifacts = await writeAssetArtifacts({ projectId: input.projectId, projectDir: outputDir, ir });
     await writeFile(join(outputDir, 'game.ir.json'), `${JSON.stringify(ir, null, 2)}\n`, 'utf8');
     await writeFile(join(outputDir, `${genre}`, 'src', 'template-params.generated.json'), JSON.stringify(ir.template_params.params, null, 2));
+    if (genre === 'dodger') {
+      await writeFile(join(outputDir, `${genre}`, 'src', 'asset-manifest.generated.json'), JSON.stringify(assetArtifacts.manifest, null, 2));
+    }
     if (genre === 'dodger' || genre === 'shooter') {
       await writeFile(join(outputDir, `${genre}`, 'src', 'runtime-plan.generated.json'), JSON.stringify(ir.runtime_plan, null, 2));
     }

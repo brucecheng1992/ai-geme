@@ -5,6 +5,7 @@ import { z } from 'zod';
 const AssetIdSchema = z.string().regex(/^[a-z][a-z0-9_]{1,39}$/);
 const AssetRoleSchema = z.enum(['player_character', 'enemy', 'projectile', 'collectible', 'hazard', 'background', 'ui_panel']);
 const AssetProviderSchema = z.enum(['local_asset_pack', 'template_svg', 'placeholder']);
+const AssetLoadKeySchema = z.string().regex(/^agm\.[a-z][a-z0-9_]{1,39}$/);
 const AssetSizeSchema = z.strictObject({
   w: z.number().int().min(1).max(1920),
   h: z.number().int().min(1).max(1080)
@@ -51,6 +52,7 @@ export const AssetPlanSchema = z
 
 export const AssetManifestAssetSchema = z.strictObject({
   id: AssetIdSchema,
+  loadKey: AssetLoadKeySchema,
   role: AssetRoleSchema,
   type: z.literal('image'),
   format: z.literal('svg'),
@@ -106,12 +108,13 @@ export function summarizeManifestAssets(assets: AssetManifestAsset[]): AssetMani
 }
 
 function addDuplicateIdIssues(
-  items: ReadonlyArray<{ id: string; path?: string }>,
+  items: ReadonlyArray<{ id: string; path?: string; loadKey?: string }>,
   ctx: z.RefinementCtx,
   pathPrefix: 'items' | 'assets' = 'items'
 ): void {
   const seen = new Set<string>();
   const seenPaths = new Set<string>();
+  const seenLoadKeys = new Set<string>();
 
   for (const [index, item] of items.entries()) {
     if (seen.has(item.id)) {
@@ -141,6 +144,26 @@ function addDuplicateIdIssues(
       }
 
       seenPaths.add(item.path);
+    }
+
+    if (item.loadKey !== undefined) {
+      if (seenLoadKeys.has(item.loadKey)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [pathPrefix, index, 'loadKey'],
+          message: `duplicate asset loadKey: ${item.loadKey}`
+        });
+      }
+
+      if (item.loadKey !== `agm.${item.id}`) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [pathPrefix, index, 'loadKey'],
+          message: `asset loadKey must match agm.${item.id}`
+        });
+      }
+
+      seenLoadKeys.add(item.loadKey);
     }
   }
 }

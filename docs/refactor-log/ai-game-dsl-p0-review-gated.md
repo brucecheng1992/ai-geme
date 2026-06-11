@@ -8,11 +8,57 @@
 
 ## 当前阶段
 
-Asset Pipeline P0 Step 1 已完成：生成项目现在落盘 `asset_plan.json`、`public/asset_manifest.json` 和 `public/assets/*.svg`，Playwright QA 在浏览器前校验 `asset_plan` required 资源是否被 manifest 覆盖、manifest path 是否安全且文件是普通文件，避免缺资源仍进入 `PLAYABLE` 判定。
+Asset Pipeline P0 Step 2 已完成：dodger 生成项目现在写入 `dodger/src/asset-manifest.generated.json`，Phaser runtime 从 manifest `loadKey` preload / render 主资源，并通过 `__GAME_TELEMETRY__.assets` 与 Playwright QA required-loaded gate 证明 required assets 被 runtime 加载，避免只在文件层通过门禁。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Asset Pipeline P0 Step 2 让 Phaser templates preload / consume `asset_manifest.json`，并通过 runtime telemetry / QA 证明 required assets 被加载，而不是只在文件层通过门禁。
+当前下一步：Asset Pipeline P0 Step 3 丰富 QA report asset 明细和失败原因，为 Workbench Assets 面板提供 required / loaded / failed / placeholder / missing 状态。
+
+### 2.7 Asset Pipeline P0 Step 2: dodger manifest preload / runtime asset gate
+
+完成时间：2026-06-11
+
+已完成内容：
+
+- `AssetManifestAssetSchema` 新增 `loadKey`，收紧为 `agm.<asset_id>`，并校验重复 `loadKey` 与 id 不一致。
+- `writeAssetArtifacts` 为 manifest assets 写入稳定 `loadKey`，继续保持 path 限制为 `assets/<id>.svg`。
+- `TemplateCompilerService` 为 dodger 生成项目写入 `dodger/src/asset-manifest.generated.json`，内容来自 Asset Pipeline 生成的 manifest。
+- dodger template 新增 manifest-driven art runtime：`preload()` 使用 manifest `loadKey` 和 manifest `path` 加载 SVG，主渲染对象优先通过 manifest `loadKey` 创建 image；graphics 仅作为缺纹理时的降级绘制和粒子效果。
+- `exposeRuntime` 支持暴露 telemetry extras；dodger runtime 在 `__GAME_TELEMETRY__.assets` 暴露 `manifestLoaded`、`required`、`loaded`、`failed`、`fallbackUsed`、`placeholderUsed`、`missing` 和 `missingRequiredRoles`。
+- Playwright QA 在 dodger 交互 QA 前读取 runtime asset telemetry，要求 manifest loaded、required 非空、required 全部 loaded，且 `failed`、`missing`、`missingRequiredRoles` 不包含阻塞项；失败码使用 `ASSET_LOAD_FAILED`。
+- 测试覆盖 manifest `loadKey` 合同、compiler 生成 `asset-manifest.generated.json`、dodger template manifest preload、runtime asset loaded gate、missing asset、缺 required role，以及 collectible 资源非必需时不生成/不加载。
+
+阶段结果：
+
+- 解决层级：数据契约 + compiler 生成边界 + Phaser runtime 解释 + Playwright QA runtime 门禁。
+- DSL-first 边界：模型仍不输出 asset path / URL / base64；资源 manifest 继续由 IR 派生并由 compiler 写入生成项目。
+- 本步先只接入 dodger，以验证 manifest consumption 和 runtime loaded gate；collector / shooter 仍待后续分步接入。
+- 未改范围：QA report 还未持久化 required / loaded / failed 明细；Workbench Assets 面板未接入；第三方固定资源库、LicensePolicy、NoticeWriter 仍待后续步骤。
+
+已通过验证：
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/compiler-service.test.ts tests/workspace/playwright-qa-runner.test.ts
+    # 4 个测试文件，60 个测试全部通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查均通过
+
+    npm test
+    # 11 个测试文件，101 个测试全部通过
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出 `required` 只收集 manifest 中存在的 asset id，而 `missing` 可能记录 role 名，导致缺 `player_character` role 时 QA 可能假阳性；P2 指出 runtime required 语义没有完全体现 manifest `required` 字段，建议避免合同误读；P2 建议补 `missing` 和缺 role 负例；P3 提醒新增文件提交时必须纳入。
+- 已修复：dodger asset telemetry 中 `required` / `missing` 统一使用 asset id；缺失或 `required !== true` 的 template-consumed role 写入 `missingRequiredRoles`；QA 对 `missing` 非空和 `missingRequiredRoles` 非空直接 `ASSET_LOAD_FAILED`；补 runtime asset missing 与 required role absent 两个负例。
+- Oracle 复审：P0/P1/P2 均无，Step 2 代码门禁通过。
+- 审查模式：Oracle 复用
+
+下一步建议：
+
+- Asset Pipeline P0 Step 3：把 runtime asset telemetry 和 manifest summary 写进 QA report，区分 `ASSET_MISSING`、`REQUIRED_CORE_ASSET_PLACEHOLDER_USED` 与 `ASSET_LOAD_FAILED` 的明细，为 Workbench Assets 面板铺路。
 
 ### 2.6 Asset Pipeline P0 Step 1: AssetPlan / AssetManifest artifact gate
 
