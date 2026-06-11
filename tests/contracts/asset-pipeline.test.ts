@@ -57,12 +57,7 @@ describe('Asset pipeline contracts', () => {
   });
 
   it('derives tank semantic constraints for tank shooter briefs', () => {
-    const rawDsl = createShooterRawDsl();
-    rawDsl.metadata.title = 'Tank Battle';
-    rawDsl.player.label = 'Tank';
-    rawDsl.entities = rawDsl.entities.map((entity) => (entity.kind === 'enemy' ? { ...entity, id: 'enemy_tank', label: 'Tank' } : entity));
-    rawDsl.rules.collisions = rawDsl.rules.collisions.map((collision) => ({ ...collision, target: 'enemy_tank' }));
-    const normalized = validateAndNormalizeRawGameDsl(rawDsl);
+    const normalized = validateAndNormalizeRawGameDsl(createTankShooterRawDsl());
     expect(normalized.ok).toBe(true);
     if (!normalized.ok) {
       return;
@@ -183,8 +178,28 @@ describe('Asset pipeline contracts', () => {
     await expect(validateGeneratedProjectAssets({ projectId, projectDir: root })).resolves.toMatchObject({ ok: true });
   });
 
-  it('selects the Kenney shooter tank pack before lower-priority local shooter packs', async () => {
+  it('falls back to template SVG when a higher-priority complete shooter pack hard-mismatches core semantics', async () => {
     const normalized = validateAndNormalizeRawGameDsl(createShooterRawDsl());
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const result = await writeAssetArtifacts({ projectId, projectDir: root, ir: normalized.ir });
+
+    expect(result.manifest.assets.map((asset) => [asset.id, asset.source, asset.sourcePack])).toEqual([
+      ['background_main', 'template_svg', undefined],
+      ['player', 'template_svg', undefined],
+      ['enemy', 'template_svg', undefined],
+      ['projectile', 'template_svg', undefined]
+    ]);
+    await expect(readFile(join(root, 'public/assets/player.svg'), 'utf8')).resolves.toContain('<svg');
+    await expect(readFile(join(root, 'public/assets/enemy.svg'), 'utf8')).resolves.toContain('<svg');
+    await expect(validateGeneratedProjectAssets({ projectId, projectDir: root })).resolves.toMatchObject({ ok: true });
+  });
+
+  it('selects the Kenney shooter tank pack when hard semantic constraints match tank assets', async () => {
+    const normalized = validateAndNormalizeRawGameDsl(createTankShooterRawDsl());
     expect(normalized.ok).toBe(true);
     if (!normalized.ok) {
       return;
@@ -201,6 +216,34 @@ describe('Asset pipeline contracts', () => {
     await expect(readFile(join(root, 'public/assets/enemy.svg'), 'utf8')).resolves.toContain('Kenney grey tank enemy sprite');
     await expect(readFile(join(root, 'public/assets/projectile.svg'), 'utf8')).resolves.toContain('data:image/png;base64');
     await expect(validateGeneratedProjectAssets({ projectId, projectDir: root })).resolves.toMatchObject({ ok: true });
+  });
+
+  it('does not block local pack selection for medium or soft semantic constraints', async () => {
+    const normalized = validateAndNormalizeRawGameDsl(createShooterRawDsl());
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const params = normalized.ir.template_params.params as {
+      player: { label: string };
+      enemy: { label: string };
+      projectile: { label: string };
+      world: { visual_theme: string };
+    };
+    params.player.label = 'Caterpillar';
+    params.enemy.label = 'Tankard';
+    params.projectile.label = 'Tank Shell';
+    params.world.visual_theme = 'deep space stars';
+
+    const result = await writeAssetArtifacts({ projectId, projectDir: root, ir: normalized.ir });
+
+    expect(result.manifest.assets.map((asset) => [asset.id, asset.source, asset.sourcePack])).toEqual([
+      ['background_main', 'local_asset_pack', 'kenney-tiny-shooter-tanks'],
+      ['player', 'local_asset_pack', 'kenney-tiny-shooter-tanks'],
+      ['enemy', 'local_asset_pack', 'kenney-tiny-shooter-tanks'],
+      ['projectile', 'local_asset_pack', 'kenney-tiny-shooter-tanks']
+    ]);
   });
 
   it('indexes the Kenney shooter tank pack profile and asset semantic metadata', async () => {
@@ -503,4 +546,13 @@ async function writeManifest(projectDir: string, assets: TestAsset[]): Promise<v
 async function readLocalPackFixture(packId: string) {
   const raw = JSON.parse(await readFile(join(process.cwd(), 'assets/asset-packs', packId, 'pack.json'), 'utf8'));
   return LocalAssetPackSchema.parse(raw);
+}
+
+function createTankShooterRawDsl() {
+  const rawDsl = createShooterRawDsl();
+  rawDsl.metadata.title = 'Tank Battle';
+  rawDsl.player.label = 'Tank';
+  rawDsl.entities = rawDsl.entities.map((entity) => (entity.kind === 'enemy' ? { ...entity, id: 'enemy_tank', label: 'Tank' } : entity));
+  rawDsl.rules.collisions = rawDsl.rules.collisions.map((collision) => ({ ...collision, target: 'enemy_tank' }));
+  return rawDsl;
 }

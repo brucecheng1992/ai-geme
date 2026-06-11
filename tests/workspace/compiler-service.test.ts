@@ -86,7 +86,7 @@ describe('Compiler + Build + Preview services', () => {
 
   it('cleans stale template files before recompiling the same generated project', async () => {
     const collector = validateAndNormalizeRawGameDsl(createCollectorRawDsl());
-    const shooter = validateAndNormalizeRawGameDsl(createShooterRawDsl());
+    const shooter = validateAndNormalizeRawGameDsl(createTankShooterRawDsl());
     expect(collector.ok).toBe(true);
     expect(shooter.ok).toBe(true);
     if (!collector.ok || !shooter.ok) {
@@ -213,3 +213,12 @@ describe('Compiler + Build + Preview services', () => {
     await expect(readFile(indexPath, 'utf8')).resolves.toBe('<html></html>');
   });
 });
+
+function createTankShooterRawDsl() {
+  const rawDsl = createShooterRawDsl();
+  rawDsl.metadata.title = 'Tank Battle';
+  rawDsl.player.label = 'Tank';
+  rawDsl.entities = rawDsl.entities.map((entity) => (entity.kind === 'enemy' ? { ...entity, id: 'enemy_tank', label: 'Tank' } : entity));
+  rawDsl.rules.collisions = rawDsl.rules.collisions.map((collision) => ({ ...collision, target: 'enemy_tank' }));
+  return rawDsl;
+}

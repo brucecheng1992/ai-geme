@@ -1,8 +1,8 @@
 import { copyFile, readdir, readFile, stat } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve } from 'node:path';
 
-import type { AssetManifestAsset, AssetPlan } from './schemas.js';
-import { indexLocalAssetPackMetadata, LocalAssetPackSchema, type LocalAssetPack } from './local-asset-pack.schema.js';
+import type { AssetManifestAsset, AssetPlan, AssetPlanItem } from './schemas.js';
+import { indexLocalAssetPackMetadata, LocalAssetPackSchema, type LocalAssetPack, type LocalPackAssetSemanticMetadata } from './local-asset-pack.schema.js';
 
 export type LocalAssetSelection = {
   manifestAssets: AssetManifestAsset[];
@@ -115,10 +115,39 @@ function selectCompletePackAssets(plan: AssetPlan, pack: LocalAssetPack) {
       return undefined;
     }
 
+    if (!assetSatisfiesHardSemanticConstraint(planItem, packAsset.semantic)) {
+      return undefined;
+    }
+
     selected.push({ planItem, packAsset });
   }
 
   return selected;
+}
+
+function assetSatisfiesHardSemanticConstraint(planItem: AssetPlanItem, assetSemantic: LocalPackAssetSemanticMetadata | undefined): boolean {
+  const constraint = planItem.semantic;
+  if (constraint?.strictness !== 'hard') {
+    return true;
+  }
+
+  if (assetSemantic === undefined) {
+    return false;
+  }
+
+  if (!hasAnyTag(assetSemantic.subjectTags, constraint.expectedAnyTags)) {
+    return false;
+  }
+
+  if (hasAnyTag([...assetSemantic.subjectTags, ...assetSemantic.themeTags], constraint.forbiddenTags)) {
+    return false;
+  }
+
+  return !hasAnyTag(assetSemantic.forbiddenTags, constraint.expectedAnyTags);
+}
+
+function hasAnyTag(left: readonly string[], right: readonly string[]): boolean {
+  return left.some((tag) => right.includes(tag));
 }
 
 function assetPlanGenre(plan: AssetPlan): 'collector' | 'dodger' | 'shooter' {

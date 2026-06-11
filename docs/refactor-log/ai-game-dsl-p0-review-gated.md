@@ -8,11 +8,56 @@
 
 ## 当前阶段
 
-Asset Semantic Fidelity Step 2 已完成：local asset pack 现在有 pack-level profile、asset-level semantic metadata 和 metadata index；下一步进入 Step 3：Resolver semantic hard gate。
+Asset Semantic Fidelity Step 3 已完成：resolver 现在会消费 hard semantic constraint，hard mismatch local pack 会被跳过并走既有 `template_svg` fallback；下一步进入 Step 4：Manifest semanticFit + resolution report。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：在 resolver 层使用 Step 1 plan semantic constraint 与 Step 2 local pack metadata 做 hard semantic mismatch gate；仍不要改变 QA / Workbench 判定，且不要全量导入 Kenney / itch.io / OpenGameArt。
+当前下一步：在 manifest / resolution report 层记录 selected / rejected / fallback reason；仍不要改变 QA / Workbench 判定，且不要全量导入 Kenney / itch.io / OpenGameArt。
+
+### 2.14 Asset Semantic Fidelity Step 3: Resolver semantic hard gate
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- `selectCompletePackAssets` 新增 hard-only semantic gate：local pack 仍先按 `id` / `role` / `format` 完整覆盖；若 plan item `semantic.strictness === "hard"`，pack asset 必须有 asset-level semantic metadata。
+- hard gate 要求 asset `subjectTags` 命中 plan `expectedAnyTags`，并要求 asset `subjectTags/themeTags` 不命中 plan `forbiddenTags`，asset `forbiddenTags` 不命中 plan `expectedAnyTags`。
+- `semantic.strictness !== "hard"` 直接放过，不阻断 medium / soft constraint。
+- hard mismatch 的 complete local pack 返回 `undefined`，由 `writeAssetArtifacts` 保持既有 `template_svg` fallback；未新增新的 fallback 分支。
+- 合同测试覆盖默认 cat/alien shooter 回退 `template_svg`、tank/tank shooter 仍选择 `kenney-tiny-shooter-tanks`、medium / soft constraint 不阻断 local pack selection。
+- `compiler-service.test.ts` 同步把保留 tank pack wiring 断言的 stale-file 清理测试改用 tank shooter fixture，避免默认 cat/alien shooter 的新 fallback 契约和旧断言冲突。
+
+阶段结果：
+
+- 解决层级：resolver 业务规则。
+- 结构变化：`local-asset-pack-provider.ts` 从 138 行增至 167 行；`tests/contracts/asset-pipeline.test.ts` 增至 558 行；`tests/workspace/compiler-service.test.ts` 仅补 tank shooter fixture。
+- 行为边界：未修改 manifest schema / writer、QA、Workbench、Phaser runtime 或 provider；未写 manifest `semanticFit`，未写 `asset_resolution_report.json`，未改变 QA / Workbench PLAYABLE 判定。
+- 未改范围：尚未实现 manifest semantic fit、asset resolution report、QA semantic status、Workbench semantic display 或 repair loop。
+
+已通过验证：
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts
+    # 实现前红灯：默认 cat/alien shooter 仍选中 kenney-tiny-shooter-tanks；实现后 18 个测试通过
+
+    npx vitest run tests/workspace/compiler-service.test.ts
+    # 修复同步前红灯：旧测试仍期待默认 shooter 选 tank pack；同步后通过
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts tests/workspace/compiler-service.test.ts
+    # 2 个测试文件，27 个测试全部通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check -- packages/asset-pipeline/src/local-asset-pack-provider.ts tests/contracts/asset-pipeline.test.ts tests/workspace/compiler-service.test.ts docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md docs/refactor-log/ai-game-dsl-p0-step-index.md docs/refactor-log/ai-game-dsl-p0-review-gated.md
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出 `tests/workspace/compiler-service.test.ts` 仍使用默认 cat/alien shooter 并断言 `kenney-tiny-shooter-tanks`，会和新 hard gate 契约冲突；P2 建议文档同步；P3 无。
+- 已处理：先复现 compiler test 红灯；将该 stale-file 清理测试的 shooter fixture 改成 tank shooter，保留 tank pack wiring 断言，同时由 contract test 保留默认 cat/alien fallback 契约。
+- Oracle 复审：P0/P1/P2/P3 均无。
+- 文档复审：Oracle 指出 plan 顶部仍把 cat/alien 选中 tank pack 写成“当前系统”问题、Step 3 表格使用 `gate before priority / score` 容易误导；已改为 “Step 3 前的典型案例” 和 `complete-pack selection hard gate`，复审 P0/P1/P2/P3 均无。
+- 审查模式：Oracle 新建 + 复用
 
 ### 2.13 Asset Semantic Fidelity Step 2: Local pack metadata profile
 
