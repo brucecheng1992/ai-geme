@@ -99,7 +99,7 @@ describe('Asset pipeline contracts', () => {
     await expect(validateGeneratedProjectAssets({ projectId, projectDir: root })).resolves.toMatchObject({ ok: true });
   });
 
-  it('selects the tiny local shooter tank pack when it fully covers the shooter plan', async () => {
+  it('selects the Kenney shooter tank pack before lower-priority local shooter packs', async () => {
     const normalized = validateAndNormalizeRawGameDsl(createShooterRawDsl());
     expect(normalized.ok).toBe(true);
     if (!normalized.ok) {
@@ -109,12 +109,13 @@ describe('Asset pipeline contracts', () => {
     const result = await writeAssetArtifacts({ projectId, projectDir: root, ir: normalized.ir });
 
     expect(result.manifest.assets.map((asset) => [asset.id, asset.source, asset.sourcePack])).toEqual([
-      ['background_main', 'local_asset_pack', 'agm-tiny-shooter-tanks'],
-      ['player', 'local_asset_pack', 'agm-tiny-shooter-tanks'],
-      ['enemy', 'local_asset_pack', 'agm-tiny-shooter-tanks'],
-      ['projectile', 'local_asset_pack', 'agm-tiny-shooter-tanks']
+      ['background_main', 'local_asset_pack', 'kenney-tiny-shooter-tanks'],
+      ['player', 'local_asset_pack', 'kenney-tiny-shooter-tanks'],
+      ['enemy', 'local_asset_pack', 'kenney-tiny-shooter-tanks'],
+      ['projectile', 'local_asset_pack', 'kenney-tiny-shooter-tanks']
     ]);
-    await expect(readFile(join(root, 'public/assets/enemy.svg'), 'utf8')).resolves.toContain('Red enemy tank');
+    await expect(readFile(join(root, 'public/assets/enemy.svg'), 'utf8')).resolves.toContain('Kenney grey tank enemy sprite');
+    await expect(readFile(join(root, 'public/assets/projectile.svg'), 'utf8')).resolves.toContain('data:image/png;base64');
     await expect(validateGeneratedProjectAssets({ projectId, projectDir: root })).resolves.toMatchObject({ ok: true });
   });
 

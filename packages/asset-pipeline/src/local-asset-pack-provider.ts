@@ -26,6 +26,7 @@ const LocalAssetPackSchema = z.strictObject({
   version: z.literal('local-asset-pack-v0.1'),
   id: z.string().regex(/^[a-z][a-z0-9_-]{1,63}$/),
   label: z.string().min(1).max(120),
+  priority: z.number().int().min(0).max(1000).optional(),
   license: z.strictObject({
     id: z.string().min(1).max(40),
     name: z.string().min(1).max(120),
@@ -131,7 +132,16 @@ async function readLocalPacks(packsRoot: string): Promise<LocalAssetPack[]> {
     packs.push(parsed.data);
   }
 
-  return packs;
+  return packs.sort(compareLocalAssetPacks);
+}
+
+function compareLocalAssetPacks(left: LocalAssetPack, right: LocalAssetPack): number {
+  const priorityDelta = (right.priority ?? 0) - (left.priority ?? 0);
+  if (priorityDelta !== 0) {
+    return priorityDelta;
+  }
+
+  return left.id.localeCompare(right.id);
 }
 
 function selectCompletePackAssets(plan: AssetPlan, pack: LocalAssetPack) {

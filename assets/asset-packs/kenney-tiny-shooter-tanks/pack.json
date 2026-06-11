@@ -1,0 +1,49 @@
+{
+  "version": "local-asset-pack-v0.1",
+  "id": "kenney-tiny-shooter-tanks",
+  "label": "Kenney Tiny Shooter Tanks",
+  "priority": 100,
+  "license": {
+    "id": "CC0-1.0",
+    "name": "Creative Commons CC0 1.0 Universal",
+    "attribution": "Kenney Tanks by Kenney Vleugels",
+    "sourceUrl": "https://kenney.nl/assets/tanks"
+  },
+  "style": {
+    "genres": ["shooter"],
+    "camera": "top_down",
+    "tags": ["kenney", "tank", "battlefield", "arcade", "top_down"]
+  },
+  "assets": [
+    {
+      "id": "background_main",
+      "role": "background",
+      "file": "background_main.svg",
+      "format": "svg",
+      "license": {
+        "id": "CC0-1.0",
+        "name": "Creative Commons CC0 1.0 Universal",
+        "attribution": "AI Game Maker local shooter background",
+        "sourceUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
+      }
+    },
+    {
+      "id": "player",
+      "role": "player_character",
+      "file": "player.svg",
+      "format": "svg"
+    },
+    {
+      "id": "enemy",
+      "role": "enemy",
+      "file": "enemy.svg",
+      "format": "svg"
+    },
+    {
+      "id": "projectile",
+      "role": "projectile",
+      "file": "projectile.svg",
+      "format": "svg"
+    }
+  ]
+}
