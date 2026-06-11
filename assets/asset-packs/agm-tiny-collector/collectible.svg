@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" role="img" aria-label="Gold coin">
+  <circle cx="24" cy="24" r="21" fill="#ffd64f" stroke="#ffb72f" stroke-width="3"/>
+  <circle cx="24" cy="24" r="14" fill="#ffe88a" stroke="#fff3b5" stroke-width="3"/>
+  <path d="M16 24h16" stroke="#b27616" stroke-width="4" stroke-linecap="round"/>
+  <path d="M14 12c4-4 9-6 15-5" fill="none" stroke="#fff6c7" stroke-width="3" stroke-linecap="round" opacity=".75"/>
+</svg>

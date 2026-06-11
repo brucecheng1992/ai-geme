@@ -58,6 +58,11 @@ export const AssetManifestAssetSchema = z.strictObject({
   format: z.literal('svg'),
   path: SafeAssetPathSchema,
   source: AssetProviderSchema,
+  sourcePack: z.string().regex(/^[a-z][a-z0-9_-]{1,63}$/).optional(),
+  licenseId: z.string().min(1).max(40).optional(),
+  licenseName: z.string().min(1).max(120).optional(),
+  attribution: z.string().min(1).max(160).optional(),
+  sourceUrl: z.string().url().optional(),
   required: z.boolean(),
   status: z.enum(['ready', 'fallback_used', 'missing']),
   size: AssetSizeSchema
@@ -88,6 +93,20 @@ export const AssetManifestSchema = z
           path: ['summary', key],
           message: `summary.${key} must match manifest assets`
         });
+      }
+    }
+
+    for (const [index, asset] of manifest.assets.entries()) {
+      if (asset.source === 'local_asset_pack') {
+        for (const key of ['sourcePack', 'licenseId', 'licenseName', 'attribution', 'sourceUrl'] as const) {
+          if (asset[key] === undefined) {
+            ctx.addIssue({
+              code: 'custom',
+              path: ['assets', index, key],
+              message: `${key} is required for local_asset_pack assets`
+            });
+          }
+        }
       }
     }
   });

@@ -2,6 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import type { NormalizedGameIr } from '../../game-dsl/src/index.js';
+import { selectLocalAssetPack } from './local-asset-pack-provider.js';
 import { buildAssetPlanFromIr } from './plan.js';
 import { AssetManifestSchema, summarizeManifestAssets, type AssetManifest, type AssetManifestAsset, type AssetPlan } from './schemas.js';
 import { renderTemplateSvg } from './template-svg-provider.js';
@@ -16,21 +17,18 @@ export async function writeAssetArtifacts(input: {
   projectId: string;
   projectDir: string;
   ir: NormalizedGameIr;
+  assetPacksDir?: string;
 }): Promise<WriteAssetArtifactsResult> {
   const plan = buildAssetPlanFromIr(input.projectId, input.ir);
   const publicDir = join(input.projectDir, 'public');
   const assetsDir = join(publicDir, 'assets');
-  const manifest = buildTemplateSvgManifest(plan);
 
   await mkdir(assetsDir, { recursive: true });
   await writeFile(join(input.projectDir, 'asset_plan.json'), `${JSON.stringify(plan, null, 2)}\n`, 'utf8');
 
-  const assetFiles: string[] = [];
-  for (const item of plan.items) {
-    const fileName = `${item.id}.svg`;
-    await writeFile(join(assetsDir, fileName), renderTemplateSvg(item), 'utf8');
-    assetFiles.push(`public/assets/${fileName}`);
-  }
+  const localPackSelection = await selectLocalAssetPack({ plan, projectAssetsDir: assetsDir, packsDir: input.assetPacksDir });
+  const manifest = localPackSelection === undefined ? await writeTemplateSvgAssets(plan, assetsDir) : buildManifest(plan, localPackSelection.manifestAssets);
+  const assetFiles = localPackSelection?.files ?? plan.items.map((item) => `public/assets/${item.id}.svg`);
 
   await writeFile(join(publicDir, 'asset_manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
 
@@ -41,20 +39,29 @@ export async function writeAssetArtifacts(input: {
   };
 }
 
-function buildTemplateSvgManifest(plan: AssetPlan): AssetManifest {
-  const assets: AssetManifestAsset[] = plan.items.map((item) => ({
-    id: item.id,
-    loadKey: `agm.${item.id}`,
-    role: item.role,
-    type: 'image',
-    format: item.format,
-    path: `assets/${item.id}.svg`,
-    source: 'template_svg',
-    required: item.required,
-    status: 'ready',
-    size: item.size
-  }));
+async function writeTemplateSvgAssets(plan: AssetPlan, assetsDir: string): Promise<AssetManifest> {
+  const assets: AssetManifestAsset[] = [];
+  for (const item of plan.items) {
+    const fileName = `${item.id}.svg`;
+    await writeFile(join(assetsDir, fileName), renderTemplateSvg(item), 'utf8');
+    assets.push({
+      id: item.id,
+      loadKey: `agm.${item.id}`,
+      role: item.role,
+      type: 'image',
+      format: item.format,
+      path: `assets/${item.id}.svg`,
+      source: 'template_svg',
+      required: item.required,
+      status: 'ready',
+      size: item.size
+    });
+  }
 
+  return buildManifest(plan, assets);
+}
+
+function buildManifest(plan: AssetPlan, assets: AssetManifestAsset[]): AssetManifest {
   return AssetManifestSchema.parse({
     version: 'asset-manifest-v0.1',
     projectId: plan.projectId,

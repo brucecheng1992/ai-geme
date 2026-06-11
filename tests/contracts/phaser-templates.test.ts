@@ -78,6 +78,8 @@ describe('Phaser templates', () => {
 
     expect(collectorMain).toContain("event.key === 'ArrowRight'");
     expect(collectorMain).toContain('scene.collectItem()');
+    expect(collectorMain).toContain('asset-manifest.generated.json');
+    expect(collectorMain).toContain('collectorArt.preload(this)');
     expect(dodgerMain).toContain('scene.dodgeFrame()');
     expect(dodgerMain).toContain('scene.update(delta)');
     expect(dodgerMain).toContain('asset-manifest.generated.json');
@@ -120,6 +122,9 @@ describe('Phaser templates', () => {
       } else if (genre === 'shooter') {
         expect(main).toContain("from './runtime-plan.generated.json'");
         expect(main).toContain('new ShooterGameScene(shooterParams, shooterRuntimePlan)');
+      } else if (genre === 'collector') {
+        expect(main).toContain("from './asset-manifest.generated.json'");
+        expect(main).toContain('new CollectorGameScene(collectorParams, collectorArt)');
       } else {
         expect(main).toContain(`new ${capitalizeGenre(genre)}GameScene(${genre}Params)`);
       }

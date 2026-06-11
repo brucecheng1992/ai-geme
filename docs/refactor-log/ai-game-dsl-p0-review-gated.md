@@ -8,11 +8,98 @@
 
 ## 当前阶段
 
-Asset Pipeline P0 Step 3 已完成：QA report 现在写入 `asset_report`，包含 manifest summary 派生的资源明细、dodger runtime asset telemetry，以及 `ASSET_MISSING`、`REQUIRED_CORE_ASSET_PLACEHOLDER_USED`、`ASSET_LOAD_FAILED` 的结构化 failure 明细，为 Workbench Assets 面板铺路。
+Asset Pipeline P0 Step 5 已完成第一小步：仓库内接入一个 tiny local asset pack，collector 生成项目会优先选择同一资源包内的 `background_main`、`player`、`collectible`，并在 QA report / Workbench Assets 面板中展示 source pack 与 license。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Asset Pipeline P0 Step 4 Workbench asset status panel，消费 QA report `asset_report` 展示 required / loaded / failed / placeholder / missing 和 failure reason。
+当前下一步：可继续扩展第二个 tiny pack 或把真实第三方资源包切片接入同一 provider；仍不要全量导入 Kenney / itch.io / OpenGameArt。
+
+### 2.10 Asset Pipeline P0 Step 5.1: tiny local asset pack slice
+
+完成时间：2026-06-11
+
+已完成内容：
+
+- 新增 `assets/asset-packs/agm-tiny-collector`，只包含 collector 最小闭环资源：`background_main.svg`、`player.svg`、`collectible.svg` 和 `pack.json` license/style 元数据。
+- `writeAssetArtifacts` 优先选择完整覆盖当前 `AssetPlan` 的 local asset pack；若没有完整覆盖，则整体回退到 `template_svg`，避免同一玩法半套资源混搭。
+- `AssetManifestAsset` 增加 `sourcePack`、`licenseId`、`licenseName`、`attribution`、`sourceUrl`；当 `source === "local_asset_pack"` 时这些字段必须存在。
+- collector template 新增 manifest-driven art runtime，`preload()` 加载 `asset-manifest.generated.json`，首帧优先渲染 manifest image，并通过 `__GAME_TELEMETRY__.assets` 暴露 required / loaded / failed。
+- QA runtime asset gate 扩展到 collector：collector 缺 runtime asset telemetry 或 required asset 未 loaded 时不能 PASS。
+- QA report 聚合 `asset_report.sources`，Workbench Assets 面板展示 source pack、license 和 attribution。
+- 真实 Maker stack 生成 `proj_20260611_064732_c31d` / `run_20260611_064732_c31d`，状态 `PLAYABLE`，QA report 显示 collector runtime assets `background_main/player/collectible` 全部 loaded。
+- Workbench 桌面和移动端均展示 `agm-tiny-collector`、`CC0-1.0` 和 `Creative Commons CC0 1.0 Universal`，无水平溢出。
+
+阶段结果：
+
+- 解决层级：asset selection 数据契约 + generated project 边界适配 + collector runtime asset loading + Workbench 展示。
+- DSL-first 边界：未新增 Raw DSL asset path / URL / base64 字段；资源选择仍从 trusted IR 派生的 `AssetPlan` 进入系统侧 provider。
+- 未改范围：没有全量导入 Kenney / itch.io / OpenGameArt；dodger/shooter 暂不使用这个 tiny pack，仍按现有资源路径运行。
+
+已通过验证：
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/compiler-service.test.ts tests/workspace/playwright-qa-runner.test.ts
+    # 4 个测试文件，67 个测试全部通过
+
+    npm run typecheck --workspace @ai-game-maker/maker-workbench
+    npm run typecheck --workspace @ai-game-maker/maker-api
+    npm run typecheck:root
+    # 三段类型检查通过
+
+    Real Maker stack:
+    # POST /api/projects/generate -> proj_20260611_064732_c31d / run_20260611_064732_c31d / PLAYABLE
+    # QA visual_status=PASSED, asset_report.runtime.loaded=[background_main, player, collectible]
+    # Workbench screenshots: /tmp/agm-tiny-pack-workbench/workbench-desktop.png, /tmp/agm-tiny-pack-workbench/workbench-mobile.png
+
+审查门禁结论：
+
+- Oracle 只读审查指出：collector 必须实际 preload/render manifest 资源、local asset license 不能 optional 丢失、QA/Workbench 需要展示 source pack/license。
+- 已修复：collector runtime manifest preload/render、collector QA runtime asset gate、`local_asset_pack` license 必填、Workbench source pack/license 展示、缺 local pack 整体回退测试。
+
+### 2.9 Asset Pipeline P0 Step 4.1: Workbench asset status panel
+
+完成时间：2026-06-11
+
+已完成内容：
+
+- `workbench-api.ts` 为 Workbench 侧 `QaReport` 补齐 `asset_report?: QaAssetReport` 类型，字段对齐 maker-api QA report 合同。
+- 新增 `AssetStatusPanel` 纯展示组件，展示 `required`、`ready`、`loaded`、`failed`、`placeholder`、`missing` 指标。
+- Assets 面板展示 required asset ids、runtime loaded asset ids，以及 `asset_report.failures[].code/message/asset_ids/roles`。
+- `App.tsx` 只挂载 `<AssetStatusPanel report={data.qaReport?.asset_report} />`，未继续堆叠资产 JSX 或新增数据请求。
+
+阶段结果：
+
+- 解决层级：Workbench 数据契约消费 + React 组件职责拆分。
+- 行为边界：未修改 API 返回结构、QA 生成、DSL、compiler、asset pipeline 或 Phaser template。
+- UI 铺路结果：Workbench 不需要解析 QA failure message 即可展示 asset failure reason。
+- 未改范围：尚未用真实新生成 run 做 Workbench 桌面 / 移动端视觉验收；尚未展示 license / attribution；collector / shooter runtime asset telemetry 仍待后续分步接入。
+
+已通过验证：
+
+    npm run typecheck --workspace @ai-game-maker/maker-workbench
+    # maker-workbench 类型检查通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查均通过
+
+    npm exec --workspace @ai-game-maker/maker-workbench -- vite build
+    # Vite production build 通过
+
+    git diff --check
+    # 无输出
+
+    Workbench Playwright smoke: http://127.0.0.1:5174/
+    # 无数据状态：Manifest Status=1、No asset report=1、console errors=[]
+    # mocked QA asset_report：Blocked=1、ASSET_LOAD_FAILED=2、enemy.hazard=2、failure reason=1、console errors=[]
+
+审查门禁结论：
+
+- Oracle 代码审查：P0/P1/P2 均无；P3 建议补 Workbench production build。
+- 已补验证：`npm exec --workspace @ai-game-maker/maker-workbench -- vite build` 通过。
+- 审查模式：Oracle 新建
+
+下一步建议：
+
+- Asset Pipeline P0 Step 4.2：启动真实 Maker stack，生成或加载一个包含 `asset_report` 的 run，在 Workbench 桌面 / 移动端验证 Assets 面板与 QA/Telemetry/Preview 区域布局不互相挤压。
 
 ### 2.8 Asset Pipeline P0 Step 3: QA asset report enrichment
 

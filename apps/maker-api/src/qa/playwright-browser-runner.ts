@@ -396,9 +396,10 @@ async function readQaSnapshot(page: Page): Promise<unknown> {
 }
 
 async function verifyRuntimeAssetsLoaded(page: Page, genre: QaGenre): Promise<{ ok: boolean; message?: string; telemetry?: QaAssetRuntimeTelemetry }> {
-  if (genre !== 'dodger') {
+  if (genre !== 'collector' && genre !== 'dodger') {
     return { ok: true };
   }
+  const genreLabel = qaGenreLabel(genre);
 
   const telemetry = await page.evaluate(() => {
     const target = (globalThis as BrowserQaGlobal).__GAME_TELEMETRY__;
@@ -410,36 +411,36 @@ async function verifyRuntimeAssetsLoaded(page: Page, genre: QaGenre): Promise<{ 
 
   const assets = readAssetTelemetry(telemetry);
   if (assets === undefined) {
-    return { ok: false, message: 'Dodger QA expected __GAME_TELEMETRY__.assets from the manifest loader.' };
+    return { ok: false, message: `${genreLabel} QA expected __GAME_TELEMETRY__.assets from the manifest loader.` };
   }
   const assetRuntime = toQaAssetRuntimeTelemetry(assets);
 
   if (!assets.manifestLoaded) {
-    return { ok: false, message: 'Dodger QA expected asset manifest telemetry to report manifestLoaded=true.', telemetry: assetRuntime };
+    return { ok: false, message: `${genreLabel} QA expected asset manifest telemetry to report manifestLoaded=true.`, telemetry: assetRuntime };
   }
 
   if (assets.required.length === 0) {
-    return { ok: false, message: 'Dodger QA expected at least one required runtime asset.', telemetry: assetRuntime };
+    return { ok: false, message: `${genreLabel} QA expected at least one required runtime asset.`, telemetry: assetRuntime };
   }
 
   const loaded = new Set(assets.loaded);
   const missingRequired = assets.required.filter((id) => !loaded.has(id));
   if (missingRequired.length > 0) {
-    return { ok: false, message: `Dodger QA expected required assets to load: ${missingRequired.join(', ')}`, telemetry: assetRuntime };
+    return { ok: false, message: `${genreLabel} QA expected required assets to load: ${missingRequired.join(', ')}`, telemetry: assetRuntime };
   }
 
   const failed = new Set(assets.failed);
   const failedRequired = assets.required.filter((id) => failed.has(id));
   if (failedRequired.length > 0) {
-    return { ok: false, message: `Dodger QA observed failed required assets: ${failedRequired.join(', ')}`, telemetry: assetRuntime };
+    return { ok: false, message: `${genreLabel} QA observed failed required assets: ${failedRequired.join(', ')}`, telemetry: assetRuntime };
   }
 
   if (assets.missing.length > 0) {
-    return { ok: false, message: `Dodger QA observed missing manifest assets: ${assets.missing.join(', ')}`, telemetry: assetRuntime };
+    return { ok: false, message: `${genreLabel} QA observed missing manifest assets: ${assets.missing.join(', ')}`, telemetry: assetRuntime };
   }
 
   if (assets.missingRequiredRoles.length > 0) {
-    return { ok: false, message: `Dodger QA observed missing required asset roles: ${assets.missingRequiredRoles.join(', ')}`, telemetry: assetRuntime };
+    return { ok: false, message: `${genreLabel} QA observed missing required asset roles: ${assets.missingRequiredRoles.join(', ')}`, telemetry: assetRuntime };
   }
 
   return { ok: true, telemetry: assetRuntime };
@@ -1097,4 +1098,8 @@ function toQaAssetRuntimeTelemetry(assets: RuntimeAssetTelemetry): QaAssetRuntim
     missing: [...assets.missing],
     missing_required_roles: [...assets.missingRequiredRoles]
   };
+}
+
+function qaGenreLabel(genre: QaGenre): string {
+  return `${genre.slice(0, 1).toUpperCase()}${genre.slice(1)}`;
 }

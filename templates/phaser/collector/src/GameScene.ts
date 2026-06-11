@@ -13,7 +13,13 @@ import {
   createRuntimeState,
   exposeRuntime
 } from '../../shared/kernel.js';
+import type { CollectorAssetTelemetry } from './collector-art-library.js';
 import type { CollectorTemplateParams } from './template-params.js';
+
+type CollectorArtRuntime = {
+  addImage(scene: Phaser.Scene, role: 'background' | 'player_character' | 'collectible', x: number, y: number, displayWidth: number, displayHeight: number): Phaser.GameObjects.Image | undefined;
+  telemetry(): CollectorAssetTelemetry;
+};
 
 export class CollectorGameScene {
   private readonly state;
@@ -29,7 +35,10 @@ export class CollectorGameScene {
   private scoreText?: Phaser.GameObjects.Text;
   private statusText?: Phaser.GameObjects.Text;
 
-  constructor(private readonly params: CollectorTemplateParams) {
+  constructor(
+    private readonly params: CollectorTemplateParams,
+    private readonly art?: CollectorArtRuntime
+  ) {
     this.state = createRuntimeState(1);
     this.telemetry = new TelemetrySystem(this.state);
     this.input = new InputSystem(this.telemetry);
@@ -45,7 +54,9 @@ export class CollectorGameScene {
     this.phaserScene = phaserScene;
     this.gameState.ready();
     this.spawn.spawn('item');
-    exposeRuntime(this.state, new QaBridge(this.state, () => this.start(), () => this.restart()));
+    exposeRuntime(this.state, new QaBridge(this.state, () => this.start(), () => this.restart()), () => ({
+      assets: this.art?.telemetry()
+    }));
     this.renderFirstFrame();
   }
 
@@ -78,25 +89,34 @@ export class CollectorGameScene {
     }
 
     scene.cameras.main.setBackgroundColor('#07111f');
-    scene.add
-      .graphics()
-      .fillStyle(0x07111f, 1)
-      .fillRect(0, 0, this.params.world.width, this.params.world.height)
-      .fillStyle(0x123323, 1)
-      .fillRoundedRect(24, 24, this.params.world.width - 48, this.params.world.height - 48, 24)
-      .lineStyle(4, 0x7cff9b, 0.45)
-      .strokeRoundedRect(24, 24, this.params.world.width - 48, this.params.world.height - 48, 24);
+    const background = this.art?.addImage(scene, 'background', this.params.world.width / 2, this.params.world.height / 2, this.params.world.width, this.params.world.height);
+    if (background === undefined) {
+      scene.add
+        .graphics()
+        .fillStyle(0x07111f, 1)
+        .fillRect(0, 0, this.params.world.width, this.params.world.height)
+        .fillStyle(0x123323, 1)
+        .fillRoundedRect(24, 24, this.params.world.width - 48, this.params.world.height - 48, 24)
+        .lineStyle(4, 0x7cff9b, 0.45)
+        .strokeRoundedRect(24, 24, this.params.world.width - 48, this.params.world.height - 48, 24);
+    }
 
-    this.drawCatPlayer(this.params.player.startX, this.params.player.startY);
+    this.drawPlayer(this.params.player.startX, this.params.player.startY);
     this.drawCollectible(this.params.world.width - 190, this.params.player.startY);
     this.scoreText = scene.add.text(40, 32, '', { fontFamily: 'Arial, sans-serif', fontSize: '28px', color: '#f8fbff' });
     this.statusText = scene.add.text(40, this.params.world.height - 74, '', { fontFamily: 'Arial, sans-serif', fontSize: '20px', color: '#d6ecff' });
     this.renderHud();
   }
 
-  private drawCatPlayer(x: number, y: number): void {
+  private drawPlayer(x: number, y: number): void {
     const scene = this.phaserScene;
     if (scene === undefined) {
+      return;
+    }
+
+    const player = this.art?.addImage(scene, 'player_character', x, y, 86, 86);
+    if (player !== undefined) {
+      scene.add.text(x - 44, y + 54, this.params.player.label, { fontFamily: 'Arial, sans-serif', fontSize: '18px', color: '#ffe8bc' });
       return;
     }
 
@@ -117,6 +137,12 @@ export class CollectorGameScene {
   private drawCollectible(x: number, y: number): void {
     const scene = this.phaserScene;
     if (scene === undefined) {
+      return;
+    }
+
+    const collectible = this.art?.addImage(scene, 'collectible', x, y, 84, 84);
+    if (collectible !== undefined) {
+      scene.add.text(x - 42, y + 54, this.params.collectible.label, { fontFamily: 'Arial, sans-serif', fontSize: '18px', color: '#fff0a3' });
       return;
     }
 

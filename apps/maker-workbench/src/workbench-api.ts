@@ -28,6 +28,47 @@ export type QaReport = {
   missing_any_groups?: string[][];
   console_errors?: string[];
   code?: string;
+  asset_report?: QaAssetReport;
+};
+
+export type QaAssetRuntimeTelemetry = {
+  manifest_loaded: boolean;
+  required: string[];
+  loaded: string[];
+  failed: string[];
+  fallback_used: string[];
+  placeholder_used: string[];
+  missing: string[];
+  missing_required_roles: string[];
+};
+
+export type QaAssetReport = {
+  manifest_summary?: {
+    required: number;
+    ready: number;
+    fallback_used: number;
+    placeholder_used: number;
+    missing: number;
+  };
+  required: string[];
+  ready: string[];
+  fallback_used: string[];
+  placeholder_used: string[];
+  missing: string[];
+  runtime?: QaAssetRuntimeTelemetry;
+  sources?: Array<{
+    source_pack: string;
+    license_id: string;
+    license_name: string;
+    attribution: string;
+    source_url: string;
+  }>;
+  failures: Array<{
+    code: 'ASSET_MANIFEST_INVALID' | 'ASSET_MISSING' | 'REQUIRED_CORE_ASSET_PLACEHOLDER_USED' | 'ASSET_LOAD_FAILED';
+    message: string;
+    asset_ids: string[];
+    roles: string[];
+  }>;
 };
 export type RepairReport = { status?: string; message?: string; attempts?: Array<{ attempt: number; reason: string }> };
 

@@ -11,7 +11,7 @@ import {
   writeAssetArtifacts
 } from '../../packages/asset-pipeline/src/index.js';
 import { validateAndNormalizeRawGameDsl } from '../../packages/game-dsl/src/index.js';
-import { createShooterRawDsl } from './fixtures.js';
+import { createCollectorRawDsl, createShooterRawDsl } from './fixtures.js';
 
 const projectId = 'proj_20260611_asset_001';
 
@@ -56,6 +56,65 @@ describe('Asset pipeline contracts', () => {
     await expect(readFile(join(root, 'public/assets/player.svg'), 'utf8')).resolves.toContain('<svg');
 
     await expect(validateGeneratedProjectAssets({ projectId, projectDir: root })).resolves.toMatchObject({ ok: true });
+  });
+
+  it('selects the tiny local collector pack with license metadata when it fully covers the plan', async () => {
+    const normalized = validateAndNormalizeRawGameDsl(createCollectorRawDsl());
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const result = await writeAssetArtifacts({ projectId, projectDir: root, ir: normalized.ir });
+
+    expect(result.manifest.assets.map((asset) => [asset.id, asset.source, asset.sourcePack])).toEqual([
+      ['background_main', 'local_asset_pack', 'agm-tiny-collector'],
+      ['player', 'local_asset_pack', 'agm-tiny-collector'],
+      ['collectible', 'local_asset_pack', 'agm-tiny-collector']
+    ]);
+    expect(result.manifest.assets.every((asset) => asset.licenseId === 'CC0-1.0')).toBe(true);
+    await expect(readFile(join(root, 'public/assets/background_main.svg'), 'utf8')).resolves.toContain('Arcade field background');
+    await expect(validateGeneratedProjectAssets({ projectId, projectDir: root })).resolves.toMatchObject({ ok: true });
+  });
+
+  it('falls back to template SVG assets when no local pack fully covers the plan', async () => {
+    const normalized = validateAndNormalizeRawGameDsl(createCollectorRawDsl());
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const emptyPacksDir = join(root, 'empty-packs');
+    await mkdir(emptyPacksDir, { recursive: true });
+    const result = await writeAssetArtifacts({ projectId, projectDir: root, ir: normalized.ir, assetPacksDir: emptyPacksDir });
+
+    expect(result.manifest.assets.map((asset) => asset.source)).toEqual(['template_svg', 'template_svg', 'template_svg']);
+    expect(result.manifest.assets.some((asset) => asset.sourcePack !== undefined)).toBe(false);
+  });
+
+  it('rejects local asset pack manifest entries without license metadata', () => {
+    const parsed = AssetManifestSchema.safeParse({
+      version: 'asset-manifest-v0.1',
+      projectId,
+      strict: true,
+      assets: [
+        {
+          id: 'player',
+          loadKey: 'agm.player',
+          role: 'player_character',
+          type: 'image',
+          format: 'svg',
+          path: 'assets/player.svg',
+          source: 'local_asset_pack',
+          required: true,
+          status: 'ready',
+          size: { w: 64, h: 64 }
+        }
+      ],
+      summary: { required: 1, ready: 1, fallback_used: 0, missing: 0, placeholder_used: 0 }
+    });
+
+    expect(parsed.success).toBe(false);
   });
 
   it('rejects manifest paths that escape the public asset root', () => {

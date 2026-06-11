@@ -110,7 +110,16 @@ export type QaAssetReport = {
   placeholder_used: string[];
   missing: string[];
   runtime?: QaAssetRuntimeTelemetry;
+  sources?: QaAssetSource[];
   failures: QaAssetFailure[];
+};
+
+export type QaAssetSource = {
+  source_pack: string;
+  license_id: string;
+  license_name: string;
+  attribution: string;
+  source_url: string;
 };
 
 export type QaAssetFailure = {

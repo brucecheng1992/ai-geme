@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { AssetStatusPanel } from './AssetStatusPanel.js';
 import './styles.css';
 import {
   API_BASE,
@@ -288,6 +289,8 @@ export function App() {
                 ) : null}
               </div>
             </article>
+
+            <AssetStatusPanel report={data.qaReport?.asset_report} />
 
             <article className={panelClass}>
               <div className={panelHeadingClass}>

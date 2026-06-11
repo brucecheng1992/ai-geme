@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { PlayableQaGateService } from '../../apps/maker-api/src/qa/playable-qa-gate.service.js';
 import { PlaywrightQaRunnerService } from '../../apps/maker-api/src/qa/playwright-qa-runner.service.js';
-import type { QaBrowserRunner } from '../../apps/maker-api/src/qa/qa.types.js';
+import type { QaAssetRuntimeTelemetry, QaBrowserRunner } from '../../apps/maker-api/src/qa/qa.types.js';
 import { LocalWorkspaceService } from '../../apps/maker-api/src/workspace/local-workspace.service.js';
 import type { TelemetryEvent } from '../../packages/runtime-core/src/index.js';
 
@@ -222,7 +222,8 @@ describe('Playable QA gate and runner', () => {
       interaction_ok: true,
       telemetry: [{ type: 'game.ready', timestamp_ms: 0, frame: 0 }],
       observed_events: ['game.ready'],
-      console_errors: []
+      console_errors: [],
+      asset_runtime: validQaAssetRuntime(['background_main', 'player', 'collectible'])
     });
     const runner = new PlaywrightQaRunnerService(workspace, gate, browserRunner);
 
@@ -234,6 +235,37 @@ describe('Playable QA gate and runner', () => {
       missing_events: ['game.started', 'input.received', 'game.restarted', 'player.moved', 'item.spawned', 'item.collected', 'score.changed']
     });
     await expect(readFile(workspace.getQaReportPath(projectId, runId), 'utf8')).resolves.toContain('"code": "REQUIRED_TELEMETRY_MISSING"');
+  });
+
+  it('fails collector QA when an injected browser runner omits runtime asset telemetry', async () => {
+    const browserRunner: QaBrowserRunner = async () => ({
+      ok: true,
+      visual_ok: true,
+      interaction_ok: true,
+      telemetry: missingObservedBase().map((type, index) => ({ type, timestamp_ms: index, frame: index })),
+      observed_events: missingObservedBase(),
+      snapshot: { gameStatus: 'READY', score: 1, health: 3, frame: 0 },
+      console_errors: []
+    });
+    const runner = new PlaywrightQaRunnerService(workspace, gate, browserRunner);
+
+    const report = await runner.run({ projectId, runId, genre: 'collector', previewUrl: 'http://localhost:3000/preview/proj/index.html' });
+
+    expect(report).toMatchObject({
+      status: 'QA_FAILED',
+      code: 'ASSET_LOAD_FAILED',
+      message: 'Collector QA expected runtime asset telemetry in browser result.',
+      asset_report: {
+        failures: [
+          {
+            code: 'ASSET_LOAD_FAILED',
+            message: 'Collector QA expected runtime asset telemetry in browser result.',
+            asset_ids: [],
+            roles: []
+          }
+        ]
+      }
+    });
   });
 
   it('preserves QA bridge missing failures in the QA report', async () => {
@@ -1473,6 +1505,19 @@ function dodgerRuntimeAssetsJson(
     missing: options.missing ?? [],
     missingRequiredRoles: options.missingRequiredRoles ?? []
   });
+}
+
+function validQaAssetRuntime(assetIds: string[]): QaAssetRuntimeTelemetry {
+  return {
+    manifest_loaded: true,
+    required: assetIds,
+    loaded: assetIds,
+    failed: [],
+    fallback_used: [],
+    placeholder_used: [],
+    missing: [],
+    missing_required_roles: []
+  };
 }
 
 async function rewriteManifestAsset(

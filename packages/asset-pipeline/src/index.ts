@@ -1,4 +1,5 @@
 export { buildAssetPlanFromIr } from './plan.js';
+export { selectLocalAssetPack, type LocalAssetSelection } from './local-asset-pack-provider.js';
 export {
   AssetManifestAssetSchema,
   AssetManifestSchema,

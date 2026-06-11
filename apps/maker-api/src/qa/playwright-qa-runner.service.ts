@@ -145,8 +145,35 @@ function buildAssetReport(manifest: AssetManifest | undefined, runtime: QaAssetR
     placeholder_used: assets.filter((asset) => asset.source === 'placeholder').map((asset) => asset.id),
     missing: assets.filter((asset) => asset.status === 'missing').map((asset) => asset.id),
     ...(runtime ? { runtime } : {}),
+    sources: summarizeAssetSources(assets),
     failures: failure ? [failure] : []
   };
+}
+
+function summarizeAssetSources(assets: AssetManifest['assets']): QaAssetReport['sources'] {
+  const sources = new Map<string, NonNullable<QaAssetReport['sources']>[number]>();
+
+  for (const asset of assets) {
+    if (
+      asset.sourcePack === undefined ||
+      asset.licenseId === undefined ||
+      asset.licenseName === undefined ||
+      asset.attribution === undefined ||
+      asset.sourceUrl === undefined
+    ) {
+      continue;
+    }
+
+    sources.set(asset.sourcePack, {
+      source_pack: asset.sourcePack,
+      license_id: asset.licenseId,
+      license_name: asset.licenseName,
+      attribution: asset.attribution,
+      source_url: asset.sourceUrl
+    });
+  }
+
+  return [...sources.values()];
 }
 
 function buildAssetGateFailure(failure: AssetManifestValidationFailure, messagePrefix?: string): QaAssetFailure {
@@ -179,13 +206,13 @@ function buildRuntimeAssetFailure(runtime: QaAssetRuntimeTelemetry | undefined, 
 }
 
 function buildMissingRuntimeAssetFailure(genre: RunQaInput['genre'], browserResult: { visual_ok: boolean; interaction_ok: boolean; asset_runtime?: QaAssetRuntimeTelemetry }): QaAssetFailure | undefined {
-  if (genre !== 'dodger' || !browserResult.visual_ok || !browserResult.interaction_ok || browserResult.asset_runtime !== undefined) {
+  if ((genre !== 'collector' && genre !== 'dodger') || !browserResult.visual_ok || !browserResult.interaction_ok || browserResult.asset_runtime !== undefined) {
     return undefined;
   }
 
   return {
     code: 'ASSET_LOAD_FAILED',
-    message: 'Dodger QA expected runtime asset telemetry in browser result.',
+    message: `${qaGenreLabel(genre)} QA expected runtime asset telemetry in browser result.`,
     asset_ids: [],
     roles: []
   };
@@ -193,4 +220,8 @@ function buildMissingRuntimeAssetFailure(genre: RunQaInput['genre'], browserResu
 
 function uniqueStrings(values: string[]): string[] {
   return Array.from(new Set(values));
+}
+
+function qaGenreLabel(genre: RunQaInput['genre']): string {
+  return `${genre.slice(0, 1).toUpperCase()}${genre.slice(1)}`;
 }

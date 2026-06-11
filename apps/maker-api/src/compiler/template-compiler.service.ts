@@ -38,6 +38,7 @@ export class TemplateCompilerService {
       'src/main.ts',
       `${genre}/src/main.ts`,
       `${genre}/src/GameScene.ts`,
+      ...(genre === 'collector' ? [`${genre}/src/collector-art-library.ts`] : []),
       ...(genre === 'dodger' ? [`${genre}/src/dodger-art-library.ts`] : []),
       ...(genre === 'dodger' ? [`${genre}/src/dodger-runtime-plan.ts`] : []),
       ...(genre === 'shooter' ? [`${genre}/src/shooter-runtime.ts`] : []),
@@ -46,7 +47,7 @@ export class TemplateCompilerService {
       ...(genre === 'shooter' ? [`${genre}/src/template-visuals.ts`] : []),
       `${genre}/src/template-params.ts`,
       'shared/kernel.ts',
-      ...(genre === 'dodger' ? [`${genre}/src/asset-manifest.generated.json`] : []),
+      ...(genre === 'collector' || genre === 'dodger' ? [`${genre}/src/asset-manifest.generated.json`] : []),
       ...(genre === 'dodger' || genre === 'shooter' ? [`${genre}/src/runtime-plan.generated.json`] : []),
       `${genre}/src/template-params.generated.json`
     ];
@@ -56,10 +57,15 @@ export class TemplateCompilerService {
     await cp(join(this.templateRoot, genre), join(outputDir, genre), { recursive: true });
     await cp(join(this.templateRoot, 'shared'), join(outputDir, 'shared'), { recursive: true });
     await mkdir(join(outputDir, 'src'), { recursive: true });
-    const assetArtifacts = await writeAssetArtifacts({ projectId: input.projectId, projectDir: outputDir, ir });
+    const assetArtifacts = await writeAssetArtifacts({
+      projectId: input.projectId,
+      projectDir: outputDir,
+      ir,
+      assetPacksDir: join(this.templateRoot, '..', '..', 'assets', 'asset-packs')
+    });
     await writeFile(join(outputDir, 'game.ir.json'), `${JSON.stringify(ir, null, 2)}\n`, 'utf8');
     await writeFile(join(outputDir, `${genre}`, 'src', 'template-params.generated.json'), JSON.stringify(ir.template_params.params, null, 2));
-    if (genre === 'dodger') {
+    if (genre === 'collector' || genre === 'dodger') {
       await writeFile(join(outputDir, `${genre}`, 'src', 'asset-manifest.generated.json'), JSON.stringify(assetArtifacts.manifest, null, 2));
     }
     if (genre === 'dodger' || genre === 'shooter') {
