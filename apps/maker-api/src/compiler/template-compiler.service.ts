@@ -138,6 +138,16 @@ export class TemplateCompilerService {
   </head>
   <body>
     <div id="game"></div>
+    <script>
+      window.addEventListener('message', (event) => {
+        const data = event.data;
+        if (!data || data.type !== 'agm.preview.key' || (data.eventType !== 'keydown' && data.eventType !== 'keyup') || typeof data.key !== 'string') {
+          return;
+        }
+
+        window.dispatchEvent(new KeyboardEvent(data.eventType, { key: data.key, bubbles: true, cancelable: true }));
+      });
+    </script>
     <script type="module" src="./src/main.ts"></script>
   </body>
 </html>

@@ -51,6 +51,7 @@ describe('Compiler + Build + Preview services', () => {
     await expect(readFile(join(result.outputDir, 'collector/src/main.ts'), 'utf8')).resolves.toContain('collectorArt.preload(this)');
     await expect(readFile(join(result.outputDir, 'collector/src/main.ts'), 'utf8')).resolves.toContain('new CollectorGameScene(collectorParams, collectorArt)');
     await expect(readFile(join(result.outputDir, 'index.html'), 'utf8')).resolves.toContain('./src/main.ts');
+    await expect(readFile(join(result.outputDir, 'index.html'), 'utf8')).resolves.toContain('agm.preview.key');
     await expect(readFile(join(result.outputDir, 'src/main.ts'), 'utf8')).resolves.toContain("../collector/src/main.js");
     await expect(readFile(join(result.outputDir, 'package.json'), 'utf8')).resolves.toContain('vite build');
     await expect(readFile(join(result.outputDir, 'game.ir.json'), 'utf8')).resolves.toContain('"game-ir-v0.1"');

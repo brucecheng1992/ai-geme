@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { AssetStatusPanel } from './AssetStatusPanel.js';
 import './styles.css';
@@ -63,6 +63,8 @@ export function App() {
   const [data, setData] = useState<DashboardData>({ events: [] });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const previewHostRef = useRef<HTMLDivElement | null>(null);
+  const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
 
   const previewUrl = useMemo(() => {
     if (data.project?.project.preview_url) {
@@ -93,6 +95,36 @@ export function App() {
 
     return () => window.clearInterval(timer);
   }, [projectId, runId, isTerminal]);
+
+  useEffect(() => {
+    if (!previewUrl || previewBlankScreen) {
+      return undefined;
+    }
+
+    const forwardKey = (event: globalThis.KeyboardEvent) => {
+      if (!isPreviewControlKey(event.key) || isFormControlTarget(event.target)) {
+        return;
+      }
+
+      previewFrameRef.current?.contentWindow?.postMessage(
+        {
+          type: 'agm.preview.key',
+          eventType: event.type,
+          key: event.key
+        },
+        '*'
+      );
+      event.preventDefault();
+    };
+
+    window.addEventListener('keydown', forwardKey);
+    window.addEventListener('keyup', forwardKey);
+
+    return () => {
+      window.removeEventListener('keydown', forwardKey);
+      window.removeEventListener('keyup', forwardKey);
+    };
+  }, [previewUrl, previewBlankScreen]);
 
   async function generateProject() {
     await runAction(async () => {
@@ -144,6 +176,10 @@ export function App() {
         setLoading(false);
       }
     }
+  }
+
+  function focusPreviewFrame() {
+    previewHostRef.current?.focus();
   }
 
   return (
@@ -252,7 +288,13 @@ export function App() {
                 <span className="max-w-xl text-[#ffc1b5]">Visual QA failed: the preview returned a blank rendered frame, so this run is not PLAYABLE.</span>
               </div>
             ) : previewUrl ? (
-              <iframe className="h-[clamp(360px,50vh,560px)] w-full border-0" title="Game preview" src={previewUrl} sandbox="allow-scripts" />
+              <div
+                className="h-[clamp(360px,50vh,560px)] w-full outline-none focus-visible:ring-4 focus-visible:ring-[#ffb13b]"
+                ref={previewHostRef}
+                tabIndex={0}
+              >
+                <iframe className="h-full w-full border-0" title="Game preview" src={previewUrl} sandbox="allow-scripts" ref={previewFrameRef} onLoad={focusPreviewFrame} />
+              </div>
             ) : (
               <div className="flex h-[clamp(360px,50vh,560px)] items-center justify-center text-[#b8cadd]">No preview</div>
             )}
@@ -336,4 +378,17 @@ export function App() {
       </section>
     </main>
   );
+}
+
+function isPreviewControlKey(key: string): boolean {
+  const normalized = key.toLowerCase();
+  return key === ' ' || key === 'Enter' || key.startsWith('Arrow') || normalized === 'w' || normalized === 'a' || normalized === 's' || normalized === 'd' || normalized === 'r';
+}
+
+function isFormControlTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  return target.isContentEditable || ['BUTTON', 'INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName);
 }
