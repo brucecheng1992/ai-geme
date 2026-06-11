@@ -110,6 +110,7 @@ describe('buildRawDslPromptContext', () => {
     expect(context.forbidden_fields).toEqual(expect.arrayContaining(['projectile_id', 'cooldown_sec', 'duration_sec']));
     expect(context.invalid_examples_summary.join('\n')).toContain('Collision effects only support type and optional value.');
     expect(context.invalid_examples_summary.join('\n')).toContain('required fire-hit-clear loop');
+    expect(context.invalid_examples_summary.join('\n')).toContain('Do not use survive_duration for shooter.');
     expect(context.invalid_examples_summary.join('\n')).toContain('primary enemy projectile_hit score_add value multiplied by the primary enemy count');
     expect(context.composable_mechanics.join('\n')).toContain('Select genre from the base loop');
     expect(context.spawn_generation_guidance).toEqual(expect.arrayContaining(['Do not output entity.spawn for this genre.']));
@@ -552,6 +553,22 @@ describe('GameDslProviderService', () => {
       ...createShooterRawDsl(),
       game: { ...createShooterRawDsl().game, difficulty: shooterBrief.difficulty, target_play_time_sec: shooterBrief.target_play_time_sec },
       objectives: { win: { type: 'target_score' as const, target: 10 }, lose: { type: 'player_health_zero' as const } }
+    };
+    const service = new GameDslProviderService(createModelClient(success(rawDsl)));
+
+    await expect(service.generateRawGameDsl({ ...requestBase, brief: shooterBrief })).resolves.toMatchObject({
+      ok: true,
+      value: {
+        objectives: { win: { type: 'enemy_cleared', target: 6 } }
+      }
+    });
+  });
+
+  it('normalizes shooter survive_duration to enemy_cleared for the P0 runtime', async () => {
+    const rawDsl = {
+      ...createShooterRawDsl(),
+      game: { ...createShooterRawDsl().game, difficulty: shooterBrief.difficulty, target_play_time_sec: shooterBrief.target_play_time_sec },
+      objectives: { win: { type: 'survive_duration' as const, target: 60 }, lose: { type: 'player_health_zero' as const } }
     };
     const service = new GameDslProviderService(createModelClient(success(rawDsl)));
 

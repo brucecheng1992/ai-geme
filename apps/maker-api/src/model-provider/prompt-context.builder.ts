@@ -268,6 +268,7 @@ export function buildRawDslPromptContext(params: BuildRawDslPromptContextParams)
       'Objectives support type and optional target only. Do not add duration_sec.',
       'Do not output runtime_plan or template_params fields in Raw Game DSL.',
       'For shooter in P0, include one primary projectile entity and one primary enemy entity that form the required fire-hit-clear loop.',
+      'For shooter in P0, use enemy_cleared or reachable target_score as win type. Do not use survive_duration for shooter.',
       'If shooter uses target_score instead, target must be less than or equal to the primary enemy projectile_hit score_add value multiplied by the primary enemy count.',
       'For shooter in P0, do not include collectibles or multiple enemy kinds because the current runtime template only consumes one primary projectile and one primary enemy.',
       'Only dodger hazard right_edge_wave and dodger collectible fixed_positions may use spawn. Do not add spawn to collector, shooter, projectile or enemy entities.',

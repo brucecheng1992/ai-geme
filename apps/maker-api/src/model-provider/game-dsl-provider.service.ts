@@ -290,28 +290,40 @@ export class GameDslProviderService {
 
   /** Keeps valid model DSL inside the current P0 runtime envelope without weakening core validation. */
   private normalizeRawDslForP0Runtime(result: GameDslProviderSuccess<RawGameDsl>): GameDslProviderSuccess<RawGameDsl> {
-    if (result.value.game.genre !== 'shooter' || result.value.objectives.win.type !== 'target_score') {
+    if (result.value.game.genre !== 'shooter') {
       return result;
     }
 
     const enemy = result.value.entities.find((entity) => entity.kind === 'enemy');
     const enemyCount = enemy?.count ?? 0;
 
-    if (enemy === undefined || maxReachablePrimaryShooterScore(result.value, enemy.id) >= (result.value.objectives.win.target ?? 1)) {
+    if (enemy === undefined) {
       return result;
     }
 
-    return {
-      ...result,
-      value: {
-        ...result.value,
-        objectives: {
-          ...result.value.objectives,
-          win: { type: 'enemy_cleared', target: enemyCount }
-        }
-      }
-    };
+    if (result.value.objectives.win.type === 'survive_duration') {
+      return normalizeShooterWinToEnemyCleared(result, enemyCount);
+    }
+
+    if (result.value.objectives.win.type !== 'target_score' || maxReachablePrimaryShooterScore(result.value, enemy.id) >= (result.value.objectives.win.target ?? 1)) {
+      return result;
+    }
+
+    return normalizeShooterWinToEnemyCleared(result, enemyCount);
   }
+}
+
+function normalizeShooterWinToEnemyCleared(result: GameDslProviderSuccess<RawGameDsl>, enemyCount: number): GameDslProviderSuccess<RawGameDsl> {
+  return {
+    ...result,
+    value: {
+      ...result.value,
+      objectives: {
+        ...result.value.objectives,
+        win: { type: 'enemy_cleared', target: enemyCount }
+      }
+    }
+  };
 }
 
 function countEntityKinds(entities: RawGameDsl['entities']): Record<RawGameDsl['entities'][number]['kind'], number> {
