@@ -44,10 +44,11 @@ export class TemplateCompilerService {
       ...(genre === 'shooter' ? [`${genre}/src/shooter-runtime.ts`] : []),
       ...(genre === 'shooter' ? [`${genre}/src/shooter-runtime-plan.ts`] : []),
       ...(genre === 'shooter' ? [`${genre}/src/shooter-renderer.ts`] : []),
+      ...(genre === 'shooter' ? [`${genre}/src/shooter-art-library.ts`] : []),
       ...(genre === 'shooter' ? [`${genre}/src/template-visuals.ts`] : []),
       `${genre}/src/template-params.ts`,
       'shared/kernel.ts',
-      ...(genre === 'collector' || genre === 'dodger' ? [`${genre}/src/asset-manifest.generated.json`] : []),
+      ...(genre === 'collector' || genre === 'dodger' || genre === 'shooter' ? [`${genre}/src/asset-manifest.generated.json`] : []),
       ...(genre === 'dodger' || genre === 'shooter' ? [`${genre}/src/runtime-plan.generated.json`] : []),
       `${genre}/src/template-params.generated.json`
     ];
@@ -65,7 +66,7 @@ export class TemplateCompilerService {
     });
     await writeFile(join(outputDir, 'game.ir.json'), `${JSON.stringify(ir, null, 2)}\n`, 'utf8');
     await writeFile(join(outputDir, `${genre}`, 'src', 'template-params.generated.json'), JSON.stringify(ir.template_params.params, null, 2));
-    if (genre === 'collector' || genre === 'dodger') {
+    if (genre === 'collector' || genre === 'dodger' || genre === 'shooter') {
       await writeFile(join(outputDir, `${genre}`, 'src', 'asset-manifest.generated.json'), JSON.stringify(assetArtifacts.manifest, null, 2));
     }
     if (genre === 'dodger' || genre === 'shooter') {

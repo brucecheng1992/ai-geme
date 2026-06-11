@@ -8,8 +8,18 @@ import type { AssetManifestAsset, AssetPlan } from './schemas.js';
 const PackAssetSchema = z.strictObject({
   id: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/),
   role: z.enum(['player_character', 'enemy', 'projectile', 'collectible', 'hazard', 'background', 'ui_panel']),
-  file: z.string().min(1),
-  format: z.literal('svg')
+  file: z.string().min(1).refine(isSafePackAssetFile, {
+    message: 'asset file must be a relative .svg path inside the local pack'
+  }),
+  format: z.literal('svg'),
+  license: z
+    .strictObject({
+      id: z.string().min(1).max(40),
+      name: z.string().min(1).max(120),
+      attribution: z.string().min(1).max(160),
+      sourceUrl: z.string().url()
+    })
+    .optional()
 });
 
 const LocalAssetPackSchema = z.strictObject({
@@ -66,23 +76,26 @@ export async function selectLocalAssetPack(input: {
 
     return {
       files,
-      manifestAssets: selected.map(({ planItem }) => ({
-        id: planItem.id,
-        loadKey: `agm.${planItem.id}`,
-        role: planItem.role,
-        type: 'image',
-        format: planItem.format,
-        path: `assets/${planItem.id}.svg`,
-        source: 'local_asset_pack',
-        sourcePack: pack.id,
-        licenseId: pack.license.id,
-        licenseName: pack.license.name,
-        attribution: pack.license.attribution,
-        sourceUrl: pack.license.sourceUrl,
-        required: planItem.required,
-        status: 'ready',
-        size: planItem.size
-      }))
+      manifestAssets: selected.map(({ planItem, packAsset }) => {
+        const license = packAsset.license ?? pack.license;
+        return {
+          id: planItem.id,
+          loadKey: `agm.${planItem.id}`,
+          role: planItem.role,
+          type: 'image',
+          format: planItem.format,
+          path: `assets/${planItem.id}.svg`,
+          source: 'local_asset_pack',
+          sourcePack: pack.id,
+          licenseId: license.id,
+          licenseName: license.name,
+          attribution: license.attribution,
+          sourceUrl: license.sourceUrl,
+          required: planItem.required,
+          status: 'ready',
+          size: planItem.size
+        };
+      })
     };
   }
 
@@ -151,4 +164,16 @@ function assertInside(root: string, candidate: string, label: string): void {
   if (pathFromRoot === '' || pathFromRoot.startsWith('..') || isAbsolute(pathFromRoot)) {
     throw new Error(`Local asset pack ${label} must stay inside ${root}.`);
   }
+}
+
+function isSafePackAssetFile(value: string): boolean {
+  if (isAbsolute(value) || value.includes('\\') || /^[a-z][a-z0-9+.-]*:/i.test(value)) {
+    return false;
+  }
+
+  if (!value.endsWith('.svg')) {
+    return false;
+  }
+
+  return value.split('/').every((segment) => segment.length > 0 && segment !== '.' && segment !== '..');
 }

@@ -21,9 +21,11 @@
     "src/shooter-runtime.ts",
     "src/shooter-runtime-plan.ts",
     "src/shooter-renderer.ts",
+    "src/shooter-art-library.ts",
     "src/template-visuals.ts",
     "src/template-params.ts",
     "src/template-params.generated.json",
+    "src/asset-manifest.generated.json",
     "src/runtime-plan.generated.json"
   ],
   "shared_files": ["../shared/kernel.ts"],

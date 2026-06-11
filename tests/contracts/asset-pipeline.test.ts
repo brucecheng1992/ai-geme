@@ -11,7 +11,7 @@ import {
   writeAssetArtifacts
 } from '../../packages/asset-pipeline/src/index.js';
 import { validateAndNormalizeRawGameDsl } from '../../packages/game-dsl/src/index.js';
-import { createCollectorRawDsl, createShooterRawDsl } from './fixtures.js';
+import { createCollectorRawDsl, createDodgerRawDsl, createShooterRawDsl } from './fixtures.js';
 
 const projectId = 'proj_20260611_asset_001';
 
@@ -77,6 +77,47 @@ describe('Asset pipeline contracts', () => {
     await expect(validateGeneratedProjectAssets({ projectId, projectDir: root })).resolves.toMatchObject({ ok: true });
   });
 
+  it('selects the Kenney tiny dodger tank pack with per-asset source metadata', async () => {
+    const normalized = validateAndNormalizeRawGameDsl(createDodgerRawDsl());
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const result = await writeAssetArtifacts({ projectId, projectDir: root, ir: normalized.ir });
+    const manifestById = new Map(result.manifest.assets.map((asset) => [asset.id, asset]));
+
+    expect(result.manifest.assets.map((asset) => [asset.id, asset.source, asset.sourcePack])).toEqual([
+      ['background_main', 'local_asset_pack', 'kenney-tiny-dodger-tanks'],
+      ['player', 'local_asset_pack', 'kenney-tiny-dodger-tanks'],
+      ['hazard', 'local_asset_pack', 'kenney-tiny-dodger-tanks'],
+      ['collectible', 'local_asset_pack', 'kenney-tiny-dodger-tanks']
+    ]);
+    expect(manifestById.get('background_main')?.attribution).toBe('AI Game Maker local background');
+    expect(manifestById.get('player')?.attribution).toBe('Kenney Tanks by Kenney Vleugels');
+    await expect(readFile(join(root, 'public/assets/player.svg'), 'utf8')).resolves.toContain('data:image/png;base64');
+    await expect(validateGeneratedProjectAssets({ projectId, projectDir: root })).resolves.toMatchObject({ ok: true });
+  });
+
+  it('selects the tiny local shooter tank pack when it fully covers the shooter plan', async () => {
+    const normalized = validateAndNormalizeRawGameDsl(createShooterRawDsl());
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const result = await writeAssetArtifacts({ projectId, projectDir: root, ir: normalized.ir });
+
+    expect(result.manifest.assets.map((asset) => [asset.id, asset.source, asset.sourcePack])).toEqual([
+      ['background_main', 'local_asset_pack', 'agm-tiny-shooter-tanks'],
+      ['player', 'local_asset_pack', 'agm-tiny-shooter-tanks'],
+      ['enemy', 'local_asset_pack', 'agm-tiny-shooter-tanks'],
+      ['projectile', 'local_asset_pack', 'agm-tiny-shooter-tanks']
+    ]);
+    await expect(readFile(join(root, 'public/assets/enemy.svg'), 'utf8')).resolves.toContain('Red enemy tank');
+    await expect(validateGeneratedProjectAssets({ projectId, projectDir: root })).resolves.toMatchObject({ ok: true });
+  });
+
   it('falls back to template SVG assets when no local pack fully covers the plan', async () => {
     const normalized = validateAndNormalizeRawGameDsl(createCollectorRawDsl());
     expect(normalized.ok).toBe(true);
@@ -90,6 +131,43 @@ describe('Asset pipeline contracts', () => {
 
     expect(result.manifest.assets.map((asset) => asset.source)).toEqual(['template_svg', 'template_svg', 'template_svg']);
     expect(result.manifest.assets.some((asset) => asset.sourcePack !== undefined)).toBe(false);
+  });
+
+  it('rejects local asset pack files that do not match the declared SVG format', async () => {
+    const normalized = validateAndNormalizeRawGameDsl(createCollectorRawDsl());
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const packsDir = join(root, 'bad-packs');
+    const packDir = join(packsDir, 'bad-pack');
+    await mkdir(packDir, { recursive: true });
+    await writeFile(
+      join(packDir, 'pack.json'),
+      `${JSON.stringify(
+        {
+          version: 'local-asset-pack-v0.1',
+          id: 'bad-pack',
+          label: 'Bad Pack',
+          license: {
+            id: 'CC0-1.0',
+            name: 'Creative Commons CC0 1.0 Universal',
+            attribution: 'Invalid local pack',
+            sourceUrl: 'https://creativecommons.org/publicdomain/zero/1.0/'
+          },
+          style: { genres: ['collector'], camera: 'top_down', tags: ['bad'] },
+          assets: [{ id: 'player', role: 'player_character', file: 'player.png', format: 'svg' }]
+        },
+        null,
+        2
+      )}\n`,
+      'utf8'
+    );
+
+    await expect(writeAssetArtifacts({ projectId, projectDir: root, ir: normalized.ir, assetPacksDir: packsDir })).rejects.toThrow(
+      'asset file must be a relative .svg path inside the local pack'
+    );
   });
 
   it('rejects local asset pack manifest entries without license metadata', () => {

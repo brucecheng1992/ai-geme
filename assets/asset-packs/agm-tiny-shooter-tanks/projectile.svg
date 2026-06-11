@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="36" height="18" viewBox="0 0 36 18" role="img" aria-label="Tank shell projectile">
+  <path d="M4 9h22" stroke="#f0d07a" stroke-width="6" stroke-linecap="round"/>
+  <ellipse cx="28" cy="9" rx="8" ry="6" fill="#ffe9a8" stroke="#b8842f" stroke-width="2"/>
+  <circle cx="32" cy="9" r="2" fill="#ffffff"/>
+</svg>

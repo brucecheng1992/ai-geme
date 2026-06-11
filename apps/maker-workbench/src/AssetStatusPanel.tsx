@@ -44,7 +44,7 @@ export function AssetStatusPanel({ report }: AssetStatusPanelProps) {
             <div className="grid gap-2">
               <div className="text-[11px] font-extrabold uppercase text-[#69645d]">Source packs</div>
               {report.sources.map((source) => (
-                <div className="rounded-lg border border-[#d0b993] bg-[#fffaf0] p-2.5 text-sm leading-snug text-[#302b24]" key={source.source_pack}>
+                <div className="rounded-lg border border-[#d0b993] bg-[#fffaf0] p-2.5 text-sm leading-snug text-[#302b24]" key={assetSourceKey(source)}>
                   <div className="font-black text-[#15130f]">{source.source_pack}</div>
                   <div className="font-bold text-[#69645d]">{source.license_id}</div>
                   <a className="font-bold text-[#1d57a7] [overflow-wrap:anywhere]" href={source.source_url} target="_blank" rel="noreferrer">
@@ -103,6 +103,10 @@ function AssetList({ title, values }: { title: string; values: string[] }) {
       </div>
     </div>
   );
+}
+
+function assetSourceKey(source: { source_pack: string; license_id: string; attribution: string; source_url: string }): string {
+  return `${source.source_pack}:${source.license_id}:${source.attribution}:${source.source_url}`;
 }
 
 function assetHealthLabel(report: QaAssetReport | undefined): string {

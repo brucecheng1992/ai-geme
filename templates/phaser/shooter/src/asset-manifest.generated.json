@@ -1,0 +1,56 @@
+{
+  "version": "asset-manifest-v0.1",
+  "projectId": "proj_template_shooter",
+  "strict": true,
+  "assets": [
+    {
+      "id": "background_main",
+      "loadKey": "agm.background_main",
+      "role": "background",
+      "type": "image",
+      "format": "svg",
+      "path": "assets/background_main.svg",
+      "source": "template_svg",
+      "required": true,
+      "status": "ready",
+      "size": { "w": 960, "h": 540 }
+    },
+    {
+      "id": "player",
+      "loadKey": "agm.player",
+      "role": "player_character",
+      "type": "image",
+      "format": "svg",
+      "path": "assets/player.svg",
+      "source": "template_svg",
+      "required": true,
+      "status": "ready",
+      "size": { "w": 64, "h": 64 }
+    },
+    {
+      "id": "enemy",
+      "loadKey": "agm.enemy",
+      "role": "enemy",
+      "type": "image",
+      "format": "svg",
+      "path": "assets/enemy.svg",
+      "source": "template_svg",
+      "required": true,
+      "status": "ready",
+      "size": { "w": 64, "h": 64 }
+    },
+    {
+      "id": "projectile",
+      "loadKey": "agm.projectile",
+      "role": "projectile",
+      "type": "image",
+      "format": "svg",
+      "path": "assets/projectile.svg",
+      "source": "template_svg",
+      "required": true,
+      "status": "ready",
+      "size": { "w": 32, "h": 32 }
+    }
+  ],
+  "summary": { "required": 4, "ready": 4, "fallback_used": 0, "missing": 0, "placeholder_used": 0 }
+}

@@ -396,7 +396,7 @@ async function readQaSnapshot(page: Page): Promise<unknown> {
 }
 
 async function verifyRuntimeAssetsLoaded(page: Page, genre: QaGenre): Promise<{ ok: boolean; message?: string; telemetry?: QaAssetRuntimeTelemetry }> {
-  if (genre !== 'collector' && genre !== 'dodger') {
+  if (genre !== 'collector' && genre !== 'dodger' && genre !== 'shooter') {
     return { ok: true };
   }
   const genreLabel = qaGenreLabel(genre);

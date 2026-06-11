@@ -52,7 +52,8 @@ describe('Playable QA gate and runner', () => {
       telemetry: missingObservedBase().map((type, index) => ({ type, timestamp_ms: index, frame: index })),
       observed_events: missingObservedBase(),
       snapshot: { gameStatus: 'READY', score: 1, health: 3, frame: 0 },
-      console_errors: []
+      console_errors: [],
+      asset_runtime: validQaAssetRuntime(['background_main', 'player', 'enemy', 'projectile'])
     });
     const runner = new PlaywrightQaRunnerService(workspace, gate, browserRunner);
 
@@ -71,6 +72,56 @@ describe('Playable QA gate and runner', () => {
     await expect(readFile(workspace.getQaReportPath(projectId, runId), 'utf8')).resolves.toContain('"status": "PASSED"');
     await expect(readFile(workspace.getQaReportPath(projectId, runId), 'utf8')).resolves.toContain('"asset_manifest_summary"');
     await expect(readFile(workspace.getQaReportPath(projectId, runId), 'utf8')).resolves.toContain('"asset_report"');
+  });
+
+  it('keeps mixed per-asset source metadata in the QA asset report', async () => {
+    for (const assetRoot of [workspace.getGeneratedProjectPublicDir(projectId), workspace.getGeneratedProjectDistDir(projectId)]) {
+      await rewriteManifestAssetMetadata(assetRoot, 'background_main', {
+        source: 'local_asset_pack',
+        sourcePack: 'kenney-tiny-dodger-tanks',
+        licenseId: 'CC0-1.0',
+        licenseName: 'Creative Commons CC0 1.0 Universal',
+        attribution: 'AI Game Maker local background',
+        sourceUrl: 'https://creativecommons.org/publicdomain/zero/1.0/'
+      });
+      await rewriteManifestAssetMetadata(assetRoot, 'player', {
+        source: 'local_asset_pack',
+        sourcePack: 'kenney-tiny-dodger-tanks',
+        licenseId: 'CC0-1.0',
+        licenseName: 'Creative Commons CC0 1.0 Universal',
+        attribution: 'Kenney Tanks by Kenney Vleugels',
+        sourceUrl: 'https://kenney.nl/assets/tanks'
+      });
+    }
+    const browserRunner: QaBrowserRunner = async () => ({
+      ok: true,
+      visual_ok: true,
+      interaction_ok: true,
+      telemetry: missingObservedBase().map((type, index) => ({ type, timestamp_ms: index, frame: index })),
+      observed_events: missingObservedBase(),
+      console_errors: [],
+      asset_runtime: validQaAssetRuntime(['background_main', 'player', 'enemy', 'projectile'])
+    });
+    const runner = new PlaywrightQaRunnerService(workspace, gate, browserRunner);
+
+    const report = await runner.run({ projectId, runId, genre: 'shooter', previewUrl: 'http://localhost:3000/preview/proj/index.html' });
+
+    expect(report.asset_report?.sources).toEqual([
+      {
+        source_pack: 'kenney-tiny-dodger-tanks',
+        license_id: 'CC0-1.0',
+        license_name: 'Creative Commons CC0 1.0 Universal',
+        attribution: 'AI Game Maker local background',
+        source_url: 'https://creativecommons.org/publicdomain/zero/1.0/'
+      },
+      {
+        source_pack: 'kenney-tiny-dodger-tanks',
+        license_id: 'CC0-1.0',
+        license_name: 'Creative Commons CC0 1.0 Universal',
+        attribution: 'Kenney Tanks by Kenney Vleugels',
+        source_url: 'https://kenney.nl/assets/tanks'
+      }
+    ]);
   });
 
   it('fails before browser QA when the generated asset manifest is missing', async () => {
@@ -1456,7 +1507,7 @@ function shooterRuntimePlanHtml(params: { enemiesActive: number; hitPayload: Rec
           state.player.x -= 80;
         }
       });
-      window.__GAME_TELEMETRY__ = { events: telemetry, state };
+      window.__GAME_TELEMETRY__ = { events: telemetry, state, assets: ${shooterRuntimeAssetsJson()} };
       window.__GAME_QA__ = {
         snapshot() { return state; },
         telemetry() { return telemetry; }
@@ -1507,6 +1558,20 @@ function dodgerRuntimeAssetsJson(
   });
 }
 
+function shooterRuntimeAssetsJson(): string {
+  const required = ['background_main', 'player', 'enemy', 'projectile'];
+  return JSON.stringify({
+    manifestLoaded: true,
+    required,
+    loaded: required,
+    failed: [],
+    fallbackUsed: [],
+    placeholderUsed: [],
+    missing: [],
+    missingRequiredRoles: []
+  });
+}
+
 function validQaAssetRuntime(assetIds: string[]): QaAssetRuntimeTelemetry {
   return {
     manifest_loaded: true,
@@ -1543,6 +1608,39 @@ async function rewriteManifestAsset(
     missing: manifest.assets.filter((candidate) => candidate.status === 'missing').length,
     placeholder_used: manifest.assets.filter((candidate) => candidate.source === 'placeholder').length
   };
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+}
+
+async function rewriteManifestAssetMetadata(
+  assetRoot: string,
+  assetId: string,
+  patch: {
+    source: 'local_asset_pack';
+    sourcePack: string;
+    licenseId: string;
+    licenseName: string;
+    attribution: string;
+    sourceUrl: string;
+  }
+): Promise<void> {
+  const manifestPath = join(assetRoot, 'asset_manifest.json');
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as {
+    assets: Array<{
+      id: string;
+      source: string;
+      sourcePack?: string;
+      licenseId?: string;
+      licenseName?: string;
+      attribution?: string;
+      sourceUrl?: string;
+    }>;
+  };
+  const asset = manifest.assets.find((candidate) => candidate.id === assetId);
+  if (asset === undefined) {
+    throw new Error(`Unable to find test asset ${assetId}`);
+  }
+
+  Object.assign(asset, patch);
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
 }
 

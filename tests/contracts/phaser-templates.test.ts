@@ -90,6 +90,8 @@ describe('Phaser templates', () => {
     expect(shooterMain).toContain('scene.fire()');
     expect(shooterMain).toContain('scene.setMoveInput');
     expect(shooterMain).toContain('directionFromKey');
+    expect(shooterMain).toContain('asset-manifest.generated.json');
+    expect(shooterMain).toContain('shooterArt.preload(this)');
   });
 
   it('lets shooter template render generated primitive visuals instead of fixed shells', async () => {
@@ -121,7 +123,8 @@ describe('Phaser templates', () => {
         expect(main).toContain('new DodgerGameScene(dodgerParams, dodgerRuntimePlan, dodgerArt)');
       } else if (genre === 'shooter') {
         expect(main).toContain("from './runtime-plan.generated.json'");
-        expect(main).toContain('new ShooterGameScene(shooterParams, shooterRuntimePlan)');
+        expect(main).toContain("from './asset-manifest.generated.json'");
+        expect(main).toContain('new ShooterGameScene(shooterParams, shooterRuntimePlan, shooterArt)');
       } else if (genre === 'collector') {
         expect(main).toContain("from './asset-manifest.generated.json'");
         expect(main).toContain('new CollectorGameScene(collectorParams, collectorArt)');

@@ -1,0 +1,42 @@
+{
+  "version": "local-asset-pack-v0.1",
+  "id": "agm-tiny-shooter-tanks",
+  "label": "AGM Tiny Shooter Tanks",
+  "license": {
+    "id": "CC0-1.0",
+    "name": "Creative Commons CC0 1.0 Universal",
+    "attribution": "AI Game Maker local shooter tank pack",
+    "sourceUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
+  },
+  "style": {
+    "genres": ["shooter"],
+    "camera": "top_down",
+    "tags": ["tank", "battlefield", "arcade", "top_down"]
+  },
+  "assets": [
+    {
+      "id": "background_main",
+      "role": "background",
+      "file": "background_main.svg",
+      "format": "svg"
+    },
+    {
+      "id": "player",
+      "role": "player_character",
+      "file": "player.svg",
+      "format": "svg"
+    },
+    {
+      "id": "enemy",
+      "role": "enemy",
+      "file": "enemy.svg",
+      "format": "svg"
+    },
+    {
+      "id": "projectile",
+      "role": "projectile",
+      "file": "projectile.svg",
+      "format": "svg"
+    }
+  ]
+}

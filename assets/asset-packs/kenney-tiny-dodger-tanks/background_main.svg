@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-label="Top-down tank training ground background">
+  <rect width="960" height="540" fill="#234b47"/>
+  <rect x="32" y="34" width="896" height="472" rx="22" fill="#2f6654" stroke="#97c58a" stroke-width="8"/>
+  <path d="M68 130H892M68 270H892M68 410H892" fill="none" stroke="#e2c16b" stroke-width="6" stroke-linecap="round" opacity=".5"/>
+  <path d="M130 82v376M310 82v376M490 82v376M670 82v376M850 82v376" fill="none" stroke="#d7ecd0" stroke-width="3" stroke-linecap="round" opacity=".16"/>
+  <path d="M108 178c70-30 126-30 190 0s120 30 190 0 126-30 190 0 120 30 190 0" fill="none" stroke="#1d3b37" stroke-width="18" stroke-linecap="round" opacity=".22"/>
+  <path d="M104 360c78 28 138 26 196-4 64-34 136-34 202 0 60 30 126 32 206 4" fill="none" stroke="#1d3b37" stroke-width="20" stroke-linecap="round" opacity=".2"/>
+  <circle cx="144" cy="112" r="18" fill="#54645f" opacity=".38"/>
+  <circle cx="814" cy="430" r="22" fill="#54645f" opacity=".34"/>
+  <circle cx="722" cy="116" r="12" fill="#54645f" opacity=".3"/>
+</svg>

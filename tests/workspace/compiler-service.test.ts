@@ -98,10 +98,13 @@ describe('Compiler + Build + Preview services', () => {
 
     const second = await compiler.compile({ projectId, runId, ir: shooter.ir });
     await expect(readFile(join(second.outputDir, 'shooter/src/GameScene.ts'), 'utf8')).resolves.toContain('ShooterGameScene');
+    await expect(readFile(join(second.outputDir, 'shooter/src/shooter-art-library.ts'), 'utf8')).resolves.toContain('createShooterArtRuntime');
+    await expect(readFile(join(second.outputDir, 'shooter/src/asset-manifest.generated.json'), 'utf8')).resolves.toContain('"sourcePack": "agm-tiny-shooter-tanks"');
     await expect(readFile(join(second.outputDir, 'shooter/src/template-visuals.ts'), 'utf8')).resolves.toContain('drawShooterPlayer');
     await expect(readFile(join(second.outputDir, 'shooter/src/runtime-plan.generated.json'), 'utf8')).resolves.toContain('"enemy_waves"');
     await expect(readFile(join(second.outputDir, 'shooter/src/main.ts'), 'utf8')).resolves.toContain('runtime-plan.generated.json');
-    await expect(readFile(join(second.outputDir, 'public/assets/enemy.svg'), 'utf8')).resolves.toContain('<svg');
+    await expect(readFile(join(second.outputDir, 'shooter/src/main.ts'), 'utf8')).resolves.toContain('shooterArt.preload(this)');
+    await expect(readFile(join(second.outputDir, 'public/assets/enemy.svg'), 'utf8')).resolves.toContain('Red enemy tank');
     await expect(readFile(join(second.outputDir, 'public/assets/collectible.svg'), 'utf8')).rejects.toThrow();
     await expect(readFile(join(second.outputDir, 'collector/src/GameScene.ts'), 'utf8')).rejects.toThrow();
   });
@@ -122,7 +125,10 @@ describe('Compiler + Build + Preview services', () => {
     await expect(readFile(join(result.outputDir, 'dodger/src/GameScene.ts'), 'utf8')).resolves.toContain('collectItem()');
     await expect(readFile(join(result.outputDir, 'dodger/src/dodger-art-library.ts'), 'utf8')).resolves.toContain('createDodgerArtRuntime');
     await expect(readFile(join(result.outputDir, 'dodger/src/main.ts'), 'utf8')).resolves.toContain('runtime-plan.generated.json');
+    await expect(readFile(join(result.outputDir, 'dodger/src/asset-manifest.generated.json'), 'utf8')).resolves.toContain('"sourcePack": "kenney-tiny-dodger-tanks"');
+    await expect(readFile(join(result.outputDir, 'dodger/src/asset-manifest.generated.json'), 'utf8')).resolves.toContain('"attribution": "Kenney Tanks by Kenney Vleugels"');
     await expect(readFile(join(result.outputDir, 'public/assets/hazard.svg'), 'utf8')).resolves.toContain('<svg');
+    await expect(readFile(join(result.outputDir, 'public/assets/hazard.svg'), 'utf8')).resolves.toContain('data:image/png;base64');
     await expect(readFile(join(result.outputDir, 'public/assets/collectible.svg'), 'utf8')).resolves.toContain('<svg');
   });
 

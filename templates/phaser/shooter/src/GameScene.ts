@@ -28,6 +28,7 @@ import {
   type ResolvedShooterEnemyWave,
   type ShooterRuntimePlan
 } from './shooter-runtime-plan.js';
+import type { ShooterArtRuntime } from './shooter-art-library.js';
 import { ShooterRenderer } from './shooter-renderer.js';
 import type { ShooterTemplateParams } from './template-params.js';
 
@@ -47,7 +48,11 @@ export class ShooterGameScene {
   private readonly moveInput: Record<ShooterDirection, boolean> = { left: false, right: false, up: false, down: false };
   private phaserScene?: Phaser.Scene;
 
-  constructor(private readonly params: ShooterTemplateParams, runtimePlan: ShooterRuntimePlan = defaultShooterRuntimePlan) {
+  constructor(
+    private readonly params: ShooterTemplateParams,
+    runtimePlan: ShooterRuntimePlan = defaultShooterRuntimePlan,
+    private readonly art?: ShooterArtRuntime
+  ) {
     this.state = createRuntimeState(params.player.health);
     this.telemetry = new TelemetrySystem(this.state);
     this.input = new InputSystem(this.telemetry);
@@ -57,7 +62,7 @@ export class ShooterGameScene {
     this.score = new ScoreSystem(this.state, this.telemetry);
     this.gameState = new GameStateSystem(this.state, this.telemetry);
     this.objective = new ObjectiveSystem(this.state, this.gameState);
-    this.renderer = new ShooterRenderer(params);
+    this.renderer = new ShooterRenderer(params, art);
     this.enemyWave = resolveShooterEnemyWave(runtimePlan, params);
     this.runtime = createShooterRuntimeState(params);
     primeShooterEnemyWave(this.runtime, this.enemyWave);
@@ -74,6 +79,9 @@ export class ShooterGameScene {
         projectilesActive: this.runtime.projectiles.length,
         enemiesCleared: this.runtime.enemiesCleared,
         enemyWavePlan: this.enemyWaveSnapshot()
+      }),
+      () => ({
+        assets: this.art?.telemetry()
       }))
     );
     this.renderFirstFrame();

@@ -1,30 +1,42 @@
 import type Phaser from 'phaser';
 
 import type { ShooterEnemyState, ShooterProjectileState, ShooterRuntimeState } from './shooter-runtime.js';
+import type { ShooterArtRuntime } from './shooter-art-library.js';
 import type { ShooterTemplateParams } from './template-params.js';
 import { drawShooterEnemy, drawShooterPlayer, drawShooterProjectile } from './template-visuals.js';
+
+type ShooterRenderObject = Phaser.GameObjects.Container | Phaser.GameObjects.Image | Phaser.GameObjects.Graphics;
 
 export class ShooterRenderer {
   private scoreText?: Phaser.GameObjects.Text;
   private statusText?: Phaser.GameObjects.Text;
-  private playerObject?: Phaser.GameObjects.Container;
-  private readonly enemyObjects = new Map<number, Phaser.GameObjects.Container>();
-  private readonly projectileObjects = new Map<number, Phaser.GameObjects.Graphics>();
+  private playerObject?: ShooterRenderObject;
+  private readonly enemyObjects = new Map<number, ShooterRenderObject>();
+  private readonly projectileObjects = new Map<number, ShooterRenderObject>();
 
-  constructor(private readonly params: ShooterTemplateParams) {}
+  constructor(
+    private readonly params: ShooterTemplateParams,
+    private readonly art?: ShooterArtRuntime
+  ) {}
 
   renderFirstFrame(scene: Phaser.Scene, runtime: ShooterRuntimeState): void {
     scene.cameras.main.setBackgroundColor('#07111f');
-    scene.add
-      .graphics()
-      .fillStyle(0x07111f, 1)
-      .fillRect(0, 0, this.params.world.width, this.params.world.height)
-      .fillStyle(0x152945, 1)
-      .fillRoundedRect(24, 24, this.params.world.width - 48, this.params.world.height - 48, 24)
-      .lineStyle(4, 0x74d7ff, 0.45)
-      .strokeRoundedRect(24, 24, this.params.world.width - 48, this.params.world.height - 48, 24);
+    const backgroundDrawn = this.art?.drawBackground(scene, this.params.world.width, this.params.world.height) ?? false;
+    if (!backgroundDrawn) {
+      scene.add
+        .graphics()
+        .fillStyle(0x07111f, 1)
+        .fillRect(0, 0, this.params.world.width, this.params.world.height)
+        .fillStyle(0x152945, 1)
+        .fillRoundedRect(24, 24, this.params.world.width - 48, this.params.world.height - 48, 24)
+        .lineStyle(4, 0x74d7ff, 0.45)
+        .strokeRoundedRect(24, 24, this.params.world.width - 48, this.params.world.height - 48, 24);
+    }
 
-    this.playerObject = drawShooterPlayer(scene, runtime.player.x, runtime.player.y, this.params.player.label, this.params.player.visual);
+    this.playerObject = this.art?.addImage(scene, 'player_character', runtime.player.x, runtime.player.y, 92, 74);
+    if (this.playerObject === undefined) {
+      this.playerObject = drawShooterPlayer(scene, runtime.player.x, runtime.player.y, this.params.player.label, this.params.player.visual);
+    }
     this.scoreText = scene.add.text(40, 32, '', {
       fontFamily: 'Arial, sans-serif',
       fontSize: '28px',
@@ -42,11 +54,13 @@ export class ShooterRenderer {
   }
 
   renderEnemy(scene: Phaser.Scene, enemy: ShooterEnemyState): void {
-    this.enemyObjects.set(enemy.id, drawShooterEnemy(scene, enemy.x, enemy.y, this.params.enemy.label, this.params.enemy.visual));
+    const image = this.art?.addImage(scene, 'enemy', enemy.x, enemy.y, 88, 70);
+    this.enemyObjects.set(enemy.id, image ?? drawShooterEnemy(scene, enemy.x, enemy.y, this.params.enemy.label, this.params.enemy.visual));
   }
 
   renderProjectile(scene: Phaser.Scene, projectile: ShooterProjectileState): void {
-    this.projectileObjects.set(projectile.id, drawShooterProjectile(scene, projectile.x, projectile.y, 46, this.params.projectile.visual));
+    const image = this.art?.addImage(scene, 'projectile', projectile.x, projectile.y, 36, 18);
+    this.projectileObjects.set(projectile.id, image ?? drawShooterProjectile(scene, projectile.x, projectile.y, 46, this.params.projectile.visual));
   }
 
   syncEntityPositions(scene: Phaser.Scene, runtime: ShooterRuntimeState): void {

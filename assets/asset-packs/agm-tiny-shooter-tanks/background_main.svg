@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-label="Top-down tank battlefield">
+  <rect width="960" height="540" fill="#1b2f25"/>
+  <rect x="32" y="32" width="896" height="476" rx="24" fill="#294b38" stroke="#8ba56f" stroke-width="8"/>
+  <path d="M76 128H884M76 270H884M76 412H884" stroke="#d7b85d" stroke-width="6" stroke-linecap="round" opacity=".42"/>
+  <path d="M162 70v400M344 70v400M526 70v400M708 70v400" stroke="#e7f1d8" stroke-width="3" stroke-linecap="round" opacity=".12"/>
+  <path d="M90 208c80-30 146-30 220 0s142 30 222 0 146-30 222 0" fill="none" stroke="#13251e" stroke-width="20" stroke-linecap="round" opacity=".35"/>
+  <path d="M130 365c68 24 128 22 186-8 70-36 140-34 214 4 58 30 120 31 198 5" fill="none" stroke="#13251e" stroke-width="18" stroke-linecap="round" opacity=".3"/>
+  <circle cx="142" cy="118" r="18" fill="#56675d" opacity=".42"/>
+  <circle cx="804" cy="430" r="24" fill="#56675d" opacity=".36"/>
+  <circle cx="742" cy="116" r="12" fill="#56675d" opacity=".32"/>
+</svg>

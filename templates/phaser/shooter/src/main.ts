@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 
 import { ShooterGameScene } from './GameScene.js';
+import generatedAssetManifest from './asset-manifest.generated.json';
+import { createShooterArtRuntime } from './shooter-art-library.js';
 import generatedRuntimePlan from './runtime-plan.generated.json';
 import type { ShooterDirection } from './shooter-runtime.js';
 import { defaultShooterRuntimePlan, type ShooterRuntimePlan } from './shooter-runtime-plan.js';
@@ -9,12 +11,17 @@ import { defaultShooterParams, type ShooterTemplateParams } from './template-par
 
 const shooterParams = mergeShooterParams(generatedParams as Partial<ShooterTemplateParams>);
 const shooterRuntimePlan = mergeShooterRuntimePlan(generatedRuntimePlan as Partial<ShooterRuntimePlan>);
-const scene = new ShooterGameScene(shooterParams, shooterRuntimePlan);
+const shooterArt = createShooterArtRuntime(generatedAssetManifest);
+const scene = new ShooterGameScene(shooterParams, shooterRuntimePlan, shooterArt);
 
 if (typeof window !== 'undefined') {
   class ShooterPhaserScene extends Phaser.Scene {
     constructor() {
       super('ShooterPhaserScene');
+    }
+
+    preload(): void {
+      shooterArt.preload(this);
     }
 
     create(): void {

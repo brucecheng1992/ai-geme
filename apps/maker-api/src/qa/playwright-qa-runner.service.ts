@@ -164,7 +164,7 @@ function summarizeAssetSources(assets: AssetManifest['assets']): QaAssetReport['
       continue;
     }
 
-    sources.set(asset.sourcePack, {
+    sources.set([asset.sourcePack, asset.licenseId, asset.attribution, asset.sourceUrl].join('\u0000'), {
       source_pack: asset.sourcePack,
       license_id: asset.licenseId,
       license_name: asset.licenseName,
@@ -206,7 +206,12 @@ function buildRuntimeAssetFailure(runtime: QaAssetRuntimeTelemetry | undefined, 
 }
 
 function buildMissingRuntimeAssetFailure(genre: RunQaInput['genre'], browserResult: { visual_ok: boolean; interaction_ok: boolean; asset_runtime?: QaAssetRuntimeTelemetry }): QaAssetFailure | undefined {
-  if ((genre !== 'collector' && genre !== 'dodger') || !browserResult.visual_ok || !browserResult.interaction_ok || browserResult.asset_runtime !== undefined) {
+  if (
+    (genre !== 'collector' && genre !== 'dodger' && genre !== 'shooter') ||
+    !browserResult.visual_ok ||
+    !browserResult.interaction_ok ||
+    browserResult.asset_runtime !== undefined
+  ) {
     return undefined;
   }
 
