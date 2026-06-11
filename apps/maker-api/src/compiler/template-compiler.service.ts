@@ -3,6 +3,7 @@ import { join } from 'node:path';
 
 import { Injectable } from '@nestjs/common';
 
+import { writeAssetArtifacts } from '../../../../packages/asset-pipeline/src/index.js';
 import { NormalizedGameIrSchema } from '../../../../packages/game-dsl/src/index.js';
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
 import type { RuntimeCompileInput, RuntimeCompileResult } from './compiler.types.js';
@@ -53,6 +54,8 @@ export class TemplateCompilerService {
     await cp(join(this.templateRoot, genre), join(outputDir, genre), { recursive: true });
     await cp(join(this.templateRoot, 'shared'), join(outputDir, 'shared'), { recursive: true });
     await mkdir(join(outputDir, 'src'), { recursive: true });
+    const assetArtifacts = await writeAssetArtifacts({ projectId: input.projectId, projectDir: outputDir, ir });
+    await writeFile(join(outputDir, 'game.ir.json'), `${JSON.stringify(ir, null, 2)}\n`, 'utf8');
     await writeFile(join(outputDir, `${genre}`, 'src', 'template-params.generated.json'), JSON.stringify(ir.template_params.params, null, 2));
     if (genre === 'dodger' || genre === 'shooter') {
       await writeFile(join(outputDir, `${genre}`, 'src', 'runtime-plan.generated.json'), JSON.stringify(ir.runtime_plan, null, 2));
@@ -68,7 +71,7 @@ export class TemplateCompilerService {
       outputDir,
       distDir,
       templateId,
-      files
+      files: [...files, 'game.ir.json', ...assetArtifacts.files]
     };
   }
 

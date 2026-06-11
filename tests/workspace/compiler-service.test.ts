@@ -50,6 +50,11 @@ describe('Compiler + Build + Preview services', () => {
     await expect(readFile(join(result.outputDir, 'index.html'), 'utf8')).resolves.toContain('./src/main.ts');
     await expect(readFile(join(result.outputDir, 'src/main.ts'), 'utf8')).resolves.toContain("../collector/src/main.js");
     await expect(readFile(join(result.outputDir, 'package.json'), 'utf8')).resolves.toContain('vite build');
+    await expect(readFile(join(result.outputDir, 'game.ir.json'), 'utf8')).resolves.toContain('"game-ir-v0.1"');
+    await expect(readFile(join(result.outputDir, 'asset_plan.json'), 'utf8')).resolves.toContain('"asset-plan-v0.1"');
+    await expect(readFile(join(result.outputDir, 'public/asset_manifest.json'), 'utf8')).resolves.toContain('"asset-manifest-v0.1"');
+    await expect(readFile(join(result.outputDir, 'public/assets/player.svg'), 'utf8')).resolves.toContain('<svg');
+    await expect(readFile(join(result.outputDir, 'public/assets/background_main.svg'), 'utf8')).resolves.toContain('<svg');
   });
 
   it('resolves the default template root from the workspace root when started in the API package', async () => {
@@ -91,6 +96,8 @@ describe('Compiler + Build + Preview services', () => {
     await expect(readFile(join(second.outputDir, 'shooter/src/template-visuals.ts'), 'utf8')).resolves.toContain('drawShooterPlayer');
     await expect(readFile(join(second.outputDir, 'shooter/src/runtime-plan.generated.json'), 'utf8')).resolves.toContain('"enemy_waves"');
     await expect(readFile(join(second.outputDir, 'shooter/src/main.ts'), 'utf8')).resolves.toContain('runtime-plan.generated.json');
+    await expect(readFile(join(second.outputDir, 'public/assets/enemy.svg'), 'utf8')).resolves.toContain('<svg');
+    await expect(readFile(join(second.outputDir, 'public/assets/collectible.svg'), 'utf8')).rejects.toThrow();
     await expect(readFile(join(second.outputDir, 'collector/src/GameScene.ts'), 'utf8')).rejects.toThrow();
   });
 

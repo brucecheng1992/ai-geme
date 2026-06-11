@@ -4,11 +4,11 @@
 
 ## 1. 扫描结论
 
-- 当前本步新增/修改的 dodger runtime 相关文件已按职责检查；既有测试文件、`normalizer.ts`、`GameScene.ts` 和 Playwright runner 超过 220 行，按职责集中保留并由针对性测试覆盖。
+- 当前 Asset Pipeline P0 Step 1 新增/修改的资源契约、编译落盘和 QA gate 文件已按职责检查；既有测试文件、`normalizer.ts`、`GameScene.ts` 和 Playwright runner 超过 220 行，按职责集中保留并由针对性测试覆盖。
 - 仓库非依赖文件中当前最大文件是 `docs/ai_game_dsl_p0_local_implementation.md`，约 2880 行，属于实施规格文档。
 - 现有阶段记录位于 `docs/refactor-log/ai-game-dsl-p0-review-gated.md`。
-- 当前已完成阶段：P0 主链路修复 + 模型 DSL 视觉执行复核修复 + DSL-first P1 Step 6 shooter enemy_wave runtime_plan。
-- 当前下一步：DSL-first P1 Step 7 继续扩展一个可执行可玩性薄片；优先考虑 collector 小闭环，或在 shooter enemy_wave 基础上做二阶增强。
+- 当前已完成阶段：P0 主链路修复 + 模型 DSL 视觉执行复核修复 + DSL-first P1 Step 6 shooter enemy_wave runtime_plan + Asset Pipeline P0 Step 1 artifact gate。
+- 当前下一步：Asset Pipeline P0 Step 2 让 Phaser templates preload / consume `asset_manifest.json`，并通过 telemetry / QA 证明 required assets 被 runtime 加载。
 
 ## 2. 大文档拆分索引
 
@@ -89,20 +89,40 @@ Step 1 不一次性实现完整业务，只建立可启动骨架和健康检查�
 
     npm run maker:doctor
 
-## 5. 当前状态
+## 5. Asset Pipeline P0 v0.2 拆分计划
 
-Step 0 到 Step 9、P0 主链路修复及模型 DSL 视觉执行复核修复已完成。DSL-first P1 扩展已开始，当前完成 Step 6：模型生成的 shooter Raw DSL 通过 normalizer 派生为 `runtime_plan.enemy_waves`，由 shooter runtime 执行 enemy wave spawn budget / maxActive / interval / speed multiplier，并由 QA snapshot 与 `enemy.hit` / `enemy.cleared` payload 证明；真实 DeepSeek 生成链路已通过 normalize/compile/build/QA。
+新落地文档 `AI_Game_Maker_P0_DSL_Asset_Pipeline_落地文档.md` 的新增核心是资源合同与可证明的资源加载。按 review-gated 小步推进：
+
+| 阶段 | 本步边界 | 主要产物 | 状态 |
+| --- | --- | --- | --- |
+| Asset Step 1 | AssetPlan / AssetManifest artifact gate | `packages/asset-pipeline`、`asset_plan.json`、`public/asset_manifest.json`、`public/assets/*.svg`、QA browser 前置 asset gate | 已完成 |
+| Asset Step 2 | Phaser manifest preload / consume | generated `asset-manifest.generated.json` 或 loader、template preload、asset loaded / failed telemetry、QA required asset loaded gate | 下一步 |
+| Asset Step 3 | Asset QA report enrichment | QA report 中展示 required / loaded / failed / placeholder 资源明细，区分 `ASSET_MISSING`、`REQUIRED_CORE_ASSET_PLACEHOLDER_USED` 与 runtime load failure | 待执行 |
+| Asset Step 4 | Workbench asset status panel | Workbench 展示 manifest summary、asset failure reason，避免 report 404 噪音回归 | 待执行 |
+
+执行约束：
+
+1. 不新增 Raw DSL asset path / URL / base64 字段。
+2. 不接 AI image provider；先保持 deterministic template SVG provider。
+3. 每步先 contract / compiler / QA，再 prompt 或 Workbench。
+4. `PLAYABLE` 判定必须逐步从文件存在升级到 runtime loaded + visual / interaction / telemetry 全部通过。
+
+## 6. 当前状态
+
+Step 0 到 Step 9、P0 主链路修复及模型 DSL 视觉执行复核修复已完成。DSL-first P1 扩展已完成到 Step 6：模型生成的 shooter Raw DSL 通过 normalizer 派生为 `runtime_plan.enemy_waves`，由 shooter runtime 执行 enemy wave spawn budget / maxActive / interval / speed multiplier，并由 QA snapshot 与 `enemy.hit` / `enemy.cleared` payload 证明；真实 DeepSeek 生成链路已通过 normalize/compile/build/QA。
+
+Asset Pipeline P0 v0.2 已开始，当前完成 Step 1：生成项目写入 `asset_plan.json`、`public/asset_manifest.json`、`public/assets/*.svg`；Playwright QA 在浏览器前用 `asset_plan` 反查 manifest required 资源并确认文件是普通文件。
 
 完成结果：
 
 - Contract Freeze、Monorepo + 一键启动、Local Workspace Storage、Model Provider、DSL Validator / IR Normalizer、Phaser Templates、Compiler + Build + Preview、Playwright QA、Auto Repair、Workbench UI 收尾、Generate 主链路修复和模型 DSL 视觉执行复核修复均已落地。
 - 每步均已完成本地验证、Sentinel/Oracle 只读审查和阶段文档记录。
-- 当前 P0 文档范围不再有未执行步骤。
+- 原 P0 主链路文档范围不再有未执行步骤；新 Asset Pipeline v0.2 文档范围继续按上方 Asset Step 推进。
 
 当前下一步：
 
-- DSL-first P1 Step 7：可继续选择 collector 的一个小闭环，或在 shooter 已验证的 enemy wave 基础上做更小的二阶增强。
-- 任一扩展都必须继续遵守顺序：contract/runtime/QA 先于 prompt，真实模型链路验证后再沉淀文档。
+- Asset Pipeline P0 Step 2：让 Phaser templates preload / consume `asset_manifest.json`，并通过 telemetry / QA 证明 required assets loaded。
+- 若转回 DSL-first P1 Step 7，应作为独立扩展继续遵守顺序：contract/runtime/QA 先于 prompt，真实模型链路验证后再沉淀文档。
 
 后续如继续扩展，应继续作为独立 P1/P2 阶段推进，避免把扩展能力混入 P0 收尾：
 

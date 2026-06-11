@@ -1,10 +1,14 @@
 import type { TelemetryEvent } from '../../../../packages/runtime-core/src/index.js';
+import type { AssetManifest } from '../../../../packages/asset-pipeline/src/index.js';
 
 export type QaGenre = 'collector' | 'dodger' | 'shooter';
 export type QaStatus = 'PASSED' | 'QA_FAILED';
 export type QaVisualStatus = 'PASSED' | 'VISUAL_QA_FAILED';
 
 export type QaFailureCode =
+  | 'ASSET_MANIFEST_INVALID'
+  | 'ASSET_MISSING'
+  | 'REQUIRED_CORE_ASSET_PLACEHOLDER_USED'
   | 'PREVIEW_LOAD_FAILED'
   | 'CANVAS_NOT_FOUND'
   | 'CANVAS_ZERO_SIZE'
@@ -75,6 +79,7 @@ export type QaReport = {
   code?: QaFailureCode;
   message?: string;
   visual_status?: QaVisualStatus;
+  asset_manifest_summary?: AssetManifest['summary'];
   screenshot_path?: string;
   visual_metrics?: QaVisualMetrics;
   started_at: string;

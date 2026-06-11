@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -23,6 +23,7 @@ describe('Playable QA gate and runner', () => {
     root = await mkdtemp(join(tmpdir(), 'ai-game-maker-qa-'));
     workspace = new LocalWorkspaceService(root);
     gate = new PlayableQaGateService();
+    await writeValidAssetManifest(workspace, projectId);
   });
 
   afterEach(async () => {
@@ -60,6 +61,33 @@ describe('Playable QA gate and runner', () => {
     expect(report.status).toBe('PASSED');
     expect(report.code).toBeUndefined();
     await expect(readFile(workspace.getQaReportPath(projectId, runId), 'utf8')).resolves.toContain('"status": "PASSED"');
+    await expect(readFile(workspace.getQaReportPath(projectId, runId), 'utf8')).resolves.toContain('"asset_manifest_summary"');
+  });
+
+  it('fails before browser QA when the generated asset manifest is missing', async () => {
+    let browserCalled = false;
+    await rm(workspace.getGeneratedProjectPublicDir(projectId), { recursive: true, force: true });
+    const browserRunner: QaBrowserRunner = async () => {
+      browserCalled = true;
+      return {
+        ok: true,
+        visual_ok: true,
+        interaction_ok: true,
+        telemetry: missingObservedBase().map((type, index) => ({ type, timestamp_ms: index, frame: index })),
+        observed_events: missingObservedBase(),
+        console_errors: []
+      };
+    };
+    const runner = new PlaywrightQaRunnerService(workspace, gate, browserRunner);
+
+    const report = await runner.run({ projectId, runId, genre: 'shooter', previewUrl: 'http://localhost:3000/preview/proj/index.html' });
+
+    expect(browserCalled).toBe(false);
+    expect(report).toMatchObject({
+      status: 'QA_FAILED',
+      code: 'ASSET_MANIFEST_INVALID'
+    });
+    await expect(readFile(workspace.getQaReportPath(projectId, runId), 'utf8')).resolves.toContain('"code": "ASSET_MANIFEST_INVALID"');
   });
 
   it('writes a QA_FAILED report when required telemetry is missing', async () => {
@@ -588,6 +616,73 @@ function missingObservedBase(): TelemetryEvent['type'][] {
   return ['game.ready', 'game.started', 'input.received', 'player.moved', 'player.fired', 'projectile.spawned', 'enemy.hit', 'game.restarted', 'score.changed'];
 }
 
+async function writeValidAssetManifest(workspace: LocalWorkspaceService, id: string): Promise<void> {
+  const assets = [
+    { id: 'background_main', role: 'background', size: { w: 640, h: 360 } },
+    { id: 'player', role: 'player_character', size: { w: 64, h: 64 } },
+    { id: 'enemy', role: 'enemy', size: { w: 64, h: 64 } },
+    { id: 'projectile', role: 'projectile', size: { w: 32, h: 32 } }
+  ] as const;
+  const projectDir = workspace.getGeneratedProjectDir(id);
+  const publicDir = workspace.getGeneratedProjectPublicDir(id);
+  await mkdir(join(publicDir, 'assets'), { recursive: true });
+  await writeFile(
+    join(projectDir, 'asset_plan.json'),
+    `${JSON.stringify(
+      {
+        version: 'asset-plan-v0.1',
+        projectId: id,
+        style: { visual_theme: 'test', camera: 'top_down' },
+        items: assets.map((asset) => ({
+          id: asset.id,
+          role: asset.role,
+          subject: asset.id,
+          view: 'top_down',
+          size: asset.size,
+          format: 'svg',
+          required: true,
+          provider_priority: ['local_asset_pack', 'template_svg', 'placeholder']
+        }))
+      },
+      null,
+      2
+    )}\n`,
+    'utf8'
+  );
+  for (const asset of assets) {
+    await writeFile(
+      join(publicDir, `assets/${asset.id}.svg`),
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${asset.size.w}" height="${asset.size.h}"></svg>`,
+      'utf8'
+    );
+  }
+  await writeFile(
+    join(publicDir, 'asset_manifest.json'),
+    `${JSON.stringify(
+      {
+        version: 'asset-manifest-v0.1',
+        projectId: id,
+        strict: true,
+        assets: assets.map((asset) => ({
+            id: asset.id,
+            role: asset.role,
+            type: 'image',
+            format: 'svg',
+            path: `assets/${asset.id}.svg`,
+            source: 'template_svg',
+            required: true,
+            status: 'ready',
+            size: asset.size
+          })),
+        summary: { required: assets.length, ready: assets.length, fallback_used: 0, missing: 0, placeholder_used: 0 }
+      },
+      null,
+      2
+    )}\n`,
+    'utf8'
+  );
+}
+
 async function startBlankTelemetryPreviewServer(): Promise<Server> {
   const telemetry = missingObservedBase()
     .map((type, index) => ({ type, timestamp_ms: index, frame: index }))
@@ -677,7 +772,7 @@ async function startRuntimePlanMismatchDodgerPreviewServer(): Promise<Server> {
   const html = `<!doctype html>
 <html>
   <body style="margin:0;background:#07111f">
-    <canvas id="game" width="640" height="360" style="width:640px;height:360px"></canvas>
+    <canvas id="game" width="640" height="360" style="width:640px;height:360px;background:linear-gradient(135deg,#07111f 0%,#2a2438 35%,#ffd28a 62%,#9ca3af 100%)"></canvas>
     <script>
       const canvas = document.getElementById('game');
       const context = canvas.getContext('2d');
@@ -759,7 +854,7 @@ async function startIncompleteRuntimePlanDodgerPreviewServer(): Promise<Server> 
   const html = `<!doctype html>
 <html>
   <body style="margin:0;background:#07111f">
-    <canvas id="game" width="640" height="360" style="width:640px;height:360px"></canvas>
+    <canvas id="game" width="640" height="360" style="width:640px;height:360px;background:linear-gradient(135deg,#07111f 0%,#2a2438 35%,#ffd28a 62%,#9ca3af 100%)"></canvas>
     <script>
       const canvas = document.getElementById('game');
       const context = canvas.getContext('2d');
@@ -958,7 +1053,7 @@ function dodgerRuntimePlanHtml(telemetry: string, spawnPlan: Record<string, unkn
   return `<!doctype html>
 <html>
   <body style="margin:0;background:#07111f">
-    <canvas id="game" width="640" height="360" style="width:640px;height:360px"></canvas>
+    <canvas id="game" width="640" height="360" style="width:640px;height:360px;background:linear-gradient(135deg,#07111f 0%,#2a2438 35%,#ffd28a 62%,#9ca3af 100%)"></canvas>
     <script>
       const canvas = document.getElementById('game');
       const context = canvas.getContext('2d');
@@ -1021,7 +1116,7 @@ function shooterRuntimePlanHtml(params: { enemiesActive: number; hitPayload: Rec
   return `<!doctype html>
 <html>
   <body style="margin:0;background:#07111f">
-    <canvas id="game" width="640" height="360" style="width:640px;height:360px"></canvas>
+    <canvas id="game" width="640" height="360" style="width:640px;height:360px;background:linear-gradient(135deg,#07111f 0%,#2a2438 35%,#ffd28a 62%,#9ca3af 100%)"></canvas>
     <script>
       const canvas = document.getElementById('game');
       const context = canvas.getContext('2d');

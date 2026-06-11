@@ -40,6 +40,14 @@ export class LocalWorkspaceService {
     return this.resolveInsideWorkspace(GENERATED_PROJECTS_DIR, this.assertSafeSegment(projectId, 'projectId'), 'dist');
   }
 
+  getGeneratedProjectPublicDir(projectId: string): string {
+    return this.resolveInsideWorkspace(GENERATED_PROJECTS_DIR, this.assertSafeSegment(projectId, 'projectId'), 'public');
+  }
+
+  getGeneratedProjectAssetManifestPath(projectId: string): string {
+    return this.resolveInsideWorkspace(GENERATED_PROJECTS_DIR, this.assertSafeSegment(projectId, 'projectId'), 'public', 'asset_manifest.json');
+  }
+
   getProjectDir(projectId: string): string {
     return this.resolveInsideWorkspace(LOCAL_DATA_DIR, LOCAL_DATA_SUBDIRS.projects, this.assertSafeSegment(projectId, 'projectId'));
   }

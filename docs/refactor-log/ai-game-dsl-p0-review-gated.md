@@ -8,11 +8,59 @@
 
 ## 当前阶段
 
-DSL-first P1 Step 6 已完成：shooter Raw DSL 现在通过 normalizer 派生为 `runtime_plan.enemy_waves`，并由 shooter runtime 执行 enemy wave spawn budget / maxActive / interval / speed multiplier，QA 通过 snapshot 与 `enemy.hit` / `enemy.cleared` payload 证明执行。
+Asset Pipeline P0 Step 1 已完成：生成项目现在落盘 `asset_plan.json`、`public/asset_manifest.json` 和 `public/assets/*.svg`，Playwright QA 在浏览器前校验 `asset_plan` required 资源是否被 manifest 覆盖、manifest path 是否安全且文件是普通文件，避免缺资源仍进入 `PLAYABLE` 判定。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：DSL-first P1 Step 7 继续扩展一个新的可执行可玩性薄片；候选是 collector 小闭环，或在 shooter enemy_wave 基础上做二阶增强。
+当前下一步：Asset Pipeline P0 Step 2 让 Phaser templates preload / consume `asset_manifest.json`，并通过 runtime telemetry / QA 证明 required assets 被加载，而不是只在文件层通过门禁。
+
+### 2.6 Asset Pipeline P0 Step 1: AssetPlan / AssetManifest artifact gate
+
+完成时间：2026-06-11
+
+已完成内容：
+
+- 新增 `packages/asset-pipeline`，拆分为 `schemas.ts`、`plan.ts`、`writer.ts`、`validator.ts`、`template-svg-provider.ts` 和 `index.ts`。
+- `AssetPlanSchema` / `AssetManifestSchema` 固化 `asset-plan-v0.1` 与 `asset-manifest-v0.1`，禁止绝对路径、URL scheme、`..` 路径和 manifest path / id 不一致。
+- `buildAssetPlanFromIr` 从 `NormalizedGameIr` 派生 deterministic `AssetPlan`，不新增 Raw DSL asset 字段，也不读取模型生成路径。
+- `writeAssetArtifacts` 在 generated project 写入 `asset_plan.json`、`public/asset_manifest.json` 和 `public/assets/<id>.svg` template SVG 资源。
+- `TemplateCompilerService` 在编译生成项目时写入 `game.ir.json` 和 asset artifacts，并把这些文件计入 compile result。
+- `PlaywrightQaRunnerService` 在进入浏览器前调用 `validateGeneratedProjectAssets`，要求 `asset_plan.json` 中所有 required items 被 manifest 覆盖，manifest asset 必须 `required=true`、`status=ready`、metadata 与 plan 一致，且路径指向普通文件。
+- QA failure code 新增 `ASSET_MANIFEST_INVALID`、`ASSET_MISSING`、`REQUIRED_CORE_ASSET_PLACEHOLDER_USED`；通过 asset gate 的 QA report 写入 `asset_manifest_summary`。
+- 测试覆盖 AssetPlan 派生、manifest 路径安全、required asset 漏报、目录伪装 SVG、核心 placeholder 阻断、编译落盘和 QA 浏览器前置阻断。
+
+阶段结果：
+
+- 解决层级：数据契约 + 编译边界 + QA 门禁。
+- DSL-first 边界：模型仍只生成 Raw DSL；本步从已校验 IR deterministic 派生资源计划，没有开放模型输出 asset path / URL / base64。
+- 结构结果：`packages/asset-pipeline/src/validator.ts` 191 行，`schemas.ts` 158 行，`template-svg-provider.ts` 74 行，`plan.ts` 68 行，`writer.ts` 62 行，没有继续保留 492 行混合入口文件。
+- 未改范围：Phaser templates 尚未 preload / render manifest assets；QA 还未证明 Phaser runtime 的 required assets loaded telemetry；Workbench asset panel 尚未接入。
+
+已通过验证：
+
+    npm install --package-lock-only --ignore-scripts
+    # 通过；package-lock 新增 @ai-game-maker/asset-pipeline workspace link；npm audit 仍报告既有 5 vulnerabilities，未执行 audit fix
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts tests/workspace/compiler-service.test.ts tests/workspace/playwright-qa-runner.test.ts
+    # 3 个测试文件，33 个测试全部通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查均通过
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出 asset gate 只信任 manifest 自声明资产集合，无法发现 manifest 漏报 core required assets；P1 指出文件门禁只用 `stat`，目录伪装 `.svg` 也会通过；P2 建议收紧 path 到 `assets/<id>.svg` 并补测试。
+- 已修复：`validateGeneratedProjectAssets` 改为读取 `asset_plan.json` + `asset_manifest.json`，required plan item 必须被 manifest 覆盖且 metadata 一致；文件检查改为 `stat(...).isFile()`；manifest path 收紧为 `assets/${id}.svg`，并检查重复 path / path 与 id 一致；补漏报 plan required item 和目录伪装 `.svg` 测试。
+- Oracle 复审：P0/P1/P2/P3 均无，Asset Pipeline P0 Step 1 代码门禁通过。
+- 审查模式：Oracle 复用
+
+下一步建议：
+
+- Asset Pipeline P0 Step 2：让 Phaser templates 读取 generated `asset_manifest.json`，preload manifest 中 required assets，并在 runtime telemetry / QA 中证明 `assetsLoaded` / `assetsFailed` 与 manifest required assets 对齐。
+- 暂不接 AI image provider；继续保持 deterministic template SVG provider，先打通 manifest consumption 与 QA loaded gate。
 
 ### 2.5 DSL-first dodger difficulty curve runtime_plan
 
