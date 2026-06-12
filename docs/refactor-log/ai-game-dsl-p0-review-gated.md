@@ -8,11 +8,58 @@
 
 ## 当前阶段
 
-Asset Semantic Fidelity Step 5.5b 已完成：新增 canary batch runner 和 summary report；本步仍是测量层，不改变 resolver、QA、Workbench、Phaser runtime 或 fallback 行为。
+Asset Semantic Fidelity Step 6a 已完成：新增 Asset Repair Planner；本步只生成可审计 repair plan，不执行 blacklist、重新 resolve、manifest 写入、QA 重跑或任何修复。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Asset Semantic Fidelity Step 6：asset repair loop；仍不要接入 AI image provider、新资源库、taxonomy expansion 或 provider survive_duration 修复。
+当前下一步：Asset Semantic Fidelity Step 6b：repair executor；仍不要接入 AI image provider、新资源库、taxonomy expansion 或 provider survive_duration 修复。
+
+### 2.19 Asset Semantic Fidelity Step 6a: Asset Repair Planner
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- 新增 `packages/asset-pipeline/src/asset-repair-plan.ts` 和 `asset-repair-plan.types.ts`，导出 `asset-repair-plan-v0.1` 的 `AssetRepairPlan` 类型和 `buildAssetRepairPlan` 纯函数。
+- Planner 消费 normalized QA report 最小形状、`AssetManifest` 和必需 `AssetResolutionReport`，合并 manifest `semanticFit`、resolution report expected semantic 和 QA semantic issue。
+- 只在 `NEEDS_ASSET_REPAIR`、`asset_semantic_status: "FAILED"`、hard `mismatch`、hard `unknown` 或 hard requirement 缺 `semanticFit` 时触发。
+- 只为 hard semantic failed assets 生成 executable `items`；selected local pack 输出 `blacklist_candidate_then_reresolve`，无可 blacklist pack 时输出 `force_template_svg_fallback`。
+- 当 QA 顶层状态要求 repair 但 manifest / resolution report 没有 hard semantic evidence 时，输出 `no_action` diagnostic item，供 Step 6b 审计但不得执行修复。
+- `fallback_generated`、`PLAYABLE_WITH_FALLBACK_ASSETS`、`PLAYABLE_WITH_ART_WARNINGS`、medium / soft mismatch 或 unknown 不触发 repair，进入 `ignored` 作为审计说明。
+- 新增 `tests/contracts/asset-repair-plan.test.ts`，覆盖 hard mismatch、hard unknown、hard missing semanticFit、force template fallback、status-only diagnostic、passing fit status 和 fallback / warning 不触发契约。
+
+阶段结果：
+
+- 解决层级：数据契约 + repair 业务规则。
+- 结构变化：新增一个 `packages/asset-pipeline` 纯 planner 文件、一个类型文件、一个 contract 测试文件，并通过 `packages/asset-pipeline/src/index.ts` 导出最小 API。
+- 行为边界：未修改 resolver ranking、hard semantic gate、fallback 策略、manifest `semanticFit` 生成、QA 聚合、Workbench UI、Phaser runtime、repair executor、资源库、taxonomy、AI image provider 或 provider `survive_duration`。
+- 本步只返回结构化对象，暂不落盘 `asset_repair_plan.json`。
+- shooter HUD stash 不属于本步 scope；本步没有修改 `templates/phaser/shooter/src/GameScene.ts`、`templates/phaser/shooter/src/shooter-renderer.ts` 或 `tests/contracts/phaser-templates.test.ts`。
+
+已通过验证（本步实际执行）：
+
+    npx vitest run tests/contracts/asset-repair-plan.test.ts
+    # 1 个测试文件，6 个测试通过
+
+    npm run test:contracts
+    # contracts 7 个测试文件 / 104 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    npm run qa:asset-semantic:canary -- --limit 3
+    # summary 写入 artifacts/asset-semantic-canary/20260612T062028Z
+    # runnable=3 skipped=11 experimental=0 passed=3 failed=0
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出 `resolutionReport` optional 会让 hard requirement 缺 `semanticFit` 的证据静默缺失；P2 指出 status-only 触发可能 `triggered: true` 但 `items: []`、plan item 缺少语义证据字段、测试边界不足；P3 指出 `no_action` 若不用应移除或补语义。
+- 已处理：`resolutionReport` 改为必需输入；plan item 增加 `actualTags`、`missingTags`、`conflictingTags`、`selectedPath` 和 `semanticFitReason`；status-only repair signal 输出 `no_action` diagnostic item；新增 hard unknown、force fallback、passing fit status、medium unknown 和 status-only diagnostic 契约测试。
+- Oracle 复审：P0/P1/P2/P3 均无；确认首轮 P1/P2/P3 已处理，Step 6a 仍保持只生成 planner 的边界，没有文件写入、blacklist 执行、重新 resolve、QA 聚合、Workbench、Phaser runtime、schema 或 provider 越界改动。
+- 审查模式：Oracle 复用。
 
 ### 2.18 Asset Semantic Fidelity Step 5.5b: Canary batch runner + summary report
 

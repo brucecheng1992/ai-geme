@@ -37,7 +37,7 @@ Step 5.5b 完成后的剩余缺口：
 
 - QA / Workbench 已能识别 runtime pass 但 hard semantic mismatch 的 `NEEDS_ASSET_REPAIR`，并展示 per-asset semanticFit 摘要。
 - 第一批 canary brief fixture 已建立，batch runner 已能默认运行 supported cases、跳过 `expectedUnsupported` cases，并写出 summary report。
-- 尚未实现 asset repair loop；`NEEDS_ASSET_REPAIR` 目前只表达状态，不会自动重选或修复资源。
+- 已新增 Step 6a Asset Repair Planner：`NEEDS_ASSET_REPAIR` / hard semantic failure 只会生成可审计 repair plan，不会自动重选或修复资源。
 
 ## 4. 分步落地计划
 
@@ -51,7 +51,8 @@ Step 5.5b 完成后的剩余缺口：
 | Step 5 | QA + Workbench semantic status | `assetSemanticStatus`、mismatch failure、UI 展示 | 已完成 |
 | Step 5.5a | Canary brief fixture v0.1 | `asset-semantic-canary.briefs.json`、fixture validation test | 已完成 |
 | Step 5.5b | Canary batch runner | 读取 fixture、生成 summary report | 已完成 |
-| Step 6 | 自动修复回路 | mismatch 后重选 / fallback trace | 当前下一步 |
+| Step 6a | Asset Repair Planner | 基于 QA / manifest / resolution report 生成 repair plan | 已完成 |
+| Step 6b | Repair Executor | mismatch 后重选 / fallback trace | 当前下一步 |
 | Step 7 | 回归批量验收 | E2E cases 和真实 Workbench proof | 目标：cat/alien、tank/tank、generic shooter 均通过对应验收 |
 
 ## 5. Step 1 最小实现边界
@@ -312,7 +313,46 @@ Step 5.5b 已执行：
 - `fallback_generated` 不算 mismatch；`PLAYABLE_WITH_FALLBACK_ASSETS` 不算失败。
 - `--limit 3` smoke 生成 `artifacts/asset-semantic-canary/20260612T053854Z`，3 个 runnable supported cases 全部通过，11 个 skipped。
 
-## 13. 审查门禁
+## 13. Step 6a 最小实现边界
+
+状态：已完成。
+
+Step 6a 只新增 Asset Repair Planner：
+
+- 新增 `packages/asset-pipeline/src/asset-repair-plan.ts` 和 `asset-repair-plan.types.ts`，导出 `AssetRepairPlan`、`AssetRepairPlanItem`、`AssetRepairPlannerQaReport` 和 `buildAssetRepairPlan`。
+- Planner 消费 normalized QA report 最小形状、`AssetManifest` 和必需 `AssetResolutionReport`，返回 `asset-repair-plan-v0.1` 结构化对象。
+- 只在 `NEEDS_ASSET_REPAIR`、`asset_semantic_status: "FAILED"`、hard `mismatch`、hard `unknown` 或 hard requirement 缺 `semanticFit` 时触发。
+- 只为 hard semantic failed assets 生成 executable `items`；selected local pack 生成 `blacklist_candidate_then_reresolve`，无可 blacklist pack 时生成 `force_template_svg_fallback`。
+- 若 QA 顶层状态要求 repair 但 manifest / resolution report 没有 hard semantic evidence，则生成 `no_action` diagnostic item，供 Step 6b 审计但不得执行修复。
+- `fallback_generated`、`PLAYABLE_WITH_FALLBACK_ASSETS`、`PLAYABLE_WITH_ART_WARNINGS`、medium / soft mismatch 或 unknown 均不触发 repair plan；可疑但非 hard repair 的项进入 `ignored` 作为审计解释。
+- 本步只返回结构化对象，暂不落盘 `asset_repair_plan.json`。
+
+Step 6a 不修改：
+
+- repair executor、blacklist 执行、重新 resolve、manifest 写入、`asset_resolution_report.json` 写入或 QA 重跑。
+- resolver ranking / hard gate / fallback 策略。
+- QA status 聚合规则和 Workbench UI。
+- Phaser runtime。
+- manifest `semanticFit` 生成逻辑。
+- 新资源库、taxonomy expansion、AI image provider 或 provider `survive_duration` 修复。
+- shooter HUD 脏文件。
+
+Step 6a 已执行：
+
+    npx vitest run tests/contracts/asset-repair-plan.test.ts
+    npm run test:contracts
+    npm run typecheck
+    npm run qa:asset-semantic:canary -- --limit 3
+    git diff --check
+
+关键断言：
+
+- hard mismatch local-pack asset 会生成 `blacklist_candidate_then_reresolve`。
+- hard requirement 缺 `semanticFit` 会按 hard unknown 触发。
+- hard unknown 且无 selected local pack 会生成 `force_template_svg_fallback`。
+- `PLAYABLE_WITH_FALLBACK_ASSETS`、`PLAYABLE_WITH_ART_WARNINGS`、`fallback_generated`、exact / compatible / not_applicable、medium / soft mismatch 或 unknown 不触发 executable repair。
+
+## 14. 审查门禁
 
 每一步按 review-gated-refactor 执行：
 
@@ -322,7 +362,7 @@ Step 5.5b 已执行：
 4. 把修改范围、验证命令、审查结论写回 `docs/refactor-log/ai-game-dsl-p0-review-gated.md`。
 5. 再做文档复审门禁。
 
-## 14. 当前注意事项
+## 15. 当前注意事项
 
 - provider `survive_duration` 修复已单独提交；后续 asset semantic fidelity 步骤仍不要混入 provider 改动。
 - 本阶段真实验收必须用 Workbench / generated project / QA 产物证明，不只看单测。
