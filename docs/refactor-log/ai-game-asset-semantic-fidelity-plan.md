@@ -33,9 +33,10 @@
 - generated project 根目录已写出 `asset_resolution_report.json`，记录 selected / rejected / fallback diagnostics。
 - QA report 已包含 `asset_report`，Workbench Assets 面板可展示 manifest/runtime load 状态和 source pack。
 
-Step 5 完成后的剩余缺口：
+Step 5.5a 完成后的剩余缺口：
 
 - QA / Workbench 已能识别 runtime pass 但 hard semantic mismatch 的 `NEEDS_ASSET_REPAIR`，并展示 per-asset semanticFit 摘要。
+- 第一批 canary brief fixture 已建立，但尚未实现 batch runner，也不会批量生成真实游戏。
 - 尚未实现 asset repair loop；`NEEDS_ASSET_REPAIR` 目前只表达状态，不会自动重选或修复资源。
 
 ## 4. 分步落地计划
@@ -48,7 +49,9 @@ Step 5 完成后的剩余缺口：
 | Step 3 | Resolver semantic hard gate | complete-pack selection hard gate、fallback on hard mismatch | 已完成 |
 | Step 4 | Manifest semanticFit + resolution report | `semanticFit`、`asset_resolution_report.json` | 已完成 |
 | Step 5 | QA + Workbench semantic status | `assetSemanticStatus`、mismatch failure、UI 展示 | 已完成 |
-| Step 6 | 自动修复回路 | mismatch 后重选 / fallback trace | 当前下一步 |
+| Step 5.5a | Canary brief fixture v0.1 | `asset-semantic-canary.briefs.json`、fixture validation test | 已完成 |
+| Step 5.5b | Canary batch runner | 读取 fixture、生成 summary report | 当前下一步 |
+| Step 6 | 自动修复回路 | mismatch 后重选 / fallback trace | 后续 |
 | Step 7 | 回归批量验收 | E2E cases 和真实 Workbench proof | 目标：cat/alien、tank/tank、generic shooter 均通过对应验收 |
 
 ## 5. Step 1 最小实现边界
@@ -230,7 +233,44 @@ Step 5 已执行：
 - medium mismatch -> `asset_semantic_status: "WARNING"`、`overall_status: "PLAYABLE_WITH_ART_WARNINGS"`。
 - pipeline 仍按 runtime `status: "PASSED"` 写入项目 `PLAYABLE`；Workbench 通过 QA `overall_status` 覆盖展示。
 
-## 11. 审查门禁
+## 11. Step 5.5a 最小实现边界
+
+状态：已完成。
+
+Step 5.5a 只新增 canary brief fixture baseline：
+
+- 新增 `tests/fixtures/asset-semantic-canary.briefs.json`，包含 14 条第一批 canary briefs。
+- 覆盖核心概念：`cat`、`alien`、`tank`、`space`、`fishbone` 和 generic shooter。
+- 每条 brief 写出 `expect.disallowOverall`、runtime / asset failure 是否允许、optional `allowedOverall`、per-role `expectedCore` 和 optional `preferredPack`。
+- 对当前 taxonomy 尚未确认支持的 wording / concept 显式标记 `expectedUnsupported: true`，例如 `fishbone` projectile、`异星人`、`星空`、`装甲车`。
+- 新增 `tests/contracts/asset-semantic-canary-fixture.test.ts`，只验证 fixture JSON parse、case id 唯一、brief 非空、expect 契约、concept baseline、strictness、preferredPack pack id 和当前 taxonomy 已支持的 core inference。
+
+Step 5.5a 不修改：
+
+- canary runner 或 batch summary report。
+- 批量生成真实游戏。
+- resolver ranking / hard gate / fallback 策略。
+- manifest semanticFit 生成逻辑。
+- QA status 聚合规则。
+- Workbench UI。
+- Phaser runtime。
+- 新资源库、AI image provider 或 provider survive_duration。
+
+Step 5.5a 已执行：
+
+    npx vitest run tests/contracts/asset-semantic-canary-fixture.test.ts
+    npm test
+    npm run typecheck
+    git diff --check
+
+关键断言：
+
+- 第一批 fixture 是测试数据基线，不会改变产品行为。
+- dog / rabbit / robot / bird / slime / asteroid 等扩展概念未进入 v0.1 fixture。
+- 包含 `fishbone` 的 case 保持为显式 unsupported canary marker，后续 taxonomy expansion / canary v0.2 再转正。
+- Step 5.5b 才实现 runner 和 summary report；runner 应把 `expectedUnsupported: true` 作为 skip / expected-unsupported report 维度，不按普通 canary failure 聚合。
+
+## 12. 审查门禁
 
 每一步按 review-gated-refactor 执行：
 
@@ -240,7 +280,7 @@ Step 5 已执行：
 4. 把修改范围、验证命令、审查结论写回 `docs/refactor-log/ai-game-dsl-p0-review-gated.md`。
 5. 再做文档复审门禁。
 
-## 12. 当前注意事项
+## 13. 当前注意事项
 
 - provider `survive_duration` 修复已单独提交；后续 asset semantic fidelity 步骤仍不要混入 provider 改动。
 - 本阶段真实验收必须用 Workbench 生成项目证明，不只看单测。

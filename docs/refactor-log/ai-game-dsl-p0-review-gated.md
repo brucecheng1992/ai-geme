@@ -8,11 +8,54 @@
 
 ## 当前阶段
 
-Asset Semantic Fidelity Step 5 已完成：QA report 现在区分 runtime status、asset semantic status 和 overall status；Workbench 会展示 overall/runtime/semantic 三类状态，并在 Assets 面板展示每个 asset 的 semanticFit 摘要。
+Asset Semantic Fidelity Step 5.5a 已完成：新增第一批 canary brief fixture baseline 和 parse / validation contract test；本步不实现 canary runner，也不改变产品行为。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Asset Semantic Fidelity Step 6：设计 asset repair loop 的最小闭环；仍不要接入 AI image provider 或新资源库。
+当前下一步：Asset Semantic Fidelity Step 5.5b：实现 canary batch runner 和 summary report；仍不要接入 AI image provider、新资源库或 provider survive_duration 修复。
+
+### 2.17 Asset Semantic Fidelity Step 5.5a: Canary brief fixture v0.1
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- 新增 `tests/fixtures/asset-semantic-canary.briefs.json`，作为 Step 5.5b canary batch runner 的第一批输入 fixture。
+- fixture 包含 14 条 brief，覆盖 `cat`、`alien`、`tank`、`space`、`fishbone` 和 generic shooter。
+- 每条 brief 写出 semantic expectations：`disallowOverall`、runtime / asset failure 是否允许、optional `allowedOverall`、per-role `expectedCore`、optional `preferredPack` 和 notes。
+- 对当前 taxonomy 尚未确认支持的 wording / concept 显式标记 `expectedUnsupported: true`，包括 `fishbone` projectile、`异星人`、`星空`、`装甲车`。
+- 新增 `tests/contracts/asset-semantic-canary-fixture.test.ts`，只做 fixture parse / validation：JSON parse、id 唯一、brief 非空、expect 契约、concept baseline、strictness、forbidden expansion concepts、preferredPack pack id 和当前 taxonomy core inference。
+
+阶段结果：
+
+- 解决层级：测试 fixture 数据契约。
+- 结构变化：新增 `tests/fixtures/asset-semantic-canary.briefs.json` 和 `tests/contracts/asset-semantic-canary-fixture.test.ts`。
+- 行为边界：未修改 resolver ranking、hard gate、fallback 策略、manifest semanticFit、QA status 聚合、Workbench UI、Phaser runtime、asset repair loop、AI image provider、新资源库或 provider survive_duration。
+- 本步不实现 canary runner，不批量生成真实游戏；Step 5.5b 才实现 runner 和 summary report。
+- dog / rabbit / robot / bird / slime / asteroid 等扩展概念未进入 v0.1 fixture。
+- Step 5.5b runner 应把 `expectedUnsupported: true` 作为 skip / expected-unsupported report 维度，不按普通 canary failure 聚合。
+
+已通过验证（本步实际执行）：
+
+    npx vitest run tests/contracts/asset-semantic-canary-fixture.test.ts
+    # 红灯：fixture 文件不存在；转绿后 1 个测试文件，5 个测试通过
+
+    npm test
+    # contracts 5 个测试文件 / 90 个测试通过；workspace 12 个测试文件 / 114 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0/P1/P2 无；P3 建议补 `preferredPack.roles` 真实覆盖校验、`allowedOverall` / `disallowOverall` 互斥校验，并明确 Step 5.5b runner 如何处理 `expectedUnsupported`。
+- 已处理：fixture validation test 现在校验 preferred pack role coverage 和 overall allow/disallow disjoint；文档明确 Step 5.5b runner 应把 `expectedUnsupported: true` 作为 skip / expected-unsupported report 维度，不按普通 canary failure 聚合。
+- 复验通过：`npx vitest run tests/contracts/asset-semantic-canary-fixture.test.ts`、`npm run typecheck`、`npm test`、`git diff --check`。
+- 文档复审：Oracle 复审 P0/P1/P2/P3 均无；确认三份文档未声称已实现 runner、batch report、真实批量生成、repair loop 或产品行为变化，Step 5.5b / Step 6 顺序一致，`expectedUnsupported` 和 provider survive_duration out of scope 表述准确。
+- 审查模式：Oracle 复用。
 
 ### 2.16 Asset Semantic Fidelity Step 5: QA + Workbench semantic status
 
