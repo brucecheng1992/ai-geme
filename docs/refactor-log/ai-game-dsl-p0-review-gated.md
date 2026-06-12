@@ -8,11 +8,55 @@
 
 ## 当前阶段
 
-Asset Semantic Fidelity Step 8a 已完成：taxonomy v0.2 只补当前 unsupported canary wording 的 canonical / synonym normalization，不接资源、不 promotion fixture、不改变 resolver / QA / Workbench / Phaser / repair 行为。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate 和 Step 3B runtime-safe export implementation。
+Asset Semantic Fidelity Step 8b 已完成：canary fixture promotion 只移除 Step 8a 已支持 wording 的 5 个 `expectedUnsupported` marker，让默认 canary 运行全部 14 条 first-batch fixtures；不接资源、不改变 resolver / QA / Workbench / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate 和 Step 3B runtime-safe export implementation。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Asset Semantic Fidelity 主线后续进入 Step 8b canary fixture promotion，再进入 Step 8c 小包资源扩展 v0.2；AI Game Art Asset Metadata v0.1 后续进入 Step 4 asset pack metadata bridge / resolver diagnostics。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、新资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Asset Semantic Fidelity 主线后续进入 Step 8c 小包资源扩展 v0.2；Step 8d 默认 / repair-enabled 对比仍未开始；AI Game Art Asset Metadata v0.1 后续进入 Step 4 asset pack metadata bridge / resolver diagnostics，但当前仍 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、新资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.24 Asset Semantic Fidelity Step 8b: Canary Fixture Promotion
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- `tests/fixtures/asset-semantic-canary.briefs.json` 移除 5 个 Step 8a 已支持 canary 的 `expectedUnsupported` / `unsupportedReason` marker。
+- promoted fixtures：`cat_fishbone_alien_shooter`、`kitten_extraterrestrial_shooter`、`orange_cat_starfield_alien_shooter`、`armored_vehicle_vs_tank`、`cat_space_alien_fishbone`。
+- promotion rationale：Step 8a taxonomy v0.2 已支持 `fishbone` projectile、`异星人`、`星空`、`装甲车`。
+- `tests/contracts/asset-semantic-canary-fixture.test.ts` 断言默认 fixture 不再携带 unsupported marker，并保留 promoted fixture id 集。
+- `tests/contracts/asset-semantic-canary-runner.test.ts` 断言默认 runner selection 现在选中 14 条、skipped 为空；runner 对 synthetic `expectedUnsupported` 的 skip / experimental 机制仍由既有测试覆盖。
+
+行为边界：
+
+- 未修改 resolver ranking、Step 3 hard gate、fallback 策略、manifest `semanticFit`、`asset_resolution_report`、QA aggregation、Workbench UI、Phaser runtime、repair planner / executor / pipeline 或 asset pack loading。
+- 未接入新资源库、真实美术资源、AI image provider、large asset library、Metadata Step 4A 或 shooter HUD 文件。
+- 未启动 Step 8c 小包资源扩展或 Step 8d 默认 / repair-enabled 对比。
+
+验证：
+
+    npx vitest run tests/contracts/asset-semantic-canary-fixture.test.ts tests/contracts/asset-semantic-canary-runner.test.ts
+    npm run qa:asset-semantic:canary
+    npm run qa:asset-semantic:canary -- --repair-enabled
+    npm run test:contracts
+    npm test
+    npm run typecheck
+    npm run metadata:validate -- assets/metadata/examples
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+
+结果：
+
+- TDD 红灯：focused canary tests 先因 5 个旧 `expectedUnsupported` marker 失败；移除 marker 后 2 个测试文件 23 个测试通过。
+- 默认 full canary：`artifacts/asset-semantic-canary/20260612T190227Z`，`runnable=14 skipped=0 experimental=0 passed=14 failed=0`，`repair.enabled=false repair.attemptedCount=0 repair.failedCount=0`。
+- repair-enabled full canary：`artifacts/asset-semantic-canary/20260612T190351Z`，`runnable=14 skipped=0 experimental=0 passed=14 failed=0`，`repair.enabled=true repair.attemptedCount=0 repair.failedCount=0`。
+- `npm run test:contracts` 通过：13 个测试文件，155 个测试通过。
+- `npm test` 通过：contracts 155 个测试通过，workspace 125 个测试通过。
+- `npm run typecheck` 通过。
+- `npm run metadata:validate -- assets/metadata/examples` 通过：`OK 5 metadata files`。
+- `npm run metadata:export-runtime -- --json assets/metadata/examples` 通过：`ok=true`、`diagnostics=[]`、`asset_count=5`。
+
+审查记录：
+
+- Oracle 只读审查：P0/P1/P2/P3 均无，可提交；确认本步只 promotion 5 个 Step 8a 已支持 canary fixture，未触碰 runtime/default behavior、resolver、QA、Workbench、Phaser、asset pack loading、large asset library、Step 8c/8d 或 Metadata Step 4A。
 
 ### 2.23 Asset Semantic Fidelity Step 8a: Taxonomy v0.2 for Canary Unsupported Concepts
 

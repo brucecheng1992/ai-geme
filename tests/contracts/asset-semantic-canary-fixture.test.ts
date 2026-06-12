@@ -88,16 +88,19 @@ describe('Asset semantic canary brief fixture', () => {
     });
   });
 
-  it('keeps taxonomy v0.2 support decoupled from canary fixture promotion', async () => {
+  it('promotes taxonomy v0.2 canaries into the default runnable fixture set', async () => {
     const briefs = await readCanaryBriefs();
-
-    expect(briefs.filter((brief) => brief.expectedUnsupported === true).map((brief) => brief.id)).toEqual([
+    const promotedIds = [
       'cat_fishbone_alien_shooter',
       'kitten_extraterrestrial_shooter',
       'orange_cat_starfield_alien_shooter',
       'armored_vehicle_vs_tank',
       'cat_space_alien_fishbone'
-    ]);
+    ];
+
+    expect(briefs.filter((brief) => brief.expectedUnsupported === true)).toEqual([]);
+    expect(briefs.filter((brief) => brief.unsupportedReason !== undefined)).toEqual([]);
+    expect(briefs.filter((brief) => promotedIds.includes(brief.id)).map((brief) => brief.id)).toEqual(promotedIds);
   });
 
   it('references only known local packs in preferredPack expectations', async () => {

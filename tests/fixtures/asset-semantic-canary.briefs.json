@@ -70,8 +70,6 @@
     "id": "cat_fishbone_alien_shooter",
     "brief": "做一个猫咪发射鱼骨头攻击外星人的小游戏",
     "category": "mixed_core_semantic",
-    "expectedUnsupported": true,
-    "unsupportedReason": "Current taxonomy does not yet expose fishbone as a canonical projectile concept; keep this as a canary marker for taxonomy expansion.",
     "expect": {
       "allowedOverall": ["PLAYABLE", "PLAYABLE_WITH_FALLBACK_ASSETS", "PLAYABLE_WITH_ART_WARNINGS"],
       "disallowOverall": ["NEEDS_ASSET_REPAIR", "QA_FAILED"],
@@ -102,15 +100,13 @@
           "forbiddenConcepts": ["shell", "tank_bullet"]
         }
       ],
-      "notes": "Projectile semantic should not be treated as tank entity."
+      "notes": "Promoted in Step 8b after Step 8a added fishbone as a medium projectile concept."
     }
   },
   {
     "id": "kitten_extraterrestrial_shooter",
     "brief": "做一个猫咪射击异星人的小游戏",
     "category": "supported_core_semantic",
-    "expectedUnsupported": true,
-    "unsupportedReason": "Current taxonomy supports cat wording here, but the Chinese alien synonym 异星人 is not yet a confirmed alias.",
     "expect": {
       "allowedOverall": ["PLAYABLE", "PLAYABLE_WITH_FALLBACK_ASSETS", "PLAYABLE_WITH_ART_WARNINGS"],
       "disallowOverall": ["NEEDS_ASSET_REPAIR", "QA_FAILED"],
@@ -134,15 +130,13 @@
           "forbiddenConcepts": ["tank", "vehicle", "turret"]
         }
       ],
-      "notes": "Chinese synonym coverage for cat and alien."
+      "notes": "Promoted in Step 8b after Step 8a confirmed 异星人 as an alien alias."
     }
   },
   {
     "id": "orange_cat_starfield_alien_shooter",
     "brief": "做一个橘猫在星空中射击外星人的小游戏",
     "category": "medium_theme_semantic",
-    "expectedUnsupported": true,
-    "unsupportedReason": "Current taxonomy recognizes cat and alien here, but starfield wording 星空 is not yet a confirmed space alias.",
     "expect": {
       "allowedOverall": ["PLAYABLE", "PLAYABLE_WITH_FALLBACK_ASSETS", "PLAYABLE_WITH_ART_WARNINGS"],
       "disallowOverall": ["NEEDS_ASSET_REPAIR", "QA_FAILED"],
@@ -173,7 +167,7 @@
           "forbiddenConcepts": ["battlefield", "road", "grassland"]
         }
       ],
-      "notes": "Tests orange cat/starfield wording if taxonomy supports these synonyms."
+      "notes": "Promoted in Step 8b after Step 8a confirmed 星空 as a space alias."
     }
   },
   {
@@ -250,8 +244,6 @@
     "id": "armored_vehicle_vs_tank",
     "brief": "做一个装甲车射击坦克的小游戏",
     "category": "supported_core_semantic",
-    "expectedUnsupported": true,
-    "unsupportedReason": "Current taxonomy does not yet confirm 装甲车 as a tank alias.",
     "expect": {
       "allowedOverall": ["PLAYABLE", "PLAYABLE_WITH_FALLBACK_ASSETS", "PLAYABLE_WITH_ART_WARNINGS"],
       "disallowOverall": ["NEEDS_ASSET_REPAIR", "QA_FAILED"],
@@ -280,7 +272,7 @@
         "soft": true,
         "roles": ["player", "enemy"]
       },
-      "notes": "Tests tank synonym such as armored vehicle if taxonomy supports it."
+      "notes": "Promoted in Step 8b after Step 8a confirmed 装甲车 as a tank alias."
     }
   },
   {
@@ -415,8 +407,6 @@
     "id": "cat_space_alien_fishbone",
     "brief": "做一个小猫在太空中用鱼骨头子弹打外星人的小游戏",
     "category": "mixed_core_semantic",
-    "expectedUnsupported": true,
-    "unsupportedReason": "Current taxonomy does not yet expose fishbone as a canonical projectile concept; keep this as a canary marker for taxonomy expansion.",
     "expect": {
       "allowedOverall": ["PLAYABLE", "PLAYABLE_WITH_FALLBACK_ASSETS", "PLAYABLE_WITH_ART_WARNINGS"],
       "disallowOverall": ["NEEDS_ASSET_REPAIR", "QA_FAILED"],
@@ -454,7 +444,7 @@
           "forbiddenConcepts": ["battlefield", "road", "grassland"]
         }
       ],
-      "notes": "Full first-batch semantic coverage: cat, alien, fishbone, space."
+      "notes": "Promoted in Step 8b after Step 8a covered cat, alien, fishbone, and space wording."
     }
   }
 ]
