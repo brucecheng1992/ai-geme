@@ -6,10 +6,11 @@
 
 - Asset Pipeline P0 Step 1-5 已完成，Workbench Assets 面板直接消费 QA report `asset_report` 展示 manifest summary、runtime loaded / failed、结构化 failure reason、source pack 和 license；既有测试文件、`App.tsx`、`normalizer.ts`、`GameScene.ts` 和 Playwright runner 超过 220 行，按职责集中保留并由针对性测试或浏览器烟测覆盖。
 - 新增 Asset Semantic Fidelity 阶段，用于修复“资源加载成功但语义错配”；执行计划见 `docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md`。
+- 新增 AI Game Art Asset Metadata v0.1 入口，用于把外部美术资源 metadata 规范拆成可执行 infrastructure 步骤；执行索引见 `docs/refactor-log/ai-game-art-asset-metadata-v0.1-index.md`。
 - 仓库非依赖文件中当前最大文件是 `docs/ai_game_dsl_p0_local_implementation.md`，约 2880 行，属于实施规格文档。
 - 现有阶段记录位于 `docs/refactor-log/ai-game-dsl-p0-review-gated.md`。
-- 当前已完成阶段：P0 主链路修复 + 模型 DSL 视觉执行复核修复 + DSL-first P1 Step 6 shooter enemy_wave runtime_plan + Asset Pipeline P0 Step 1-5（含 Step 5.1 tiny local asset pack slice）+ Asset Semantic Fidelity Step 1-7 + Step 8a taxonomy v0.2。Asset Semantic Fidelity 当前为 P0 closed / ready for resource expansion canary。
-- 当前下一步：提交 Step 8a；shooter HUD stash 仍作为独立任务处理；Asset Semantic Fidelity 主线后续进入 Step 8b canary fixture promotion，再进入 Step 8c 小包资源扩展 v0.2。仍不批量接入新资源库、不接入 AI image provider。
+- 当前已完成阶段：P0 主链路修复 + 模型 DSL 视觉执行复核修复 + DSL-first P1 Step 6 shooter enemy_wave runtime_plan + Asset Pipeline P0 Step 1-5（含 Step 5.1 tiny local asset pack slice）+ Asset Semantic Fidelity Step 1-7 + Step 8a taxonomy v0.2 + AI Game Art Asset Metadata v0.1 Step 0-2。Asset Semantic Fidelity 当前为 P0 closed / ready for resource expansion canary。
+- 当前下一步：Asset Semantic Fidelity 主线后续进入 Step 8b canary fixture promotion，再进入 Step 8c 小包资源扩展 v0.2；AI Game Art Asset Metadata v0.1 后续进入 Step 3 runtime-safe metadata export。shooter HUD stash 仍作为独立任务处理；仍不批量接入新资源库、不接入 AI image provider。
 
 ## 2. 大文档拆分索引
 
@@ -124,7 +125,7 @@ Asset Pipeline P0 v0.2 已开始，当前完成 Step 1、Step 2、Step 3、Step 
 - 当前下一步：
 
 - 当前进入 Asset Semantic Fidelity 阶段；外部方案包已拆成项目内计划文档 `docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md`。Step 1 已落地 Taxonomy + AssetPlan semantic constraint，Step 2 已落地 local pack metadata profile / asset-level semantic tags / metadata index，Step 3 已落地 resolver hard semantic gate，Step 4 已落地 manifest `semanticFit` 和 `asset_resolution_report.json`，Step 5 已落地 QA + Workbench semantic status，Step 5.5a 已新增 canary brief fixture baseline，Step 5.5b 已新增 canary batch runner 和 summary report，Step 6a 已新增只生成结构化 repair plan 的 Asset Repair Planner，Step 6b 已新增显式 conservative Repair Executor，Step 6c 已将 repair behind flag 挂入 GenerationPipeline 并回写 final QA report `asset_semantic_repair` metadata；Step 7 已完成 repair-enabled canary safety 与 release guard；Step 8a 已完成 taxonomy v0.2，只补 `fishbone`、`异星人`、`星空`、`装甲车` 等 unsupported canary wording 的 canonical / synonym normalization。当前结论：P0 closed / ready for resource expansion canary。
-- 后续可作为 Step 8b / Step 8c 独立扩展推进 canary fixture promotion 与第二个 tiny pack 或真实第三方资源包切片；继续保持小包白名单，不做全量导入。
+- 后续可作为 Step 8b / Step 8c 独立扩展推进 canary fixture promotion 与第二个 tiny pack 或真实第三方资源包切片；继续保持小包白名单，不做全量导入。AI Game Art Asset Metadata v0.1 是独立 metadata infrastructure 工作，当前已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests 和 Step 2 validation command，下一步是 Step 3 runtime-safe metadata export。
 - 若转回 DSL-first P1 Step 7，应作为独立扩展继续遵守顺序：contract/runtime/QA 先于 prompt，真实模型链路验证后再沉淀文档。
 
 后续如继续扩展，应继续作为独立 P1/P2 阶段推进，避免把扩展能力混入 P0 收尾：

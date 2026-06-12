@@ -1,0 +1,69 @@
+{
+  "asset_id": "ui_global_icon_inventory_001",
+  "project_code": "ai_game",
+  "asset_type": "ui",
+  "asset_subtype": "icon",
+  "title": "Inventory Icon",
+  "description": "A simple stylized inventory icon for global UI navigation.",
+  "version": "1.0.0",
+  "status": "approved",
+  "semantic": {
+    "world": "global",
+    "genre": ["adventure"],
+    "subject": ["inventory", "bag", "ui_icon"],
+    "semantic_tags": ["inventory", "bag", "ui", "icon", "item_storage"],
+    "visual_style": ["stylized", "toon"],
+    "mood": ["friendly"],
+    "color_palette": ["brown", "gold"],
+    "dominant_colors": ["#8A5A2B", "#D8B45A", "#F2E2A0"]
+  },
+  "gameplay": {
+    "gameplay_role": ["ui", "icon"],
+    "affordances": ["inventory_action", "interactable"],
+    "rarity": "common",
+    "spawnable": false,
+    "allowed_contexts": ["main_hud", "inventory_screen", "pause_menu"],
+    "blocked_contexts": ["diegetic_world_spawn"],
+    "interaction_type": ["open_inventory"]
+  },
+  "technical": {
+    "source_path": "assets/art/ui/icons/inventory_001/inventory.svg",
+    "thumbnail_path": "assets/art/ui/icons/inventory_001/inventory_thumb.png",
+    "file_format": "svg",
+    "engine_targets": ["web"],
+    "platform_budget": ["desktop", "mobile"]
+  },
+  "ai_generation": {
+    "generated_by_ai": true,
+    "ai_system_used": "internal_image_pipeline",
+    "ai_system_version": "v0_3",
+    "prompt_summary": "stylized friendly inventory bag icon for game UI",
+    "human_edit_level": "paintover_minor"
+  },
+  "rights": {
+    "creator": "internal_art_team",
+    "owner": "studio",
+    "license": "internal_project_only",
+    "commercial_use": true,
+    "training_use_allowed": false,
+    "third_party_sources": [],
+    "rights_risk_level": "low"
+  },
+  "workflow": {
+    "owner": "lead_ui_artist",
+    "reviewed_by": "art_director",
+    "created_at": "2026-06-12",
+    "updated_at": "2026-06-12",
+    "approved_at": "2026-06-12"
+  },
+  "relations": {
+    "variant_of": null,
+    "derived_from": [],
+    "depends_on": [],
+    "compatible_with": [],
+    "used_by": ["main_hud"]
+  },
+  "search": {
+    "embedding_input": "stylized inventory bag icon for global game UI navigation and item storage screens"
+  }
+}

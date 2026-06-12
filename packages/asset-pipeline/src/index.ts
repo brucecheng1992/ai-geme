@@ -1,4 +1,40 @@
 export { buildAssetPlanFromIr } from './plan.js';
+export {
+  ArtAssetMetadataSchema,
+  parseArtAssetMetadata,
+  type ArtAssetMetadata
+} from './art-asset-metadata.schema.js';
+export {
+  formatArtAssetMetadataValidationJson,
+  formatArtAssetMetadataValidationText,
+  getArtAssetMetadataValidationExitCode,
+  validateArtAssetMetadataFiles
+} from './art-asset-metadata-validation.js';
+export {
+  ART_ASSET_METADATA_VALIDATION_VERSION,
+  type ArtAssetMetadataValidatedFile,
+  type ArtAssetMetadataValidationDiagnostic,
+  type ArtAssetMetadataValidationDiagnosticCode,
+  type ArtAssetMetadataValidationDiagnosticSeverity,
+  type ArtAssetMetadataValidationExitCode,
+  type ArtAssetMetadataValidationOptions,
+  type ArtAssetMetadataValidationResult
+} from './art-asset-metadata-validation.types.js';
+export {
+  ART_ASSET_CONTROLLED_VOCABULARY,
+  ART_ASSET_AFFORDANCES,
+  ART_ASSET_FILE_FORMATS,
+  ART_ASSET_GAMEPLAY_ROLES,
+  ART_ASSET_HUMAN_EDIT_LEVELS,
+  ART_ASSET_LICENSE_TYPES,
+  ART_ASSET_MOODS,
+  ART_ASSET_RIGHTS_RISK_LEVELS,
+  ART_ASSET_TYPES,
+  ART_ASSET_VISUAL_STYLES,
+  ART_ASSET_WORKFLOW_STATUSES,
+  ArtAssetControlledVocabularySchema,
+  type ArtAssetControlledVocabulary
+} from './art-asset-metadata.vocabulary.js';
 export { selectLocalAssetPack, type LocalAssetSelection } from './local-asset-pack-provider.js';
 export {
   AssetPackProfileSchema,

@@ -8,11 +8,11 @@
 
 ## 当前阶段
 
-Asset Semantic Fidelity Step 8a 已完成：taxonomy v0.2 只补当前 unsupported canary wording 的 canonical / synonym normalization，不接资源、不 promotion fixture、不改变 resolver / QA / Workbench / Phaser / repair 行为。
+Asset Semantic Fidelity Step 8a 已完成：taxonomy v0.2 只补当前 unsupported canary wording 的 canonical / synonym normalization，不接资源、不 promotion fixture、不改变 resolver / QA / Workbench / Phaser / repair 行为。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests 和 Step 2 validation command。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：提交当前 Step 8a；shooter HUD stash 仍作为独立任务处理；Asset Semantic Fidelity 主线后续进入 Step 8b canary fixture promotion，再进入 Step 8c 小包资源扩展 v0.2。不要混入 AI image provider、新资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Asset Semantic Fidelity 主线后续进入 Step 8b canary fixture promotion，再进入 Step 8c 小包资源扩展 v0.2；AI Game Art Asset Metadata v0.1 后续进入 Step 3 runtime-safe metadata export。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、新资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
 
 ### 2.23 Asset Semantic Fidelity Step 8a: Taxonomy v0.2 for Canary Unsupported Concepts
 
@@ -2270,3 +2270,154 @@ Step 9 阶段结果：
 - Oracle 复审：原 P1 已关闭，未发现新的 P0/P1/P2，代码门禁通过。
 - Oracle 只读复现确认：`enemy_cleared target=99` 返回 `UNREACHABLE_OBJECTIVE`；multi-enemy `target_score=14` 返回 `enemy.single_primary` 和 primary wave 不可达错误；multi-projectile 返回 `projectile.single_primary`；primary enemy 可达 `target_score=6` 仍可通过；provider unreachable `target_score=10` 会 normalize 为 `enemy_cleared target=6`。
 - P3：provider 对 shooter 多 enemy/projectile 的顶层 message 仍复用 `Raw Game DSL uses unsupported spawn generation scope.`，但 `issues` 中已有精确原因，不阻塞本次门禁。
+
+### 13. AI Game Art Asset Metadata v0.1 Step 0：需求拆分与文档入口
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- 新增 `docs/refactor-log/ai-game-art-asset-metadata-v0.1-index.md`，把外部 metadata 规范拆成 metadata v0.1 的目标、边界、推荐工程落点和 Step 0-6 分步计划。
+- 新增 `docs/refactor-log/ai-game-art-asset-metadata-v0.1-step-0-requirement-map.md`，记录需求分层、字段范围、runtime export 白名单 / 排除项、非目标和后续 Step 1 边界。
+- 更新 `docs/refactor-log/ai-game-dsl-p0-step-index.md`，增加 Metadata v0.1 独立入口，并把过期的“提交 Step 8a”下一步改成 Asset Semantic Fidelity Step 8b / 8c 与 Metadata v0.1 Step 1 并列说明。
+
+阶段结果：
+
+- 本步只完成文档拆分和门禁入口，不修改源码、测试、脚本、package scripts 或现有 asset pack。
+- 未改变 `AssetPlan`、`AssetManifest`、resolver ranking、fallback、repair、QA、Workbench 或 Phaser runtime。
+- Metadata v0.1 被拆为独立 infrastructure 工作；Asset Semantic Fidelity Step 8b / 8c 仍保留为资源扩展主线，不和 metadata 工作混成一个大改。
+- 文档行数：index 83 行，requirement map 166 行，step index 137 行。
+
+已通过验证：
+
+    git diff --check
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0/P1/P2 均无。
+- Oracle 首轮 P3：Step Index 顶部仍写“提交 Step 8a”，与 Step 8a 已完成及 Metadata v0.1 下一步冲突。
+- 已修复：Step Index 顶部改为并列说明 Asset Semantic Fidelity Step 8b / 8c 和 Metadata v0.1 Step 1。
+- Oracle 复审：P0/P1/P2/P3 均无。
+- 审查模式：Oracle 新建后复用。
+
+当前下一步：
+
+- Metadata v0.1 Step 1：schema / controlled vocabulary / examples / contract tests。
+- Asset Semantic Fidelity 主线若继续扩展，仍先做 Step 8b canary fixture promotion，再做 Step 8c 小包资源扩展。
+
+### 14. AI Game Art Asset Metadata v0.1 Step 1：Schema / Vocabulary / Examples
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- 新增 `packages/asset-pipeline/src/art-asset-metadata.vocabulary.ts`，集中定义 v0.1 controlled vocabulary、Zod vocab schema 和 `ART_ASSET_CONTROLLED_VOCABULARY`。
+- 新增 `packages/asset-pipeline/src/art-asset-metadata.schema.ts`，提供 `ArtAssetMetadataSchema` 和 `parseArtAssetMetadata`。
+- `packages/asset-pipeline/src/index.ts` 导出 metadata schema / vocab。
+- 新增 `assets/metadata/controlled_vocabulary.json`、`assets/metadata/schema/ai_game_art_asset.schema.json` 和 5 个 `assets/metadata/examples/*.asset.json`。
+- 新增 `tests/contracts/art-asset-metadata.test.ts`，覆盖 JSON Schema artifact、vocab 同步、example manifests、invalid enum、required semantic tags、unsafe path 和 slug policy。
+- 新增 `docs/refactor-log/ai-game-art-asset-metadata-v0.1-step-1-schema-vocabulary.md` 记录本步边界、验证和审查结论。
+
+阶段结果：
+
+- Metadata v0.1 已具备 TypeScript/Zod schema、非 TS 工具可读 JSON Schema artifact、controlled vocabulary 和 5 类示例 sidecar manifest。
+- JSON Schema artifact 已补齐与 Zod 对齐的关键约束：asset id、slug、date、safe project-relative path、required/min/max、`additionalProperties: false`、`relations` / `search` shape 和 enum。
+- 本步只新增 metadata contract/export surface；未接 CLI、runtime-safe export、resolver、QA、Workbench 或 Phaser runtime。
+- 文件行数：`art-asset-metadata.vocabulary.ts` 175 行，`art-asset-metadata.schema.ts` 119 行，`art-asset-metadata.test.ts` 211 行；JSON Schema 336 行，属于 declarative schema artifact。
+
+已通过验证：
+
+    npx vitest run tests/contracts/art-asset-metadata.test.ts
+    # 6 个测试通过
+
+    npm run test:contracts
+    # 9 个测试文件，125 个测试通过
+
+    npm test
+    # contracts 125 个测试通过；workspace 125 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无。
+- Oracle 首轮 P1：JSON Schema artifact 弱于 Zod 契约，尤其 path safety、slug pattern、array min/max、relations/search shape。
+- 已修复：JSON Schema 补齐 `$defs.asset_metadata_id`、`$defs.slug`、`$defs.date_string`、`$defs.project_relative_path`，source / thumbnail path 引用 safe path，补齐 required/min/max、`additionalProperties: false`、relations/search shape 和 enum 一致性测试。
+- Oracle 首轮 P2：文档状态仍停在 Step 0；已更新 index、step index、Step 0 文档和本 review log。
+- Oracle 首轮 P3：slug policy 需显式测试，JSON Schema enum 第三份副本需一致性测试；已补测试。
+- Oracle 代码复审：P0/P1/P2/P3 均无。
+- 审查模式：Oracle 新建后复用。
+
+当前下一步：
+
+- Metadata v0.1 Step 3：runtime-safe metadata export，按白名单输出 runtime 可消费字段，并剔除 prompt、seed、review notes、third-party source details 等内部或敏感字段。
+
+### 15. AI Game Art Asset Metadata v0.1 Step 2：Validation Command
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- 新增 `packages/asset-pipeline/src/art-asset-metadata-validation.ts`，提供 `validateArtAssetMetadataFiles`、human / JSON formatter 和 validation exit code helper。
+- 新增 `packages/asset-pipeline/src/art-asset-metadata-validation.types.ts`，固定 validation result、diagnostic 和 exit code 类型。
+- 新增 `packages/asset-pipeline/src/art-asset-metadata-validation.diagnostics.ts`，将 Zod issue 映射为稳定 diagnostic code / `jsonPath` / `assetId`。
+- 新增 `packages/asset-pipeline/src/art-asset-metadata-validation.discovery.ts`，递归发现目录内 `.asset.json` sidecar 文件，并保持确定性排序。
+- `packages/asset-pipeline/src/index.ts` 导出 validation API 和类型。
+- 新增 `scripts/validate-art-asset-metadata.ts`，支持 `--json`、`--check-paths`、`--project-root`、单文件和目录输入。
+- `package.json` 新增 `metadata:validate` 脚本。
+- 新增 `tests/contracts/art-asset-metadata-validation.test.ts`，覆盖 valid examples、missing required field、invalid enum、duplicate `asset_id`、schema-invalid duplicate、malformed JSON、deterministic JSON output、human output 和显式 path existence check。
+- 新增 `tests/contracts/art-asset-metadata-validation-cli.test.ts`，真实执行 CLI，覆盖 usage error / input error 的 exit code 2。
+- 新增 `docs/refactor-log/ai-game-art-asset-metadata-v0.1-step-2-validation-command.md`，记录命令用法、diagnostic contract、exit code 和非目标。
+
+阶段结果：
+
+- CLI exit code 固定为：0 valid，1 validation diagnostics，2 CLI usage / internal error。
+- Diagnostic contract 固定包含 `severity`、`code`、`message`、`filePath`，并在可定位时提供 `jsonPath` 和 `assetId`。
+- 默认只校验 Step 1 schema 要求的 safe project-relative path；`source_path` / `thumbnail_path` 文件存在性必须显式传 `--check-paths` 才会检查。
+- 本步只新增 metadata validation infrastructure；未接 runtime-safe export、existing asset pack bridge、resolver、QA、Workbench、Phaser runtime、数据库、UI 或 runtime loader。
+- Step 2 固定验收口径已写入步骤文档：P0 重点守住 invalid metadata 不误过、duplicate `asset_id` 必检、diagnostics 不得 exit 0、不得 import / mutate runtime-resolver-Workbench 链路、JSON Schema artifact 不得弱于 Zod contract；P1 重点守住 diagnostics 稳定、JSON output deterministic、path checks 显式开启、validation 复用 Step 1 contract layer。
+- 当前顺序固定为 Step 0 文档规则、Step 1 数据契约、Step 2 validation command、Step 3 runtime-safe export、Step 4 asset pack metadata bridge / resolver diagnostics；Step 2 只做门禁，不做消费方。
+- 文件规模：validation API 207 行，diagnostics 92 行，discovery 63 行，types 46 行，CLI 85 行，validation test 206 行，CLI test 78 行。
+
+已通过验证：
+
+    npx vitest run tests/contracts/art-asset-metadata-validation.test.ts tests/contracts/art-asset-metadata-validation-cli.test.ts
+    # 2 个测试文件，12 个测试通过
+
+    npx vitest run tests/contracts/art-asset-metadata.test.ts
+    # 6 个测试通过
+
+    npm run test:contracts
+    # 11 个测试文件，137 个测试通过
+
+    npm test
+    # contracts 137 个测试通过；workspace 125 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    npm run metadata:validate -- assets/metadata/examples
+    # OK 5 metadata files
+
+    npm run metadata:validate -- --json assets/metadata/examples
+    # 输出 version=art-asset-metadata-validation-v0.1、ok=true、5 个 files、diagnostics=[]
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；确认未越界到 runtime、resolver、QA、Workbench、Phaser 或 existing asset pack。
+- Oracle 首轮 P1：input / usage 类错误会返回 1，无法和 validation errors 区分；duplicate `asset_id` 只覆盖 schema-valid 文件。
+- 已修复：`ArtAssetMetadataValidationExitCode` 扩为 `0 | 1 | 2`，input / usage diagnostics 返回 2；duplicate detection 改为 JSON parse 成功且 `asset_id` 是 string 后即收集，不依赖 schema 成功。
+- Oracle 首轮 P2：缺少真实 CLI exit code 回归测试；human output 对非法文件显示 `0 metadata files`。
+- 已修复：新增 CLI contract test 覆盖 unknown flag、缺 `--project-root` value 和 missing input path 的 exit code 2；`files` 现在记录发现到的 sidecar 文件，human summary 对非法文件也显示正确文件数。
+- Oracle 首轮 P3：missing required field 分类依赖 Zod message 文本。
+- 已修复：required field 判断改为基于原始 JSON path 是否存在。
+- Oracle 复审：上一轮 P1/P2/P3 均关闭，未发现新的 P0/P1/P2。
+- 审查模式：Oracle 新建后复用。
+
+当前下一步：
+
+- Metadata v0.1 Step 3：runtime-safe metadata export，按白名单输出 runtime 可消费字段，并剔除 prompt、negative prompt、seed、review notes、third-party source details 等内部或敏感字段。

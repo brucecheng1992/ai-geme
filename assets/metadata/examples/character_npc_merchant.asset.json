@@ -1,0 +1,74 @@
+{
+  "asset_id": "char_forest_npc_merchant_001",
+  "project_code": "ai_game",
+  "asset_type": "character",
+  "asset_subtype": "npc",
+  "title": "Forest Village Merchant",
+  "description": "A friendly merchant NPC for cozy fantasy forest village market scenes.",
+  "version": "1.0.0",
+  "status": "approved",
+  "semantic": {
+    "world": "forest_village",
+    "genre": ["cozy_fantasy", "adventure"],
+    "subject": ["merchant", "villager", "shopkeeper"],
+    "semantic_tags": ["merchant", "villager", "friendly", "forest", "shopkeeper", "npc"],
+    "visual_style": ["stylized", "hand_painted"],
+    "mood": ["friendly", "warm"],
+    "color_palette": ["earth_tone", "green", "brown"],
+    "dominant_colors": ["#6B4F2A", "#7F9B56", "#D7B98E"]
+  },
+  "gameplay": {
+    "gameplay_role": ["npc", "vendor", "quest_giver"],
+    "affordances": ["talkable", "trading", "idle_animation"],
+    "biome": ["forest"],
+    "faction": "village",
+    "rarity": "common",
+    "spawnable": true,
+    "allowed_contexts": ["village_market", "shop", "quest_hub"],
+    "blocked_contexts": ["combat_boss_arena", "horror_scene"],
+    "interaction_type": ["talk", "trade"]
+  },
+  "technical": {
+    "source_path": "assets/art/characters/merchant_001/merchant_001.png",
+    "thumbnail_path": "assets/art/characters/merchant_001/merchant_001_thumb.png",
+    "file_format": "png",
+    "engine_targets": ["web"],
+    "platform_budget": ["desktop", "mobile"]
+  },
+  "ai_generation": {
+    "generated_by_ai": true,
+    "ai_system_used": "internal_image_pipeline",
+    "ai_system_version": "v0_3",
+    "prompt_summary": "friendly stylized merchant NPC with warm forest village colors",
+    "negative_prompt_summary": "no weapons, no horror elements, no modern clothing",
+    "seed": "123456",
+    "human_edit_level": "paintover_minor"
+  },
+  "rights": {
+    "creator": "internal_art_team",
+    "owner": "studio",
+    "license": "internal_project_only",
+    "commercial_use": true,
+    "training_use_allowed": false,
+    "third_party_sources": [],
+    "rights_risk_level": "low"
+  },
+  "workflow": {
+    "owner": "lead_character_artist",
+    "reviewed_by": "art_director",
+    "review_notes": "Approved for non-combat village scenes.",
+    "created_at": "2026-06-12",
+    "updated_at": "2026-06-12",
+    "approved_at": "2026-06-12"
+  },
+  "relations": {
+    "variant_of": null,
+    "derived_from": [],
+    "depends_on": [],
+    "compatible_with": [],
+    "used_by": ["quest_intro_market_01"]
+  },
+  "search": {
+    "embedding_input": "friendly stylized merchant NPC for cozy fantasy forest village market vendor and quest giver scenes"
+  }
+}

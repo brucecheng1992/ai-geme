@@ -1,0 +1,71 @@
+{
+  "asset_id": "env_forest_area_clearing_001",
+  "project_code": "ai_game",
+  "asset_type": "environment",
+  "asset_subtype": "area",
+  "title": "Forest Clearing Background",
+  "description": "A peaceful stylized forest clearing background for top-down cozy scenes.",
+  "version": "1.0.0",
+  "status": "approved",
+  "semantic": {
+    "world": "forest_village",
+    "genre": ["cozy_fantasy", "adventure"],
+    "subject": ["forest", "clearing", "background"],
+    "semantic_tags": ["forest", "clearing", "grass", "path", "background"],
+    "visual_style": ["stylized", "hand_painted"],
+    "mood": ["peaceful", "warm"],
+    "color_palette": ["green", "earth_tone"],
+    "dominant_colors": ["#4F8A3D", "#8BAA5A", "#C8B071"]
+  },
+  "gameplay": {
+    "gameplay_role": ["environment", "decoration"],
+    "affordances": ["ambient", "decorative"],
+    "biome": ["forest"],
+    "rarity": "common",
+    "spawnable": false,
+    "allowed_contexts": ["forest_village", "forest_camp", "village_market"],
+    "blocked_contexts": ["sci_fi_city", "space_battle"],
+    "interaction_type": []
+  },
+  "technical": {
+    "source_path": "assets/art/environments/forest_clearing_001/forest_clearing.png",
+    "thumbnail_path": "assets/art/environments/forest_clearing_001/forest_clearing_thumb.png",
+    "file_format": "png",
+    "engine_targets": ["web"],
+    "platform_budget": ["desktop", "mobile"]
+  },
+  "ai_generation": {
+    "generated_by_ai": true,
+    "ai_system_used": "internal_image_pipeline",
+    "ai_system_version": "v0_3",
+    "prompt_summary": "stylized hand-painted forest clearing background with warm path",
+    "negative_prompt_summary": "no sci-fi props, no horror mood",
+    "human_edit_level": "paintover_minor"
+  },
+  "rights": {
+    "creator": "internal_art_team",
+    "owner": "studio",
+    "license": "internal_project_only",
+    "commercial_use": true,
+    "training_use_allowed": false,
+    "third_party_sources": [],
+    "rights_risk_level": "low"
+  },
+  "workflow": {
+    "owner": "lead_environment_artist",
+    "reviewed_by": "art_director",
+    "created_at": "2026-06-12",
+    "updated_at": "2026-06-12",
+    "approved_at": "2026-06-12"
+  },
+  "relations": {
+    "variant_of": null,
+    "derived_from": [],
+    "depends_on": [],
+    "compatible_with": ["char_forest_npc_merchant_001"],
+    "used_by": []
+  },
+  "search": {
+    "embedding_input": "peaceful stylized forest clearing background for cozy fantasy top-down village scenes"
+  }
+}
