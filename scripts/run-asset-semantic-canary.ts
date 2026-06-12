@@ -12,7 +12,7 @@ import { GameBriefSchema, RawGameDslSchema } from '../packages/game-dsl/src/inde
 import { TemplateCompilerService } from '../apps/maker-api/src/compiler/template-compiler.service.js';
 import { ViteBuildRunnerService } from '../apps/maker-api/src/compiler/vite-build-runner.service.js';
 import type { CommandRunner } from '../apps/maker-api/src/compiler/compiler.types.js';
-import { GenerationPipelineService } from '../apps/maker-api/src/projects/generation-pipeline.service.js';
+import { GenerationPipelineService, type AssetSemanticRepairConfig } from '../apps/maker-api/src/projects/generation-pipeline.service.js';
 import { ProjectStoreService } from '../apps/maker-api/src/projects/project-store.service.js';
 import { ProjectsService } from '../apps/maker-api/src/projects/projects.service.js';
 import { RunStoreService } from '../apps/maker-api/src/projects/run-store.service.js';
@@ -28,21 +28,23 @@ import {
   type AssetSemanticCanaryBrief,
   type AssetSemanticCanaryExecution
 } from './asset-semantic-canary-report.js';
-
-type CliOptions = {
-  fixturePath: string;
-  outputRoot: string;
-  includeUnsupported: boolean;
-  allowNetwork: boolean;
-  caseId?: string;
-  limit?: number;
-  timestamp: string;
-};
+import {
+  parseAssetSemanticCanaryArgs,
+  printAssetSemanticCanaryHelp,
+  resolveCanaryAssetSemanticRepairConfig,
+  type AssetSemanticCanaryCliOptions
+} from './asset-semantic-canary-options.js';
 
 const workspace = new LocalWorkspaceService(process.cwd());
 
 async function main(): Promise<void> {
-  const options = parseArgs(process.argv.slice(2));
+  const parsedOptions = parseAssetSemanticCanaryArgs(process.argv.slice(2));
+  if (parsedOptions === 'help') {
+    printAssetSemanticCanaryHelp();
+    process.exit(0);
+  }
+
+  const options = parsedOptions;
   const fixture = AssetSemanticCanaryBriefsSchema.parse(JSON.parse(await readFile(options.fixturePath, 'utf8')));
   const outputDir = join(options.outputRoot, options.timestamp);
   const selected = selectAssetSemanticCanaryBriefs(fixture, {
@@ -55,6 +57,7 @@ async function main(): Promise<void> {
   const skippedById = new Map(selected.skipped.map((item) => [item.brief.id, item.reason]));
   const executions: AssetSemanticCanaryExecution[] = [];
   const createdAt = new Date().toISOString();
+  const assetSemanticRepairConfig = resolveCanaryAssetSemanticRepairConfig(options);
   const previousPreviewBaseUrl = process.env.PREVIEW_BASE_URL;
   const server = await startPreviewServer();
   process.env.PREVIEW_BASE_URL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -72,7 +75,7 @@ async function main(): Promise<void> {
       }
 
       if (runnableIds.has(brief.id)) {
-        executions.push(await runCanaryCase(brief, index, options));
+        executions.push(await runCanaryCase(brief, index, options, assetSemanticRepairConfig));
       }
     }
   } finally {
@@ -84,6 +87,7 @@ async function main(): Promise<void> {
     fixturePath: options.fixturePath,
     outputDir,
     includeUnsupported: options.includeUnsupported,
+    repairEnabled: assetSemanticRepairConfig.enabled,
     createdAt,
     executions
   });
@@ -94,11 +98,17 @@ async function main(): Promise<void> {
 
   console.log(`Asset semantic canary summary written to ${outputDir}`);
   console.log(`runnable=${summary.runnable} skipped=${summary.skipped} experimental=${summary.experimental} passed=${summary.passed} failed=${summary.failed}`);
+  console.log(`repair.enabled=${summary.repair.enabled} repair.attemptedCount=${summary.repair.attemptedCount} repair.failedCount=${summary.repair.failedCount}`);
 
   process.exitCode = summary.exitCode;
 }
 
-async function runCanaryCase(brief: AssetSemanticCanaryBrief, index: number, options: CliOptions): Promise<AssetSemanticCanaryExecution> {
+async function runCanaryCase(
+  brief: AssetSemanticCanaryBrief,
+  index: number,
+  options: AssetSemanticCanaryCliOptions,
+  assetSemanticRepairConfig: AssetSemanticRepairConfig
+): Promise<AssetSemanticCanaryExecution> {
   const projectId = `proj_canary_${options.timestamp}_${String(index + 1).padStart(2, '0')}_${brief.id}`;
   const runId = `run_canary_${options.timestamp}_${String(index + 1).padStart(2, '0')}_${brief.id}`;
   const projectStore = new ProjectStoreService(workspace);
@@ -114,7 +124,8 @@ async function runCanaryCase(brief: AssetSemanticCanaryBrief, index: number, opt
       createCanaryProvider(brief),
       new TemplateCompilerService(workspace),
       new ViteBuildRunnerService(workspace, createCanaryCommandRunner(options.allowNetwork)),
-      new PlaywrightQaRunnerService(workspace, new PlayableQaGateService())
+      new PlaywrightQaRunnerService(workspace, new PlayableQaGateService()),
+      assetSemanticRepairConfig
     ),
     () => ({ projectId, runId })
   );
@@ -285,77 +296,6 @@ async function closeServer(server: Server): Promise<void> {
   await new Promise<void>((resolveClose, rejectClose) => {
     server.close((error) => (error ? rejectClose(error) : resolveClose()));
   });
-}
-
-function parseArgs(args: string[]): CliOptions {
-  const options: CliOptions = {
-    fixturePath: 'tests/fixtures/asset-semantic-canary.briefs.json',
-    outputRoot: 'artifacts/asset-semantic-canary',
-    includeUnsupported: false,
-    allowNetwork: false,
-    timestamp: compactTimestamp(new Date())
-  };
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === '--include-unsupported') {
-      options.includeUnsupported = true;
-    } else if (arg === '--allow-network') {
-      options.allowNetwork = true;
-    } else if (arg === '--case') {
-      options.caseId = requireValue(args, (index += 1), arg);
-    } else if (arg === '--limit') {
-      options.limit = parsePositiveInteger(requireValue(args, (index += 1), arg), arg);
-    } else if (arg === '--fixture') {
-      options.fixturePath = requireValue(args, (index += 1), arg);
-    } else if (arg === '--output-root') {
-      options.outputRoot = requireValue(args, (index += 1), arg);
-    } else if (arg === '--timestamp') {
-      options.timestamp = requireValue(args, (index += 1), arg);
-    } else if (arg === '--help') {
-      printHelp();
-      process.exit(0);
-    } else {
-      throw new Error(`Unknown argument: ${arg}`);
-    }
-  }
-
-  return options;
-}
-
-function printHelp(): void {
-  console.log(`Usage: npm run qa:asset-semantic:canary -- [options]
-
-Options:
-  --include-unsupported   Run expectedUnsupported canaries instead of skipping them.
-  --case <id>             Run one canary case by id.
-  --limit <n>             Run the first n selected canaries for smoke checks.
-  --allow-network         Allow npm install to use the network. Default adds --offline.
-  --fixture <path>        Fixture path. Defaults to tests/fixtures/asset-semantic-canary.briefs.json.
-  --output-root <path>    Output root. Defaults to artifacts/asset-semantic-canary.
-  --timestamp <value>     Override output timestamp for repeatable local runs.
-`);
-}
-
-function requireValue(args: string[], index: number, flag: string): string {
-  const value = args[index];
-  if (value === undefined || value.startsWith('--')) {
-    throw new Error(`Expected a value after ${flag}`);
-  }
-  return value;
-}
-
-function parsePositiveInteger(value: string, flag: string): number {
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isInteger(parsed) || parsed < 1) {
-    throw new Error(`Expected a positive integer after ${flag}`);
-  }
-
-  return parsed;
-}
-
-function compactTimestamp(date: Date): string {
-  return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
 }
 
 function restorePreviewBaseUrl(value: string | undefined): void {

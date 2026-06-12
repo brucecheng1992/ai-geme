@@ -8,11 +8,83 @@
 
 ## 当前阶段
 
-Asset Semantic Fidelity Step 6c 已完成：semantic asset repair 已 behind flag 挂入 GenerationPipeline；默认成功路径保持关闭。
+Asset Semantic Fidelity Step 7 已完成：repair-enabled canary safety 与 release guard 已落地；默认和 repair-enabled canary 均通过，Asset Semantic Fidelity 标记为 P0 closed / ready for resource expansion canary。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Asset Semantic Fidelity Step 7：回归批量验收；仍不要接入 AI image provider、新资源库、taxonomy expansion 或 provider survive_duration 修复。
+当前下一步：提交当前 Step 7 后，优先恢复/处理 shooter HUD stash 的独立 PR；资源库扩展进入 Step 8: Canary asset pack expansion v0.2；技术债治理可作为 Step 8a/8b 拆分 `generation-pipeline.service.ts` 和对应测试。不要混入 AI image provider、新资源库、taxonomy expansion 或 provider survive_duration 修复。
+
+### 2.22 Asset Semantic Fidelity Step 7: Repair-Enabled Canary Safety + Release Guard
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- `scripts/run-asset-semantic-canary.ts` 新增 `--repair-enabled`，显式开启时把 `AssetSemanticRepairConfig` 传入 `GenerationPipelineService`，并强制 `maxAttempts=1`。
+- 新增 `scripts/asset-semantic-canary-options.ts`，把 runner CLI parsing / help / repair config resolver 提炼为无副作用纯模块，便于合约测试覆盖 default、`--repair-enabled`、env 等价开启和 parser 错误。
+- 未传 `--repair-enabled` 时继续读取既有 `readAssetSemanticRepairConfig()`；默认环境下 repair 仍关闭，env 等价路径仍可生效。
+- `scripts/asset-semantic-canary-report.ts` 开始解析最终 QA report 的 optional `asset_semantic_repair` metadata。
+- `summary.json` 新增顶层 `repair` 聚合对象，并提供 `repairEnabled`、`repairAttempted`、`repairAttemptedCount`、`repairSucceededCount`、`repairFailedCount`、`repairSkippedReasons` 顶层 release guard 别名。
+- `repairFailedCount > 0` 会让 supported summary 失败；successful repair attempt 会被记录为 `repairAttemptedCount > 0` / `repairSucceededCount > 0`，但不自动失败。
+- 每个 completed case 新增 `repair` metadata；旧 QA report 缺少 repair metadata 时兼容为 `attempted=false`、`skippedReason="missing_repair_metadata"`，不让历史 report 解析失败。
+- `summary.md` 新增 `## Repair`、`## Repair skipped reasons`，case table 新增 repair 列。
+- 扩展 `tests/contracts/asset-semantic-canary-runner.test.ts`，覆盖 runner default repair disabled、`--repair-enabled` enabled、env 等价开启、parser `--help` / unknown arg / timestamp override / missing flag value、repair-enabled green no-attempt pass、repair attempted success、repair failure fail summary、expectedUnsupported 默认跳过、`--include-unsupported --repair-enabled` 标为 experimental、旧 report 兼容、missing metadata、Markdown repair sections。
+- 扩展 `tests/workspace/generation-pipeline.service.test.ts` 的 synthetic hard mismatch repair case：repair 后 QA rerun 返回 `PLAYABLE_WITH_FALLBACK_ASSETS`，并断言 `maxAttempts=1`、before/after status、role / expectedConcept / previous semantic fit / repaired requirement metadata。
+
+阶段结果：
+
+- 解决层级：边界适配 + release guard observability；未改变 repair planner / executor / pipeline 触发规则本身。
+- 默认 canary：`artifacts/asset-semantic-canary/20260612T085457Z`，`total=14 runnable=9 skipped=5 experimental=0 passed=9 failed=0`，`repair.enabled=false repair.attemptedCount=0 repair.failedCount=0`。
+- repair-enabled canary：`artifacts/asset-semantic-canary/20260612T085600Z`，`total=14 runnable=9 skipped=5 experimental=0 passed=9 failed=0`，`repair.enabled=true repair.attemptedCount=0 repair.failedCount=0`，`repair.skippedReasons.no_asset_semantic_repair_needed=9`。
+- 未修改 resolver ranking、Step 3 hard gate、fallback 策略、QA status 聚合、Workbench 大 UI、Phaser runtime、taxonomy、新资源库、AI image provider 或 provider `survive_duration`。
+- 未修改 `templates/phaser/shooter/src/GameScene.ts`、`templates/phaser/shooter/src/shooter-renderer.ts` 或 `tests/contracts/phaser-templates.test.ts`。
+
+已通过验证（本步实际执行）：
+
+    npx vitest run tests/contracts/asset-semantic-canary-runner.test.ts tests/workspace/generation-pipeline.service.test.ts
+    # 2 个测试文件，35 个测试通过
+
+    npx vitest run tests/contracts/asset-semantic-canary-runner.test.ts
+    # 1 个测试文件，17 个测试通过
+
+    npx vitest run tests/workspace/generation-pipeline.service.test.ts
+    # 1 个测试文件，19 个测试通过
+
+    npx vitest run tests/contracts/asset-repair-plan.test.ts tests/contracts/asset-repair-executor.test.ts
+    # 2 个测试文件，11 个测试通过
+
+    npm run typecheck:root
+    # 通过
+
+    npm test
+    # contracts: 8 个测试文件，116 个测试通过
+    # workspace: 12 个测试文件，125 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    npm run qa:asset-semantic:canary
+    # summary 写入 artifacts/asset-semantic-canary/20260612T085457Z
+    # runnable=9 skipped=5 experimental=0 passed=9 failed=0
+    # repair.enabled=false repair.attemptedCount=0 repair.failedCount=0
+
+    npm run qa:asset-semantic:canary -- --repair-enabled
+    # summary 写入 artifacts/asset-semantic-canary/20260612T085600Z
+    # runnable=9 skipped=5 experimental=0 passed=9 failed=0
+    # repair.enabled=true repair.attemptedCount=0 repair.failedCount=0
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 预审：P0 红线确认，建议最小影响面限定在 canary runner / summary / pipeline 测试 / 文档，不触碰 resolver、hard gate、fallback、QA 聚合、Workbench、Phaser runtime、taxonomy、资源库或 AI image provider。
+- Oracle 代码审查：P0/P1/P2 均无；P3 指出 `repairSucceededCount` 对 attempted 但缺 after status 的坏 metadata 计数偏宽。
+- 已处理：新增 `isRepairSuccess()`，只有 repair 后 `afterOverallStatus` 为 playable 类状态且 `afterAssetSemanticStatus` 为 `PASSED` / `WARNING` 时才计入 succeeded；`afterOverallStatus="NEEDS_ASSET_REPAIR"` / `QA_FAILED` 计入 failed；补充 `repair_incomplete_metadata_case` 测试。
+- Oracle 复审：P0/P1/P2/P3 均无；确认上一轮 P3 已关闭。
+- Oracle 补测审查：P0/P1/P2 均无；P3 建议补 parser 纯单测并将三份 refactor 文档纳入复审。
+- 已处理：补充 `--help`、unknown arg、`--timestamp` override、缺失 flag value parser 测试，并复跑 runner contract test 与 root typecheck。
+- 审查模式：Oracle 复用。
 
 ### 2.21 Asset Semantic Fidelity Step 6c: Repair Pipeline Integration Behind Flag
 

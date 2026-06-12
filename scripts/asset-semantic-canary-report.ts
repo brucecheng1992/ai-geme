@@ -70,6 +70,34 @@ const QaSemanticIssueSchema = z
   })
   .passthrough();
 const QaAssetFailureSchema = z.strictObject({ code: z.string(), asset_ids: z.array(z.string()).optional() }).passthrough();
+const QaAssetSemanticRepairRequirementSchema = z
+  .strictObject({
+    requirementId: z.string(),
+    role: z.string(),
+    expectedConcept: z.string().optional(),
+    previousAssetId: z.string().optional(),
+    previousSource: z.string().optional(),
+    previousSemanticFitStatus: z.string().optional(),
+    action: z.string().optional(),
+    newAssetId: z.string().optional(),
+    newSource: z.string().optional(),
+    newSemanticFitStatus: z.string().optional()
+  })
+  .passthrough();
+const QaAssetSemanticRepairSchema = z
+  .strictObject({
+    enabled: z.boolean(),
+    attempted: z.boolean(),
+    skippedReason: z.string().optional(),
+    attemptCount: z.number().int().min(0).optional(),
+    beforeOverallStatus: z.string().optional(),
+    beforeAssetSemanticStatus: z.string().optional(),
+    afterOverallStatus: z.string().optional(),
+    afterAssetSemanticStatus: z.string().optional(),
+    repairedRequirements: z.array(QaAssetSemanticRepairRequirementSchema).optional(),
+    failureReasons: z.array(z.string()).optional()
+  })
+  .passthrough();
 const QaAssetReportSchema = z
   .strictObject({
     missing: z.array(z.string()).default([]),
@@ -85,6 +113,7 @@ const MinimalQaReportSchema = z
     runtime_status: RuntimeStatusSchema,
     asset_semantic_status: AssetSemanticStatusSchema,
     overall_status: OverallStatusSchema,
+    asset_semantic_repair: QaAssetSemanticRepairSchema.optional(),
     asset_report: QaAssetReportSchema.optional()
   })
   .passthrough();
@@ -116,6 +145,12 @@ export type AssetSemanticCanarySummary = {
   skipped: number;
   experimental: number;
   exitCode: number;
+  repairEnabled: boolean;
+  repairAttempted: boolean;
+  repairAttemptedCount: number;
+  repairSucceededCount: number;
+  repairFailedCount: number;
+  repairSkippedReasons: Record<string, number>;
   counts: {
     playable: number;
     playableWithFallbackAssets: number;
@@ -130,7 +165,30 @@ export type AssetSemanticCanarySummary = {
     requiredAssetMissing: number;
     assetLoadFailures: number;
   };
+  repair: {
+    enabled: boolean;
+    attemptedCount: number;
+    succeededCount: number;
+    failedCount: number;
+    skippedCount: number;
+    skippedReasons: Record<string, number>;
+  };
   cases: AssetSemanticCanaryCaseSummary[];
+};
+
+export type AssetSemanticCanaryRepairRequirementSummary = z.infer<typeof QaAssetSemanticRepairRequirementSchema>;
+
+export type AssetSemanticCanaryCaseRepairSummary = {
+  enabled: boolean;
+  attempted: boolean;
+  attemptCount?: number;
+  skippedReason?: string;
+  beforeOverallStatus?: string;
+  beforeAssetSemanticStatus?: string;
+  afterOverallStatus?: string;
+  afterAssetSemanticStatus?: string;
+  repairedRequirements?: AssetSemanticCanaryRepairRequirementSummary[];
+  failureReasons?: string[];
 };
 
 export type AssetSemanticCanaryCaseSummary = {
@@ -155,6 +213,7 @@ export type AssetSemanticCanaryCaseSummary = {
   reportPath?: string;
   manifestPath?: string;
   qaReportPath?: string;
+  repair?: AssetSemanticCanaryCaseRepairSummary;
   pass: boolean;
   failureReasons?: string[];
 };
@@ -190,13 +249,15 @@ export function buildAssetSemanticCanarySummary(input: {
   fixturePath: string;
   outputDir: string;
   includeUnsupported: boolean;
+  repairEnabled: boolean;
   createdAt: string;
   executions: AssetSemanticCanaryExecution[];
 }): AssetSemanticCanarySummary {
-  const records = input.executions.map(summarizeExecution);
+  const records = input.executions.map((execution) => summarizeExecution(execution, input.repairEnabled));
   const cases = records.map((record) => record.summary);
   const runnableCases = cases.filter((item) => !item.skipped);
   const supportedFailures = runnableCases.filter((item) => !item.experimental && !item.pass);
+  const repair = summarizeRepair(cases, input.repairEnabled);
 
   return {
     version: 'asset-semantic-canary-v0.1',
@@ -209,6 +270,12 @@ export function buildAssetSemanticCanarySummary(input: {
     skipped: cases.filter((item) => item.skipped).length,
     experimental: runnableCases.filter((item) => item.experimental === true).length,
     exitCode: supportedFailures.length > 0 ? 1 : 0,
+    repairEnabled: repair.enabled,
+    repairAttempted: repair.attemptedCount > 0,
+    repairAttemptedCount: repair.attemptedCount,
+    repairSucceededCount: repair.succeededCount,
+    repairFailedCount: repair.failedCount,
+    repairSkippedReasons: repair.skippedReasons,
     counts: {
       playable: countOverall(cases, 'PLAYABLE'),
       playableWithFallbackAssets: countOverall(cases, 'PLAYABLE_WITH_FALLBACK_ASSETS'),
@@ -223,6 +290,7 @@ export function buildAssetSemanticCanarySummary(input: {
       requiredAssetMissing: sumCases(cases, 'requiredAssetMissingCount'),
       assetLoadFailures: sumCases(cases, 'assetLoadFailureCount')
     },
+    repair,
     cases
   };
 }
@@ -230,9 +298,14 @@ export function buildAssetSemanticCanarySummary(input: {
 export function renderAssetSemanticCanaryMarkdown(summary: AssetSemanticCanarySummary): string {
   const caseRows = summary.cases
     .map((item) =>
-      `| ${item.id} | ${item.overallStatus ?? '-'} | ${item.runtimeStatus ?? '-'} | ${item.assetSemanticStatus ?? '-'} | ${item.pass ? 'yes' : 'no'} | ${item.selectedPacks?.join(', ') || '-'} | ${item.failureReasons?.join('; ') || item.skipReason || '-'} |`
+      `| ${item.id} | ${item.overallStatus ?? '-'} | ${item.runtimeStatus ?? '-'} | ${item.assetSemanticStatus ?? '-'} | ${item.pass ? 'yes' : 'no'} | ${item.selectedPacks?.join(', ') || '-'} | ${repairLabel(item.repair)} | ${item.failureReasons?.join('; ') || item.skipReason || '-'} |`
     )
     .join('\n');
+  const repairSkippedReasonRows =
+    Object.entries(summary.repair.skippedReasons)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([reason, count]) => `- ${reason}: ${count}`)
+      .join('\n') || '- None';
   const skippedRows = summary.cases.filter((item) => item.skipped).map((item) => `- ${item.id}: ${item.skipReason ?? 'skipped'}`).join('\n') || '- None';
   const failureRows =
     summary.cases
@@ -262,9 +335,19 @@ Total / runnable / passed / failed / skipped / experimental: ${summary.total} / 
 - required asset missing: ${summary.counts.requiredAssetMissing}
 - asset load failures: ${summary.counts.assetLoadFailures}
 
+## Repair
+- Enabled: ${summary.repair.enabled}
+- Attempted: ${summary.repair.attemptedCount}
+- Succeeded: ${summary.repair.succeededCount}
+- Failed: ${summary.repair.failedCount}
+- Skipped: ${summary.repair.skippedCount}
+
+## Repair skipped reasons
+${repairSkippedReasonRows}
+
 ## Cases
-| id | overall | runtime | asset semantic | pass | selected packs | failure reasons |
-| --- | --- | --- | --- | --- | --- | --- |
+| id | overall | runtime | asset semantic | pass | selected packs | repair | failure reasons |
+| --- | --- | --- | --- | --- | --- | --- | --- |
 ${caseRows}
 
 ## Skipped
@@ -280,7 +363,7 @@ ${failureRows}
 `;
 }
 
-function summarizeExecution(execution: AssetSemanticCanaryExecution): AssetSemanticCanaryCaseRecord {
+function summarizeExecution(execution: AssetSemanticCanaryExecution, repairEnabled: boolean): AssetSemanticCanaryCaseRecord {
   if (execution.state === 'skipped') {
     return {
       summary: {
@@ -298,7 +381,8 @@ function summarizeExecution(execution: AssetSemanticCanaryExecution): AssetSeman
   const qaReport = MinimalQaReportSchema.safeParse(execution.qaReport);
   const manifest = MinimalManifestSchema.safeParse(execution.assetManifest);
   const counts = countArtifacts(qaReport.success ? qaReport.data : undefined, manifest.success ? manifest.data : undefined);
-  const failureReasons = qaReport.success ? evaluateFailures(execution.brief, qaReport.data, counts) : ['QA report is missing or invalid'];
+  const repair = normalizeRepairReport(qaReport.success ? qaReport.data : undefined, repairEnabled);
+  const failureReasons = qaReport.success ? evaluateFailures(execution.brief, qaReport.data, counts, repair) : ['QA report is missing or invalid'];
   if (execution.error !== undefined) {
     failureReasons.push(`${execution.error.code}: ${execution.error.message}`);
   }
@@ -325,6 +409,7 @@ function summarizeExecution(execution: AssetSemanticCanaryExecution): AssetSeman
       reportPath: execution.reportPath,
       manifestPath: execution.manifestPath,
       qaReportPath: execution.qaReportPath,
+      repair,
       pass: failureReasons.length === 0,
       failureReasons: failureReasons.length > 0 ? failureReasons : undefined
     },
@@ -332,7 +417,93 @@ function summarizeExecution(execution: AssetSemanticCanaryExecution): AssetSeman
   };
 }
 
-function evaluateFailures(brief: AssetSemanticCanaryBrief, qaReport: z.infer<typeof MinimalQaReportSchema>, counts: ArtifactCounts): string[] {
+function normalizeRepairReport(
+  qaReport: z.infer<typeof MinimalQaReportSchema> | undefined,
+  repairEnabled: boolean
+): AssetSemanticCanaryCaseRepairSummary {
+  const reported = qaReport?.asset_semantic_repair;
+  if (reported === undefined) {
+    return {
+      enabled: repairEnabled,
+      attempted: false,
+      skippedReason: 'missing_repair_metadata'
+    };
+  }
+
+  return {
+    enabled: reported.enabled,
+    attempted: reported.attempted,
+    attemptCount: reported.attemptCount,
+    skippedReason: reported.skippedReason ?? (reported.attempted ? undefined : 'not_reported'),
+    beforeOverallStatus: reported.beforeOverallStatus,
+    beforeAssetSemanticStatus: reported.beforeAssetSemanticStatus,
+    afterOverallStatus: reported.afterOverallStatus,
+    afterAssetSemanticStatus: reported.afterAssetSemanticStatus,
+    repairedRequirements: reported.repairedRequirements,
+    failureReasons: reported.failureReasons
+  };
+}
+
+function summarizeRepair(cases: AssetSemanticCanaryCaseSummary[], repairEnabled: boolean): AssetSemanticCanarySummary['repair'] {
+  const repairs = cases.map((item) => item.repair).filter((repair) => repair !== undefined);
+  const attempted = repairs.filter((repair) => repair.attempted);
+  const succeeded = attempted.filter(isRepairSuccess);
+  const failed = attempted.filter(isRepairFailure);
+  const skippedReasons: Record<string, number> = {};
+
+  for (const repair of repairs) {
+    if (repair.attempted || repair.skippedReason === undefined) {
+      continue;
+    }
+
+    skippedReasons[repair.skippedReason] = (skippedReasons[repair.skippedReason] ?? 0) + 1;
+  }
+
+  return {
+    enabled: repairEnabled || repairs.some((repair) => repair.enabled),
+    attemptedCount: attempted.length,
+    succeededCount: succeeded.length,
+    failedCount: failed.length,
+    skippedCount: repairs.filter((repair) => !repair.attempted).length,
+    skippedReasons
+  };
+}
+
+function isRepairFailure(repair: AssetSemanticCanaryCaseRepairSummary): boolean {
+  const failedSkippedReasons = new Set(['repair_execution_failed', 'repair_rebuild_failed', 'repair_execution_not_repaired']);
+  return (
+    (repair.skippedReason !== undefined && failedSkippedReasons.has(repair.skippedReason)) ||
+    repair.afterOverallStatus === 'NEEDS_ASSET_REPAIR' ||
+    repair.afterOverallStatus === 'QA_FAILED' ||
+    repair.afterAssetSemanticStatus === 'FAILED' ||
+    (repair.failureReasons?.length ?? 0) > 0
+  );
+}
+
+function isRepairSuccess(repair: AssetSemanticCanaryCaseRepairSummary): boolean {
+  return (
+    !isRepairFailure(repair) &&
+    (repair.afterOverallStatus === 'PLAYABLE' ||
+      repair.afterOverallStatus === 'PLAYABLE_WITH_FALLBACK_ASSETS' ||
+      repair.afterOverallStatus === 'PLAYABLE_WITH_ART_WARNINGS') &&
+    (repair.afterAssetSemanticStatus === 'PASSED' || repair.afterAssetSemanticStatus === 'WARNING')
+  );
+}
+
+function repairLabel(repair: AssetSemanticCanaryCaseRepairSummary | undefined): string {
+  if (repair === undefined) {
+    return '-';
+  }
+
+  return [`attempted=${repair.attempted}`, repair.skippedReason === undefined ? undefined : `skipped=${repair.skippedReason}`].filter(Boolean).join(' / ');
+}
+
+function evaluateFailures(
+  brief: AssetSemanticCanaryBrief,
+  qaReport: z.infer<typeof MinimalQaReportSchema>,
+  counts: ArtifactCounts,
+  repair: AssetSemanticCanaryCaseRepairSummary
+): string[] {
   const reasons: string[] = [];
   const allowedOverall = brief.expect.allowedOverall ?? [];
 
@@ -362,6 +533,9 @@ function evaluateFailures(brief: AssetSemanticCanaryBrief, qaReport: z.infer<typ
   }
   if (!brief.expect.placeholderAllowed && counts.placeholder > 0) {
     reasons.push('placeholder asset is not allowed');
+  }
+  if (isRepairFailure(repair)) {
+    reasons.push('semantic asset repair failure is not allowed');
   }
 
   return reasons;

@@ -3,11 +3,17 @@ import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
 import {
+  parseAssetSemanticCanaryArgs,
+  resolveCanaryAssetSemanticRepairConfig,
+  type AssetSemanticCanaryCliOptions
+} from '../../scripts/asset-semantic-canary-options.js';
+import {
   AssetSemanticCanaryBriefsSchema,
   buildAssetSemanticCanarySummary,
   renderAssetSemanticCanaryMarkdown,
   selectAssetSemanticCanaryBriefs,
   type AssetSemanticCanaryBrief,
+  type AssetSemanticCanaryCaseRepairSummary,
   type AssetSemanticCanaryExecution
 } from '../../scripts/asset-semantic-canary-report.js';
 
@@ -15,6 +21,33 @@ const supportedBrief = canaryBrief('cat_alien_shooter', false);
 const unsupportedBrief = canaryBrief('cat_fishbone_alien_shooter', true);
 
 describe('Asset semantic canary runner summary', () => {
+  it('keeps runner repair disabled by default and enables it with --repair-enabled', () => {
+    const defaults = parseOptions([]);
+    const repairEnabled = parseOptions(['--repair-enabled']);
+
+    expect(resolveCanaryAssetSemanticRepairConfig(defaults, {} as NodeJS.ProcessEnv)).toMatchObject({
+      enabled: false,
+      maxAttempts: 1
+    });
+    expect(resolveCanaryAssetSemanticRepairConfig(repairEnabled, {} as NodeJS.ProcessEnv)).toMatchObject({
+      enabled: true,
+      maxAttempts: 1
+    });
+    expect(resolveCanaryAssetSemanticRepairConfig(defaults, { ASSET_SEMANTIC_REPAIR_ENABLED: 'true' } as NodeJS.ProcessEnv)).toMatchObject({
+      enabled: true,
+      maxAttempts: 1
+    });
+  });
+
+  it('locks parser help, timestamp override, unknown args, and missing values', () => {
+    expect(parseAssetSemanticCanaryArgs(['--help'], '20260612T010203Z')).toBe('help');
+    expect(parseOptions(['--timestamp', '20260612TfixedZ'])).toMatchObject({
+      timestamp: '20260612TfixedZ'
+    });
+    expect(() => parseAssetSemanticCanaryArgs(['--unknown'], '20260612T010203Z')).toThrow('Unknown argument: --unknown');
+    expect(() => parseAssetSemanticCanaryArgs(['--case'], '20260612T010203Z')).toThrow('Expected a value after --case');
+  });
+
   it('loads the fixture through the runner schema', async () => {
     const parsed = AssetSemanticCanaryBriefsSchema.parse(JSON.parse(await readFile('tests/fixtures/asset-semantic-canary.briefs.json', 'utf8')));
 
@@ -30,6 +63,68 @@ describe('Asset semantic canary runner summary', () => {
     expect(selectAssetSemanticCanaryBriefs([supportedBrief, unsupportedBrief], { includeUnsupported: true })).toEqual({
       runnable: [supportedBrief, unsupportedBrief],
       skipped: []
+    });
+  });
+
+  it('keeps expectedUnsupported skipped by default in repair-enabled mode', () => {
+    const summary = buildAssetSemanticCanarySummary(
+      summaryInput(
+        [
+          completedCase(supportedBrief, 'PLAYABLE', {
+            repair: repairSkipped('no_asset_semantic_repair_needed')
+          }),
+          { brief: unsupportedBrief, state: 'skipped', reason: 'expectedUnsupported: fishbone is not canonical yet' }
+        ],
+        false,
+        true
+      )
+    );
+
+    expect(summary).toMatchObject({
+      runnable: 1,
+      skipped: 1,
+      experimental: 0,
+      passed: 1,
+      failed: 0,
+      repairEnabled: true,
+      repairAttemptedCount: 0,
+      repairFailedCount: 0
+    });
+    expect(summary.cases[1]).toMatchObject({
+      id: 'cat_fishbone_alien_shooter',
+      skipped: true,
+      pass: true
+    });
+  });
+
+  it('marks unsupported cases experimental when --include-unsupported and --repair-enabled are combined', () => {
+    const summary = buildAssetSemanticCanarySummary(
+      summaryInput(
+        [
+          completedCase(supportedBrief, 'PLAYABLE', {
+            repair: repairSkipped('no_asset_semantic_repair_needed')
+          }),
+          completedCase(unsupportedBrief, 'NEEDS_ASSET_REPAIR', {
+            semanticStatus: 'FAILED',
+            repair: repairSkipped('no_executable_repair_items')
+          })
+        ],
+        true,
+        true
+      )
+    );
+
+    expect(summary).toMatchObject({
+      runnable: 2,
+      skipped: 0,
+      experimental: 1,
+      failed: 1,
+      exitCode: 0,
+      repairEnabled: true
+    });
+    expect(summary.cases[1]).toMatchObject({
+      experimental: true,
+      pass: false
     });
   });
 
@@ -120,6 +215,198 @@ describe('Asset semantic canary runner summary', () => {
     expect(summary.cases[0]).toMatchObject({ experimental: true, pass: false });
   });
 
+  it('summarizes repair metadata without making old reports invalid', () => {
+    const summary = buildAssetSemanticCanarySummary(
+      summaryInput(
+        [
+          completedCase(supportedBrief, 'PLAYABLE_WITH_FALLBACK_ASSETS', {
+            repair: {
+              enabled: true,
+              attempted: false,
+              attemptCount: 0,
+              skippedReason: 'no_asset_semantic_repair_needed',
+              beforeOverallStatus: 'PLAYABLE_WITH_FALLBACK_ASSETS',
+              beforeAssetSemanticStatus: 'PASSED'
+            }
+          }),
+          completedCase(canaryBrief('repaired_case', false), 'PLAYABLE_WITH_FALLBACK_ASSETS', {
+            repair: {
+              enabled: true,
+              attempted: true,
+              attemptCount: 1,
+              beforeOverallStatus: 'NEEDS_ASSET_REPAIR',
+              beforeAssetSemanticStatus: 'FAILED',
+              afterOverallStatus: 'PLAYABLE_WITH_FALLBACK_ASSETS',
+              afterAssetSemanticStatus: 'PASSED',
+              repairedRequirements: [
+                {
+                  requirementId: 'player',
+                  role: 'player_character',
+                  expectedConcept: 'cat',
+                  previousAssetId: 'player',
+                  previousSource: 'local_asset_pack',
+                  previousSemanticFitStatus: 'mismatch',
+                  action: 'force_template_svg_fallback',
+                  newAssetId: 'player',
+                  newSource: 'template_svg',
+                  newSemanticFitStatus: 'fallback_generated'
+                }
+              ]
+            }
+          }),
+          completedCase(canaryBrief('repair_failed_case', false), 'NEEDS_ASSET_REPAIR', {
+            semanticStatus: 'FAILED',
+            repair: {
+              enabled: true,
+              attempted: true,
+              attemptCount: 1,
+              skippedReason: 'repair_execution_failed',
+              beforeOverallStatus: 'NEEDS_ASSET_REPAIR',
+              beforeAssetSemanticStatus: 'FAILED',
+              failureReasons: ['repair failed']
+            }
+          }),
+          completedCase(canaryBrief('repair_incomplete_metadata_case', false), 'PLAYABLE', {
+            repair: {
+              enabled: true,
+              attempted: true,
+              attemptCount: 1,
+              beforeOverallStatus: 'NEEDS_ASSET_REPAIR',
+              beforeAssetSemanticStatus: 'FAILED'
+            }
+          }),
+          completedCase(canaryBrief('old_report_case', false), 'PLAYABLE')
+        ],
+        false,
+        true
+      )
+    );
+
+    expect(summary.repair).toEqual({
+      enabled: true,
+      attemptedCount: 3,
+      succeededCount: 1,
+      failedCount: 1,
+      skippedCount: 2,
+      skippedReasons: {
+        missing_repair_metadata: 1,
+        no_asset_semantic_repair_needed: 1
+      }
+    });
+    expect(summary).toMatchObject({
+      repairEnabled: true,
+      repairAttempted: true,
+      repairAttemptedCount: 3,
+      repairSucceededCount: 1,
+      repairFailedCount: 1,
+      repairSkippedReasons: {
+        missing_repair_metadata: 1,
+        no_asset_semantic_repair_needed: 1
+      }
+    });
+    expect(summary.cases[0].repair).toMatchObject({
+      enabled: true,
+      attempted: false,
+      skippedReason: 'no_asset_semantic_repair_needed'
+    });
+    expect(summary.cases[1].repair?.repairedRequirements?.[0]).toMatchObject({
+      requirementId: 'player',
+      action: 'force_template_svg_fallback',
+      newSemanticFitStatus: 'fallback_generated'
+    });
+    expect(summary.cases[3].repair).toMatchObject({
+      enabled: true,
+      attempted: true,
+      skippedReason: undefined
+    });
+    expect(summary.cases[4].repair).toMatchObject({
+      enabled: true,
+      attempted: false,
+      skippedReason: 'missing_repair_metadata'
+    });
+  });
+
+  it('passes a repair-enabled green summary when no repair is attempted', () => {
+    const summary = buildAssetSemanticCanarySummary(
+      summaryInput(
+        [
+          completedCase(supportedBrief, 'PLAYABLE_WITH_FALLBACK_ASSETS', {
+            repair: repairSkipped('no_asset_semantic_repair_needed')
+          }),
+          completedCase(canaryBrief('art_warning_case', false), 'PLAYABLE_WITH_ART_WARNINGS', {
+            repair: repairSkipped('no_asset_semantic_repair_needed')
+          })
+        ],
+        false,
+        true
+      )
+    );
+
+    expect(summary).toMatchObject({
+      passed: 2,
+      failed: 0,
+      exitCode: 0,
+      repairEnabled: true,
+      repairAttempted: false,
+      repairAttemptedCount: 0,
+      repairFailedCount: 0,
+      repairSkippedReasons: {
+        no_asset_semantic_repair_needed: 2
+      }
+    });
+  });
+
+  it('represents successful repair attempts without failing the summary', () => {
+    const summary = buildAssetSemanticCanarySummary(
+      summaryInput(
+        [
+          completedCase(supportedBrief, 'PLAYABLE_WITH_FALLBACK_ASSETS', {
+            repair: repairSucceeded()
+          })
+        ],
+        false,
+        true
+      )
+    );
+
+    expect(summary).toMatchObject({
+      passed: 1,
+      failed: 0,
+      exitCode: 0,
+      repairAttempted: true,
+      repairAttemptedCount: 1,
+      repairSucceededCount: 1,
+      repairFailedCount: 0
+    });
+  });
+
+  it('fails supported summaries when repair failed even if the overall status is playable', () => {
+    const summary = buildAssetSemanticCanarySummary(
+      summaryInput(
+        [
+          completedCase(supportedBrief, 'PLAYABLE_WITH_FALLBACK_ASSETS', {
+            repair: {
+              ...repairSucceeded(),
+              afterOverallStatus: 'QA_FAILED',
+              failureReasons: ['repair rebuild failed']
+            }
+          })
+        ],
+        false,
+        true
+      )
+    );
+
+    expect(summary).toMatchObject({
+      passed: 0,
+      failed: 1,
+      exitCode: 1,
+      repairAttemptedCount: 1,
+      repairFailedCount: 1
+    });
+    expect(summary.cases[0].failureReasons).toContain('semantic asset repair failure is not allowed');
+  });
+
   it('allows placeholders only when the fixture explicitly allows them', () => {
     const brief = canaryBrief('placeholder_allowed', false);
     brief.expect.placeholderAllowed = true;
@@ -141,6 +428,8 @@ describe('Asset semantic canary runner summary', () => {
     expect(markdown).toContain('# Asset Semantic Canary Summary');
     expect(markdown).toContain('## Status Counts');
     expect(markdown).toContain('## Semantic Counts');
+    expect(markdown).toContain('## Repair');
+    expect(markdown).toContain('## Repair skipped reasons');
     expect(markdown).toContain('## Cases');
     expect(markdown).toContain('## Skipped');
     expect(markdown).toContain('## Failures');
@@ -150,13 +439,54 @@ describe('Asset semantic canary runner summary', () => {
   });
 });
 
-function summaryInput(executions: AssetSemanticCanaryExecution[], includeUnsupported = false) {
+function summaryInput(executions: AssetSemanticCanaryExecution[], includeUnsupported = false, repairEnabled = false) {
   return {
     fixturePath: 'tests/fixtures/asset-semantic-canary.briefs.json',
     outputDir: 'artifacts/asset-semantic-canary/20260612T010203Z',
     includeUnsupported,
+    repairEnabled,
     createdAt: '2026-06-12T01:02:03.000Z',
     executions
+  };
+}
+
+function parseOptions(args: string[]): AssetSemanticCanaryCliOptions {
+  const parsed = parseAssetSemanticCanaryArgs(args, '20260612T010203Z');
+  if (parsed === 'help') {
+    throw new Error('Expected parsed options, got help.');
+  }
+
+  return parsed;
+}
+
+function repairSkipped(skippedReason: string): AssetSemanticCanaryCaseRepairSummary {
+  return {
+    enabled: true,
+    attempted: false,
+    attemptCount: 0,
+    skippedReason,
+    beforeOverallStatus: 'PLAYABLE_WITH_FALLBACK_ASSETS',
+    beforeAssetSemanticStatus: 'PASSED'
+  };
+}
+
+function repairSucceeded(): AssetSemanticCanaryCaseRepairSummary {
+  return {
+    enabled: true,
+    attempted: true,
+    attemptCount: 1,
+    beforeOverallStatus: 'NEEDS_ASSET_REPAIR',
+    beforeAssetSemanticStatus: 'FAILED',
+    afterOverallStatus: 'PLAYABLE_WITH_FALLBACK_ASSETS',
+    afterAssetSemanticStatus: 'PASSED',
+    repairedRequirements: [
+      {
+        requirementId: 'player',
+        role: 'player_character',
+        action: 'force_template_svg_fallback',
+        newSemanticFitStatus: 'fallback_generated'
+      }
+    ]
   };
 }
 
@@ -172,6 +502,7 @@ function completedCase(
     assetLoadFailure?: boolean;
     placeholder?: boolean;
     warningStrictness?: 'medium' | 'soft';
+    repair?: AssetSemanticCanaryCaseRepairSummary;
   } = {}
 ): AssetSemanticCanaryExecution {
   const semanticFit = options.hardUnknown
@@ -204,6 +535,7 @@ function completedCase(
       runtime_status: options.runtimeStatus ?? 'PASSED',
       asset_semantic_status: options.semanticStatus ?? (overallStatus === 'PLAYABLE_WITH_ART_WARNINGS' ? 'WARNING' : 'PASSED'),
       overall_status: overallStatus,
+      asset_semantic_repair: options.repair,
       asset_report: {
         missing: options.requiredMissing ? ['player'] : [],
         placeholder_used: options.placeholder ? ['player'] : [],

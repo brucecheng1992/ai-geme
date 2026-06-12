@@ -360,7 +360,9 @@ describe('GenerationPipelineService failure states', () => {
             });
           }
 
-          return createQaReport(input.genre);
+          return createQaReport(input.genre, {
+            overall_status: 'PLAYABLE_WITH_FALLBACK_ASSETS'
+          });
         }
       },
       assetSemanticRepairConfig: { enabled: true, maxAttempts: 3 }
@@ -397,12 +399,15 @@ describe('GenerationPipelineService failure states', () => {
         repairPlanTriggered: true,
         beforeOverallStatus: 'NEEDS_ASSET_REPAIR',
         beforeAssetSemanticStatus: 'FAILED',
-        afterOverallStatus: 'PLAYABLE',
+        afterOverallStatus: 'PLAYABLE_WITH_FALLBACK_ASSETS',
         afterAssetSemanticStatus: 'PASSED',
         repairedRequirements: expect.arrayContaining([
           expect.objectContaining({
             requirementId: 'player',
+            role: 'player_character',
+            expectedConcept: 'cat',
             previousSource: 'local_asset_pack',
+            previousSemanticFitStatus: 'mismatch',
             newSource: 'template_svg',
             newSemanticFitStatus: 'fallback_generated'
           })

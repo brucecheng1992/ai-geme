@@ -33,13 +33,14 @@
 - generated project 根目录已写出 `asset_resolution_report.json`，记录 selected / rejected / fallback diagnostics。
 - QA report 已包含 `asset_report`，Workbench Assets 面板可展示 manifest/runtime load 状态和 source pack。
 
-Step 6c 完成后的剩余缺口：
+Step 7 完成后的当前状态：P0 closed / ready for resource expansion canary。
 
 - QA / Workbench 已能识别 runtime pass 但 hard semantic mismatch 的 `NEEDS_ASSET_REPAIR`，并展示 per-asset semanticFit 摘要。
 - 第一批 canary brief fixture 已建立，batch runner 已能默认运行 supported cases、跳过 `expectedUnsupported` cases，并写出 summary report。
 - 已新增 Step 6a Asset Repair Planner：`NEEDS_ASSET_REPAIR` / hard semantic failure 只会生成可审计 repair plan，不会自动重选或修复资源。
 - 已新增 Step 6b conservative Repair Executor：只在显式调用时消费 repair plan，最多尝试 1 次，并写入 manifest / public manifest / `asset_resolution_report.json.repair`。
 - 已新增 Step 6c repair pipeline integration：默认关闭，只有显式 flag 开启且首次 QA 为 runtime pass + hard semantic failed + executable hard repair item 时才执行 repair、rebuild 和一次 QA rerun。
+- 已新增 Step 7 repair-enabled canary safety：canary runner 可显式开启 repair guard，summary report 可观测 repair metadata，默认和 repair-enabled canary 均证明当前 supported cases 不误触发 repair；hard mismatch synthetic fixture 证明 repair 仍可触发。
 
 ## 4. 分步落地计划
 
@@ -56,7 +57,7 @@ Step 6c 完成后的剩余缺口：
 | Step 6a | Asset Repair Planner | 基于 QA / manifest / resolution report 生成 repair plan | 已完成 |
 | Step 6b | Repair Executor | mismatch 后重选 / fallback trace | 已完成 |
 | Step 6c | Repair pipeline integration | 显式挂入生成 pipeline 的触发点和回写门禁 | 已完成 |
-| Step 7 | 回归批量验收 | E2E cases 和真实 Workbench proof | 当前下一步；待验收目标：cat/alien、tank/tank、generic shooter 均通过对应验收 |
+| Step 7 | 回归批量验收 | repair-enabled canary safety + release guard | 已完成 |
 
 ## 5. Step 1 最小实现边界
 
@@ -456,7 +457,74 @@ Step 6c 已执行：
 - `qa-report.json.asset_semantic_repair.repairedRequirements` 只记录本次 hard semantic repair 的 before / after requirement 结果，不修 `fallback_generated`、medium / soft warning 或 fallback playable 状态。
 - 默认 canary summary：`total=14 runnable=9 skipped=5 passed=9 failed=0`，`NEEDS_ASSET_REPAIR=0`、`QA_FAILED=0`、`hardMismatch=0`、`hardUnknown=0`、`requiredAssetMissing=0`、`assetLoadFailures=0`、`placeholderUsed=0`。
 
-## 16. 审查门禁
+## 16. Step 7 最小实现边界
+
+状态：已完成。
+
+Step 7 只处理 repair-enabled canary observability / tests / docs：
+
+- `npm run qa:asset-semantic:canary -- --repair-enabled` 显式开启 semantic asset repair guard，并把 `{ enabled: true, maxAttempts: 1 }` 传入 `GenerationPipelineService`。
+- 未传 `--repair-enabled` 时仍走既有 env config；默认环境下 repair disabled。
+- `summary.json` 新增 repair 聚合和 release guard 顶层别名：`repairEnabled`、`repairAttempted`、`repairAttemptedCount`、`repairSucceededCount`、`repairFailedCount`、`repairSkippedReasons`。
+- `repairFailedCount > 0` 会使 supported summary 失败；successful repair attempt 会被记录为 `repairAttemptedCount > 0` / `repairSucceededCount > 0`，但不自动失败。
+- 每个 completed canary case 记录 normalized repair metadata；旧 QA report 缺 `asset_semantic_repair` 时兼容为 `attempted=false`、`skippedReason="missing_repair_metadata"`。
+- `summary.md` 展示 Repair counts、Repair skipped reasons 和 per-case repair cell。
+- synthetic hard mismatch pipeline test 证明 flag enabled 时 hard semantic mismatch 可触发 repair、一次 build/QA rerun、final QA report 写入 before/after status 和 repaired requirement metadata。
+
+Step 7 不修改：
+
+- resolver ranking、Step 3 hard gate、fallback 策略、QA status 聚合、Workbench 大 UI、Phaser runtime、taxonomy、新资源库、AI image provider 或 provider `survive_duration`。
+- `templates/phaser/shooter/src/GameScene.ts`、`templates/phaser/shooter/src/shooter-renderer.ts`、`tests/contracts/phaser-templates.test.ts`。
+- 默认 canary selection；`expectedUnsupported: true` cases 仍默认跳过，`--include-unsupported` 仍是实验模式。
+
+Step 7 已执行：
+
+    npx vitest run tests/contracts/asset-semantic-canary-runner.test.ts tests/workspace/generation-pipeline.service.test.ts
+    # 2 个测试文件，35 个测试通过
+
+    npx vitest run tests/contracts/asset-semantic-canary-runner.test.ts
+    # 1 个测试文件，17 个测试通过
+
+    npx vitest run tests/workspace/generation-pipeline.service.test.ts
+    # 1 个测试文件，19 个测试通过
+
+    npx vitest run tests/contracts/asset-repair-plan.test.ts tests/contracts/asset-repair-executor.test.ts
+    # 2 个测试文件，11 个测试通过
+
+    npm run typecheck:root
+    # 通过
+
+    npm test
+    # contracts: 8 个测试文件，116 个测试通过
+    # workspace: 12 个测试文件，125 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    npm run qa:asset-semantic:canary
+    # summary 写入 artifacts/asset-semantic-canary/20260612T085457Z
+    # total=14 runnable=9 skipped=5 experimental=0 passed=9 failed=0
+    # repair.enabled=false repair.attemptedCount=0 repair.failedCount=0
+
+    npm run qa:asset-semantic:canary -- --repair-enabled
+    # summary 写入 artifacts/asset-semantic-canary/20260612T085600Z
+    # total=14 runnable=9 skipped=5 experimental=0 passed=9 failed=0
+    # repair.enabled=true repair.attemptedCount=0 repair.failedCount=0
+    # repair.skippedReasons.no_asset_semantic_repair_needed=9
+
+    git diff --check
+    # 无输出
+
+关键断言：
+
+- 默认 canary 路径不误开启 repair；supported 9 个 case 全部通过，unsupported 5 个 case 仍默认跳过。
+- repair-enabled canary 路径证明当前 green supported cases 不误触发 repair，`repairAttemptedCount=0`、`repairFailedCount=0`。
+- `--include-unsupported --repair-enabled` 在聚合测试中会把 unsupported case 标为 experimental，仍不驱动 supported release exit code。
+- fallback_generated、art warning、medium / soft warning 和 playable fallback 状态不会触发 repair。
+- hard mismatch synthetic test 保持 repair 能力可触发：首次 QA 为 `NEEDS_ASSET_REPAIR` 后执行 1 次 repair、1 次 QA rerun，并记录 `beforeOverallStatus="NEEDS_ASSET_REPAIR"`、`afterOverallStatus="PLAYABLE_WITH_FALLBACK_ASSETS"`。
+- summary 对旧 report 兼容，不因缺失 `asset_semantic_repair` 崩溃。
+
+## 17. 审查门禁
 
 每一步按 review-gated-refactor 执行：
 
@@ -466,12 +534,14 @@ Step 6c 已执行：
 4. 把修改范围、验证命令、审查结论写回 `docs/refactor-log/ai-game-dsl-p0-review-gated.md`。
 5. 再做文档复审门禁。
 
-## 17. 当前注意事项
+## 18. 当前注意事项
 
 - provider `survive_duration` 修复已单独提交；后续 asset semantic fidelity 步骤仍不要混入 provider 改动。
-- Step 6c 已接入 pipeline，但默认关闭；后续 Step 7 仍必须用真实 Workbench / generated project / QA 产物证明默认链路不退化。
-- 本阶段真实验收必须用 Workbench / generated project / QA 产物证明，不只看单测。
-- 真实验收至少包含：
+- Step 7 已用默认和 repair-enabled canary summary 证明批量 supported cases 不退化；后续新增 taxonomy / 资源库 / AI image provider 仍必须另起小步，并重新跑 release guard。
+- 建议下一步顺序：提交 Step 7；恢复/处理 shooter HUD stash 并单独 PR；之后进入 Step 8: Canary asset pack expansion v0.2。
+- 可选技术债治理：Step 8a 拆分 `generation-pipeline.service.ts`，Step 8b 拆分 `generation-pipeline.service.test.ts`。
+- 后续涉及真实验收时仍必须用 Workbench / generated project / QA 产物证明，不只看单测。
+- 后续扩展的真实验收至少包含：
   - 小猫射击外星人：不能选 tank 作为 player/enemy。
   - 坦克大战：可以选 tank pack。
   - 泛化 shooter：不应因缺少 hard concept 被误判失败。
