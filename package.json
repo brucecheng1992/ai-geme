@@ -17,6 +17,7 @@
     "test:workspace": "vitest run tests/workspace",
     "qa:asset-semantic:canary": "tsx scripts/run-asset-semantic-canary.ts",
     "metadata:validate": "tsx scripts/validate-art-asset-metadata.ts",
+    "metadata:export-runtime": "tsx scripts/export-art-runtime-metadata.ts",
     "typecheck": "npm run typecheck:root && npm run typecheck --workspace @ai-game-maker/maker-api && npm run typecheck --workspace @ai-game-maker/maker-workbench",
     "typecheck:root": "tsc --noEmit -p tsconfig.json"
   },

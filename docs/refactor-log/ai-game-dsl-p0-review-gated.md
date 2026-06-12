@@ -8,11 +8,11 @@
 
 ## 当前阶段
 
-Asset Semantic Fidelity Step 8a 已完成：taxonomy v0.2 只补当前 unsupported canary wording 的 canonical / synonym normalization，不接资源、不 promotion fixture、不改变 resolver / QA / Workbench / Phaser / repair 行为。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command 和 Step 3A runtime-safe export review gate。
+Asset Semantic Fidelity Step 8a 已完成：taxonomy v0.2 只补当前 unsupported canary wording 的 canonical / synonym normalization，不接资源、不 promotion fixture、不改变 resolver / QA / Workbench / Phaser / repair 行为。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate 和 Step 3B runtime-safe export implementation。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Asset Semantic Fidelity 主线后续进入 Step 8b canary fixture promotion，再进入 Step 8c 小包资源扩展 v0.2；AI Game Art Asset Metadata v0.1 后续进入 Step 3B runtime-safe export implementation。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、新资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Asset Semantic Fidelity 主线后续进入 Step 8b canary fixture promotion，再进入 Step 8c 小包资源扩展 v0.2；AI Game Art Asset Metadata v0.1 后续进入 Step 4 asset pack metadata bridge / resolver diagnostics。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、新资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
 
 ### 2.23 Asset Semantic Fidelity Step 8a: Taxonomy v0.2 for Canary Unsupported Concepts
 
@@ -2460,3 +2460,78 @@ Step 9 阶段结果：
 当前下一步：
 
 - Metadata v0.1 Step 3B：runtime-safe export implementation，必须先复用 Step 2 validation，再实现 explicit allowlist export。
+
+### 17. AI Game Art Asset Metadata v0.1 Step 3B：Runtime-Safe Export Implementation
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 新增 `packages/asset-pipeline/src/art-asset-metadata.runtime-export.ts`，实现 runtime-safe export API。
+- 新增 `scripts/export-art-runtime-metadata.ts`，按 Step 2 root script convention 提供 `npm run metadata:export-runtime`。
+- `package.json` 只新增 `metadata:export-runtime` script。
+- `packages/asset-pipeline/src/index.ts` 只导出 runtime export API / types / formatter / exit helper。
+- 新增 `tests/contracts/art-asset-metadata-runtime-export-api.test.ts`。
+- 新增 `tests/contracts/art-asset-metadata-runtime-export-cli.test.ts`。
+- 更新 `docs/refactor-log/ai-game-art-asset-metadata-v0.1-step-3-runtime-safe-export.md`，记录 Step 3B 已实现、grouped runtime artifact shape、uppercase diagnostics、CLI / `--out` / `--json` 行为和非目标。
+- 更新 `docs/refactor-log/ai-game-dsl-p0-step-index.md`，把 Metadata v0.1 下一步推进到 Step 4。
+
+阶段结果：
+
+- Runtime export 先复用 Step 2 `validateArtAssetMetadataFiles`；invalid metadata、malformed JSON、duplicate `asset_id` 均不会导出成功。
+- Runtime artifact 使用 explicit allowlist，不把 full metadata schema 当作 runtime schema。
+- Runtime artifact 保留 safe grouped shape：`semantic`、`gameplay`、`technical`、`relations`。
+- Runtime export 排除 `ai_generation`、`rights`、`workflow`、`search`、creator / credit、review notes、prompt summary、seed、third-party sources、non-allowlisted technical / relations fields。
+- Runtime export output deterministic，assets 按 `asset_id` 排序。
+- `--json` 优先控制 stdout；`--json + --out` 输出 deterministic JSON envelope，并包含 `outputPath` 和 `artifact`。
+- `--out` 成功可覆盖既有 artifact；validation / export failure 不创建、不覆盖 successful-looking artifact。
+- Step 3B 没有接 resolver、QA、Workbench、Phaser runtime、asset pack loading 或 runtime consumer。
+- Step 3B 没有实现 Step 4 asset pack metadata bridge / resolver diagnostics。
+- 未修改 `packages/asset-pipeline/src/art-asset-metadata-validation.ts`。
+
+已通过验证：
+
+    npx vitest run tests/contracts/art-asset-metadata.test.ts tests/contracts/art-asset-metadata-validation.test.ts tests/contracts/art-asset-metadata-validation-cli.test.ts tests/contracts/art-asset-metadata-runtime-export-api.test.ts tests/contracts/art-asset-metadata-runtime-export-cli.test.ts
+    # 5 个测试文件，35 个测试通过
+
+    npm run test:contracts
+    # 13 个测试文件，154 个测试通过
+
+    npm test
+    # contracts 154 个测试通过；workspace 125 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+    npm run metadata:validate -- assets/metadata/examples
+    # OK 5 metadata files
+
+    npm run metadata:validate -- --json assets/metadata/examples
+    # ok=true，5 个 files，diagnostics=[]
+
+    npm run metadata:export-runtime -- assets/metadata/examples
+    # 输出 runtime_metadata_version=0.1、generated_by=metadata:export-runtime、asset_count=5
+
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+    # ok=true，artifact.asset_count=5
+
+    npm run metadata:export-runtime -- assets/metadata/examples --out /tmp/.../runtime-art-assets.json
+    # OK 5 runtime metadata assets，并写入临时 artifact
+
+    npm run metadata:export-runtime -- --json assets/metadata/examples --out /tmp/.../runtime-art-assets.json
+    # ok=true，JSON envelope 包含 outputPath 和 artifact
+
+审查门禁结论：
+
+- Sage / Oracle 首轮审查：PASS_WITH_NOTES；P0/P1/P2 无。
+- Sage 首轮 P3：`--file` / `--dir` 只选择 API entrypoint，未额外强制目标类型。
+- 已修复：`exportRuntimeArtAssetMetadataFromFile()` / `exportRuntimeArtAssetMetadataFromDirectory()` 增加 explicit input kind check；`--file <directory>` / `--dir <file>` 均返回 usage diagnostic 和 exit code 2，并补 CLI contract tests。
+- Sage 复审：PASS_WITH_NOTES；上一轮 P3 已关闭，未发现新的 P0/P1/P2；仅要求把审查结论写回本文档。
+- 审查模式：Oracle / Sage 复用。
+
+当前下一步：
+
+- Metadata v0.1 Step 4：asset pack metadata bridge / resolver diagnostics，必须作为未来独立步骤推进。

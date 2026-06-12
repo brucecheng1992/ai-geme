@@ -11,6 +11,29 @@ export {
   validateArtAssetMetadataFiles
 } from './art-asset-metadata-validation.js';
 export {
+  ART_ASSET_RUNTIME_METADATA_GENERATOR,
+  ART_ASSET_RUNTIME_METADATA_VERSION,
+  createRuntimeExportUsageErrorDiagnostic,
+  exportRuntimeArtAssetMetadataFromDirectory,
+  exportRuntimeArtAssetMetadataFromFile,
+  exportRuntimeArtAssetMetadataFromTargets,
+  formatRuntimeArtAssetMetadataExportArtifactJson,
+  formatRuntimeArtAssetMetadataExportDiagnosticsText,
+  formatRuntimeArtAssetMetadataExportResultJson,
+  getRuntimeArtAssetMetadataExportExitCode,
+  type ArtAssetRuntimeExportDiagnostic,
+  type ArtAssetRuntimeExportDiagnosticCode,
+  type ArtAssetRuntimeExportDiagnosticSeverity,
+  type ExportRuntimeArtAssetMetadataOptions,
+  type ExportRuntimeArtAssetMetadataResult,
+  type RuntimeArtAssetGameplayMetadata,
+  type RuntimeArtAssetMetadata,
+  type RuntimeArtAssetMetadataExportArtifact,
+  type RuntimeArtAssetRelationsMetadata,
+  type RuntimeArtAssetSemanticMetadata,
+  type RuntimeArtAssetTechnicalMetadata
+} from './art-asset-metadata.runtime-export.js';
+export {
   ART_ASSET_METADATA_VALIDATION_VERSION,
   type ArtAssetMetadataValidatedFile,
   type ArtAssetMetadataValidationDiagnostic,
