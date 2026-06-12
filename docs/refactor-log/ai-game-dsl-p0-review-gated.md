@@ -8,11 +8,11 @@
 
 ## 当前阶段
 
-Asset Semantic Fidelity Step 8a 已完成：taxonomy v0.2 只补当前 unsupported canary wording 的 canonical / synonym normalization，不接资源、不 promotion fixture、不改变 resolver / QA / Workbench / Phaser / repair 行为。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests 和 Step 2 validation command。
+Asset Semantic Fidelity Step 8a 已完成：taxonomy v0.2 只补当前 unsupported canary wording 的 canonical / synonym normalization，不接资源、不 promotion fixture、不改变 resolver / QA / Workbench / Phaser / repair 行为。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command 和 Step 3A runtime-safe export review gate。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Asset Semantic Fidelity 主线后续进入 Step 8b canary fixture promotion，再进入 Step 8c 小包资源扩展 v0.2；AI Game Art Asset Metadata v0.1 后续进入 Step 3 runtime-safe metadata export。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、新资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Asset Semantic Fidelity 主线后续进入 Step 8b canary fixture promotion，再进入 Step 8c 小包资源扩展 v0.2；AI Game Art Asset Metadata v0.1 后续进入 Step 3B runtime-safe export implementation。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、新资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
 
 ### 2.23 Asset Semantic Fidelity Step 8a: Taxonomy v0.2 for Canary Unsupported Concepts
 
@@ -2421,3 +2421,42 @@ Step 9 阶段结果：
 当前下一步：
 
 - Metadata v0.1 Step 3：runtime-safe metadata export，按白名单输出 runtime 可消费字段，并剔除 prompt、negative prompt、seed、review notes、third-party source details 等内部或敏感字段。
+
+### 16. AI Game Art Asset Metadata v0.1 Step 3A：Runtime-Safe Export Review Gate
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- 新增 `docs/refactor-log/ai-game-art-asset-metadata-v0.1-step-3-runtime-safe-export.md`。
+- 文档固定 Step 3 runtime-safe export 的目标：把通过 Step 2 validation 的完整 `.asset.json` sidecar metadata 转成未来 runtime / tool consumers 可用的 runtime-safe JSON artifact。
+- 文档明确 Step 3A 只写 review gate，不实现 runtime-safe export code。
+- 文档明确 Step 3B 必须复用 Step 2 validation，invalid metadata、malformed JSON 和 duplicate `asset_id` 不得成功 export。
+- 文档明确 runtime-safe export 必须使用 explicit allowlist，不能把 full metadata schema 当作 runtime schema，也不能用“delete a few unsafe fields and keep the rest”策略。
+- 文档列出必须排除的 AI generation / provenance、rights / legal / review、workflow / private production fields，并声明 creator / credit fields 默认不导出，除非未来定义 public credits artifact。
+- 文档记录 Step 3B 的 candidate CLI、exit codes、diagnostic codes 和 expected future implementation files。
+- 更新 `docs/refactor-log/ai-game-dsl-p0-step-index.md`，把当前下一步改为 Metadata v0.1 Step 3B runtime-safe export implementation。
+
+阶段结果：
+
+- 本步只修改文档。
+- 未创建 `packages/asset-pipeline/src/art-asset-metadata.runtime-export.ts`。
+- 未创建 `packages/asset-pipeline/src/art-asset-metadata.runtime-export.cli.ts`。
+- 未创建 `tests/contracts/art-asset-metadata-runtime-export.test.ts`。
+- 未修改 runtime、resolver、QA、Workbench、Phaser、asset pack loading 或 Step 2 validator implementation。
+
+已通过验证：
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 文档审查：PASS_WITH_NOTES；P0/P1/P2 无。
+- Oracle P3：顶部“当前阶段”仍写 Metadata v0.1 只完成到 Step 0-2；顶部“当前下一步”仍写 Step 3 runtime-safe metadata export。
+- 已修复：顶部状态同步为 Step 0-2 + Step 3A runtime-safe export review gate 已完成，下一步同步为 Step 3B runtime-safe export implementation。
+- 审查模式：Oracle 新建。
+
+当前下一步：
+
+- Metadata v0.1 Step 3B：runtime-safe export implementation，必须先复用 Step 2 validation，再实现 explicit allowlist export。
