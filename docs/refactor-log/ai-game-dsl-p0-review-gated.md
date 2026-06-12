@@ -8,11 +8,59 @@
 
 ## 当前阶段
 
-Asset Semantic Fidelity Step 7 已完成：repair-enabled canary safety 与 release guard 已落地；默认和 repair-enabled canary 均通过，Asset Semantic Fidelity 标记为 P0 closed / ready for resource expansion canary。
+Asset Semantic Fidelity Step 8a 已完成：taxonomy v0.2 只补当前 unsupported canary wording 的 canonical / synonym normalization，不接资源、不 promotion fixture、不改变 resolver / QA / Workbench / Phaser / repair 行为。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：提交当前 Step 7 后，优先恢复/处理 shooter HUD stash 的独立 PR；资源库扩展进入 Step 8: Canary asset pack expansion v0.2；技术债治理可作为 Step 8a/8b 拆分 `generation-pipeline.service.ts` 和对应测试。不要混入 AI image provider、新资源库、taxonomy expansion 或 provider survive_duration 修复。
+当前下一步：提交当前 Step 8a；shooter HUD stash 仍作为独立任务处理；Asset Semantic Fidelity 主线后续进入 Step 8b canary fixture promotion，再进入 Step 8c 小包资源扩展 v0.2。不要混入 AI image provider、新资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.23 Asset Semantic Fidelity Step 8a: Taxonomy v0.2 for Canary Unsupported Concepts
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- `packages/asset-pipeline/src/taxonomy.ts` 新增 projectile-only canonical concept `fishbone`，覆盖 `fishbone`、`fish_bone`、`fish bone`、`鱼骨`、`鱼骨头`、`鱼骨头子弹`、`鱼骨子弹`。
+- `fishbone` 保持 `strictness="medium"`，不把 projectile 语义升级为 hard gate；forbidden tags 覆盖 `shell`、`tank_bullet`、`missile`、`alien`、`extraterrestrial`。
+- 扩展现有 canonical concept 的输入 alias：`异星人`、`异星`、`外星怪物`、`异星怪物`、`ufo_creature`、`ufo creature`、`space_creature`、`space creature` -> `alien`；`星空`、`银河`、`星海`、`stars`、`starfield`、`star_field`、`star field`、`cosmic` -> `space`；`装甲车`、`armored_vehicle`、`armored vehicle`、`armoured_vehicle`、`armoured vehicle` -> `tank`。
+- 这些 alias 只属于当前 canary unsupported wording 对应的 `alien` / `space` / `tank` concept family input normalization；不扩大 `expectedAnyTags`、resolver ranking、report schema 或资源选择行为。
+- taxonomy 匹配 helper 改为先 normalize，再对 ASCII alias 使用 token / token-sequence 匹配；保留 `tankard` 不命中 `tank`、`caterpillar` 不命中 `cat` 的负例。
+- `tests/contracts/asset-pipeline.test.ts` 增加 taxonomy v0.2 alias 覆盖和 substring 负例。
+- `tests/contracts/asset-semantic-canary-fixture.test.ts` 将 `fishbone` 纳入当前 supported canonical baseline，同时显式断言 5 个 `expectedUnsupported` fixture 仍未 promotion，留给 Step 8b。
+
+行为边界：
+
+- 未修改 resolver ranking、Step 3 hard gate、fallback 策略、manifest `semanticFit`、`asset_resolution_report`、QA aggregation、Workbench UI、Phaser runtime、repair planner / executor / pipeline 或 canary runner 行为。
+- 未接入新资源库、真实美术资源或 AI image provider。
+- 未修改 shooter HUD 文件。
+
+验证：
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts
+    npx vitest run tests/contracts/asset-semantic-canary-fixture.test.ts
+    npm test
+    npm run typecheck
+    npm run qa:asset-semantic:canary -- --limit 3
+    npm run qa:asset-semantic:canary -- --repair-enabled --limit 3
+    git diff --check
+
+结果：
+
+- `tests/contracts/asset-pipeline.test.ts`：20 个测试通过。
+- `tests/contracts/asset-semantic-canary-fixture.test.ts`：6 个测试通过。
+- `npm test` 通过：contracts 119 个测试通过，workspace 125 个测试通过。
+- `npm run typecheck` 通过。
+- 默认 canary smoke：`artifacts/asset-semantic-canary/20260612T094445Z`，`runnable=3 skipped=11 experimental=0 passed=3 failed=0`，`repair.enabled=false repair.attemptedCount=0 repair.failedCount=0`。
+- repair-enabled canary smoke：`artifacts/asset-semantic-canary/20260612T094506Z`，`runnable=3 skipped=11 experimental=0 passed=3 failed=0`，`repair.enabled=true repair.attemptedCount=0 repair.failedCount=0`。
+- `git diff --check` 通过。
+
+审查记录：
+
+- Oracle 预审：确认 Step 8a 应只做 taxonomy / synonym normalization 和契约测试，不直接 promotion fixture；`fishbone` 应作为 projectile-only canonical concept，strictness 保持 `medium`；P0 风险是 substring 匹配、projectile hard gate、runner / resolver / QA / repair 行为外溢。
+- Oracle 复审：P0/P1/P3 无；P2 指出裸词 `vehicle -> tank` 范围超过当前 canary 需求，已移除裸 `vehicle` alias，并补充 `Vehicle` 不命中 hard tank 的负例后复验。
+- Oracle 修复确认：P2 已解决，最终 P0/P1/P2/P3 均无。
+- Oracle 二次复审：P0/P1/P3 无；P2 指出代码和文档列出的 alias 范围不一致，已补全文档中的 `alien` / `space` / `tank` input normalization alias 列表并声明不扩大 resolver / report / resource behavior。
+- Oracle 二次修复确认：P2 已解决，最终 P0/P1/P2/P3 均无。
 
 ### 2.22 Asset Semantic Fidelity Step 7: Repair-Enabled Canary Safety + Release Guard
 

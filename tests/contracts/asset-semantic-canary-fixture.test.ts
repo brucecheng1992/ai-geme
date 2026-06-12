@@ -8,8 +8,7 @@ import { inferAssetSemanticConstraint, LocalAssetPackSchema } from '../../packag
 
 const fixturePath = join('tests', 'fixtures', 'asset-semantic-canary.briefs.json');
 const assetPackRoot = join('assets', 'asset-packs');
-const supportedCanonicalConcepts = new Set(['cat', 'alien', 'tank', 'space']);
-const v01ExplicitUnsupportedConcepts = new Set(['fishbone']);
+const supportedCanonicalConcepts = new Set(['cat', 'alien', 'tank', 'space', 'fishbone']);
 const forbiddenExpansionConcepts = new Set(['dog', 'rabbit', 'robot', 'bird', 'slime', 'asteroid']);
 
 const OverallStatusSchema = z.enum(['PLAYABLE', 'PLAYABLE_WITH_FALLBACK_ASSETS', 'PLAYABLE_WITH_ART_WARNINGS', 'NEEDS_ASSET_REPAIR', 'QA_FAILED']);
@@ -67,10 +66,7 @@ describe('Asset semantic canary brief fixture', () => {
         expect(brief.unsupportedReason).toBeTruthy();
       }
 
-      if (unsupportedConcepts.length > 0) {
-        expect(unsupportedConcepts.every((concept) => v01ExplicitUnsupportedConcepts.has(concept))).toBe(true);
-        expect(brief.expectedUnsupported).toBe(true);
-      }
+      expect(unsupportedConcepts).toEqual([]);
 
       for (const expected of brief.expect.expectedCore ?? []) {
         if (forbiddenExpansionConcepts.has(expected.concept)) {
@@ -80,11 +76,28 @@ describe('Asset semantic canary brief fixture', () => {
     }
   });
 
-  it('matches current taxonomy inference for supported core concepts', () => {
+  it('matches current taxonomy inference for supported canary concepts', () => {
     expect(inferAssetSemanticConstraint({ role: 'player_character', subject: '小猫' }).expectedConcept).toBe('cat');
-    expect(inferAssetSemanticConstraint({ role: 'enemy', subject: '外星人' }).expectedConcept).toBe('alien');
+    expect(inferAssetSemanticConstraint({ role: 'enemy', subject: '异星人' }).expectedConcept).toBe('alien');
     expect(inferAssetSemanticConstraint({ role: 'player_character', subject: '坦克' }).expectedConcept).toBe('tank');
-    expect(inferAssetSemanticConstraint({ role: 'background', subject: 'background', styleTheme: '太空星星' }).expectedConcept).toBe('space');
+    expect(inferAssetSemanticConstraint({ role: 'player_character', subject: '装甲车' }).expectedConcept).toBe('tank');
+    expect(inferAssetSemanticConstraint({ role: 'background', subject: 'background', styleTheme: '星空' }).expectedConcept).toBe('space');
+    expect(inferAssetSemanticConstraint({ role: 'projectile', subject: '鱼骨头子弹' })).toMatchObject({
+      expectedConcept: 'fishbone',
+      strictness: 'medium'
+    });
+  });
+
+  it('keeps taxonomy v0.2 support decoupled from canary fixture promotion', async () => {
+    const briefs = await readCanaryBriefs();
+
+    expect(briefs.filter((brief) => brief.expectedUnsupported === true).map((brief) => brief.id)).toEqual([
+      'cat_fishbone_alien_shooter',
+      'kitten_extraterrestrial_shooter',
+      'orange_cat_starfield_alien_shooter',
+      'armored_vehicle_vs_tank',
+      'cat_space_alien_fishbone'
+    ]);
   });
 
   it('references only known local packs in preferredPack expectations', async () => {

@@ -41,6 +41,7 @@ Step 7 完成后的当前状态：P0 closed / ready for resource expansion canar
 - 已新增 Step 6b conservative Repair Executor：只在显式调用时消费 repair plan，最多尝试 1 次，并写入 manifest / public manifest / `asset_resolution_report.json.repair`。
 - 已新增 Step 6c repair pipeline integration：默认关闭，只有显式 flag 开启且首次 QA 为 runtime pass + hard semantic failed + executable hard repair item 时才执行 repair、rebuild 和一次 QA rerun。
 - 已新增 Step 7 repair-enabled canary safety：canary runner 可显式开启 repair guard，summary report 可观测 repair metadata，默认和 repair-enabled canary 均证明当前 supported cases 不误触发 repair；hard mismatch synthetic fixture 证明 repair 仍可触发。
+- 已新增 Step 8a taxonomy v0.2：只补当前 unsupported canary cases 需要的 canonical concept / synonym normalization，不接入资源、不 promotion fixture、不改变 resolver / QA / Workbench / Phaser / repair 行为。
 
 ## 4. 分步落地计划
 
@@ -58,6 +59,7 @@ Step 7 完成后的当前状态：P0 closed / ready for resource expansion canar
 | Step 6b | Repair Executor | mismatch 后重选 / fallback trace | 已完成 |
 | Step 6c | Repair pipeline integration | 显式挂入生成 pipeline 的触发点和回写门禁 | 已完成 |
 | Step 7 | 回归批量验收 | repair-enabled canary safety + release guard | 已完成 |
+| Step 8a | Taxonomy v0.2 | unsupported canary wording 的 canonical / synonym normalization | 已完成 |
 
 ## 5. Step 1 最小实现边界
 
@@ -524,7 +526,45 @@ Step 7 已执行：
 - hard mismatch synthetic test 保持 repair 能力可触发：首次 QA 为 `NEEDS_ASSET_REPAIR` 后执行 1 次 repair、1 次 QA rerun，并记录 `beforeOverallStatus="NEEDS_ASSET_REPAIR"`、`afterOverallStatus="PLAYABLE_WITH_FALLBACK_ASSETS"`。
 - summary 对旧 report 兼容，不因缺失 `asset_semantic_repair` 崩溃。
 
-## 17. 审查门禁
+## 17. Step 8a 最小实现边界
+
+状态：已完成。
+
+Step 8a 只处理 taxonomy / synonym normalization：
+
+- 新增 `fishbone` projectile-only canonical concept，覆盖 `fishbone`、`fish_bone`、`fish bone`、`鱼骨`、`鱼骨头`、`鱼骨头子弹`、`鱼骨子弹`。
+- `fishbone` semantic strictness 为 `medium`，不会把 projectile 泛化成 hard gate；forbidden tags 只表达 projectile 语义冲突，例如 `shell`、`tank_bullet`、`missile`、`alien`、`extraterrestrial`。
+- 扩展现有 canonical concept 的输入同义词：`异星人`、`异星`、`外星怪物`、`异星怪物`、`ufo_creature`、`ufo creature`、`space_creature`、`space creature` -> `alien`；`星空`、`银河`、`星海`、`stars`、`starfield`、`star_field`、`star field`、`cosmic` -> `space`；`装甲车`、`armored_vehicle`、`armored vehicle`、`armoured_vehicle`、`armoured vehicle` -> `tank`。
+- 这些 alias 只属于当前 canary unsupported wording 对应的 `alien` / `space` / `tank` concept family input normalization；不扩大 `expectedAnyTags`、resolver ranking、report schema 或资源选择行为。
+- ASCII alias 走 tokenizer / token sequence 匹配，不使用 substring；`tankard` 不命中 `tank`，`caterpillar` 不命中 `cat`。
+- 当前 5 个 `expectedUnsupported: true` canary fixture 仍保留，默认 canary 仍跳过；fixture promotion 留给 Step 8b。
+
+Step 8a 不修改：
+
+- resolver ranking、Step 3 hard gate、fallback 策略、manifest `semanticFit`、`asset_resolution_report`、QA aggregation、Workbench UI、Phaser runtime、repair planner / executor / pipeline、canary runner 行为。
+- 新资源库、真实美术资源、AI image provider 或 shooter HUD 文件。
+
+Step 8a 验证：
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts
+    npx vitest run tests/contracts/asset-semantic-canary-fixture.test.ts
+    npm test
+    npm run typecheck
+    npm run qa:asset-semantic:canary -- --limit 3
+    npm run qa:asset-semantic:canary -- --repair-enabled --limit 3
+    git diff --check
+
+结果：
+
+- `tests/contracts/asset-pipeline.test.ts`：20 个测试通过。
+- `tests/contracts/asset-semantic-canary-fixture.test.ts`：6 个测试通过。
+- `npm test` 通过：contracts 119 个测试通过，workspace 125 个测试通过。
+- `npm run typecheck` 通过。
+- 默认 canary smoke：`artifacts/asset-semantic-canary/20260612T094445Z`，`runnable=3 skipped=11 experimental=0 passed=3 failed=0`，`repair.enabled=false repair.attemptedCount=0 repair.failedCount=0`。
+- repair-enabled canary smoke：`artifacts/asset-semantic-canary/20260612T094506Z`，`runnable=3 skipped=11 experimental=0 passed=3 failed=0`，`repair.enabled=true repair.attemptedCount=0 repair.failedCount=0`。
+- `git diff --check` 通过。
+
+## 18. 审查门禁
 
 每一步按 review-gated-refactor 执行：
 
@@ -534,12 +574,13 @@ Step 7 已执行：
 4. 把修改范围、验证命令、审查结论写回 `docs/refactor-log/ai-game-dsl-p0-review-gated.md`。
 5. 再做文档复审门禁。
 
-## 18. 当前注意事项
+## 19. 当前注意事项
 
 - provider `survive_duration` 修复已单独提交；后续 asset semantic fidelity 步骤仍不要混入 provider 改动。
 - Step 7 已用默认和 repair-enabled canary summary 证明批量 supported cases 不退化；后续新增 taxonomy / 资源库 / AI image provider 仍必须另起小步，并重新跑 release guard。
-- 建议下一步顺序：提交 Step 7；恢复/处理 shooter HUD stash 并单独 PR；之后进入 Step 8: Canary asset pack expansion v0.2。
-- 可选技术债治理：Step 8a 拆分 `generation-pipeline.service.ts`，Step 8b 拆分 `generation-pipeline.service.test.ts`。
+- Step 8a 已只完成 taxonomy v0.2；下一步如果继续 asset semantic 主线，应先做 Step 8b canary fixture promotion，再做 Step 8c 小包资源扩展。
+- shooter HUD stash 仍是独立任务，不应混入 Asset Semantic Fidelity 后续步骤。
+- 可选技术债治理应另起命名，例如 pipeline split，不再复用 Step 8a / Step 8b 编号。
 - 后续涉及真实验收时仍必须用 Workbench / generated project / QA 产物证明，不只看单测。
 - 后续扩展的真实验收至少包含：
   - 小猫射击外星人：不能选 tank 作为 player/enemy。

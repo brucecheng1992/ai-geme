@@ -8,6 +8,7 @@ import {
   AssetManifestSchema,
   AssetResolutionReportSchema,
   buildAssetPlanFromIr,
+  inferAssetSemanticConstraint,
   indexLocalAssetPackMetadata,
   LocalAssetPackSchema,
   validateGeneratedProjectAssets,
@@ -77,6 +78,48 @@ describe('Asset pipeline contracts', () => {
       expectedAnyTags: ['tank', 'vehicle'],
       strictness: 'hard'
     });
+  });
+
+  it('normalizes canary taxonomy v0.2 synonyms without ASCII substring matches', () => {
+    for (const subject of ['fishbone', 'fish_bone', 'fish bone', '鱼骨', '鱼骨头', '鱼骨头子弹', '鱼骨子弹']) {
+      expect(inferAssetSemanticConstraint({ role: 'projectile', subject })).toMatchObject({
+        expectedConcept: 'fishbone',
+        expectedAnyTags: ['fishbone', 'projectile'],
+        forbiddenTags: expect.arrayContaining(['shell', 'tank_bullet', 'missile', 'alien', 'extraterrestrial']),
+        strictness: 'medium'
+      });
+    }
+    expect(inferAssetSemanticConstraint({ role: 'projectile', subject: '鱼骨头' }).expectedConcept).not.toBe('shell');
+
+    for (const subject of ['异星人', '外星怪物', '异星怪物', 'extraterrestrial', 'ufo_creature', 'space_creature', 'space creature']) {
+      expect(inferAssetSemanticConstraint({ role: 'enemy', subject })).toMatchObject({
+        expectedConcept: 'alien',
+        expectedAnyTags: ['alien', 'extraterrestrial', 'ufo_creature'],
+        strictness: 'hard'
+      });
+    }
+
+    for (const styleTheme of ['星空', '银河', '星海', 'stars', 'starfield', 'star_field', 'star field', 'galaxy', 'cosmic']) {
+      expect(inferAssetSemanticConstraint({ role: 'background', subject: 'background', styleTheme })).toMatchObject({
+        expectedConcept: 'space',
+        expectedAnyTags: ['space', 'stars', 'galaxy', 'cosmic'],
+        strictness: 'medium'
+      });
+    }
+    expect(inferAssetSemanticConstraint({ role: 'background', subject: 'background', styleTheme: '星空' }).expectedConcept).not.toBe('battlefield');
+
+    for (const subject of ['装甲车', '战车', 'armored_vehicle', 'armored vehicle', 'armoured_vehicle', 'armoured vehicle', 'turret']) {
+      expect(inferAssetSemanticConstraint({ role: 'player_character', subject })).toMatchObject({
+        expectedConcept: 'tank',
+        expectedAnyTags: ['tank', 'vehicle'],
+        strictness: 'hard'
+      });
+    }
+
+    expect(inferAssetSemanticConstraint({ role: 'player_character', subject: 'Caterpillar' }).expectedConcept).toBe('player');
+    expect(inferAssetSemanticConstraint({ role: 'player_character', subject: 'Vehicle' }).expectedConcept).toBe('player');
+    expect(inferAssetSemanticConstraint({ role: 'enemy', subject: 'Tankard' }).expectedConcept).toBe('enemy');
+    expect(inferAssetSemanticConstraint({ role: 'projectile', subject: 'fish boneless' }).expectedConcept).toBe('projectile');
   });
 
   it('keeps generic and non-core shooter asset semantics soft instead of inventing hard entity constraints', () => {
