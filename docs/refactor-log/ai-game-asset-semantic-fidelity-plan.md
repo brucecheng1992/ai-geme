@@ -33,11 +33,12 @@
 - generated project 根目录已写出 `asset_resolution_report.json`，记录 selected / rejected / fallback diagnostics。
 - QA report 已包含 `asset_report`，Workbench Assets 面板可展示 manifest/runtime load 状态和 source pack。
 
-Step 5.5b 完成后的剩余缺口：
+Step 6b 完成后的剩余缺口：
 
 - QA / Workbench 已能识别 runtime pass 但 hard semantic mismatch 的 `NEEDS_ASSET_REPAIR`，并展示 per-asset semanticFit 摘要。
 - 第一批 canary brief fixture 已建立，batch runner 已能默认运行 supported cases、跳过 `expectedUnsupported` cases，并写出 summary report。
 - 已新增 Step 6a Asset Repair Planner：`NEEDS_ASSET_REPAIR` / hard semantic failure 只会生成可审计 repair plan，不会自动重选或修复资源。
+- 已新增 Step 6b conservative Repair Executor：只在显式调用时消费 repair plan，最多尝试 1 次，并写入 manifest / public manifest / `asset_resolution_report.json.repair`；尚未默认接入生成 pipeline。
 
 ## 4. 分步落地计划
 
@@ -52,7 +53,8 @@ Step 5.5b 完成后的剩余缺口：
 | Step 5.5a | Canary brief fixture v0.1 | `asset-semantic-canary.briefs.json`、fixture validation test | 已完成 |
 | Step 5.5b | Canary batch runner | 读取 fixture、生成 summary report | 已完成 |
 | Step 6a | Asset Repair Planner | 基于 QA / manifest / resolution report 生成 repair plan | 已完成 |
-| Step 6b | Repair Executor | mismatch 后重选 / fallback trace | 当前下一步 |
+| Step 6b | Repair Executor | mismatch 后重选 / fallback trace | 已完成 |
+| Step 6c | Repair pipeline integration | 显式挂入生成 pipeline 的触发点和回写门禁 | 当前下一步 |
 | Step 7 | 回归批量验收 | E2E cases 和真实 Workbench proof | 目标：cat/alien、tank/tank、generic shooter 均通过对应验收 |
 
 ## 5. Step 1 最小实现边界
@@ -352,7 +354,48 @@ Step 6a 已执行：
 - hard unknown 且无 selected local pack 会生成 `force_template_svg_fallback`。
 - `PLAYABLE_WITH_FALLBACK_ASSETS`、`PLAYABLE_WITH_ART_WARNINGS`、`fallback_generated`、exact / compatible / not_applicable、medium / soft mismatch 或 unknown 不触发 executable repair。
 
-## 14. 审查门禁
+## 14. Step 6b 最小实现边界
+
+状态：已完成。
+
+Step 6b 新增 conservative Asset Repair Executor：
+
+- 新增 `packages/asset-pipeline/src/asset-repair-executor.ts` 和 `asset-repair-executor.types.ts`，导出显式 `executeAssetRepairPlan` API。
+- 新增 `asset-repair-report.schema.ts`，让 `asset_resolution_report.json` 可以可选携带 `repair` section。
+- `plan.triggered=false` 时 no-op，不读取或写入项目文件。
+- `plan.triggered=true` 时先读取 `asset_plan.json`、`public/asset_manifest.json` 和 `asset_resolution_report.json`，并在任何写入前校验三者与 `repairPlan.projectId` 一致。
+- 只处理 hard semantic failed executable item；`no_action` / medium / soft / `fallback_generated` 不执行修复。
+- 对 selected local pack 错误候选使用 project-local blacklist 重新 resolve；rerresolve 写入临时 staging 目录，只把 repaired requirement 对应 SVG copy 回项目，避免覆盖非 repair 目标资产。
+- 没有合格 local asset 时强制生成 deterministic `template_svg` fallback，并保持原 requirement id / `loadKey`。
+- 修复成功时重写 project root `asset_manifest.json`、`public/asset_manifest.json` 和 `asset_resolution_report.json.repair`。
+- `triggered=true` 但没有 executable hard item 时，只写 `asset_resolution_report.json.repair.status = "no_action"`，不写 manifest 或 assets。
+- 最多尝试 1 次；本步不默认挂入 `GenerationPipeline`。
+
+Step 6b 不修改：
+
+- QA 聚合规则、Workbench UI、Phaser runtime、taxonomy、Step 3 hard gate 或正常 resolver ranking。
+- medium / soft warning、`fallback_generated` 或成功路径资源。
+- 新资源库、AI image provider 或 provider `survive_duration`。
+- shooter HUD 脏文件。
+
+Step 6b 已执行：
+
+    npx vitest run tests/contracts/asset-repair-executor.test.ts
+    npm run test:contracts
+    npm run typecheck
+    npm run qa:asset-semantic:canary -- --limit 3
+    git diff --check
+
+关键断言：
+
+- hard semantic failed local-pack asset 会 project-local blacklist 当前 pack 并重新 resolve。
+- rerresolve 命中第二个合格 local pack 时，只复制 repaired requirement 的文件，非 repair 目标 asset 文件和 manifest entry 保持不变。
+- 无合格 local asset 时写 deterministic template SVG fallback，`semanticFit.status = "fallback_generated"`。
+- `triggered=true` 但无 executable hard item 会写 `repair.status = "no_action"` 审计 section。
+- `repairPlan.projectId` 与项目 artifact 不一致时直接拒绝，且不写 manifest / report。
+- repaired report 不保留被 blacklist pack 的旧 `selected` candidate。
+
+## 15. 审查门禁
 
 每一步按 review-gated-refactor 执行：
 
@@ -362,9 +405,10 @@ Step 6a 已执行：
 4. 把修改范围、验证命令、审查结论写回 `docs/refactor-log/ai-game-dsl-p0-review-gated.md`。
 5. 再做文档复审门禁。
 
-## 15. 当前注意事项
+## 16. 当前注意事项
 
 - provider `survive_duration` 修复已单独提交；后续 asset semantic fidelity 步骤仍不要混入 provider 改动。
+- Step 6b 只是显式 executor；后续 Step 6c 若接入 pipeline，仍需要独立门禁，避免 repair loop 污染默认成功路径。
 - 本阶段真实验收必须用 Workbench / generated project / QA 产物证明，不只看单测。
 - 真实验收至少包含：
   - 小猫射击外星人：不能选 tank 作为 player/enemy。

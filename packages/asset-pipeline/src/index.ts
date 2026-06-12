@@ -32,8 +32,10 @@ export {
   buildAssetResolutionReport,
   type AssetResolutionCandidate,
   type AssetResolutionCandidateRejection,
+  type AssetResolutionRepairSection,
   type AssetResolutionReport
 } from './resolution-report.js';
+export { AssetResolutionRepairSectionSchema } from './asset-repair-report.schema.js';
 export { buildAssetRepairPlan } from './asset-repair-plan.js';
 export {
   type AssetRepairAction,
@@ -45,6 +47,16 @@ export {
   type AssetRepairStrictness,
   type BuildAssetRepairPlanInput
 } from './asset-repair-plan.types.js';
+export { executeAssetRepairPlan } from './asset-repair-executor.js';
+export {
+  type AssetRepairBlacklistedCandidate,
+  type AssetRepairExecutionInput,
+  type AssetRepairExecutionResult,
+  type AssetRepairExecutionStatus,
+  type AssetRepairReportAssetSnapshot,
+  type AssetRepairReportItem,
+  type AssetRepairReportSection
+} from './asset-repair-executor.types.js';
 export { inferAssetSemanticConstraint } from './taxonomy.js';
 export { validateGeneratedProjectAssets, type AssetManifestFailureCode, type AssetManifestValidationFailure, type AssetManifestValidationResult } from './validator.js';
 export { writeAssetArtifacts, type WriteAssetArtifactsResult } from './writer.js';

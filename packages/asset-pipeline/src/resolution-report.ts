@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { LocalPackAssetSemanticMetadata } from './local-asset-pack.schema.js';
+import { AssetResolutionRepairSectionSchema } from './asset-repair-report.schema.js';
 import { AssetSemanticConstraintSchema, AssetSemanticFitSchema, SemanticTagSchema, type AssetManifest, type AssetManifestAsset, type AssetPlan, type AssetPlanItem, type AssetSemanticFit } from './schemas.js';
 
 const AssetIdSchema = z.string().regex(/^[a-z][a-z0-9_]{1,39}$/);
@@ -60,11 +61,13 @@ export const AssetResolutionReportSchema = z.strictObject({
       semanticFit: AssetSemanticFitSchema
     })
   ),
-  candidates: z.array(AssetResolutionCandidateSchema)
+  candidates: z.array(AssetResolutionCandidateSchema),
+  repair: AssetResolutionRepairSectionSchema.optional()
 });
 export type AssetResolutionCandidateRejection = z.infer<typeof AssetResolutionCandidateRejectionSchema>;
 export type AssetResolutionMissingAsset = z.infer<typeof AssetResolutionMissingAssetSchema>;
 export type AssetResolutionCandidate = z.infer<typeof AssetResolutionCandidateSchema>;
+export type AssetResolutionRepairSection = z.infer<typeof AssetResolutionRepairSectionSchema>;
 export type AssetResolutionReport = z.infer<typeof AssetResolutionReportSchema>;
 
 export function buildTemplateSemanticFit(planItem: AssetPlanItem): AssetSemanticFit {

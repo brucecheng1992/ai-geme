@@ -8,11 +8,60 @@
 
 ## 当前阶段
 
-Asset Semantic Fidelity Step 6a 已完成：新增 Asset Repair Planner；本步只生成可审计 repair plan，不执行 blacklist、重新 resolve、manifest 写入、QA 重跑或任何修复。
+Asset Semantic Fidelity Step 6b 已完成：新增 conservative Asset Repair Executor；本步只提供显式 executor API，不默认挂入 GenerationPipeline。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Asset Semantic Fidelity Step 6b：repair executor；仍不要接入 AI image provider、新资源库、taxonomy expansion 或 provider survive_duration 修复。
+当前下一步：Asset Semantic Fidelity Step 6c：显式 repair pipeline integration；仍不要接入 AI image provider、新资源库、taxonomy expansion 或 provider survive_duration 修复。
+
+### 2.20 Asset Semantic Fidelity Step 6b: Conservative Repair Executor
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- 新增 `packages/asset-pipeline/src/asset-repair-executor.ts` 和 `asset-repair-executor.types.ts`，导出显式 `executeAssetRepairPlan`。
+- 新增 `packages/asset-pipeline/src/asset-repair-report.schema.ts`，让 `AssetResolutionReportSchema` 可选携带 `repair` section。
+- `plan.triggered=false` 时 no-op；`plan.triggered=true` 时只处理 hard semantic failed executable item。
+- `LocalAssetPackProvider` 仅新增 optional project-local blacklist 输入；默认不传 blacklist 时选择行为不变。
+- rerresolve 使用临时 staging assets 目录，只有 repaired requirement ID 对应的 SVG 会被 copy 回项目，避免覆盖非 repair 目标文件。
+- 无合格 local asset 时强制 deterministic `template_svg` fallback，并保持 requirement id / `loadKey`。
+- 修复成功时重写 project root `asset_manifest.json`、`public/asset_manifest.json` 和 `asset_resolution_report.json.repair`。
+- `triggered=true` 但无 executable hard item 时只写 `repair.status = "no_action"` 审计 section，不写 manifest 或 assets。
+- 写入前校验 `repairPlan.projectId`、`asset_plan.json.projectId`、`public/asset_manifest.json.projectId` 和 `asset_resolution_report.json.projectId` 一致。
+- 新增 `tests/contracts/asset-repair-executor.test.ts`，覆盖 fallback repair、第二个合格 local pack rerresolve、no-action audit、project id mismatch 和 blacklisted selected candidate 清理。
+
+阶段结果：
+
+- 解决层级：数据契约 + repair executor 边界适配 + 文件 I/O 审计。
+- 行为边界：未默认挂入 `GenerationPipeline`；未修改 QA 聚合、Workbench UI、Phaser runtime、taxonomy、Step 3 hard gate、正常 resolver ranking、新资源库、AI image provider 或 provider `survive_duration`。
+- 修复范围只包含 hard semantic failed executable item；不修 medium / soft warning 或 `fallback_generated`。
+- shooter HUD stash 不属于本步 scope；本步没有修改 `templates/phaser/shooter/src/GameScene.ts`、`templates/phaser/shooter/src/shooter-renderer.ts` 或 `tests/contracts/phaser-templates.test.ts`。
+
+已通过验证（本步实际执行）：
+
+    npx vitest run tests/contracts/asset-repair-executor.test.ts
+    # 1 个测试文件，5 个测试通过
+
+    npm run test:contracts
+    # contracts 8 个测试文件 / 109 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    npm run qa:asset-semantic:canary -- --limit 3
+    # summary 写入 artifacts/asset-semantic-canary/20260612T065850Z
+    # runnable=3 skipped=11 experimental=0 passed=3 failed=0
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出 rerresolve 直接写真实 `public/assets` 会覆盖非 repair 目标文件；P2 指出 triggered/no executable 未写 no-action audit、缺少 project identity 校验；P3 指出 repaired report 可能同时保留同一 pack 的旧 `selected` 和新 `rejected` candidate。
+- 已处理：rerresolve 改用 staging 目录并只 copy repaired SVG；triggered/no executable 写 `repair.status = "no_action"`；写入前校验 project id；过滤被 blacklist pack 的旧 selected candidate；blacklisted candidate 增加 `role` 审计字段。
+- Oracle 复审：P0/P1/P2/P3 均无；确认未自动挂入 GenerationPipeline，未触碰禁止范围，Step 6b 可以进入文档更新阶段。
+- 审查模式：Oracle 复用。
 
 ### 2.19 Asset Semantic Fidelity Step 6a: Asset Repair Planner
 

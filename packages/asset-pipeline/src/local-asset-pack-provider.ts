@@ -15,17 +15,29 @@ export type LocalAssetResolution = {
   candidates: AssetResolutionCandidate[];
 };
 
-export async function selectLocalAssetPack(input: { plan: AssetPlan; projectAssetsDir: string; packsDir?: string }): Promise<LocalAssetSelection | undefined> {
+export type ProjectLocalAssetBlacklist = {
+  candidates: Array<{ packId: string; assetId: string; role: string; reason: string }>;
+};
+
+type ResolveLocalAssetPackInput = { plan: AssetPlan; projectAssetsDir: string; packsDir?: string; blacklist?: ProjectLocalAssetBlacklist };
+
+export async function selectLocalAssetPack(input: ResolveLocalAssetPackInput): Promise<LocalAssetSelection | undefined> {
   return (await resolveLocalAssetPack(input)).selection;
 }
 
-export async function resolveLocalAssetPack(input: { plan: AssetPlan; projectAssetsDir: string; packsDir?: string }): Promise<LocalAssetResolution> {
+export async function resolveLocalAssetPack(input: ResolveLocalAssetPackInput): Promise<LocalAssetResolution> {
   const packsRoot = resolve(input.packsDir ?? process.env.AGM_ASSET_PACKS_DIR ?? join(process.cwd(), 'assets', 'asset-packs'));
   const packs = await readLocalPacks(packsRoot);
   const genre = assetPlanGenre(input.plan);
   const candidates: AssetResolutionCandidate[] = [];
 
   for (const pack of packs) {
+    const blacklisted = input.blacklist?.candidates.filter((candidate) => candidate.packId === pack.id) ?? [];
+    if (blacklisted.length > 0) {
+      candidates.push(buildBlacklistedCandidate(pack, blacklisted));
+      continue;
+    }
+
     if (!pack.style.genres.includes(genre) || pack.style.camera !== input.plan.style.camera) {
       candidates.push(buildStyleMismatchCandidate(pack, genre, input.plan.style.camera));
       continue;
@@ -193,6 +205,23 @@ function buildIncompletePackCandidate(pack: LocalAssetPack, missingAssets: Asset
     reason: 'incomplete_pack',
     message: `Local asset pack ${pack.id} does not fully cover the asset plan.`,
     missingAssets
+  };
+}
+
+function buildBlacklistedCandidate(pack: LocalAssetPack, blacklisted: ProjectLocalAssetBlacklist['candidates']): AssetResolutionCandidate {
+  return {
+    packId: pack.id,
+    status: 'rejected',
+    reason: 'hard_semantic_mismatch',
+    message: `Local asset pack ${pack.id} is project-blacklisted by asset repair plan.`,
+    assetRejections: blacklisted.map((candidate) => ({
+      assetId: candidate.assetId,
+      role: candidate.role,
+      actualTags: [],
+      missingTags: [],
+      conflictingTags: [],
+      reason: candidate.reason
+    }))
   };
 }
 
