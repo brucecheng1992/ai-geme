@@ -102,6 +102,8 @@ describe('Compiler + Build + Preview services', () => {
     await expect(readFile(join(second.outputDir, 'shooter/src/shooter-art-library.ts'), 'utf8')).resolves.toContain('createShooterArtRuntime');
     await expect(readFile(join(second.outputDir, 'shooter/src/asset-manifest.generated.json'), 'utf8')).resolves.toContain('"sourcePack": "kenney-tiny-shooter-tanks"');
     await expect(readFile(join(second.outputDir, 'shooter/src/asset-manifest.generated.json'), 'utf8')).resolves.toContain('"attribution": "Kenney Tanks by Kenney Vleugels"');
+    await expect(readFile(join(second.outputDir, 'asset_resolution_report.json'), 'utf8')).resolves.toContain('"asset-resolution-report-v0.1"');
+    expect(second.files).toContain('asset_resolution_report.json');
     await expect(readFile(join(second.outputDir, 'shooter/src/template-visuals.ts'), 'utf8')).resolves.toContain('drawShooterPlayer');
     await expect(readFile(join(second.outputDir, 'shooter/src/runtime-plan.generated.json'), 'utf8')).resolves.toContain('"enemy_waves"');
     await expect(readFile(join(second.outputDir, 'shooter/src/main.ts'), 'utf8')).resolves.toContain('runtime-plan.generated.json');

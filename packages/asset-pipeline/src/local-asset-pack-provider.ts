@@ -1,67 +1,87 @@
 import { copyFile, readdir, readFile, stat } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve } from 'node:path';
 
-import type { AssetManifestAsset, AssetPlan, AssetPlanItem } from './schemas.js';
-import { indexLocalAssetPackMetadata, LocalAssetPackSchema, type LocalAssetPack, type LocalPackAssetSemanticMetadata } from './local-asset-pack.schema.js';
+import type { AssetManifestAsset, AssetPlan } from './schemas.js';
+import { indexLocalAssetPackMetadata, LocalAssetPackSchema, type LocalAssetPack } from './local-asset-pack.schema.js';
+import { buildHardSemanticRejection, buildLocalAssetSemanticFit, type AssetResolutionCandidate, type AssetResolutionMissingAsset } from './resolution-report.js';
 
 export type LocalAssetSelection = {
   manifestAssets: AssetManifestAsset[];
   files: string[];
 };
 
-export async function selectLocalAssetPack(input: {
-  plan: AssetPlan;
-  projectAssetsDir: string;
-  packsDir?: string;
-}): Promise<LocalAssetSelection | undefined> {
+export type LocalAssetResolution = {
+  selection?: LocalAssetSelection;
+  candidates: AssetResolutionCandidate[];
+};
+
+export async function selectLocalAssetPack(input: { plan: AssetPlan; projectAssetsDir: string; packsDir?: string }): Promise<LocalAssetSelection | undefined> {
+  return (await resolveLocalAssetPack(input)).selection;
+}
+
+export async function resolveLocalAssetPack(input: { plan: AssetPlan; projectAssetsDir: string; packsDir?: string }): Promise<LocalAssetResolution> {
   const packsRoot = resolve(input.packsDir ?? process.env.AGM_ASSET_PACKS_DIR ?? join(process.cwd(), 'assets', 'asset-packs'));
   const packs = await readLocalPacks(packsRoot);
   const genre = assetPlanGenre(input.plan);
+  const candidates: AssetResolutionCandidate[] = [];
 
   for (const pack of packs) {
     if (!pack.style.genres.includes(genre) || pack.style.camera !== input.plan.style.camera) {
+      candidates.push(buildStyleMismatchCandidate(pack, genre, input.plan.style.camera));
       continue;
     }
 
     const selected = selectCompletePackAssets(input.plan, pack);
-    if (selected === undefined) {
+    if (!selected.ok) {
+      candidates.push(selected.candidate);
       continue;
     }
 
     const files: string[] = [];
-    for (const asset of selected) {
+    for (const asset of selected.assets) {
       const sourcePath = resolve(packsRoot, pack.id, asset.packAsset.file);
       assertInside(resolve(packsRoot, pack.id), sourcePath, `asset ${asset.planItem.id}`);
       await copyFile(sourcePath, join(input.projectAssetsDir, `${asset.planItem.id}.svg`));
       files.push(`public/assets/${asset.planItem.id}.svg`);
     }
 
+    candidates.push({
+      packId: pack.id,
+      status: 'selected',
+      reason: 'selected',
+      message: `Selected complete local asset pack ${pack.id}.`
+    });
+
     return {
-      files,
-      manifestAssets: selected.map(({ planItem, packAsset }) => {
-        const license = packAsset.license ?? pack.license;
-        return {
-          id: planItem.id,
-          loadKey: `agm.${planItem.id}`,
-          role: planItem.role,
-          type: 'image',
-          format: planItem.format,
-          path: `assets/${planItem.id}.svg`,
-          source: 'local_asset_pack',
-          sourcePack: pack.id,
-          licenseId: license.id,
-          licenseName: license.name,
-          attribution: license.attribution,
-          sourceUrl: license.sourceUrl,
-          required: planItem.required,
-          status: 'ready',
-          size: planItem.size
-        };
-      })
+      candidates,
+      selection: {
+        files,
+        manifestAssets: selected.assets.map(({ planItem, packAsset }) => {
+          const license = packAsset.license ?? pack.license;
+          return {
+            id: planItem.id,
+            loadKey: `agm.${planItem.id}`,
+            role: planItem.role,
+            type: 'image',
+            format: planItem.format,
+            path: `assets/${planItem.id}.svg`,
+            source: 'local_asset_pack',
+            sourcePack: pack.id,
+            licenseId: license.id,
+            licenseName: license.name,
+            attribution: license.attribution,
+            sourceUrl: license.sourceUrl,
+            required: planItem.required,
+            status: 'ready',
+            size: planItem.size,
+            semanticFit: buildLocalAssetSemanticFit(planItem, packAsset.semantic)
+          };
+        })
+      }
     };
   }
 
-  return undefined;
+  return { candidates };
 }
 
 async function readLocalPacks(packsRoot: string): Promise<LocalAssetPack[]> {
@@ -107,47 +127,73 @@ function compareLocalAssetPacks(left: LocalAssetPack, right: LocalAssetPack): nu
 
 function selectCompletePackAssets(plan: AssetPlan, pack: LocalAssetPack) {
   const { assetsById } = indexLocalAssetPackMetadata(pack);
-  const selected = [];
+  const assets = [];
+  const missingAssets: AssetResolutionMissingAsset[] = [];
+  const semanticRejections = [];
+  let hasIncompleteCoverage = false;
 
   for (const planItem of plan.items) {
     const packAsset = assetsById.get(planItem.id);
     if (packAsset === undefined || packAsset.role !== planItem.role || packAsset.format !== planItem.format) {
-      return undefined;
+      hasIncompleteCoverage = true;
+      missingAssets.push({
+        assetId: planItem.id,
+        expectedRole: planItem.role,
+        expectedFormat: planItem.format,
+        actualRole: packAsset?.role,
+        actualFormat: packAsset?.format,
+        reason: packAsset === undefined ? 'missing' : packAsset.role !== planItem.role ? 'role_mismatch' : 'format_mismatch'
+      });
+      continue;
     }
 
-    if (!assetSatisfiesHardSemanticConstraint(planItem, packAsset.semantic)) {
-      return undefined;
+    const semanticRejection = buildHardSemanticRejection(planItem, packAsset.semantic);
+    if (semanticRejection !== undefined) {
+      semanticRejections.push(semanticRejection);
     }
 
-    selected.push({ planItem, packAsset });
+    assets.push({ planItem, packAsset });
   }
 
-  return selected;
+  if (hasIncompleteCoverage) {
+    return { ok: false, candidate: buildIncompletePackCandidate(pack, missingAssets) } as const;
+  }
+
+  if (semanticRejections.length > 0) {
+    return {
+      ok: false,
+      candidate: {
+        packId: pack.id,
+        status: 'rejected',
+        reason: 'hard_semantic_mismatch',
+        message: `Local asset pack ${pack.id} failed hard semantic constraints.`,
+        assetRejections: semanticRejections
+      }
+    } as const;
+  }
+
+  return { ok: true, assets } as const;
 }
 
-function assetSatisfiesHardSemanticConstraint(planItem: AssetPlanItem, assetSemantic: LocalPackAssetSemanticMetadata | undefined): boolean {
-  const constraint = planItem.semantic;
-  if (constraint?.strictness !== 'hard') {
-    return true;
-  }
-
-  if (assetSemantic === undefined) {
-    return false;
-  }
-
-  if (!hasAnyTag(assetSemantic.subjectTags, constraint.expectedAnyTags)) {
-    return false;
-  }
-
-  if (hasAnyTag([...assetSemantic.subjectTags, ...assetSemantic.themeTags], constraint.forbiddenTags)) {
-    return false;
-  }
-
-  return !hasAnyTag(assetSemantic.forbiddenTags, constraint.expectedAnyTags);
+function buildStyleMismatchCandidate(pack: LocalAssetPack, expectedGenre: string, expectedCamera: AssetPlan['style']['camera']): AssetResolutionCandidate {
+  return {
+    packId: pack.id,
+    status: 'skipped',
+    reason: 'style_mismatch',
+    message: `Local asset pack ${pack.id} does not match ${expectedGenre}/${expectedCamera}.`,
+    expectedStyle: { genre: expectedGenre, camera: expectedCamera },
+    actualStyle: { genres: pack.style.genres, camera: pack.style.camera }
+  };
 }
 
-function hasAnyTag(left: readonly string[], right: readonly string[]): boolean {
-  return left.some((tag) => right.includes(tag));
+function buildIncompletePackCandidate(pack: LocalAssetPack, missingAssets: AssetResolutionMissingAsset[]): AssetResolutionCandidate {
+  return {
+    packId: pack.id,
+    status: 'rejected',
+    reason: 'incomplete_pack',
+    message: `Local asset pack ${pack.id} does not fully cover the asset plan.`,
+    missingAssets
+  };
 }
 
 function assetPlanGenre(plan: AssetPlan): 'collector' | 'dodger' | 'shooter' {

@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   AssetManifestSchema,
+  AssetResolutionReportSchema,
   buildAssetPlanFromIr,
   indexLocalAssetPackMetadata,
   LocalAssetPackSchema,
@@ -195,6 +196,66 @@ describe('Asset pipeline contracts', () => {
     ]);
     await expect(readFile(join(root, 'public/assets/player.svg'), 'utf8')).resolves.toContain('<svg');
     await expect(readFile(join(root, 'public/assets/enemy.svg'), 'utf8')).resolves.toContain('<svg');
+    expect(result.manifest.assets.find((asset) => asset.id === 'player')?.semanticFit).toMatchObject({
+      status: 'fallback_generated',
+      strictness: 'hard',
+      expectedConcept: 'cat',
+      expectedAnyTags: ['cat', 'kitten', 'feline'],
+      actualTags: ['template_svg']
+    });
+    expect(result.manifest.assets.find((asset) => asset.id === 'enemy')?.semanticFit).toMatchObject({
+      status: 'fallback_generated',
+      strictness: 'hard',
+      expectedConcept: 'alien',
+      expectedAnyTags: ['alien', 'extraterrestrial', 'ufo_creature'],
+      actualTags: ['template_svg']
+    });
+
+    const report = await readAssetResolutionReport(root);
+    expect(report).toMatchObject({
+      version: 'asset-resolution-report-v0.1',
+      projectId,
+      summary: {
+        selectedProvider: 'template_svg',
+        fallbackUsed: true,
+        reason: 'No semantic-compatible complete local asset pack was selected; generated deterministic template SVG assets.'
+      }
+    });
+    expect(report.assets.find((asset) => asset.id === 'player')).toMatchObject({
+      selected: { source: 'template_svg', path: 'assets/player.svg' },
+      semanticFit: {
+        status: 'fallback_generated',
+        strictness: 'hard',
+        expectedConcept: 'cat'
+      }
+    });
+    expect(report.candidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          packId: 'kenney-tiny-shooter-tanks',
+          status: 'rejected',
+          reason: 'hard_semantic_mismatch',
+          assetRejections: expect.arrayContaining([
+            expect.objectContaining({
+              assetId: 'player',
+              expectedConcept: 'cat',
+              actualTags: expect.arrayContaining(['tank', 'vehicle', 'turret']),
+              missingTags: ['cat', 'kitten', 'feline'],
+              conflictingTags: expect.arrayContaining(['tank', 'vehicle']),
+              reason: 'Hard semantic mismatch: local asset player does not satisfy expected cat.'
+            }),
+            expect.objectContaining({
+              assetId: 'enemy',
+              expectedConcept: 'alien',
+              actualTags: expect.arrayContaining(['tank', 'vehicle', 'turret']),
+              missingTags: ['alien', 'extraterrestrial', 'ufo_creature'],
+              conflictingTags: expect.arrayContaining(['tank', 'vehicle']),
+              reason: 'Hard semantic mismatch: local asset enemy does not satisfy expected alien.'
+            })
+          ])
+        })
+      ])
+    );
     await expect(validateGeneratedProjectAssets({ projectId, projectDir: root })).resolves.toMatchObject({ ok: true });
   });
 
@@ -215,6 +276,34 @@ describe('Asset pipeline contracts', () => {
     ]);
     await expect(readFile(join(root, 'public/assets/enemy.svg'), 'utf8')).resolves.toContain('Kenney grey tank enemy sprite');
     await expect(readFile(join(root, 'public/assets/projectile.svg'), 'utf8')).resolves.toContain('data:image/png;base64');
+    expect(result.manifest.assets.find((asset) => asset.id === 'player')?.semanticFit).toMatchObject({
+      status: 'exact',
+      confidence: 1,
+      strictness: 'hard',
+      expectedConcept: 'tank',
+      actualTags: expect.arrayContaining(['tank', 'vehicle', 'turret'])
+    });
+
+    const report = await readAssetResolutionReport(root);
+    expect(report).toMatchObject({
+      version: 'asset-resolution-report-v0.1',
+      projectId,
+      summary: {
+        selectedProvider: 'local_asset_pack',
+        selectedPackId: 'kenney-tiny-shooter-tanks',
+        fallbackUsed: false,
+        reason: 'Selected complete local asset pack kenney-tiny-shooter-tanks.'
+      }
+    });
+    expect(report.candidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          packId: 'kenney-tiny-shooter-tanks',
+          status: 'selected',
+          reason: 'selected'
+        })
+      ])
+    );
     await expect(validateGeneratedProjectAssets({ projectId, projectDir: root })).resolves.toMatchObject({ ok: true });
   });
 
@@ -329,6 +418,52 @@ describe('Asset pipeline contracts', () => {
 
     expect(result.manifest.assets.map((asset) => asset.source)).toEqual(['template_svg', 'template_svg', 'template_svg']);
     expect(result.manifest.assets.some((asset) => asset.sourcePack !== undefined)).toBe(false);
+  });
+
+  it('explains style mismatch and incomplete local pack candidates in the resolution report', async () => {
+    const normalized = validateAndNormalizeRawGameDsl(createCollectorRawDsl());
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const packsDir = join(root, 'diagnostic-packs');
+    await writeDiagnosticPack({
+      packsDir,
+      packId: 'diagnostic-style-pack',
+      genres: ['shooter'],
+      assets: [{ id: 'player', role: 'player_character', file: 'player.svg' }]
+    });
+    await writeDiagnosticPack({
+      packsDir,
+      packId: 'diagnostic-incomplete-pack',
+      genres: ['collector'],
+      assets: [{ id: 'player', role: 'player_character', file: 'player.svg' }]
+    });
+
+    await writeAssetArtifacts({ projectId, projectDir: root, ir: normalized.ir, assetPacksDir: packsDir });
+
+    const report = await readAssetResolutionReport(root);
+    expect(report.candidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          packId: 'diagnostic-style-pack',
+          status: 'skipped',
+          reason: 'style_mismatch',
+          expectedStyle: { genre: 'collector', camera: 'top_down' },
+          actualStyle: { genres: ['shooter'], camera: 'top_down' }
+        }),
+        expect.objectContaining({
+          packId: 'diagnostic-incomplete-pack',
+          status: 'rejected',
+          reason: 'incomplete_pack',
+          missingAssets: expect.arrayContaining([
+            expect.objectContaining({ assetId: 'background_main', expectedRole: 'background', expectedFormat: 'svg', reason: 'missing' }),
+            expect.objectContaining({ assetId: 'collectible', expectedRole: 'collectible', expectedFormat: 'svg', reason: 'missing' })
+          ])
+        })
+      ])
+    );
   });
 
   it('rejects local asset pack files that do not match the declared SVG format', async () => {
@@ -546,6 +681,44 @@ async function writeManifest(projectDir: string, assets: TestAsset[]): Promise<v
 async function readLocalPackFixture(packId: string) {
   const raw = JSON.parse(await readFile(join(process.cwd(), 'assets/asset-packs', packId, 'pack.json'), 'utf8'));
   return LocalAssetPackSchema.parse(raw);
+}
+
+async function readAssetResolutionReport(projectDir: string) {
+  return AssetResolutionReportSchema.parse(JSON.parse(await readFile(join(projectDir, 'asset_resolution_report.json'), 'utf8')));
+}
+
+async function writeDiagnosticPack(input: {
+  packsDir: string;
+  packId: string;
+  genres: Array<'collector' | 'dodger' | 'shooter'>;
+  assets: Array<{ id: string; role: TestAsset['role']; file: string }>;
+}): Promise<void> {
+  const packDir = join(input.packsDir, input.packId);
+  await mkdir(packDir, { recursive: true });
+  for (const asset of input.assets) {
+    await writeFile(join(packDir, asset.file), '<svg xmlns="http://www.w3.org/2000/svg"></svg>', 'utf8');
+  }
+  await writeFile(
+    join(packDir, 'pack.json'),
+    `${JSON.stringify(
+      {
+        version: 'local-asset-pack-v0.1',
+        id: input.packId,
+        label: input.packId,
+        license: {
+          id: 'CC0-1.0',
+          name: 'Creative Commons CC0 1.0 Universal',
+          attribution: input.packId,
+          sourceUrl: 'https://creativecommons.org/publicdomain/zero/1.0/'
+        },
+        style: { genres: input.genres, camera: 'top_down', tags: ['diagnostic'] },
+        assets: input.assets.map((asset) => ({ id: asset.id, role: asset.role, file: asset.file, format: 'svg' }))
+      },
+      null,
+      2
+    )}\n`,
+    'utf8'
+  );
 }
 
 function createTankShooterRawDsl() {

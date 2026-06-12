@@ -8,11 +8,55 @@
 
 ## 当前阶段
 
-Asset Semantic Fidelity Step 3 已完成：resolver 现在会消费 hard semantic constraint，hard mismatch local pack 会被跳过并走既有 `template_svg` fallback；下一步进入 Step 4：Manifest semanticFit + resolution report。
+Asset Semantic Fidelity Step 4 已完成：manifest asset 现在写入 optional `semanticFit`，generated project 根目录会写出 `asset_resolution_report.json`；下一步进入 Step 5：QA + Workbench semantic status。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：在 manifest / resolution report 层记录 selected / rejected / fallback reason；仍不要改变 QA / Workbench 判定，且不要全量导入 Kenney / itch.io / OpenGameArt。
+当前下一步：在 QA / Workbench 层消费 semantic diagnostics，展示 semantic fit / mismatch / fallback reason；仍不要引入 repair loop、AI image provider 或新资源库。
+
+### 2.15 Asset Semantic Fidelity Step 4: Manifest semanticFit + resolution report
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- `AssetManifestAssetSchema` 新增 optional `semanticFit`，字段包含 status、confidence、strictness、expected concept/tags、actual/missing/conflicting tags 和 reason。
+- 新增 `resolution-report.ts`，定义 `asset-resolution-report-v0.1` schema，并集中计算 template fallback、local asset fit、hard semantic rejection 和 final report assets / candidates。
+- `writeAssetArtifacts` 继续沿用既有 selection / fallback 结果，只在 manifest assets 上挂 `semanticFit`，并额外写出 project 根目录 `asset_resolution_report.json`。
+- `resolveLocalAssetPack` 只增加 diagnostics：记录 selected、style mismatch、incomplete pack、hard semantic mismatch candidates；保留 `selectLocalAssetPack` 兼容 API。
+- report 能解释 cat/alien shooter 为什么 fallback 到 template SVG、`kenney-tiny-shooter-tanks` 的 player/enemy 为什么 hard mismatch、tank/tank shooter 为什么 selected local pack，以及 style / incomplete pack 为什么未选中。
+
+阶段结果：
+
+- 解决层级：manifest 数据契约 + asset resolution 诊断产物。
+- 结构变化：新增 `packages/asset-pipeline/src/resolution-report.ts`；`schemas.ts`、`local-asset-pack-provider.ts`、`writer.ts`、`index.ts` 同步类型和写出路径；合同测试与 compiler 测试补充 report 断言。
+- 行为边界：未修改 resolver ranking / final selection / fallback 策略；未改变 Step 3 hard gate；未修改 QA overall status、Workbench PLAYABLE、Phaser runtime 或 provider。
+- 文件规模：`schemas.ts`、`resolution-report.ts` 均为 220 行，`local-asset-pack-provider.ts` 为 213 行，仍保持职责集中。
+- 未改范围：尚未实现 QA semantic status、Workbench semantic display、repair loop、medium/soft blocking、AI image provider 或新资源库接入。
+
+已通过验证：
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts
+    # 实现前红灯：cat/alien fallback 与 tank/tank selected 两个测试均失败在 semanticFit undefined；P3 诊断测试失败在 style/incomplete candidate 缺字段
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts tests/workspace/compiler-service.test.ts
+    # 2 个测试文件，28 个测试全部通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    npx vitest run tests/workspace/playwright-qa-runner.test.ts
+    # 1 个测试文件，28 个测试全部通过，证明 QA overall status 边界未改变
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0/P1/P2 无；P3 指出 `incomplete_pack` / `style_mismatch` candidate 解释粒度偏粗。
+- 已处理：为 candidate schema 增加 `expectedStyle`、`actualStyle`、`missingAssets`，并增加合同测试覆盖 style mismatch 和 incomplete pack diagnostics。
+- Oracle 复审：P0/P1/P2/P3 均无。
+- 审查模式：Oracle 新建 + 复用
 
 ### 2.14 Asset Semantic Fidelity Step 3: Resolver semantic hard gate
 

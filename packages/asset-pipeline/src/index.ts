@@ -16,13 +16,24 @@ export {
   AssetPlanItemSchema,
   AssetPlanSchema,
   AssetSemanticConstraintSchema,
+  AssetSemanticFitSchema,
+  AssetSemanticFitStatusSchema,
   SemanticTagSchema,
   type AssetManifest,
   type AssetManifestAsset,
   type AssetPlan,
   type AssetPlanItem,
-  type AssetSemanticConstraint
+  type AssetSemanticConstraint,
+  type AssetSemanticFit,
+  type AssetSemanticFitStatus
 } from './schemas.js';
+export {
+  AssetResolutionReportSchema,
+  buildAssetResolutionReport,
+  type AssetResolutionCandidate,
+  type AssetResolutionCandidateRejection,
+  type AssetResolutionReport
+} from './resolution-report.js';
 export { inferAssetSemanticConstraint } from './taxonomy.js';
 export { validateGeneratedProjectAssets, type AssetManifestFailureCode, type AssetManifestValidationFailure, type AssetManifestValidationResult } from './validator.js';
 export { writeAssetArtifacts, type WriteAssetArtifactsResult } from './writer.js';

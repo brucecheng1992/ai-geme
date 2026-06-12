@@ -29,14 +29,14 @@
 - `kenney-tiny-shooter-tanks` 已有 pack-level profile、asset-level semantic tags 和 metadata index。
 - `selectLocalAssetPack` 先按 pack priority 排序，再要求 pack 完整覆盖所有 plan item id / role / format。
 - resolver 已消费 hard semantic constraint：hard mismatch local pack 会被跳过，且仍走既有 `template_svg` fallback。
-- `AssetManifest` 已包含 source pack、license、status、summary。
+- `AssetManifest` 已包含 source pack、license、status、summary 和 optional `semanticFit`。
+- generated project 根目录已写出 `asset_resolution_report.json`，记录 selected / rejected / fallback diagnostics。
 - QA report 已包含 `asset_report`，Workbench Assets 面板可展示 manifest/runtime load 状态和 source pack。
 
-Step 3 完成后的剩余缺口：
+Step 4 完成后的剩余缺口：
 
-- manifest 没有 `semanticFit`。
-- 尚未写出 `asset_resolution_report.json`。
 - QA / Workbench 不识别“加载成功但语义错配”。
+- 尚未把 semantic diagnostics 接入 QA status 或 Workbench display。
 
 ## 4. 分步落地计划
 
@@ -46,8 +46,8 @@ Step 3 完成后的剩余缺口：
 | Step 1 | Taxonomy + AssetPlan semantic constraint | canonical tags、strictness、`AssetPlanItem.semantic` | 已完成 |
 | Step 2 | Local pack metadata profile | pack / asset subject tags、theme tags、metadata schema | 已完成 |
 | Step 3 | Resolver semantic hard gate | complete-pack selection hard gate、fallback on hard mismatch | 已完成 |
-| Step 4 | Manifest semanticFit + resolution report | `semanticFit`、`asset_resolution_report.json` | 当前下一步 |
-| Step 5 | QA + Workbench semantic status | `assetSemanticStatus`、mismatch failure、UI 展示 | mismatch 不显示纯绿色 `PLAYABLE` |
+| Step 4 | Manifest semanticFit + resolution report | `semanticFit`、`asset_resolution_report.json` | 已完成 |
+| Step 5 | QA + Workbench semantic status | `assetSemanticStatus`、mismatch failure、UI 展示 | 当前下一步 |
 | Step 6 | 自动修复回路 | mismatch 后重选 / fallback trace | 故意错配后能 repair 到 fallback |
 | Step 7 | 回归批量验收 | E2E cases 和真实 Workbench proof | cat/alien、tank/tank、generic shooter 均通过对应验收 |
 
@@ -149,9 +149,49 @@ Step 3 已执行：
 - medium/soft semantic constraints 不阻断 local pack selection。
 - compiler stale-file 清理测试使用 tank shooter fixture 保留 tank pack wiring 覆盖；默认 cat/alien fallback 契约由 asset-pipeline contract test 覆盖。
 
-下一步 Step 4 应只增加 manifest semantic fit 和 asset resolution report，让 manifest 可解释 selected / rejected / fallback reason；仍不改变 QA / Workbench 判定。
+Step 4 已增加 manifest semantic fit 和 asset resolution report，让 manifest / report 可解释 selected / rejected / fallback reason，并保持 QA / Workbench 判定不变。
 
-## 9. 审查门禁
+## 9. Step 4 最小实现边界
+
+状态：已完成。
+
+Step 4 只处理可解释性和诊断产物：
+
+- `AssetManifestAssetSchema` 新增 optional `semanticFit`。
+- `asset_resolution_report.json` 写在 generated project 根目录，不放入 `public`，不被 Phaser runtime 读取。
+- report 记录 final selected asset、expected semantic、semantic fit、candidate selected / rejected / skipped reason。
+- hard semantic mismatch candidate 记录 per-asset rejection，包括 actual/missing/conflicting tags。
+- style mismatch candidate 记录 expected / actual style。
+- incomplete pack candidate 记录 missing / mismatched asset。
+
+Step 4 不修改：
+
+- resolver ranking / final selection。
+- Step 3 hard gate 规则。
+- fallback 策略。
+- QA overall status。
+- Workbench PLAYABLE 显示。
+- Phaser runtime。
+- provider / model prompt。
+- repair loop。
+
+Step 4 已执行：
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts tests/workspace/compiler-service.test.ts
+    npm run typecheck
+    npx vitest run tests/workspace/playwright-qa-runner.test.ts
+    git diff --check
+
+关键断言：
+
+- 默认 cat/alien shooter 仍 fallback 到 `template_svg`，manifest 写入 `fallback_generated` semanticFit，report 解释 `kenney-tiny-shooter-tanks` player/enemy hard semantic mismatch。
+- tank/tank shooter 仍选择 `kenney-tiny-shooter-tanks`，manifest 写入 `exact` semanticFit，report 记录 selected local pack。
+- style mismatch / incomplete pack candidate 会写出结构化 diagnostics。
+- QA runner 既有 28 个测试通过，说明本步没有改变 QA overall status。
+
+下一步 Step 5 应只让 QA / Workbench 消费 semantic diagnostics 并展示 semantic status；仍不引入 repair loop。
+
+## 10. 审查门禁
 
 每一步按 review-gated-refactor 执行：
 
@@ -161,7 +201,7 @@ Step 3 已执行：
 4. 把修改范围、验证命令、审查结论写回 `docs/refactor-log/ai-game-dsl-p0-review-gated.md`。
 5. 再做文档复审门禁。
 
-## 10. 当前注意事项
+## 11. 当前注意事项
 
 - provider `survive_duration` 修复已单独提交；后续 asset semantic fidelity 步骤仍不要混入 provider 改动。
 - 本阶段真实验收必须用 Workbench 生成项目证明，不只看单测。

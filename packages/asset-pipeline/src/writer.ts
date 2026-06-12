@@ -2,8 +2,9 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import type { NormalizedGameIr } from '../../game-dsl/src/index.js';
-import { selectLocalAssetPack } from './local-asset-pack-provider.js';
+import { resolveLocalAssetPack } from './local-asset-pack-provider.js';
 import { buildAssetPlanFromIr } from './plan.js';
+import { buildAssetResolutionReport, buildTemplateSemanticFit } from './resolution-report.js';
 import { AssetManifestSchema, summarizeManifestAssets, type AssetManifest, type AssetManifestAsset, type AssetPlan } from './schemas.js';
 import { renderTemplateSvg } from './template-svg-provider.js';
 
@@ -26,16 +27,19 @@ export async function writeAssetArtifacts(input: {
   await mkdir(assetsDir, { recursive: true });
   await writeFile(join(input.projectDir, 'asset_plan.json'), `${JSON.stringify(plan, null, 2)}\n`, 'utf8');
 
-  const localPackSelection = await selectLocalAssetPack({ plan, projectAssetsDir: assetsDir, packsDir: input.assetPacksDir });
-  const manifest = localPackSelection === undefined ? await writeTemplateSvgAssets(plan, assetsDir) : buildManifest(plan, localPackSelection.manifestAssets);
-  const assetFiles = localPackSelection?.files ?? plan.items.map((item) => `public/assets/${item.id}.svg`);
+  const localPackResolution = await resolveLocalAssetPack({ plan, projectAssetsDir: assetsDir, packsDir: input.assetPacksDir });
+  const manifest =
+    localPackResolution.selection === undefined ? await writeTemplateSvgAssets(plan, assetsDir) : buildManifest(plan, localPackResolution.selection.manifestAssets);
+  const report = buildAssetResolutionReport({ plan, manifest, candidates: localPackResolution.candidates });
+  const assetFiles = localPackResolution.selection?.files ?? plan.items.map((item) => `public/assets/${item.id}.svg`);
 
   await writeFile(join(publicDir, 'asset_manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+  await writeFile(join(input.projectDir, 'asset_resolution_report.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
 
   return {
     plan,
     manifest,
-    files: ['asset_plan.json', 'public/asset_manifest.json', ...assetFiles]
+    files: ['asset_plan.json', 'public/asset_manifest.json', 'asset_resolution_report.json', ...assetFiles]
   };
 }
 
@@ -54,7 +58,8 @@ async function writeTemplateSvgAssets(plan: AssetPlan, assetsDir: string): Promi
       source: 'template_svg',
       required: item.required,
       status: 'ready',
-      size: item.size
+      size: item.size,
+      semanticFit: buildTemplateSemanticFit(item)
     });
   }
 

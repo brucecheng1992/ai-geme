@@ -7,11 +7,7 @@ export const AssetRoleSchema = z.enum(['player_character', 'enemy', 'projectile'
 const AssetProviderSchema = z.enum(['local_asset_pack', 'template_svg', 'placeholder']);
 const AssetLoadKeySchema = z.string().regex(/^agm\.[a-z][a-z0-9_]{1,39}$/);
 export const SemanticTagSchema = z.string().regex(/^[a-z][a-z0-9_]{1,39}$/);
-const AssetSizeSchema = z.strictObject({
-  w: z.number().int().min(1).max(1920),
-  h: z.number().int().min(1).max(1080)
-});
-
+const AssetSizeSchema = z.strictObject({ w: z.number().int().min(1).max(1920), h: z.number().int().min(1).max(1080) });
 const SafeAssetPathSchema = z.string().min(1).refine(isSafeRelativeAssetPath, {
   message: 'asset path must be relative and must not contain .., URL schemes, or absolute path segments'
 });
@@ -21,6 +17,19 @@ export const AssetSemanticConstraintSchema = z.strictObject({
   expectedAnyTags: z.array(SemanticTagSchema).min(1).max(12),
   forbiddenTags: z.array(SemanticTagSchema).max(16).default([]),
   strictness: z.enum(['hard', 'medium', 'soft'])
+});
+
+export const AssetSemanticFitStatusSchema = z.enum(['exact', 'compatible', 'fallback_generated', 'not_applicable', 'unknown', 'mismatch']);
+export const AssetSemanticFitSchema = z.strictObject({
+  status: AssetSemanticFitStatusSchema,
+  confidence: z.number().min(0).max(1),
+  strictness: z.enum(['hard', 'medium', 'soft']).optional(),
+  expectedConcept: SemanticTagSchema.optional(),
+  expectedAnyTags: z.array(SemanticTagSchema).max(12).optional(),
+  actualTags: z.array(SemanticTagSchema).max(32).optional(),
+  missingTags: z.array(SemanticTagSchema).max(12).optional(),
+  conflictingTags: z.array(SemanticTagSchema).max(32).optional(),
+  reason: z.string().min(1).max(240).optional()
 });
 
 export const AssetPlanItemSchema = z.strictObject({
@@ -74,7 +83,8 @@ export const AssetManifestAssetSchema = z.strictObject({
   sourceUrl: z.string().url().optional(),
   required: z.boolean(),
   status: z.enum(['ready', 'fallback_used', 'missing']),
-  size: AssetSizeSchema
+  size: AssetSizeSchema,
+  semanticFit: AssetSemanticFitSchema.optional()
 });
 
 export const AssetManifestSchema = z
@@ -125,7 +135,7 @@ export type AssetPlanItem = z.infer<typeof AssetPlanItemSchema>;
 export type AssetSemanticConstraint = z.infer<typeof AssetSemanticConstraintSchema>;
 export type AssetManifest = z.infer<typeof AssetManifestSchema>;
 export type AssetManifestAsset = z.infer<typeof AssetManifestAssetSchema>;
-
+export type AssetSemanticFitStatus = z.infer<typeof AssetSemanticFitStatusSchema>; export type AssetSemanticFit = z.infer<typeof AssetSemanticFitSchema>;
 export function summarizeManifestAssets(assets: AssetManifestAsset[]): AssetManifest['summary'] {
   return {
     required: assets.filter((asset) => asset.required).length,
