@@ -33,12 +33,13 @@
 - generated project 根目录已写出 `asset_resolution_report.json`，记录 selected / rejected / fallback diagnostics。
 - QA report 已包含 `asset_report`，Workbench Assets 面板可展示 manifest/runtime load 状态和 source pack。
 
-Step 6b 完成后的剩余缺口：
+Step 6c 完成后的剩余缺口：
 
 - QA / Workbench 已能识别 runtime pass 但 hard semantic mismatch 的 `NEEDS_ASSET_REPAIR`，并展示 per-asset semanticFit 摘要。
 - 第一批 canary brief fixture 已建立，batch runner 已能默认运行 supported cases、跳过 `expectedUnsupported` cases，并写出 summary report。
 - 已新增 Step 6a Asset Repair Planner：`NEEDS_ASSET_REPAIR` / hard semantic failure 只会生成可审计 repair plan，不会自动重选或修复资源。
-- 已新增 Step 6b conservative Repair Executor：只在显式调用时消费 repair plan，最多尝试 1 次，并写入 manifest / public manifest / `asset_resolution_report.json.repair`；尚未默认接入生成 pipeline。
+- 已新增 Step 6b conservative Repair Executor：只在显式调用时消费 repair plan，最多尝试 1 次，并写入 manifest / public manifest / `asset_resolution_report.json.repair`。
+- 已新增 Step 6c repair pipeline integration：默认关闭，只有显式 flag 开启且首次 QA 为 runtime pass + hard semantic failed + executable hard repair item 时才执行 repair、rebuild 和一次 QA rerun。
 
 ## 4. 分步落地计划
 
@@ -54,8 +55,8 @@ Step 6b 完成后的剩余缺口：
 | Step 5.5b | Canary batch runner | 读取 fixture、生成 summary report | 已完成 |
 | Step 6a | Asset Repair Planner | 基于 QA / manifest / resolution report 生成 repair plan | 已完成 |
 | Step 6b | Repair Executor | mismatch 后重选 / fallback trace | 已完成 |
-| Step 6c | Repair pipeline integration | 显式挂入生成 pipeline 的触发点和回写门禁 | 当前下一步 |
-| Step 7 | 回归批量验收 | E2E cases 和真实 Workbench proof | 目标：cat/alien、tank/tank、generic shooter 均通过对应验收 |
+| Step 6c | Repair pipeline integration | 显式挂入生成 pipeline 的触发点和回写门禁 | 已完成 |
+| Step 7 | 回归批量验收 | E2E cases 和真实 Workbench proof | 当前下一步；待验收目标：cat/alien、tank/tank、generic shooter 均通过对应验收 |
 
 ## 5. Step 1 最小实现边界
 
@@ -395,7 +396,67 @@ Step 6b 已执行：
 - `repairPlan.projectId` 与项目 artifact 不一致时直接拒绝，且不写 manifest / report。
 - repaired report 不保留被 blacklist pack 的旧 `selected` candidate。
 
-## 15. 审查门禁
+## 15. Step 6c 最小实现边界
+
+状态：已完成。
+
+Step 6c 将 repair planner / executor 以显式 flag 挂入 `GenerationPipeline`：
+
+- 新增 `AssetSemanticRepairConfig`，默认 `enabled=false`。
+- 仅 `ASSET_SEMANTIC_REPAIR_ENABLED=true` 或显式构造参数开启 repair integration。
+- 首次 QA 必须完成且 runtime pass：`status="PASSED"`、`runtime_status="PASSED"`。
+- 顶层语义状态必须是 `overall_status="NEEDS_ASSET_REPAIR"` 或 `asset_semantic_status="FAILED"`。
+- 任何 `asset_report.failures`、runtime asset `failed` / `missing` / `missing_required_roles` 都不进入 repair。
+- `buildAssetRepairPlan` 返回 `triggered=true` 后，还必须至少有一个 hard semantic executable item，才会调用 `executeAssetRepairPlan`。
+- repair 成功后只重新执行一次 build / preview artifact check / QA，不做循环。
+- `maxAttempts` 被硬性限制为 0..1；配置值大于 1 仍按 1 执行。
+- repair attempt 继续写入 generated project `asset_resolution_report.json.repair`，pipeline 额外写入 `asset-repair.*` event 和 `asset-repair` run step。
+- 最终 `qa-report.json` 会写入可审计的 `asset_semantic_repair` metadata，包含 `enabled`、`attempted`、`skippedReason`、`attemptCount`、`maxAttempts`、repair plan 触发情况、executable item 数、before/after semantic status、repaired requirements 和 failure reasons。
+
+Step 6c 不修改：
+
+- 默认成功路径：flag 关闭时不读取 repair artifacts，不 build plan，不执行 executor，不 rerun QA；仅在最终 QA report 写入 disabled audit metadata。
+- `PLAYABLE`、`PLAYABLE_WITH_FALLBACK_ASSETS`、`PLAYABLE_WITH_ART_WARNINGS`。
+- `fallback_generated`、medium / soft warning、runtime `QA_FAILED`、required asset load failure、missing file/path/build failure。
+- resolver ranking、Step 3 hard gate、fallback 策略、Phaser runtime、Workbench 大 UI、taxonomy、新资源库、AI image provider 或 provider `survive_duration`。
+- shooter HUD 脏文件。
+
+Step 6c 已执行：
+
+    npx vitest run tests/workspace/generation-pipeline.service.test.ts
+    # 1 个测试文件，19 个测试通过
+
+    npm run typecheck:root
+    # 通过
+
+    npm run typecheck --workspace @ai-game-maker/maker-api
+    # 通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    npx vitest run tests/contracts/asset-repair-plan.test.ts tests/contracts/asset-repair-executor.test.ts tests/workspace/generation-pipeline.service.test.ts tests/workspace/playwright-qa-runner.test.ts
+    # 4 个测试文件，61 个测试通过
+
+    npm run qa:asset-semantic:canary
+    # summary 写入 artifacts/asset-semantic-canary/20260612T081700Z
+    # total=14 runnable=9 skipped=5 experimental=0 passed=9 failed=0
+    # NEEDS_ASSET_REPAIR=0 QA_FAILED=0 hardMismatch=0 hardUnknown=0 requiredAssetMissing=0 assetLoadFailures=0 placeholderUsed=0
+
+    git diff --check
+    # 无输出
+
+关键断言：
+
+- flag disabled 时，semantic failed QA report 仍不触发 repair，QA 只跑一次。
+- flag enabled 且 hard semantic failed 时，repair 最多执行一次，并触发一次 build + QA rerun。
+- `PLAYABLE`、`PLAYABLE_WITH_FALLBACK_ASSETS`、`PLAYABLE_WITH_ART_WARNINGS`、runtime `QA_FAILED` 和 `ASSET_LOAD_FAILED` 不触发 repair，即使不一致 report 同时带有 `asset_semantic_status="FAILED"` 也不会进入 repair。
+- inconsistent `overall_status="QA_FAILED"`、runtime asset failure、executor failure、repair 后 rebuild failure 都会写入结构化 skipped / failure metadata，且不进入无边界重试。
+- repair 后 rebuild failure 会把 `qa` step 从初次 QA 的 `RUNNING` 收敛为 `DONE`，避免 final project status 与 timeline step 不一致。
+- `qa-report.json.asset_semantic_repair.repairedRequirements` 只记录本次 hard semantic repair 的 before / after requirement 结果，不修 `fallback_generated`、medium / soft warning 或 fallback playable 状态。
+- 默认 canary summary：`total=14 runnable=9 skipped=5 passed=9 failed=0`，`NEEDS_ASSET_REPAIR=0`、`QA_FAILED=0`、`hardMismatch=0`、`hardUnknown=0`、`requiredAssetMissing=0`、`assetLoadFailures=0`、`placeholderUsed=0`。
+
+## 16. 审查门禁
 
 每一步按 review-gated-refactor 执行：
 
@@ -405,10 +466,10 @@ Step 6b 已执行：
 4. 把修改范围、验证命令、审查结论写回 `docs/refactor-log/ai-game-dsl-p0-review-gated.md`。
 5. 再做文档复审门禁。
 
-## 16. 当前注意事项
+## 17. 当前注意事项
 
 - provider `survive_duration` 修复已单独提交；后续 asset semantic fidelity 步骤仍不要混入 provider 改动。
-- Step 6b 只是显式 executor；后续 Step 6c 若接入 pipeline，仍需要独立门禁，避免 repair loop 污染默认成功路径。
+- Step 6c 已接入 pipeline，但默认关闭；后续 Step 7 仍必须用真实 Workbench / generated project / QA 产物证明默认链路不退化。
 - 本阶段真实验收必须用 Workbench / generated project / QA 产物证明，不只看单测。
 - 真实验收至少包含：
   - 小猫射击外星人：不能选 tank 作为 player/enemy。

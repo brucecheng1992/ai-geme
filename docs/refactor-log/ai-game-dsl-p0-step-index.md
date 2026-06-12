@@ -8,8 +8,8 @@
 - 新增 Asset Semantic Fidelity 阶段，用于修复“资源加载成功但语义错配”；执行计划见 `docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md`。
 - 仓库非依赖文件中当前最大文件是 `docs/ai_game_dsl_p0_local_implementation.md`，约 2880 行，属于实施规格文档。
 - 现有阶段记录位于 `docs/refactor-log/ai-game-dsl-p0-review-gated.md`。
-- 当前已完成阶段：P0 主链路修复 + 模型 DSL 视觉执行复核修复 + DSL-first P1 Step 6 shooter enemy_wave runtime_plan + Asset Pipeline P0 Step 1-5（含 Step 5.1 tiny local asset pack slice）+ Asset Semantic Fidelity Step 1-6b。
-- 当前下一步：Asset Semantic Fidelity Step 6c：显式 repair pipeline integration；仍不批量接入新资源库、不接入 AI image provider。
+- 当前已完成阶段：P0 主链路修复 + 模型 DSL 视觉执行复核修复 + DSL-first P1 Step 6 shooter enemy_wave runtime_plan + Asset Pipeline P0 Step 1-5（含 Step 5.1 tiny local asset pack slice）+ Asset Semantic Fidelity Step 1-6c。
+- 当前下一步：Asset Semantic Fidelity Step 7：回归批量验收；仍不批量接入新资源库、不接入 AI image provider。
 
 ## 2. 大文档拆分索引
 
@@ -123,7 +123,7 @@ Asset Pipeline P0 v0.2 已开始，当前完成 Step 1、Step 2、Step 3、Step 
 
 - 当前下一步：
 
-- 当前进入 Asset Semantic Fidelity 阶段；外部方案包已拆成项目内计划文档 `docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md`。Step 1 已落地 Taxonomy + AssetPlan semantic constraint，Step 2 已落地 local pack metadata profile / asset-level semantic tags / metadata index，Step 3 已落地 resolver hard semantic gate，Step 4 已落地 manifest `semanticFit` 和 `asset_resolution_report.json`，Step 5 已落地 QA + Workbench semantic status，Step 5.5a 已新增 canary brief fixture baseline，Step 5.5b 已新增 canary batch runner 和 summary report，Step 6a 已新增只生成结构化 repair plan 的 Asset Repair Planner，Step 6b 已新增显式 conservative Repair Executor；下一步进入 Step 6c：repair pipeline integration。
+- 当前进入 Asset Semantic Fidelity 阶段；外部方案包已拆成项目内计划文档 `docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md`。Step 1 已落地 Taxonomy + AssetPlan semantic constraint，Step 2 已落地 local pack metadata profile / asset-level semantic tags / metadata index，Step 3 已落地 resolver hard semantic gate，Step 4 已落地 manifest `semanticFit` 和 `asset_resolution_report.json`，Step 5 已落地 QA + Workbench semantic status，Step 5.5a 已新增 canary brief fixture baseline，Step 5.5b 已新增 canary batch runner 和 summary report，Step 6a 已新增只生成结构化 repair plan 的 Asset Repair Planner，Step 6b 已新增显式 conservative Repair Executor，Step 6c 已将 repair behind flag 挂入 GenerationPipeline 并回写 final QA report `asset_semantic_repair` metadata；下一步进入 Step 7：回归批量验收。
 - 后续可作为独立扩展候选接入第二个 tiny pack 或真实第三方资源包切片；继续保持小包白名单，不做全量导入。
 - 若转回 DSL-first P1 Step 7，应作为独立扩展继续遵守顺序：contract/runtime/QA 先于 prompt，真实模型链路验证后再沉淀文档。
 

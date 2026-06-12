@@ -8,11 +8,72 @@
 
 ## 当前阶段
 
-Asset Semantic Fidelity Step 6b 已完成：新增 conservative Asset Repair Executor；本步只提供显式 executor API，不默认挂入 GenerationPipeline。
+Asset Semantic Fidelity Step 6c 已完成：semantic asset repair 已 behind flag 挂入 GenerationPipeline；默认成功路径保持关闭。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Asset Semantic Fidelity Step 6c：显式 repair pipeline integration；仍不要接入 AI image provider、新资源库、taxonomy expansion 或 provider survive_duration 修复。
+当前下一步：Asset Semantic Fidelity Step 7：回归批量验收；仍不要接入 AI image provider、新资源库、taxonomy expansion 或 provider survive_duration 修复。
+
+### 2.21 Asset Semantic Fidelity Step 6c: Repair Pipeline Integration Behind Flag
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- `GenerationPipelineService` 新增 `AssetSemanticRepairConfig`，默认 `enabled=false`，仅 `ASSET_SEMANTIC_REPAIR_ENABLED=true` 或测试显式配置才会进入 repair integration。
+- 首次 QA 完成后只在 `status="PASSED"`、`runtime_status="PASSED"`，且 `overall_status="NEEDS_ASSET_REPAIR"` 或 `asset_semantic_status="FAILED"` 时考虑 repair。
+- repair 触发前额外拒绝 `asset_report.failures`、runtime asset `failed` / `missing` / `missing_required_roles`，确保 required asset load failure、missing file/path 或 runtime QA failure 不进入 semantic repair。
+- pipeline 读取 generated project 的 `public/asset_manifest.json` 和 `asset_resolution_report.json`，调用 `buildAssetRepairPlan`；只有 `plan.triggered=true` 且存在 hard semantic executable item 时才调用 `executeAssetRepairPlan`。
+- repair 最多执行 1 次；`maxAttempts` 即使配置为更大也 clamp 到 1。
+- repair 成功后重新执行 build / preview artifact check / QA 一次；不循环重试。
+- repair 执行结果继续写入 generated project `asset_resolution_report.json.repair`；pipeline 额外写入 `asset-repair.*` timeline event 和 `asset-repair` run step。
+- 最终 `qa-report.json` 写入 `asset_semantic_repair` audit metadata，覆盖 disabled / skipped / attempted / failed / repaired outcomes，并记录 before / after semantic status、repair plan triggered、executable item count、repaired requirements 和 failure reasons。
+- `PLAYABLE`、`PLAYABLE_WITH_FALLBACK_ASSETS`、`PLAYABLE_WITH_ART_WARNINGS`、`fallback_generated`、medium / soft warning、runtime `QA_FAILED` 和 asset load failure 均不会触发 repair。
+- 新增/扩展 `tests/workspace/generation-pipeline.service.test.ts`，覆盖默认关闭、显式开启后 hard semantic repair + 一次 QA rerun、fallback/warning 不修、runtime failure 不修、asset load failure 不修、inconsistent `overall_status="QA_FAILED"` 不修、inconsistent fallback/warning overall 不修、zero attempt budget、no executable item、executor failure、repair rebuild failure step 收敛和 final report metadata。
+
+阶段结果：
+
+- 解决层级：边界适配 + pipeline 业务规则门禁。
+- 行为边界：未修改 resolver ranking、Step 3 hard gate、fallback 策略、Phaser runtime、Workbench 大 UI、taxonomy、新资源库、AI image provider 或 provider `survive_duration`。
+- 默认 canary 路径未开启 repair，`NEEDS_ASSET_REPAIR=0`、`QA_FAILED=0`、`hardMismatch=0`、`hardUnknown=0`、`requiredAssetMissing=0`、`assetLoadFailures=0`、`placeholderUsed=0` 维持健康。
+- shooter HUD stash 不属于本步 scope；本步没有修改 `templates/phaser/shooter/src/GameScene.ts`、`templates/phaser/shooter/src/shooter-renderer.ts` 或 `tests/contracts/phaser-templates.test.ts`。
+
+已通过验证（本步实际执行）：
+
+    npx vitest run tests/workspace/generation-pipeline.service.test.ts
+    # 1 个测试文件，19 个测试通过
+
+    npm run typecheck:root
+    # 通过
+
+    npm run typecheck --workspace @ai-game-maker/maker-api
+    # 通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    npx vitest run tests/contracts/asset-repair-plan.test.ts tests/contracts/asset-repair-executor.test.ts tests/workspace/generation-pipeline.service.test.ts tests/workspace/playwright-qa-runner.test.ts
+    # 4 个测试文件，61 个测试通过
+
+    npm run qa:asset-semantic:canary
+    # summary 写入 artifacts/asset-semantic-canary/20260612T081700Z
+    # total=14 runnable=9 skipped=5 experimental=0 passed=9 failed=0
+    # NEEDS_ASSET_REPAIR=0 QA_FAILED=0 hardMismatch=0 hardUnknown=0 requiredAssetMissing=0 assetLoadFailures=0 placeholderUsed=0
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 代码审查：P0/P1/P2 均无；P3 指出默认关闭测试未覆盖 `readAssetSemanticRepairConfig` env 解析和 maxAttempts clamp。
+- 已处理：新增 `readAssetSemanticRepairConfig` 配置测试，覆盖默认 `enabled=false` 和显式开启时 `maxAttempts` clamp 到 1；复跑 `tests/workspace/generation-pipeline.service.test.ts`、相关四件套、全量 `npm run typecheck` 和 `git diff --check`。
+- Oracle 文档复审：首轮 P2 指出验证记录缺少全量 `npm run typecheck` 和 `git diff --check` 结果；已补齐 review log 与 semantic fidelity plan 的验证结果后复审，P0/P1/P2/P3 均无。
+- 附件规格复核首轮：P0 无；P1 指出缺少结构化 `asset_semantic_repair` report metadata；P2 指出 skip reason 不够显式且缺少 inconsistent `overall_status="QA_FAILED"` 等边界测试。
+- 已处理：`QaReport` 新增 optional `asset_semantic_repair`，pipeline 在最终 report 写入 disabled / skipped / attempted / failed / repaired metadata；补充 no executable item、executor failure、rebuild failure、runtime asset failure、inconsistent QA_FAILED、fallback / warning skip 和 repaired requirements 断言。
+- Oracle 复审 P2：指出 inconsistent fallback/warning overall 仍可能被 `asset_semantic_status="FAILED"` 放行、repair rebuild failure 时 `qa` step 可能残留 `RUNNING`、Step 7 文档措辞像提前验收完成。
+- 已处理：precheck 显式按 overall 拒绝 `PLAYABLE` / fallback / art warning；repair rebuild failure 返回前收敛 `qa` step 为 `DONE`；Step 7 表格改为“待验收目标”；补充 zero attempt budget、inconsistent fallback/warning、rebuild failure step 断言并复跑验证。
+- Oracle 最终复审：P0/P1/P2/P3 均无；确认上一轮 3 个 P2 和 1 个 P3 已关闭，Step 6c 代码与文档门禁通过。
+- 审查模式：Oracle 复用。
 
 ### 2.20 Asset Semantic Fidelity Step 6b: Conservative Repair Executor
 

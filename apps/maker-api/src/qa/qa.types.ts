@@ -91,6 +91,7 @@ export type QaReport = {
   asset_report?: QaAssetReport;
   screenshot_path?: string;
   visual_metrics?: QaVisualMetrics;
+  asset_semantic_repair?: QaAssetSemanticRepairReport;
   started_at: string;
   completed_at: string;
 };
@@ -157,4 +158,45 @@ export type QaAssetFailure = {
   message: string;
   asset_ids: string[];
   roles: string[];
+};
+
+export type QaAssetSemanticRepairSkippedReason =
+  | 'asset_semantic_repair_disabled'
+  | 'no_asset_semantic_repair_needed'
+  | 'runtime_failed_not_asset_semantic_repair'
+  | 'runtime_asset_failure_not_asset_semantic_repair'
+  | 'max_attempts_exhausted'
+  | 'asset_repair_artifacts_unreadable'
+  | 'no_executable_repair_items'
+  | 'repair_execution_not_repaired'
+  | 'repair_execution_failed'
+  | 'repair_rebuild_failed';
+
+export type QaAssetSemanticRepairReport = {
+  enabled: boolean;
+  attempted: boolean;
+  skippedReason?: QaAssetSemanticRepairSkippedReason;
+  attemptCount: number;
+  maxAttempts: number;
+  repairPlanTriggered?: boolean;
+  executableItemCount?: number;
+  beforeOverallStatus?: OverallStatus;
+  beforeAssetSemanticStatus?: AssetSemanticStatus;
+  afterOverallStatus?: OverallStatus;
+  afterAssetSemanticStatus?: AssetSemanticStatus;
+  repairedRequirements?: QaAssetSemanticRepairRequirement[];
+  failureReasons?: string[];
+};
+
+export type QaAssetSemanticRepairRequirement = {
+  requirementId: string;
+  role: string;
+  expectedConcept?: string;
+  previousAssetId?: string;
+  previousSource?: AssetManifest['assets'][number]['source'];
+  previousSemanticFitStatus?: string;
+  action?: string;
+  newAssetId?: string;
+  newSource?: AssetManifest['assets'][number]['source'];
+  newSemanticFitStatus?: string;
 };
