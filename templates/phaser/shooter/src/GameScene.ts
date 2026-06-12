@@ -237,7 +237,15 @@ export class ShooterGameScene {
   }
 
   private renderHud(): void {
-    this.renderer.renderHud(this.state.score, this.state.health);
+    this.renderer.renderHud(this.state.score, this.state.health, this.objectiveText());
+  }
+
+  private objectiveText(): string {
+    if (this.params.objective.winType === 'target_score') {
+      return `Objective Score ${this.state.score}/${this.params.objective.targetScore ?? 1}`;
+    }
+
+    return `Objective Clear enemies ${this.runtime.enemiesCleared}/${this.params.objective.targetCount ?? this.params.enemy.count}`;
   }
 
   private enemyWaveSnapshot() {

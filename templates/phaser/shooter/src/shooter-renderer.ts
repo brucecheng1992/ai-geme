@@ -116,8 +116,8 @@ export class ShooterRenderer {
     }
   }
 
-  renderHud(score: number, health: number): void {
-    this.scoreText?.setText(`Score ${score}  HP ${health}`);
+  renderHud(score: number, health: number, objectiveText: string): void {
+    this.scoreText?.setText(`Score ${score}  HP ${health}\n${objectiveText}`);
     this.statusText?.setText('Enter start  Arrow/WASD move  Space fire  R restart');
   }
 }

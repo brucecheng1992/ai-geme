@@ -845,6 +845,17 @@ describe('Phaser templates', () => {
     expect(globalThis.__GAME_TELEMETRY__?.assets).toEqual(expectedAssets);
   });
 
+  it('renders shooter objective progress in the HUD', async () => {
+    const { ShooterGameScene } = await import('../../templates/phaser/shooter/src/GameScene.js');
+    const { defaultShooterParams } = await import('../../templates/phaser/shooter/src/template-params.js');
+    const sceneMock = createPhaserSceneMock();
+    const scene = new ShooterGameScene(defaultShooterParams);
+
+    scene.create(sceneMock as unknown as Parameters<typeof scene.create>[0]);
+
+    expect(sceneMock.textValues).toContain('Score 0  HP 3\nObjective Clear enemies 0/6');
+  });
+
   it('shooter runtime requires real movement and projectile collision before enemy clear', async () => {
     const {
       advanceShooterWorld,
@@ -926,8 +937,41 @@ function spawnedItems(): TemplateTelemetryEvent[] {
 }
 
 function createPhaserSceneMock() {
-  type ChainMock = Record<string, (...args: unknown[]) => unknown>;
-  const graphics: ChainMock = {
+  type GraphicsMock = Record<string, (...args: unknown[]) => unknown>;
+  type TextMock = {
+    text: string;
+    setText(value: unknown): TextMock;
+    setX(...args: unknown[]): TextMock;
+    setY(...args: unknown[]): TextMock;
+    setVisible(...args: unknown[]): TextMock;
+    destroy(...args: unknown[]): undefined;
+  };
+  type RenderObjectMock = Record<string, (...args: unknown[]) => unknown>;
+  const textValues: string[] = [];
+  const recordText = (value: unknown) => {
+    if (typeof value === 'string') {
+      textValues.push(value);
+    }
+  };
+  const createText = (initialValue: unknown): TextMock => {
+    recordText(initialValue);
+    const text: TextMock = {
+      text: typeof initialValue === 'string' ? initialValue : '',
+      setText: (value: unknown) => {
+        recordText(value);
+        if (typeof value === 'string') {
+          text.text = value;
+        }
+        return text;
+      },
+      setX: () => text,
+      setY: () => text,
+      setVisible: () => text,
+      destroy: () => undefined
+    };
+    return text;
+  };
+  const graphics: GraphicsMock = {
     fillStyle: () => graphics,
     fillRect: () => graphics,
     fillRoundedRect: () => graphics,
@@ -938,23 +982,29 @@ function createPhaserSceneMock() {
     strokeCircle: () => graphics,
     strokeRoundedRect: () => graphics,
     clear: () => graphics,
+    fillEllipse: () => graphics,
+    setPosition: () => graphics,
+    setScale: () => graphics,
+    setFlipX: () => graphics,
     setVisible: () => graphics,
     setY: () => graphics,
     destroy: () => undefined
   };
-  const text: ChainMock = {
-    setText: () => text,
-    setX: () => text,
-    setY: () => text,
-    setVisible: () => text,
+  const container: RenderObjectMock = {
+    add: () => container,
+    setPosition: () => container,
+    setScale: () => container,
+    setFlipX: () => container,
     destroy: () => undefined
   };
 
   return {
+    textValues,
     cameras: { main: { setBackgroundColor: () => undefined } },
     add: {
+      container: () => container,
       graphics: () => graphics,
-      text: () => text
+      text: (_x: unknown, _y: unknown, value: unknown) => createText(value)
     }
   };
 }
