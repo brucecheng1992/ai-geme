@@ -33,10 +33,10 @@
 - generated project 根目录已写出 `asset_resolution_report.json`，记录 selected / rejected / fallback diagnostics。
 - QA report 已包含 `asset_report`，Workbench Assets 面板可展示 manifest/runtime load 状态和 source pack。
 
-Step 5.5a 完成后的剩余缺口：
+Step 5.5b 完成后的剩余缺口：
 
 - QA / Workbench 已能识别 runtime pass 但 hard semantic mismatch 的 `NEEDS_ASSET_REPAIR`，并展示 per-asset semanticFit 摘要。
-- 第一批 canary brief fixture 已建立，但尚未实现 batch runner，也不会批量生成真实游戏。
+- 第一批 canary brief fixture 已建立，batch runner 已能默认运行 supported cases、跳过 `expectedUnsupported` cases，并写出 summary report。
 - 尚未实现 asset repair loop；`NEEDS_ASSET_REPAIR` 目前只表达状态，不会自动重选或修复资源。
 
 ## 4. 分步落地计划
@@ -50,8 +50,8 @@ Step 5.5a 完成后的剩余缺口：
 | Step 4 | Manifest semanticFit + resolution report | `semanticFit`、`asset_resolution_report.json` | 已完成 |
 | Step 5 | QA + Workbench semantic status | `assetSemanticStatus`、mismatch failure、UI 展示 | 已完成 |
 | Step 5.5a | Canary brief fixture v0.1 | `asset-semantic-canary.briefs.json`、fixture validation test | 已完成 |
-| Step 5.5b | Canary batch runner | 读取 fixture、生成 summary report | 当前下一步 |
-| Step 6 | 自动修复回路 | mismatch 后重选 / fallback trace | 后续 |
+| Step 5.5b | Canary batch runner | 读取 fixture、生成 summary report | 已完成 |
+| Step 6 | 自动修复回路 | mismatch 后重选 / fallback trace | 当前下一步 |
 | Step 7 | 回归批量验收 | E2E cases 和真实 Workbench proof | 目标：cat/alien、tank/tank、generic shooter 均通过对应验收 |
 
 ## 5. Step 1 最小实现边界
@@ -270,7 +270,49 @@ Step 5.5a 已执行：
 - 包含 `fishbone` 的 case 保持为显式 unsupported canary marker，后续 taxonomy expansion / canary v0.2 再转正。
 - Step 5.5b 才实现 runner 和 summary report；runner 应把 `expectedUnsupported: true` 作为 skip / expected-unsupported report 维度，不按普通 canary failure 聚合。
 
-## 12. 审查门禁
+## 12. Step 5.5b 最小实现边界
+
+状态：已完成。
+
+Step 5.5b 只新增 canary batch runner 和 summary report：
+
+- 新增 `scripts/run-asset-semantic-canary.ts`，读取 `tests/fixtures/asset-semantic-canary.briefs.json`，通过 deterministic local provider 调用现有生成 / 编译 / QA 流程。
+- 新增 `scripts/asset-semantic-canary-report.ts`，集中做 fixture parse、case selection、failure threshold、summary JSON 和 summary Markdown 渲染。
+- 新增 `npm run qa:asset-semantic:canary`；默认运行 supported cases，默认跳过 `expectedUnsupported: true` cases。
+- 支持 `--include-unsupported` 实验性运行 unsupported cases，并在 summary 中标记 `experimental`；unsupported failure 不驱动默认 exit code。
+- 支持 `--case <id>` 和 `--limit <n>`，用于单 case 调试和快速 smoke。
+- 输出 `artifacts/asset-semantic-canary/<timestamp>/summary.json` 和 `summary.md`。
+- 默认给 generated project 的 `npm install` 增加 `--offline`，避免默认 canary 依赖外部网络；需要网络时显式加 `--allow-network`。
+- summary 统计 runtime status、asset semantic status、overall status、fallback_generated、mismatch、unknown、warning、placeholder、required missing、asset load failure、selected packs、manifest path、asset_resolution_report path 和 QA report path。
+
+Step 5.5b 不修改：
+
+- resolver ranking / hard gate / fallback 策略。
+- manifest `semanticFit` 生成逻辑。
+- QA status 聚合规则和 Workbench UI。
+- Phaser runtime。
+- asset repair loop。
+- 新资源库、AI image provider、taxonomy expansion 或 provider `survive_duration` 修复。
+- 当前工作区既有 shooter HUD 脏文件。
+
+Step 5.5b 已执行：
+
+    npx vitest run tests/contracts/asset-semantic-canary-fixture.test.ts
+    npx vitest run tests/contracts/asset-semantic-canary-runner.test.ts
+    npm run qa:asset-semantic:canary -- --limit 3
+    npm test
+    npm run typecheck
+    git diff --check
+
+关键断言：
+
+- `expectedUnsupported: true` 默认 skipped；`--include-unsupported` 标记 experimental。
+- `PLAYABLE_WITH_FALLBACK_ASSETS` 和 `PLAYABLE_WITH_ART_WARNINGS` 通过，medium warning 只统计不阻断。
+- `NEEDS_ASSET_REPAIR`、`QA_FAILED`、hard mismatch、hard unknown、required missing、asset load failure 和未允许 placeholder 会失败。
+- `fallback_generated` 不算 mismatch；`PLAYABLE_WITH_FALLBACK_ASSETS` 不算失败。
+- `--limit 3` smoke 生成 `artifacts/asset-semantic-canary/20260612T053854Z`，3 个 runnable supported cases 全部通过，11 个 skipped。
+
+## 13. 审查门禁
 
 每一步按 review-gated-refactor 执行：
 
@@ -280,10 +322,10 @@ Step 5.5a 已执行：
 4. 把修改范围、验证命令、审查结论写回 `docs/refactor-log/ai-game-dsl-p0-review-gated.md`。
 5. 再做文档复审门禁。
 
-## 13. 当前注意事项
+## 14. 当前注意事项
 
 - provider `survive_duration` 修复已单独提交；后续 asset semantic fidelity 步骤仍不要混入 provider 改动。
-- 本阶段真实验收必须用 Workbench 生成项目证明，不只看单测。
+- 本阶段真实验收必须用 Workbench / generated project / QA 产物证明，不只看单测。
 - 真实验收至少包含：
   - 小猫射击外星人：不能选 tank 作为 player/enemy。
   - 坦克大战：可以选 tank pack。

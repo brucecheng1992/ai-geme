@@ -8,11 +8,68 @@
 
 ## 当前阶段
 
-Asset Semantic Fidelity Step 5.5a 已完成：新增第一批 canary brief fixture baseline 和 parse / validation contract test；本步不实现 canary runner，也不改变产品行为。
+Asset Semantic Fidelity Step 5.5b 已完成：新增 canary batch runner 和 summary report；本步仍是测量层，不改变 resolver、QA、Workbench、Phaser runtime 或 fallback 行为。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Asset Semantic Fidelity Step 5.5b：实现 canary batch runner 和 summary report；仍不要接入 AI image provider、新资源库或 provider survive_duration 修复。
+当前下一步：Asset Semantic Fidelity Step 6：asset repair loop；仍不要接入 AI image provider、新资源库、taxonomy expansion 或 provider survive_duration 修复。
+
+### 2.18 Asset Semantic Fidelity Step 5.5b: Canary batch runner + summary report
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- 新增 `scripts/run-asset-semantic-canary.ts`，读取 `tests/fixtures/asset-semantic-canary.briefs.json`，用 deterministic local provider 调用现有生成 / 编译 / QA 流程。
+- 新增 `scripts/asset-semantic-canary-report.ts`，集中处理 fixture parse、默认 supported case selection、`expectedUnsupported` skip、`--include-unsupported` experimental、failure threshold 和 summary 渲染。
+- 新增 package script `npm run qa:asset-semantic:canary`。
+- CLI 支持 `--include-unsupported`、`--case <id>`、`--limit <n>`、`--fixture`、`--output-root`、`--timestamp` 和 `--allow-network`。
+- 默认给 generated project 的 `npm install` 增加 `--offline`，避免默认 canary 依赖外部网络；需要网络时必须显式 `--allow-network`。
+- summary 写出 `artifacts/asset-semantic-canary/<timestamp>/summary.json` 和 `summary.md`，包含 overall/runtime/asset semantic status、fallback_generated、mismatch、unknown、warning、placeholder、required missing、asset load failure、selected packs、manifest path、asset_resolution_report path 和 QA report path。
+- 新增 `tests/contracts/asset-semantic-canary-runner.test.ts`，只测 aggregation / parsing / threshold，不把真实 batch generation 放进 `npm test` 的昂贵路径。
+- `artifacts/` 加入 `.gitignore`，避免本地 canary summary 进入版本控制；根 `tsconfig.json` 纳入 `scripts/**/*.ts`，让 CLI 接受 root typecheck。
+
+阶段结果：
+
+- 解决层级：canary 工具配置 + runner 边界适配 + summary 业务阈值聚合。
+- 结构变化：新增两个 `scripts/asset-semantic-canary*` 文件和一个 contract 测试；更新 package script、root devDependency / lockfile、root typecheck include、`.gitignore` 和 refactor 文档。
+- 行为边界：未修改 resolver ranking、hard semantic gate、fallback 策略、manifest semanticFit 生成逻辑、QA status 聚合规则、Workbench UI、Phaser runtime、asset repair loop、新资源库、AI image provider、taxonomy expansion 或 provider `survive_duration`。
+- 当前工作区既有 shooter HUD 脏文件不属于本步 scope；本步没有修改 `templates/phaser/shooter/src/GameScene.ts`、`templates/phaser/shooter/src/shooter-renderer.ts` 或 `tests/contracts/phaser-templates.test.ts`。
+- `fallback_generated`、`PLAYABLE_WITH_FALLBACK_ASSETS` 和 `PLAYABLE_WITH_ART_WARNINGS` 不算失败；medium warning 只统计不阻断；hard mismatch / hard unknown / required missing / asset load failure / 未允许 placeholder 会失败。
+- `expectedUnsupported: true` 默认 skipped，不算失败；`--include-unsupported` 仅用于实验性运行，并标记为 `experimental`。
+- Step 6 repair loop 仍未实现；Step 5.5b summary 只作为后续 repair loop 范围判断依据。
+
+已通过验证（本步实际执行）：
+
+    npx vitest run tests/contracts/asset-semantic-canary-fixture.test.ts
+    # 1 个测试文件，5 个测试通过
+
+    npx vitest run tests/contracts/asset-semantic-canary-runner.test.ts
+    # 1 个测试文件，9 个测试通过
+
+    npm run typecheck:root
+    # 根 TypeScript 检查通过，覆盖 scripts/**/*.ts
+
+    npm run qa:asset-semantic:canary -- --limit 3
+    # summary 写入 artifacts/asset-semantic-canary/20260612T053854Z
+    # runnable=3 skipped=11 experimental=0 passed=3 failed=0
+
+    npm test
+    # contracts 6 个测试文件 / 99 个测试通过；workspace 12 个测试文件 / 114 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出根脚本使用 `tsx` 但 root `package.json` 未声明 devDependency；P2 指出 `--case` 拼错时会 0 case 假绿；P3 指出 `mediumWarnings` 实际统计所有 warning，字段语义容易误导。
+- 已处理：root `devDependencies` 和 lockfile 显式声明 `tsx`；`selectAssetSemanticCanaryBriefs` 对未知 case id 抛错并补测试；warning 统计拆为 per-case all warnings 和 summary medium warnings，并补 soft warning 不进入 medium aggregate 的测试。
+- Oracle 代码复审：P0/P1/P2 无；P3 指出文档中 contracts 测试数仍为 98，已修正为 99。
+- Oracle 文档复审：P0/P1/P2/P3 均无；确认三份文档准确记录 Step 5.5b 已完成、Step 6 为当前下一步，未声称 repair loop、resolver / QA / Workbench / Phaser runtime / fallback、taxonomy expansion、新资源库或 AI image provider 已变更。
+- 审查模式：Oracle 复用。
 
 ### 2.17 Asset Semantic Fidelity Step 5.5a: Canary brief fixture v0.1
 

@@ -4,5 +4,6 @@ dist/
 data/
 local-data/
 generated-projects/
+artifacts/
 coverage/
 .DS_Store

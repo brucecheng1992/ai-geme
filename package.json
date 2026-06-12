@@ -15,6 +15,7 @@
     "test": "npm run test:contracts && npm run test:workspace",
     "test:contracts": "vitest run tests/contracts",
     "test:workspace": "vitest run tests/workspace",
+    "qa:asset-semantic:canary": "tsx scripts/run-asset-semantic-canary.ts",
     "typecheck": "npm run typecheck:root && npm run typecheck --workspace @ai-game-maker/maker-api && npm run typecheck --workspace @ai-game-maker/maker-workbench",
     "typecheck:root": "tsc --noEmit -p tsconfig.json"
   },
@@ -25,6 +26,7 @@
     "@types/node": "^24.0.0",
     "phaser": "^3.90.0",
     "playwright": "^1.60.0",
+    "tsx": "^4.20.0",
     "typescript": "^5.8.0",
     "vitest": "^2.0.0"
   }
