@@ -3,6 +3,9 @@ import type { AssetManifest } from '../../../../packages/asset-pipeline/src/inde
 
 export type QaGenre = 'collector' | 'dodger' | 'shooter';
 export type QaStatus = 'PASSED' | 'QA_FAILED';
+export type RuntimeStatus = 'PASSED' | 'FAILED';
+export type AssetSemanticStatus = 'PASSED' | 'WARNING' | 'FAILED';
+export type OverallStatus = 'PLAYABLE' | 'PLAYABLE_WITH_FALLBACK_ASSETS' | 'PLAYABLE_WITH_ART_WARNINGS' | 'NEEDS_ASSET_REPAIR' | 'QA_FAILED';
 export type QaVisualStatus = 'PASSED' | 'VISUAL_QA_FAILED';
 
 export type QaFailureCode =
@@ -67,6 +70,9 @@ export type QaVisualMetrics = {
 
 export type QaReport = {
   status: QaStatus;
+  runtime_status: RuntimeStatus;
+  asset_semantic_status: AssetSemanticStatus;
+  overall_status: OverallStatus;
   project_id: string;
   run_id: string;
   genre: QaGenre;
@@ -104,14 +110,38 @@ export type QaAssetRuntimeTelemetry = {
 
 export type QaAssetReport = {
   manifest_summary?: AssetManifest['summary'];
+  semantic_status: AssetSemanticStatus;
   required: string[];
   ready: string[];
   fallback_used: string[];
   placeholder_used: string[];
   missing: string[];
   runtime?: QaAssetRuntimeTelemetry;
+  assets: QaAssetSemanticSummary[];
+  semantic_issues: QaAssetSemanticIssue[];
   sources?: QaAssetSource[];
   failures: QaAssetFailure[];
+};
+
+export type QaAssetSemanticSummary = {
+  id: string;
+  role: AssetManifest['assets'][number]['role'];
+  source: AssetManifest['assets'][number]['source'];
+  source_pack?: string;
+  semantic_status: AssetSemanticStatus;
+  semantic_fit?: NonNullable<AssetManifest['assets'][number]['semanticFit']>;
+};
+
+export type QaAssetSemanticIssue = {
+  severity: 'warning' | 'failure';
+  asset_id: string;
+  role: AssetManifest['assets'][number]['role'];
+  semantic_fit_status: NonNullable<AssetManifest['assets'][number]['semanticFit']>['status'];
+  strictness?: 'hard' | 'medium' | 'soft';
+  expected_concept?: string;
+  missing_tags: string[];
+  conflicting_tags: string[];
+  reason: string;
 };
 
 export type QaAssetSource = {

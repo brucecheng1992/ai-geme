@@ -60,18 +60,191 @@ describe('Playable QA gate and runner', () => {
     const report = await runner.run({ projectId, runId, genre: 'shooter', previewUrl: 'http://localhost:3000/preview/proj/index.html' });
 
     expect(report.status).toBe('PASSED');
+    expect(report.runtime_status).toBe('PASSED');
+    expect(report.asset_semantic_status).toBe('PASSED');
+    expect(report.overall_status).toBe('PLAYABLE');
     expect(report.code).toBeUndefined();
     expect(report.asset_report).toMatchObject({
+      semantic_status: 'PASSED',
       required: ['background_main', 'player', 'enemy', 'projectile'],
       ready: ['background_main', 'player', 'enemy', 'projectile'],
       fallback_used: [],
       placeholder_used: [],
       missing: [],
+      semantic_issues: [],
       failures: []
     });
     await expect(readFile(workspace.getQaReportPath(projectId, runId), 'utf8')).resolves.toContain('"status": "PASSED"');
+    await expect(readFile(workspace.getQaReportPath(projectId, runId), 'utf8')).resolves.toContain('"overall_status": "PLAYABLE"');
     await expect(readFile(workspace.getQaReportPath(projectId, runId), 'utf8')).resolves.toContain('"asset_manifest_summary"');
     await expect(readFile(workspace.getQaReportPath(projectId, runId), 'utf8')).resolves.toContain('"asset_report"');
+  });
+
+  it('keeps runtime QA passed but marks hard semantic mismatch as asset repair needed', async () => {
+    for (const assetRoot of [workspace.getGeneratedProjectPublicDir(projectId), workspace.getGeneratedProjectDistDir(projectId)]) {
+      await rewriteManifestAssetSemanticFit(assetRoot, 'player', {
+        status: 'mismatch',
+        confidence: 0,
+        strictness: 'hard',
+        expectedConcept: 'cat',
+        expectedAnyTags: ['cat', 'kitten', 'feline'],
+        actualTags: ['tank', 'vehicle', 'turret'],
+        missingTags: ['cat', 'kitten', 'feline'],
+        conflictingTags: ['tank', 'vehicle'],
+        reason: 'Local asset semantic tags do not satisfy expected cat.'
+      });
+    }
+    const browserRunner: QaBrowserRunner = async () => ({
+      ok: true,
+      visual_ok: true,
+      interaction_ok: true,
+      telemetry: missingObservedBase().map((type, index) => ({ type, timestamp_ms: index, frame: index })),
+      observed_events: missingObservedBase(),
+      console_errors: [],
+      asset_runtime: validQaAssetRuntime(['background_main', 'player', 'enemy', 'projectile'])
+    });
+    const runner = new PlaywrightQaRunnerService(workspace, gate, browserRunner);
+
+    const report = await runner.run({ projectId, runId, genre: 'shooter', previewUrl: 'http://localhost:3000/preview/proj/index.html' });
+
+    expect(report).toMatchObject({
+      status: 'PASSED',
+      runtime_status: 'PASSED',
+      asset_semantic_status: 'FAILED',
+      overall_status: 'NEEDS_ASSET_REPAIR',
+      asset_report: {
+        semantic_status: 'FAILED',
+        assets: expect.arrayContaining([
+          expect.objectContaining({
+            id: 'background_main',
+            semantic_status: 'PASSED'
+          }),
+          expect.objectContaining({
+            id: 'player',
+            semantic_status: 'FAILED',
+            semantic_fit: expect.objectContaining({
+              status: 'mismatch',
+              strictness: 'hard',
+              expectedConcept: 'cat'
+            })
+          })
+        ]),
+        semantic_issues: [
+          {
+            severity: 'failure',
+            asset_id: 'player',
+            role: 'player_character',
+            semantic_fit_status: 'mismatch',
+            strictness: 'hard',
+            expected_concept: 'cat',
+            missing_tags: ['cat', 'kitten', 'feline'],
+            conflicting_tags: ['tank', 'vehicle'],
+            reason: 'Local asset semantic tags do not satisfy expected cat.'
+          }
+        ],
+        failures: []
+      }
+    });
+  });
+
+  it('treats generated semantic fallback as playable fallback assets, not mismatch', async () => {
+    for (const assetRoot of [workspace.getGeneratedProjectPublicDir(projectId), workspace.getGeneratedProjectDistDir(projectId)]) {
+      await rewriteManifestAssetSemanticFit(assetRoot, 'player', {
+        status: 'fallback_generated',
+        confidence: 1,
+        strictness: 'hard',
+        expectedConcept: 'cat',
+        expectedAnyTags: ['cat', 'kitten', 'feline'],
+        actualTags: ['template_svg'],
+        reason: 'Generated deterministic template SVG fallback for expected cat.'
+      });
+    }
+    const browserRunner: QaBrowserRunner = async () => ({
+      ok: true,
+      visual_ok: true,
+      interaction_ok: true,
+      telemetry: missingObservedBase().map((type, index) => ({ type, timestamp_ms: index, frame: index })),
+      observed_events: missingObservedBase(),
+      console_errors: [],
+      asset_runtime: validQaAssetRuntime(['background_main', 'player', 'enemy', 'projectile'])
+    });
+    const runner = new PlaywrightQaRunnerService(workspace, gate, browserRunner);
+
+    const report = await runner.run({ projectId, runId, genre: 'shooter', previewUrl: 'http://localhost:3000/preview/proj/index.html' });
+
+    expect(report).toMatchObject({
+      status: 'PASSED',
+      runtime_status: 'PASSED',
+      asset_semantic_status: 'PASSED',
+      overall_status: 'PLAYABLE_WITH_FALLBACK_ASSETS',
+      asset_report: {
+        semantic_status: 'PASSED',
+        semantic_issues: [],
+        assets: expect.arrayContaining([
+          expect.objectContaining({
+            id: 'player',
+            semantic_status: 'PASSED',
+            semantic_fit: expect.objectContaining({
+              status: 'fallback_generated',
+              strictness: 'hard',
+              expectedConcept: 'cat'
+            })
+          })
+        ])
+      }
+    });
+  });
+
+  it('keeps medium semantic mismatch as a non-blocking asset warning', async () => {
+    for (const assetRoot of [workspace.getGeneratedProjectPublicDir(projectId), workspace.getGeneratedProjectDistDir(projectId)]) {
+      await rewriteManifestAssetSemanticFit(assetRoot, 'background_main', {
+        status: 'mismatch',
+        confidence: 0,
+        strictness: 'medium',
+        expectedConcept: 'space',
+        expectedAnyTags: ['space'],
+        actualTags: ['battlefield', 'grassland'],
+        missingTags: ['space'],
+        conflictingTags: [],
+        reason: 'Local asset semantic tags do not satisfy expected space.'
+      });
+    }
+    const browserRunner: QaBrowserRunner = async () => ({
+      ok: true,
+      visual_ok: true,
+      interaction_ok: true,
+      telemetry: missingObservedBase().map((type, index) => ({ type, timestamp_ms: index, frame: index })),
+      observed_events: missingObservedBase(),
+      console_errors: [],
+      asset_runtime: validQaAssetRuntime(['background_main', 'player', 'enemy', 'projectile'])
+    });
+    const runner = new PlaywrightQaRunnerService(workspace, gate, browserRunner);
+
+    const report = await runner.run({ projectId, runId, genre: 'shooter', previewUrl: 'http://localhost:3000/preview/proj/index.html' });
+
+    expect(report).toMatchObject({
+      status: 'PASSED',
+      runtime_status: 'PASSED',
+      asset_semantic_status: 'WARNING',
+      overall_status: 'PLAYABLE_WITH_ART_WARNINGS',
+      asset_report: {
+        semantic_status: 'WARNING',
+        semantic_issues: [
+          {
+            severity: 'warning',
+            asset_id: 'background_main',
+            role: 'background',
+            semantic_fit_status: 'mismatch',
+            strictness: 'medium',
+            expected_concept: 'space',
+            missing_tags: ['space'],
+            conflicting_tags: [],
+            reason: 'Local asset semantic tags do not satisfy expected space.'
+          }
+        ],
+        failures: []
+      }
+    });
   });
 
   it('keeps mixed per-asset source metadata in the QA asset report', async () => {
@@ -1641,6 +1814,37 @@ async function rewriteManifestAssetMetadata(
   }
 
   Object.assign(asset, patch);
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+}
+
+async function rewriteManifestAssetSemanticFit(
+  assetRoot: string,
+  assetId: string,
+  semanticFit: {
+    status: 'exact' | 'compatible' | 'fallback_generated' | 'not_applicable' | 'unknown' | 'mismatch';
+    confidence: number;
+    strictness?: 'hard' | 'medium' | 'soft';
+    expectedConcept?: string;
+    expectedAnyTags?: string[];
+    actualTags?: string[];
+    missingTags?: string[];
+    conflictingTags?: string[];
+    reason?: string;
+  }
+): Promise<void> {
+  const manifestPath = join(assetRoot, 'asset_manifest.json');
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as {
+    assets: Array<{
+      id: string;
+      semanticFit?: unknown;
+    }>;
+  };
+  const asset = manifest.assets.find((candidate) => candidate.id === assetId);
+  if (asset === undefined) {
+    throw new Error(`Unable to find test asset ${assetId}`);
+  }
+
+  asset.semanticFit = semanticFit;
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
 }
 

@@ -8,11 +8,65 @@
 
 ## 当前阶段
 
-Asset Semantic Fidelity Step 4 已完成：manifest asset 现在写入 optional `semanticFit`，generated project 根目录会写出 `asset_resolution_report.json`；下一步进入 Step 5：QA + Workbench semantic status。
+Asset Semantic Fidelity Step 5 已完成：QA report 现在区分 runtime status、asset semantic status 和 overall status；Workbench 会展示 overall/runtime/semantic 三类状态，并在 Assets 面板展示每个 asset 的 semanticFit 摘要。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：在 QA / Workbench 层消费 semantic diagnostics，展示 semantic fit / mismatch / fallback reason；仍不要引入 repair loop、AI image provider 或新资源库。
+当前下一步：Asset Semantic Fidelity Step 6：设计 asset repair loop 的最小闭环；仍不要接入 AI image provider 或新资源库。
+
+### 2.16 Asset Semantic Fidelity Step 5: QA + Workbench semantic status
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- `QaReport` 新增 `runtime_status`、`asset_semantic_status`、`overall_status`，保留既有 `status` 作为 runtime QA pass/fail 结果。
+- `QaAssetReport` 新增 `semantic_status`、per-asset `assets[].semantic_fit` 摘要和 `semantic_issues`，由 `asset-semantic-qa.ts` 从 manifest `semanticFit` 派生。
+- `fallback_generated` 归类为 semantic passed；hard `mismatch/unknown` 归类为 failed；medium/soft `mismatch/unknown` 归类为 warning；缺少 optional `semanticFit` 按旧 manifest 兼容为 passed。
+- `qa-asset-report.ts` 集中组装 asset report 和 overall status：runtime failed 优先返回 `QA_FAILED`，semantic failed 返回 `NEEDS_ASSET_REPAIR`，semantic warning 返回 `PLAYABLE_WITH_ART_WARNINGS`，语义 fallback 返回 `PLAYABLE_WITH_FALLBACK_ASSETS`。
+- `ProjectsService.getQaReport()` 在读取旧磁盘 QA report 时通过 `normalizePersistedQaReport()` 补齐新字段，避免历史 report 缺字段破坏 API 契约。
+- Workbench header 优先展示 `qaReport.overall_status`；`QaStatusPanel` 展示 Overall / Runtime / Asset semantic 三类状态；`AssetStatusPanel` 展示 semantic issue 数量、issue 列表和每个 asset 的 semanticFit 摘要。
+- 测试覆盖 hard semantic mismatch 的 `NEEDS_ASSET_REPAIR`、`fallback_generated` 的 fallback playable、medium mismatch warning、旧 QA report normalize，以及 pipeline 仍按 runtime `status: "PASSED"` 写入 `PLAYABLE`。
+
+阶段结果：
+
+- 解决层级：QA 数据契约 + Workbench 状态建模 / 展示。
+- 结构变化：新增 `asset-semantic-qa.ts`、`qa-asset-report.ts`、`qa-report-normalizer.ts`、`workbench-status.ts`、`QaStatusPanel.tsx`、`AssetSemanticList.tsx` 和 `workbench-semantic-status.test.ts`。
+- 行为边界：未修改 resolver ranking、hard gate、fallback 策略、manifest semanticFit 生成、Phaser runtime、asset repair loop、AI image provider 或 provider survive_duration。
+- runtime QA 与 asset semantic QA 保持独立：semantic failed 不把 `QaReport.status` 改成 `QA_FAILED`，由 `overall_status` 表达 asset repair 需求。
+- 文件规模：`playwright-qa-runner.service.ts` 由 232 行降至 142 行；新增 QA / Workbench helper 文件均低于 220 行；`App.tsx` 仍超过 220 行但本步只减少 QA 面板职责并保持主组合层边界。
+- 未改范围：尚未实现 asset repair loop；未做新资源库、AI image provider 或真实修复闭环。
+
+已通过验证（本步实际执行）：
+
+    npx vitest run tests/workspace/playwright-qa-runner.test.ts tests/workspace/workbench-semantic-status.test.ts
+    # 红灯后转绿：2 个测试文件，34 个测试通过
+
+    npx vitest run tests/workspace/playwright-qa-runner.test.ts tests/workspace/workbench-semantic-status.test.ts tests/workspace/generation-pipeline.service.test.ts
+    # 3 个测试文件，41 个测试通过
+
+    npx vitest run tests/workspace/projects-service.test.ts tests/workspace/generation-pipeline.service.test.ts tests/workspace/workbench-semantic-status.test.ts
+    # Oracle 反馈修复后，3 个测试文件，17 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    npm exec --workspace @ai-game-maker/maker-workbench -- vite build
+    # Workbench production build 通过
+
+    npm test
+    # contracts 84 个测试通过，workspace 114 个测试通过
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0/P1 无；P2 指出历史磁盘 QA report 缺少新必填字段时 API 类型兼容风险；P3 指出旧 report 在 QA 面板 overall tone 上可能显示 neutral，并建议补 pipeline 边界测试。
+- 已处理：新增 `normalizePersistedQaReport()` 并接入 `ProjectsService.getQaReport()`；`QaStatusPanel` 改用 `getWorkbenchStatusTone(overallStatus)`；补充 pipeline 回归测试。
+- Oracle 复审：P0/P1/P2 无；P3 残留为旧 report runtime 行颜色可 polish。
+- 复审后处理：已进一步改为用推导后的 runtime / semantic label 计算 tone，并通过 `npm run typecheck`、Workbench build 和相关测试。
+- 审查模式：Oracle 复用
 
 ### 2.15 Asset Semantic Fidelity Step 4: Manifest semanticFit + resolution report
 

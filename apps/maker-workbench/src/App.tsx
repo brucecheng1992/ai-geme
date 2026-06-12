@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { AssetStatusPanel } from './AssetStatusPanel.js';
+import { QaStatusPanel } from './QaStatusPanel.js';
 import './styles.css';
 import {
   API_BASE,
   countEvents,
   fallbackSteps,
+  getWorkbenchStatusTone,
   optionalJson,
   requestJson,
+  resolveWorkbenchDisplayStatus,
   shouldLoadBuildLog,
   shouldLoadQaReport,
   shouldLoadRepairReport,
@@ -32,11 +35,16 @@ const secondaryButtonClass =
   'inline-flex min-h-10 items-center justify-center rounded-lg border border-[#15130f] bg-[#fffef9] px-4 text-sm font-extrabold text-[#15130f] transition hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-[#fff7e8] hover:shadow-[4px_4px_0_#ffb13b] disabled:translate-x-0 disabled:translate-y-0 disabled:border-[#978f82] disabled:text-[#978f82] disabled:shadow-none';
 
 function statusToneClass(status: string) {
-  if (['PLAYABLE', 'PASSED', 'DONE'].includes(status)) {
+  const tone = getWorkbenchStatusTone(status);
+  if (tone === 'good') {
     return 'bg-[#208a4d]';
   }
 
-  if (['QA_FAILED', 'BUILD_FAILED', 'PREVIEW_ARTIFACT_MISSING', 'DSL_VALIDATION_FAILED', 'FAILED', 'VISUAL_QA_FAILED'].includes(status)) {
+  if (tone === 'warn') {
+    return 'bg-[#c58a1c]';
+  }
+
+  if (tone === 'bad') {
     return 'bg-[#c93d35]';
   }
 
@@ -74,10 +82,9 @@ export function App() {
   }, [data.project?.project.preview_url, projectId]);
   const observedCounts = useMemo(() => countEvents(data.qaReport?.observed_events ?? []), [data.qaReport?.observed_events]);
   const previewBlankScreen = data.qaReport?.code === 'PREVIEW_BLANK_SCREEN';
-  const displayStatus = data.qaReport?.visual_status === 'VISUAL_QA_FAILED' ? 'VISUAL_QA_FAILED' : (data.project?.project.status ?? 'LOCAL');
+  const displayStatus = resolveWorkbenchDisplayStatus(data.project?.project.status, data.qaReport);
   const latestRun = data.project?.latest_run;
   const timelineSteps = latestRun?.steps.length ? latestRun.steps : fallbackSteps(latestRun?.status);
-  const qaMissingLabel = (data.qaReport?.missing_events ?? []).join(', ') || 'none';
   const repairMessage = data.repairReport?.message ?? data.repairReport?.attempts?.[0]?.reason ?? 'none';
   const isTerminal = useMemo(() => {
     const status = latestRun?.status;
@@ -301,17 +308,7 @@ export function App() {
           </section>
 
           <section className="grid grid-cols-[minmax(260px,0.95fr)_minmax(320px,1.05fr)] gap-4 max-lg:grid-cols-1">
-            <article className={panelClass}>
-              <div className={panelHeadingClass}>
-                <div>
-                  <p className={eyebrowClass}>Quality</p>
-                  <h2 className={headingClass}>QA</h2>
-                </div>
-              </div>
-              <div className="mb-2 text-4xl font-black leading-none text-[#15130f]">{data.qaReport?.status ?? 'No report'}</div>
-              <p className="m-0 mb-1 text-sm leading-snug text-[#69645d]">{data.qaReport?.code ?? 'No failure code'}</p>
-              <p className="m-0 text-sm leading-snug text-[#69645d]">Missing: {qaMissingLabel}</p>
-            </article>
+            <QaStatusPanel report={data.qaReport} />
 
             <article className={`${panelClass} min-h-40`}>
               <div className={panelHeadingClass}>

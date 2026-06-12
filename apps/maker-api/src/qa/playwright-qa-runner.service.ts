@@ -3,12 +3,12 @@ import { dirname } from 'node:path';
 
 import { Injectable } from '@nestjs/common';
 
-import { validateGeneratedProjectAssets, type AssetManifestValidationFailure } from '../../../../packages/asset-pipeline/src/index.js';
+import { validateGeneratedProjectAssets } from '../../../../packages/asset-pipeline/src/index.js';
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
 import { PlayableQaGateService } from './playable-qa-gate.service.js';
 import { runPlaywrightQaBrowser } from './playwright-browser-runner.js';
-import type { QaAssetFailure, QaAssetReport, QaAssetRuntimeTelemetry, QaBrowserRunner, QaFailureCode, QaReport, RunQaInput } from './qa.types.js';
-import type { AssetManifest } from '../../../../packages/asset-pipeline/src/index.js';
+import { buildAssetGateFailure, buildAssetReport, buildMissingRuntimeAssetFailure, buildQaStatusFields, buildRuntimeAssetFailure } from './qa-asset-report.js';
+import type { QaBrowserRunner, QaFailureCode, QaReport, RunQaInput } from './qa.types.js';
 
 @Injectable()
 export class PlaywrightQaRunnerService {
@@ -28,8 +28,10 @@ export class PlaywrightQaRunnerService {
     });
 
     if (!assetGate.ok) {
+      const assetReport = buildAssetReport(undefined, undefined, buildAssetGateFailure(assetGate));
       const report: QaReport = {
         status: 'QA_FAILED',
+        ...buildQaStatusFields('QA_FAILED', assetReport),
         project_id: input.projectId,
         run_id: input.runId,
         genre: input.genre,
@@ -42,7 +44,7 @@ export class PlaywrightQaRunnerService {
         console_errors: [],
         code: assetGate.code,
         message: assetGate.message,
-        asset_report: buildAssetReport(undefined, undefined, buildAssetGateFailure(assetGate)),
+        asset_report: assetReport,
         started_at: startedAt,
         completed_at: new Date().toISOString()
       };
@@ -57,8 +59,10 @@ export class PlaywrightQaRunnerService {
     });
 
     if (!previewAssetGate.ok) {
+      const assetReport = buildAssetReport(assetGate.manifest, undefined, buildAssetGateFailure(previewAssetGate, 'Preview asset validation failed'));
       const report: QaReport = {
         status: 'QA_FAILED',
+        ...buildQaStatusFields('QA_FAILED', assetReport),
         project_id: input.projectId,
         run_id: input.runId,
         genre: input.genre,
@@ -72,7 +76,7 @@ export class PlaywrightQaRunnerService {
         code: previewAssetGate.code,
         message: `Preview asset validation failed: ${previewAssetGate.message}`,
         asset_manifest_summary: assetGate.manifest.summary,
-        asset_report: buildAssetReport(assetGate.manifest, undefined, buildAssetGateFailure(previewAssetGate, 'Preview asset validation failed')),
+        asset_report: assetReport,
         started_at: startedAt,
         completed_at: new Date().toISOString()
       };
@@ -86,8 +90,16 @@ export class PlaywrightQaRunnerService {
     const serviceAssetFailure = buildMissingRuntimeAssetFailure(input.genre, browserResult);
     const interactionGatePassed = browserResult.interaction_ok && gateResult.passed && serviceAssetFailure === undefined;
     const status = visualGatePassed && interactionGatePassed ? 'PASSED' : 'QA_FAILED';
+    const assetReport = buildAssetReport(
+      previewAssetGate.manifest,
+      browserResult.asset_runtime,
+      serviceAssetFailure ?? (status === 'QA_FAILED' && browserResult.failure_code === 'ASSET_LOAD_FAILED'
+        ? buildRuntimeAssetFailure(browserResult.asset_runtime, browserResult.message)
+        : undefined)
+    );
     const report: QaReport = {
       status,
+      ...buildQaStatusFields(status, assetReport),
       project_id: input.projectId,
       run_id: input.runId,
       genre: input.genre,
@@ -103,13 +115,7 @@ export class PlaywrightQaRunnerService {
       message: serviceAssetFailure?.message ?? browserResult.message,
       visual_status: visualGatePassed ? 'PASSED' : 'VISUAL_QA_FAILED',
       asset_manifest_summary: previewAssetGate.manifest.summary,
-      asset_report: buildAssetReport(
-        previewAssetGate.manifest,
-        browserResult.asset_runtime,
-        serviceAssetFailure ?? (status === 'QA_FAILED' && browserResult.failure_code === 'ASSET_LOAD_FAILED'
-          ? buildRuntimeAssetFailure(browserResult.asset_runtime, browserResult.message)
-          : undefined)
-      ),
+      asset_report: assetReport,
       screenshot_path: browserResult.screenshot_path,
       visual_metrics: browserResult.visual_metrics,
       started_at: startedAt,
@@ -133,100 +139,4 @@ export class PlaywrightQaRunnerService {
     await mkdir(dirname(reportPath), { recursive: true });
     await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   }
-}
-
-function buildAssetReport(manifest: AssetManifest | undefined, runtime: QaAssetRuntimeTelemetry | undefined, failure?: QaAssetFailure): QaAssetReport {
-  const assets = manifest?.assets ?? [];
-  return {
-    manifest_summary: manifest?.summary,
-    required: assets.filter((asset) => asset.required).map((asset) => asset.id),
-    ready: assets.filter((asset) => asset.status === 'ready').map((asset) => asset.id),
-    fallback_used: assets.filter((asset) => asset.status === 'fallback_used').map((asset) => asset.id),
-    placeholder_used: assets.filter((asset) => asset.source === 'placeholder').map((asset) => asset.id),
-    missing: assets.filter((asset) => asset.status === 'missing').map((asset) => asset.id),
-    ...(runtime ? { runtime } : {}),
-    sources: summarizeAssetSources(assets),
-    failures: failure ? [failure] : []
-  };
-}
-
-function summarizeAssetSources(assets: AssetManifest['assets']): QaAssetReport['sources'] {
-  const sources = new Map<string, NonNullable<QaAssetReport['sources']>[number]>();
-
-  for (const asset of assets) {
-    if (
-      asset.sourcePack === undefined ||
-      asset.licenseId === undefined ||
-      asset.licenseName === undefined ||
-      asset.attribution === undefined ||
-      asset.sourceUrl === undefined
-    ) {
-      continue;
-    }
-
-    sources.set([asset.sourcePack, asset.licenseId, asset.attribution, asset.sourceUrl].join('\u0000'), {
-      source_pack: asset.sourcePack,
-      license_id: asset.licenseId,
-      license_name: asset.licenseName,
-      attribution: asset.attribution,
-      source_url: asset.sourceUrl
-    });
-  }
-
-  return [...sources.values()];
-}
-
-function buildAssetGateFailure(failure: AssetManifestValidationFailure, messagePrefix?: string): QaAssetFailure {
-  return {
-    code: failure.code,
-    message: messagePrefix === undefined ? failure.message : `${messagePrefix}: ${failure.message}`,
-    asset_ids: failure.assetId === undefined ? [] : [failure.assetId],
-    roles: failure.role === undefined ? [] : [failure.role]
-  };
-}
-
-function buildRuntimeAssetFailure(runtime: QaAssetRuntimeTelemetry | undefined, message: string | undefined): QaAssetFailure {
-  if (runtime === undefined) {
-    return {
-      code: 'ASSET_LOAD_FAILED',
-      message: message ?? 'Runtime asset validation failed.',
-      asset_ids: [],
-      roles: []
-    };
-  }
-
-  const loaded = new Set(runtime.loaded);
-  const notLoaded = runtime.required.filter((id) => !loaded.has(id));
-  return {
-    code: 'ASSET_LOAD_FAILED',
-    message: message ?? 'Runtime asset validation failed.',
-    asset_ids: uniqueStrings([...notLoaded, ...runtime.failed, ...runtime.missing]),
-    roles: [...runtime.missing_required_roles]
-  };
-}
-
-function buildMissingRuntimeAssetFailure(genre: RunQaInput['genre'], browserResult: { visual_ok: boolean; interaction_ok: boolean; asset_runtime?: QaAssetRuntimeTelemetry }): QaAssetFailure | undefined {
-  if (
-    (genre !== 'collector' && genre !== 'dodger' && genre !== 'shooter') ||
-    !browserResult.visual_ok ||
-    !browserResult.interaction_ok ||
-    browserResult.asset_runtime !== undefined
-  ) {
-    return undefined;
-  }
-
-  return {
-    code: 'ASSET_LOAD_FAILED',
-    message: `${qaGenreLabel(genre)} QA expected runtime asset telemetry in browser result.`,
-    asset_ids: [],
-    roles: []
-  };
-}
-
-function uniqueStrings(values: string[]): string[] {
-  return Array.from(new Set(values));
-}
-
-function qaGenreLabel(genre: RunQaInput['genre']): string {
-  return `${genre.slice(0, 1).toUpperCase()}${genre.slice(1)}`;
 }

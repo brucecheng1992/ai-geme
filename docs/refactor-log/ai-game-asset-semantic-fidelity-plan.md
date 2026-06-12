@@ -33,10 +33,10 @@
 - generated project 根目录已写出 `asset_resolution_report.json`，记录 selected / rejected / fallback diagnostics。
 - QA report 已包含 `asset_report`，Workbench Assets 面板可展示 manifest/runtime load 状态和 source pack。
 
-Step 4 完成后的剩余缺口：
+Step 5 完成后的剩余缺口：
 
-- QA / Workbench 不识别“加载成功但语义错配”。
-- 尚未把 semantic diagnostics 接入 QA status 或 Workbench display。
+- QA / Workbench 已能识别 runtime pass 但 hard semantic mismatch 的 `NEEDS_ASSET_REPAIR`，并展示 per-asset semanticFit 摘要。
+- 尚未实现 asset repair loop；`NEEDS_ASSET_REPAIR` 目前只表达状态，不会自动重选或修复资源。
 
 ## 4. 分步落地计划
 
@@ -47,9 +47,9 @@ Step 4 完成后的剩余缺口：
 | Step 2 | Local pack metadata profile | pack / asset subject tags、theme tags、metadata schema | 已完成 |
 | Step 3 | Resolver semantic hard gate | complete-pack selection hard gate、fallback on hard mismatch | 已完成 |
 | Step 4 | Manifest semanticFit + resolution report | `semanticFit`、`asset_resolution_report.json` | 已完成 |
-| Step 5 | QA + Workbench semantic status | `assetSemanticStatus`、mismatch failure、UI 展示 | 当前下一步 |
-| Step 6 | 自动修复回路 | mismatch 后重选 / fallback trace | 故意错配后能 repair 到 fallback |
-| Step 7 | 回归批量验收 | E2E cases 和真实 Workbench proof | cat/alien、tank/tank、generic shooter 均通过对应验收 |
+| Step 5 | QA + Workbench semantic status | `assetSemanticStatus`、mismatch failure、UI 展示 | 已完成 |
+| Step 6 | 自动修复回路 | mismatch 后重选 / fallback trace | 当前下一步 |
+| Step 7 | 回归批量验收 | E2E cases 和真实 Workbench proof | 目标：cat/alien、tank/tank、generic shooter 均通过对应验收 |
 
 ## 5. Step 1 最小实现边界
 
@@ -189,9 +189,48 @@ Step 4 已执行：
 - style mismatch / incomplete pack candidate 会写出结构化 diagnostics。
 - QA runner 既有 28 个测试通过，说明本步没有改变 QA overall status。
 
-下一步 Step 5 应只让 QA / Workbench 消费 semantic diagnostics 并展示 semantic status；仍不引入 repair loop。
+Step 5 已让 QA / Workbench 消费 semantic diagnostics 并展示 semantic status；仍未引入 repair loop。
 
-## 10. 审查门禁
+## 10. Step 5 最小实现边界
+
+状态：已完成。
+
+Step 5 只处理 QA / Workbench 消费层：
+
+- QA report 新增 `runtime_status`、`asset_semantic_status` 和 `overall_status`，既有 `status` 仍表示 runtime QA pass/fail。
+- QA asset report 从 manifest `semanticFit` 派生 `semantic_status`、per-asset semantic summary 和 semantic issues。
+- Workbench 展示 Overall / Runtime / Asset semantic 三类状态，header 优先展示 QA `overall_status`，Assets 面板展示每个 asset 的 semanticFit 摘要。
+- hard mismatch / hard unknown 显示为 `NEEDS_ASSET_REPAIR`；medium/soft mismatch 显示 warning；`fallback_generated` 显示为 playable fallback assets。
+- 旧磁盘 QA report 在 API 读取边界补齐新字段，避免历史报告破坏新契约。
+
+Step 5 不修改：
+
+- resolver ranking / final selection。
+- Step 3 hard gate 规则。
+- fallback 策略。
+- manifest semanticFit 生成逻辑。
+- Phaser runtime。
+- asset repair loop。
+- AI image provider、新资源库或 provider survive_duration。
+
+Step 5 已执行：
+
+    npx vitest run tests/workspace/playwright-qa-runner.test.ts tests/workspace/workbench-semantic-status.test.ts
+    npx vitest run tests/workspace/playwright-qa-runner.test.ts tests/workspace/workbench-semantic-status.test.ts tests/workspace/generation-pipeline.service.test.ts
+    npx vitest run tests/workspace/projects-service.test.ts tests/workspace/generation-pipeline.service.test.ts tests/workspace/workbench-semantic-status.test.ts
+    npm run typecheck
+    npm exec --workspace @ai-game-maker/maker-workbench -- vite build
+    npm test
+    git diff --check
+
+关键断言：
+
+- runtime QA passed + hard semantic mismatch -> `status: "PASSED"`、`runtime_status: "PASSED"`、`asset_semantic_status: "FAILED"`、`overall_status: "NEEDS_ASSET_REPAIR"`。
+- `fallback_generated` -> `asset_semantic_status: "PASSED"`、`overall_status: "PLAYABLE_WITH_FALLBACK_ASSETS"`。
+- medium mismatch -> `asset_semantic_status: "WARNING"`、`overall_status: "PLAYABLE_WITH_ART_WARNINGS"`。
+- pipeline 仍按 runtime `status: "PASSED"` 写入项目 `PLAYABLE`；Workbench 通过 QA `overall_status` 覆盖展示。
+
+## 11. 审查门禁
 
 每一步按 review-gated-refactor 执行：
 
@@ -201,7 +240,7 @@ Step 4 已执行：
 4. 把修改范围、验证命令、审查结论写回 `docs/refactor-log/ai-game-dsl-p0-review-gated.md`。
 5. 再做文档复审门禁。
 
-## 11. 当前注意事项
+## 12. 当前注意事项
 
 - provider `survive_duration` 修复已单独提交；后续 asset semantic fidelity 步骤仍不要混入 provider 改动。
 - 本阶段真实验收必须用 Workbench 生成项目证明，不只看单测。

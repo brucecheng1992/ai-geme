@@ -1,3 +1,4 @@
+import { AssetSemanticList } from './AssetSemanticList.js';
 import type { QaAssetReport } from './workbench-api.js';
 
 const panelClass = 'rounded-lg border border-[#d8c7a6] bg-[#fffef9] p-4 shadow-[0_1px_0_rgba(49,43,34,0.08)]';
@@ -13,6 +14,8 @@ export function AssetStatusPanel({ report }: AssetStatusPanelProps) {
   const summary = report?.manifest_summary;
   const runtime = report?.runtime;
   const failures = report?.failures ?? [];
+  const semanticIssues = report?.semantic_issues ?? [];
+  const semanticAssets = report?.assets ?? [];
 
   return (
     <article className={`${panelClass} min-h-40`}>
@@ -31,6 +34,7 @@ export function AssetStatusPanel({ report }: AssetStatusPanelProps) {
             <AssetMetric label="Ready" value={summary?.ready ?? report.ready.length} />
             <AssetMetric label="Loaded" value={runtime?.loaded.length ?? 0} />
             <AssetMetric label="Failed" value={runtime?.failed.length ?? 0} tone={runtime?.failed.length ? 'bad' : 'neutral'} />
+            <AssetMetric label="Semantic" value={semanticIssues.length} tone={report.semantic_status === 'FAILED' ? 'bad' : report.semantic_status === 'WARNING' ? 'warn' : 'neutral'} />
             <AssetMetric label="Placeholder" value={summary?.placeholder_used ?? report.placeholder_used.length} tone={report.placeholder_used.length ? 'warn' : 'neutral'} />
             <AssetMetric label="Missing" value={summary?.missing ?? report.missing.length} tone={report.missing.length ? 'bad' : 'neutral'} />
           </div>
@@ -39,6 +43,20 @@ export function AssetStatusPanel({ report }: AssetStatusPanelProps) {
             <AssetList title="Required" values={report.required} />
             <AssetList title="Runtime loaded" values={runtime?.loaded ?? []} />
           </div>
+
+          {semanticAssets.length > 0 ? <AssetSemanticList assets={semanticAssets} /> : null}
+
+          {semanticIssues.length > 0 ? (
+            <ul className="m-0 grid list-none gap-2 p-0">
+              {semanticIssues.map((issue) => (
+                <li className="rounded-lg border border-[#f2ca83] bg-[#fff1d6] p-3 text-sm leading-snug text-[#6b4b16]" key={`${issue.asset_id}-${issue.semantic_fit_status}`}>
+                  <div className="mb-1 font-black text-[#8a5b13]">{`${issue.severity.toUpperCase()} ${issue.semantic_fit_status}`}</div>
+                  <div>{issue.reason}</div>
+                  <div className="mt-1 text-xs font-bold text-[#8a5b13]">{formatSemanticIssueScope(issue)}</div>
+                </li>
+              ))}
+            </ul>
+          ) : null}
 
           {report.sources !== undefined && report.sources.length > 0 ? (
             <div className="grid gap-2">
@@ -118,6 +136,14 @@ function assetHealthLabel(report: QaAssetReport | undefined): string {
     return 'Blocked';
   }
 
+  if (report.semantic_status === 'FAILED') {
+    return 'Semantic repair';
+  }
+
+  if (report.semantic_status === 'WARNING') {
+    return 'Art warning';
+  }
+
   if (report.placeholder_used.length > 0 || report.fallback_used.length > 0) {
     return 'Fallback';
   }
@@ -132,6 +158,12 @@ function assetHealthClass(report: QaAssetReport | undefined): string {
   }
   if (label === 'Blocked') {
     return 'border-[#f2a39b] bg-[#ffe2dc] text-[#c93d35]';
+  }
+  if (label === 'Semantic repair') {
+    return 'border-[#f2a39b] bg-[#ffe2dc] text-[#c93d35]';
+  }
+  if (label === 'Art warning') {
+    return 'border-[#f2ca83] bg-[#fff1d6] text-[#8a5b13]';
   }
   return 'border-[#d0b993] bg-[#ece1ce] text-[#69645d]';
 }
@@ -155,4 +187,15 @@ function formatFailureScope(assetIds: string[], roles: string[]): string {
     chunks.push(`roles: ${roles.join(', ')}`);
   }
   return chunks.join(' | ') || 'scope: run';
+}
+
+function formatSemanticIssueScope(issue: NonNullable<QaAssetReport['semantic_issues']>[number]): string {
+  const chunks = [`asset: ${issue.asset_id}`, `role: ${issue.role}`];
+  if (issue.strictness !== undefined) {
+    chunks.push(`strictness: ${issue.strictness}`);
+  }
+  if (issue.expected_concept !== undefined) {
+    chunks.push(`expected: ${issue.expected_concept}`);
+  }
+  return chunks.join(' | ');
 }

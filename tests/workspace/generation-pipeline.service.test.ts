@@ -183,6 +183,9 @@ describe('GenerationPipelineService failure states', () => {
         async run(input: { genre: QaGenre }) {
           return {
             status: 'QA_FAILED',
+            runtime_status: 'FAILED',
+            asset_semantic_status: 'PASSED',
+            overall_status: 'QA_FAILED',
             visual_status: 'VISUAL_QA_FAILED',
             project_id: projectId,
             run_id: runId,
@@ -205,6 +208,43 @@ describe('GenerationPipelineService failure states', () => {
     await expect(runPipeline(pipeline)).resolves.toBe('QA_FAILED');
     await expect(projectStore.readProject(projectId)).resolves.toMatchObject({ status: 'QA_FAILED' });
     await expect(runStore.readEvents(runId)).resolves.toEqual(expect.arrayContaining([expect.objectContaining({ type: 'qa.failed', message: 'PREVIEW_BLANK_SCREEN' })]));
+  });
+
+  it('keeps project status PLAYABLE when runtime QA passes but asset semantic QA needs repair', async () => {
+    const pipeline = createPipeline({
+      compiler: { compile: compileWithDist },
+      buildRunner: {
+        async build() {
+          return { ok: true, projectId, distDir: workspace.getGeneratedProjectDistDir(projectId), logPath: workspace.getBuildLogPath(projectId, runId) };
+        }
+      },
+      qaRunner: {
+        async run(input: { genre: QaGenre }) {
+          return {
+            status: 'PASSED',
+            runtime_status: 'PASSED',
+            asset_semantic_status: 'FAILED',
+            overall_status: 'NEEDS_ASSET_REPAIR',
+            project_id: projectId,
+            run_id: runId,
+            genre: input.genre,
+            preview_url: 'http://localhost/preview/index.html',
+            seed: 'golden',
+            required_events: { all: [], any_groups: [] },
+            observed_events: [],
+            missing_events: [],
+            missing_any_groups: [],
+            console_errors: [],
+            started_at: new Date().toISOString(),
+            completed_at: new Date().toISOString()
+          };
+        }
+      }
+    });
+
+    await expect(runPipeline(pipeline)).resolves.toBe('PLAYABLE');
+    await expect(projectStore.readProject(projectId)).resolves.toMatchObject({ status: 'PLAYABLE' });
+    await expect(runStore.readEvents(runId)).resolves.toEqual(expect.arrayContaining([expect.objectContaining({ type: 'qa.passed' })]));
   });
 
   function createPipeline(overrides: PipelineOverrides = {}): GenerationPipelineService {
@@ -230,6 +270,9 @@ describe('GenerationPipelineService failure states', () => {
         async run(input: { genre: QaGenre }) {
           return {
             status: 'PASSED',
+            runtime_status: 'PASSED',
+            asset_semantic_status: 'PASSED',
+            overall_status: 'PLAYABLE',
             project_id: projectId,
             run_id: runId,
             genre: input.genre,

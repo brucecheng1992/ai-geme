@@ -251,6 +251,9 @@ export class GenerationPipelineService {
     const now = new Date().toISOString();
     const report: QaReport = {
       status: 'QA_FAILED',
+      runtime_status: 'FAILED',
+      asset_semantic_status: 'PASSED',
+      overall_status: 'QA_FAILED',
       project_id: input.projectId,
       run_id: input.runId,
       genre,

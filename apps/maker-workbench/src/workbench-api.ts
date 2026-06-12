@@ -20,8 +20,17 @@ export type ProjectStatus = {
 };
 
 export type RunEvents = { ok: true; events: Array<{ timestamp: string; type: string; message: string }> };
+export type RuntimeStatus = 'PASSED' | 'FAILED';
+export type AssetSemanticStatus = 'PASSED' | 'WARNING' | 'FAILED';
+export type OverallStatus = 'PLAYABLE' | 'PLAYABLE_WITH_FALLBACK_ASSETS' | 'PLAYABLE_WITH_ART_WARNINGS' | 'NEEDS_ASSET_REPAIR' | 'QA_FAILED';
+export { formatAssetSemanticFitSummary, getWorkbenchStatusTone, resolveWorkbenchDisplayStatus } from './workbench-status.js';
+export type { WorkbenchStatusTone } from './workbench-status.js';
+
 export type QaReport = {
   status?: string;
+  runtime_status?: RuntimeStatus;
+  asset_semantic_status?: AssetSemanticStatus;
+  overall_status?: OverallStatus;
   visual_status?: string;
   observed_events?: string[];
   missing_events?: string[];
@@ -50,12 +59,15 @@ export type QaAssetReport = {
     placeholder_used: number;
     missing: number;
   };
+  semantic_status?: AssetSemanticStatus;
   required: string[];
   ready: string[];
   fallback_used: string[];
   placeholder_used: string[];
   missing: string[];
   runtime?: QaAssetRuntimeTelemetry;
+  assets?: QaAssetSemanticSummary[];
+  semantic_issues?: QaAssetSemanticIssue[];
   sources?: Array<{
     source_pack: string;
     license_id: string;
@@ -69,6 +81,39 @@ export type QaAssetReport = {
     asset_ids: string[];
     roles: string[];
   }>;
+};
+
+export type QaAssetSemanticSummary = {
+  id: string;
+  role: string;
+  source: 'local_asset_pack' | 'template_svg' | 'placeholder';
+  source_pack?: string;
+  semantic_status: AssetSemanticStatus;
+  semantic_fit?: QaAssetSemanticFit;
+};
+
+export type QaAssetSemanticFit = {
+  status: 'exact' | 'compatible' | 'fallback_generated' | 'not_applicable' | 'unknown' | 'mismatch';
+  confidence: number;
+  strictness?: 'hard' | 'medium' | 'soft';
+  expectedConcept?: string;
+  expectedAnyTags?: string[];
+  actualTags?: string[];
+  missingTags?: string[];
+  conflictingTags?: string[];
+  reason?: string;
+};
+
+export type QaAssetSemanticIssue = {
+  severity: 'warning' | 'failure';
+  asset_id: string;
+  role: string;
+  semantic_fit_status: QaAssetSemanticFit['status'];
+  strictness?: 'hard' | 'medium' | 'soft';
+  expected_concept?: string;
+  missing_tags: string[];
+  conflicting_tags: string[];
+  reason: string;
 };
 export type RepairReport = { status?: string; message?: string; attempts?: Array<{ attempt: number; reason: string }> };
 
@@ -105,11 +150,22 @@ export function fallbackSteps(status: string | undefined): Array<{ name: string;
 }
 
 export function shouldLoadBuildLog(status: string | undefined): boolean {
-  return hasReached(status, ['BUILDING', 'BUILD_FAILED', 'PREVIEW_ARTIFACT_MISSING', 'PREVIEW_READY', 'QA_RUNNING', 'QA_FAILED', 'PLAYABLE']);
+  return hasReached(status, [
+    'BUILDING',
+    'BUILD_FAILED',
+    'PREVIEW_ARTIFACT_MISSING',
+    'PREVIEW_READY',
+    'QA_RUNNING',
+    'QA_FAILED',
+    'PLAYABLE',
+    'NEEDS_ASSET_REPAIR',
+    'PLAYABLE_WITH_FALLBACK_ASSETS',
+    'PLAYABLE_WITH_ART_WARNINGS'
+  ]);
 }
 
 export function shouldLoadQaReport(status: string | undefined): boolean {
-  return hasReached(status, ['QA_RUNNING', 'QA_FAILED', 'PLAYABLE']);
+  return hasReached(status, ['QA_RUNNING', 'QA_FAILED', 'PLAYABLE', 'NEEDS_ASSET_REPAIR', 'PLAYABLE_WITH_FALLBACK_ASSETS', 'PLAYABLE_WITH_ART_WARNINGS']);
 }
 
 export function shouldLoadRepairReport(status: string | undefined): boolean {
