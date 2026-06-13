@@ -2,12 +2,12 @@
 
 来源：`/Users/dahufa/Documents/workspace/art_asset_pipeline_production_rollout_plan.zip`
 
-当前状态：Step 14A production rollout gate 已作为 docs-only gate 完成，当前分支为 `docs/asset-semantic-step-14a-production-rollout-gate`。本目录把 zip 中的大 rollout 计划拆成可逐步执行、逐步审查、逐步验证的小文档。
+当前状态：Step 14A production rollout gate 已完成并合入 `main`；Step 14B rollout mode 已决定为 non-default feature-flagged controlled rollout。默认行为、production asset packs、large-library scan、repair-enabled default 和 metadata repair/writeback 仍不允许改变。本目录把 zip 中的大 rollout 计划拆成可逐步执行、逐步审查、逐步验证的小文档。
 
 ## 当前下一步
 
-1. 关闭 Step 14A branch boundary。
-2. 之后再单独决定是否创建 Step 14B controlled rollout implementation branch。
+1. 创建 Step 14B controlled rollout implementation branch。
+2. 在 Step 14B 中实现 off-by-default feature flag，并证明 flag-off / flag-on / rollback 行为。
 
 Step 14A 只定义 Step 14B 之前的 production rollout guard。它批准的 Step 14B 最大边界是非默认、显式 opt-in / feature-flagged、fixture-backed 或 runtime-safe artifact-backed 的受控路径；默认 runtime behavior、resolver、QA / Workbench / Phaser、asset pack loading 和 production asset packs 仍不得改变。
 

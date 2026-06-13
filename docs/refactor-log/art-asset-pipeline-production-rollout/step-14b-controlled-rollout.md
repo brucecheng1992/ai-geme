@@ -6,6 +6,30 @@ Status: future code/test step. Start only after Step 14A approval.
 
 Enable the smallest approved production/runtime integration change, guarded and reversible.
 
+## Current Decision
+
+Step 14B rollout decision:
+
+```yaml
+mode: non-default feature-flagged controlled rollout
+default_behavior: unchanged
+feature_flag: off by default
+approved_input:
+  - tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/
+  - runtime-safe artifact generated from its metadata
+production_asset_pack_mutation: not allowed
+large_library_scan: not allowed
+repair_enabled_default: not allowed
+metadata_repair_writeback: not allowed
+```
+
+Success criteria:
+
+- flag off equals current behavior;
+- flag on exposes only the approved Pirate Kit semantic fixture / artifact path;
+- rollback is disabling the flag;
+- tests prove both flag-off and flag-on behavior.
+
 ## Allowed
 
 - feature flag / staged config;
