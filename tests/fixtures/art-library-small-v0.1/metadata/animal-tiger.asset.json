@@ -1,0 +1,67 @@
+{
+  "asset_id": "creature_kenney_cube_pet_tiger_001",
+  "project_code": "ai_game",
+  "asset_type": "creature",
+  "asset_subtype": "cube_pet",
+  "title": "Kenney Cube Pet Tiger",
+  "description": "A low-poly stylized cube pet tiger GLB model from Kenney Cube Pets for small library metadata intake dry-runs.",
+  "version": "1.0.0",
+  "status": "approved",
+  "semantic": {
+    "world": "kenney_cube_pet",
+    "genre": ["adventure", "arcade"],
+    "subject": ["tiger", "animal", "pet"],
+    "semantic_tags": ["tiger", "animal", "pet", "cube_pet", "low_poly", "wild"],
+    "visual_style": ["stylized", "low_poly", "toon"],
+    "mood": ["cute", "friendly"],
+    "color_palette": ["orange", "black", "white"],
+    "dominant_colors": ["#D97925", "#2F2F2F", "#F2F2F2"]
+  },
+  "gameplay": {
+    "gameplay_role": ["npc", "decoration"],
+    "affordances": ["animated", "decorative"],
+    "rarity": "common",
+    "spawnable": false,
+    "allowed_contexts": ["small_art_library_fixture", "pet_collection", "npc_gallery"],
+    "blocked_contexts": ["production_default_runtime", "large_library_rollout"],
+    "interaction_type": []
+  },
+  "technical": {
+    "source_path": "tests/fixtures/art-library-small-v0.1/assets/animal-tiger.glb",
+    "thumbnail_path": "tests/fixtures/art-library-small-v0.1/thumbnails/animal-tiger.png",
+    "file_format": "glb",
+    "engine_targets": ["web"],
+    "platform_budget": ["desktop", "mobile"]
+  },
+  "ai_generation": {
+    "generated_by_ai": false,
+    "human_edit_level": "human_made"
+  },
+  "rights": {
+    "creator": "Kenney",
+    "owner": "Kenney",
+    "license": "cc0",
+    "commercial_use": true,
+    "training_use_allowed": true,
+    "third_party_sources": ["https://kenney.nl/assets/cube-pets"],
+    "rights_risk_level": "low"
+  },
+  "workflow": {
+    "owner": "asset_semantic_step_9b",
+    "reviewed_by": "main_agent",
+    "review_notes": "Step 9B fixture intake only; not wired into runtime/default asset loading.",
+    "created_at": "2026-06-13",
+    "updated_at": "2026-06-13",
+    "approved_at": "2026-06-13"
+  },
+  "relations": {
+    "variant_of": null,
+    "derived_from": [],
+    "depends_on": [],
+    "compatible_with": [],
+    "used_by": []
+  },
+  "search": {
+    "embedding_input": "Kenney Cube Pet Tiger low-poly stylized pet creature for small fixture metadata validation."
+  }
+}

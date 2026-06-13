@@ -2712,3 +2712,77 @@ Step 9 阶段结果：
 当前下一步：
 
 - Metadata v0.1 Step 4：asset pack metadata bridge / resolver diagnostics，必须作为未来独立步骤推进。
+
+### 18. Asset Semantic Fidelity Step 9B：Small Art Library Metadata Intake / Fixture Import
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 新增 `tests/fixtures/art-library-small-v0.1/`，作为 Step 9B 小型真实资源 dry-run fixture。
+- 来源为 Kenney Cube Pets：`https://kenney.nl/assets/cube-pets`，许可证为 Creative Commons Zero / CC0。
+- 导入 10 个 GLB 模型和 10 个匹配 PNG thumbnail：`animal-bee`、`animal-bunny`、`animal-cat`、`animal-crab`、`animal-dog`、`animal-fish`、`animal-fox`、`animal-lion`、`animal-penguin`、`animal-tiger`。
+- 新增 `tests/fixtures/art-library-small-v0.1/metadata/*.asset.json`，每个 asset 均具备 complete metadata sidecar，包含 semantic、gameplay、technical、ai_generation、rights、workflow、relations 和 search 字段。
+- 新增 `tests/contracts/asset-semantic-small-art-library-fixture.test.ts`，锁定 exact 10 basename、目录布局、全 fixture size / extension policy、metadata validation 和 project-relative referenced paths。
+- 更新 `docs/refactor-log/asset-semantic-small-art-library-v0.1.md` 和 `docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md`，记录 Step 9B 资源来源、导入范围、size policy、非目标和验证命令。
+
+阶段结果：
+
+- 只导入小型 fixture，不导入完整 Cube Pets 包。
+- 不提交下载 zip、FBX、OBJ、overview / preview / URL helper 文件或 runtime export artifact。
+- `source/` 只保存 provenance / license evidence，不作为 production source-art 目录。
+- Sidecar metadata 的 `technical.source_path` / `thumbnail_path` 均保持 project-relative path。
+- Runtime-safe export 只作为 validation command 运行，不生成提交 artifact。
+
+Step 9B 未做：
+
+- 未启动 Step 9C default / repair-enabled canary / comparison。
+- 未启动 Metadata Step 4A。
+- 未修改 runtime/default asset loading、resolver、QA、Workbench、Phaser、asset pack loading 或 repair-enabled default。
+- 未导入 large asset library、DAM / database / vector / image embedding、Unity / Unreal / glTF / USD 或 C2PA pipeline。
+
+已通过验证：
+
+    npx vitest run tests/contracts/asset-semantic-small-art-library-fixture.test.ts
+    # 1 个测试文件，4 个测试通过
+
+    npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+    # OK 10 metadata files
+
+    npm run metadata:validate -- --json tests/fixtures/art-library-small-v0.1/metadata
+    # ok=true，10 个 files，diagnostics=[]
+
+    npm run metadata:validate -- --check-paths tests/fixtures/art-library-small-v0.1/metadata
+    # OK 10 metadata files
+
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata
+    # ok=true，artifact.asset_count=10，diagnostics=[]
+
+    npm run metadata:validate -- assets/metadata/examples
+    # OK 5 metadata files
+
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+    # ok=true，artifact.asset_count=5，diagnostics=[]
+
+    npm run test:contracts
+    # 15 个测试文件，165 个测试通过
+
+    npm test
+    # contracts 165 个测试通过；workspace 125 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+fixture size check：
+
+- `tests/fixtures/art-library-small-v0.1/` 当前 `du -sh` 为 1.5M。
+- 全 fixture 文件字节总和为 1,486,226 bytes。
+- 最大文件为 `assets/animal-lion.glb`，172,936 bytes。
+
+审查记录：
+
+- Oracle 预审：P0 无；P1 要求 metadata complete schema、对新 fixture 运行 runtime export、focused test 锁 exact 10 basenames；P2 要求避免给所有动物统一 collectible role、README 记录来源/排除项/size policy、size gate 遍历整个 fixture；P3 要求说明 `source/` 语义，并考虑 `semantic.world=kenney_cube_pet`。
+- 已落实：sidecar metadata 补齐 complete schema；focused test 锁 exact basenames / full fixture size；README 记录 provenance、排除项和边界；所有动物 gameplay role 保持 `npc` / `decoration`；`semantic.world` 使用 `kenney_cube_pet`。

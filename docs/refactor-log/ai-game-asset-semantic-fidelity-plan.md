@@ -773,8 +773,9 @@ Step 9A 验证：
 - provider `survive_duration` 修复已单独提交；后续 asset semantic fidelity 步骤仍不要混入 provider 改动。
 - Step 7 已用默认和 repair-enabled canary summary 证明批量 supported cases 不退化；后续新增 taxonomy / 资源库 / AI image provider 仍必须另起小步，并重新跑 release guard。
 - Step 8c 已只完成 canary fixture pack / brief pack v0.2；Step 8d 已只完成 default / repair-enabled canary summary comparison，不扩展资源或运行时行为。
-- Step 9A 已只完成 small art library intake review gate；下一步若继续资产主线，应进入 Step 9B small art library metadata intake / fixture import。
-- Step 9B 不得启动 Metadata Step 4A、大资源库接入或 runtime / resolver / QA / Workbench / Phaser 变更。
+- Step 9A 已只完成 small art library intake review gate。
+- Step 9B 已导入 Kenney Cube Pets 小型 fixture 与 sidecar metadata；下一步若继续资产主线，应进入 Step 9C dry-run validation / canary / comparison。
+- Step 9C 不得启动 Metadata Step 4A、大资源库接入或 runtime / resolver / QA / Workbench / Phaser 变更。
 - shooter HUD stash 仍是独立任务，不应混入 Asset Semantic Fidelity 后续步骤。
 - 可选技术债治理应另起命名，例如 pipeline split，不再复用 Step 8a / Step 8b 编号。
 - 后续涉及真实验收时仍必须用 Workbench / generated project / QA 产物证明，不只看单测。
@@ -782,3 +783,62 @@ Step 9A 验证：
   - 小猫射击外星人：不能选 tank 作为 player/enemy。
   - 坦克大战：可以选 tank pack。
   - 泛化 shooter：不应因缺少 hard concept 被误判失败。
+
+## 24. Step 9B small art library metadata intake / fixture import
+
+状态：已完成，等待 Oracle 复审后提交。
+
+Step 9B 只处理小型真实资源 fixture 与 sidecar metadata：
+
+- 来源：Kenney Cube Pets，`https://kenney.nl/assets/cube-pets`。
+- 路径：`tests/fixtures/art-library-small-v0.1/`。
+- 导入 10 个 GLB 模型和 10 个匹配 PNG thumbnail：`animal-bee`、`animal-bunny`、`animal-cat`、`animal-crab`、`animal-dog`、`animal-fish`、`animal-fox`、`animal-lion`、`animal-penguin`、`animal-tiger`。
+- 为每个 asset 新增 `.asset.json` sidecar，字段满足既有 `ArtAssetMetadataSchema`，并标记 CC0、非 AI 生成、低 rights risk、`small_art_library_fixture` allowed context。
+- 新增 focused contract test，锁定 exact 10 basename、目录布局、全 fixture size / extension policy、metadata validation 和 project-relative referenced paths。
+
+Step 9B 不修改：
+
+- runtime/default asset loading、resolver、QA、Workbench、Phaser、asset pack loading 或 repair-enabled default。
+- Step 9C canary / comparison 输入与产物。
+- Metadata Step 4A、大资源库、DAM / database / vector / image embedding、Unity / Unreal / glTF / USD 或 C2PA pipeline。
+
+验证命令：
+
+    npx vitest run tests/contracts/asset-semantic-small-art-library-fixture.test.ts
+    # 1 个测试文件，4 个测试通过
+
+    npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+    # OK 10 metadata files
+
+    npm run metadata:validate -- --json tests/fixtures/art-library-small-v0.1/metadata
+    # ok=true，10 个 files，diagnostics=[]
+
+    npm run metadata:validate -- --check-paths tests/fixtures/art-library-small-v0.1/metadata
+    # OK 10 metadata files
+
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata
+    # ok=true，artifact.asset_count=10，diagnostics=[]
+
+    npm run metadata:validate -- assets/metadata/examples
+    # OK 5 metadata files
+
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+    # ok=true，artifact.asset_count=5，diagnostics=[]
+
+    npm run test:contracts
+    # 15 个测试文件，165 个测试通过
+
+    npm test
+    # contracts 165 个测试通过；workspace 125 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+fixture size check：
+
+- `tests/fixtures/art-library-small-v0.1/` 当前 `du -sh` 为 1.5M。
+- 全 fixture 文件字节总和为 1,486,226 bytes。
+- 最大文件为 `assets/animal-lion.glb`，172,936 bytes。

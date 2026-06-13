@@ -5,10 +5,12 @@
 ## 1. Purpose
 
 Step 9A defines the review gate for the first small real-resource dry-run after Step 8d.
+Step 9B imports the first small fixture subset and sidecar metadata under that gate.
 
 This small art library is a canary / dry-run input for validating metadata, export, canary reporting, and future bridge boundaries. It is not production/default runtime integration, and it must not change resolver selection, repair behavior, Phaser loading, QA aggregation, Workbench UI, or default asset pack loading.
 
 Step 9A is docs-only. It imports no assets, creates no sidecar manifests, adds no tests, and wires no runtime consumers.
+Step 9B imports a 10-asset fixture only; it still wires no runtime consumers.
 
 ## 2. Relationship To Previous Steps
 
@@ -162,6 +164,17 @@ Step 9B: small art library metadata intake / fixture import.
 - Do not start Metadata Step 4A.
 - Do not import a large resource library.
 
+Step 9B selected source:
+
+- Kenney Cube Pets source page: `https://kenney.nl/assets/cube-pets`
+- Download package: `https://kenney.nl/media/pages/assets/cube-pets/44e58e945f-1774520254/kenney_cube-pets_1.0.zip`
+- License: Creative Commons Zero, CC0.
+- Imported fixture path: `tests/fixtures/art-library-small-v0.1/`.
+- Imported subset: `animal-bee`, `animal-bunny`, `animal-cat`, `animal-crab`, `animal-dog`, `animal-fish`, `animal-fox`, `animal-lion`, `animal-penguin`, `animal-tiger`.
+- Imported formats: `.glb` assets, `.png` thumbnails, `.asset.json` sidecars, `source/LICENSE.txt`, and fixture README.
+- Excluded formats / files: the remaining Cube Pets assets, FBX, OBJ, overview / preview / URL helper files, downloaded zip, and generated runtime export artifacts.
+- Size policy: target 10 to 30 assets, maximum 50 assets, preferred total <= 5 MB, hard total <= 10 MB, preferred per-file <= 512 KB, hard per-file <= 1 MB, thumbnails <= 256 KB and counted in total.
+
 Step 9C: dry-run validation / canary / comparison.
 
 - Run metadata validate / JSON validate / runtime-safe export over the small library.
@@ -217,8 +230,8 @@ P3:
 ## 11. Status
 
 - Step 8d: done.
-- Step 9A: current / done after this docs-only gate is committed.
-- Step 9B: next, small art library metadata intake / fixture import.
-- Step 9C: later, small library dry-run validation / canary / comparison.
+- Step 9A: done.
+- Step 9B: current / done after review and commit.
+- Step 9C: not started; next later step is small library dry-run validation / canary / comparison.
 - Metadata Step 4A: parked.
 - Large asset library: parked.
