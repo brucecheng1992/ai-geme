@@ -33,7 +33,7 @@
 - generated project 根目录已写出 `asset_resolution_report.json`，记录 selected / rejected / fallback diagnostics。
 - QA report 已包含 `asset_report`，Workbench Assets 面板可展示 manifest/runtime load 状态和 source pack。
 
-当前状态：Step 12C QA preview signoff 已完成并提交为 `b015587 docs: sign off small library asset preview`，且 Step 12C 分支边界已 fast-forward 合并回 `main`。当前正在 Step 13A large library intake docs-only gate，只定义 storage、license、batch、validation、rollback 和 failure-budget policy。不触碰 large library，不执行 inventory，不改变默认运行时、resolver、QA verdict、Phaser 或 asset pack loading。
+当前状态：Step 13A large library intake gate 已完成并提交为 `769d0ec docs: gate large library intake`。当前正在 `test/asset-semantic-step-13b-large-library-inventory` 分支执行 Step 13B Kenney Pirate Kit read-only inventory dry-run：只下载用户明确提供并已 preflight 的直接 archive 到 ignored artifacts、只列出 archive entries 并沉淀 deterministic inventory summary。不抽取、不导入、不生成 sidecar metadata 或 thumbnails、不改变默认运行时、resolver、QA verdict、Workbench、Phaser 或 asset pack loading。
 
 - QA / Workbench 已能识别 runtime pass 但 hard semantic mismatch 的 `NEEDS_ASSET_REPAIR`，并展示 per-asset semanticFit 摘要。
 - 第一批 canary brief fixture 已建立，batch runner 已能默认运行 supported cases、跳过 `expectedUnsupported` cases，并写出 summary report。
@@ -88,7 +88,8 @@
 | Step 12A | Workbench / QA preview gate | docs-only 定义 runtime-safe preview source、safe field allowlist、read-only policy 和 Step 12B 边界 | 已完成 |
 | Step 12B | Workbench / QA preview implementation | small-fixture-only preview DTO、API endpoint、Workbench preview-only 展示和 focused tests | 已完成 |
 | Step 12C | QA preview signoff | 小库 preview textual signoff、displayed fields、diagnostic semantics、known limitations、Step 13A 建议 | 已完成 |
-| Step 13A | Large library intake gate | docs-only 定义大库 storage、license、batch、validation、rollback 和 failure-budget policy，不访问大库 | 当前 |
+| Step 13A | Large library intake gate | docs-only 定义大库 storage、license、batch、validation、rollback 和 failure-budget policy，不访问大库 | 已完成 |
+| Step 13B | Large library inventory dry-run | Kenney Pirate Kit read-only archive inventory summary，不抽取、不导入、不生成 metadata/thumbnails | 当前 |
 | Workbench / QA preview | Diagnostics preview | 预览 bridge diagnostics，不改变 default verdict | 后续 |
 | Large library gate | Large asset library scan/import gate | 尺寸、license、metadata、rollout policy gate | parked |
 | Production rollout gate | Default asset pack rollout | 生产默认行为变更的独立 gate | parked |

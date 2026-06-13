@@ -8,11 +8,74 @@
 
 ## 当前阶段
 
-Step 13A large library intake gate 正在执行：本步只定义 large-library storage、license、batch、validation、rollback 和 failure-budget policy，不访问、不 inventory、不导入大库。large asset library、runtime/default integration、QA verdict / Phaser / asset pack loading 继续 parked；不接 production/default asset packs、不改变 resolver / QA verdict / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate、Step 10B implementation、Step 11A-11C non-default runtime canary lane、Step 12A preview gate、Step 12B preview implementation 和 Step 12C preview signoff。
+Step 13B Kenney Pirate Kit large-library inventory dry-run 正在执行：本步只使用用户明确提供且已 preflight 的 direct archive URL，把 archive 下载到 ignored artifacts 后读取 archive entry metadata，生成 deterministic inventory summary 并沉淀 docs。不抽取、不导入、不复制到生产 asset packs、不生成 sidecar metadata / thumbnails / hashes / embeddings / image dimension probes，不改变 runtime/default integration、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 repair behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate、Step 10B implementation、Step 11A-11C non-default runtime canary lane、Step 12A preview gate、Step 12B preview implementation、Step 12C preview signoff 和 Step 13A large-library intake gate。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Step 13A large library intake docs-only gate。Step 12C 分支边界已 fast-forward 合并回 `main`，当前分支为 `docs/art-asset-step-13a-large-library-intake-gate`。Step 13A 只定义大库准入政策，不触碰 large library、不执行 inventory、不导入、不改变 runtime/default integration、QA verdict / Phaser / asset pack loading。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：完成 Step 13B 本地验证、Sage/Oracle 只读审查和 docs review gate 后提交 `test: inventory large art library candidates`。当前分支为 `test/asset-semantic-step-13b-large-library-inventory`。Step 13B 不启动 Step 13C；Step 13C batch zero 需要显式批准。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.41 Step 13B: Kenney Pirate Kit Large-Library Inventory Dry-Run
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 以 clean `main` 为边界新建 `test/asset-semantic-step-13b-large-library-inventory` 分支。
+- 使用用户明确提供并完成 preflight 的 Kenney Pirate Kit direct archive URL。
+- 将 archive 仅下载到 ignored local artifacts：`artifacts/asset-semantic-large-library-inventory/tmp/kenney_pirate-kit.zip`。
+- 使用 archive listing metadata 生成 ignored dry-run outputs：`raw-entries.json` 与 `inventory-summary.json`。
+- 新增 `docs/refactor-log/asset-semantic-large-library-step-13b-inventory.md`，只沉淀 deterministic inventory summary、边界和 Step 13C recommendation。
+- 更新 rollout README、semantic fidelity plan 和 step index 的当前阶段状态。
+
+Inventory 结果：
+
+- Archive size：`3154665` bytes。
+- Archive entries：`379` total entries，`370` files，`9` directories。
+- Total uncompressed bytes：`9335467`。
+- Extension counts：`fbx=72`、`glb=72`、`obj=72`、`mtl=72`、`png=77`、`txt=1`、`html=1`、`url=3`。
+- Coarse media counts：`model_3d=216`、`image_texture=77`、`documentation=2`、`unknown=75`。
+- License / readme candidate：`License.txt`。
+- Preview / reference image candidates：`74`，包括 `Preview.png`、`Sample.png` 和 `Previews/*.png`。
+- Filename-convention animation-specific entries：`0`；source page still advertises `Animation` as page-level evidence only。
+- Candidate asset count by unique model basename：`72`。
+- Metadata sidecar entries detected：`0`；missing metadata estimate by unique model basename：`72`。
+- Thumbnail/reference coverage by unique model basename：`72/72`；missing thumbnail/reference estimate by unique model basename：`0`。
+- Coverage method：archive-entry paths only；no extraction、hashing、image reads or image dimension probes。
+
+行为边界：
+
+- 本步只 list archive entries，没有 extraction。
+- 本步没有把 zip、raw entries、summary JSON 或 asset binaries 加入 git。
+- 本步没有复制或导入 assets，没有生成 sidecar metadata、thumbnails、hashes、embeddings 或 image dimension probes。
+- 本步没有 code、UI、runtime、QA runner、resolver、Phaser、Workbench 或 asset pack loading 行为改动。
+- 本步没有启动 Step 13C；Step 13C batch zero 仍需用户显式批准。
+
+验证：
+
+    npm run test:contracts
+    npm test
+    npm run typecheck
+    git diff --check
+    git status --short --branch
+    git diff --name-only
+    git status --ignored --short artifacts/asset-semantic-large-library-inventory || true
+
+验证结果：
+
+- `npm run test:contracts` 通过：21 files / 197 tests。
+- `npm test` 通过：contracts 与 workspace tests 均通过。
+- `npm run typecheck` 通过：root、maker-api、maker-workbench。
+- `git diff --check` 通过。
+- `git status --short --branch` 只显示本步 docs 改动和新增 Step 13B inventory 文档。
+- `git status --ignored --short artifacts/asset-semantic-large-library-inventory || true` 显示 `artifacts/` ignored。
+- `git ls-files artifacts/asset-semantic-large-library-inventory` 无输出，确认 ignored artifacts 未进入 tracked files。
+
+审查门禁结论：
+
+- Sage/Oracle 初审发现两个 P2：missing metadata / thumbnail coverage estimate 缺失，以及 step index 后段残留 Step 13A 当前状态。
+- 已修复：补充 archive-entry-path-only coverage estimates；同步 step index 为 Step 13B 当前状态且 Step 13C 仍需显式批准。
+- Sage/Oracle 复审完成：P0/P1/P2 均无。
+- P3：Sage 建议 docs-prefixed commit message；本步保留用户任务明确要求的 `test: inventory large art library candidates`。
 
 ### 2.40 Step 13A: Large Library Intake Gate
 
