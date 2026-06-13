@@ -1,6 +1,6 @@
 # AI Game Asset Semantic Fidelity Plan
 
-最新维护时间：2026-06-12
+最新维护时间：2026-06-13
 
 ## 1. 目标
 
@@ -33,7 +33,7 @@
 - generated project 根目录已写出 `asset_resolution_report.json`，记录 selected / rejected / fallback diagnostics。
 - QA report 已包含 `asset_report`，Workbench Assets 面板可展示 manifest/runtime load 状态和 source pack。
 
-当前状态：Step 8d 默认 / repair-enabled canary comparison 已完成；本步只比较 Step 8c v0.2 small canary pack 的两份既有 canary summary，不改变默认运行时、resolver、QA、Workbench、Phaser 或 asset pack loading。
+当前状态：Step 9A small art library intake review gate 已完成；本步只新增 docs-only gate，定义 Step 9B / Step 9C 的小型真实美术资源 dry-run 准入规则，不导入资源、不创建 sidecar metadata、不改变默认运行时、resolver、QA、Workbench、Phaser 或 asset pack loading。
 
 - QA / Workbench 已能识别 runtime pass 但 hard semantic mismatch 的 `NEEDS_ASSET_REPAIR`，并展示 per-asset semanticFit 摘要。
 - 第一批 canary brief fixture 已建立，batch runner 已能默认运行 supported cases、跳过 `expectedUnsupported` cases，并写出 summary report。
@@ -45,6 +45,7 @@
 - 已新增 Step 8b canary fixture promotion：Step 8a 已支持的 5 个 canary marker 已移除 `expectedUnsupported`，默认 canary 现在运行 14 条 first-batch fixtures，仍不接入资源库、不改变 runtime/default behavior。
 - 已新增 Step 8c canary fixture pack v0.2：只把 canary brief fixture 小包从 14 条扩展到 18 条，不接生产 local asset pack、不改变 resolver / runtime / QA / Workbench / Phaser / asset pack loading。
 - 已新增 Step 8d default / repair-enabled canary comparison：只新增 deterministic comparison helper / CLI / report，repair 仍显式开启，不设为默认。
+- 已新增 Step 9A small art library intake gate：只用文档定义小型真实资源 dry-run 的尺寸、布局、二进制、metadata、validation / export / canary / comparison、非目标和 P0/P1/P2/P3 审查门禁。
 
 ## 4. 分步落地计划
 
@@ -66,6 +67,9 @@
 | Step 8b | Canary fixture promotion | 将 Step 8a 已支持 wording 从 expectedUnsupported 提升为默认 canary | 已完成 |
 | Step 8c | Canary fixture pack v0.2 | 小包 canary brief fixture 扩展，不接生产资源包 | 已完成 |
 | Step 8d | Default / repair-enabled canary comparison | 比较两份 canary summary 的 pass/fail、诊断与 repair metadata | 已完成 |
+| Step 9A | Small art library intake review gate | 文档化小型真实资源 dry-run 的准入规则，不导入资源 | 已完成 |
+| Step 9B | Small art library metadata intake / fixture import | 导入或创建 10-30 个小型 fixture 资产并补 sidecar metadata | 下一步 |
+| Step 9C | Small art library dry-run validation / canary / comparison | 对小型库跑 validate / export / canary / comparison 并生成 dry-run report | 后续 |
 
 ## 5. Step 1 最小实现边界
 
@@ -733,12 +737,44 @@ Step 8d 已执行：
 4. 把修改范围、验证命令、审查结论写回 `docs/refactor-log/ai-game-dsl-p0-review-gated.md`。
 5. 再做文档复审门禁。
 
-## 22. 当前注意事项
+## 22. Step 9A small art library intake review gate
+
+状态：已完成。
+
+Step 9A 是 docs-only gate，详见 `docs/refactor-log/asset-semantic-small-art-library-v0.1.md`。
+
+Step 9A 定义：
+
+- small art library target size 为 10 到 30 个 assets，最大 50 个；超过 50 个不属于 Step 9，必须进入独立 large-library rollout gate。
+- 推荐路径为 `tests/fixtures/art-library-small-v0.1/`，因为本阶段是 test / dry-run fixture；只有仓库先建立 `assets/canary` 约定时，才考虑 `assets/canary/art-library-small-v0.1/`。
+- Step 9B 必须在 import 前明确 per-file、total-size、allowed binary formats、thumbnail 计入规则和外部 artifact reference 表达方式。
+- Step 9B 每个 asset 必须有 sidecar metadata，且通过既有 metadata validation，兼容 taxonomy v0.2，并能走 runtime-safe export allowlist。
+- Step 9C 必须跑 metadata validate / JSON validate / runtime-safe export / default canary / repair-enabled canary / comparison；canary 当前应使用 `--fixture <small-library-canary-briefs.json>`，comparison 应使用 `--default-summary` / `--repair-enabled-summary` / `--out`，如果现有 `--fixture` 不足以表达 small library dry-run，则记录停止条件或另起 canary-only input option。
+- 小型库 dry-run 不进入 production/default runtime，不改变 asset pack loading、Phaser runtime loading、Workbench、resolver default decision、QA aggregation 或 repair default。
+
+Step 9A 未做：
+
+- 未创建 `tests/fixtures/art-library-small-v0.1/` 或 `assets/canary/art-library-small-v0.1/`。
+- 未导入真实或大型 binary assets。
+- 未创建 metadata sidecar、runtime export artifact、canary fixture、tests、code、runtime consumer 或 asset pack bridge。
+- 未启动 Metadata Step 4A、large asset library、DAM / vector / image embedding、Unity / Unreal / glTF / USD 或 C2PA pipeline。
+
+Step 9A 验证：
+
+    git diff --check
+
+审查记录：
+
+- Oracle 初审：P0/P2/P3 无；P1 要求把 canary / comparison 命令示例改为当前 CLI 的 `--fixture`、`--default-summary`、`--repair-enabled-summary` 和 `--out` flag 语法。
+- Oracle 复审：P0/P1/P2/P3 均无；确认 Step 9A 仍为 docs-only，未越界到 assets、metadata sidecars、generated artifacts、runtime / resolver / QA / Workbench / Phaser 或 asset pack loading。
+
+## 23. 当前注意事项
 
 - provider `survive_duration` 修复已单独提交；后续 asset semantic fidelity 步骤仍不要混入 provider 改动。
 - Step 7 已用默认和 repair-enabled canary summary 证明批量 supported cases 不退化；后续新增 taxonomy / 资源库 / AI image provider 仍必须另起小步，并重新跑 release guard。
 - Step 8c 已只完成 canary fixture pack / brief pack v0.2；Step 8d 已只完成 default / repair-enabled canary summary comparison，不扩展资源或运行时行为。
-- 后续应先关闭 Step 8d branch boundary；如继续资产主线，仍需另起小步，不能混入 Metadata Step 4A、大资源库接入或 runtime / resolver / QA / Workbench / Phaser 变更。
+- Step 9A 已只完成 small art library intake review gate；下一步若继续资产主线，应进入 Step 9B small art library metadata intake / fixture import。
+- Step 9B 不得启动 Metadata Step 4A、大资源库接入或 runtime / resolver / QA / Workbench / Phaser 变更。
 - shooter HUD stash 仍是独立任务，不应混入 Asset Semantic Fidelity 后续步骤。
 - 可选技术债治理应另起命名，例如 pipeline split，不再复用 Step 8a / Step 8b 编号。
 - 后续涉及真实验收时仍必须用 Workbench / generated project / QA 产物证明，不只看单测。

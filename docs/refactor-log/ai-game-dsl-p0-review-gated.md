@@ -8,11 +8,46 @@
 
 ## 当前阶段
 
-Asset Semantic Fidelity Step 8d 已完成：default / repair-enabled canary comparison 只读取 Step 8c v0.2 small canary pack 的两份 `summary.json`，生成 deterministic comparison report，不接生产 local asset pack、不改变 resolver / QA / Workbench / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate 和 Step 3B runtime-safe export implementation。
+Asset Semantic Fidelity Step 9A 已完成：small art library intake review gate 只新增 docs-only 准入规则，定义 Step 9B / Step 9C 的小型真实资源 dry-run 边界，不导入资源、不创建 metadata sidecar、不接生产 local asset pack、不改变 resolver / QA / Workbench / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate 和 Step 3B runtime-safe export implementation。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：关闭 Step 8d branch boundary；AI Game Art Asset Metadata v0.1 后续进入 Step 4 asset pack metadata bridge / resolver diagnostics，但当前仍 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、新资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Asset Semantic Fidelity Step 9B small art library metadata intake / fixture import；AI Game Art Asset Metadata v0.1 后续进入 Step 4 asset pack metadata bridge / resolver diagnostics，但当前仍 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.27 Asset Semantic Fidelity Step 9A: Small Art Library Intake Review Gate
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 新增 `docs/refactor-log/asset-semantic-small-art-library-v0.1.md`，定义 small art library dry-run 的目的、与 Step 8a-8d 的关系、尺寸限制、布局建议、二进制资产策略、metadata 要求、validation / export / canary / comparison 要求、runtime/default 非目标、Step 9B / Step 9C 边界和 P0/P1/P2/P3 gate。
+- 更新 `docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md`，把 Step 9A 标为已完成，Step 9B 标为下一步，Step 9C 标为后续。
+- 更新本 review log，记录 Step 9A 是 docs-only gate。
+
+行为边界：
+
+- 本步没有导入任何 art library。
+- 本步没有新增真实 binary assets、metadata sidecar、runtime export artifacts、canary fixtures、tests 或 code。
+- 本步没有创建 `tests/fixtures/art-library-small-v0.1/` 或 `assets/canary/art-library-small-v0.1/` 目录。
+- 本步没有修改 runtime/default behavior、asset pack loading、resolver、QA、Workbench、Phaser、repair planner / executor / pipeline 或 shooter HUD。
+- 本步没有启动 Metadata Step 4A、large asset library、DAM / vector / image embedding、Unity / Unreal / glTF / USD 或 C2PA pipeline。
+
+Gate 摘要：
+
+- small art library target size 为 10 到 30 个 assets，最大 50 个；超过 50 个必须另走 large-library rollout gate。
+- 默认推荐路径为 `tests/fixtures/art-library-small-v0.1/`，因为 Step 9 是 test / dry-run fixture；只有仓库先建立 `assets/canary` 约定时才考虑 `assets/canary/art-library-small-v0.1/`。
+- Step 9B import 前必须明确 per-file、total-size、allowed binary formats、thumbnail 计入规则和外部 artifact reference 表达方式。
+- Step 9B 每个 asset 必须有 sidecar metadata，并通过既有 metadata validation，兼容 taxonomy v0.2，且 runtime-safe export 不包含 prompt / seed / legal / review notes / absolute local paths。
+- Step 9C 必须跑 metadata validate / JSON validate / runtime-safe export / default canary / repair-enabled canary / comparison；canary 当前应使用 `--fixture <small-library-canary-briefs.json>`，comparison 应使用 `--default-summary` / `--repair-enabled-summary` / `--out`；如果现有 `--fixture` 不足以表达 small library dry-run，Step 9B 或 Step 9C 只能新增 canary-only input option，不能改变默认行为。
+
+验证：
+
+    git diff --check
+
+审查记录：
+
+- Oracle 初审：P0/P2/P3 无；P1 要求把 canary / comparison 命令从 positional placeholder 改成当前 CLI 的 `--fixture`、`--default-summary`、`--repair-enabled-summary` 和 `--out` flag 语法。
+- Oracle 复审：P0/P1/P2/P3 均无；确认 Step 9A 仍为 docs-only，未越界到 assets、metadata sidecars、generated artifacts、runtime / resolver / QA / Workbench / Phaser 或 asset pack loading。
 
 ### 2.26 Asset Semantic Fidelity Step 8d: Default / Repair-Enabled Canary Comparison
 
