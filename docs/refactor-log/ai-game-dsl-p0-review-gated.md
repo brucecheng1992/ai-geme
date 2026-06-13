@@ -12,7 +12,46 @@ Step 10B small library bridge canary implementation 已完成并提交为 `2ede0
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：关闭 Step 10B 分支边界后，新建 Step 11A docs-only gate 分支；Step 11A 是否开启 non-default runtime integration 仍需通过 gate 决定。生产 rollout 拆分索引在 `docs/refactor-log/art-asset-pipeline-production-rollout/`。large asset library、runtime/default integration、QA / Workbench / Phaser / asset pack loading 继续 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Step 11A non-default runtime integration docs-only gate。Step 10B 分支边界已 fast-forward 合并回 `main`，当前分支为 `docs/art-asset-step-11a-runtime-integration-gate`。Step 11A 只定义未来非默认 runtime canary 的 flag、输入、验证和禁止范围；large asset library、runtime/default integration、QA / Workbench / Phaser / asset pack loading 继续 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.34 Step 11A: Non-Default Runtime Integration Gate
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 关闭 Step 10B 分支边界：`test/asset-semantic-step-10b-small-library-bridge-canary` 已 fast-forward 合并回 `main`。
+- 新建 `docs/art-asset-step-11a-runtime-integration-gate` 分支。
+- 更新 `docs/refactor-log/art-asset-pipeline-production-rollout/step-11a-non-default-runtime-integration-gate.md`，定义 Step 11B 的非默认 canary flag、输入契约、flag-off 等价测试、flag-on canary 测试、失败关闭、rollback 和候选文件范围。
+- 更新 rollout README 与 semantic fidelity plan，标记 Step 11A 为当前 docs-only gate。
+
+Gate 决策：
+
+- Step 11B 只能作为非默认 canary 继续。
+- proposed flag：`ASSET_RUNTIME_METADATA_CANARY=small-library-v0.1`。
+- 默认状态 off；flag 缺失或空值时必须等价于当前行为。
+- 只允许读取 `tests/fixtures/art-library-small-v0.1/metadata` 派生的 runtime-safe metadata。
+- 非法 flag value 或 invalid runtime artifact 必须 fail closed。
+- rollback 为移除或不设置该非默认 flag path；不能要求生产/default 配置变更。
+
+行为边界：
+
+- 本步没有修改代码、测试、脚本或 generated artifacts。
+- 本步没有修改 runtime/default behavior。
+- 本步没有修改 resolver、QA、Workbench、Phaser 或 asset pack loading。
+- 本步没有触碰 large art library。
+- 本步没有让 repair-enabled mode 成为默认。
+
+验证：
+
+    git diff --check
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0/P1/P3 无；P2 指出 `docs/refactor-log/ai-game-dsl-p0-step-index.md` 后段仍保留旧 Step 8d branch boundary 当前下一步，与顶部 Step 11A 冲突。
+- 已修复：将 step index 后段当前下一步同步为 Art Asset Pipeline Production Rollout 阶段，Step 10B 已关闭分支边界，当前 Step 11A docs-only gate，Step 11A 提交并通过 Oracle 门禁后才可决定是否进入 Step 11B。
+- Oracle 复审：P0/P1/P2/P3 均无；确认 Step 11A 仍是 docs-only，未误称 Step 11B、production rollout、large library 或 runtime/default integration 已完成。
+- 审查模式：Oracle 新建后复用。
 
 ### 2.33 Art Asset Pipeline Production Rollout Split
 

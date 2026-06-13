@@ -2,13 +2,13 @@
 
 来源：`/Users/dahufa/Documents/workspace/art_asset_pipeline_production_rollout_plan.zip`
 
-当前状态：Step 10B small library bridge canary 已在当前仓库提交为 `2ede0c0 test: add small library bridge canary`。本目录把 zip 中的大 rollout 计划拆成可逐步执行、逐步审查、逐步验证的小文档。
+当前状态：Step 10B small library bridge canary 已在当前仓库提交为 `2ede0c0 test: add small library bridge canary`，并已 fast-forward 合并回 `main`。当前分支为 Step 11A docs-only gate 分支。本目录把 zip 中的大 rollout 计划拆成可逐步执行、逐步审查、逐步验证的小文档。
 
 ## 当前下一步
 
-1. 关闭 Step 10B 分支边界：确认是否将 `test/asset-semantic-step-10b-small-library-bridge-canary` fast-forward 回 `main`。
-2. 新建 Step 11A 专用分支。
-3. 执行 [Step 11A non-default runtime integration gate](step-11a-non-default-runtime-integration-gate.md)。
+1. 完成 [Step 11A non-default runtime integration gate](step-11a-non-default-runtime-integration-gate.md) 的 Oracle review gate。
+2. 提交 Step 11A docs-only gate。
+3. 再决定是否进入 Step 11B non-default runtime canary implementation。
 
 在 Step 11A gate 完成前，不实现 runtime integration、不接 Workbench / QA preview、不触碰 large asset library。
 
@@ -32,7 +32,7 @@
 | Step | Document | Type | Status |
 | --- | --- | --- | --- |
 | Step 10B | `tests/contracts/asset-pack-small-library-bridge-canary.test.ts` + existing logs | Test + docs | Done in `2ede0c0` |
-| Step 11A | [Non-default runtime integration gate](step-11a-non-default-runtime-integration-gate.md) | Docs-only | Next |
+| Step 11A | [Non-default runtime integration gate](step-11a-non-default-runtime-integration-gate.md) | Docs-only | Current |
 | Step 11B | [Non-default runtime canary implementation](step-11b-non-default-runtime-canary.md) | Code + tests | Future |
 | Step 11C | [Runtime canary closure](step-11c-runtime-canary-closure.md) | Docs/report | Future |
 | Step 12A | [Workbench / QA preview gate](step-12a-workbench-qa-preview-gate.md) | Docs-only | Future |
@@ -69,7 +69,7 @@ Every step must complete this sequence before the next step starts:
 
 ## Branch Boundary
 
-Do not continue Step 11A on the Step 10B branch. The expected boundary is:
+Step 10B branch boundary was closed with:
 
 ```bash
 git status --short --branch
@@ -78,4 +78,4 @@ git merge --ff-only test/asset-semantic-step-10b-small-library-bridge-canary
 git switch -c docs/art-asset-step-11a-runtime-integration-gate
 ```
 
-If fast-forward merge fails, stop and report.
+Future steps must repeat the same clean-worktree / dedicated-branch boundary before implementation.
