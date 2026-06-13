@@ -12,7 +12,46 @@ Step 10B small library bridge canary implementation 已完成并提交为 `2ede0
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Step 11C runtime canary closure。Step 11B 分支边界已 fast-forward 合并回 `main`，当前分支为 `docs/art-asset-step-11c-runtime-canary-closure`。Step 11C 只沉淀非默认 canary 的 flag-off / flag-on / rollback / next-step evidence；large asset library、runtime/default integration、QA / Workbench / Phaser / asset pack loading 继续 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Step 12A Workbench / QA preview docs-only gate。Step 11C 分支边界已 fast-forward 合并回 `main`，当前分支为 `docs/art-asset-step-12a-workbench-qa-preview-gate`。Step 12A 只定义 preview source、safe field allowlist、read-only policy、sensitivity blocklist 和 Step 12B 边界；large asset library、runtime/default integration、QA / Workbench / Phaser / asset pack loading 继续 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.37 Step 12A: Workbench / QA Preview Gate
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 关闭 Step 11C 分支边界：`docs/art-asset-step-11c-runtime-canary-closure` 已 fast-forward 合并回 `main`。
+- 新建 `docs/art-asset-step-12a-workbench-qa-preview-gate` 分支。
+- 更新 `docs/refactor-log/art-asset-pipeline-production-rollout/step-12a-workbench-qa-preview-gate.md`，定义 Workbench / QA preview 的 source-of-truth、safe field allowlist、sensitive field blocklist、read-only policy、privacy note、non-goals 和 Step 12B boundary。
+- 更新 rollout README、semantic fidelity plan 和 step index 的当前阶段状态。
+
+Gate 决策：
+
+- Workbench preview 在 large-library rollout 前需要，但只能在 Step 12B 中作为 small-fixture-only preview-only implementation 继续。
+- QA CLI/report 是必要证据，但不足以替代人工 preview signoff。
+- preview source of truth 是 runtime-safe export 加 deterministic bridge / resolver diagnostics summaries；raw sidecar metadata 只可作为 runtime-safe export 输入，不可由 UI / QA preview 直接读取或渲染。
+- preview 必须 read-only，不得修改 metadata、manifest、QA verdict、repair output、generated artifacts 或 runtime/default behavior。
+- thumbnails 只允许来自 small fixture runtime-safe `technical.thumbnail_path`，且必须保持在 `tests/fixtures/art-library-small-v0.1/` 下。
+- diagnostics 只允许展示 deterministic / sanitized code、severity、asset id、json path、message 和由既有 safe diagnostic helper 生成的 safe relative fixture path。
+
+行为边界：
+
+- 本步没有 code、UI、runtime、QA runner 或 Workbench 改动。
+- 本步没有触碰 large library、production/default integration、metadata mutation、repair writeback 或 AI image provider。
+- 本步没有声称 QA signoff 完成。
+
+验证：
+
+    git diff --check
+
+验证结果：
+
+- `git diff --check` 通过。
+
+审查门禁结论：
+
+- Oracle 审查完成：P0/P1/P2/P3 均无。
+- Oracle 确认 Step 12A 仍为 docs-only gate，preview source 清楚，safe allowlist / sensitive blocklist 明确，read-only policy 清楚，diagnostics 必须 deterministic / sanitized，Step 12B 仍是 small-fixture-only preview-only，且 rollout README、semantic plan、review log、step index 当前状态一致。
 
 ### 2.36 Step 11C: Runtime Canary Verification and Closure
 

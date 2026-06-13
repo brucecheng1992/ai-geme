@@ -2,15 +2,15 @@
 
 来源：`/Users/dahufa/Documents/workspace/art_asset_pipeline_production_rollout_plan.zip`
 
-当前状态：Step 11B non-default runtime canary implementation 已在当前仓库提交为 `f3e03a6 test: add non-default runtime metadata canary`，并已 fast-forward 合并回 `main`。当前分支为 Step 11C runtime canary closure 分支。本目录把 zip 中的大 rollout 计划拆成可逐步执行、逐步审查、逐步验证的小文档。
+当前状态：Step 11C runtime canary closure 已在当前仓库提交为 `3f8f053 docs: close non-default runtime canary lane`，并已 fast-forward 合并回 `main`。当前分支为 Step 12A Workbench / QA preview docs-only gate 分支。本目录把 zip 中的大 rollout 计划拆成可逐步执行、逐步审查、逐步验证的小文档。
 
 ## 当前下一步
 
-1. 完成 [Step 11C runtime canary closure](step-11c-runtime-canary-closure.md) 的 verification report 和 Oracle review gate。
-2. 提交 Step 11C closure。
-3. 若 Step 11C 通过审查，再进入 [Step 12A Workbench / QA preview gate](step-12a-workbench-qa-preview-gate.md)。
+1. 完成 [Step 12A Workbench / QA preview gate](step-12a-workbench-qa-preview-gate.md) 的 preview source、safe field allowlist、read-only policy 和 Oracle review gate。
+2. 提交 Step 12A docs-only gate。
+3. 若 Step 12A 通过审查，再进入 [Step 12B Workbench / QA preview implementation](step-12b-workbench-qa-preview.md)。
 
-在 Step 11C 完成前，不接 Workbench / QA preview、不触碰 large asset library、不改变 runtime/default behavior。
+在 Step 12A 完成前，不做 code/UI/runtime/QA runner 改动、不触碰 large asset library、不改变 runtime/default behavior。
 
 ## 硬边界
 
@@ -34,8 +34,8 @@
 | Step 10B | `tests/contracts/asset-pack-small-library-bridge-canary.test.ts` + existing logs | Test + docs | Done in `2ede0c0` |
 | Step 11A | [Non-default runtime integration gate](step-11a-non-default-runtime-integration-gate.md) | Docs-only | Done in `936ee79` |
 | Step 11B | [Non-default runtime canary implementation](step-11b-non-default-runtime-canary.md) | Code + tests | Done in `f3e03a6` |
-| Step 11C | [Runtime canary closure](step-11c-runtime-canary-closure.md) | Docs/report | Current |
-| Step 12A | [Workbench / QA preview gate](step-12a-workbench-qa-preview-gate.md) | Docs-only | Future |
+| Step 11C | [Runtime canary closure](step-11c-runtime-canary-closure.md) | Docs/report | Done in `3f8f053` |
+| Step 12A | [Workbench / QA preview gate](step-12a-workbench-qa-preview-gate.md) | Docs-only | Current |
 | Step 12B | [Workbench / QA preview implementation](step-12b-workbench-qa-preview.md) | Code + tests | Future |
 | Step 12C | [QA preview signoff](step-12c-qa-preview-signoff.md) | Docs/report | Future |
 | Step 13A | [Large library intake gate](step-13a-large-library-intake-gate.md) | Docs-only | Future |

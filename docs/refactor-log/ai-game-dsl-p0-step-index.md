@@ -9,8 +9,8 @@
 - 新增 AI Game Art Asset Metadata v0.1 入口，用于把外部美术资源 metadata 规范拆成可执行 infrastructure 步骤；执行索引见 `docs/refactor-log/ai-game-art-asset-metadata-v0.1-index.md`。
 - 仓库非依赖文件中当前最大文件是 `docs/ai_game_dsl_p0_local_implementation.md`，约 2880 行，属于实施规格文档。
 - 现有阶段记录位于 `docs/refactor-log/ai-game-dsl-p0-review-gated.md`。
-- 当前已完成阶段：P0 主链路修复 + 模型 DSL 视觉执行复核修复 + DSL-first P1 Step 6 shooter enemy_wave runtime_plan + Asset Pipeline P0 Step 1-5（含 Step 5.1 tiny local asset pack slice）+ Asset Semantic Fidelity Step 1-10B + Art Asset Pipeline Production Rollout split + Step 11A non-default runtime integration gate + Step 11B non-default runtime canary implementation。
-- 当前下一步：Step 11C runtime canary closure。large asset library、runtime/default integration、QA / Workbench / Phaser / asset pack loading 仍 parked。shooter HUD stash 仍作为独立任务处理；仍不批量接入新资源库、不接入 AI image provider。
+- 当前已完成阶段：P0 主链路修复 + 模型 DSL 视觉执行复核修复 + DSL-first P1 Step 6 shooter enemy_wave runtime_plan + Asset Pipeline P0 Step 1-5（含 Step 5.1 tiny local asset pack slice）+ Asset Semantic Fidelity Step 1-10B + Art Asset Pipeline Production Rollout split + Step 11A non-default runtime integration gate + Step 11B non-default runtime canary implementation + Step 11C runtime canary closure。
+- 当前下一步：Step 12A Workbench / QA preview docs-only gate。large asset library、runtime/default integration、QA / Workbench / Phaser / asset pack loading 仍 parked。shooter HUD stash 仍作为独立任务处理；仍不批量接入新资源库、不接入 AI image provider。
 
 ## 2. 大文档拆分索引
 
@@ -124,8 +124,8 @@ Asset Pipeline P0 v0.2 已开始，当前完成 Step 1、Step 2、Step 3、Step 
 
 - 当前下一步：
 
-- 当前进入 Art Asset Pipeline Production Rollout 阶段；生产 rollout 已拆成 `docs/refactor-log/art-asset-pipeline-production-rollout/` 下的分步 gate。Step 10B small library bridge canary、Step 11A non-default runtime integration gate 和 Step 11B non-default runtime canary implementation 均已完成并关闭分支边界；当前 Step 11C 只做 runtime canary closure report。
-- Step 11C 提交并通过 Oracle 门禁后，才可进入 Step 12A Workbench / QA preview docs-only gate。large asset library、runtime/default integration、QA / Workbench / Phaser / asset pack loading 仍 parked。
+- 当前进入 Art Asset Pipeline Production Rollout 阶段；生产 rollout 已拆成 `docs/refactor-log/art-asset-pipeline-production-rollout/` 下的分步 gate。Step 10B small library bridge canary、Step 11A non-default runtime integration gate、Step 11B non-default runtime canary implementation 和 Step 11C runtime canary closure 均已完成并关闭分支边界；当前 Step 12A 只做 Workbench / QA preview docs-only gate。
+- Step 12A 提交并通过 Oracle 门禁后，才可进入 Step 12B Workbench / QA preview implementation。large asset library、runtime/default integration、QA / Workbench / Phaser / asset pack loading 仍 parked。
 - 若转回 DSL-first P1 Step 7，应作为独立扩展继续遵守顺序：contract/runtime/QA 先于 prompt，真实模型链路验证后再沉淀文档。
 
 后续如继续扩展，应继续作为独立 P1/P2 阶段推进，避免把扩展能力混入 P0 收尾：
