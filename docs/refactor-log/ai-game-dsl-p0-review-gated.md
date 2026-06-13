@@ -8,11 +8,40 @@
 
 ## 当前阶段
 
-Step 10B small library bridge canary implementation 为当前步骤：本步只新增 fixture-only explicit-input contract test 和文档记录，证明 Step 9B 小库 metadata export、explicit bridge candidates、exact requested ids 与 Step 4B pure helper 可以组合通过 green canary，并保持 negative diagnostics 分离。不接 production/default asset packs、不改变 resolver / QA / Workbench / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation 和 Step 10A docs-only gate。
+Step 10B small library bridge canary implementation 已完成并提交为 `2ede0c0 test: add small library bridge canary`：本步只新增 fixture-only explicit-input contract test 和文档记录，证明 Step 9B 小库 metadata export、explicit bridge candidates、exact requested ids 与 Step 4B pure helper 可以组合通过 green canary，并保持 negative diagnostics 分离。不接 production/default asset packs、不改变 resolver / QA / Workbench / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate 和 Step 10B implementation。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Step 10B 收口门禁（确认 diff 范围、staged diff check / commit gate）；Step 11A 是否开启需另行决定。large asset library、runtime/default integration、QA / Workbench / Phaser / asset pack loading 继续 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：关闭 Step 10B 分支边界后，新建 Step 11A docs-only gate 分支；Step 11A 是否开启 non-default runtime integration 仍需通过 gate 决定。生产 rollout 拆分索引在 `docs/refactor-log/art-asset-pipeline-production-rollout/`。large asset library、runtime/default integration、QA / Workbench / Phaser / asset pack loading 继续 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.33 Art Asset Pipeline Production Rollout Split
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 从 `/Users/dahufa/Documents/workspace/art_asset_pipeline_production_rollout_plan.zip` 萃取剩余 rollout 计划。
+- 新增 `docs/refactor-log/art-asset-pipeline-production-rollout/README.md`，记录当前状态、硬边界、分步索引和 branch boundary。
+- 新增 Step 11A 到 Step 14D 的逐步 docs，按步骤类型记录 allowed/not allowed、required output 或 required decisions，并统一记录 validation 和 P0/P1/P2/P3 review gate。
+- 新增 supporting docs：validation matrix、review gates、artifact storage policy、decision points。
+
+阶段结果：
+
+- 没有启动 Step 11A implementation。
+- 没有修改 runtime/default behavior。
+- 没有触碰 large art library、QA、Workbench、Phaser、resolver 或 asset pack loading。
+- 后续执行必须从 Step 11A docs-only gate 开始，且不能继续在 Step 10B 分支上落后续步骤。
+
+验证：
+
+    git diff --check
+
+审查门禁结论：
+
+- Oracle 新建审查：P0/P1/P2 均无；P3 指出部分 step 文档缺 `P3` 小节，以及 2.33 描述对 allowed/not allowed 的承诺过宽。
+- 已修复：所有 Step 11A-14D step 文档补齐 `P3` 小节；2.33 描述改为按步骤类型记录 allowed/not allowed、required output 或 required decisions。
+- Oracle 复审：P0/P1/P2/P3 均无；确认没有 runtime/default、large library、Workbench/QA、Phaser、resolver 或 repair default 的越界暗示。
+- 审查模式：Oracle 新建后复用。
 
 ### 2.32 Step 10B: Small Library Bridge Canary Implementation
 
