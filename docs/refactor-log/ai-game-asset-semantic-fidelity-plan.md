@@ -33,7 +33,7 @@
 - generated project 根目录已写出 `asset_resolution_report.json`，记录 selected / rejected / fallback diagnostics。
 - QA report 已包含 `asset_report`，Workbench Assets 面板可展示 manifest/runtime load 状态和 source pack。
 
-当前状态：Step 13C-A batch zero selection / import gate 已完成并提交为 `53d8bad docs: gate large art library batch zero`。当前正在 `test/asset-semantic-step-13c-batch-zero-pirate-kit` 分支执行 Step 13C-B large library metadata batch zero implementation：只从已批准 Kenney Pirate Kit archive 导入 10 个 GLB fixture assets、10 个 selected existing preview PNG、10 个 sidecar metadata、README/source evidence 和 focused contract test。不导入 whole archive、不生成 thumbnails、不改变默认运行时、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 production asset packs。
+当前状态：Step 13C-B large library metadata batch zero implementation 已完成并提交为 `1e0966c test: import large art library batch zero metadata`，只导入 Kenney Pirate Kit approved batch-zero fixture：10 个 GLB fixture assets、10 个 selected existing preview PNG、10 个 sidecar metadata、README/source evidence 和 focused contract test。不导入 whole archive、不生成 thumbnails、不改变默认运行时、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 production asset packs。当前正在 `docs/asset-semantic-step-13d-batch-zero-dry-run-gate` 分支执行 Step 13D-A docs-only gate：只定义 Step 13D-B batch-zero semantic dry-run / bridge validation 的输入、green path、negative diagnostics、命令和审查门禁。
 
 - QA / Workbench 已能识别 runtime pass 但 hard semantic mismatch 的 `NEEDS_ASSET_REPAIR`，并展示 per-asset semanticFit 摘要。
 - 第一批 canary brief fixture 已建立，batch runner 已能默认运行 supported cases、跳过 `expectedUnsupported` cases，并写出 summary report。
@@ -53,6 +53,8 @@
 - 已新增 Step 10A small library bridge canary review gate：docs-only 定义 Step 10B 只能使用 Step 9B fixture-derived explicit inputs 和 Step 4B pure helpers，不允许 runtime/default resolver paths、production/default asset packs 或 large library。
 - 已新增 Step 10B small library bridge canary implementation：只新增 fixture-only contract test 与文档记录，使用 Step 9B 小库 metadata export、explicit candidates、exact 10 requested ids 和 Step 4B pure helpers；green canary 与 missing-id / bridge / blocked-context negative diagnostics 分离。
 - 已新增 Art Asset Pipeline Production Rollout 拆分索引：将 Step 11A 到 Step 14D 分拆到 `docs/refactor-log/art-asset-pipeline-production-rollout/`，避免继续膨胀本长文档。
+- 已完成 Step 13C-B large-library metadata batch zero：导入 approved Pirate Kit 10-asset fixture、10 个 selected existing previews、10 个 sidecar metadata、README/source evidence 和 focused contract test，不接 runtime/default。
+- 当前 Step 13D-A batch-zero semantic dry-run gate：docs-only 定义 Step 13D-B 如何对同一 batch-zero fixture 跑 metadata validation、runtime export、default / repair-enabled canary、comparison、bridge summary 和 resolver-adjacent diagnostics；runtime/default integration 与 production rollout 继续 parked。
 
 ## 4. 分步落地计划
 
@@ -91,7 +93,9 @@
 | Step 13A | Large library intake gate | docs-only 定义大库 storage、license、batch、validation、rollback 和 failure-budget policy，不访问大库 | 已完成 |
 | Step 13B | Large library inventory dry-run | Kenney Pirate Kit read-only archive inventory summary，不抽取、不导入、不生成 metadata/thumbnails | 已完成 |
 | Step 13C-A | Batch zero selection / import gate | docs-only 批准 Kenney Pirate Kit batch-zero source、10 个候选、fixture layout、metadata / thumbnail / validation policy | 已完成 |
-| Step 13C-B | Large library metadata batch zero | Kenney Pirate Kit 10-asset fixture、sidecar metadata、selected previews、focused contract test，不接 runtime/default | 当前 |
+| Step 13C-B | Large library metadata batch zero | Kenney Pirate Kit 10-asset fixture、sidecar metadata、selected previews、focused contract test，不接 runtime/default | 已完成 |
+| Step 13D-A | Batch-zero semantic dry-run / bridge gate | docs-only 定义 Pirate Kit batch-zero fixture 的 validation / export / canary / comparison / bridge / resolver-adjacent diagnostics gate | 当前 |
+| Step 13D-B | Batch-zero semantic dry-run / bridge implementation | 对同一 10-asset fixture 跑 full semantic dry-run、bridge summary、resolver-adjacent diagnostics 和独立 negative diagnostics | 下一步 |
 | Workbench / QA preview | Diagnostics preview | 预览 bridge diagnostics，不改变 default verdict | 后续 |
 | Large library gate | Large asset library scan/import gate | 尺寸、license、metadata、rollout policy gate | parked |
 | Production rollout gate | Default asset pack rollout | 生产默认行为变更的独立 gate | parked |

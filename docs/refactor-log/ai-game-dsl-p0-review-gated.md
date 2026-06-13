@@ -8,11 +8,64 @@
 
 ## 当前阶段
 
-Step 13C-B Kenney Pirate Kit large-library metadata batch-zero implementation 正在执行：本步只导入 Step 13C-A 批准的 10 个 GLB fixture assets、10 个 selected existing preview PNG、10 个 sidecar metadata、fixture README/source evidence 和 focused contract test。不导入 whole archive、不生成 thumbnails、不改 production asset packs、不改变 runtime/default integration、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 repair behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate、Step 10B implementation、Step 11A-11C non-default runtime canary lane、Step 12A preview gate、Step 12B preview implementation、Step 12C preview signoff、Step 13A large-library intake gate、Step 13B read-only inventory dry-run 和 Step 13C-A docs-only gate。
+Step 13D-A batch-zero semantic dry-run / bridge gate 正在执行：本步 docs-only，只定义 Step 13D-B 如何把 Step 13C-B 已导入的 Kenney Pirate Kit 10-asset fixture 跑完整 semantic dry-run、default / repair-enabled canary、comparison、bridge summary 和 resolver-adjacent diagnostics。不实现 code/tests/scripts、不导入 assets、不改 sidecar metadata、不生成 thumbnails、不改 production asset packs、不改变 runtime/default integration、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 repair behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate、Step 10B implementation、Step 11A-11C non-default runtime canary lane、Step 12A preview gate、Step 12B preview implementation、Step 12C preview signoff、Step 13A large-library intake gate、Step 13B read-only inventory dry-run、Step 13C-A docs-only gate 和 Step 13C-B fixture import。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：完成 Step 13C-B validation、Sage/Oracle 只读审查和 docs review gate 后提交 `test: import large art library batch zero metadata`。当前分支为 `test/asset-semantic-step-13c-batch-zero-pirate-kit`。Step 13D / large library expansion / runtime-default integration / production rollout 仍未开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库扩容、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：完成 Step 13D-A docs update、只读审查和 `git diff --check` 后提交 `docs: gate batch zero semantic dry-run`。当前分支为 `docs/asset-semantic-step-13d-batch-zero-dry-run-gate`。Step 13D-B 为下一步实现；large library expansion / runtime-default integration / production rollout 仍 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库扩容、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.44 Step 13D-A: Batch Zero Semantic Dry-Run / Bridge Gate
+
+完成时间：2026-06-14
+
+已完成内容：
+
+- 新增 `docs/refactor-log/asset-semantic-large-library-step-13d-batch-zero-dry-run.md`。
+- 文档定义 Step 13D-B 只能使用 `tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/`、其 `metadata/`、同一 metadata directory 的 runtime-safe export、同源 explicit bridge candidates、exact 10 batch-zero asset ids 和独立 focused negative test ids。
+- 文档定义 green path：10 个 sidecars validation、10 个 assets runtime-safe export、同一 fixture 的 default canary、repair-enabled canary、comparison、bridge summary `ok=true`、resolver-adjacent diagnostics `ok=true`。
+- 文档要求 default 与 repair-enabled 使用 identical fixture input，repair-enabled 仍保持 non-default。
+- 文档要求 focused negative diagnostics 与 green path 分离：missing requested id、missing bridge candidate、candidate without runtime metadata、metadata 支持时的 blocked context，以及必要时 helper-level path mismatch / absolute path cases。
+- 文档固定 Step 13D-B 只能使用 `createAssetPackMetadataBridgeSummary` / `createAssetResolverDiagnosticsSummary`，不得调用 `resolveLocalAssetPack` / `selectLocalAssetPack` / runtime/default resolver paths / production/default asset pack loading。
+- 更新 semantic fidelity plan 和 review log，把 Step 13C-B 标为 done、Step 13D-A 标为 current/done-after-validation、Step 13D-B 标为 next，runtime/default integration 与 production rollout 继续 parked。
+
+阶段结果：
+
+- Step 13D-A is docs-only。
+- No assets imported。
+- No code/tests/scripts changed。
+- No sidecar metadata changed。
+- No thumbnails changed。
+- No generated artifacts added。
+- Runtime/default behavior did not change。
+- Resolver behavior did not change。
+- Production asset packs did not change。
+- Step 13D-B remains future implementation。
+- `AGENTS.md` was not restored。
+- Parked plan patch was not applied。
+
+Step 13D-B required commands:
+
+    npm run metadata:validate -- tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- --check-paths tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run qa:asset-semantic:canary -- --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1
+    npm run qa:asset-semantic:canary -- --repair-enabled --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1
+    npm run qa:asset-semantic:compare -- --default-summary <default-summary.json> --repair-enabled-summary <repair-summary.json> --out <comparison-summary.json>
+    npx vitest run <focused Step 13D-B test file(s)>
+    npm run test:contracts
+    npm test
+    npm run typecheck
+    git diff --check
+
+验证：
+
+    git diff --check
+
+审查门禁结论：
+
+- 主 agent 只读自审完成：P0/P1/P2/P3 均无。
+- Oracle 未派发：当前可用 multi-agent 工具要求用户显式要求 sub-agent work；本次请求要求 review gate / review findings，但未明确要求派发 Oracle 子 agent。
 
 ### 2.43 Step 13C-B: Kenney Pirate Kit Metadata Batch Zero Implementation
 
