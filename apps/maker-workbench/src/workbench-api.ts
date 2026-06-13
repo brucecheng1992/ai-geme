@@ -117,12 +117,83 @@ export type QaAssetSemanticIssue = {
 };
 export type RepairReport = { status?: string; message?: string; attempts?: Array<{ attempt: number; reason: string }> };
 
+export type ArtAssetWorkbenchPreview = {
+  preview_version: '0.1';
+  source: 'small-library-runtime-safe-export';
+  fixture: 'tests/fixtures/art-library-small-v0.1';
+  read_only: true;
+  ok: boolean;
+  runtime_metadata_version: string;
+  generated_by: string;
+  asset_count: number;
+  allowed_fields: readonly string[];
+  blocked_fields: readonly string[];
+  assets: ArtAssetWorkbenchPreviewAsset[];
+  diagnostics: {
+    bridge: {
+      ok: boolean;
+      matched_count: number;
+      diagnostic_count: number;
+      items: ArtAssetWorkbenchPreviewDiagnostic[];
+    };
+    resolver: {
+      ok: boolean;
+      resolved_count: number;
+      diagnostic_count: number;
+      items: ArtAssetWorkbenchPreviewDiagnostic[];
+    };
+  };
+};
+
+export type ArtAssetWorkbenchPreviewAsset = {
+  asset_id: string;
+  asset_type: string;
+  title: string;
+  description: string;
+  status: string;
+  version: string;
+  semantic: {
+    tags: string[];
+    visual_style: string[];
+    world: string;
+    mood?: string[];
+  };
+  gameplay: {
+    role: string[];
+    affordances: string[];
+    allowed_contexts: string[];
+    blocked_contexts: string[];
+  };
+  technical: {
+    file_format: string;
+    thumbnail_path: string;
+    texture_resolution?: string;
+    polycount_lod0?: number;
+    platform_budget?: string[];
+  };
+  relations?: {
+    variant_of?: string;
+    compatible_with?: string[];
+  };
+};
+
+export type ArtAssetWorkbenchPreviewDiagnostic = {
+  source: 'bridge' | 'resolver';
+  severity: 'error' | 'warning';
+  code: string;
+  message: string;
+  assetId?: string;
+  jsonPath?: string;
+  safePath?: string;
+};
+
 export type DashboardData = {
   project?: ProjectStatus;
   events: RunEvents['events'];
   qaReport?: QaReport;
   repairReport?: RepairReport;
   buildLog?: string;
+  artAssetPreview?: ArtAssetWorkbenchPreview;
 };
 
 export async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {

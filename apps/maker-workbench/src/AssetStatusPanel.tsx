@@ -1,5 +1,5 @@
 import { AssetSemanticList } from './AssetSemanticList.js';
-import type { QaAssetReport } from './workbench-api.js';
+import type { ArtAssetWorkbenchPreview, ArtAssetWorkbenchPreviewAsset, ArtAssetWorkbenchPreviewDiagnostic, QaAssetReport } from './workbench-api.js';
 
 const panelClass = 'rounded-lg border border-[#d8c7a6] bg-[#fffef9] p-4 shadow-[0_1px_0_rgba(49,43,34,0.08)]';
 const panelHeadingClass = 'mb-3 flex items-start justify-between gap-3';
@@ -8,9 +8,10 @@ const headingClass = 'm-0 text-[15px] font-extrabold leading-tight text-[#15130f
 
 type AssetStatusPanelProps = {
   report?: QaAssetReport;
+  preview?: ArtAssetWorkbenchPreview;
 };
 
-export function AssetStatusPanel({ report }: AssetStatusPanelProps) {
+export function AssetStatusPanel({ report, preview }: AssetStatusPanelProps) {
   const summary = report?.manifest_summary;
   const runtime = report?.runtime;
   const failures = report?.failures ?? [];
@@ -45,6 +46,8 @@ export function AssetStatusPanel({ report }: AssetStatusPanelProps) {
           </div>
 
           {semanticAssets.length > 0 ? <AssetSemanticList assets={semanticAssets} /> : null}
+
+          {preview !== undefined ? <ArtAssetPreview preview={preview} /> : null}
 
           {semanticIssues.length > 0 ? (
             <ul className="m-0 grid list-none gap-2 p-0">
@@ -92,6 +95,73 @@ export function AssetStatusPanel({ report }: AssetStatusPanelProps) {
         <p className="m-0 text-sm leading-snug text-[#69645d]">No asset report</p>
       )}
     </article>
+  );
+}
+
+function ArtAssetPreview({ preview }: { preview: ArtAssetWorkbenchPreview }) {
+  const diagnostics = [...preview.diagnostics.bridge.items, ...preview.diagnostics.resolver.items];
+
+  return (
+    <section className="grid gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[11px] font-extrabold uppercase text-[#69645d]">Small library preview</div>
+        <span className={`rounded-full border px-2 py-1 text-xs font-extrabold ${preview.ok ? 'border-[#91d49b] bg-[#dff3df] text-[#208a4d]' : 'border-[#f2ca83] bg-[#fff1d6] text-[#8a5b13]'}`}>
+          {preview.ok ? 'Ready' : 'Diagnostics'}
+        </span>
+      </div>
+      <div className="grid grid-cols-3 gap-2 max-sm:grid-cols-2">
+        <AssetMetric label="Assets" value={preview.asset_count} />
+        <AssetMetric label="Bridge" value={preview.diagnostics.bridge.matched_count} tone={preview.diagnostics.bridge.ok ? 'neutral' : 'warn'} />
+        <AssetMetric label="Diagnostics" value={diagnostics.length} tone={diagnostics.length > 0 ? 'warn' : 'neutral'} />
+      </div>
+      <div className="grid max-h-72 gap-2 overflow-auto pr-1">
+        {preview.assets.map((asset) => (
+          <PreviewAssetRow asset={asset} key={asset.asset_id} />
+        ))}
+      </div>
+      {diagnostics.length > 0 ? (
+        <ul className="m-0 grid list-none gap-2 p-0">
+          {diagnostics.map((diagnostic, index) => (
+            <PreviewDiagnostic diagnostic={diagnostic} index={index} key={`${diagnostic.source}-${diagnostic.code}-${diagnostic.assetId ?? index}`} />
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  );
+}
+
+function PreviewAssetRow({ asset }: { asset: ArtAssetWorkbenchPreviewAsset }) {
+  return (
+    <div className="rounded-lg border border-[#d0b993] bg-[#fffaf0] p-2.5 text-sm leading-snug text-[#302b24]">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="font-black text-[#15130f] [overflow-wrap:anywhere]">{asset.title}</div>
+          <div className="text-xs font-bold text-[#69645d] [overflow-wrap:anywhere]">{asset.asset_id}</div>
+        </div>
+        <span className="rounded-full border border-[#c9dbff] bg-[#e9f0ff] px-2 py-1 text-xs font-extrabold text-[#1d57a7]">{asset.asset_type}</span>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {asset.semantic.tags.slice(0, 5).map((tag) => (
+          <span className="rounded-full border border-[#d0b993] bg-[#fffefa] px-2 py-1 text-xs font-extrabold text-[#69645d]" key={`${asset.asset_id}-${tag}`}>
+            {tag}
+          </span>
+        ))}
+      </div>
+      <div className="mt-2 grid gap-1 text-xs font-bold text-[#69645d]">
+        <div>{`roles: ${asset.gameplay.role.join(', ') || 'none'}`}</div>
+        <div className="[overflow-wrap:anywhere]">{`thumbnail: ${asset.technical.thumbnail_path}`}</div>
+      </div>
+    </div>
+  );
+}
+
+function PreviewDiagnostic({ diagnostic, index }: { diagnostic: ArtAssetWorkbenchPreviewDiagnostic; index: number }) {
+  return (
+    <li className="rounded-lg border border-[#f2ca83] bg-[#fff1d6] p-3 text-sm leading-snug text-[#6b4b16]">
+      <div className="mb-1 font-black text-[#8a5b13]">{`${diagnostic.source.toUpperCase()} ${diagnostic.code}`}</div>
+      <div>{diagnostic.message}</div>
+      <div className="mt-1 text-xs font-bold text-[#8a5b13]">{formatPreviewDiagnosticScope(diagnostic, index)}</div>
+    </li>
   );
 }
 
@@ -196,6 +266,20 @@ function formatSemanticIssueScope(issue: NonNullable<QaAssetReport['semantic_iss
   }
   if (issue.expected_concept !== undefined) {
     chunks.push(`expected: ${issue.expected_concept}`);
+  }
+  return chunks.join(' | ');
+}
+
+function formatPreviewDiagnosticScope(diagnostic: ArtAssetWorkbenchPreviewDiagnostic, index: number): string {
+  const chunks = [`item: ${index + 1}`];
+  if (diagnostic.assetId !== undefined) {
+    chunks.push(`asset: ${diagnostic.assetId}`);
+  }
+  if (diagnostic.jsonPath !== undefined) {
+    chunks.push(`path: ${diagnostic.jsonPath}`);
+  }
+  if (diagnostic.safePath !== undefined) {
+    chunks.push(`file: ${diagnostic.safePath}`);
   }
   return chunks.join(' | ');
 }

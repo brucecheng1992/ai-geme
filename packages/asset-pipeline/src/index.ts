@@ -43,6 +43,16 @@ export {
   type AssetPackMetadataBridgeSummary
 } from './asset-pack-metadata-bridge.js';
 export {
+  ART_ASSET_WORKBENCH_PREVIEW_ALLOWED_FIELDS,
+  ART_ASSET_WORKBENCH_PREVIEW_BLOCKED_FIELDS,
+  ART_ASSET_WORKBENCH_PREVIEW_VERSION,
+  SMALL_LIBRARY_WORKBENCH_PREVIEW_FIXTURE_ROOT,
+  createSmallLibraryWorkbenchPreview,
+  type ArtAssetWorkbenchPreview,
+  type ArtAssetWorkbenchPreviewAsset,
+  type ArtAssetWorkbenchPreviewDiagnostic
+} from './art-asset-workbench-preview.js';
+export {
   createAssetResolverDiagnosticsSummary,
   type AssetResolverDiagnostic,
   type AssetResolverDiagnosticCode,

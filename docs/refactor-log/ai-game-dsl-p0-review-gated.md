@@ -8,11 +8,68 @@
 
 ## 当前阶段
 
-Step 10B small library bridge canary implementation 已完成并提交为 `2ede0c0 test: add small library bridge canary`：本步只新增 fixture-only explicit-input contract test 和文档记录，证明 Step 9B 小库 metadata export、explicit bridge candidates、exact requested ids 与 Step 4B pure helper 可以组合通过 green canary，并保持 negative diagnostics 分离。不接 production/default asset packs、不改变 resolver / QA / Workbench / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate 和 Step 10B implementation。
+Step 12B Workbench / QA preview implementation 正在执行：本步只新增 small-fixture-only preview DTO、maker-api preview endpoint、Workbench preview-only 展示和 focused contract test。large asset library、runtime/default integration、QA verdict / Phaser / asset pack loading 继续 parked；不接 production/default asset packs、不改变 resolver / QA verdict / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate、Step 10B implementation、Step 11A-11C non-default runtime canary lane 和 Step 12A preview gate。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Step 12A Workbench / QA preview docs-only gate。Step 11C 分支边界已 fast-forward 合并回 `main`，当前分支为 `docs/art-asset-step-12a-workbench-qa-preview-gate`。Step 12A 只定义 preview source、safe field allowlist、read-only policy、sensitivity blocklist 和 Step 12B 边界；large asset library、runtime/default integration、QA / Workbench / Phaser / asset pack loading 继续 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Step 12B Workbench / QA preview implementation。Step 12A 分支边界已 fast-forward 合并回 `main`，当前分支为 `feat/art-asset-step-12b-workbench-qa-preview`。Step 12B 只新增 small-fixture-only preview DTO、maker-api preview endpoint、Workbench preview-only 展示和 focused contract test；large asset library、runtime/default integration、QA verdict / Phaser / asset pack loading 继续 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.38 Step 12B: Workbench / QA Preview Implementation
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 关闭 Step 12A 分支边界：`docs/art-asset-step-12a-workbench-qa-preview-gate` 已 fast-forward 合并回 `main`。
+- 新建 `feat/art-asset-step-12b-workbench-qa-preview` 分支。
+- 新增 `packages/asset-pipeline/src/art-asset-workbench-preview.ts`，从 runtime-safe small fixture metadata export 构建 read-only preview DTO，并复用 deterministic bridge / resolver diagnostics summaries。
+- 新增 `apps/maker-api/src/art-asset-preview/*`，提供 `GET /api/art-assets/preview/small-library` preview-only endpoint。
+- 更新 Workbench optional fetch 与 Assets 面板，在 preview DTO 可用时展示 small-library preview-only 区块。
+- 新增 `tests/contracts/art-asset-workbench-preview.test.ts`，覆盖 source scope、read-only、deterministic / non-mutating output、sensitive-field exclusion、out-of-scope path fail-closed behavior 和 maker-api service output。
+- 更新 Step 12B rollout 文档和总览状态。
+
+阶段结果：
+
+- preview source 固定为 `small-library-runtime-safe-export`。
+- preview fixture 固定为 `tests/fixtures/art-library-small-v0.1`。
+- preview DTO 明确 `read_only: true`，不写 metadata、manifest、QA report、repair output 或 generated artifacts。
+- preview builder 在构造 DTO 前校验 runtime artifact path-like fields 必须留在 `tests/fixtures/art-library-small-v0.1/` 下；越界时 fail closed，且错误不回显原始路径。
+- Workbench fetch 使用 optional path；preview endpoint 失败不会影响 project status、QA report、repair report 或 build log。
+- preview asset DTO 不包含 `technical.source_path`，不暴露 raw sidecar-only fields、rights/legal/creator/source details、workflow/review notes、search/embedding input、AI generation fields、absolute local paths、production/default asset pack paths 或 large-library paths。
+
+行为边界：
+
+- 本步没有修改 default project generation、Phaser templates、QA runner、QA verdict semantics、resolver selection、production/default asset pack loading 或 large-library path。
+- 本步没有让 repair-enabled mode 成为默认。
+- 本步没有接 AI image provider。
+
+验证：
+
+    npx vitest run tests/contracts/art-asset-workbench-preview.test.ts
+    npm run typecheck:root
+    npm run test:contracts
+    npm run typecheck
+    npm test
+    curl -s http://localhost:3000/api/art-assets/preview/small-library
+    Playwright smoke against http://127.0.0.1:5173/
+    git diff --check
+
+验证结果：
+
+- Focused Workbench preview contract 通过：4 tests。
+- Root typecheck 通过。
+- Contract suite 通过：21 files，197 tests。
+- Full typecheck 通过：root、maker-api、maker-workbench。
+- Full test suite 通过：contracts 21 files / 197 tests，workspace 12 files / 125 tests。
+- API smoke 通过：`GET /api/art-assets/preview/small-library` 返回 `ok: true`、10 assets、`read_only: true`、0 bridge diagnostics、0 resolver diagnostics，preview asset technical data 不暴露 `source_path`。
+- Workbench Playwright smoke 通过：生成项目后 `Small library preview`、`Ready` 和 safe thumbnail path text 可见，无 console/page errors。
+- `git diff --check` 通过。
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出 preview builder 接受任意 runtime artifact 但固定标记 small-library preview，且可能把非 small fixture 相对路径透出到 thumbnail / diagnostics；P3 指出 review log 顶部仍以 Step 10B 为锚点。
+- 已修复：`createSmallLibraryWorkbenchPreview()` 在构造 candidates / diagnostics / DTO 前校验 artifact path-like fields 必须留在 `tests/fixtures/art-library-small-v0.1/` 下；越界时 fail closed 且不回显原始路径；补充 `assets/asset-packs/large-library/...` negative test；review log 顶部改为 Step 12B 当前阶段。
+- Oracle 复审：P0/P1/P2/P3 均无；确认上一轮 sensitive path P1 已关闭，无 large-library / default behavior / QA verdict / docs consistency 问题，可以进入提交门禁。
 
 ### 2.37 Step 12A: Workbench / QA Preview Gate
 

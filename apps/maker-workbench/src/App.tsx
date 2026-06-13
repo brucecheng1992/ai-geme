@@ -14,6 +14,7 @@ import {
   shouldLoadBuildLog,
   shouldLoadQaReport,
   shouldLoadRepairReport,
+  type ArtAssetWorkbenchPreview,
   type DashboardData,
   type ProjectStatus,
   type QaReport,
@@ -151,12 +152,13 @@ export function App() {
       const project = await requestJson<ProjectStatus>(`${API_BASE}/api/projects/${selectedProjectId}`);
       const events = await requestJson<RunEvents>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/events`);
       const status = project.latest_run.status;
-      const [qaReport, repairReport, buildLog] = await Promise.all([
+      const [qaReport, repairReport, buildLog, artAssetPreview] = await Promise.all([
         shouldLoadQaReport(status) ? optionalJson<{ qa_report: QaReport }>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/qa-report`) : undefined,
         shouldLoadRepairReport(status)
           ? optionalJson<{ repair_report: RepairReport }>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/repair-report`)
           : undefined,
-        shouldLoadBuildLog(status) ? optionalJson<{ build_log: string }>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/build-log`) : undefined
+        shouldLoadBuildLog(status) ? optionalJson<{ build_log: string }>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/build-log`) : undefined,
+        optionalJson<{ preview: ArtAssetWorkbenchPreview }>(`${API_BASE}/api/art-assets/preview/small-library`)
       ]);
 
       setData({
@@ -164,7 +166,8 @@ export function App() {
         events: events.events,
         qaReport: qaReport?.qa_report,
         repairReport: repairReport?.repair_report,
-        buildLog: buildLog?.build_log
+        buildLog: buildLog?.build_log,
+        artAssetPreview: artAssetPreview?.preview
       });
     }, options);
   }
@@ -329,7 +332,7 @@ export function App() {
               </div>
             </article>
 
-            <AssetStatusPanel report={data.qaReport?.asset_report} />
+            <AssetStatusPanel report={data.qaReport?.asset_report} preview={data.artAssetPreview} />
 
             <article className={panelClass}>
               <div className={panelHeadingClass}>
