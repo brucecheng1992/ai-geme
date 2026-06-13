@@ -33,7 +33,7 @@
 - generated project 根目录已写出 `asset_resolution_report.json`，记录 selected / rejected / fallback diagnostics。
 - QA report 已包含 `asset_report`，Workbench Assets 面板可展示 manifest/runtime load 状态和 source pack。
 
-当前状态：Step 12A Workbench / QA preview gate 已完成并提交为 `09d2156 docs: gate workbench asset preview`，且 Step 12A 分支边界已 fast-forward 合并回 `main`。当前正在 Step 12B Workbench / QA preview implementation，只新增 small-fixture-only preview DTO、maker-api preview endpoint、Workbench preview-only 展示和 focused contract test。不改变默认运行时、resolver、QA verdict、Phaser 或 asset pack loading。
+当前状态：Step 12B Workbench / QA preview implementation 已完成并提交为 `4abb10e feat: add small library workbench asset preview`，且 Step 12B 分支边界已 fast-forward 合并回 `main`。当前正在 Step 12C QA preview signoff，只沉淀 textual report、displayed field list、diagnostic semantics、known limitations 和 Step 13A 建议。不改变默认运行时、resolver、QA verdict、Phaser 或 asset pack loading。
 
 - QA / Workbench 已能识别 runtime pass 但 hard semantic mismatch 的 `NEEDS_ASSET_REPAIR`，并展示 per-asset semanticFit 摘要。
 - 第一批 canary brief fixture 已建立，batch runner 已能默认运行 supported cases、跳过 `expectedUnsupported` cases，并写出 summary report。
@@ -86,7 +86,8 @@
 | Step 11B | Non-default runtime canary implementation | 脚本侧 flag/config + small fixture runtime-safe export canary，不改默认 runtime | 已完成 |
 | Step 11C | Runtime canary closure | 关闭非默认 runtime canary lane，沉淀 flag-off / flag-on / rollback / Step 12A 决策证据 | 已完成 |
 | Step 12A | Workbench / QA preview gate | docs-only 定义 runtime-safe preview source、safe field allowlist、read-only policy 和 Step 12B 边界 | 已完成 |
-| Step 12B | Workbench / QA preview implementation | small-fixture-only preview DTO、API endpoint、Workbench preview-only 展示和 focused tests | 当前 |
+| Step 12B | Workbench / QA preview implementation | small-fixture-only preview DTO、API endpoint、Workbench preview-only 展示和 focused tests | 已完成 |
+| Step 12C | QA preview signoff | 小库 preview textual signoff、displayed fields、diagnostic semantics、known limitations、Step 13A 建议 | 当前 |
 | Workbench / QA preview | Diagnostics preview | 预览 bridge diagnostics，不改变 default verdict | 后续 |
 | Large library gate | Large asset library scan/import gate | 尺寸、license、metadata、rollout policy gate | parked |
 | Production rollout gate | Default asset pack rollout | 生产默认行为变更的独立 gate | parked |

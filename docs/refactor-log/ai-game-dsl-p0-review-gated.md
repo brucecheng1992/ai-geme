@@ -8,11 +8,47 @@
 
 ## 当前阶段
 
-Step 12B Workbench / QA preview implementation 正在执行：本步只新增 small-fixture-only preview DTO、maker-api preview endpoint、Workbench preview-only 展示和 focused contract test。large asset library、runtime/default integration、QA verdict / Phaser / asset pack loading 继续 parked；不接 production/default asset packs、不改变 resolver / QA verdict / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate、Step 10B implementation、Step 11A-11C non-default runtime canary lane 和 Step 12A preview gate。
+Step 12C QA preview signoff 正在执行：本步只沉淀 Step 12B small-fixture-only preview 的 textual report、displayed field list、diagnostic semantics、known limitations 和 Step 13A 建议。large asset library、runtime/default integration、QA verdict / Phaser / asset pack loading 继续 parked；不接 production/default asset packs、不改变 resolver / QA verdict / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate、Step 10B implementation、Step 11A-11C non-default runtime canary lane、Step 12A preview gate 和 Step 12B preview implementation。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Step 12B Workbench / QA preview implementation。Step 12A 分支边界已 fast-forward 合并回 `main`，当前分支为 `feat/art-asset-step-12b-workbench-qa-preview`。Step 12B 只新增 small-fixture-only preview DTO、maker-api preview endpoint、Workbench preview-only 展示和 focused contract test；large asset library、runtime/default integration、QA verdict / Phaser / asset pack loading 继续 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Step 12C QA preview signoff。Step 12B 分支边界已 fast-forward 合并回 `main`，当前分支为 `docs/art-asset-step-12c-qa-preview-signoff`。Step 12C 只记录小库 preview signoff，不触碰 large library、不改变 runtime/default integration、QA verdict / Phaser / asset pack loading。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.39 Step 12C: QA Preview Signoff Report
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 关闭 Step 12B 分支边界：`feat/art-asset-step-12b-workbench-qa-preview` 已 fast-forward 合并回 `main`。
+- 新建 `docs/art-asset-step-12c-qa-preview-signoff` 分支。
+- 更新 `docs/refactor-log/art-asset-pipeline-production-rollout/step-12c-qa-preview-signoff.md`，记录 textual report、displayed field list、diagnostic semantics、known limitations、production/default unchanged statement 和 Step 13A recommendation。
+- 更新 rollout README、semantic fidelity plan 和 step index 的当前阶段状态。
+
+阶段结果：
+
+- Step 12B 的 small-library preview 可作为 QA-facing internal preview signoff 继续向 Step 13A gate 推进。
+- 本 signoff 只覆盖 small fixture library，不覆盖 large library、不证明 production readiness、不批准 production/default runtime integration。
+- Step 13A 只能作为 docs-only large library intake gate 继续，必须先定义 size limits、license / provenance review、metadata validation、storage policy、scan/report commands、rollback policy 和 no-runtime/default-integration boundary。
+
+行为边界：
+
+- 本步没有 code、UI、runtime、QA runner、resolver、Phaser 或 Workbench 行为改动。
+- 本步没有触碰 large library、production/default integration、metadata mutation、repair writeback 或 AI image provider。
+- 本步没有声称 QA signoff 代表 production readiness。
+
+验证：
+
+    git diff --check
+
+验证结果：
+
+- `git diff --check` 通过。
+
+审查门禁结论：
+
+- Oracle 审查完成：P0/P1/P2/P3 均无。
+- Oracle 确认本 signoff 未声称 production readiness、未批准 large-library intake、未提交 generated screenshots/artifacts、未改变 runtime/default behavior 或 QA verdict semantics，且 Step 13A 仍是 docs-only gate。
 
 ### 2.38 Step 12B: Workbench / QA Preview Implementation
 
