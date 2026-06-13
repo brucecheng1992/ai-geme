@@ -2,15 +2,15 @@
 
 来源：`/Users/dahufa/Documents/workspace/art_asset_pipeline_production_rollout_plan.zip`
 
-当前状态：Step 13D-B batch-zero semantic dry-run / bridge implementation 已合入 `main`，最新完成提交为 `5b262ba test: dry-run large library batch zero semantic pipeline`。当前分支为 `docs/asset-semantic-step-13e-large-library-expansion-gate`，正在执行 Step 13E-A large-library batch expansion docs-only gate。本目录把 zip 中的大 rollout 计划拆成可逐步执行、逐步审查、逐步验证的小文档。
+当前状态：Step 13E-B controlled large-library expansion implementation 已完成本地验证和 Oracle 只读审查，当前分支为 `test/asset-semantic-step-13e-large-library-expansion`。本目录把 zip 中的大 rollout 计划拆成可逐步执行、逐步审查、逐步验证的小文档。
 
 ## 当前下一步
 
-1. 完成 [Step 13E large-library batch expansion gate](step-13e-batch-expansion-gate.md) 的 docs-only validation。
-2. 完成 Oracle 只读审查和文档复审门禁。
-3. 若验证和审查通过，关闭 Step 13E-A 分支边界；Step 13E-B implementation 仍需单独分支。
+1. 提交 Step 13E-B scoped commit：`test: expand large art library semantic batch`。
+2. 关闭 Step 13E-B branch boundary。
+3. 之后再单独决定是否创建 Step 14A production rollout gate branch。
 
-Step 13E-A 只允许定义 Step 13E-B 的 expansion constraints，不导入 assets、不修改 sidecar metadata、不生成 thumbnails、不生成 artifacts、不改变 runtime/default behavior、不修改 resolver、QA / Workbench / Phaser 或 production asset packs。Step 14A production rollout 继续 parked。
+Step 13E-B 只允许扩展现有 Kenney Pirate Kit test fixture，不改变 runtime/default behavior、不修改 resolver、QA / Workbench / Phaser 或 production asset packs。Step 14A production rollout 继续 parked。
 
 ## 硬边界
 
@@ -44,8 +44,8 @@ Step 13E-A 只允许定义 Step 13E-B 的 expansion constraints，不导入 asse
 | Step 13C-B | [Large library batch zero](step-13c-large-library-batch-zero.md) | Small fixture import | Done |
 | Step 13D-A | [Batch zero pipeline dry-run](step-13d-batch-zero-pipeline-dry-run.md) | Docs-only dry-run / bridge gate | Done in `4adf72b` |
 | Step 13D-B | [Batch zero pipeline dry-run](step-13d-batch-zero-pipeline-dry-run.md) | Dry-run/report tests | Done in `5b262ba` |
-| Step 13E-A | [Large-library batch expansion gate](step-13e-batch-expansion-gate.md) | Docs-only | Current |
-| Step 13E-B | [Large-library batch expansion implementation](step-13e-batch-expansion-gate.md) | Small fixture expansion | Future |
+| Step 13E-A | [Large-library batch expansion gate](step-13e-batch-expansion-gate.md) | Docs-only | Done in `ae1ed44` |
+| Step 13E-B | [Large-library batch expansion implementation](step-13e-batch-expansion-gate.md) | Small fixture expansion | Done locally |
 | Step 14A | [Production rollout gate](step-14a-production-rollout-gate.md) | Docs-only | Future |
 | Step 14B | [Controlled rollout implementation](step-14b-controlled-rollout.md) | Code + tests | Future |
 | Step 14C | [Production verification and rollback drill](step-14c-production-verification-rollback.md) | Verification/report | Future |

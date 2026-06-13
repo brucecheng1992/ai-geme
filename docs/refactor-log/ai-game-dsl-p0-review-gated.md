@@ -8,11 +8,119 @@
 
 ## 当前阶段
 
-Step 13E-A large-library batch expansion gate 正在执行 docs-only 审查：基于 Step 13D-B 已完成的同一 Kenney Pirate Kit 10-asset fixture metadata validate/export、default canary、repair-enabled canary、comparison、bridge summary、resolver-adjacent diagnostics 和独立 negative diagnostics evidence，定义 Step 13E-B 是否可以扩展、最多新增多少同源资产、需要哪些 validation / rollback / stop rules。本步只改文档；不导入 assets、不改 sidecar metadata、不生成 thumbnails、不生成 artifacts、不改 production asset packs、不改变 runtime/default integration、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 repair behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate、Step 10B implementation、Step 11A-11C non-default runtime canary lane、Step 12A preview gate、Step 12B preview implementation、Step 12C preview signoff、Step 13A large-library intake gate、Step 13B read-only inventory dry-run、Step 13C-A docs-only gate、Step 13C-B fixture import、Step 13D-A docs-only gate 和 Step 13D-B implementation。
+Step 13E-B controlled large-library expansion implementation 已完成本地验证和 Oracle 只读审查：基于 Step 13E-A gate，将同一 Kenney Pirate Kit fixture 从 10 个 assets 受控扩展到 20 个 assets，并复跑 metadata validation、runtime export、default canary、repair-enabled canary、comparison、bridge summary、resolver-adjacent diagnostics 和独立 negative diagnostics evidence。本步只扩展 test fixture / metadata / focused tests / docs；不改 production asset packs、不改变 runtime/default integration、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 repair behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate、Step 10B implementation、Step 11A-11C non-default runtime canary lane、Step 12A preview gate、Step 12B preview implementation、Step 12C preview signoff、Step 13A large-library intake gate、Step 13B read-only inventory dry-run、Step 13C-A docs-only gate、Step 13C-B fixture import、Step 13D-A docs-only gate、Step 13D-B implementation 和 Step 13E-A docs-only gate。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：完成 Step 13E-A docs-only validation、Oracle 只读审查和分支边界 closure 后，再单独创建 Step 13E-B implementation 分支。当前分支为 `docs/asset-semantic-step-13e-large-library-expansion-gate`。Runtime/default integration / production rollout 仍 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、实际大资源库扩容、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：提交 Step 13E-B scoped commit，然后关闭 Step 13E-B 分支边界。当前分支为 `test/asset-semantic-step-13e-large-library-expansion`。Runtime/default integration / production rollout 仍 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.47 Step 13E-B: Controlled Large-Library Expansion Implementation
+
+完成时间：2026-06-14
+
+已完成内容：
+
+- 扩展 `tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/`。
+- 从同一 approved Kenney Pirate Kit archive 只新增 10 个 GLB assets。
+- 只新增对应 10 个 selected existing `Previews/*.png` 到 `thumbnails/`；没有生成 thumbnails。
+- 新增 10 个 sidecar `.asset.json` metadata files。
+- 更新 fixture `README.md`，记录 100% additional-asset review sampling evidence。
+- 更新 `tests/contracts/asset-semantic-large-library-batch-zero-pirate-kit.test.ts`，锁定 20-asset exact set、10 additional assets、sidecar/thumbnail parity、path safety、runtime-safe export 和 README evidence。
+- 更新 `tests/contracts/asset-semantic-large-library-batch-zero-dry-run.test.ts`，将 default / repair-enabled canary、comparison、bridge summary 和 resolver-adjacent diagnostics 提升到 20 assets。
+- 更新 Step 13E 文档、semantic fidelity plan 和 rollout README。
+
+Added asset basenames:
+
+- `bottle`
+- `cannon-ball`
+- `cannon-mobile`
+- `crate-bottles`
+- `rocks-b`
+- `rocks-c`
+- `patch-sand`
+- `structure-platform-dock-small`
+- `mast`
+- `tool-paddle`
+
+阶段结果：
+
+- Additional asset count：10。
+- Expanded fixture asset count：20。
+- Thumbnail count：20 selected existing preview PNGs。
+- Metadata sidecar count：20。
+- Target fixture path：`tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/`。
+- Total fixture size：`719199` bytes。
+- Largest imported file：`assets/ship-pirate-small.glb`，`131464` bytes。
+- Downloaded zip remains under ignored `artifacts/` and is not tracked。
+- Generated canary/comparison artifacts remain under ignored `artifacts/` and are not tracked。
+
+行为边界：
+
+- Full archive was not imported。
+- No unapproved source was used。
+- No thumbnails were generated。
+- No metadata was created for unselected archive files。
+- No production asset packs changed。
+- Runtime/default behavior did not change。
+- Resolver behavior did not change。
+- QA / Workbench / Phaser / asset pack loading did not change。
+- Repair-enabled did not become default。
+- Step 14A production rollout remains future。
+- `AGENTS.md` was not restored。
+- Parked plan patch was not applied。
+- No tag / stash / push / sync operations。
+
+验证：
+
+    npx vitest run tests/contracts/asset-semantic-large-library-batch-zero-pirate-kit.test.ts
+    npx vitest run tests/contracts/asset-semantic-large-library-batch-zero-dry-run.test.ts
+    npm run metadata:validate -- tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- --check-paths tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run qa:asset-semantic:canary -- --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1 --timestamp 20260614Tstep13e-expanded-default
+    npm run qa:asset-semantic:canary -- --repair-enabled --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1 --timestamp 20260614Tstep13e-expanded-repair
+    npm run qa:asset-semantic:compare -- --default-summary artifacts/asset-semantic-canary/20260614Tstep13e-expanded-default/summary.json --repair-enabled-summary artifacts/asset-semantic-canary/20260614Tstep13e-expanded-repair/summary.json --out artifacts/asset-semantic-canary-comparison/20260614Tstep13e-expanded/comparison.json
+    npm run metadata:validate -- assets/metadata/examples
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+    npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata
+    npm run test:contracts
+    npm test
+    npm run typecheck
+    git diff --check
+
+验证结果：
+
+- Focused expanded fixture test passed：1 file / 6 tests。
+- Focused expanded dry-run / bridge test passed：1 file / 7 tests。
+- Expanded fixture metadata validate / JSON validate / check-paths / runtime export passed：20 metadata files，`asset_count=20`，no diagnostics。
+- Default canary passed：`runnable=20 passed=20 failed=0`。
+- Repair-enabled canary passed：`runnable=20 passed=20 failed=0`，`repair.attemptedCount=0`。
+- Comparison passed：`ok=true`，`case.total=20`，`default.failed=0`，`repair.failed=0`。
+- Bridge green summary asserted by focused test：`ok=true`，`matched_count=20`，`diagnostic_count=0`。
+- Resolver-adjacent green summary asserted by focused test：`ok=true`，`requested_count=20`，`resolved_count=20`，`diagnostic_count=0`。
+- Baseline examples validate / runtime export passed：5 files，`asset_count=5`。
+- Baseline small fixture validate / runtime export passed：10 files，`asset_count=10`。
+- `npm run test:contracts` passed：23 files / 210 tests。
+- `npm test` passed：contracts 23 files / 210 tests，workspace 12 files / 125 tests。
+- `npm run typecheck` passed：root、maker-api、maker-workbench。
+- `git diff --check` passed。
+
+Generated artifacts:
+
+- Default canary artifact path：`artifacts/asset-semantic-canary/20260614Tstep13e-expanded-default/summary.json`。
+- Repair-enabled canary artifact path：`artifacts/asset-semantic-canary/20260614Tstep13e-expanded-repair/summary.json`。
+- Comparison artifact path：`artifacts/asset-semantic-canary-comparison/20260614Tstep13e-expanded/comparison.json`。
+- Generated artifacts remain ignored and are not committed。
+
+审查门禁结论：
+
+- Oracle review completed with `PASS_WITH_P3_NOTES`。
+- P0/P1/P2 blockers：none。
+- P3：Step 13E 文档顶部仍保留旧 Step 13E-A gate wording；review log / Step 13E doc 仍写 Oracle pending。
+- Resolution：已清理 Step 13E 顶部旧 gate wording，并把 pending placeholders 更新为本次 Oracle verdict。
+- Final gate：Step 13E-B 可进入 commit；Step 14A remains parked。
 
 ### 2.46 Step 13E-A: Large-Library Batch Expansion Gate
 

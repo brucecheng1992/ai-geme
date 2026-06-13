@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { exportRuntimeArtAssetMetadataFromDirectory, validateArtAssetMetadataFiles } from '../../packages/asset-pipeline/src/index.js';
 
 const fixtureRoot = 'tests/fixtures/art-library-batch-zero-pirate-kit-v0.1';
-const selectedBasenames = [
+const batchZeroBasenames = [
   'barrel',
   'boat-row-small',
   'cannon',
@@ -19,16 +19,85 @@ const selectedBasenames = [
   'tower-complete-small'
 ] as const;
 
+const step13eAdditionalBasenames = [
+  'bottle',
+  'cannon-ball',
+  'cannon-mobile',
+  'crate-bottles',
+  'rocks-b',
+  'rocks-c',
+  'patch-sand',
+  'structure-platform-dock-small',
+  'mast',
+  'tool-paddle'
+] as const;
+
+const selectedBasenames = [
+  'barrel',
+  'boat-row-small',
+  'bottle',
+  'cannon-ball',
+  'cannon-mobile',
+  'cannon',
+  'chest',
+  'crate-bottles',
+  'crate',
+  'flag-pirate',
+  'mast',
+  'palm-straight',
+  'patch-sand',
+  'rocks-a',
+  'rocks-b',
+  'rocks-c',
+  'ship-pirate-small',
+  'structure-platform-dock-small',
+  'tool-paddle',
+  'tower-complete-small'
+] as const;
+
 const expectedAssetIds = [
   'pirate_kit_barrel_001',
   'pirate_kit_boat_row_small_001',
+  'pirate_kit_bottle_001',
+  'pirate_kit_cannon_ball_001',
+  'pirate_kit_cannon_mobile_001',
   'pirate_kit_cannon_001',
   'pirate_kit_chest_001',
+  'pirate_kit_crate_bottles_001',
   'pirate_kit_crate_001',
   'pirate_kit_flag_pirate_001',
+  'pirate_kit_mast_001',
   'pirate_kit_palm_straight_001',
+  'pirate_kit_patch_sand_001',
   'pirate_kit_rocks_a_001',
+  'pirate_kit_rocks_b_001',
+  'pirate_kit_rocks_c_001',
   'pirate_kit_ship_pirate_small_001',
+  'pirate_kit_structure_platform_dock_small_001',
+  'pirate_kit_tool_paddle_001',
+  'pirate_kit_tower_complete_small_001'
+] as const;
+
+const expectedRuntimeAssetIds = [
+  'pirate_kit_barrel_001',
+  'pirate_kit_boat_row_small_001',
+  'pirate_kit_bottle_001',
+  'pirate_kit_cannon_001',
+  'pirate_kit_cannon_ball_001',
+  'pirate_kit_cannon_mobile_001',
+  'pirate_kit_chest_001',
+  'pirate_kit_crate_001',
+  'pirate_kit_crate_bottles_001',
+  'pirate_kit_flag_pirate_001',
+  'pirate_kit_mast_001',
+  'pirate_kit_palm_straight_001',
+  'pirate_kit_patch_sand_001',
+  'pirate_kit_rocks_a_001',
+  'pirate_kit_rocks_b_001',
+  'pirate_kit_rocks_c_001',
+  'pirate_kit_ship_pirate_small_001',
+  'pirate_kit_structure_platform_dock_small_001',
+  'pirate_kit_tool_paddle_001',
   'pirate_kit_tower_complete_small_001'
 ] as const;
 
@@ -38,9 +107,12 @@ const hardAssetBytes = 5 * 1024 * 1024;
 const thumbnailMaxBytes = 512 * 1024;
 
 describe('Large art library batch-zero Pirate Kit fixture', () => {
-  it('keeps the exact Step 13C-A approved 10-asset subset with matched assets, thumbnails, and sidecars', async () => {
+  it('keeps the exact Step 13E-B approved 20-asset subset with matched assets, thumbnails, and sidecars', async () => {
     await expect(readSortedNames(fixtureRoot)).resolves.toEqual(['README.md', 'assets', 'metadata', 'source', 'thumbnails']);
 
+    expect(batchZeroBasenames).toHaveLength(10);
+    expect(step13eAdditionalBasenames).toHaveLength(10);
+    expect(selectedBasenames).toHaveLength(20);
     expect(stripExtensions(await readSortedNames(join(fixtureRoot, 'assets')), '.glb')).toEqual(selectedBasenames);
     expect(stripExtensions(await readSortedNames(join(fixtureRoot, 'thumbnails')), '.png')).toEqual(selectedBasenames);
     expect(stripExtensions(await readSortedNames(join(fixtureRoot, 'metadata')), '.asset.json')).toEqual(selectedBasenames);
@@ -49,7 +121,7 @@ describe('Large art library batch-zero Pirate Kit fixture', () => {
   it('keeps the fixture within Step 13C-A size, format, and no-full-archive limits', async () => {
     const files = await listFixtureFiles(fixtureRoot);
 
-    expect(files).toHaveLength(32);
+    expect(files).toHaveLength(62);
     expect(files.map((file) => file.relativePath)).not.toEqual(
       expect.arrayContaining([
         expect.stringMatching(/\.zip$/),
@@ -76,6 +148,18 @@ describe('Large art library batch-zero Pirate Kit fixture', () => {
       if (file.relativePath.startsWith('thumbnails/')) {
         expect(file.size).toBeLessThanOrEqual(thumbnailMaxBytes);
       }
+    }
+  });
+
+  it('records 100% Step 13E-B additional-asset review evidence in the fixture README', async () => {
+    const readme = await readFile(join(fixtureRoot, 'README.md'), 'utf8');
+
+    for (const basename of step13eAdditionalBasenames) {
+      expect(readme).toContain(`| \`${basename}\` |`);
+      expect(readme).toContain(`Models/GLB format/${basename}.glb`);
+      expect(readme).toContain(`Previews/${basename}.png`);
+      expect(readme).toContain(`metadata/${basename}.asset.json`);
+      expect(readme).toContain('validated by Step 13E-B gates');
     }
   });
 
@@ -119,7 +203,7 @@ describe('Large art library batch-zero Pirate Kit fixture', () => {
       ]);
     }
 
-    expect([...seenAssetIds].sort()).toEqual([...expectedAssetIds]);
+    expect([...seenAssetIds].sort()).toEqual([...expectedRuntimeAssetIds]);
   });
 
   it('exports runtime-safe metadata without internal provenance-sensitive fields', async () => {
@@ -127,8 +211,8 @@ describe('Large art library batch-zero Pirate Kit fixture', () => {
 
     expect(result.ok).toBe(true);
     expect(result.diagnostics).toEqual([]);
-    expect(result.artifact?.asset_count).toBe(10);
-    expect(result.artifact?.assets.map((asset) => asset.asset_id)).toEqual(expectedAssetIds);
+    expect(result.artifact?.asset_count).toBe(20);
+    expect(result.artifact?.assets.map((asset) => asset.asset_id)).toEqual(expectedRuntimeAssetIds);
 
     const artifactJson = JSON.stringify(result.artifact);
     for (const forbidden of [

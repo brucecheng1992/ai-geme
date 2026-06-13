@@ -33,7 +33,7 @@
 - generated project 根目录已写出 `asset_resolution_report.json`，记录 selected / rejected / fallback diagnostics。
 - QA report 已包含 `asset_report`，Workbench Assets 面板可展示 manifest/runtime load 状态和 source pack。
 
-当前状态：Step 13E-A large-library batch expansion gate 正在执行 docs-only 审查：基于 Step 13D-B 已完成的 Pirate Kit 10-asset batch-zero semantic dry-run / bridge evidence，定义 Step 13E-B 是否可以扩展同一 fixture、允许新增多少资产、需要哪些 validation / rollback / stop rules。本步不导入资产、不修改 sidecar metadata / thumbnails、不生成 artifacts、不改变默认运行时、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 production asset packs。Runtime/default integration 与 production rollout 继续 parked。
+当前状态：Step 13E-B controlled large-library expansion implementation 已完成本地验证和 Oracle 只读审查：基于 Step 13E-A gate，将同一 Kenney Pirate Kit fixture 从 10 个 assets 受控扩展到 20 个 assets，并复跑 metadata validation、runtime export、default / repair-enabled canary、comparison、bridge summary 和 resolver-adjacent diagnostics。本步仍不改变默认运行时、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 production asset packs。Runtime/default integration 与 production rollout 继续 parked。
 
 - QA / Workbench 已能识别 runtime pass 但 hard semantic mismatch 的 `NEEDS_ASSET_REPAIR`，并展示 per-asset semanticFit 摘要。
 - 第一批 canary brief fixture 已建立，batch runner 已能默认运行 supported cases、跳过 `expectedUnsupported` cases，并写出 summary report。
@@ -56,7 +56,8 @@
 - 已完成 Step 13C-B large-library metadata batch zero：导入 approved Pirate Kit 10-asset fixture、10 个 selected existing previews、10 个 sidecar metadata、README/source evidence 和 focused contract test，不接 runtime/default。
 - 已完成 Step 13D-A batch-zero semantic dry-run gate：docs-only 定义 Step 13D-B 如何对同一 batch-zero fixture 跑 metadata validation、runtime export、default / repair-enabled canary、comparison、bridge summary 和 resolver-adjacent diagnostics；runtime/default integration 与 production rollout 继续 parked。
 - 已完成 Step 13D-B batch-zero semantic dry-run / bridge implementation：同一 Pirate Kit 10-asset fixture 的 metadata validate/export、default / repair-enabled canary、comparison、bridge summary、resolver-adjacent diagnostics 和独立 negative diagnostics 均通过；未接 runtime/default 或 production asset packs。
-- 正在执行 Step 13E-A large-library batch expansion gate：docs-only 定义 Step 13E-B 只能在同一 Kenney Pirate Kit fixture 上最多新增 10 个资产、扩展后总数最多 20 个，并必须复跑 metadata validate/export、default / repair-enabled canary、comparison、bridge diagnostics、contracts、full tests 和 typecheck。
+- 已完成 Step 13E-A large-library batch expansion gate：docs-only 定义 Step 13E-B 只能在同一 Kenney Pirate Kit fixture 上最多新增 10 个资产、扩展后总数最多 20 个，并必须复跑 metadata validate/export、default / repair-enabled canary、comparison、bridge diagnostics、contracts、full tests 和 typecheck。
+- 已完成 Step 13E-B controlled large-library expansion implementation：在同一 Pirate Kit fixture 中新增 10 个同源 GLB assets、10 个 selected existing previews 和 10 个 sidecar metadata files，并通过 100% additional-asset review evidence、metadata gates、canary / comparison、bridge diagnostics 和 Oracle 只读审查。
 
 ## 4. 分步落地计划
 
@@ -98,8 +99,8 @@
 | Step 13C-B | Large library metadata batch zero | Kenney Pirate Kit 10-asset fixture、sidecar metadata、selected previews、focused contract test，不接 runtime/default | 已完成 |
 | Step 13D-A | Batch-zero semantic dry-run / bridge gate | docs-only 定义 Pirate Kit batch-zero fixture 的 validation / export / canary / comparison / bridge / resolver-adjacent diagnostics gate | 已完成 |
 | Step 13D-B | Batch-zero semantic dry-run / bridge implementation | 对同一 10-asset fixture 跑 full semantic dry-run、bridge summary、resolver-adjacent diagnostics 和独立 negative diagnostics | 已完成 |
-| Step 13E-A | Large-library batch expansion gate | docs-only 定义同一 Pirate Kit fixture 的扩展尺寸、metadata / thumbnail policy、validation、rollback 和 Step 14A stop rules | Current |
-| Step 13E-B | Large-library batch expansion implementation | 若 Step 13E-A 通过，则最多新增 10 个同源 Pirate Kit fixture assets 并复跑 semantic dry-run / bridge gates | Future |
+| Step 13E-A | Large-library batch expansion gate | docs-only 定义同一 Pirate Kit fixture 的扩展尺寸、metadata / thumbnail policy、validation、rollback 和 Step 14A stop rules | 已完成 |
+| Step 13E-B | Large-library batch expansion implementation | 新增 10 个同源 Pirate Kit fixture assets 并复跑 semantic dry-run / bridge gates | 已完成 |
 | Workbench / QA preview | Diagnostics preview | 预览 bridge diagnostics，不改变 default verdict | 后续 |
 | Production rollout gate | Default asset pack rollout | 生产默认行为变更的独立 gate | parked |
 

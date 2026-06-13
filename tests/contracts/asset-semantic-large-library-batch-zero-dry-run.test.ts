@@ -22,21 +22,54 @@ const missingCandidateAssetId = 'pirate_kit_barrel_001';
 const candidateWithoutRuntimeId = 'pirate_kit_candidate_without_runtime_001';
 const blockedContextId = 'production_default_runtime';
 const blockedContextAssetId = 'pirate_kit_barrel_001';
-const expectedAssetIds = [
+const expectedValidationAssetIds = [
   'pirate_kit_barrel_001',
   'pirate_kit_boat_row_small_001',
+  'pirate_kit_bottle_001',
+  'pirate_kit_cannon_ball_001',
+  'pirate_kit_cannon_mobile_001',
   'pirate_kit_cannon_001',
   'pirate_kit_chest_001',
+  'pirate_kit_crate_bottles_001',
   'pirate_kit_crate_001',
   'pirate_kit_flag_pirate_001',
+  'pirate_kit_mast_001',
   'pirate_kit_palm_straight_001',
+  'pirate_kit_patch_sand_001',
   'pirate_kit_rocks_a_001',
+  'pirate_kit_rocks_b_001',
+  'pirate_kit_rocks_c_001',
   'pirate_kit_ship_pirate_small_001',
+  'pirate_kit_structure_platform_dock_small_001',
+  'pirate_kit_tool_paddle_001',
   'pirate_kit_tower_complete_small_001'
 ] as const;
+const expectedRuntimeAssetIds = [
+  'pirate_kit_barrel_001',
+  'pirate_kit_boat_row_small_001',
+  'pirate_kit_bottle_001',
+  'pirate_kit_cannon_001',
+  'pirate_kit_cannon_ball_001',
+  'pirate_kit_cannon_mobile_001',
+  'pirate_kit_chest_001',
+  'pirate_kit_crate_001',
+  'pirate_kit_crate_bottles_001',
+  'pirate_kit_flag_pirate_001',
+  'pirate_kit_mast_001',
+  'pirate_kit_palm_straight_001',
+  'pirate_kit_patch_sand_001',
+  'pirate_kit_rocks_a_001',
+  'pirate_kit_rocks_b_001',
+  'pirate_kit_rocks_c_001',
+  'pirate_kit_ship_pirate_small_001',
+  'pirate_kit_structure_platform_dock_small_001',
+  'pirate_kit_tool_paddle_001',
+  'pirate_kit_tower_complete_small_001'
+] as const;
+const expectedAssetCount = expectedValidationAssetIds.length;
 
 describe('Step 13D-B large library batch-zero semantic dry-run', () => {
-  it('validates and exports the exact 10 batch-zero sidecars without source metadata writeback', async () => {
+  it('validates and exports the exact 20 expanded fixture sidecars without source metadata writeback', async () => {
     await expect(isArtLibraryMetadataFixtureRoot(fixtureRoot)).resolves.toBe(true);
     await expect(isArtLibraryMetadataFixtureRoot('tests/fixtures/asset-semantic-canary.briefs.json')).resolves.toBe(false);
 
@@ -49,10 +82,10 @@ describe('Step 13D-B large library batch-zero semantic dry-run', () => {
 
     expect(validationResult.ok).toBe(true);
     expect(validationResult.diagnostics).toEqual([]);
-    expect(validationResult.files).toHaveLength(10);
-    expect(validationResult.files.map((file) => file.assetId)).toEqual(expectedAssetIds);
-    expect(artifact.asset_count).toBe(10);
-    expect(artifact.assets.map((asset) => asset.asset_id)).toEqual(expectedAssetIds);
+    expect(validationResult.files).toHaveLength(expectedAssetCount);
+    expect(validationResult.files.map((file) => file.assetId)).toEqual(expectedValidationAssetIds);
+    expect(artifact.asset_count).toBe(expectedAssetCount);
+    expect(artifact.assets.map((asset) => asset.asset_id)).toEqual(expectedRuntimeAssetIds);
   });
 
   it('builds default and repair-enabled canary summaries from the same batch-zero fixture', async () => {
@@ -76,18 +109,18 @@ describe('Step 13D-B large library batch-zero semantic dry-run', () => {
       fixture: {
         kind: 'large_art_library_batch_zero',
         identity: 'art-library-batch-zero-pirate-kit-v0.1',
-        assetCount: 10
+        assetCount: expectedAssetCount
       },
-      total: 10,
-      runnable: 10,
-      passed: 10,
+      total: expectedAssetCount,
+      runnable: expectedAssetCount,
+      passed: expectedAssetCount,
       failed: 0,
       skipped: 0,
       experimental: 0,
       exitCode: 0,
       repairEnabled: false
     });
-    expect(defaultSummary.cases.map((item) => item.id)).toEqual(expectedAssetIds);
+    expect(defaultSummary.cases.map((item) => item.id)).toEqual(expectedRuntimeAssetIds);
     expect(defaultSummary.cases.every((item) => item.selectedPacks?.[0] === 'art-library-batch-zero-pirate-kit-v0.1')).toBe(true);
 
     expect(repairEnabledSummary.fixturePath).toBe(defaultSummary.fixturePath);
@@ -101,9 +134,9 @@ describe('Step 13D-B large library batch-zero semantic dry-run', () => {
         enabled: true,
         attemptedCount: 0,
         failedCount: 0,
-        skippedCount: 10,
+        skippedCount: expectedAssetCount,
         skippedReasons: {
-          large_art_library_batch_zero_metadata_only_dry_run: 10
+          large_art_library_batch_zero_metadata_only_dry_run: expectedAssetCount
         }
       }
     });
@@ -112,11 +145,11 @@ describe('Step 13D-B large library batch-zero semantic dry-run', () => {
       fixture: {
         kind: 'large_art_library_batch_zero',
         identity: 'art-library-batch-zero-pirate-kit-v0.1',
-        asset_count: 10
+        asset_count: expectedAssetCount
       },
       case_set: {
-        total: 10,
-        ids: expectedAssetIds,
+        total: expectedAssetCount,
+        ids: expectedRuntimeAssetIds,
         skipped: 0,
         experimental: 0
       },
@@ -145,7 +178,7 @@ describe('Step 13D-B large library batch-zero semantic dry-run', () => {
       asset_count: defaultSummary.fixture?.assetCount,
       metadata: {
         validated: true,
-        runtime_export_asset_count: 10
+        runtime_export_asset_count: expectedAssetCount
       },
       canary: {
         default_failed: defaultSummary.failed,
@@ -174,21 +207,21 @@ describe('Step 13D-B large library batch-zero semantic dry-run', () => {
         asset_type: asset.asset_type
       }))
     );
-    expect(requestedAssetIds).toEqual(expectedAssetIds);
+    expect(requestedAssetIds).toEqual(expectedRuntimeAssetIds);
     expect(bridge).toEqual({
       bridge_version: '0.1',
       ok: true,
-      runtime_asset_count: 10,
-      candidate_count: 10,
-      matched_count: 10,
+      runtime_asset_count: expectedAssetCount,
+      candidate_count: expectedAssetCount,
+      matched_count: expectedAssetCount,
       diagnostic_count: 0,
       diagnostics: []
     });
     expect(resolverDiagnostics).toEqual({
       diagnostics_version: '0.1',
       ok: true,
-      requested_count: 10,
-      resolved_count: 10,
+      requested_count: expectedAssetCount,
+      resolved_count: expectedAssetCount,
       diagnostic_count: 0,
       diagnostics: []
     });
@@ -249,9 +282,9 @@ describe('Step 13D-B large library batch-zero semantic dry-run', () => {
     expect(missingCandidateSummary).toMatchObject({
       bridge_version: '0.1',
       ok: false,
-      runtime_asset_count: 10,
-      candidate_count: 9,
-      matched_count: 9,
+      runtime_asset_count: expectedAssetCount,
+      candidate_count: expectedAssetCount - 1,
+      matched_count: expectedAssetCount - 1,
       diagnostic_count: 1,
       diagnostics: [
         {
@@ -265,9 +298,9 @@ describe('Step 13D-B large library batch-zero semantic dry-run', () => {
     expect(candidateWithoutRuntimeSummary).toMatchObject({
       bridge_version: '0.1',
       ok: false,
-      runtime_asset_count: 10,
-      candidate_count: 11,
-      matched_count: 10,
+      runtime_asset_count: expectedAssetCount,
+      candidate_count: expectedAssetCount + 1,
+      matched_count: expectedAssetCount,
       diagnostic_count: 1,
       diagnostics: [
         {

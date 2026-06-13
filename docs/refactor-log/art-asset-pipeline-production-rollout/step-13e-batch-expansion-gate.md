@@ -1,18 +1,18 @@
-# Step 13E — Large-Library Batch Expansion Gate
+# Step 13E — Large-Library Batch Expansion
 
-Status: Step 13E-A docs-only gate in progress.
+Status: Step 13E-B controlled expansion implementation locally validated and Oracle reviewed.
 
 ## Goal
 
-Define the next large-library expansion step after the Step 13C / Step 13D Pirate Kit batch-zero proof, without importing assets or changing runtime behavior.
+Define and record the controlled large-library expansion after the Step 13C / Step 13D Pirate Kit batch-zero proof, without changing runtime/default behavior.
 
-Step 13E-A answers only this question:
+Step 13E-A answered only this question:
 
 ```txt
 Is a tightly bounded Step 13E-B expansion implementation allowed, and under which constraints?
 ```
 
-Step 13E-A does not perform the expansion. Step 13E-B remains a future implementation step.
+Step 13E-A did not perform the expansion. Step 13E-B implements the approved test-fixture-only expansion and remains separate from Step 14A production rollout.
 
 ## Completed Preconditions
 
@@ -197,3 +197,160 @@ P2:
 P3:
 
 - wording, naming, formatting, cross-link cleanup.
+
+## Step 13E-B Controlled Expansion Implementation
+
+Step 13E-B extends the existing committed Pirate Kit fixture:
+
+```txt
+tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/
+```
+
+It does not create a new fixture path and does not wire the expanded fixture into runtime/default behavior.
+
+### Source Used
+
+- Source page: `https://kenney.nl/assets/pirate-kit`
+- Archive URL: `https://kenney.nl/media/pages/assets/pirate-kit/e6d4bb1525-1771333093/kenney_pirate-kit.zip`
+- Local archive input: `artifacts/asset-semantic-large-library-inventory/tmp/kenney_pirate-kit.zip`
+- Extraction mode: selected files only; no full archive extraction committed.
+
+### Added Assets
+
+Step 13E-B adds exactly 10 assets:
+
+- `bottle`
+- `cannon-ball`
+- `cannon-mobile`
+- `crate-bottles`
+- `rocks-b`
+- `rocks-c`
+- `patch-sand`
+- `structure-platform-dock-small`
+- `mast`
+- `tool-paddle`
+
+Expanded fixture counts:
+
+```txt
+existing batch-zero assets: 10
+additional Step 13E-B assets: 10
+expanded fixture assets: 20
+expanded fixture thumbnails: 20
+expanded fixture metadata sidecars: 20
+total committed fixture files: 62
+total fixture size: 719199 bytes
+largest imported file: tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/assets/ship-pirate-small.glb, 131464 bytes
+```
+
+### 100% Additional-Asset Review Evidence
+
+The fixture README records every newly added asset with:
+
+- asset id;
+- archive-relative source GLB path;
+- selected existing preview path;
+- file size;
+- category / semantic rationale;
+- metadata sidecar path;
+- validation status.
+
+The 10 added metadata sidecars use:
+
+```txt
+workflow.owner: asset_semantic_step_13e_b
+workflow.reviewed_by: main_agent
+workflow.created_at / updated_at / approved_at: 2026-06-14
+blocked_contexts: production_default_runtime, large_library_rollout
+license: cc0
+```
+
+### Behavior Boundary
+
+- Runtime/default behavior did not change.
+- Resolver behavior did not change.
+- QA / Workbench / Phaser / asset pack loading did not change.
+- Production asset packs did not change.
+- Repair-enabled remains non-default.
+- Step 14A production rollout remains future.
+- No downloaded archive, raw extraction directory, generated thumbnail or generated canary/comparison artifact is committed.
+
+### Step 13E-B Validation Evidence
+
+Focused tests:
+
+```bash
+npx vitest run tests/contracts/asset-semantic-large-library-batch-zero-pirate-kit.test.ts
+npx vitest run tests/contracts/asset-semantic-large-library-batch-zero-dry-run.test.ts
+```
+
+Results:
+
+- Expanded fixture exact-set test passed: 1 file / 6 tests.
+- Expanded semantic dry-run / bridge test passed: 1 file / 7 tests.
+- Bridge summary asserted by focused test: `ok=true`, `matched_count=20`, `diagnostic_count=0`.
+- Resolver-adjacent summary asserted by focused test: `ok=true`, `requested_count=20`, `resolved_count=20`, `diagnostic_count=0`.
+- Negative diagnostics remain separate from the green path.
+
+Metadata gates:
+
+```bash
+npm run metadata:validate -- tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+npm run metadata:validate -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+npm run metadata:validate -- --check-paths tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+npm run metadata:export-runtime -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+```
+
+Results:
+
+- Metadata validate passed: 20 metadata files.
+- JSON validate passed: `ok=true`, 20 files, no diagnostics.
+- Check-paths validate passed: 20 metadata files.
+- Runtime-safe export passed: `asset_count=20`, no diagnostics.
+
+Canary / comparison:
+
+```bash
+npm run qa:asset-semantic:canary -- --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1 --timestamp 20260614Tstep13e-expanded-default
+npm run qa:asset-semantic:canary -- --repair-enabled --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1 --timestamp 20260614Tstep13e-expanded-repair
+npm run qa:asset-semantic:compare -- --default-summary artifacts/asset-semantic-canary/20260614Tstep13e-expanded-default/summary.json --repair-enabled-summary artifacts/asset-semantic-canary/20260614Tstep13e-expanded-repair/summary.json --out artifacts/asset-semantic-canary-comparison/20260614Tstep13e-expanded/comparison.json
+```
+
+Results:
+
+- Default canary passed: `runnable=20`, `passed=20`, `failed=0`.
+- Repair-enabled canary passed: `runnable=20`, `passed=20`, `failed=0`, `repair.attemptedCount=0`.
+- Comparison passed: `ok=true`, `case.total=20`, `default.failed=0`, `repair.failed=0`.
+- Default canary artifact: `artifacts/asset-semantic-canary/20260614Tstep13e-expanded-default/summary.json`.
+- Repair-enabled canary artifact: `artifacts/asset-semantic-canary/20260614Tstep13e-expanded-repair/summary.json`.
+- Comparison artifact: `artifacts/asset-semantic-canary-comparison/20260614Tstep13e-expanded/comparison.json`.
+
+Baseline and full gates:
+
+```bash
+npm run metadata:validate -- assets/metadata/examples
+npm run metadata:export-runtime -- --json assets/metadata/examples
+npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata
+npm run test:contracts
+npm test
+npm run typecheck
+git diff --check
+```
+
+Results:
+
+- Example metadata validate/export passed: 5 files, `asset_count=5`.
+- Small fixture metadata validate/export passed: 10 files, `asset_count=10`.
+- `npm run test:contracts` passed: 23 files / 210 tests.
+- `npm test` passed: contracts 23 files / 210 tests, workspace 12 files / 125 tests.
+- `npm run typecheck` passed: root, maker-api, maker-workbench.
+- `git diff --check` passed.
+
+Oracle review:
+
+- Oracle review completed with `PASS_WITH_P3_NOTES`.
+- P0/P1/P2 blockers: none.
+- P3 findings: stale Step 13E-A gate wording and pending Oracle placeholders.
+- Resolution: stale wording and pending placeholders were updated before commit.
+- Final gate: Step 13E-B may proceed to commit; Step 14A remains parked.
