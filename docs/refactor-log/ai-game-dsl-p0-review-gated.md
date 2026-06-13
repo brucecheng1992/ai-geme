@@ -8,11 +8,59 @@
 
 ## 当前阶段
 
-Metadata Step 4B asset pack metadata bridge / resolver diagnostics implementation 已完成本地实现与验证：本步只新增两个 pure report-only helper、focused contract tests 和 docs update，不接 production/default asset packs、不改变 resolver / QA / Workbench / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate 和 Metadata Step 4B report-only helper implementation。
+Step 10A small library bridge canary review gate 为当前 docs-only 步骤：本步只固化 Step 10B fixture-only explicit-input canary 的输入、候选派生、requested id、green canary / negative diagnostics 分离、pass/fail 和禁止范围，不实现 Step 10B，不接 production/default asset packs、不改变 resolver / QA / Workbench / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate 和 Metadata Step 4B report-only helper implementation。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Step 10A small library bridge canary gate，或如果不需要 Step 10，则关闭 bridge lane。large asset library、runtime/default integration、QA / Workbench / Phaser / asset pack loading 继续 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Step 10B small library bridge canary implementation。large asset library、runtime/default integration、QA / Workbench / Phaser / asset pack loading 继续 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.31 Step 10A: Small Library Bridge Canary Review Gate
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 新增 `docs/refactor-log/asset-pack-metadata-bridge-step-10a-small-library-canary.md`，定义 Step 10B small library bridge canary 的 docs-only gate。
+- 更新 `docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md`，将 Step 4B 标为已完成，Step 10A 标为当前 docs-only gate，Step 10B 标为下一步。
+- 更新本 review log，记录 Step 10A 是 docs-only gate，不实现 Step 10B。
+
+Gate 摘要：
+
+- Step 10B 必须是 fixture-only explicit-input small library bridge canary。
+- Step 10B 只能使用 `createAssetPackMetadataBridgeSummary` 和 `createAssetResolverDiagnosticsSummary`。
+- Step 10B 不得调用 `resolveLocalAssetPack`、`selectLocalAssetPack`、real resolver path、runtime/default resolver path、QA runtime path、Workbench path、Phaser runtime path 或 asset pack loading path。
+- Bridge candidates 必须一条 small library metadata asset 对一条 explicit candidate，字段来自 runtime-safe metadata `asset_id`、`technical.source_path`、`technical.thumbnail_path`，可选 `asset_type`。
+- Resolver-adjacent `requestedAssetIds` green path 必须使用 exact 10 known small-library asset ids。
+- Green canary 与 negative diagnostics 必须分离；missing-id / blocked-context 只能作为 focused negative cases。
+- Step 10B 不要求 unsupported semantic diagnostics；当前 helper API 没有 explicit expected semantic input。
+
+行为边界：
+
+- 本步没有实现代码。
+- 本步没有新增 tests、scripts、CLI 或 generated artifacts。
+- 本步没有修改 runtime/default asset loading。
+- 本步没有修改 resolver behavior。
+- 本步没有修改 QA runtime behavior、Workbench、Phaser 或 asset pack loading。
+- 本步没有扫描、导入或处理 large asset library。
+- 本步没有修改 asset imports、metadata sidecars、source metadata 或 source assets。
+- 本步没有启动 Step 10B implementation。
+
+Future boundaries：
+
+- Step 10B：implement fixture-only explicit-input small library bridge canary。
+- Step 11A：docs-only gate for optional non-default runtime integration, if still needed。
+- Step 13A：large library gate remains future and separate。
+
+验证：
+
+    git diff --check
+    # 无输出
+
+审查记录：
+
+- Oracle pre-review：Go for docs-only；要求 Step 10B 写成 fixture-only explicit-input canary，禁止 runtime/default resolver integration，并明确 green canary 与 negative diagnostics 分离。
+- Oracle 首轮审查：P0/P2/P3 未发现；P1 指出 Step 9C dry-run output wording 可能放宽 Step 10B executable input boundary。已收窄为 prior evidence only，Step 10B executable inputs 必须 fresh derive from small fixture metadata、runtime-safe export 和 explicit test/dry-run input。
+- Oracle 复审：P0/P1/P2/P3 均无；确认 Step 10A docs-only gate 可在 staged diff 检查后提交。
 
 ### 2.30 Metadata Step 4B: Asset Pack Metadata Bridge / Resolver Diagnostics Implementation
 

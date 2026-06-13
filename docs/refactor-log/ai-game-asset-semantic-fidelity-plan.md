@@ -33,7 +33,7 @@
 - generated project 根目录已写出 `asset_resolution_report.json`，记录 selected / rejected / fallback diagnostics。
 - QA report 已包含 `asset_report`，Workbench Assets 面板可展示 manifest/runtime load 状态和 source pack。
 
-当前状态：Metadata Step 4B asset pack metadata bridge / resolver diagnostics implementation 已完成本地实现与验证；本步只新增两个 pure report-only helper、focused contract tests 和 docs update，不改变默认运行时、resolver、QA、Workbench、Phaser 或 asset pack loading。
+当前状态：Step 10A small library bridge canary review gate 为当前 docs-only 步骤；本步只固化未来 Step 10B fixture-only explicit-input canary 的输入、候选派生、requested id、pass/fail 和禁止范围，不实现 Step 10B，不改变默认运行时、resolver、QA、Workbench、Phaser 或 asset pack loading。
 
 - QA / Workbench 已能识别 runtime pass 但 hard semantic mismatch 的 `NEEDS_ASSET_REPAIR`，并展示 per-asset semanticFit 摘要。
 - 第一批 canary brief fixture 已建立，batch runner 已能默认运行 supported cases、跳过 `expectedUnsupported` cases，并写出 summary report。
@@ -50,6 +50,7 @@
 - 已新增 Step 9C small art library dry-run：`--fixture tests/fixtures/art-library-small-v0.1` 只触发 canary-only metadata/export summary，不改变默认 canary JSON fixture、runtime/default behavior 或 repair default。
 - 已新增 Metadata Step 4A asset pack metadata bridge / resolver diagnostics review gate：docs-only 定义 Step 4B 允许读取 runtime-safe metadata / small library dry-run output 并生成 deterministic report，不启动 runtime/default integration 或 large library。
 - 已新增 Metadata Step 4B asset pack metadata bridge / resolver diagnostics implementation：只新增 `createAssetPackMetadataBridgeSummary` / `createAssetResolverDiagnosticsSummary` 两个 pure report-only helper、focused tests 和 docs；不调用 `resolveLocalAssetPack` / `selectLocalAssetPack`，不实现 unsupported semantic inference。
+- 已新增 Step 10A small library bridge canary review gate：docs-only 定义 Step 10B 只能使用 Step 9B fixture-derived explicit inputs 和 Step 4B pure helpers，不允许 runtime/default resolver paths、production/default asset packs 或 large library。
 
 ## 4. 分步落地计划
 
@@ -75,10 +76,10 @@
 | Step 9B | Small art library metadata intake / fixture import | 导入或创建 10-30 个小型 fixture 资产并补 sidecar metadata | 已完成 |
 | Step 9C | Small art library dry-run validation / canary / comparison | 对小型库跑 validate / export / canary / comparison 并生成 dry-run report | 已完成 |
 | Metadata Step 4A | Asset pack metadata bridge / resolver diagnostics review gate | docs-only 定义 bridge / diagnostics 边界、deterministic outputs 和 large-library exclusion | 已完成 |
-| Metadata Step 4B | Asset pack metadata bridge / resolver diagnostics implementation | bridge helper、diagnostic helper、focused tests、deterministic report schema | 当前 |
-| Step 10A | Small library bridge canary gate | docs-only 定义 fixture-only bridge canary，不接生产/default | 下一步 |
-| Small library bridge canary | Fixture-only bridge canary | 使用 small library bridge output 做非生产 canary | 后续 |
-| Non-default runtime integration | Explicit opt-in runtime lane | 非默认开关验证 bridge consumer，不改变 production/default | 后续 |
+| Metadata Step 4B | Asset pack metadata bridge / resolver diagnostics implementation | bridge helper、diagnostic helper、focused tests、deterministic report schema | 已完成 |
+| Step 10A | Small library bridge canary review gate | docs-only 定义 fixture-only explicit-input bridge canary，不接生产/default | 当前 |
+| Step 10B | Small library bridge canary implementation | 使用 Step 4B pure helpers 跑 fixture-only green canary 与独立 negative diagnostics | 下一步 |
+| Step 11A | Optional non-default runtime integration gate | docs-only gate，若仍需要才讨论非默认 runtime integration | 后续 |
 | Workbench / QA preview | Diagnostics preview | 预览 bridge diagnostics，不改变 default verdict | 后续 |
 | Large library gate | Large asset library scan/import gate | 尺寸、license、metadata、rollout policy gate | parked |
 | Production rollout gate | Default asset pack rollout | 生产默认行为变更的独立 gate | parked |
@@ -988,7 +989,7 @@ Step 4B 未来不允许：
 
 ## 27. Metadata Step 4B asset pack metadata bridge / resolver diagnostics implementation
 
-状态：已完成本地实现与验证，等待 Oracle 审查后提交。
+状态：已完成。
 
 Step 4B 只实现 report-only helper：
 
@@ -1081,3 +1082,61 @@ Small library fixture 用途：
 
 - Oracle 首轮审查：P0/P1/P2 未发现；P3 指出 thumbnail mismatch diagnostic 的 `jsonPath` 应指向 candidate thumbnail field。已改为 `$.candidates[index].thumbnail_path` 并补测试锁定。
 - Oracle 复审：P0/P1/P2/P3 均无；确认 Step 4B 保持 pure report-only helper / focused tests / docs 范围，未越界到 runtime/default behavior、resolver decisions、QA、Workbench、Phaser、asset pack loading、large library、repair writeback 或 unsupported semantic inference。
+
+## 28. Step 10A small library bridge canary review gate
+
+状态：当前 docs-only gate，完成后 Step 10B 才能开始。
+
+Step 10A 只记录 future small library bridge canary 边界：
+
+- 新增 `docs/refactor-log/asset-pack-metadata-bridge-step-10a-small-library-canary.md`。
+- Step 10B 必须是 fixture-only explicit-input canary。
+- Step 10B 只能使用 `createAssetPackMetadataBridgeSummary` 和 `createAssetResolverDiagnosticsSummary`。
+- Step 10B 不得使用 `resolveLocalAssetPack`、`selectLocalAssetPack`、real resolver path、runtime/default resolver path、QA runtime path、Workbench path、Phaser runtime path 或 asset pack loading path。
+- Step 10B 不得要求 unsupported semantic diagnostics；当前 Step 4B helper 没有 explicit expected semantic input。
+
+Step 10B input rules：
+
+- 可使用 `tests/fixtures/art-library-small-v0.1/` 和 `tests/fixtures/art-library-small-v0.1/metadata`。
+- 可使用从 small library metadata 生成的 runtime-safe metadata。
+- 可使用从 fixture metadata 或 file layout 派生的 explicit bridge candidates。
+- green path 使用 exact 10 known small-library asset ids 作为 `requestedAssetIds`。
+- missing-id / blocked-context cases 必须作为 focused negative diagnostics，不能混入 green canary。
+
+Step 10B pass/fail criteria：
+
+- metadata validation passes。
+- runtime export succeeds。
+- bridge summary `ok=true` for matching explicit candidates。
+- resolver-adjacent diagnostics summary `ok=true` for the 10 valid requested ids。
+- negative diagnostics deterministic and separate。
+- no runtime/default behavior changes。
+- no production/default asset pack or large asset library touched。
+- no generated artifacts committed。
+
+Step 10A 不修改：
+
+- code、tests、scripts 或 generated artifacts。
+- runtime/default asset loading。
+- resolver behavior。
+- QA、Workbench、Phaser 或 asset pack loading。
+- production/default asset packs。
+- large asset library。
+- source metadata 或 metadata sidecars。
+
+未来边界：
+
+- Step 10B：implement fixture-only explicit-input small library bridge canary。
+- Step 11A：docs-only gate for optional non-default runtime integration, if still needed。
+- Step 13A：large library gate remains future and separate。
+
+验证：
+
+    git diff --check
+    # 无输出
+
+审查记录：
+
+- Oracle pre-review：Go for docs-only；要求 Step 10B 写成 fixture-only explicit-input canary，禁止 runtime/default resolver integration，并明确 green canary 与 negative diagnostics 分离。
+- Oracle 首轮审查：P0/P2/P3 未发现；P1 指出 Step 9C dry-run output wording 可能放宽 Step 10B executable input boundary。已收窄为 prior evidence only，Step 10B executable inputs 必须 fresh derive from small fixture metadata、runtime-safe export 和 explicit test/dry-run input。
+- Oracle 复审：P0/P1/P2/P3 均无；确认 Step 10A docs-only gate 可在 staged diff 检查后提交。

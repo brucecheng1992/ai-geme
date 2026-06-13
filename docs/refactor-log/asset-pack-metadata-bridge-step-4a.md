@@ -237,3 +237,11 @@ Step 4B has implemented the future boundary defined by this gate as pure report-
 Step 4B did not implement runtime/default integration, resolver decision changes, QA / Workbench / Phaser integration, production/default asset pack loading, repair writeback, unsupported semantic inference, large asset library scan/import or generated artifact commit.
 
 Detailed Step 4B record: `docs/refactor-log/asset-pack-metadata-bridge-step-4b.md`.
+
+## 14. Step 10A Follow-Up
+
+Step 10A has added the docs-only gate for the small library bridge canary:
+
+- `docs/refactor-log/asset-pack-metadata-bridge-step-10a-small-library-canary.md`
+
+Step 10A does not implement Step 10B, does not run the real resolver, does not wire runtime/default behavior, and does not touch large asset library.
