@@ -118,6 +118,8 @@ Step 13C still requires explicit user approval. It should choose one runtime-fri
 
 Step 13C must generate or validate sidecar metadata in its own branch because Step 13B detected no sidecar metadata entries in the source archive. Step 13C must not reuse Step 13B as import approval.
 
+Follow-up: Step 13C-A is the docs-only batch-zero selection / import gate. It approves a future Step 13C-B implementation boundary only; it still does not extract, import, generate sidecars, generate thumbnails, or change runtime/default behavior.
+
 ## Confirmations
 
 - Archive entries were listed without extraction.

@@ -8,11 +8,76 @@
 
 ## 当前阶段
 
-Step 13B Kenney Pirate Kit large-library inventory dry-run 正在执行：本步只使用用户明确提供且已 preflight 的 direct archive URL，把 archive 下载到 ignored artifacts 后读取 archive entry metadata，生成 deterministic inventory summary 并沉淀 docs。不抽取、不导入、不复制到生产 asset packs、不生成 sidecar metadata / thumbnails / hashes / embeddings / image dimension probes，不改变 runtime/default integration、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 repair behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate、Step 10B implementation、Step 11A-11C non-default runtime canary lane、Step 12A preview gate、Step 12B preview implementation、Step 12C preview signoff 和 Step 13A large-library intake gate。
+Step 13C-A Kenney Pirate Kit batch-zero selection / import gate 正在执行：本步只写 docs，定义未来 Step 13C-B 可使用的 exact source archive、10 个 GLB 候选、对应 existing preview PNG、fixture layout、metadata / thumbnail policy、validation、review gate 和 rollback policy。不抽取、不导入、不生成 sidecar metadata / thumbnails、不加 tests/scripts/code，不改变 runtime/default integration、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 repair behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate、Step 10B implementation、Step 11A-11C non-default runtime canary lane、Step 12A preview gate、Step 12B preview implementation、Step 12C preview signoff、Step 13A large-library intake gate 和 Step 13B read-only inventory dry-run。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：完成 Step 13B 本地验证、Sage/Oracle 只读审查和 docs review gate 后提交 `test: inventory large art library candidates`。当前分支为 `test/asset-semantic-step-13b-large-library-inventory`。Step 13B 不启动 Step 13C；Step 13C batch zero 需要显式批准。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：完成 Step 13C-A docs-only gate 的 `git diff --check`、scope 检查、Sage/Oracle 只读审查和 docs review gate 后提交 `docs: gate large art library batch zero`。当前分支为 `docs/asset-semantic-step-13c-batch-zero-gate`。Step 13C-B implementation 仍未开始；runtime/default integration 和 production rollout 继续 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.42 Step 13C-A: Batch Zero Selection / Import Gate
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 新增 `docs/refactor-log/asset-semantic-large-library-step-13c-batch-zero.md`。
+- 文档批准 Step 13C-B 只能使用 Kenney Pirate Kit source page 和 direct archive URL。
+- 文档定义 Step 13C-B 可再次下载 exact archive 到 ignored temp path，并只可把 approved selected files 解到 ignored selected-extraction temp path。
+- 文档批准 Pirate Kit batch zero 为 10 个 GLB model candidates 及对应 existing `Previews/*.png` reference images。
+- 文档推荐 fixture layout：`tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/{assets,metadata,source,thumbnails}`。
+- 文档定义 metadata policy、thumbnail policy、Step 13C-B allowed / forbidden operations、validation requirements、review gate 和 rollback / failure policy。
+- 更新 semantic fidelity plan；可选 Step 13B follow-up pointer 记录 Step 13C-A gate 已打开。
+
+Approved Step 13C-B source:
+
+- Source page：`https://kenney.nl/assets/pirate-kit`。
+- Archive URL：`https://kenney.nl/media/pages/assets/pirate-kit/e6d4bb1525-1771333093/kenney_pirate-kit.zip`。
+- License evidence：Creative Commons CC0, based on Step 13B source page evidence。
+
+Batch size policy:
+
+- General target：10 to 30 assets。
+- Hard max：50 assets。
+- Pirate Kit Step 13C-B approved batch-zero asset count：10。
+- Do not import the whole Pirate Kit archive。
+
+Approved candidate archive paths:
+
+- `Models/GLB format/barrel.glb` + `Previews/barrel.png`
+- `Models/GLB format/chest.glb` + `Previews/chest.png`
+- `Models/GLB format/crate.glb` + `Previews/crate.png`
+- `Models/GLB format/cannon.glb` + `Previews/cannon.png`
+- `Models/GLB format/flag-pirate.glb` + `Previews/flag-pirate.png`
+- `Models/GLB format/palm-straight.glb` + `Previews/palm-straight.png`
+- `Models/GLB format/rocks-a.glb` + `Previews/rocks-a.png`
+- `Models/GLB format/ship-pirate-small.glb` + `Previews/ship-pirate-small.png`
+- `Models/GLB format/tower-complete-small.glb` + `Previews/tower-complete-small.png`
+- `Models/GLB format/boat-row-small.glb` + `Previews/boat-row-small.png`
+
+行为边界：
+
+- 本步 docs-only，没有 archive extraction。
+- 本步没有 import assets、sidecar metadata、thumbnails、tests、scripts、code 或 generated artifacts。
+- 本步没有修改 runtime/default behavior、resolver、QA、Workbench、Phaser、asset pack loading 或 production asset packs。
+- Step 13C-B implementation 仍为 future step；production rollout 继续 parked。
+
+验证：
+
+    git diff --check
+    git status --short --branch
+    git diff --name-only
+
+验证结果：
+
+- `git diff --check` 通过。
+- `git status --short --branch` 只显示允许的 docs 改动和新增 Step 13C-A gate 文档。
+- `git diff --name-only` 只显示允许的既有 docs 改动；新增文档为 `docs/refactor-log/asset-semantic-large-library-step-13c-batch-zero.md`。
+- `find tests/fixtures/art-library-batch-zero-pirate-kit-v0.1 artifacts/asset-semantic-large-library-batch-zero -maxdepth 3 -print 2>/dev/null || true` 无输出，确认没有创建 batch-zero fixture、extraction temp directory 或 generated artifacts。
+
+审查门禁结论：
+
+- Sage/Oracle 审查完成：P0/P1/P2 均无。
+- P3：初审指出 Step 13C-A gate 文档和 review log 仍写 validation / review pending；已补充本地验证和审查结论。
 
 ### 2.41 Step 13B: Kenney Pirate Kit Large-Library Inventory Dry-Run
 
