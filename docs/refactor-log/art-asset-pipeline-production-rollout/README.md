@@ -6,9 +6,8 @@
 
 ## 当前下一步
 
-1. 验证并提交 Step 14A docs-only gate。
-2. 关闭 Step 14A branch boundary。
-3. 之后再单独决定是否创建 Step 14B controlled rollout implementation branch。
+1. 关闭 Step 14A branch boundary。
+2. 之后再单独决定是否创建 Step 14B controlled rollout implementation branch。
 
 Step 14A 只定义 Step 14B 之前的 production rollout guard。它批准的 Step 14B 最大边界是非默认、显式 opt-in / feature-flagged、fixture-backed 或 runtime-safe artifact-backed 的受控路径；默认 runtime behavior、resolver、QA / Workbench / Phaser、asset pack loading 和 production asset packs 仍不得改变。
 
@@ -46,7 +45,7 @@ Step 14A 只定义 Step 14B 之前的 production rollout guard。它批准的 St
 | Step 13D-B | [Batch zero pipeline dry-run](step-13d-batch-zero-pipeline-dry-run.md) | Dry-run/report tests | Done in `5b262ba` |
 | Step 13E-A | [Large-library batch expansion gate](step-13e-batch-expansion-gate.md) | Docs-only | Done in `ae1ed44` |
 | Step 13E-B | [Large-library batch expansion implementation](step-13e-batch-expansion-gate.md) | Small fixture expansion | Done in `51fdde3` |
-| Step 14A | [Production rollout gate](step-14a-production-rollout-gate.md) | Docs-only | Done locally |
+| Step 14A | [Production rollout gate](step-14a-production-rollout-gate.md) | Docs-only | Done in `bb398b3` |
 | Step 14B | [Controlled rollout implementation](step-14b-controlled-rollout.md) | Code + tests | Future |
 | Step 14C | [Production verification and rollback drill](step-14c-production-verification-rollback.md) | Verification/report | Future |
 | Step 14D | [Rollout closeout](step-14d-rollout-closeout.md) | Docs/tag optional | Future |

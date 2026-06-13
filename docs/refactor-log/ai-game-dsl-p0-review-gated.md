@@ -12,7 +12,7 @@ Step 14A production rollout gate 已作为 docs-only gate 完成：基于 Step 1
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：提交 Step 14A docs-only gate，然后关闭 Step 14A 分支边界。当前分支为 `docs/asset-semantic-step-14a-production-rollout-gate`。Step 14B implementation 仍未开始；runtime/default broad rollout 仍 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：关闭 Step 14A 分支边界。当前分支为 `docs/asset-semantic-step-14a-production-rollout-gate`，Step 14A docs-only gate 已提交为 `bb398b3 docs: gate production rollout`。Step 14B implementation 仍未开始；runtime/default broad rollout 仍 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
 
 ### 2.48 Step 14A: Production Rollout Gate
 
@@ -60,10 +60,11 @@ Step 14A production rollout gate 已作为 docs-only gate 完成：基于 Step 1
 
 审查门禁结论：
 
-- Main-agent self-review completed。
-- P0 blockers：none。
-- P1/P2 blockers：none known after local docs review。
-- Oracle review：not run in this step。
+- Main-agent self-review completed before commit。
+- Oracle review completed after commit `bb398b3`。
+- P0/P1/P2 blockers：none。
+- Initial P3：README / review log still used pre-commit status wording。
+- Resolution：updated Step 14A status wording to reflect committed `bb398b3` and branch-boundary next step。
 
 ### 2.47 Step 13E-B: Controlled Large-Library Expansion Implementation
 
