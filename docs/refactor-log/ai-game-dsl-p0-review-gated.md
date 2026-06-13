@@ -12,7 +12,51 @@ Step 10B small library bridge canary implementation 已完成并提交为 `2ede0
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Step 11B non-default runtime canary implementation。Step 11A 分支边界已 fast-forward 合并回 `main`，当前分支为 `test/art-asset-step-11b-non-default-runtime-canary`。Step 11B 只新增脚本侧非默认 canary helper 和 focused contract test；large asset library、runtime/default integration、QA / Workbench / Phaser / asset pack loading 继续 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Step 11C runtime canary closure。Step 11B 分支边界已 fast-forward 合并回 `main`，当前分支为 `docs/art-asset-step-11c-runtime-canary-closure`。Step 11C 只沉淀非默认 canary 的 flag-off / flag-on / rollback / next-step evidence；large asset library、runtime/default integration、QA / Workbench / Phaser / asset pack loading 继续 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.36 Step 11C: Runtime Canary Verification and Closure
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 关闭 Step 11B 分支边界：`test/art-asset-step-11b-non-default-runtime-canary` 已 fast-forward 合并回 `main`。
+- 新建 `docs/art-asset-step-11c-runtime-canary-closure` 分支。
+- 更新 `docs/refactor-log/art-asset-pipeline-production-rollout/step-11c-runtime-canary-closure.md`，沉淀 flag-off safety、flag-on isolation、rollback path、known limitations 和 Step 12A decision。
+- 更新 rollout README、semantic fidelity plan 和 step index 的当前阶段状态。
+
+阶段结果：
+
+- Step 11 non-default runtime canary lane 可以关闭。
+- flag-off rollback 为移除或不设置 `ASSET_RUNTIME_METADATA_CANARY`；不需要生产/default 配置变更。
+- flag-on 仍只允许 `ASSET_RUNTIME_METADATA_CANARY=small-library-v0.1`，只读取 `tests/fixtures/art-library-small-v0.1/metadata`。
+- Step 12A 只允许作为 docs-only Workbench / QA preview gate 继续；实现仍 parked，必须等 Step 12A 审查后再决定。
+
+行为边界：
+
+- 本步没有修改 default project generation、Phaser templates、Workbench、QA aggregation、resolver selection、production/default asset pack loading 或 large-library path。
+- 本步没有让 repair-enabled mode 成为默认。
+- 本步没有写 generated artifacts。
+- 本步没有批准 large-library intake、runtime/default integration 或 AI image provider。
+
+验证：
+
+    npx vitest run tests/contracts/art-asset-runtime-canary.test.ts tests/contracts/asset-pack-small-library-bridge-canary.test.ts
+    npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata | rg '"ok"|"asset_count"|"diagnostics"'
+    git diff --check
+
+验证结果：
+
+- Focused runtime canary + small-library bridge tests 通过：2 files，9 tests。
+- small-library metadata validation 通过：10 metadata files。
+- small-library runtime metadata export 证据：`"ok": true`、`"diagnostics": []`、`"asset_count": 10`。
+- `git diff --check` 通过。
+
+审查门禁结论：
+
+- Oracle 审查完成：P0/P1/P2/P3 均无。
+- Oracle 确认 closure 未声称 default runtime integration 完成，已记录 flag-off safety evidence 和 rollback path，未批准 large-library intake，Step 12A 仍是 docs-only gate，且 rollout README、semantic plan、review log、step index 当前状态一致。
 
 ### 2.35 Step 11B: Non-Default Runtime Canary Implementation
 

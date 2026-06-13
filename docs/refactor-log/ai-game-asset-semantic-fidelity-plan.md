@@ -33,7 +33,7 @@
 - generated project 根目录已写出 `asset_resolution_report.json`，记录 selected / rejected / fallback diagnostics。
 - QA report 已包含 `asset_report`，Workbench Assets 面板可展示 manifest/runtime load 状态和 source pack。
 
-当前状态：Step 11A non-default runtime integration gate 已完成并提交为 `936ee79 docs: gate non-default art asset runtime integration`，且 Step 11A 分支边界已 fast-forward 合并回 `main`。当前正在 Step 11B non-default runtime canary implementation，只新增脚本侧非默认 canary helper 和 focused contract test。不改变默认运行时、resolver、QA、Workbench、Phaser 或 asset pack loading。
+当前状态：Step 11B non-default runtime canary implementation 已完成并提交为 `f3e03a6 test: add non-default runtime metadata canary`，且 Step 11B 分支边界已 fast-forward 合并回 `main`。当前正在 Step 11C runtime canary closure，只沉淀非默认 canary 的 flag-off / flag-on / rollback / next-step evidence。不改变默认运行时、resolver、QA、Workbench、Phaser 或 asset pack loading。
 
 - QA / Workbench 已能识别 runtime pass 但 hard semantic mismatch 的 `NEEDS_ASSET_REPAIR`，并展示 per-asset semanticFit 摘要。
 - 第一批 canary brief fixture 已建立，batch runner 已能默认运行 supported cases、跳过 `expectedUnsupported` cases，并写出 summary report。
@@ -83,7 +83,8 @@
 | Step 10B | Small library bridge canary implementation | 使用 Step 4B pure helpers 跑 fixture-only green canary 与独立 negative diagnostics | 已完成 |
 | Production rollout split | Rollout index and per-step docs | 将 Step 11A-14D 分拆到独立 docs 目录，固化 gate / validation / stop rules | 已完成 |
 | Step 11A | Optional non-default runtime integration gate | docs-only gate，若仍需要才讨论非默认 runtime integration | 已完成 |
-| Step 11B | Non-default runtime canary implementation | 脚本侧 flag/config + small fixture runtime-safe export canary，不改默认 runtime | 当前 |
+| Step 11B | Non-default runtime canary implementation | 脚本侧 flag/config + small fixture runtime-safe export canary，不改默认 runtime | 已完成 |
+| Step 11C | Runtime canary closure | 关闭非默认 runtime canary lane，沉淀 flag-off / flag-on / rollback / Step 12A 决策证据 | 当前 |
 | Workbench / QA preview | Diagnostics preview | 预览 bridge diagnostics，不改变 default verdict | 后续 |
 | Large library gate | Large asset library scan/import gate | 尺寸、license、metadata、rollout policy gate | parked |
 | Production rollout gate | Default asset pack rollout | 生产默认行为变更的独立 gate | parked |
