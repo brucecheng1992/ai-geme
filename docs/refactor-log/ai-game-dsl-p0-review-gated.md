@@ -8,11 +8,62 @@
 
 ## 当前阶段
 
-Step 13E-B controlled large-library expansion implementation 已完成本地验证和 Oracle 只读审查：基于 Step 13E-A gate，将同一 Kenney Pirate Kit fixture 从 10 个 assets 受控扩展到 20 个 assets，并复跑 metadata validation、runtime export、default canary、repair-enabled canary、comparison、bridge summary、resolver-adjacent diagnostics 和独立 negative diagnostics evidence。本步只扩展 test fixture / metadata / focused tests / docs；不改 production asset packs、不改变 runtime/default integration、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 repair behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate、Step 10B implementation、Step 11A-11C non-default runtime canary lane、Step 12A preview gate、Step 12B preview implementation、Step 12C preview signoff、Step 13A large-library intake gate、Step 13B read-only inventory dry-run、Step 13C-A docs-only gate、Step 13C-B fixture import、Step 13D-A docs-only gate、Step 13D-B implementation 和 Step 13E-A docs-only gate。
+Step 14A production rollout gate 已作为 docs-only gate 完成：基于 Step 13E-B 20-asset Pirate Kit fixture validation evidence，Step 14A 只允许未来 Step 14B 讨论非默认、显式 opt-in / feature-flagged、fixture-backed 或 runtime-safe artifact-backed 的受控路径；不批准 broad/default production rollout、production pack mutation、repair-enabled default、metadata repair/writeback 或 large-library bulk scan。本步只改 docs；不改 production asset packs、不改变 runtime/default integration、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 repair behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate、Step 10B implementation、Step 11A-11C non-default runtime canary lane、Step 12A preview gate、Step 12B preview implementation、Step 12C preview signoff、Step 13A large-library intake gate、Step 13B read-only inventory dry-run、Step 13C-A docs-only gate、Step 13C-B fixture import、Step 13D-A docs-only gate、Step 13D-B implementation、Step 13E-A docs-only gate 和 Step 13E-B controlled expansion。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：提交 Step 13E-B scoped commit，然后关闭 Step 13E-B 分支边界。当前分支为 `test/asset-semantic-step-13e-large-library-expansion`。Runtime/default integration / production rollout 仍 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：提交 Step 14A docs-only gate，然后关闭 Step 14A 分支边界。当前分支为 `docs/asset-semantic-step-14a-production-rollout-gate`。Step 14B implementation 仍未开始；runtime/default broad rollout 仍 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.48 Step 14A: Production Rollout Gate
+
+完成时间：2026-06-14
+
+已完成内容：
+
+- 更新 `docs/refactor-log/art-asset-pipeline-production-rollout/step-14a-production-rollout-gate.md`。
+- 将 Step 14A 明确为 docs-only approval gate，不实现 rollout。
+- 总结 Step 13E-B evidence：20 GLB assets、20 selected existing previews、20 metadata sidecars、metadata validate/export、default canary、repair-enabled canary、comparison、bridge summary、resolver-adjacent diagnostics、contracts、full tests 和 typecheck 均已通过。
+- 判定当前 evidence 足够进入 limited Step 14B proposal，但不足以 broad/default production rollout。
+- 推荐 Step 14B 只走 Mode B：off-by-default non-default feature flag path；Mode C internal preview / QA-only path 仅在需要检查同一 approved fixture-backed output 时允许。
+- 定义 Step 14B feature flag / guard policy、production asset pack policy、runtime/default behavior policy、QA / Workbench / Phaser policy、rollback policy、failure budget、performance / size policy、rights / license policy 和 allowed boundary。
+- 更新 semantic fidelity plan、rollout README 和 decision points。
+
+行为边界：
+
+- Step 14A is docs-only。
+- No code, tests or scripts changed。
+- No assets imported。
+- No metadata sidecars changed。
+- No thumbnails generated。
+- No generated artifacts created or committed。
+- Runtime/default behavior did not change。
+- Resolver behavior did not change。
+- QA / Workbench / Phaser / asset pack loading did not change。
+- Production asset packs did not change。
+- Step 14B implementation did not start。
+- Repair-enabled did not become default。
+- Metadata repair/writeback remains disallowed。
+- Large-library bulk scan remains disallowed。
+- `AGENTS.md` was not restored。
+- Parked plan patch was not applied。
+- No tag / stash / push / sync operations。
+
+验证：
+
+    git diff --check
+    git diff --name-only
+
+验证结果：
+
+- `git diff --check` passed。
+- `git diff --name-only` confirmed only Step 14A docs / plan / rollout tracking docs changed。
+
+审查门禁结论：
+
+- Main-agent self-review completed。
+- P0 blockers：none。
+- P1/P2 blockers：none known after local docs review。
+- Oracle review：not run in this step。
 
 ### 2.47 Step 13E-B: Controlled Large-Library Expansion Implementation
 

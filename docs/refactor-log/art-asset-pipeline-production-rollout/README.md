@@ -2,15 +2,15 @@
 
 来源：`/Users/dahufa/Documents/workspace/art_asset_pipeline_production_rollout_plan.zip`
 
-当前状态：Step 13E-B controlled large-library expansion implementation 已完成本地验证和 Oracle 只读审查，当前分支为 `test/asset-semantic-step-13e-large-library-expansion`。本目录把 zip 中的大 rollout 计划拆成可逐步执行、逐步审查、逐步验证的小文档。
+当前状态：Step 14A production rollout gate 已作为 docs-only gate 完成，当前分支为 `docs/asset-semantic-step-14a-production-rollout-gate`。本目录把 zip 中的大 rollout 计划拆成可逐步执行、逐步审查、逐步验证的小文档。
 
 ## 当前下一步
 
-1. 提交 Step 13E-B scoped commit：`test: expand large art library semantic batch`。
-2. 关闭 Step 13E-B branch boundary。
-3. 之后再单独决定是否创建 Step 14A production rollout gate branch。
+1. 验证并提交 Step 14A docs-only gate。
+2. 关闭 Step 14A branch boundary。
+3. 之后再单独决定是否创建 Step 14B controlled rollout implementation branch。
 
-Step 13E-B 只允许扩展现有 Kenney Pirate Kit test fixture，不改变 runtime/default behavior、不修改 resolver、QA / Workbench / Phaser 或 production asset packs。Step 14A production rollout 继续 parked。
+Step 14A 只定义 Step 14B 之前的 production rollout guard。它批准的 Step 14B 最大边界是非默认、显式 opt-in / feature-flagged、fixture-backed 或 runtime-safe artifact-backed 的受控路径；默认 runtime behavior、resolver、QA / Workbench / Phaser、asset pack loading 和 production asset packs 仍不得改变。
 
 ## 硬边界
 
@@ -45,8 +45,8 @@ Step 13E-B 只允许扩展现有 Kenney Pirate Kit test fixture，不改变 runt
 | Step 13D-A | [Batch zero pipeline dry-run](step-13d-batch-zero-pipeline-dry-run.md) | Docs-only dry-run / bridge gate | Done in `4adf72b` |
 | Step 13D-B | [Batch zero pipeline dry-run](step-13d-batch-zero-pipeline-dry-run.md) | Dry-run/report tests | Done in `5b262ba` |
 | Step 13E-A | [Large-library batch expansion gate](step-13e-batch-expansion-gate.md) | Docs-only | Done in `ae1ed44` |
-| Step 13E-B | [Large-library batch expansion implementation](step-13e-batch-expansion-gate.md) | Small fixture expansion | Done locally |
-| Step 14A | [Production rollout gate](step-14a-production-rollout-gate.md) | Docs-only | Future |
+| Step 13E-B | [Large-library batch expansion implementation](step-13e-batch-expansion-gate.md) | Small fixture expansion | Done in `51fdde3` |
+| Step 14A | [Production rollout gate](step-14a-production-rollout-gate.md) | Docs-only | Done locally |
 | Step 14B | [Controlled rollout implementation](step-14b-controlled-rollout.md) | Code + tests | Future |
 | Step 14C | [Production verification and rollback drill](step-14c-production-verification-rollback.md) | Verification/report | Future |
 | Step 14D | [Rollout closeout](step-14d-rollout-closeout.md) | Docs/tag optional | Future |

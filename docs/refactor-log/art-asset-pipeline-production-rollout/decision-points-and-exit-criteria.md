@@ -89,13 +89,21 @@ Proceed only if:
 
 Proceed only if:
 
-- Step 14A gate is approved;
-- QA signoff exists;
-- rights/licensing signoff exists;
-- rollback plan exists;
-- feature flag/stage plan exists;
-- performance budget exists;
-- monitoring plan exists.
+- Step 14A gate is approved and still points to the same 20-asset Pirate Kit fixture evidence;
+- Step 14B scope is Mode B non-default feature flag path, or Mode C internal preview / QA-only path if required for the same approved output;
+- the feature flag / opt-in guard is off by default;
+- flag-off equivalence tests are designed;
+- flag-on tests are limited to the approved fixture-backed or runtime-safe artifact-backed scope;
+- rollback switch and invalid/missing artifact fail-closed tests are designed;
+- production/default asset packs remain untouched unless a separate later gate approves a tiny reversible mutation;
+- runtime/default behavior remains unchanged while the flag is off;
+- repair-enabled remains non-default;
+- source metadata repair/writeback remains disallowed;
+- large-library bulk scan remains disallowed;
+- QA signoff path exists;
+- rights/licensing signoff path exists and preserves Kenney Pirate Kit Creative Commons CC0 evidence;
+- performance / size budget exists for asset count, artifact size, loading impact and bundle/package impact;
+- failure budget blocks metadata validation failures, runtime export failures, canary failures, comparison failures, bridge/resolver-adjacent diagnostic errors, check-path failures, absolute path leakage, tracked generated artifacts, performance regression, asset count mismatch and unreviewed asset changes.
 
 ## Final Exit Criteria
 
