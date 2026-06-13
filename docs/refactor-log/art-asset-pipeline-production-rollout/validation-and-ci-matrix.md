@@ -120,6 +120,29 @@ npm run typecheck
 git diff --check
 ```
 
+Step 13E-A expansion gate:
+
+```bash
+git diff --check
+```
+
+Step 13E-B expanded fixture:
+
+```bash
+npx vitest run <focused Step 13E-B expanded-fixture test file(s)>
+npm run metadata:validate -- tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+npm run metadata:validate -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+npm run metadata:validate -- --check-paths tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+npm run metadata:export-runtime -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+npm run qa:asset-semantic:canary -- --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1
+npm run qa:asset-semantic:canary -- --repair-enabled --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1
+npm run qa:asset-semantic:compare -- --default-summary <default-summary.json> --repair-enabled-summary <repair-summary.json> --out <comparison-summary.json>
+npm run test:contracts
+npm test
+npm run typecheck
+git diff --check
+```
+
 ## Step 14 Production Gates
 
 Step 14A must define rollout-specific commands. Minimum:

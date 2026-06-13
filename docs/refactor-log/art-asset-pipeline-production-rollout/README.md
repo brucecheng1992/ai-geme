@@ -2,15 +2,15 @@
 
 来源：`/Users/dahufa/Documents/workspace/art_asset_pipeline_production_rollout_plan.zip`
 
-当前状态：Step 13A large library intake gate 已在当前仓库提交为 `769d0ec docs: gate large library intake`。当前分支为 `test/asset-semantic-step-13b-large-library-inventory`，正在执行 Kenney Pirate Kit read-only inventory dry-run。本目录把 zip 中的大 rollout 计划拆成可逐步执行、逐步审查、逐步验证的小文档。
+当前状态：Step 13D-B batch-zero semantic dry-run / bridge implementation 已合入 `main`，最新完成提交为 `5b262ba test: dry-run large library batch zero semantic pipeline`。当前分支为 `docs/asset-semantic-step-13e-large-library-expansion-gate`，正在执行 Step 13E-A large-library batch expansion docs-only gate。本目录把 zip 中的大 rollout 计划拆成可逐步执行、逐步审查、逐步验证的小文档。
 
 ## 当前下一步
 
-1. 完成 [Step 13B large library inventory dry-run](step-13b-large-library-inventory.md) 的本地验证。
-2. 完成 Sage/Oracle 只读审查和文档复审门禁。
-3. 若验证和审查通过，提交 `test: inventory large art library candidates`。
+1. 完成 [Step 13E large-library batch expansion gate](step-13e-batch-expansion-gate.md) 的 docs-only validation。
+2. 完成 Oracle 只读审查和文档复审门禁。
+3. 若验证和审查通过，关闭 Step 13E-A 分支边界；Step 13E-B implementation 仍需单独分支。
 
-Step 13B 只允许读取用户明确提供并已 preflight 的 direct archive URL，不抽取、不导入、不生成 metadata sidecars 或 thumbnails、不改变 runtime/default behavior、不修改 QA verdict semantics。Step 13C batch zero 需要用户显式批准。
+Step 13E-A 只允许定义 Step 13E-B 的 expansion constraints，不导入 assets、不修改 sidecar metadata、不生成 thumbnails、不生成 artifacts、不改变 runtime/default behavior、不修改 resolver、QA / Workbench / Phaser 或 production asset packs。Step 14A production rollout 继续 parked。
 
 ## 硬边界
 
@@ -39,10 +39,13 @@ Step 13B 只允许读取用户明确提供并已 preflight 的 direct archive UR
 | Step 12B | [Workbench / QA preview implementation](step-12b-workbench-qa-preview.md) | Code + tests | Done in `4abb10e` |
 | Step 12C | [QA preview signoff](step-12c-qa-preview-signoff.md) | Docs/report | Done in `b015587` |
 | Step 13A | [Large library intake gate](step-13a-large-library-intake-gate.md) | Docs-only | Done in `769d0ec` |
-| Step 13B | [Large library inventory dry-run](step-13b-large-library-inventory.md) | Read-only report/tooling | Current |
-| Step 13C | [Large library batch zero](step-13c-large-library-batch-zero.md) | Small fixture import | Future |
-| Step 13D | [Batch zero pipeline dry-run](step-13d-batch-zero-pipeline-dry-run.md) | Dry-run/report | Future |
-| Step 13E | [Batch expansion gate](step-13e-batch-expansion-gate.md) | Docs-only | Future |
+| Step 13B | [Large library inventory dry-run](step-13b-large-library-inventory.md) | Read-only report/tooling | Done |
+| Step 13C-A | [Large library batch zero](step-13c-large-library-batch-zero.md) | Docs-only selection/import gate | Done |
+| Step 13C-B | [Large library batch zero](step-13c-large-library-batch-zero.md) | Small fixture import | Done |
+| Step 13D-A | [Batch zero pipeline dry-run](step-13d-batch-zero-pipeline-dry-run.md) | Docs-only dry-run / bridge gate | Done in `4adf72b` |
+| Step 13D-B | [Batch zero pipeline dry-run](step-13d-batch-zero-pipeline-dry-run.md) | Dry-run/report tests | Done in `5b262ba` |
+| Step 13E-A | [Large-library batch expansion gate](step-13e-batch-expansion-gate.md) | Docs-only | Current |
+| Step 13E-B | [Large-library batch expansion implementation](step-13e-batch-expansion-gate.md) | Small fixture expansion | Future |
 | Step 14A | [Production rollout gate](step-14a-production-rollout-gate.md) | Docs-only | Future |
 | Step 14B | [Controlled rollout implementation](step-14b-controlled-rollout.md) | Code + tests | Future |
 | Step 14C | [Production verification and rollback drill](step-14c-production-verification-rollback.md) | Verification/report | Future |

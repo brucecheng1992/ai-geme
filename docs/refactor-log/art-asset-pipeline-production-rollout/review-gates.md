@@ -70,6 +70,13 @@ Step 13C:
 - commits bulk binaries against policy;
 - imports assets without sidecar metadata.
 
+Step 13E:
+
+- imports assets during Step 13E-A;
+- expands beyond the Step 13E-A approved additional batch size;
+- raises the committed Pirate Kit fixture above the approved Step 13E-A total cap;
+- changes runtime/default behavior or production asset packs.
+
 Step 14B:
 
 - production change without rollback;

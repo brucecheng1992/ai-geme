@@ -8,11 +8,59 @@
 
 ## 当前阶段
 
-Step 13D-B batch-zero semantic dry-run / bridge implementation 已完成本地验证：同一 Kenney Pirate Kit 10-asset fixture 的 metadata validate/export、default canary、repair-enabled canary、comparison、bridge summary、resolver-adjacent diagnostics 和独立 negative diagnostics 均通过。本步只新增 focused tests、metadata-only canary fixture kind support 和文档记录；不导入 assets、不改 sidecar metadata、不生成 thumbnails、不改 production asset packs、不改变 runtime/default integration、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 repair behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate、Step 10B implementation、Step 11A-11C non-default runtime canary lane、Step 12A preview gate、Step 12B preview implementation、Step 12C preview signoff、Step 13A large-library intake gate、Step 13B read-only inventory dry-run、Step 13C-A docs-only gate、Step 13C-B fixture import 和 Step 13D-A docs-only gate。
+Step 13E-A large-library batch expansion gate 正在执行 docs-only 审查：基于 Step 13D-B 已完成的同一 Kenney Pirate Kit 10-asset fixture metadata validate/export、default canary、repair-enabled canary、comparison、bridge summary、resolver-adjacent diagnostics 和独立 negative diagnostics evidence，定义 Step 13E-B 是否可以扩展、最多新增多少同源资产、需要哪些 validation / rollback / stop rules。本步只改文档；不导入 assets、不改 sidecar metadata、不生成 thumbnails、不生成 artifacts、不改 production asset packs、不改变 runtime/default integration、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 repair behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate、Step 10B implementation、Step 11A-11C non-default runtime canary lane、Step 12A preview gate、Step 12B preview implementation、Step 12C preview signoff、Step 13A large-library intake gate、Step 13B read-only inventory dry-run、Step 13C-A docs-only gate、Step 13C-B fixture import、Step 13D-A docs-only gate 和 Step 13D-B implementation。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：完成 Step 13D-B Oracle 只读审查、`git diff --check` 和 scoped commit 后，按 plan 决定进入 Step 14A production rollout gate 或 Step 13E large-library expansion gate。当前分支为 `test/asset-semantic-step-13d-batch-zero-dry-run`。Runtime/default integration / production rollout 仍 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库扩容、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：完成 Step 13E-A docs-only validation、Oracle 只读审查和分支边界 closure 后，再单独创建 Step 13E-B implementation 分支。当前分支为 `docs/asset-semantic-step-13e-large-library-expansion-gate`。Runtime/default integration / production rollout 仍 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、实际大资源库扩容、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.46 Step 13E-A: Large-Library Batch Expansion Gate
+
+完成时间：2026-06-14
+
+已完成内容：
+
+- 扩展 `docs/refactor-log/art-asset-pipeline-production-rollout/step-13e-batch-expansion-gate.md`。
+- 文档定义 Step 13E-A 只回答是否允许 Step 13E-B 扩展，不执行 import。
+- 文档批准 Step 13E-B 只能继续使用同一 Kenney Pirate Kit source family。
+- 文档将 Step 13E-B additional assets capped at 10。
+- 文档将 Step 13E-B 后 committed Pirate Kit fixture total capped at 20。
+- 文档要求每个新增 asset 都有 matching sidecar metadata 和 existing selected preview/reference image。
+- 文档要求 Step 13E-B 对 100% additional assets 做 main-agent implementation evidence 和 Oracle read-only review coverage，覆盖 source path、committed path、preview path、sidecar path、license/source inheritance、file size、runtime-safe path 和 semantic-role rationale。
+- 文档要求 Step 13E-B 复跑 metadata validate / JSON validate / check-paths / runtime-safe export / default canary / repair-enabled canary / comparison / bridge diagnostics / contracts / full tests / typecheck。
+- 更新 rollout README、decision points、validation matrix 和 semantic fidelity plan。
+
+行为边界：
+
+- Step 13E-A is docs-only。
+- No assets imported。
+- No sidecar metadata changed。
+- No thumbnails changed or generated。
+- No generated artifacts created or committed。
+- No code/tests/scripts changed。
+- Runtime/default behavior did not change。
+- Resolver behavior did not change。
+- QA / Workbench / Phaser / asset pack loading did not change。
+- Production asset packs did not change。
+- Step 13E-B implementation remains future。
+- Step 14A production rollout remains parked。
+- `AGENTS.md` was not restored。
+- Parked plan patch was not applied。
+- No tag / stash / push / sync operations。
+
+验证：
+
+    git diff --check
+
+审查门禁结论：
+
+- Local validation completed: `git diff --check` passed.
+- Oracle review completed.
+- Initial P1: Step 13E-B review sampling was unclear.
+- Resolution: Step 13E-B now requires 100% review of additional assets, with main-agent implementation evidence and Oracle read-only review ownership plus required per-asset coverage fields.
+- Initial P3: review log still said validation / Oracle review pending.
+- Resolution: review log updated with validation and review conclusion.
+- Remaining P0/P1/P2 blockers: none after resolution.
 
 ### 2.45 Step 13D-B: Batch Zero Semantic Dry-Run / Bridge Implementation
 

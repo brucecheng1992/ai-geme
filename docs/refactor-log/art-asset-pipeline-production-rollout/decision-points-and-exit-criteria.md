@@ -11,7 +11,7 @@ Proceed to Step 11A only if:
 - no large library was touched;
 - Oracle or documented self-review has no P0/P1/P2 blockers.
 
-Current repository note: Step 10B is committed as `2ede0c0`; the remaining branch-boundary decision is whether to fast-forward it into `main` before Step 11A.
+Current repository note: Step 10B and Steps 11A through 13D-B are already complete; this section remains historical exit criteria for that boundary.
 
 ## Before Step 11B
 
@@ -59,6 +59,31 @@ Proceed only if:
 - rights/licensing policy is approved;
 - batch size is approved;
 - rollback policy is defined.
+
+## Before Step 13E-B
+
+Proceed only if:
+
+- Step 13E-A docs-only gate is complete;
+- Step 13D-B batch-zero semantic dry-run / bridge evidence remains the baseline;
+- the approved source remains the same Kenney Pirate Kit family;
+- the additional batch size is capped at 10 assets;
+- the committed Pirate Kit fixture total is capped at 20 assets after Step 13E-B;
+- every added asset has matching sidecar metadata and an existing selected preview/reference image;
+- no generated thumbnails or generated artifacts will be committed;
+- 100% of added assets have main-agent implementation evidence and Oracle read-only review coverage for source path, committed path, preview path, sidecar path, license/source inheritance, file size, runtime-safe path and semantic-role rationale;
+- validation includes metadata validate, runtime-safe export, default canary, repair-enabled canary, comparison, bridge diagnostics, contracts, full tests and typecheck;
+- rollback can restore the Step 13D-B 10-asset batch-zero fixture by removing only the Step 13E-B additions.
+
+## Before Step 14A
+
+Proceed only if:
+
+- Step 13E-A has either approved Step 13E-B boundaries or explicitly deferred expansion;
+- any executed Step 13E-B expansion is validated and reviewed;
+- runtime/default integration remains parked unless Step 14A explicitly opens it;
+- production asset packs remain untouched;
+- rights/licensing, storage, QA and rollback evidence are ready for production-gate review.
 
 ## Before Step 14B
 
