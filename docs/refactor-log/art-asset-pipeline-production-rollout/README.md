@@ -2,12 +2,13 @@
 
 来源：`/Users/dahufa/Documents/workspace/art_asset_pipeline_production_rollout_plan.zip`
 
-当前状态：Step 14A production rollout gate 已完成并合入 `main`；Step 14B rollout mode 已决定为 non-default feature-flagged controlled rollout。默认行为、production asset packs、large-library scan、repair-enabled default 和 metadata repair/writeback 仍不允许改变。本目录把 zip 中的大 rollout 计划拆成可逐步执行、逐步审查、逐步验证的小文档。
+当前状态：Step 14B controlled rollout implementation 已在 `feat/asset-semantic-step-14b-controlled-rollout` 上实现最小非默认 helper。实现只新增 `ART_ASSET_SEMANTIC_ROLLOUT_ENABLED=pirate-kit-v0.1` 的 opt-in runtime-safe metadata artifact accessor；默认行为、production asset packs、large-library scan、repair-enabled default 和 metadata repair/writeback 仍未改变。本目录把 zip 中的大 rollout 计划拆成可逐步执行、逐步审查、逐步验证的小文档。
 
 ## 当前下一步
 
-1. 创建 Step 14B controlled rollout implementation branch。
-2. 在 Step 14B 中实现 off-by-default feature flag，并证明 flag-off / flag-on / rollback 行为。
+1. 提交 Step 14B scoped commit。
+2. 关闭 Step 14B implementation branch boundary。
+3. 继续保持 runtime/default broad rollout parked，除非后续 gate 单独批准。
 
 Step 14A 只定义 Step 14B 之前的 production rollout guard。它批准的 Step 14B 最大边界是非默认、显式 opt-in / feature-flagged、fixture-backed 或 runtime-safe artifact-backed 的受控路径；默认 runtime behavior、resolver、QA / Workbench / Phaser、asset pack loading 和 production asset packs 仍不得改变。
 
@@ -46,7 +47,7 @@ Step 14A 只定义 Step 14B 之前的 production rollout guard。它批准的 St
 | Step 13E-A | [Large-library batch expansion gate](step-13e-batch-expansion-gate.md) | Docs-only | Done in `ae1ed44` |
 | Step 13E-B | [Large-library batch expansion implementation](step-13e-batch-expansion-gate.md) | Small fixture expansion | Done in `51fdde3` |
 | Step 14A | [Production rollout gate](step-14a-production-rollout-gate.md) | Docs-only | Done in `bb398b3` |
-| Step 14B | [Controlled rollout implementation](step-14b-controlled-rollout.md) | Code + tests | Future |
+| Step 14B | [Controlled rollout implementation](step-14b-controlled-rollout.md) | Code + tests | Locally validated and Oracle reviewed |
 | Step 14C | [Production verification and rollback drill](step-14c-production-verification-rollback.md) | Verification/report | Future |
 | Step 14D | [Rollout closeout](step-14d-rollout-closeout.md) | Docs/tag optional | Future |
 

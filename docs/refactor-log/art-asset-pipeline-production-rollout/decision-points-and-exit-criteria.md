@@ -105,6 +105,25 @@ Proceed only if:
 - performance / size budget exists for asset count, artifact size, loading impact and bundle/package impact;
 - failure budget blocks metadata validation failures, runtime export failures, canary failures, comparison failures, bridge/resolver-adjacent diagnostic errors, check-path failures, absolute path leakage, tracked generated artifacts, performance regression, asset count mismatch and unreviewed asset changes.
 
+## Before Step 14C
+
+Proceed only if:
+
+- Step 14B helper remains non-default and off unless `ART_ASSET_SEMANTIC_ROLLOUT_ENABLED=pirate-kit-v0.1`;
+- flag-off behavior does not call metadata export I/O;
+- flag-on behavior uses only `tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata`;
+- flag-on summary reports `asset_count=20`;
+- rollback is disabling `ART_ASSET_SEMANTIC_ROLLOUT_ENABLED`;
+- invalid runtime-safe artifact output fails closed;
+- production/default asset packs remain untouched;
+- runtime/default resolver, QA, Workbench, Phaser and asset pack loading remain unchanged;
+- large-library scan remains disallowed;
+- repair-enabled remains non-default;
+- metadata repair/writeback remains disallowed;
+- generated artifacts remain untracked;
+- focused Step 14B tests, metadata validation/export gates, contracts, full tests, typecheck and diff checks pass;
+- Oracle review has no P0/P1/P2 blockers.
+
 ## Final Exit Criteria
 
 The production rollout lane is complete only if:

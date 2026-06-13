@@ -8,11 +8,88 @@
 
 ## 当前阶段
 
-Step 14A production rollout gate 已作为 docs-only gate 完成：基于 Step 13E-B 20-asset Pirate Kit fixture validation evidence，Step 14A 只允许未来 Step 14B 讨论非默认、显式 opt-in / feature-flagged、fixture-backed 或 runtime-safe artifact-backed 的受控路径；不批准 broad/default production rollout、production pack mutation、repair-enabled default、metadata repair/writeback 或 large-library bulk scan。本步只改 docs；不改 production asset packs、不改变 runtime/default integration、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 repair behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate、Step 10B implementation、Step 11A-11C non-default runtime canary lane、Step 12A preview gate、Step 12B preview implementation、Step 12C preview signoff、Step 13A large-library intake gate、Step 13B read-only inventory dry-run、Step 13C-A docs-only gate、Step 13C-B fixture import、Step 13D-A docs-only gate、Step 13D-B implementation、Step 13E-A docs-only gate 和 Step 13E-B controlled expansion。
+Step 14B controlled rollout implementation 已实现最小非默认 helper：`ART_ASSET_SEMANTIC_ROLLOUT_ENABLED` 默认关闭，只有显式设置为 `pirate-kit-v0.1` 时才读取 approved Pirate Kit 20-asset fixture metadata 并生成 runtime-safe rollout summary。本步不接 production asset packs、不改变 runtime/default integration、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 repair behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate、Step 10B implementation、Step 11A-11C non-default runtime canary lane、Step 12A preview gate、Step 12B preview implementation、Step 12C preview signoff、Step 13A large-library intake gate、Step 13B read-only inventory dry-run、Step 13C-A docs-only gate、Step 13C-B fixture import、Step 13D-A docs-only gate、Step 13D-B implementation、Step 13E-A docs-only gate、Step 13E-B controlled expansion、Step 14A docs-only gate 和 Step 14B rollout decision。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：关闭 Step 14A 分支边界。当前分支为 `docs/asset-semantic-step-14a-production-rollout-gate`，Step 14A docs-only gate 已提交为 `bb398b3 docs: gate production rollout`。Step 14B implementation 仍未开始；runtime/default broad rollout 仍 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：提交 Step 14B scoped commit，然后关闭分支边界。当前分支为 `feat/asset-semantic-step-14b-controlled-rollout`。Runtime/default broad rollout 仍 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.49 Step 14B: Controlled Rollout Implementation
+
+完成时间：2026-06-14
+
+已完成内容：
+
+- 新增 `scripts/art-asset-semantic-rollout.ts`。
+- 新增 `tests/contracts/art-asset-semantic-rollout.test.ts`。
+- 引入非默认 feature flag：`ART_ASSET_SEMANTIC_ROLLOUT_ENABLED`。
+- 唯一 enabled value：`pirate-kit-v0.1`。
+- flag unset / empty 时返回 disabled summary，且不调用 metadata exporter。
+- flag-on 时只使用 `tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata` 的 runtime-safe export。
+- rollout summary 锁定 fixture root、metadata dir、asset count `20`、rollback instruction 和 deterministic diagnostics。
+- invalid export、asset count mismatch 和 fixture-root 外路径均 fail closed。
+- 更新 Step 14B rollout docs、rollout README 和 semantic fidelity plan。
+
+行为边界：
+
+- Default behavior remains unchanged when flag is off。
+- No production asset packs changed。
+- No runtime/default resolver path changed。
+- No QA / Workbench / Phaser / asset pack loading changed。
+- No assets imported。
+- No metadata sidecars changed。
+- No thumbnails generated。
+- No large-library scan。
+- Repair-enabled remains non-default。
+- No metadata repair/writeback。
+- Broad/default production rollout remains not approved。
+- Generated artifacts are not committed。
+
+验证：
+
+    npx vitest run tests/contracts/art-asset-semantic-rollout.test.ts
+    npx vitest run tests/contracts/art-asset-semantic-rollout.test.ts tests/contracts/art-asset-runtime-canary.test.ts
+    npm run metadata:validate -- tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- --check-paths tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- assets/metadata/examples
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+    npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata
+    npm run test:contracts
+    npm test
+    npm run typecheck
+    git diff --check
+    npm run qa:asset-semantic:canary -- --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1 --timestamp 20260614Tstep14b-default
+    npm run qa:asset-semantic:canary -- --repair-enabled --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1 --timestamp 20260614Tstep14b-repair
+    npm run qa:asset-semantic:compare -- --default-summary artifacts/asset-semantic-canary/20260614Tstep14b-default/summary.json --repair-enabled-summary artifacts/asset-semantic-canary/20260614Tstep14b-repair/summary.json --out artifacts/asset-semantic-canary-comparison/20260614Tstep14b/comparison.json
+
+验证结果：
+
+- Focused rollout test RED：failed because `scripts/art-asset-semantic-rollout.js` did not exist。
+- Focused rollout test GREEN：6 tests passed。
+- Focused rollout + existing runtime canary regression passed：2 files / 11 tests。
+- Pirate Kit metadata validate / JSON validate / check-paths passed：20 files。
+- Pirate Kit runtime-safe export passed：`asset_count=20`。
+- Baseline examples validate/export passed：5 files / `asset_count=5`。
+- Baseline small fixture validate/export passed：10 files / `asset_count=10`。
+- `npm run test:contracts` passed：24 files / 216 tests。
+- `npm test` passed：contracts 24 files / 216 tests，workspace 12 files / 125 tests。
+- `npm run typecheck` passed：root、maker-api、maker-workbench。
+- `git diff --check` passed。
+- Default canary passed：`runnable=20 skipped=0 experimental=0 passed=20 failed=0`，`repair.enabled=false`。
+- Repair-enabled canary passed：`runnable=20 skipped=0 experimental=0 passed=20 failed=0`，`repair.enabled=true repair.attemptedCount=0 repair.failedCount=0`。
+- Comparison passed：`ok=true case.total=20 case.runnable=20 default.failed=0 repair.failed=0 failureDiagnosticDelta=0`。
+- Generated canary / comparison artifacts remain under ignored `artifacts/` and are not committed。
+
+审查门禁结论：
+
+- Oracle review completed。
+- P0/P1 blockers：none。
+- Initial P2：review log / rollout README still said Oracle review pending。
+- Initial P3：Step 14B document still said implementation in progress。
+- Resolution：updated Step 14B docs and rollout README to reflect completed validation and Oracle review result。
 
 ### 2.48 Step 14A: Production Rollout Gate
 

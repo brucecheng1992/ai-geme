@@ -33,7 +33,7 @@
 - generated project 根目录已写出 `asset_resolution_report.json`，记录 selected / rejected / fallback diagnostics。
 - QA report 已包含 `asset_report`，Workbench Assets 面板可展示 manifest/runtime load 状态和 source pack。
 
-当前状态：Step 14A production rollout gate 已作为 docs-only gate 完成：基于 Step 13E-B 的 20-asset Pirate Kit fixture 证据，Step 14A 只批准未来 Step 14B 可讨论非默认、显式 opt-in / feature-flagged、fixture-backed 或 runtime-safe artifact-backed 的受控路径。本步不实现 rollout，不改变默认运行时、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 production asset packs。Runtime/default rollout 仍不允许 broad/default enablement。
+当前状态：Step 14B controlled rollout implementation 已实现最小非默认 helper：`ART_ASSET_SEMANTIC_ROLLOUT_ENABLED` 默认关闭，只有显式设置为 `pirate-kit-v0.1` 时才暴露 approved Pirate Kit fixture metadata 的 runtime-safe export summary。本步不接默认运行时、不改变 resolver、QA verdict、Workbench、Phaser、asset pack loading 或 production asset packs。Runtime/default broad rollout 仍不允许。
 
 - QA / Workbench 已能识别 runtime pass 但 hard semantic mismatch 的 `NEEDS_ASSET_REPAIR`，并展示 per-asset semanticFit 摘要。
 - 第一批 canary brief fixture 已建立，batch runner 已能默认运行 supported cases、跳过 `expectedUnsupported` cases，并写出 summary report。
@@ -59,6 +59,7 @@
 - 已完成 Step 13E-A large-library batch expansion gate：docs-only 定义 Step 13E-B 只能在同一 Kenney Pirate Kit fixture 上最多新增 10 个资产、扩展后总数最多 20 个，并必须复跑 metadata validate/export、default / repair-enabled canary、comparison、bridge diagnostics、contracts、full tests 和 typecheck。
 - 已完成 Step 13E-B controlled large-library expansion implementation：在同一 Pirate Kit fixture 中新增 10 个同源 GLB assets、10 个 selected existing previews 和 10 个 sidecar metadata files，并通过 100% additional-asset review evidence、metadata gates、canary / comparison、bridge diagnostics 和 Oracle 只读审查。
 - 已完成 Step 14A production rollout gate：docs-only 定义当前 evidence 足够进入 limited Step 14B proposal，但只允许 off-by-default opt-in guard、approved 20-asset fixture scope、rollback switch、flag-off equivalence、performance / rights / QA / failure budget，不批准 broad/default production rollout、production pack mutation、repair default、metadata writeback 或 large-library bulk scan。
+- 已实现 Step 14B controlled rollout helper：新增 off-by-default `ART_ASSET_SEMANTIC_ROLLOUT_ENABLED=pirate-kit-v0.1` helper 和 focused tests，flag-off 不做 metadata export I/O，flag-on 只读取 approved 20-asset Pirate Kit metadata runtime-safe export，rollback 为关闭 flag；不导入资源、不修改 metadata、不扫描大库、不接 production asset packs。
 
 ## 4. 分步落地计划
 
@@ -103,7 +104,7 @@
 | Step 13E-A | Large-library batch expansion gate | docs-only 定义同一 Pirate Kit fixture 的扩展尺寸、metadata / thumbnail policy、validation、rollback 和 Step 14A stop rules | 已完成 |
 | Step 13E-B | Large-library batch expansion implementation | 新增 10 个同源 Pirate Kit fixture assets 并复跑 semantic dry-run / bridge gates | 已完成 |
 | Step 14A | Production rollout gate | docs-only 定义受控 rollout guard、feature flag policy、rollback / failure budget、QA / performance / rights policy | 已完成 |
-| Step 14B | Controlled production rollout implementation | 仅允许 Step 14A 批准的非默认 opt-in fixture-backed/runtime-safe artifact path | 后续 |
+| Step 14B | Controlled production rollout implementation | 非默认 opt-in helper + Pirate Kit runtime-safe artifact guard，不接默认 runtime / production asset packs | 本地验证和 Oracle 审查完成 |
 | Workbench / QA preview | Diagnostics preview | 预览 bridge diagnostics，不改变 default verdict | 后续 |
 | Production rollout closeout | Default asset pack rollout | 生产默认行为变更仍需独立 gate；Step 14A 未批准 broad/default rollout | parked |
 
