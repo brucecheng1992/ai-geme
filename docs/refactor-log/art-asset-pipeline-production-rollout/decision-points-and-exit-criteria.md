@@ -124,13 +124,30 @@ Proceed only if:
 - focused Step 14B tests, metadata validation/export gates, contracts, full tests, typecheck and diff checks pass;
 - Oracle review has no P0/P1/P2 blockers.
 
+## After Step 14C
+
+Controlled rollout lane may be closed only if:
+
+- Step 14B controlled rollout helper is implemented and verified;
+- `ART_ASSET_SEMANTIC_ROLLOUT_ENABLED` remains off by default;
+- flag-off behavior remains current/default behavior and does not call metadata export I/O;
+- flag-on behavior remains limited to `pirate-kit-v0.1` and the approved 20-asset Pirate Kit runtime-safe input;
+- rollback is disabling `ART_ASSET_SEMANTIC_ROLLOUT_ENABLED`;
+- production asset packs were not changed;
+- runtime/default behavior, resolver behavior, QA, Workbench, Phaser and asset pack loading were not changed;
+- no assets, metadata sidecars, generated thumbnails or generated artifacts were committed;
+- large-library scan, repair-enabled default and metadata repair/writeback remain disallowed;
+- fresh Step 14C verification commands pass;
+- generated canary / comparison outputs remain ignored under `artifacts/`;
+- broad/default production rollout remains not approved and requires a separate future approval gate.
+
 ## Final Exit Criteria
 
 The production rollout lane is complete only if:
 
-- production rollout was controlled;
-- rollback drill completed;
-- default behavior change was approved;
+- controlled rollout was verified and closed;
+- rollback is documented as disabling `ART_ASSET_SEMANTIC_ROLLOUT_ENABLED`;
+- default behavior change was separately approved, if any;
 - unsupported assets are not silently promoted;
 - repair writeback remains controlled or explicitly approved;
 - large library policy is followed;
