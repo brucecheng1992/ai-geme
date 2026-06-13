@@ -8,11 +8,94 @@
 
 ## 当前阶段
 
-Step 13C-A Kenney Pirate Kit batch-zero selection / import gate 正在执行：本步只写 docs，定义未来 Step 13C-B 可使用的 exact source archive、10 个 GLB 候选、对应 existing preview PNG、fixture layout、metadata / thumbnail policy、validation、review gate 和 rollback policy。不抽取、不导入、不生成 sidecar metadata / thumbnails、不加 tests/scripts/code，不改变 runtime/default integration、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 repair behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate、Step 10B implementation、Step 11A-11C non-default runtime canary lane、Step 12A preview gate、Step 12B preview implementation、Step 12C preview signoff、Step 13A large-library intake gate 和 Step 13B read-only inventory dry-run。
+Step 13C-B Kenney Pirate Kit large-library metadata batch-zero implementation 正在执行：本步只导入 Step 13C-A 批准的 10 个 GLB fixture assets、10 个 selected existing preview PNG、10 个 sidecar metadata、fixture README/source evidence 和 focused contract test。不导入 whole archive、不生成 thumbnails、不改 production asset packs、不改变 runtime/default integration、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 repair behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate、Step 10B implementation、Step 11A-11C non-default runtime canary lane、Step 12A preview gate、Step 12B preview implementation、Step 12C preview signoff、Step 13A large-library intake gate、Step 13B read-only inventory dry-run 和 Step 13C-A docs-only gate。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：完成 Step 13C-A docs-only gate 的 `git diff --check`、scope 检查、Sage/Oracle 只读审查和 docs review gate 后提交 `docs: gate large art library batch zero`。当前分支为 `docs/asset-semantic-step-13c-batch-zero-gate`。Step 13C-B implementation 仍未开始；runtime/default integration 和 production rollout 继续 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：完成 Step 13C-B validation、Sage/Oracle 只读审查和 docs review gate 后提交 `test: import large art library batch zero metadata`。当前分支为 `test/asset-semantic-step-13c-batch-zero-pirate-kit`。Step 13D / large library expansion / runtime-default integration / production rollout 仍未开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库扩容、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.43 Step 13C-B: Kenney Pirate Kit Metadata Batch Zero Implementation
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 新增 `tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/` fixture。
+- 从 Step 13C-A 批准的 Kenney Pirate Kit archive 只导入 10 个 GLB assets。
+- 只导入对应 10 个 selected existing `Previews/*.png` 到 `thumbnails/`；没有生成 thumbnails。
+- 新增 10 个 sidecar `.asset.json` metadata files。
+- 新增 fixture `README.md` 和 `source/LICENSE.txt` source evidence。
+- 新增 `tests/contracts/asset-semantic-large-library-batch-zero-pirate-kit.test.ts`，覆盖 exact set、fixture size/format、metadata validation、project-relative paths、unique deterministic asset ids 和 runtime-safe export。
+- 更新 Step 13C 文档、semantic fidelity plan 和 review log。
+
+Imported asset basenames:
+
+- `barrel`
+- `chest`
+- `crate`
+- `cannon`
+- `flag-pirate`
+- `palm-straight`
+- `rocks-a`
+- `ship-pirate-small`
+- `tower-complete-small`
+- `boat-row-small`
+
+阶段结果：
+
+- Imported asset count：10 GLB。
+- Thumbnail count：10 selected existing preview PNGs。
+- Metadata sidecar count：10。
+- Target fixture path：`tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/`。
+- Total fixture size：`409374` bytes。
+- Largest imported file：`assets/ship-pirate-small.glb`，`131464` bytes。
+- Downloaded zip remains under ignored `artifacts/` and is not tracked。
+- Selected extraction temp remains under ignored `artifacts/` and is not tracked。
+
+行为边界：
+
+- Full archive was not imported。
+- No thumbnails were generated。
+- No metadata was created for unselected archive files。
+- No production asset packs changed。
+- Runtime/default behavior did not change。
+- Resolver behavior did not change。
+- QA / Workbench / Phaser / asset pack loading did not change。
+- Generated artifacts were not added。
+- Step 13D、large library expansion、runtime/default integration 和 production rollout remain future。
+
+验证：
+
+    npx vitest run tests/contracts/asset-semantic-large-library-batch-zero-pirate-kit.test.ts
+    npm run metadata:validate -- tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- --check-paths tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- assets/metadata/examples
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+    npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata
+    npm run test:contracts
+    npm test
+    npm run typecheck
+    git diff --check
+
+验证结果：
+
+- Focused test passed：5 tests。
+- Batch-zero metadata validate / check-paths / runtime export passed。
+- Batch-zero metadata JSON validate passed：`ok=true`，10 files，no diagnostics。
+- Baseline examples validate / runtime export passed。
+- Baseline small fixture validate / runtime export passed。
+- `npm run test:contracts` passed：22 files / 202 tests。
+- `npm test` passed：contracts and workspace tests。
+- `npm run typecheck` passed：root、maker-api、maker-workbench。
+- `git diff --check` passed。
+
+审查门禁结论：
+
+- Sage/Oracle 审查完成：P0/P1/P2 均无。
+- P3：初审指出 Step 13C 文档和 review log 仍写 Sage/Oracle review pending；已补充本轮审查结论。
 
 ### 2.42 Step 13C-A: Batch Zero Selection / Import Gate
 

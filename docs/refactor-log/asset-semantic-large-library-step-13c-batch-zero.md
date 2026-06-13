@@ -240,7 +240,7 @@ Step 13C-B rollback is a normal git revert or branch cleanup of the fixture chan
 
 ## Step 13C-B Boundary
 
-Step 13C-B is future implementation. It may start only after this Step 13C-A gate is committed and reviewed.
+Step 13C-B implementation imported the approved batch-zero fixture only after Step 13C-A was committed and reviewed.
 
 Step 13C-B remains separate from:
 
@@ -249,6 +249,119 @@ Step 13C-B remains separate from:
 - resolver behavior changes;
 - QA / Workbench / Phaser behavior changes;
 - repair writeback.
+
+## Step 13C-B Implementation Result
+
+Committed fixture path:
+
+```text
+tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/
+  README.md
+  assets/
+  metadata/
+  source/
+  thumbnails/
+```
+
+Imported exactly the approved 10 GLB assets:
+
+- `barrel.glb`
+- `chest.glb`
+- `crate.glb`
+- `cannon.glb`
+- `flag-pirate.glb`
+- `palm-straight.glb`
+- `rocks-a.glb`
+- `ship-pirate-small.glb`
+- `tower-complete-small.glb`
+- `boat-row-small.glb`
+
+Imported exactly the selected existing preview PNGs:
+
+- `barrel.png`
+- `chest.png`
+- `crate.png`
+- `cannon.png`
+- `flag-pirate.png`
+- `palm-straight.png`
+- `rocks-a.png`
+- `ship-pirate-small.png`
+- `tower-complete-small.png`
+- `boat-row-small.png`
+
+Created exactly 10 sidecar metadata files:
+
+- `barrel.asset.json`
+- `chest.asset.json`
+- `crate.asset.json`
+- `cannon.asset.json`
+- `flag-pirate.asset.json`
+- `palm-straight.asset.json`
+- `rocks-a.asset.json`
+- `ship-pirate-small.asset.json`
+- `tower-complete-small.asset.json`
+- `boat-row-small.asset.json`
+
+Implementation summary:
+
+- Source archive: `https://kenney.nl/media/pages/assets/pirate-kit/e6d4bb1525-1771333093/kenney_pirate-kit.zip`
+- Source page: `https://kenney.nl/assets/pirate-kit`
+- License evidence: Creative Commons CC0 from Step 13B source page evidence and copied `source/LICENSE.txt`
+- Total fixture files: `32`
+- Total fixture size: `409374` bytes
+- Largest imported file: `assets/ship-pirate-small.glb`, `131464` bytes
+- Downloaded zip was not committed.
+- Full archive contents were not committed.
+- No thumbnails were generated; only selected existing `Previews/*.png` files were copied.
+- No production asset packs changed.
+- Runtime/default behavior did not change.
+- Resolver behavior did not change.
+- QA / Workbench / Phaser / asset pack loading did not change.
+
+Focused test:
+
+```bash
+npx vitest run tests/contracts/asset-semantic-large-library-batch-zero-pirate-kit.test.ts
+```
+
+The focused test covers exact asset count, exact sidecar count, matching thumbnails, project-relative paths, unique deterministic asset ids, metadata validation with path checks, runtime-safe export and exclusion of internal/provenance-sensitive runtime fields.
+
+Step 13C-B validation passed for this branch snapshot:
+
+```bash
+npx vitest run tests/contracts/asset-semantic-large-library-batch-zero-pirate-kit.test.ts
+npm run metadata:validate -- tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+npm run metadata:validate -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+npm run metadata:validate -- --check-paths tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+npm run metadata:export-runtime -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+npm run metadata:validate -- assets/metadata/examples
+npm run metadata:export-runtime -- --json assets/metadata/examples
+npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata
+npm run test:contracts
+npm test
+npm run typecheck
+git diff --check
+```
+
+Validation results:
+
+- Focused test passed: 1 file / 5 tests.
+- Batch-zero metadata validate passed: `OK 10 metadata files`.
+- Batch-zero metadata JSON validate passed: `ok=true`, 10 files, no diagnostics.
+- Batch-zero metadata `--check-paths` passed: `OK 10 metadata files`.
+- Batch-zero runtime export passed: `ok=true`, `asset_count=10`, no diagnostics.
+- Baseline examples validate / runtime export passed.
+- Baseline small fixture validate / runtime export passed.
+- `npm run test:contracts` passed: 22 files / 202 tests.
+- `npm test` passed: contracts and workspace tests.
+- `npm run typecheck` passed: root, maker-api and maker-workbench.
+- `git diff --check` passed.
+
+Sage/Oracle review passed:
+
+- P0/P1/P2: none.
+- P3: initial review noted this section and the review log still said Sage/Oracle review pending after review had completed. This was updated before commit.
 
 ## Step 13C-A Validation And Review
 
