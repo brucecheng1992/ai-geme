@@ -139,6 +139,15 @@ describe('asset semantic canary comparison', () => {
         })
       })
     ).toThrow('Canary comparison requires identical skipped and experimental flags');
+
+    const mismatchedFixturePathSummary = canarySummary({ repairEnabled: true });
+    mismatchedFixturePathSummary.fixturePath = 'tests/fixtures/art-library-small-v0.1';
+    expect(() =>
+      buildAssetSemanticCanaryComparison({
+        defaultSummary: canarySummary({ repairEnabled: false }),
+        repairEnabledSummary: mismatchedFixturePathSummary
+      })
+    ).toThrow('Canary comparison requires identical fixture path');
   });
 
   it('keeps medium warnings out of failure diagnostics and reports sorted code deltas', () => {

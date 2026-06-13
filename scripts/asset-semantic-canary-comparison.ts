@@ -45,6 +45,13 @@ const AssetSemanticCanaryComparisonRepairSchema = z
     failedCount: NonNegativeIntSchema
   })
   .passthrough();
+const AssetSemanticCanaryComparisonFixtureSchema = z
+  .strictObject({
+    kind: z.enum(['canary_briefs', 'small_art_library']),
+    identity: z.string().trim().min(1),
+    assetCount: NonNegativeIntSchema.optional()
+  })
+  .passthrough();
 
 export const AssetSemanticCanaryComparisonSummarySchema = z
   .strictObject({
@@ -57,6 +64,8 @@ export const AssetSemanticCanaryComparisonSummarySchema = z
     experimental: NonNegativeIntSchema,
     exitCode: z.number().int(),
     repairEnabled: z.boolean(),
+    fixturePath: z.string().trim().min(1),
+    fixture: AssetSemanticCanaryComparisonFixtureSchema.optional(),
     counts: AssetSemanticCanaryComparisonCountsSchema,
     repair: AssetSemanticCanaryComparisonRepairSchema,
     cases: z.array(AssetSemanticCanaryComparisonCaseSchema)
@@ -92,6 +101,11 @@ export type AssetSemanticCanaryComparisonRun = {
 export type AssetSemanticCanaryComparison = {
   comparison_version: 'asset-semantic-canary-comparison-v0.1';
   canary_pack: 'asset-semantic-canary-v0.2';
+  fixture?: {
+    kind: 'canary_briefs' | 'small_art_library';
+    identity: string;
+    asset_count?: number;
+  };
   case_set: {
     total: number;
     ids: string[];
@@ -139,14 +153,17 @@ export function buildAssetSemanticCanaryComparison(input: {
   const repairEnabledSummary = AssetSemanticCanaryComparisonSummarySchema.parse(input.repairEnabledSummary) as AssetSemanticCanarySummary;
   assertRepairMode(defaultSummary, false, 'default');
   assertRepairMode(repairEnabledSummary, true, 'repair-enabled');
+  assertComparableFixture(defaultSummary, repairEnabledSummary);
   assertComparableCaseSet(defaultSummary, repairEnabledSummary);
 
   const defaultRun = summarizeRun(defaultSummary);
   const repairEnabledRun = summarizeRun(repairEnabledSummary);
+  const fixture = summarizeComparisonFixture(defaultSummary);
 
   return {
     comparison_version: 'asset-semantic-canary-comparison-v0.1',
     canary_pack: 'asset-semantic-canary-v0.2',
+    ...(fixture === undefined ? {} : { fixture }),
     case_set: {
       total: defaultSummary.cases.length,
       ids: defaultSummary.cases.map((item) => item.id),
@@ -253,6 +270,28 @@ function assertRepairMode(summary: AssetSemanticCanarySummary, expectedEnabled: 
   }
 }
 
+function assertComparableFixture(defaultSummary: AssetSemanticCanarySummary, repairEnabledSummary: AssetSemanticCanarySummary): void {
+  if (defaultSummary.fixturePath !== repairEnabledSummary.fixturePath) {
+    throw new Error('Canary comparison requires identical fixture path');
+  }
+
+  const defaultFixture = defaultSummary.fixture;
+  const repairEnabledFixture = repairEnabledSummary.fixture;
+  if ((defaultFixture === undefined) !== (repairEnabledFixture === undefined)) {
+    throw new Error('Canary comparison requires identical fixture identity');
+  }
+  if (defaultFixture === undefined || repairEnabledFixture === undefined) {
+    return;
+  }
+  if (
+    defaultFixture.kind !== repairEnabledFixture.kind ||
+    defaultFixture.identity !== repairEnabledFixture.identity ||
+    defaultFixture.assetCount !== repairEnabledFixture.assetCount
+  ) {
+    throw new Error('Canary comparison requires identical fixture identity');
+  }
+}
+
 function assertComparableCaseSet(defaultSummary: AssetSemanticCanarySummary, repairEnabledSummary: AssetSemanticCanarySummary): void {
   const defaultIds = defaultSummary.cases.map((item) => item.id);
   const repairEnabledIds = repairEnabledSummary.cases.map((item) => item.id);
@@ -277,6 +316,18 @@ function assertComparableCaseSet(defaultSummary: AssetSemanticCanarySummary, rep
       throw new Error(`Canary comparison requires identical ${field}`);
     }
   }
+}
+
+function summarizeComparisonFixture(summary: AssetSemanticCanarySummary): AssetSemanticCanaryComparison['fixture'] {
+  if (summary.fixture === undefined) {
+    return undefined;
+  }
+
+  return {
+    kind: summary.fixture.kind,
+    identity: summary.fixture.identity,
+    ...(summary.fixture.assetCount === undefined ? {} : { asset_count: summary.fixture.assetCount })
+  };
 }
 
 function caseFlags(item: AssetSemanticCanaryCaseSummary): string {

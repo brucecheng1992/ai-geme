@@ -34,6 +34,7 @@ import {
   resolveCanaryAssetSemanticRepairConfig,
   type AssetSemanticCanaryCliOptions
 } from './asset-semantic-canary-options.js';
+import { buildSmallArtLibraryCanaryDryRunSummary, isSmallArtLibraryFixtureRoot } from './asset-semantic-small-art-library-dry-run.js';
 
 const workspace = new LocalWorkspaceService(process.cwd());
 
@@ -45,8 +46,22 @@ async function main(): Promise<void> {
   }
 
   const options = parsedOptions;
-  const fixture = AssetSemanticCanaryBriefsSchema.parse(JSON.parse(await readFile(options.fixturePath, 'utf8')));
   const outputDir = join(options.outputRoot, options.timestamp);
+  if (await isSmallArtLibraryFixtureRoot(options.fixturePath)) {
+    const summary = await buildSmallArtLibraryCanaryDryRunSummary({
+      fixtureRoot: options.fixturePath,
+      outputDir,
+      repairEnabled: resolveCanaryAssetSemanticRepairConfig(options).enabled,
+      createdAt: new Date().toISOString()
+    });
+
+    await writeCanarySummary(outputDir, summary);
+    printCanarySummary(outputDir, summary);
+    process.exitCode = summary.exitCode;
+    return;
+  }
+
+  const fixture = AssetSemanticCanaryBriefsSchema.parse(JSON.parse(await readFile(options.fixturePath, 'utf8')));
   const selected = selectAssetSemanticCanaryBriefs(fixture, {
     includeUnsupported: options.includeUnsupported,
     caseId: options.caseId,
@@ -92,15 +107,25 @@ async function main(): Promise<void> {
     executions
   });
 
+  await writeCanarySummary(outputDir, summary);
+  printCanarySummary(outputDir, summary);
+
+  process.exitCode = summary.exitCode;
+}
+
+async function writeCanarySummary(outputDir: string, summary: ReturnType<typeof buildAssetSemanticCanarySummary> | Awaited<ReturnType<typeof buildSmallArtLibraryCanaryDryRunSummary>>): Promise<void> {
   await mkdir(outputDir, { recursive: true });
   await writeFile(join(outputDir, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`, 'utf8');
   await writeFile(join(outputDir, 'summary.md'), renderAssetSemanticCanaryMarkdown(summary), 'utf8');
+}
 
+function printCanarySummary(outputDir: string, summary: ReturnType<typeof buildAssetSemanticCanarySummary> | Awaited<ReturnType<typeof buildSmallArtLibraryCanaryDryRunSummary>>): void {
   console.log(`Asset semantic canary summary written to ${outputDir}`);
   console.log(`runnable=${summary.runnable} skipped=${summary.skipped} experimental=${summary.experimental} passed=${summary.passed} failed=${summary.failed}`);
   console.log(`repair.enabled=${summary.repair.enabled} repair.attemptedCount=${summary.repair.attemptedCount} repair.failedCount=${summary.repair.failedCount}`);
-
-  process.exitCode = summary.exitCode;
+  if (summary.fixture?.kind === 'small_art_library') {
+    console.log(`fixture.kind=${summary.fixture.kind} fixture.identity=${summary.fixture.identity} fixture.assetCount=${summary.fixture.assetCount ?? 0}`);
+  }
 }
 
 async function runCanaryCase(

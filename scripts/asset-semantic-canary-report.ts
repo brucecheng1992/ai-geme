@@ -138,6 +138,7 @@ export type AssetSemanticCanarySummary = {
   version: 'asset-semantic-canary-v0.1';
   createdAt: string;
   fixturePath: string;
+  fixture?: AssetSemanticCanaryFixtureSummary;
   total: number;
   runnable: number;
   passed: number;
@@ -174,6 +175,12 @@ export type AssetSemanticCanarySummary = {
     skippedReasons: Record<string, number>;
   };
   cases: AssetSemanticCanaryCaseSummary[];
+};
+
+export type AssetSemanticCanaryFixtureSummary = {
+  kind: 'canary_briefs' | 'small_art_library';
+  identity: string;
+  assetCount?: number;
 };
 
 export type AssetSemanticCanaryRepairRequirementSummary = z.infer<typeof QaAssetSemanticRepairRequirementSchema>;
@@ -317,7 +324,7 @@ export function renderAssetSemanticCanaryMarkdown(summary: AssetSemanticCanarySu
 
 CreatedAt: ${summary.createdAt}
 Fixture path: ${summary.fixturePath}
-Total / runnable / passed / failed / skipped / experimental: ${summary.total} / ${summary.runnable} / ${summary.passed} / ${summary.failed} / ${summary.skipped} / ${summary.experimental}
+${summary.fixture === undefined ? '' : `Fixture identity: ${summary.fixture.kind} / ${summary.fixture.identity}${summary.fixture.assetCount === undefined ? '' : ` / assets=${summary.fixture.assetCount}`}\n`}Total / runnable / passed / failed / skipped / experimental: ${summary.total} / ${summary.runnable} / ${summary.passed} / ${summary.failed} / ${summary.skipped} / ${summary.experimental}
 
 ## Status Counts
 - PLAYABLE: ${summary.counts.playable}

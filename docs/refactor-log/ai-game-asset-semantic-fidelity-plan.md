@@ -33,7 +33,7 @@
 - generated project 根目录已写出 `asset_resolution_report.json`，记录 selected / rejected / fallback diagnostics。
 - QA report 已包含 `asset_report`，Workbench Assets 面板可展示 manifest/runtime load 状态和 source pack。
 
-当前状态：Step 9A small art library intake review gate 已完成；本步只新增 docs-only gate，定义 Step 9B / Step 9C 的小型真实美术资源 dry-run 准入规则，不导入资源、不创建 sidecar metadata、不改变默认运行时、resolver、QA、Workbench、Phaser 或 asset pack loading。
+当前状态：Step 9C small art library dry-run 已完成；本步只让 Step 9B 导入的小型 fixture 进入 metadata validation、runtime-safe export、default canary、repair-enabled canary 和 comparison dry-run，不改变默认运行时、resolver、QA、Workbench、Phaser 或 asset pack loading。
 
 - QA / Workbench 已能识别 runtime pass 但 hard semantic mismatch 的 `NEEDS_ASSET_REPAIR`，并展示 per-asset semanticFit 摘要。
 - 第一批 canary brief fixture 已建立，batch runner 已能默认运行 supported cases、跳过 `expectedUnsupported` cases，并写出 summary report。
@@ -46,6 +46,8 @@
 - 已新增 Step 8c canary fixture pack v0.2：只把 canary brief fixture 小包从 14 条扩展到 18 条，不接生产 local asset pack、不改变 resolver / runtime / QA / Workbench / Phaser / asset pack loading。
 - 已新增 Step 8d default / repair-enabled canary comparison：只新增 deterministic comparison helper / CLI / report，repair 仍显式开启，不设为默认。
 - 已新增 Step 9A small art library intake gate：只用文档定义小型真实资源 dry-run 的尺寸、布局、二进制、metadata、validation / export / canary / comparison、非目标和 P0/P1/P2/P3 审查门禁。
+- 已新增 Step 9B small art library metadata intake / fixture import：导入 10 个 Kenney Cube Pets 小型 fixture assets 与 sidecar metadata，仍不接 runtime/default behavior。
+- 已新增 Step 9C small art library dry-run：`--fixture tests/fixtures/art-library-small-v0.1` 只触发 canary-only metadata/export summary，不改变默认 canary JSON fixture、runtime/default behavior 或 repair default。
 
 ## 4. 分步落地计划
 
@@ -68,8 +70,8 @@
 | Step 8c | Canary fixture pack v0.2 | 小包 canary brief fixture 扩展，不接生产资源包 | 已完成 |
 | Step 8d | Default / repair-enabled canary comparison | 比较两份 canary summary 的 pass/fail、诊断与 repair metadata | 已完成 |
 | Step 9A | Small art library intake review gate | 文档化小型真实资源 dry-run 的准入规则，不导入资源 | 已完成 |
-| Step 9B | Small art library metadata intake / fixture import | 导入或创建 10-30 个小型 fixture 资产并补 sidecar metadata | 下一步 |
-| Step 9C | Small art library dry-run validation / canary / comparison | 对小型库跑 validate / export / canary / comparison 并生成 dry-run report | 后续 |
+| Step 9B | Small art library metadata intake / fixture import | 导入或创建 10-30 个小型 fixture 资产并补 sidecar metadata | 已完成 |
+| Step 9C | Small art library dry-run validation / canary / comparison | 对小型库跑 validate / export / canary / comparison 并生成 dry-run report | 已完成 |
 
 ## 5. Step 1 最小实现边界
 
@@ -775,7 +777,7 @@ Step 9A 验证：
 - Step 8c 已只完成 canary fixture pack / brief pack v0.2；Step 8d 已只完成 default / repair-enabled canary summary comparison，不扩展资源或运行时行为。
 - Step 9A 已只完成 small art library intake review gate。
 - Step 9B 已导入 Kenney Cube Pets 小型 fixture 与 sidecar metadata；下一步若继续资产主线，应进入 Step 9C dry-run validation / canary / comparison。
-- Step 9C 不得启动 Metadata Step 4A、大资源库接入或 runtime / resolver / QA / Workbench / Phaser 变更。
+- Step 9C 已完成 dry-run validation / canary / comparison；不得启动 Metadata Step 4A、大资源库接入或 runtime / resolver / QA / Workbench / Phaser 变更。
 - shooter HUD stash 仍是独立任务，不应混入 Asset Semantic Fidelity 后续步骤。
 - 可选技术债治理应另起命名，例如 pipeline split，不再复用 Step 8a / Step 8b 编号。
 - 后续涉及真实验收时仍必须用 Workbench / generated project / QA 产物证明，不只看单测。
@@ -786,7 +788,7 @@ Step 9A 验证：
 
 ## 24. Step 9B small art library metadata intake / fixture import
 
-状态：已完成，等待 Oracle 复审后提交。
+状态：已完成。
 
 Step 9B 只处理小型真实资源 fixture 与 sidecar metadata：
 
@@ -842,3 +844,80 @@ fixture size check：
 - `tests/fixtures/art-library-small-v0.1/` 当前 `du -sh` 为 1.5M。
 - 全 fixture 文件字节总和为 1,486,226 bytes。
 - 最大文件为 `assets/animal-lion.glb`，172,936 bytes。
+
+## 25. Step 9C small art library dry-run validation / canary / comparison
+
+状态：已完成，等待 Oracle 复审后提交。
+
+Step 9C 只处理小型真实资源 fixture 的 deterministic dry-run：
+
+- `npm run qa:asset-semantic:canary -- --fixture tests/fixtures/art-library-small-v0.1` 现在识别 small art library fixture root，并只在 canary dry-run 内读取其 `metadata/`。
+- 默认 `--fixture` JSON canary brief 行为不变；未传 `--fixture` 时仍使用 `tests/fixtures/asset-semantic-canary.briefs.json`。
+- small library dry-run 先执行 metadata validation 和 runtime-safe export，再构造 deterministic canary summary。
+- default 与 repair-enabled small library canary summary 都写入 fixture identity `art-library-small-v0.1` 和 `assetCount=10`。
+- comparison helper 现在要求 default 与 repair-enabled summary 的 `fixturePath` / fixture identity / asset count 一致，并在 comparison output 写入 deterministic fixture summary。
+
+Step 9C 不修改：
+
+- runtime/default asset loading、resolver、QA aggregation、Workbench、Phaser、asset pack loading 或 repair-enabled default。
+- Metadata Step 4A bridge/resolver diagnostics。
+- large asset library。
+- Step 9B fixture asset set 或 source metadata。
+
+已通过验证：
+
+    npx vitest run tests/contracts/asset-semantic-small-library-dry-run.test.ts tests/contracts/asset-semantic-canary-comparison.test.ts
+    # 2 个测试文件，9 个测试通过
+
+    npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+    # OK 10 metadata files
+
+    npm run metadata:validate -- --json tests/fixtures/art-library-small-v0.1/metadata
+    # ok=true，10 个 files，diagnostics=[]
+
+    npm run metadata:validate -- --check-paths tests/fixtures/art-library-small-v0.1/metadata
+    # OK 10 metadata files
+
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata
+    # ok=true，artifact.asset_count=10，diagnostics=[]
+
+    npm run metadata:validate -- assets/metadata/examples
+    # OK 5 metadata files
+
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+    # ok=true，artifact.asset_count=5，diagnostics=[]
+
+    npm run qa:asset-semantic:canary -- --fixture tests/fixtures/art-library-small-v0.1 --timestamp 20260613Tstep9c-default
+    # artifacts/asset-semantic-canary/20260613Tstep9c-default，runnable=10 passed=10 failed=0，repair.enabled=false
+
+    npm run qa:asset-semantic:canary -- --repair-enabled --fixture tests/fixtures/art-library-small-v0.1 --timestamp 20260613Tstep9c-repair
+    # artifacts/asset-semantic-canary/20260613Tstep9c-repair，runnable=10 passed=10 failed=0，repair.enabled=true
+
+    npm run qa:asset-semantic:compare -- --default-summary artifacts/asset-semantic-canary/20260613Tstep9c-default/summary.json --repair-enabled-summary artifacts/asset-semantic-canary/20260613Tstep9c-repair/summary.json --out artifacts/asset-semantic-canary-comparison/20260613Tstep9c-small-library/comparison.json
+    # ok=true，case.total=10，failureDiagnosticDelta=0
+
+    npm run qa:asset-semantic:canary -- --limit 1 --timestamp 20260613Tstep9c-default-behavior-smoke
+    # default JSON fixture smoke 仍通过：runnable=1 skipped=17 passed=1 failed=0
+
+    node -e "<artifact path check>"
+    # Step 9C summaries / comparison 不包含 /Users；comparison 不包含 ISO timestamp 或 summary.json 路径
+
+    git ls-files --others --exclude-standard artifacts/asset-semantic-canary/20260613Tstep9c-default artifacts/asset-semantic-canary/20260613Tstep9c-repair artifacts/asset-semantic-canary-comparison/20260613Tstep9c-small-library
+    # 无输出，说明 generated artifacts 位于 ignored 路径
+
+    find tests/fixtures/art-library-small-v0.1/assets -maxdepth 1 -type f -name '*.glb' | wc -l
+    # 10
+
+阶段结果：
+
+- default canary artifact：`artifacts/asset-semantic-canary/20260613Tstep9c-default/summary.json`。
+- repair-enabled canary artifact：`artifacts/asset-semantic-canary/20260613Tstep9c-repair/summary.json`。
+- comparison artifact：`artifacts/asset-semantic-canary-comparison/20260613Tstep9c-small-library/comparison.json`。
+- comparison `ok=true`；default / repair-enabled 均 `failure_diagnostic_count=0`、`diagnostic_codes=[]`、`medium_warning_count=0`；所有 delta 为 0。
+- generated artifacts 全部在 ignored `artifacts/` 下，未加入 git。
+- small library fixture asset count 仍为 10。
+
+审查记录：
+
+- Oracle 复审：P0/P1/P2 未发现问题；确认 `--fixture` directory branch 只影响 canary/dry-run，default JSON canary 行为保持不变；确认 default / repair-enabled 使用相同 small library fixture path / identity / asset count；确认 generated artifacts 位于 ignored `artifacts/` 路径且未进入 git。
+- P3 可选：未来若继续修改 runner，可补 CLI 级 small-library smoke test；本步已有本地命令验证，不阻塞提交。

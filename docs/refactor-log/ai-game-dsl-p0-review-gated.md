@@ -8,11 +8,84 @@
 
 ## 当前阶段
 
-Asset Semantic Fidelity Step 9A 已完成：small art library intake review gate 只新增 docs-only 准入规则，定义 Step 9B / Step 9C 的小型真实资源 dry-run 边界，不导入资源、不创建 metadata sidecar、不接生产 local asset pack、不改变 resolver / QA / Workbench / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate 和 Step 3B runtime-safe export implementation。
+Asset Semantic Fidelity Step 9C 已完成：small art library dry-run 只对 Step 9B 小型 fixture 执行 metadata validation、runtime-safe export、default canary、repair-enabled canary 和 comparison，不接生产 local asset pack、不改变 resolver / QA / Workbench / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate 和 Step 3B runtime-safe export implementation。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Asset Semantic Fidelity Step 9B small art library metadata intake / fixture import；AI Game Art Asset Metadata v0.1 后续进入 Step 4 asset pack metadata bridge / resolver diagnostics，但当前仍 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：决定是否关闭 small art library dry-run lane，或另开 docs-only gate 讨论 Metadata Step 4A / asset pack bridge / resolver diagnostics；AI Game Art Asset Metadata v0.1 Step 4A 当前仍 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.28 Asset Semantic Fidelity Step 9C: Small Art Library Dry-Run Validation / Canary / Comparison
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 新增 `scripts/asset-semantic-small-art-library-dry-run.ts`，当 `--fixture` 指向包含 `metadata/` 的 fixture root 时，只在 canary dry-run 内执行 metadata validation / runtime-safe export，并生成 deterministic canary summary。
+- 更新 `scripts/run-asset-semantic-canary.ts`，保持默认 JSON canary brief fixture 行为不变；small library directory fixture 不启动 preview server / project generation / runtime resolver。
+- 更新 `scripts/asset-semantic-canary-report.ts`，给 summary 增加 optional fixture identity。
+- 更新 `scripts/asset-semantic-canary-comparison.ts`，要求 default 和 repair-enabled summary 使用相同 fixture path / identity / asset count，并在 comparison output 写入 deterministic fixture summary。
+- 新增 `tests/contracts/asset-semantic-small-library-dry-run.test.ts`，覆盖 small library root detection、default / repair-enabled same fixture identity、comparison deterministic output、ignored artifacts path。
+- 扩展 `tests/contracts/asset-semantic-canary-comparison.test.ts`，覆盖 fixture path mismatch rejection。
+
+行为边界：
+
+- 未修改 runtime/default asset loading、resolver default behavior、QA aggregation、Workbench、Phaser、asset pack loading 或 repair-enabled default。
+- 未启动 Metadata Step 4A bridge / resolver diagnostics。
+- 未触碰 large asset library。
+- 未导入 Step 9B 之外的新资产，small library fixture asset count 仍为 10。
+- 未静默修复或重写 source metadata。
+- generated runtime / canary / comparison artifacts 全部留在 ignored `artifacts/` 路径，未加入 git。
+
+已通过验证：
+
+    npx vitest run tests/contracts/asset-semantic-small-library-dry-run.test.ts tests/contracts/asset-semantic-canary-comparison.test.ts
+    # 2 个测试文件，9 个测试通过
+
+    npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+    # OK 10 metadata files
+
+    npm run metadata:validate -- --json tests/fixtures/art-library-small-v0.1/metadata
+    # ok=true，10 个 files，diagnostics=[]
+
+    npm run metadata:validate -- --check-paths tests/fixtures/art-library-small-v0.1/metadata
+    # OK 10 metadata files
+
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata
+    # ok=true，artifact.asset_count=10，diagnostics=[]
+
+    npm run metadata:validate -- assets/metadata/examples
+    # OK 5 metadata files
+
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+    # ok=true，artifact.asset_count=5，diagnostics=[]
+
+    npm run qa:asset-semantic:canary -- --fixture tests/fixtures/art-library-small-v0.1 --timestamp 20260613Tstep9c-default
+    # artifacts/asset-semantic-canary/20260613Tstep9c-default，runnable=10 skipped=0 experimental=0 passed=10 failed=0，repair.enabled=false
+
+    npm run qa:asset-semantic:canary -- --repair-enabled --fixture tests/fixtures/art-library-small-v0.1 --timestamp 20260613Tstep9c-repair
+    # artifacts/asset-semantic-canary/20260613Tstep9c-repair，runnable=10 skipped=0 experimental=0 passed=10 failed=0，repair.enabled=true
+
+    npm run qa:asset-semantic:compare -- --default-summary artifacts/asset-semantic-canary/20260613Tstep9c-default/summary.json --repair-enabled-summary artifacts/asset-semantic-canary/20260613Tstep9c-repair/summary.json --out artifacts/asset-semantic-canary-comparison/20260613Tstep9c-small-library/comparison.json
+    # ok=true，case.total=10，case.runnable=10，default.failed=0，repair.failed=0，failureDiagnosticDelta=0
+
+    npm run qa:asset-semantic:canary -- --limit 1 --timestamp 20260613Tstep9c-default-behavior-smoke
+    # default JSON fixture smoke 仍通过：runnable=1 skipped=17 passed=1 failed=0
+
+    git ls-files --others --exclude-standard artifacts/asset-semantic-canary/20260613Tstep9c-default artifacts/asset-semantic-canary/20260613Tstep9c-repair artifacts/asset-semantic-canary-comparison/20260613Tstep9c-small-library
+    # 无输出
+
+阶段结果：
+
+- default canary artifact：`artifacts/asset-semantic-canary/20260613Tstep9c-default/summary.json`。
+- repair-enabled canary artifact：`artifacts/asset-semantic-canary/20260613Tstep9c-repair/summary.json`。
+- comparison artifact：`artifacts/asset-semantic-canary-comparison/20260613Tstep9c-small-library/comparison.json`。
+- comparison summary：`ok=true`，fixture identity `art-library-small-v0.1`，`asset_count=10`，default / repair-enabled 均 `failure_diagnostic_count=0`、`diagnostic_codes=[]`、`medium_warning_count=0`，所有 delta 为 0。
+
+审查记录：
+
+- Oracle 复审：P0/P1/P2 未发现问题；确认 Step 9C 改动保持在 canary/dry-run/reporting 层，未越界到 runtime/default behavior、resolver、QA aggregation、Workbench、Phaser、asset pack loading、large library 或 Metadata Step 4A。
+- Oracle 重点确认：`--fixture` directory branch 未劫持默认 JSON canary；default / repair-enabled summary 校验相同 small library fixture path / identity / asset count；generated artifacts 保持在 ignored `artifacts/` 路径且未进入 git。
+- P3 可选：未来若继续修改 runner，可补 CLI 级 small-library smoke test；本步已有本地命令验证，不阻塞提交。
 
 ### 2.27 Asset Semantic Fidelity Step 9A: Small Art Library Intake Review Gate
 

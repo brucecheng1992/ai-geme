@@ -6,11 +6,13 @@
 
 Step 9A defines the review gate for the first small real-resource dry-run after Step 8d.
 Step 9B imports the first small fixture subset and sidecar metadata under that gate.
+Step 9C runs validation, runtime-safe export, default canary, repair-enabled canary, and comparison as a deterministic dry-run.
 
 This small art library is a canary / dry-run input for validating metadata, export, canary reporting, and future bridge boundaries. It is not production/default runtime integration, and it must not change resolver selection, repair behavior, Phaser loading, QA aggregation, Workbench UI, or default asset pack loading.
 
 Step 9A is docs-only. It imports no assets, creates no sidecar manifests, adds no tests, and wires no runtime consumers.
 Step 9B imports a 10-asset fixture only; it still wires no runtime consumers.
+Step 9C runs that fixture through dry-run reporting only; it still wires no runtime consumers.
 
 ## 2. Relationship To Previous Steps
 
@@ -118,13 +120,23 @@ Step 9B / Step 9C must document and run the narrowest relevant command set for t
 ```bash
 npm run metadata:validate -- <small-library-metadata-dir>
 npm run metadata:validate -- --json <small-library-metadata-dir>
+npm run metadata:validate -- --check-paths <small-library-metadata-dir>
 npm run metadata:export-runtime -- --json <small-library-metadata-dir>
-npm run qa:asset-semantic:canary -- --fixture <small-library-canary-briefs.json>
-npm run qa:asset-semantic:canary -- --repair-enabled --fixture <small-library-canary-briefs.json>
+npm run qa:asset-semantic:canary -- --fixture <small-library-fixture-root>
+npm run qa:asset-semantic:canary -- --repair-enabled --fixture <small-library-fixture-root>
 npm run qa:asset-semantic:compare -- --default-summary <default-summary.json> --repair-enabled-summary <repair-summary.json> --out <comparison.json>
 ```
 
-The current canary runner already exposes `--fixture <path>` for canary brief input. If the small art library needs a different input shape than canary briefs, Step 9B or Step 9C may add a narrow canary-only input option. That option must:
+The canary runner exposes `--fixture <path>` for canary brief input. Step 9C keeps that default JSON behavior unchanged and adds a narrow canary-only directory input when `<path>` is a small art library fixture root containing a `metadata/` directory.
+
+For `tests/fixtures/art-library-small-v0.1`, the canary-only path shape is:
+
+- `--fixture tests/fixtures/art-library-small-v0.1`
+- metadata is read from `tests/fixtures/art-library-small-v0.1/metadata`
+- generated canary summaries stay under `artifacts/asset-semantic-canary/<timestamp>/`
+- generated comparison summaries stay under `artifacts/asset-semantic-canary-comparison/<timestamp>/`
+
+This directory input must:
 
 - Be explicitly canary-only.
 - Not alter default canary behavior.
@@ -182,6 +194,19 @@ Step 9C: dry-run validation / canary / comparison.
 - Generate deterministic dry-run report.
 - Do not wire to runtime/default asset loading.
 
+Step 9C completed dry-run result:
+
+- Metadata validation passed for 10 files.
+- Runtime-safe export passed with `artifact.asset_count=10`.
+- Default small library canary wrote `artifacts/asset-semantic-canary/20260613Tstep9c-default/summary.json`, with `runnable=10 passed=10 failed=0` and `repair.enabled=false`.
+- Repair-enabled small library canary wrote `artifacts/asset-semantic-canary/20260613Tstep9c-repair/summary.json`, with `runnable=10 passed=10 failed=0` and `repair.enabled=true`.
+- Both canary summaries use fixture identity `art-library-small-v0.1` and `assetCount=10`.
+- Comparison wrote `artifacts/asset-semantic-canary-comparison/20260613Tstep9c-small-library/comparison.json`, with `ok=true`, `failure_diagnostic_count=0`, `medium_warning_count=0`, and zero deltas.
+- Generated dry-run artifacts stay under ignored `artifacts/` paths and were not committed.
+- No source metadata was silently modified.
+- Repair-enabled mode remains explicit and was not made default.
+- The small library was not wired into runtime/default behavior.
+
 Later separate gates:
 
 - Metadata Step 4A / 4B asset pack bridge / resolver diagnostics.
@@ -231,7 +256,7 @@ P3:
 
 - Step 8d: done.
 - Step 9A: done.
-- Step 9B: current / done after review and commit.
-- Step 9C: not started; next later step is small library dry-run validation / canary / comparison.
+- Step 9B: done.
+- Step 9C: done; dry-run validation / canary / comparison completed without runtime/default wiring.
 - Metadata Step 4A: parked.
 - Large asset library: parked.
