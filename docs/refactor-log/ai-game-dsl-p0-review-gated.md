@@ -8,11 +8,101 @@
 
 ## 当前阶段
 
-Step 13D-A batch-zero semantic dry-run / bridge gate 正在执行：本步 docs-only，只定义 Step 13D-B 如何把 Step 13C-B 已导入的 Kenney Pirate Kit 10-asset fixture 跑完整 semantic dry-run、default / repair-enabled canary、comparison、bridge summary 和 resolver-adjacent diagnostics。不实现 code/tests/scripts、不导入 assets、不改 sidecar metadata、不生成 thumbnails、不改 production asset packs、不改变 runtime/default integration、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 repair behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate、Step 10B implementation、Step 11A-11C non-default runtime canary lane、Step 12A preview gate、Step 12B preview implementation、Step 12C preview signoff、Step 13A large-library intake gate、Step 13B read-only inventory dry-run、Step 13C-A docs-only gate 和 Step 13C-B fixture import。
+Step 13D-B batch-zero semantic dry-run / bridge implementation 已完成本地验证：同一 Kenney Pirate Kit 10-asset fixture 的 metadata validate/export、default canary、repair-enabled canary、comparison、bridge summary、resolver-adjacent diagnostics 和独立 negative diagnostics 均通过。本步只新增 focused tests、metadata-only canary fixture kind support 和文档记录；不导入 assets、不改 sidecar metadata、不生成 thumbnails、不改 production asset packs、不改变 runtime/default integration、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 repair behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate、Step 10B implementation、Step 11A-11C non-default runtime canary lane、Step 12A preview gate、Step 12B preview implementation、Step 12C preview signoff、Step 13A large-library intake gate、Step 13B read-only inventory dry-run、Step 13C-A docs-only gate、Step 13C-B fixture import 和 Step 13D-A docs-only gate。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：完成 Step 13D-A docs update、只读审查和 `git diff --check` 后提交 `docs: gate batch zero semantic dry-run`。当前分支为 `docs/asset-semantic-step-13d-batch-zero-dry-run-gate`。Step 13D-B 为下一步实现；large library expansion / runtime-default integration / production rollout 仍 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库扩容、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：完成 Step 13D-B Oracle 只读审查、`git diff --check` 和 scoped commit 后，按 plan 决定进入 Step 14A production rollout gate 或 Step 13E large-library expansion gate。当前分支为 `test/asset-semantic-step-13d-batch-zero-dry-run`。Runtime/default integration / production rollout 仍 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库扩容、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.45 Step 13D-B: Batch Zero Semantic Dry-Run / Bridge Implementation
+
+完成时间：2026-06-14
+
+已完成内容：
+
+- 新增 `tests/contracts/asset-semantic-large-library-batch-zero-dry-run.test.ts`。
+- 扩展现有 metadata-only canary dry-run support，让 `tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/` 明确输出 `fixture.kind=large_art_library_batch_zero`。
+- 保持 Step 9C small-library dry-run 兼容，既有 small fixture 仍输出 `fixture.kind=small_art_library`。
+- 扩展 canary comparison schema / report type 以接受 `large_art_library_batch_zero` fixture kind。
+- 更新 Step 13D 文档、semantic fidelity plan 和 review log。
+
+阶段结果：
+
+- Exact batch-zero asset ids used:
+  - `pirate_kit_barrel_001`
+  - `pirate_kit_boat_row_small_001`
+  - `pirate_kit_cannon_001`
+  - `pirate_kit_chest_001`
+  - `pirate_kit_crate_001`
+  - `pirate_kit_flag_pirate_001`
+  - `pirate_kit_palm_straight_001`
+  - `pirate_kit_rocks_a_001`
+  - `pirate_kit_ship_pirate_small_001`
+  - `pirate_kit_tower_complete_small_001`
+- Default canary artifact path: `artifacts/asset-semantic-canary/20260614Tstep13d-default/summary.json`.
+- Repair-enabled canary artifact path: `artifacts/asset-semantic-canary/20260614Tstep13d-repair/summary.json`.
+- Comparison artifact path: `artifacts/asset-semantic-canary-comparison/20260614Tstep13d-batch-zero/comparison.json`.
+- Bridge green summary: `ok=true`, `matched_count=10`, `diagnostic_count=0`.
+- Resolver-adjacent green summary: `ok=true`, `requested_count=10`, `resolved_count=10`, `diagnostic_count=0`.
+- Negative diagnostics summary: missing requested id、missing bridge candidate、candidate without runtime metadata 和 blocked context 均由 focused tests 单独覆盖，未混入 green path。
+
+行为边界：
+
+- No additional assets imported。
+- No sidecar metadata changed。
+- No thumbnails changed。
+- No generated artifacts committed。
+- Runtime/default behavior did not change。
+- Resolver behavior did not change。
+- QA / Workbench / Phaser / asset pack loading did not change。
+- Production asset packs did not change。
+- Repair-enabled did not become default。
+- `resolveLocalAssetPack` / `selectLocalAssetPack` were not imported or called by Step 13D-B tests。
+- `AGENTS.md` was not restored。
+- Parked plan patch was not applied。
+- No tag / stash / push / sync operations。
+
+验证：
+
+    npx vitest run tests/contracts/asset-semantic-large-library-batch-zero-dry-run.test.ts
+    npx vitest run tests/contracts/asset-semantic-small-library-dry-run.test.ts
+    npx vitest run tests/contracts/asset-semantic-canary-comparison.test.ts tests/contracts/asset-pack-small-library-bridge-canary.test.ts
+    npm run metadata:validate -- tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- --check-paths tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run qa:asset-semantic:canary -- --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1 --timestamp 20260614Tstep13d-default
+    npm run qa:asset-semantic:canary -- --repair-enabled --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1 --timestamp 20260614Tstep13d-repair
+    npm run qa:asset-semantic:compare -- --default-summary artifacts/asset-semantic-canary/20260614Tstep13d-default/summary.json --repair-enabled-summary artifacts/asset-semantic-canary/20260614Tstep13d-repair/summary.json --out artifacts/asset-semantic-canary-comparison/20260614Tstep13d-batch-zero/comparison.json
+    npm run metadata:validate -- assets/metadata/examples
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+    npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata
+    npm run test:contracts
+    npm test
+    npm run typecheck
+
+验证结果：
+
+- Focused Step 13D-B test passed：1 file / 7 tests。
+- Existing small-library dry-run regression passed：1 file / 4 tests。
+- Existing comparison / small bridge regressions passed：2 files / 9 tests。
+- Batch-zero metadata validate / JSON validate / check-paths / runtime export passed：10 metadata files, `asset_count=10`, no diagnostics。
+- Default canary passed：`passed=10 failed=0`。
+- Repair-enabled canary passed：`passed=10 failed=0`，`repair.attemptedCount=0`。
+- Comparison passed：`ok=true`，`case.total=10`，`default.failed=0`，`repair.failed=0`。
+- Baseline examples validate / runtime export passed。
+- Baseline small fixture validate / runtime export passed。
+- `npm run test:contracts` passed：23 files / 209 tests。
+- `npm test` passed：contracts 23 files / 209 tests，workspace 12 files / 125 tests。
+- `npm run typecheck` passed：root、maker-api、maker-workbench。
+
+审查门禁结论：
+
+- Oracle review completed.
+- P0/P2/P3: none.
+- P1: new focused test file `tests/contracts/asset-semantic-large-library-batch-zero-dry-run.test.ts` was untracked at review time and must be included in final commit scope.
+- Resolution: include the new focused test in the final staged scope with the related Step 13D-B scripts/docs changes before committing.
 
 ### 2.44 Step 13D-A: Batch Zero Semantic Dry-Run / Bridge Gate
 

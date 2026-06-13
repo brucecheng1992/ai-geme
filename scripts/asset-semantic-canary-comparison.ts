@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { AssetSemanticCanaryCaseSummary, AssetSemanticCanarySummary } from './asset-semantic-canary-report.js';
+import type { AssetSemanticCanaryCaseSummary, AssetSemanticCanaryFixtureKind, AssetSemanticCanarySummary } from './asset-semantic-canary-report.js';
 
 const NonNegativeIntSchema = z.number().int().min(0);
 
@@ -47,7 +47,7 @@ const AssetSemanticCanaryComparisonRepairSchema = z
   .passthrough();
 const AssetSemanticCanaryComparisonFixtureSchema = z
   .strictObject({
-    kind: z.enum(['canary_briefs', 'small_art_library']),
+    kind: z.enum(['canary_briefs', 'small_art_library', 'large_art_library_batch_zero']),
     identity: z.string().trim().min(1),
     assetCount: NonNegativeIntSchema.optional()
   })
@@ -102,7 +102,7 @@ export type AssetSemanticCanaryComparison = {
   comparison_version: 'asset-semantic-canary-comparison-v0.1';
   canary_pack: 'asset-semantic-canary-v0.2';
   fixture?: {
-    kind: 'canary_briefs' | 'small_art_library';
+    kind: AssetSemanticCanaryFixtureKind;
     identity: string;
     asset_count?: number;
   };

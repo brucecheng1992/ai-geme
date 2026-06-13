@@ -6,7 +6,12 @@ import {
   validateArtAssetMetadataFiles,
   type RuntimeArtAssetMetadata
 } from '../packages/asset-pipeline/src/index.js';
-import type { AssetSemanticCanaryCaseSummary, AssetSemanticCanaryFixtureSummary, AssetSemanticCanarySummary } from './asset-semantic-canary-report.js';
+import type {
+  AssetSemanticCanaryCaseSummary,
+  AssetSemanticCanaryFixtureKind,
+  AssetSemanticCanaryFixtureSummary,
+  AssetSemanticCanarySummary
+} from './asset-semantic-canary-report.js';
 
 export type SmallArtLibraryCanaryDryRunOptions = {
   fixtureRoot: string;
@@ -16,9 +21,13 @@ export type SmallArtLibraryCanaryDryRunOptions = {
   projectRoot?: string;
 };
 
-const dryRunRepairSkippedReason = 'small_library_metadata_only_dry_run';
+export type ArtLibraryMetadataCanaryDryRunOptions = SmallArtLibraryCanaryDryRunOptions;
 
 export async function isSmallArtLibraryFixtureRoot(fixturePath: string, projectRoot = process.cwd()): Promise<boolean> {
+  return isArtLibraryMetadataFixtureRoot(fixturePath, projectRoot);
+}
+
+export async function isArtLibraryMetadataFixtureRoot(fixturePath: string, projectRoot = process.cwd()): Promise<boolean> {
   try {
     const rootStat = await lstat(resolve(projectRoot, fixturePath));
     if (!rootStat.isDirectory()) {
@@ -33,10 +42,17 @@ export async function isSmallArtLibraryFixtureRoot(fixturePath: string, projectR
 }
 
 export async function buildSmallArtLibraryCanaryDryRunSummary(options: SmallArtLibraryCanaryDryRunOptions): Promise<AssetSemanticCanarySummary> {
+  return buildArtLibraryMetadataCanaryDryRunSummary(options);
+}
+
+export async function buildArtLibraryMetadataCanaryDryRunSummary(options: ArtLibraryMetadataCanaryDryRunOptions): Promise<AssetSemanticCanarySummary> {
   const projectRoot = options.projectRoot ?? process.cwd();
-  const fixtureRoot = toProjectRelativePath(options.fixtureRoot, projectRoot, 'small art library fixture root');
-  const outputDir = toProjectRelativePath(options.outputDir, projectRoot, 'small art library output directory');
+  const fixtureRoot = toProjectRelativePath(options.fixtureRoot, projectRoot, 'art library metadata fixture root');
+  const outputDir = toProjectRelativePath(options.outputDir, projectRoot, 'art library metadata output directory');
   const metadataDir = join(fixtureRoot, 'metadata');
+  const fixtureKind = inferFixtureKind(fixtureRoot);
+  const fixtureIdentity = basename(fixtureRoot);
+  const dryRunRepairSkippedReason = repairSkippedReasonForFixtureKind(fixtureKind);
 
   const validationResult = await validateArtAssetMetadataFiles({
     targets: [metadataDir],
@@ -56,11 +72,11 @@ export async function buildSmallArtLibraryCanaryDryRunSummary(options: SmallArtL
   }
 
   const fixture: AssetSemanticCanaryFixtureSummary = {
-    kind: 'small_art_library',
-    identity: basename(fixtureRoot),
+    kind: fixtureKind,
+    identity: fixtureIdentity,
     assetCount: exportResult.artifact.asset_count
   };
-  const cases = exportResult.artifact.assets.map((asset) => buildDryRunCase(asset, outputDir, options.repairEnabled));
+  const cases = exportResult.artifact.assets.map((asset) => buildDryRunCase(asset, outputDir, options.repairEnabled, fixtureIdentity, dryRunRepairSkippedReason));
 
   return {
     version: 'asset-semantic-canary-v0.1',
@@ -106,10 +122,16 @@ export async function buildSmallArtLibraryCanaryDryRunSummary(options: SmallArtL
   };
 }
 
-function buildDryRunCase(asset: RuntimeArtAssetMetadata, outputDir: string, repairEnabled: boolean): AssetSemanticCanaryCaseSummary {
+function buildDryRunCase(
+  asset: RuntimeArtAssetMetadata,
+  outputDir: string,
+  repairEnabled: boolean,
+  fixtureIdentity: string,
+  dryRunRepairSkippedReason: string
+): AssetSemanticCanaryCaseSummary {
   return {
     id: asset.asset_id,
-    brief: `Small art library metadata dry-run asset: ${asset.title}`,
+    brief: `Art library metadata dry-run asset: ${asset.title}`,
     category: 'supported_core_semantic',
     skipped: false,
     runtimeStatus: 'PASSED',
@@ -122,7 +144,7 @@ function buildDryRunCase(asset: RuntimeArtAssetMetadata, outputDir: string, repa
     placeholderUsedCount: 0,
     requiredAssetMissingCount: 0,
     assetLoadFailureCount: 0,
-    selectedPacks: ['art-library-small-v0.1'],
+    selectedPacks: [fixtureIdentity],
     reportPath: `${outputDir}/summary.json`,
     repair: repairEnabled
       ? {
@@ -134,6 +156,20 @@ function buildDryRunCase(asset: RuntimeArtAssetMetadata, outputDir: string, repa
       : undefined,
     pass: true
   };
+}
+
+function inferFixtureKind(fixtureRoot: string): AssetSemanticCanaryFixtureKind {
+  if (basename(fixtureRoot) === 'art-library-batch-zero-pirate-kit-v0.1') {
+    return 'large_art_library_batch_zero';
+  }
+  return 'small_art_library';
+}
+
+function repairSkippedReasonForFixtureKind(kind: AssetSemanticCanaryFixtureKind): string {
+  if (kind === 'large_art_library_batch_zero') {
+    return 'large_art_library_batch_zero_metadata_only_dry_run';
+  }
+  return 'small_library_metadata_only_dry_run';
 }
 
 function toProjectRelativePath(value: string, projectRoot: string, label: string): string {

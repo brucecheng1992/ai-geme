@@ -177,8 +177,10 @@ export type AssetSemanticCanarySummary = {
   cases: AssetSemanticCanaryCaseSummary[];
 };
 
+export type AssetSemanticCanaryFixtureKind = 'canary_briefs' | 'small_art_library' | 'large_art_library_batch_zero';
+
 export type AssetSemanticCanaryFixtureSummary = {
-  kind: 'canary_briefs' | 'small_art_library';
+  kind: AssetSemanticCanaryFixtureKind;
   identity: string;
   assetCount?: number;
 };

@@ -34,7 +34,7 @@ import {
   resolveCanaryAssetSemanticRepairConfig,
   type AssetSemanticCanaryCliOptions
 } from './asset-semantic-canary-options.js';
-import { buildSmallArtLibraryCanaryDryRunSummary, isSmallArtLibraryFixtureRoot } from './asset-semantic-small-art-library-dry-run.js';
+import { buildArtLibraryMetadataCanaryDryRunSummary, isArtLibraryMetadataFixtureRoot } from './asset-semantic-small-art-library-dry-run.js';
 
 const workspace = new LocalWorkspaceService(process.cwd());
 
@@ -47,8 +47,8 @@ async function main(): Promise<void> {
 
   const options = parsedOptions;
   const outputDir = join(options.outputRoot, options.timestamp);
-  if (await isSmallArtLibraryFixtureRoot(options.fixturePath)) {
-    const summary = await buildSmallArtLibraryCanaryDryRunSummary({
+  if (await isArtLibraryMetadataFixtureRoot(options.fixturePath)) {
+    const summary = await buildArtLibraryMetadataCanaryDryRunSummary({
       fixtureRoot: options.fixturePath,
       outputDir,
       repairEnabled: resolveCanaryAssetSemanticRepairConfig(options).enabled,
@@ -113,17 +113,17 @@ async function main(): Promise<void> {
   process.exitCode = summary.exitCode;
 }
 
-async function writeCanarySummary(outputDir: string, summary: ReturnType<typeof buildAssetSemanticCanarySummary> | Awaited<ReturnType<typeof buildSmallArtLibraryCanaryDryRunSummary>>): Promise<void> {
+async function writeCanarySummary(outputDir: string, summary: ReturnType<typeof buildAssetSemanticCanarySummary> | Awaited<ReturnType<typeof buildArtLibraryMetadataCanaryDryRunSummary>>): Promise<void> {
   await mkdir(outputDir, { recursive: true });
   await writeFile(join(outputDir, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`, 'utf8');
   await writeFile(join(outputDir, 'summary.md'), renderAssetSemanticCanaryMarkdown(summary), 'utf8');
 }
 
-function printCanarySummary(outputDir: string, summary: ReturnType<typeof buildAssetSemanticCanarySummary> | Awaited<ReturnType<typeof buildSmallArtLibraryCanaryDryRunSummary>>): void {
+function printCanarySummary(outputDir: string, summary: ReturnType<typeof buildAssetSemanticCanarySummary> | Awaited<ReturnType<typeof buildArtLibraryMetadataCanaryDryRunSummary>>): void {
   console.log(`Asset semantic canary summary written to ${outputDir}`);
   console.log(`runnable=${summary.runnable} skipped=${summary.skipped} experimental=${summary.experimental} passed=${summary.passed} failed=${summary.failed}`);
   console.log(`repair.enabled=${summary.repair.enabled} repair.attemptedCount=${summary.repair.attemptedCount} repair.failedCount=${summary.repair.failedCount}`);
-  if (summary.fixture?.kind === 'small_art_library') {
+  if (summary.fixture?.kind === 'small_art_library' || summary.fixture?.kind === 'large_art_library_batch_zero') {
     console.log(`fixture.kind=${summary.fixture.kind} fixture.identity=${summary.fixture.identity} fixture.assetCount=${summary.fixture.assetCount ?? 0}`);
   }
 }

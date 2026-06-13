@@ -208,10 +208,107 @@ P3:
 ## Docs Status
 
 - Step 13C-B is done.
-- Step 13D-A is the current docs-only gate and becomes done after this document, the semantic fidelity plan and the review log are updated and `git diff --check` passes.
-- Step 13D-B is next: batch-zero semantic dry-run / bridge implementation.
+- Step 13D-A is done.
+- Step 13D-B is done for the batch-zero semantic dry-run / bridge implementation.
 - Runtime/default integration remains parked.
 - Production rollout remains parked.
+
+## Step 13D-B Implementation Result
+
+Step 13D-B completed batch-zero semantic dry-run / bridge validation only.
+
+Changed files:
+
+- `tests/contracts/asset-semantic-large-library-batch-zero-dry-run.test.ts`
+- `scripts/asset-semantic-small-art-library-dry-run.ts`
+- `scripts/run-asset-semantic-canary.ts`
+- `scripts/asset-semantic-canary-report.ts`
+- `scripts/asset-semantic-canary-comparison.ts`
+- `docs/refactor-log/asset-semantic-large-library-step-13d-batch-zero-dry-run.md`
+- `docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md`
+- `docs/refactor-log/ai-game-dsl-p0-review-gated.md`
+
+Implementation boundary:
+
+- Added focused Step 13D-B contract coverage for the Pirate Kit batch-zero fixture.
+- Extended existing metadata-only canary dry-run fixture support so the batch-zero fixture is identified as `large_art_library_batch_zero`.
+- Kept existing small-library dry-run behavior compatible.
+- Did not add new assets.
+- Did not modify GLB files, thumbnails or metadata sidecars.
+- Did not add new CLI scripts.
+- Did not call `resolveLocalAssetPack` or `selectLocalAssetPack`.
+- Did not change runtime/default resolver behavior.
+- Did not touch QA runtime behavior, Workbench, Phaser runtime or asset pack loading.
+- Did not touch production asset packs.
+- Did not start production rollout.
+
+Green path evidence:
+
+- Metadata validation succeeded for exactly 10 sidecars.
+- Runtime-safe export succeeded with `asset_count=10`.
+- Default canary used `tests/fixtures/art-library-batch-zero-pirate-kit-v0.1` and reported `passed=10 failed=0`.
+- Repair-enabled canary used the same fixture and reported `passed=10 failed=0`.
+- Repair-enabled remained explicit and non-default: default `repair.enabled=false`; repair run `repair.enabled=true` with `repair.attemptedCount=0`.
+- Comparison passed with `ok=true`, `case.total=10`, `case.runnable=10`, `default.failed=0`, `repair.failed=0` and `failureDiagnosticDelta=0`.
+- Bridge summary used explicit candidates derived from the same runtime export and returned `ok=true`, `matched_count=10`, `diagnostic_count=0`.
+- Resolver-adjacent diagnostics used the exact 10 batch-zero asset ids and returned `ok=true`, `requested_count=10`, `resolved_count=10`, `diagnostic_count=0`.
+- Negative diagnostics stayed separate from the green path: missing requested id, missing bridge candidate, candidate without runtime metadata and blocked context are covered by focused tests only.
+
+Generated artifacts:
+
+- Default canary summary: `artifacts/asset-semantic-canary/20260614Tstep13d-default/summary.json`.
+- Repair-enabled canary summary: `artifacts/asset-semantic-canary/20260614Tstep13d-repair/summary.json`.
+- Comparison summary: `artifacts/asset-semantic-canary-comparison/20260614Tstep13d-batch-zero/comparison.json`.
+- These paths stay under ignored `artifacts/` and must not be committed.
+
+Step 13D-B validation passed for this branch snapshot:
+
+```bash
+npx vitest run tests/contracts/asset-semantic-large-library-batch-zero-dry-run.test.ts
+npx vitest run tests/contracts/asset-semantic-small-library-dry-run.test.ts
+npx vitest run tests/contracts/asset-semantic-canary-comparison.test.ts tests/contracts/asset-pack-small-library-bridge-canary.test.ts
+npm run metadata:validate -- tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+npm run metadata:validate -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+npm run metadata:validate -- --check-paths tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+npm run metadata:export-runtime -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+npm run qa:asset-semantic:canary -- --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1 --timestamp 20260614Tstep13d-default
+npm run qa:asset-semantic:canary -- --repair-enabled --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1 --timestamp 20260614Tstep13d-repair
+npm run qa:asset-semantic:compare -- --default-summary artifacts/asset-semantic-canary/20260614Tstep13d-default/summary.json --repair-enabled-summary artifacts/asset-semantic-canary/20260614Tstep13d-repair/summary.json --out artifacts/asset-semantic-canary-comparison/20260614Tstep13d-batch-zero/comparison.json
+npm run metadata:validate -- assets/metadata/examples
+npm run metadata:export-runtime -- --json assets/metadata/examples
+npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata
+npm run test:contracts
+npm test
+npm run typecheck
+```
+
+Validation results:
+
+- Focused Step 13D-B test passed: 1 file / 7 tests.
+- Existing small-library dry-run regression passed: 1 file / 4 tests.
+- Existing comparison / small bridge regressions passed: 2 files / 9 tests.
+- Batch-zero metadata validate passed: `OK 10 metadata files`.
+- Batch-zero metadata JSON validate passed: `ok=true`, 10 files, no diagnostics.
+- Batch-zero metadata `--check-paths` passed: `OK 10 metadata files`.
+- Batch-zero runtime export passed: `ok=true`, `asset_count=10`, no diagnostics.
+- Default canary passed: `passed=10 failed=0`, `fixture.kind=large_art_library_batch_zero`, `fixture.assetCount=10`.
+- Repair-enabled canary passed: `passed=10 failed=0`, `repair.enabled=true`, `repair.attemptedCount=0`, `repair.failedCount=0`.
+- Comparison passed: `ok=true`, `case.total=10`, `case.runnable=10`, `default.failed=0`, `repair.failed=0`, `failureDiagnosticDelta=0`.
+- Baseline examples validate / runtime export passed: 5 runtime metadata assets.
+- Baseline small fixture validate / runtime export passed: 10 runtime metadata assets.
+- `npm run test:contracts` passed: 23 files / 209 tests.
+- `npm test` passed: contracts 23 files / 209 tests and workspace 12 files / 125 tests.
+- `npm run typecheck` passed: root, maker-api and maker-workbench.
+
+Read-only review gate:
+
+- Oracle review completed.
+- P0: none.
+- P1: new focused test file `tests/contracts/asset-semantic-large-library-batch-zero-dry-run.test.ts` was untracked at review time and must be included in final commit scope.
+- P2: none.
+- P3: none.
+- Resolution: include the new focused test in the final staged scope with the related Step 13D-B scripts/docs changes before committing.
 
 ## Step 13D-A Validation And Review
 
