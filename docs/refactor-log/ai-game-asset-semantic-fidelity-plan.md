@@ -33,7 +33,7 @@
 - generated project 根目录已写出 `asset_resolution_report.json`，记录 selected / rejected / fallback diagnostics。
 - QA report 已包含 `asset_report`，Workbench Assets 面板可展示 manifest/runtime load 状态和 source pack。
 
-当前状态：Step 9C small art library dry-run 已完成；本步只让 Step 9B 导入的小型 fixture 进入 metadata validation、runtime-safe export、default canary、repair-enabled canary 和 comparison dry-run，不改变默认运行时、resolver、QA、Workbench、Phaser 或 asset pack loading。
+当前状态：Step 9C small art library dry-run 已完成并已关闭 branch boundary；Metadata Step 4A asset pack metadata bridge / resolver diagnostics review gate 为当前 docs-only 步骤。Step 4A 只定义 Step 4B 未来 bridge / diagnostics 边界，不实现代码、不新增测试、不改变默认运行时、resolver、QA、Workbench、Phaser 或 asset pack loading。
 
 - QA / Workbench 已能识别 runtime pass 但 hard semantic mismatch 的 `NEEDS_ASSET_REPAIR`，并展示 per-asset semanticFit 摘要。
 - 第一批 canary brief fixture 已建立，batch runner 已能默认运行 supported cases、跳过 `expectedUnsupported` cases，并写出 summary report。
@@ -48,6 +48,7 @@
 - 已新增 Step 9A small art library intake gate：只用文档定义小型真实资源 dry-run 的尺寸、布局、二进制、metadata、validation / export / canary / comparison、非目标和 P0/P1/P2/P3 审查门禁。
 - 已新增 Step 9B small art library metadata intake / fixture import：导入 10 个 Kenney Cube Pets 小型 fixture assets 与 sidecar metadata，仍不接 runtime/default behavior。
 - 已新增 Step 9C small art library dry-run：`--fixture tests/fixtures/art-library-small-v0.1` 只触发 canary-only metadata/export summary，不改变默认 canary JSON fixture、runtime/default behavior 或 repair default。
+- 已新增 Metadata Step 4A asset pack metadata bridge / resolver diagnostics review gate：docs-only 定义 Step 4B 允许读取 runtime-safe metadata / small library dry-run output 并生成 deterministic report，不启动 runtime/default integration 或 large library。
 
 ## 4. 分步落地计划
 
@@ -72,6 +73,13 @@
 | Step 9A | Small art library intake review gate | 文档化小型真实资源 dry-run 的准入规则，不导入资源 | 已完成 |
 | Step 9B | Small art library metadata intake / fixture import | 导入或创建 10-30 个小型 fixture 资产并补 sidecar metadata | 已完成 |
 | Step 9C | Small art library dry-run validation / canary / comparison | 对小型库跑 validate / export / canary / comparison 并生成 dry-run report | 已完成 |
+| Metadata Step 4A | Asset pack metadata bridge / resolver diagnostics review gate | docs-only 定义 bridge / diagnostics 边界、deterministic outputs 和 large-library exclusion | 当前 |
+| Metadata Step 4B | Asset pack metadata bridge / resolver diagnostics implementation | bridge helper、diagnostic helper、focused tests、deterministic report schema | 下一步 |
+| Small library bridge canary | Fixture-only bridge canary | 使用 small library bridge output 做非生产 canary | 后续 |
+| Non-default runtime integration | Explicit opt-in runtime lane | 非默认开关验证 bridge consumer，不改变 production/default | 后续 |
+| Workbench / QA preview | Diagnostics preview | 预览 bridge diagnostics，不改变 default verdict | 后续 |
+| Large library gate | Large asset library scan/import gate | 尺寸、license、metadata、rollout policy gate | parked |
+| Production rollout gate | Default asset pack rollout | 生产默认行为变更的独立 gate | parked |
 
 ## 5. Step 1 最小实现边界
 
@@ -847,7 +855,7 @@ fixture size check：
 
 ## 25. Step 9C small art library dry-run validation / canary / comparison
 
-状态：已完成，等待 Oracle 复审后提交。
+状态：已完成，并已通过 fast-forward merge 关闭 branch boundary。
 
 Step 9C 只处理小型真实资源 fixture 的 deterministic dry-run：
 
@@ -921,3 +929,57 @@ Step 9C 不修改：
 
 - Oracle 复审：P0/P1/P2 未发现问题；确认 `--fixture` directory branch 只影响 canary/dry-run，default JSON canary 行为保持不变；确认 default / repair-enabled 使用相同 small library fixture path / identity / asset count；确认 generated artifacts 位于 ignored `artifacts/` 路径且未进入 git。
 - P3 可选：未来若继续修改 runner，可补 CLI 级 small-library smoke test；本步已有本地命令验证，不阻塞提交。
+
+## 26. Metadata Step 4A asset pack metadata bridge / resolver diagnostics review gate
+
+状态：当前 docs-only gate，完成后 Step 4B 才能开始。
+
+Step 4A 只记录 future bridge / diagnostics 边界：
+
+- 新增 `docs/refactor-log/asset-pack-metadata-bridge-step-4a.md`，定义 Step 4B 可读取 runtime-safe metadata artifacts、small library dry-run outputs 或 fixture metadata，并生成 deterministic bridge summary / resolver diagnostics / compatibility report。
+- 明确 resolver diagnostics 只能 report-only，不能改变 resolver ranking、selection、fallback、hard gate、repair trigger 或 runtime/default behavior。
+- 明确 small library dry-run output 只能作为 fixture / canary / bridge diagnostic input，不能成为 production/default asset loading 输入。
+- 明确 large asset library 继续 parked，Step 4B 不得扫描或导入大资源库。
+
+Step 4A 不修改：
+
+- code、tests、asset imports、metadata sidecars 或 generated artifacts。
+- runtime/default asset loading、resolver、QA aggregation、Workbench、Phaser 或 asset pack loading。
+- repair-enabled default、repair writeback 或 unsupported asset promotion。
+- Step 4B implementation。
+
+Step 4B 未来允许：
+
+- 新增 bridge helper。
+- 新增 resolver diagnostic helper。
+- 新增 focused tests。
+- 新增 deterministic report schema。
+- 更新 docs。
+
+Step 4B 未来不允许：
+
+- runtime/default loading。
+- production asset pack integration。
+- Workbench UI。
+- Phaser runtime loading。
+- large library rollout。
+- repair-enabled default。
+- source metadata rewrite。
+- large asset library scan/import。
+
+后续路线保持分布落地：
+
+1. Metadata Step 4B asset pack metadata bridge / resolver diagnostics implementation。
+2. Small library bridge canary，仍保持 fixture-only / non-production。
+3. Non-default runtime integration，必须显式 opt-in。
+4. Workbench / QA preview，只预览 diagnostics，不改变 default verdict。
+5. Large library gate，单独审查 size、license、scan/import 和 rollout policy。
+6. Production rollout gate，单独审查 default asset pack behavior、resolver consumer 和 runtime loading。
+
+验证：
+
+    git diff --check
+
+审查记录：
+
+- Oracle 审查：P0/P1/P2/P3 均无阻塞；确认 Step 4A 仍为 docs-only，未越界到 code、tests、asset imports、metadata sidecars、generated artifacts、runtime/default behavior、resolver、QA、Workbench、Phaser、asset pack loading、large library 或 Step 4B implementation。

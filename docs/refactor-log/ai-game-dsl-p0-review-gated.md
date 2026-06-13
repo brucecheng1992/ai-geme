@@ -8,11 +8,74 @@
 
 ## 当前阶段
 
-Asset Semantic Fidelity Step 9C 已完成：small art library dry-run 只对 Step 9B 小型 fixture 执行 metadata validation、runtime-safe export、default canary、repair-enabled canary 和 comparison，不接生产 local asset pack、不改变 resolver / QA / Workbench / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate 和 Step 3B runtime-safe export implementation。
+Asset Semantic Fidelity Step 9C 已完成并已关闭 branch boundary：small art library dry-run 只对 Step 9B 小型 fixture 执行 metadata validation、runtime-safe export、default canary、repair-enabled canary 和 comparison，不接生产 local asset pack、不改变 resolver / QA / Workbench / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation；Metadata Step 4A asset pack metadata bridge / resolver diagnostics review gate 为当前 docs-only 步骤。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：决定是否关闭 small art library dry-run lane，或另开 docs-only gate 讨论 Metadata Step 4A / asset pack bridge / resolver diagnostics；AI Game Art Asset Metadata v0.1 Step 4A 当前仍 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Metadata Step 4B asset pack metadata bridge / resolver diagnostics implementation。Step 4A 只做 docs-only gate，不实现 Step 4B；large asset library、runtime/default integration、QA / Workbench / Phaser / asset pack loading 继续 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.29 Metadata Step 4A: Asset Pack Metadata Bridge / Resolver Diagnostics Review Gate
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 新增 `docs/refactor-log/asset-pack-metadata-bridge-step-4a.md`，定义 future asset pack metadata bridge / resolver diagnostics review gate。
+- 更新 `docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md`，记录 Step 9C branch boundary 已关闭、Step 4A 为当前 docs-only gate、Step 4B 为下一步，large asset library 和 runtime/default integration 继续 parked。
+- 更新本 review log，记录 Step 4A docs-only 边界和 Step 4B future implementation boundary。
+
+Gate 摘要：
+
+- Step 4A 只是 review gate，用于把既有 metadata validation、runtime-safe export、Step 9C small library dry-run 和 canary comparison 输出连接到未来 bridge / diagnostics 设计。
+- Step 4B 未来可以读取 runtime-safe metadata artifacts、small library dry-run outputs 或 fixture metadata，生成 deterministic bridge summary、resolver diagnostics JSON 或 compatibility report。
+- Resolver diagnostics 必须 report-only、deterministic、stable diagnostic code style，不改变 resolver decision、runtime/default behavior、repair writeback 或 unsupported asset promotion。
+- Small library dry-run output 可以作为 fixture / canary / bridge diagnostic input，但不能成为 production/default asset loading 输入。
+- Large asset library 继续 parked；未来必须另走 large library gate。
+
+行为边界：
+
+- 本步没有实现代码。
+- 本步没有新增或修改 tests。
+- 本步没有修改 asset imports、metadata sidecars 或 generated artifacts。
+- 本步没有修改 runtime/default asset loading、resolver default behavior、QA aggregation、Workbench、Phaser、asset pack loading 或 repair-enabled default。
+- 本步没有扫描、导入或处理 large asset library。
+- 本步没有启动 Step 4B implementation。
+
+Step 4B 未来允许：
+
+- bridge helper。
+- resolver diagnostic helper。
+- focused tests。
+- deterministic report schema。
+- docs update。
+
+Step 4B 未来不允许：
+
+- runtime/default loading。
+- production asset pack integration。
+- Workbench UI。
+- Phaser runtime loading。
+- large library rollout。
+- repair-enabled default。
+- source metadata rewrite。
+- large asset library scan/import。
+
+后续路线：
+
+1. Metadata Step 4B asset pack metadata bridge / resolver diagnostics implementation。
+2. Small library bridge canary，仍为 fixture-only / non-production。
+3. Non-default runtime integration，必须显式 opt-in。
+4. Workbench / QA preview，只预览 diagnostics，不改变 default verdict。
+5. Large library gate，单独审查 size、license、scan/import 和 rollout policy。
+6. Production rollout gate，单独审查 default asset pack behavior、resolver consumer 和 runtime loading。
+
+验证：
+
+    git diff --check
+
+审查记录：
+
+- Oracle 审查：P0/P1/P2/P3 均无阻塞；确认 Step 4A docs-only gate 可在主 agent 重新确认 `git diff --check`、`git status --short --branch` 和 staged diff 范围后提交。
 
 ### 2.28 Asset Semantic Fidelity Step 9C: Small Art Library Dry-Run Validation / Canary / Comparison
 
