@@ -446,5 +446,170 @@
       ],
       "notes": "Promoted in Step 8b after Step 8a covered cat, alien, fishbone, and space wording."
     }
+  },
+  {
+    "id": "tank_battlefield_shooter",
+    "brief": "做一个坦克在战场上射击坦克的小游戏",
+    "category": "medium_theme_semantic",
+    "expect": {
+      "allowedOverall": ["PLAYABLE", "PLAYABLE_WITH_FALLBACK_ASSETS", "PLAYABLE_WITH_ART_WARNINGS"],
+      "disallowOverall": ["NEEDS_ASSET_REPAIR", "QA_FAILED"],
+      "hardMismatchAllowed": false,
+      "requiredAssetMissingAllowed": false,
+      "assetLoadFailureAllowed": false,
+      "placeholderAllowed": false,
+      "expectedCore": [
+        {
+          "role": "player",
+          "concept": "tank",
+          "strictness": "hard",
+          "allowFallbackGenerated": true,
+          "forbiddenConcepts": ["cat", "alien"]
+        },
+        {
+          "role": "enemy",
+          "concept": "tank",
+          "strictness": "hard",
+          "allowFallbackGenerated": true,
+          "forbiddenConcepts": ["cat", "alien"]
+        },
+        {
+          "role": "background",
+          "concept": "battlefield",
+          "strictness": "medium",
+          "allowFallbackGenerated": true,
+          "forbiddenConcepts": ["space", "stars", "galaxy", "cosmic"]
+        }
+      ],
+      "preferredPack": {
+        "packId": "kenney-tiny-shooter-tanks",
+        "soft": true,
+        "roles": ["player", "enemy", "background"]
+      },
+      "notes": "Step 8c v0.2 fixture: tank characters plus battlefield background should keep the existing tank pack valid."
+    }
+  },
+  {
+    "id": "tank_fishbone_battlefield_shooter",
+    "brief": "做一个坦克在战场上发射鱼骨头子弹的小游戏",
+    "category": "mixed_core_semantic",
+    "expect": {
+      "allowedOverall": ["PLAYABLE", "PLAYABLE_WITH_FALLBACK_ASSETS", "PLAYABLE_WITH_ART_WARNINGS"],
+      "disallowOverall": ["NEEDS_ASSET_REPAIR", "QA_FAILED"],
+      "hardMismatchAllowed": false,
+      "requiredAssetMissingAllowed": false,
+      "assetLoadFailureAllowed": false,
+      "placeholderAllowed": false,
+      "expectedCore": [
+        {
+          "role": "player",
+          "concept": "tank",
+          "strictness": "hard",
+          "allowFallbackGenerated": true,
+          "forbiddenConcepts": ["cat", "alien"]
+        },
+        {
+          "role": "enemy",
+          "concept": "tank",
+          "strictness": "hard",
+          "allowFallbackGenerated": true,
+          "forbiddenConcepts": ["cat", "alien"]
+        },
+        {
+          "role": "projectile",
+          "concept": "fishbone",
+          "strictness": "medium",
+          "allowFallbackGenerated": true,
+          "forbiddenConcepts": ["shell", "tank_bullet"]
+        },
+        {
+          "role": "background",
+          "concept": "battlefield",
+          "strictness": "medium",
+          "allowFallbackGenerated": true,
+          "forbiddenConcepts": ["space", "stars", "galaxy", "cosmic"]
+        }
+      ],
+      "preferredPack": {
+        "packId": "kenney-tiny-shooter-tanks",
+        "soft": true,
+        "roles": ["player", "enemy", "projectile", "background"]
+      },
+      "notes": "Step 8c v0.2 fixture: medium fishbone projectile mismatch must stay a warning boundary, not a hard repair trigger."
+    }
+  },
+  {
+    "id": "cat_vs_tank_space_shooter",
+    "brief": "做一个小猫在太空中射击坦克的小游戏",
+    "category": "mixed_core_semantic",
+    "expect": {
+      "allowedOverall": ["PLAYABLE", "PLAYABLE_WITH_FALLBACK_ASSETS", "PLAYABLE_WITH_ART_WARNINGS"],
+      "disallowOverall": ["NEEDS_ASSET_REPAIR", "QA_FAILED"],
+      "hardMismatchAllowed": false,
+      "requiredAssetMissingAllowed": false,
+      "assetLoadFailureAllowed": false,
+      "placeholderAllowed": false,
+      "expectedCore": [
+        {
+          "role": "player",
+          "concept": "cat",
+          "strictness": "hard",
+          "allowFallbackGenerated": true,
+          "forbiddenConcepts": ["tank", "vehicle"]
+        },
+        {
+          "role": "enemy",
+          "concept": "tank",
+          "strictness": "hard",
+          "allowFallbackGenerated": true,
+          "forbiddenConcepts": ["cat", "alien"]
+        },
+        {
+          "role": "background",
+          "concept": "space",
+          "strictness": "medium",
+          "allowFallbackGenerated": true,
+          "forbiddenConcepts": ["battlefield", "road", "grassland"]
+        }
+      ],
+      "notes": "Step 8c v0.2 fixture: mixed cat/tank hard concepts in space should stay semantic-safe without selecting a mismatched full pack."
+    }
+  },
+  {
+    "id": "alien_vs_alien_space_shooter",
+    "brief": "做一个外星人在太空中射击外星人的小游戏",
+    "category": "medium_theme_semantic",
+    "expect": {
+      "allowedOverall": ["PLAYABLE", "PLAYABLE_WITH_FALLBACK_ASSETS", "PLAYABLE_WITH_ART_WARNINGS"],
+      "disallowOverall": ["NEEDS_ASSET_REPAIR", "QA_FAILED"],
+      "hardMismatchAllowed": false,
+      "requiredAssetMissingAllowed": false,
+      "assetLoadFailureAllowed": false,
+      "placeholderAllowed": false,
+      "expectedCore": [
+        {
+          "role": "player",
+          "concept": "alien",
+          "strictness": "hard",
+          "allowFallbackGenerated": true,
+          "forbiddenConcepts": ["tank", "vehicle", "turret"]
+        },
+        {
+          "role": "enemy",
+          "concept": "alien",
+          "strictness": "hard",
+          "allowFallbackGenerated": true,
+          "forbiddenConcepts": ["tank", "vehicle", "turret"]
+        },
+        {
+          "role": "background",
+          "concept": "space",
+          "strictness": "medium",
+          "allowFallbackGenerated": true,
+          "forbiddenConcepts": ["battlefield", "road", "grassland"]
+        }
+      ],
+      "notes": "Step 8c v0.2 fixture: creature-only alien roles plus space background exercise fallback semantics without metadata bridge work."
+    }
   }
 ]

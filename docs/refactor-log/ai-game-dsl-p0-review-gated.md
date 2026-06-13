@@ -8,11 +8,59 @@
 
 ## 当前阶段
 
-Asset Semantic Fidelity Step 8b 已完成：canary fixture promotion 只移除 Step 8a 已支持 wording 的 5 个 `expectedUnsupported` marker，让默认 canary 运行全部 14 条 first-batch fixtures；不接资源、不改变 resolver / QA / Workbench / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate 和 Step 3B runtime-safe export implementation。
+Asset Semantic Fidelity Step 8c 已完成：small canary fixture pack / brief pack v0.2 只把默认 canary 从 14 条扩展到 18 条，不接生产 local asset pack、不改变 resolver / QA / Workbench / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate 和 Step 3B runtime-safe export implementation。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Asset Semantic Fidelity 主线后续进入 Step 8c 小包资源扩展 v0.2；Step 8d 默认 / repair-enabled 对比仍未开始；AI Game Art Asset Metadata v0.1 后续进入 Step 4 asset pack metadata bridge / resolver diagnostics，但当前仍 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、新资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Asset Semantic Fidelity 主线后续进入 Step 8d 默认 / repair-enabled canary comparison；AI Game Art Asset Metadata v0.1 后续进入 Step 4 asset pack metadata bridge / resolver diagnostics，但当前仍 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、新资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.25 Asset Semantic Fidelity Step 8c: Canary Fixture Pack v0.2
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- `tests/fixtures/asset-semantic-canary.briefs.json` 从 14 条扩展到 18 条，保持 5-20 条 small canary fixture pack 边界。
+- 新增 fixtures：`tank_battlefield_shooter`、`tank_fishbone_battlefield_shooter`、`cat_vs_tank_space_shooter`、`alien_vs_alien_space_shooter`。
+- 新增覆盖：tank + battlefield local-pack positive path、tank + fishbone medium projectile warning boundary、cat/tank mixed fallback boundary、alien-only creature fallback boundary。
+- `tests/contracts/asset-semantic-canary-fixture.test.ts` 断言 Step 8c fixture id、pack size、canary v0.2 taxonomy baseline 和 Step 8c notes。
+- `tests/contracts/asset-semantic-canary-runner.test.ts` 断言默认 runner selection 现在选中 18 条、skipped 为空。
+
+行为边界：
+
+- 本步是 canary fixture pack / brief pack v0.2，不是生产 local asset pack 接入；未新增或修改 `assets/asset-packs`。
+- 未修改 resolver ranking、Step 3 hard gate、fallback 策略、manifest `semanticFit`、`asset_resolution_report`、QA aggregation、Workbench UI、Phaser runtime、repair planner / executor / pipeline 或 asset pack loading。
+- 未接入真实第三方资源切片、large asset library、AI image provider、Metadata Step 4A 或 shooter HUD 文件。
+- 默认 canary 与 repair-enabled canary 仅作为 Step 8c release guard，不作为 Step 8d comparison；未生成 comparison report 或 script。
+
+验证：
+
+    npx vitest run tests/contracts/asset-semantic-canary-fixture.test.ts tests/contracts/asset-semantic-canary-runner.test.ts
+    npm run qa:asset-semantic:canary
+    npm run qa:asset-semantic:canary -- --repair-enabled
+    npm run test:contracts
+    npm test
+    npm run typecheck
+    npm run metadata:validate -- assets/metadata/examples
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+
+结果：
+
+- TDD 红灯：focused canary tests 先因 fixture 仍为 14 条失败；补充 4 条 Step 8c fixture 后 2 个测试文件 24 个测试通过。
+- 默认 full canary：`artifacts/asset-semantic-canary/20260613T061551Z`，`runnable=18 skipped=0 experimental=0 passed=18 failed=0`，`repair.enabled=false repair.attemptedCount=0 repair.failedCount=0`。
+- repair-enabled full canary：`artifacts/asset-semantic-canary/20260613T061743Z`，`runnable=18 skipped=0 experimental=0 passed=18 failed=0`，`repair.enabled=true repair.attemptedCount=0 repair.failedCount=0`。
+- default / repair-enabled summaries 均为 `NEEDS_ASSET_REPAIR=0`、`QA_FAILED=0`、`hardMismatch=0`、`hardUnknown=0`、`requiredAssetMissing=0`、`assetLoadFailures=0`、`placeholderUsed=0`。
+- `tank_fishbone_battlefield_shooter` 产生的 medium warning 保持为 `PLAYABLE_WITH_ART_WARNINGS`，没有升级为 hard mismatch 或 repair trigger。
+- `npm run test:contracts` 通过：13 个测试文件，156 个测试通过。
+- `npm test` 通过：contracts 156 个测试通过，workspace 125 个测试通过。
+- `npm run typecheck` 通过。
+- `npm run metadata:validate -- assets/metadata/examples` 通过：`OK 5 metadata files`。
+- `npm run metadata:export-runtime -- --json assets/metadata/examples` 通过：`ok=true`、`diagnostics=[]`、`asset_count=5`。
+
+审查记录：
+
+- Oracle 预审：P0/P1 无；P2 提醒 `tank_fishbone_battlefield_shooter` 不应断言 medium warning 为 0；P3 提醒 `battlefield` 只作为 canary v0.2 baseline，不应被写成 taxonomy/resource expansion。已按此收紧。
+- Oracle 最终审查：P0/P1/P2/P3 均无，可提交；确认本步只改 6 个 Step 8c 文件，没有 `assets/asset-packs`、runtime、resolver、QA、Workbench、Phaser、shooter HUD 或 metadata examples 变更。
 
 ### 2.24 Asset Semantic Fidelity Step 8b: Canary Fixture Promotion
 

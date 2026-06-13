@@ -8,8 +8,21 @@ import { inferAssetSemanticConstraint, LocalAssetPackSchema } from '../../packag
 
 const fixturePath = join('tests', 'fixtures', 'asset-semantic-canary.briefs.json');
 const assetPackRoot = join('assets', 'asset-packs');
-const supportedCanonicalConcepts = new Set(['cat', 'alien', 'tank', 'space', 'fishbone']);
+const supportedCanonicalConcepts = new Set(['cat', 'alien', 'tank', 'space', 'battlefield', 'fishbone']);
 const forbiddenExpansionConcepts = new Set(['dog', 'rabbit', 'robot', 'bird', 'slime', 'asteroid']);
+const step8bPromotedIds = [
+  'cat_fishbone_alien_shooter',
+  'kitten_extraterrestrial_shooter',
+  'orange_cat_starfield_alien_shooter',
+  'armored_vehicle_vs_tank',
+  'cat_space_alien_fishbone'
+];
+const step8cCanaryV02Ids = [
+  'tank_battlefield_shooter',
+  'tank_fishbone_battlefield_shooter',
+  'cat_vs_tank_space_shooter',
+  'alien_vs_alien_space_shooter'
+];
 
 const OverallStatusSchema = z.enum(['PLAYABLE', 'PLAYABLE_WITH_FALLBACK_ASSETS', 'PLAYABLE_WITH_ART_WARNINGS', 'NEEDS_ASSET_REPAIR', 'QA_FAILED']);
 const AssetCanaryExpectedCoreSchema = z.strictObject({
@@ -46,7 +59,7 @@ const AssetCanaryBriefSchema = z.strictObject({
 const AssetCanaryBriefsSchema = z.array(AssetCanaryBriefSchema).min(1);
 
 describe('Asset semantic canary brief fixture', () => {
-  it('parses the v0.1 fixture JSON and keeps ids unique', async () => {
+  it('parses the fixture JSON and keeps ids unique', async () => {
     const briefs = await readCanaryBriefs();
     const ids = briefs.map((brief) => brief.id);
 
@@ -54,7 +67,7 @@ describe('Asset semantic canary brief fixture', () => {
     expect(briefs.every((brief) => brief.brief.trim().length > 0)).toBe(true);
   });
 
-  it('keeps semantic expectations inside the current taxonomy baseline', async () => {
+  it('keeps semantic expectations inside the canary v0.2 taxonomy baseline', async () => {
     const briefs = await readCanaryBriefs();
 
     for (const brief of briefs) {
@@ -82,6 +95,7 @@ describe('Asset semantic canary brief fixture', () => {
     expect(inferAssetSemanticConstraint({ role: 'player_character', subject: '坦克' }).expectedConcept).toBe('tank');
     expect(inferAssetSemanticConstraint({ role: 'player_character', subject: '装甲车' }).expectedConcept).toBe('tank');
     expect(inferAssetSemanticConstraint({ role: 'background', subject: 'background', styleTheme: '星空' }).expectedConcept).toBe('space');
+    expect(inferAssetSemanticConstraint({ role: 'background', subject: 'background', styleTheme: '战场' }).expectedConcept).toBe('battlefield');
     expect(inferAssetSemanticConstraint({ role: 'projectile', subject: '鱼骨头子弹' })).toMatchObject({
       expectedConcept: 'fishbone',
       strictness: 'medium'
@@ -90,17 +104,24 @@ describe('Asset semantic canary brief fixture', () => {
 
   it('promotes taxonomy v0.2 canaries into the default runnable fixture set', async () => {
     const briefs = await readCanaryBriefs();
-    const promotedIds = [
-      'cat_fishbone_alien_shooter',
-      'kitten_extraterrestrial_shooter',
-      'orange_cat_starfield_alien_shooter',
-      'armored_vehicle_vs_tank',
-      'cat_space_alien_fishbone'
-    ];
 
     expect(briefs.filter((brief) => brief.expectedUnsupported === true)).toEqual([]);
     expect(briefs.filter((brief) => brief.unsupportedReason !== undefined)).toEqual([]);
-    expect(briefs.filter((brief) => promotedIds.includes(brief.id)).map((brief) => brief.id)).toEqual(promotedIds);
+    expect(briefs.filter((brief) => step8bPromotedIds.includes(brief.id)).map((brief) => brief.id)).toEqual(step8bPromotedIds);
+  });
+
+  it('expands the Step 8c canary fixture pack to a small v0.2 set', async () => {
+    const briefs = await readCanaryBriefs();
+    const ids = briefs.map((brief) => brief.id);
+    const step8cBriefs = briefs.filter((brief) => step8cCanaryV02Ids.includes(brief.id));
+    const concepts = new Set(step8cBriefs.flatMap((brief) => brief.expect.expectedCore ?? []).map((expected) => expected.concept));
+
+    expect(briefs).toHaveLength(18);
+    expect(briefs.length).toBeGreaterThanOrEqual(5);
+    expect(briefs.length).toBeLessThanOrEqual(20);
+    expect(ids.filter((id) => step8cCanaryV02Ids.includes(id))).toEqual(step8cCanaryV02Ids);
+    expect(step8cBriefs.every((brief) => brief.expect.notes?.includes('Step 8c'))).toBe(true);
+    expect(concepts).toEqual(new Set(['tank', 'battlefield', 'fishbone', 'cat', 'space', 'alien']));
   });
 
   it('references only known local packs in preferredPack expectations', async () => {
@@ -115,10 +136,10 @@ describe('Asset semantic canary brief fixture', () => {
     }
   });
 
-  it('keeps the first batch focused on semantic QA expectations rather than runner behavior', async () => {
+  it('keeps the v0.2 pack focused on semantic QA expectations rather than runner behavior', async () => {
     const briefs = await readCanaryBriefs();
 
-    expect(briefs).toHaveLength(14);
+    expect(briefs).toHaveLength(18);
     expect(briefs.flatMap((brief) => brief.expect.disallowOverall)).toContain('NEEDS_ASSET_REPAIR');
     expect(briefs.flatMap((brief) => brief.expect.disallowOverall)).toContain('QA_FAILED');
     expect(briefs.every((brief) => brief.expect.hardMismatchAllowed === false)).toBe(true);

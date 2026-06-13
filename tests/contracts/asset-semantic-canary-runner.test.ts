@@ -52,9 +52,9 @@ describe('Asset semantic canary runner summary', () => {
     const parsed = AssetSemanticCanaryBriefsSchema.parse(JSON.parse(await readFile('tests/fixtures/asset-semantic-canary.briefs.json', 'utf8')));
     const selected = selectAssetSemanticCanaryBriefs(parsed, { includeUnsupported: false });
 
-    expect(parsed).toHaveLength(14);
+    expect(parsed).toHaveLength(18);
     expect(parsed.filter((item) => item.expectedUnsupported === true)).toHaveLength(0);
-    expect(selected.runnable).toHaveLength(14);
+    expect(selected.runnable).toHaveLength(18);
     expect(selected.skipped).toEqual([]);
   });
 
