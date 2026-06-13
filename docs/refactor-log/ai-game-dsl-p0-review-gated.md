@@ -8,11 +8,62 @@
 
 ## 当前阶段
 
-Step 10A small library bridge canary review gate 为当前 docs-only 步骤：本步只固化 Step 10B fixture-only explicit-input canary 的输入、候选派生、requested id、green canary / negative diagnostics 分离、pass/fail 和禁止范围，不实现 Step 10B，不接 production/default asset packs、不改变 resolver / QA / Workbench / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate 和 Metadata Step 4B report-only helper implementation。
+Step 10B small library bridge canary implementation 为当前步骤：本步只新增 fixture-only explicit-input contract test 和文档记录，证明 Step 9B 小库 metadata export、explicit bridge candidates、exact requested ids 与 Step 4B pure helper 可以组合通过 green canary，并保持 negative diagnostics 分离。不接 production/default asset packs、不改变 resolver / QA / Workbench / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation 和 Step 10A docs-only gate。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Step 10B small library bridge canary implementation。large asset library、runtime/default integration、QA / Workbench / Phaser / asset pack loading 继续 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Step 10B 收口门禁（确认 diff 范围、staged diff check / commit gate）；Step 11A 是否开启需另行决定。large asset library、runtime/default integration、QA / Workbench / Phaser / asset pack loading 继续 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.32 Step 10B: Small Library Bridge Canary Implementation
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 新增 `tests/contracts/asset-pack-small-library-bridge-canary.test.ts`，实现 fixture-only small library bridge canary。
+- 从 `tests/fixtures/art-library-small-v0.1/metadata` 生成 runtime-safe metadata。
+- 从同一份 runtime-safe metadata 派生 explicit bridge candidates。
+- 使用 exact 10 small-library asset ids 作为 sorted `requestedAssetIds`。
+- 使用 Step 4B pure report-only helpers：
+  - `createAssetPackMetadataBridgeSummary`
+  - `createAssetResolverDiagnosticsSummary`
+- 更新 `docs/refactor-log/asset-pack-metadata-bridge-step-10a-small-library-canary.md` 与 semantic fidelity plan，记录 Step 10B follow-up。
+
+Gate 摘要：
+
+- Bridge green canary `ok=true`、`matched_count=10`、`diagnostic_count=0`。
+- Resolver-adjacent green canary `ok=true`、`requested_count=10`、`resolved_count=10`、`diagnostic_count=0`。
+- Missing requested id、missing bridge candidate 和 blocked context diagnostics 都是独立 negative cases，不混入 green canary。
+- Summary objects 不包含 timestamp、absolute local path 或 production/default asset pack path。
+- Unsupported semantic diagnostics 未被发明；当前 helper API 没有 explicit expected semantic input。
+
+行为边界：
+
+- 本步没有修改 runtime/default asset loading。
+- 本步没有修改 resolver behavior。
+- 本步没有调用 `resolveLocalAssetPack` 或 `selectLocalAssetPack`。
+- 本步没有使用 real/default resolver paths。
+- 本步没有修改 QA runtime behavior、Workbench、Phaser 或 asset pack loading。
+- 本步没有触碰、扫描、导入或处理 large asset library。
+- 本步没有修改 source assets、metadata sidecars 或 source metadata。
+- 本步没有新增 generated artifacts、CLI scripts 或 npm scripts。
+- 本步没有让 repair-enabled mode 成为默认。
+
+验证：
+
+    npx vitest run tests/contracts/asset-pack-small-library-bridge-canary.test.ts
+
+审查记录：
+
+- Oracle 只读审查：P0/P1/P2/P3 均无。
+- Oracle 确认 green canary 只从 `tests/fixtures/art-library-small-v0.1/metadata` runtime export 派生输入，只调用 `createAssetPackMetadataBridgeSummary` / `createAssetResolverDiagnosticsSummary`。
+- Oracle 确认 missing-id、missing-candidate、blocked-context negative diagnostics 与 green canary 分离且 deterministic。
+- Oracle 确认 docs 未误称 runtime integration、production/default loading、real resolver execution、large library rollout 或 Workbench/Phaser integration 已完成。
+
+Future boundaries：
+
+- Step 11A：non-default runtime integration gate remains future if needed。
+- Step 13A：large library gate remains future and separate。
 
 ### 2.31 Step 10A: Small Library Bridge Canary Review Gate
 

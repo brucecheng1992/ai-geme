@@ -33,7 +33,7 @@
 - generated project 根目录已写出 `asset_resolution_report.json`，记录 selected / rejected / fallback diagnostics。
 - QA report 已包含 `asset_report`，Workbench Assets 面板可展示 manifest/runtime load 状态和 source pack。
 
-当前状态：Step 10A small library bridge canary review gate 为当前 docs-only 步骤；本步只固化未来 Step 10B fixture-only explicit-input canary 的输入、候选派生、requested id、pass/fail 和禁止范围，不实现 Step 10B，不改变默认运行时、resolver、QA、Workbench、Phaser 或 asset pack loading。
+当前状态：Step 10B small library bridge canary implementation 为当前步骤；本步只新增 fixture-only explicit-input contract test 和文档记录，证明 Step 9B 小库 metadata export、explicit bridge candidates、exact requested ids 与 Step 4B pure helper 可以组合通过 green canary，并保持 negative diagnostics 分离。不改变默认运行时、resolver、QA、Workbench、Phaser 或 asset pack loading。
 
 - QA / Workbench 已能识别 runtime pass 但 hard semantic mismatch 的 `NEEDS_ASSET_REPAIR`，并展示 per-asset semanticFit 摘要。
 - 第一批 canary brief fixture 已建立，batch runner 已能默认运行 supported cases、跳过 `expectedUnsupported` cases，并写出 summary report。
@@ -51,6 +51,7 @@
 - 已新增 Metadata Step 4A asset pack metadata bridge / resolver diagnostics review gate：docs-only 定义 Step 4B 允许读取 runtime-safe metadata / small library dry-run output 并生成 deterministic report，不启动 runtime/default integration 或 large library。
 - 已新增 Metadata Step 4B asset pack metadata bridge / resolver diagnostics implementation：只新增 `createAssetPackMetadataBridgeSummary` / `createAssetResolverDiagnosticsSummary` 两个 pure report-only helper、focused tests 和 docs；不调用 `resolveLocalAssetPack` / `selectLocalAssetPack`，不实现 unsupported semantic inference。
 - 已新增 Step 10A small library bridge canary review gate：docs-only 定义 Step 10B 只能使用 Step 9B fixture-derived explicit inputs 和 Step 4B pure helpers，不允许 runtime/default resolver paths、production/default asset packs 或 large library。
+- 已新增 Step 10B small library bridge canary implementation：只新增 fixture-only contract test 与文档记录，使用 Step 9B 小库 metadata export、explicit candidates、exact 10 requested ids 和 Step 4B pure helpers；green canary 与 missing-id / bridge / blocked-context negative diagnostics 分离。
 
 ## 4. 分步落地计划
 
@@ -77,8 +78,8 @@
 | Step 9C | Small art library dry-run validation / canary / comparison | 对小型库跑 validate / export / canary / comparison 并生成 dry-run report | 已完成 |
 | Metadata Step 4A | Asset pack metadata bridge / resolver diagnostics review gate | docs-only 定义 bridge / diagnostics 边界、deterministic outputs 和 large-library exclusion | 已完成 |
 | Metadata Step 4B | Asset pack metadata bridge / resolver diagnostics implementation | bridge helper、diagnostic helper、focused tests、deterministic report schema | 已完成 |
-| Step 10A | Small library bridge canary review gate | docs-only 定义 fixture-only explicit-input bridge canary，不接生产/default | 当前 |
-| Step 10B | Small library bridge canary implementation | 使用 Step 4B pure helpers 跑 fixture-only green canary 与独立 negative diagnostics | 下一步 |
+| Step 10A | Small library bridge canary review gate | docs-only 定义 fixture-only explicit-input bridge canary，不接生产/default | 已完成 |
+| Step 10B | Small library bridge canary implementation | 使用 Step 4B pure helpers 跑 fixture-only green canary 与独立 negative diagnostics | 当前 |
 | Step 11A | Optional non-default runtime integration gate | docs-only gate，若仍需要才讨论非默认 runtime integration | 后续 |
 | Workbench / QA preview | Diagnostics preview | 预览 bridge diagnostics，不改变 default verdict | 后续 |
 | Large library gate | Large asset library scan/import gate | 尺寸、license、metadata、rollout policy gate | parked |
@@ -1140,3 +1141,60 @@ Step 10A 不修改：
 - Oracle pre-review：Go for docs-only；要求 Step 10B 写成 fixture-only explicit-input canary，禁止 runtime/default resolver integration，并明确 green canary 与 negative diagnostics 分离。
 - Oracle 首轮审查：P0/P2/P3 未发现；P1 指出 Step 9C dry-run output wording 可能放宽 Step 10B executable input boundary。已收窄为 prior evidence only，Step 10B executable inputs 必须 fresh derive from small fixture metadata、runtime-safe export 和 explicit test/dry-run input。
 - Oracle 复审：P0/P1/P2/P3 均无；确认 Step 10A docs-only gate 可在 staged diff 检查后提交。
+
+## 29. Step 10B small library bridge canary implementation
+
+状态：当前 implementation 步骤。
+
+已完成内容：
+
+- 新增 `tests/contracts/asset-pack-small-library-bridge-canary.test.ts`。
+- 使用 `tests/fixtures/art-library-small-v0.1/metadata` 生成 runtime-safe metadata。
+- 从同一份 runtime-safe metadata 派生 explicit bridge candidates。
+- 使用 exact 10 small-library asset ids 作为 sorted `requestedAssetIds`。
+- 使用 Step 4B pure report-only helpers：
+  - `createAssetPackMetadataBridgeSummary`
+  - `createAssetResolverDiagnosticsSummary`
+- 将 green canary 与 missing-id、missing-candidate、blocked-context negative diagnostics 分离。
+
+Step 10B green canary 证明：
+
+- runtime export succeeds for 10 fixture assets。
+- bridge summary `ok=true`、`matched_count=10`、`diagnostic_count=0`。
+- resolver-adjacent diagnostics summary `ok=true`、`requested_count=10`、`resolved_count=10`、`diagnostic_count=0`。
+- in-memory canary summary deterministic，且不包含 timestamp、absolute local path 或 production/default asset pack path。
+
+Step 10B negative diagnostics：
+
+- missing requested id 使用 `creature_kenney_cube_pet_otter_001`，只在独立 resolver-adjacent negative case 中出现。
+- missing bridge candidate 使用 `creature_kenney_cube_pet_cat_001`，只在独立 bridge negative case 中出现。
+- blocked context 使用 fixture metadata 明确声明的 `production_default_runtime`，只在独立 resolver-adjacent negative case 中出现。
+- 不发明 unsupported semantic diagnostics；当前 helper 仍没有 explicit expected semantic input。
+
+行为边界：
+
+- 未修改 runtime/default asset loading。
+- 未修改 resolver behavior。
+- 未调用 `resolveLocalAssetPack` 或 `selectLocalAssetPack`。
+- 未使用 real/default resolver paths。
+- 未接 QA、Workbench、Phaser 或 asset pack loading。
+- 未触碰、扫描或导入 large asset library。
+- 未修改 source assets 或 metadata sidecars。
+- 未提交 generated artifacts。
+- 未让 repair-enabled mode 成为默认。
+
+验证：
+
+    npx vitest run tests/contracts/asset-pack-small-library-bridge-canary.test.ts
+
+审查记录：
+
+- Oracle 只读审查：P0/P1/P2/P3 均无。
+- Oracle 确认 green canary 只从 `tests/fixtures/art-library-small-v0.1/metadata` runtime export 派生输入，只调用 `createAssetPackMetadataBridgeSummary` / `createAssetResolverDiagnosticsSummary`。
+- Oracle 确认 missing-id、missing-candidate、blocked-context negative diagnostics 与 green canary 分离且 deterministic。
+- Oracle 确认 docs 未误称 runtime integration、production/default loading、real resolver execution、large library rollout 或 Workbench/Phaser integration 已完成。
+
+未来边界：
+
+- Step 11A：non-default runtime integration gate remains future if needed。
+- Large asset library gate remains parked。

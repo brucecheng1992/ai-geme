@@ -309,3 +309,57 @@ Oracle review:
 - 首轮审查：P0/P2/P3 未发现；P1 指出 Step 9C dry-run output wording 可能放宽 Step 10B executable input boundary。
 - 已处理：Step 9C dry-run 只可作为 prior evidence；Step 10B executable inputs 必须从 small fixture metadata、runtime-safe export 和 explicit test/dry-run input fresh derive。
 - Oracle 复审：P0/P1/P2/P3 均无；确认 Step 10A docs-only gate 可在 staged diff 检查后提交。
+
+## 17. Step 10B Implementation Follow-Up
+
+完成时间：2026-06-13
+
+Step 10B has implemented the fixture-only small library bridge canary in:
+
+- `tests/contracts/asset-pack-small-library-bridge-canary.test.ts`
+
+Step 10B uses only explicit fixture-derived inputs:
+
+- runtime-safe metadata exported from `tests/fixtures/art-library-small-v0.1/metadata`.
+- one explicit bridge candidate per exported fixture asset.
+- sorted exact 10 small-library `requestedAssetIds`.
+
+Step 10B uses only the Step 4B pure report-only helpers:
+
+- `createAssetPackMetadataBridgeSummary`
+- `createAssetResolverDiagnosticsSummary`
+
+Step 10B proves:
+
+- small library runtime export succeeds for 10 fixture assets.
+- bridge green canary returns `ok=true`, `matched_count=10` and `diagnostic_count=0`.
+- resolver-adjacent green canary returns `ok=true`, `requested_count=10`, `resolved_count=10` and `diagnostic_count=0`.
+- missing requested id diagnostics are deterministic and separate from the green canary.
+- bridge missing-candidate diagnostics are deterministic and separate from the green canary.
+- blocked-context diagnostics are deterministic and separate from the green canary because the fixture metadata explicitly blocks `production_default_runtime`.
+- in-memory summaries contain no timestamps, absolute local paths or production/default asset pack paths.
+
+Step 10B did not:
+
+- change runtime/default behavior.
+- change resolver behavior.
+- call `resolveLocalAssetPack` or `selectLocalAssetPack`.
+- use real/default resolver paths.
+- touch QA, Workbench, Phaser or asset pack loading.
+- touch, scan or import large asset library.
+- modify source assets or metadata sidecars.
+- commit generated artifacts.
+- invent unsupported semantic diagnostics.
+- make repair-enabled mode default.
+
+Step 10B review gate:
+
+- Oracle 只读审查：P0/P1/P2/P3 均无。
+- Oracle 确认 green canary 只从 `tests/fixtures/art-library-small-v0.1/metadata` runtime export 派生输入，只调用 `createAssetPackMetadataBridgeSummary` / `createAssetResolverDiagnosticsSummary`。
+- Oracle 确认 missing-id、missing-candidate、blocked-context negative diagnostics 与 green canary 分离且 deterministic。
+- Oracle 确认 docs 未误称 runtime integration、production/default loading、real resolver execution、large library rollout 或 Workbench/Phaser integration 已完成。
+
+Future boundary:
+
+- Step 11A non-default runtime integration gate remains future if needed.
+- Large asset library gate remains parked.
