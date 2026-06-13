@@ -226,3 +226,14 @@ Oracle review:
 - P3：未发现阻塞项；仅提醒新文档提交前需要显式 staged。
 
 Oracle conclusion：Step 4A docs-only gate 在主 agent 重新确认 `git diff --check`、`git status --short --branch` 和 staged diff 范围后可以提交。
+
+## 13. Step 4B Follow-Up
+
+Step 4B has implemented the future boundary defined by this gate as pure report-only helpers:
+
+- `createAssetPackMetadataBridgeSummary`
+- `createAssetResolverDiagnosticsSummary`
+
+Step 4B did not implement runtime/default integration, resolver decision changes, QA / Workbench / Phaser integration, production/default asset pack loading, repair writeback, unsupported semantic inference, large asset library scan/import or generated artifact commit.
+
+Detailed Step 4B record: `docs/refactor-log/asset-pack-metadata-bridge-step-4b.md`.

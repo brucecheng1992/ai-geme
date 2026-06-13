@@ -34,6 +34,23 @@ export {
   type RuntimeArtAssetTechnicalMetadata
 } from './art-asset-metadata.runtime-export.js';
 export {
+  createAssetPackMetadataBridgeSummary,
+  type AssetPackBridgeCandidate,
+  type AssetPackBridgeDiagnostic,
+  type AssetPackBridgeDiagnosticCode,
+  type AssetPackBridgeDiagnosticSeverity,
+  type AssetPackMetadataBridgeInput,
+  type AssetPackMetadataBridgeSummary
+} from './asset-pack-metadata-bridge.js';
+export {
+  createAssetResolverDiagnosticsSummary,
+  type AssetResolverDiagnostic,
+  type AssetResolverDiagnosticCode,
+  type AssetResolverDiagnosticsInput,
+  type AssetResolverDiagnosticsSummary,
+  type AssetResolverDiagnosticSeverity
+} from './asset-pack-resolver-diagnostics.js';
+export {
   ART_ASSET_METADATA_VALIDATION_VERSION,
   type ArtAssetMetadataValidatedFile,
   type ArtAssetMetadataValidationDiagnostic,

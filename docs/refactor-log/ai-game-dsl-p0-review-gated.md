@@ -8,11 +8,88 @@
 
 ## 当前阶段
 
-Asset Semantic Fidelity Step 9C 已完成并已关闭 branch boundary：small art library dry-run 只对 Step 9B 小型 fixture 执行 metadata validation、runtime-safe export、default canary、repair-enabled canary 和 comparison，不接生产 local asset pack、不改变 resolver / QA / Workbench / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation；Metadata Step 4A asset pack metadata bridge / resolver diagnostics review gate 为当前 docs-only 步骤。
+Metadata Step 4B asset pack metadata bridge / resolver diagnostics implementation 已完成本地实现与验证：本步只新增两个 pure report-only helper、focused contract tests 和 docs update，不接 production/default asset packs、不改变 resolver / QA / Workbench / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate 和 Metadata Step 4B report-only helper implementation。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Metadata Step 4B asset pack metadata bridge / resolver diagnostics implementation。Step 4A 只做 docs-only gate，不实现 Step 4B；large asset library、runtime/default integration、QA / Workbench / Phaser / asset pack loading 继续 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Step 10A small library bridge canary gate，或如果不需要 Step 10，则关闭 bridge lane。large asset library、runtime/default integration、QA / Workbench / Phaser / asset pack loading 继续 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.30 Metadata Step 4B: Asset Pack Metadata Bridge / Resolver Diagnostics Implementation
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 新增 `packages/asset-pipeline/src/asset-pack-metadata-bridge.ts`，提供 deterministic report-only `createAssetPackMetadataBridgeSummary`。
+- 新增 `packages/asset-pipeline/src/asset-pack-resolver-diagnostics.ts`，提供 deterministic report-only `createAssetResolverDiagnosticsSummary`。
+- 更新 `packages/asset-pipeline/src/index.ts`，只导出新增 pure helper API / types。
+- 新增 `tests/contracts/asset-pack-metadata-bridge.test.ts`，覆盖 small library explicit candidates、missing / duplicate / mismatch / absolute path / deterministic / non-mutation。
+- 新增 `tests/contracts/asset-pack-resolver-diagnostics.test.ts`，覆盖 requested id、missing id、duplicate id、absolute path、blocked context、no fabricated unsupported semantic diagnostic、deterministic / non-mutation。
+- 新增 `docs/refactor-log/asset-pack-metadata-bridge-step-4b.md`，记录 Step 4B boundary、API、diagnostic codes、validation 和 review gate。
+- 更新 `docs/refactor-log/asset-pack-metadata-bridge-step-4a.md` 与 semantic fidelity plan，记录 Step 4B follow-up。
+
+API 摘要：
+
+- Bridge input 为 runtime-safe metadata artifact + explicit candidates；candidate `asset_id` 保持 optional，以便 missing id 成为可诊断输入。
+- Bridge output 为 `bridge_version: "0.1"`、counts 和 deterministic diagnostics。
+- Resolver diagnostics input 为 runtime-safe metadata artifact + explicit requested ids + optional explicit context id。
+- Resolver diagnostics output 为 `diagnostics_version: "0.1"`、counts 和 deterministic diagnostics。
+
+Diagnostic codes：
+
+- Bridge：`ASSET_PACK_METADATA_BRIDGE_DUPLICATE_RUNTIME_ASSET_ID`、`ASSET_PACK_METADATA_BRIDGE_DUPLICATE_CANDIDATE_ASSET_ID`、`ASSET_PACK_METADATA_BRIDGE_RUNTIME_ASSET_WITHOUT_CANDIDATE`、`ASSET_PACK_METADATA_BRIDGE_CANDIDATE_WITHOUT_RUNTIME_ASSET`、`ASSET_PACK_METADATA_BRIDGE_SOURCE_PATH_MISMATCH`、`ASSET_PACK_METADATA_BRIDGE_THUMBNAIL_PATH_MISMATCH`、`ASSET_PACK_METADATA_BRIDGE_ABSOLUTE_PATH_REJECTED`、`ASSET_PACK_METADATA_BRIDGE_MISSING_ASSET_ID`。
+- Resolver diagnostics：`ASSET_RESOLVER_DIAGNOSTIC_MISSING_ASSET_ID`、`ASSET_RESOLVER_DIAGNOSTIC_BLOCKED_CONTEXT`、`ASSET_RESOLVER_DIAGNOSTIC_DUPLICATE_ASSET_ID`、`ASSET_RESOLVER_DIAGNOSTIC_ABSOLUTE_PATH_REJECTED`。
+
+Unsupported semantic diagnostic decision：
+
+- Step 4B 不实现 unsupported semantic diagnostics。
+- 当前 helper input 没有 explicit expected tags / expected roles / expected semantic constraints；从 requested asset id 或 context 推断 unsupported semantic 会误导。
+- 后续如需该能力，必须先扩展显式 expected semantic input 并新增 tests。
+
+行为边界：
+
+- 本步没有修改 runtime/default asset loading。
+- 本步没有修改 resolver decisions 或 production resolver implementation。
+- 本步没有调用 `resolveLocalAssetPack` 或 `selectLocalAssetPack`。
+- 本步没有修改 QA runtime behavior、Workbench、Phaser 或 asset pack loading。
+- 本步没有接入 production/default asset packs。
+- 本步没有扫描、导入或处理 large asset library。
+- 本步没有修改 source metadata、source assets 或 repair writeback。
+- 本步没有生成或提交 artifacts。
+
+已通过验证：
+
+    npx vitest run tests/contracts/asset-pack-metadata-bridge.test.ts tests/contracts/asset-pack-resolver-diagnostics.test.ts
+    # 2 个测试文件，15 个测试通过
+
+    npm run test:contracts
+    # 18 个测试文件，184 个测试通过
+
+    npm test
+    # contracts 184 个测试通过；workspace 125 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+    # OK 10 metadata files
+
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata
+    # ok=true，artifact.asset_count=10，diagnostics=[]
+
+    npm run metadata:validate -- assets/metadata/examples
+    # OK 5 metadata files
+
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+    # ok=true，artifact.asset_count=5，diagnostics=[]
+
+    git diff --check
+    # 无输出
+
+审查记录：
+
+- Oracle 首轮审查：P0/P1/P2 未发现；P3 指出 thumbnail mismatch diagnostic 的 `jsonPath` 应指向 candidate thumbnail field。已改为 `$.candidates[index].thumbnail_path` 并补测试锁定。
+- Oracle 复审：P0/P1/P2/P3 均无；确认 Step 4B 可以在 staged diff 检查后提交。
 
 ### 2.29 Metadata Step 4A: Asset Pack Metadata Bridge / Resolver Diagnostics Review Gate
 

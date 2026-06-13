@@ -33,7 +33,7 @@
 - generated project 根目录已写出 `asset_resolution_report.json`，记录 selected / rejected / fallback diagnostics。
 - QA report 已包含 `asset_report`，Workbench Assets 面板可展示 manifest/runtime load 状态和 source pack。
 
-当前状态：Step 9C small art library dry-run 已完成并已关闭 branch boundary；Metadata Step 4A asset pack metadata bridge / resolver diagnostics review gate 为当前 docs-only 步骤。Step 4A 只定义 Step 4B 未来 bridge / diagnostics 边界，不实现代码、不新增测试、不改变默认运行时、resolver、QA、Workbench、Phaser 或 asset pack loading。
+当前状态：Metadata Step 4B asset pack metadata bridge / resolver diagnostics implementation 已完成本地实现与验证；本步只新增两个 pure report-only helper、focused contract tests 和 docs update，不改变默认运行时、resolver、QA、Workbench、Phaser 或 asset pack loading。
 
 - QA / Workbench 已能识别 runtime pass 但 hard semantic mismatch 的 `NEEDS_ASSET_REPAIR`，并展示 per-asset semanticFit 摘要。
 - 第一批 canary brief fixture 已建立，batch runner 已能默认运行 supported cases、跳过 `expectedUnsupported` cases，并写出 summary report。
@@ -49,6 +49,7 @@
 - 已新增 Step 9B small art library metadata intake / fixture import：导入 10 个 Kenney Cube Pets 小型 fixture assets 与 sidecar metadata，仍不接 runtime/default behavior。
 - 已新增 Step 9C small art library dry-run：`--fixture tests/fixtures/art-library-small-v0.1` 只触发 canary-only metadata/export summary，不改变默认 canary JSON fixture、runtime/default behavior 或 repair default。
 - 已新增 Metadata Step 4A asset pack metadata bridge / resolver diagnostics review gate：docs-only 定义 Step 4B 允许读取 runtime-safe metadata / small library dry-run output 并生成 deterministic report，不启动 runtime/default integration 或 large library。
+- 已新增 Metadata Step 4B asset pack metadata bridge / resolver diagnostics implementation：只新增 `createAssetPackMetadataBridgeSummary` / `createAssetResolverDiagnosticsSummary` 两个 pure report-only helper、focused tests 和 docs；不调用 `resolveLocalAssetPack` / `selectLocalAssetPack`，不实现 unsupported semantic inference。
 
 ## 4. 分步落地计划
 
@@ -73,8 +74,9 @@
 | Step 9A | Small art library intake review gate | 文档化小型真实资源 dry-run 的准入规则，不导入资源 | 已完成 |
 | Step 9B | Small art library metadata intake / fixture import | 导入或创建 10-30 个小型 fixture 资产并补 sidecar metadata | 已完成 |
 | Step 9C | Small art library dry-run validation / canary / comparison | 对小型库跑 validate / export / canary / comparison 并生成 dry-run report | 已完成 |
-| Metadata Step 4A | Asset pack metadata bridge / resolver diagnostics review gate | docs-only 定义 bridge / diagnostics 边界、deterministic outputs 和 large-library exclusion | 当前 |
-| Metadata Step 4B | Asset pack metadata bridge / resolver diagnostics implementation | bridge helper、diagnostic helper、focused tests、deterministic report schema | 下一步 |
+| Metadata Step 4A | Asset pack metadata bridge / resolver diagnostics review gate | docs-only 定义 bridge / diagnostics 边界、deterministic outputs 和 large-library exclusion | 已完成 |
+| Metadata Step 4B | Asset pack metadata bridge / resolver diagnostics implementation | bridge helper、diagnostic helper、focused tests、deterministic report schema | 当前 |
+| Step 10A | Small library bridge canary gate | docs-only 定义 fixture-only bridge canary，不接生产/default | 下一步 |
 | Small library bridge canary | Fixture-only bridge canary | 使用 small library bridge output 做非生产 canary | 后续 |
 | Non-default runtime integration | Explicit opt-in runtime lane | 非默认开关验证 bridge consumer，不改变 production/default | 后续 |
 | Workbench / QA preview | Diagnostics preview | 预览 bridge diagnostics，不改变 default verdict | 后续 |
@@ -932,7 +934,7 @@ Step 9C 不修改：
 
 ## 26. Metadata Step 4A asset pack metadata bridge / resolver diagnostics review gate
 
-状态：当前 docs-only gate，完成后 Step 4B 才能开始。
+状态：已完成。
 
 Step 4A 只记录 future bridge / diagnostics 边界：
 
@@ -983,3 +985,99 @@ Step 4B 未来不允许：
 审查记录：
 
 - Oracle 审查：P0/P1/P2/P3 均无阻塞；确认 Step 4A 仍为 docs-only，未越界到 code、tests、asset imports、metadata sidecars、generated artifacts、runtime/default behavior、resolver、QA、Workbench、Phaser、asset pack loading、large library 或 Step 4B implementation。
+
+## 27. Metadata Step 4B asset pack metadata bridge / resolver diagnostics implementation
+
+状态：已完成本地实现与验证，等待 Oracle 审查后提交。
+
+Step 4B 只实现 report-only helper：
+
+- 新增 `packages/asset-pipeline/src/asset-pack-metadata-bridge.ts`，提供 `createAssetPackMetadataBridgeSummary`。
+- 新增 `packages/asset-pipeline/src/asset-pack-resolver-diagnostics.ts`，提供 `createAssetResolverDiagnosticsSummary`。
+- 更新 `packages/asset-pipeline/src/index.ts` 只导出新增 helper 类型/API。
+- 新增 `tests/contracts/asset-pack-metadata-bridge.test.ts`。
+- 新增 `tests/contracts/asset-pack-resolver-diagnostics.test.ts`。
+- 新增 `docs/refactor-log/asset-pack-metadata-bridge-step-4b.md`。
+
+Bridge summary 可报告：
+
+- duplicate runtime metadata asset id。
+- duplicate candidate asset id。
+- missing candidate asset id。
+- runtime metadata asset without candidate。
+- candidate without runtime metadata。
+- source path mismatch。
+- thumbnail path mismatch。
+- absolute path rejected。
+
+Resolver diagnostics 可报告：
+
+- missing requested asset id。
+- blocked context from explicit `gameplay.blocked_contexts` + input `contextId`。
+- duplicate runtime asset id。
+- absolute path rejected。
+
+Unsupported semantic diagnostics decision：
+
+- Step 4B 不实现 unsupported semantic diagnostics。
+- 原因是当前 helper input 没有 caller-provided expected tags / expected roles / expected semantic constraints。
+- 后续若要加入 unsupported semantic diagnostics，必须先扩展显式 expected semantic input，并补 focused tests，不能从 requested asset id 或 context 伪造推断。
+
+Step 4B 不修改：
+
+- runtime/default asset loading。
+- resolver decisions。
+- production resolver implementation。
+- QA runtime behavior。
+- Workbench。
+- Phaser runtime。
+- asset pack loading behavior。
+- production/default asset packs。
+- large asset library。
+- source metadata 或 source assets。
+- repair-enabled default 或 repair writeback。
+
+Step 4B 明确不调用：
+
+- `resolveLocalAssetPack`
+- `selectLocalAssetPack`
+
+Small library fixture 用途：
+
+- `tests/fixtures/art-library-small-v0.1/metadata` 只作为 focused tests 的 runtime-safe export input。
+- 不接入 production/default asset packs。
+- 不改变 Step 9B fixture asset set 或 source metadata。
+
+已通过验证：
+
+    npx vitest run tests/contracts/asset-pack-metadata-bridge.test.ts tests/contracts/asset-pack-resolver-diagnostics.test.ts
+    # 2 个测试文件，15 个测试通过
+
+    npm run test:contracts
+    # 18 个测试文件，184 个测试通过
+
+    npm test
+    # contracts 184 个测试通过；workspace 125 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+    # OK 10 metadata files
+
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata
+    # ok=true，artifact.asset_count=10，diagnostics=[]
+
+    npm run metadata:validate -- assets/metadata/examples
+    # OK 5 metadata files
+
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+    # ok=true，artifact.asset_count=5，diagnostics=[]
+
+    git diff --check
+    # 无输出
+
+审查记录：
+
+- Oracle 首轮审查：P0/P1/P2 未发现；P3 指出 thumbnail mismatch diagnostic 的 `jsonPath` 应指向 candidate thumbnail field。已改为 `$.candidates[index].thumbnail_path` 并补测试锁定。
+- Oracle 复审：P0/P1/P2/P3 均无；确认 Step 4B 保持 pure report-only helper / focused tests / docs 范围，未越界到 runtime/default behavior、resolver decisions、QA、Workbench、Phaser、asset pack loading、large library、repair writeback 或 unsupported semantic inference。
