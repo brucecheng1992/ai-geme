@@ -12,7 +12,60 @@ Step 10B small library bridge canary implementation 已完成并提交为 `2ede0
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Step 11A non-default runtime integration docs-only gate。Step 10B 分支边界已 fast-forward 合并回 `main`，当前分支为 `docs/art-asset-step-11a-runtime-integration-gate`。Step 11A 只定义未来非默认 runtime canary 的 flag、输入、验证和禁止范围；large asset library、runtime/default integration、QA / Workbench / Phaser / asset pack loading 继续 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Step 11B non-default runtime canary implementation。Step 11A 分支边界已 fast-forward 合并回 `main`，当前分支为 `test/art-asset-step-11b-non-default-runtime-canary`。Step 11B 只新增脚本侧非默认 canary helper 和 focused contract test；large asset library、runtime/default integration、QA / Workbench / Phaser / asset pack loading 继续 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、大资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.35 Step 11B: Non-Default Runtime Canary Implementation
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 关闭 Step 11A 分支边界：`docs/art-asset-step-11a-runtime-integration-gate` 已 fast-forward 合并回 `main`。
+- 新建 `test/art-asset-step-11b-non-default-runtime-canary` 分支。
+- 新增 `scripts/art-asset-runtime-canary.ts`，提供 `ASSET_RUNTIME_METADATA_CANARY` 的非默认配置解析和 small-library runtime metadata canary summary。
+- 新增 `tests/contracts/art-asset-runtime-canary.test.ts`，覆盖 default disabled、flag-on small fixture、unsupported flag、export failure、invalid artifact 和 deterministic / non-leaking summary。
+- 更新 Step 11B rollout 文档和总览状态。
+
+阶段结果：
+
+- 默认缺省或空 `ASSET_RUNTIME_METADATA_CANARY` 时 canary disabled，并且不执行 metadata export I/O。
+- 只有 `ASSET_RUNTIME_METADATA_CANARY=small-library-v0.1` 会启用 canary，且只读取 `tests/fixtures/art-library-small-v0.1/metadata`。
+- invalid artifact / export failure fail closed，diagnostics 不回显 production/default asset pack path 或本机绝对路径。
+
+行为边界：
+
+- 本步没有修改 default project generation、Phaser templates、Workbench、QA aggregation、resolver selection、production/default asset pack loading 或 large-library path。
+- 本步没有让 repair-enabled mode 成为默认。
+- 本步没有写 generated artifacts。
+
+验证：
+
+    npx vitest run tests/contracts/art-asset-runtime-canary.test.ts
+    npx vitest run tests/contracts/asset-pack-small-library-bridge-canary.test.ts
+    npx vitest run tests/contracts/art-asset-runtime-canary.test.ts tests/contracts/asset-pack-small-library-bridge-canary.test.ts
+    npm run typecheck:root
+    npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata
+    npm run test:contracts
+    npm run typecheck
+    npm test
+    git diff --check
+
+验证结果：
+
+- Focused runtime canary tests 通过：5 tests。
+- Focused small-library bridge + runtime canary tests 通过：9 tests。
+- small-library metadata validation 通过：10 metadata files。
+- small-library runtime metadata JSON export 通过：`ok: true`，10 assets，0 diagnostics。
+- contract suite 通过：20 files，193 tests。
+- full typecheck 通过：root、maker-api、maker-workbench。
+- full test suite 通过：contract suite + workspace suite。
+- `git diff --check` 通过。
+
+审查门禁结论：
+
+- Oracle 审查完成：P0/P1/P2/P3 均无。
+- Oracle 确认默认行为未改变、unsupported flag fail closed、flag-on scope 固定到 small fixture metadata directory、unsafe path diagnostics 不回显原始 unsafe path，测试覆盖 Step 11B gate，文档未误称 Step 11C / production default integration / large library 已完成。
 
 ### 2.34 Step 11A: Non-Default Runtime Integration Gate
 
