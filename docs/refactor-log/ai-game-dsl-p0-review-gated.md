@@ -8,11 +8,61 @@
 
 ## 当前阶段
 
-Asset Semantic Fidelity Step 8c 已完成：small canary fixture pack / brief pack v0.2 只把默认 canary 从 14 条扩展到 18 条，不接生产 local asset pack、不改变 resolver / QA / Workbench / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate 和 Step 3B runtime-safe export implementation。
+Asset Semantic Fidelity Step 8d 已完成：default / repair-enabled canary comparison 只读取 Step 8c v0.2 small canary pack 的两份 `summary.json`，生成 deterministic comparison report，不接生产 local asset pack、不改变 resolver / QA / Workbench / Phaser / repair / runtime default behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate 和 Step 3B runtime-safe export implementation。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Asset Semantic Fidelity 主线后续进入 Step 8d 默认 / repair-enabled canary comparison；AI Game Art Asset Metadata v0.1 后续进入 Step 4 asset pack metadata bridge / resolver diagnostics，但当前仍 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、新资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：关闭 Step 8d branch boundary；AI Game Art Asset Metadata v0.1 后续进入 Step 4 asset pack metadata bridge / resolver diagnostics，但当前仍 parked。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、新资源库批量导入、resolver / QA / Workbench / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.26 Asset Semantic Fidelity Step 8d: Default / Repair-Enabled Canary Comparison
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 新增 `scripts/asset-semantic-canary-comparison.ts`，只读取两份 canary `summary.json` 并构建 deterministic comparison object。
+- 新增 `scripts/compare-asset-semantic-canaries.ts` 和 `npm run qa:asset-semantic:compare`，支持 `--default-summary`、`--repair-enabled-summary` 与可选 `--out`。
+- 新增 `tests/contracts/asset-semantic-canary-comparison.test.ts`，覆盖 green comparison、case set / repair flag mismatch、failure diagnostic code delta、medium warning 分离、case-level repair action normalization 和 CLI args。
+- 更新 `docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md`，记录 Step 8d 边界、验证命令与结果。
+
+行为边界：
+
+- comparison CLI 不运行 canary，只读取调用方传入的两份 summary；只有 build 成功后才写 `comparison.json`。
+- default input 必须 `repair.enabled=false`，repair-enabled input 必须 `repair.enabled=true`；两份 summary 的 case id 顺序、`skipped`、`experimental`、`total`、`runnable`、`skipped`、`experimental` 必须一致。
+- `failure_diagnostic_count` 只统计 `NEEDS_ASSET_REPAIR`、`QA_FAILED`、hard mismatch / unknown、required asset missing、asset load failure 和 placeholder；medium warning 只进入 `medium_warning_count`。
+- repair action 只从 case-level `repair.repairedRequirements[].action` 去重排序为 `actionsAccepted`，不制造固定空的 proposed / rejected action aggregate。
+- 未修改 canary fixture pack、taxonomy、生产资源包、large asset library、AI image provider、Metadata Step 4A、resolver、QA、Workbench、Phaser、asset pack loading、runtime default behavior、repair planner / executor / pipeline 或 shooter HUD。
+
+验证：
+
+    npx vitest run tests/contracts/asset-semantic-canary-comparison.test.ts
+    npm run qa:asset-semantic:canary
+    npm run qa:asset-semantic:canary -- --repair-enabled
+    npm run qa:asset-semantic:compare -- --default-summary artifacts/asset-semantic-canary/20260613T064654Z/summary.json --repair-enabled-summary artifacts/asset-semantic-canary/20260613T064842Z/summary.json --out artifacts/asset-semantic-canary-comparison/20260613T064842Z/comparison.json
+    npm run test:contracts
+    npm test
+    npm run typecheck
+    npm run metadata:validate -- assets/metadata/examples
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+    git diff --check
+
+结果：
+
+- TDD 红灯：focused comparison test 先因 `scripts/asset-semantic-canary-comparison.js` 不存在失败；补充 helper / CLI / npm script 后 focused suite 5 个测试通过。
+- 默认 full canary：`artifacts/asset-semantic-canary/20260613T064654Z`，`runnable=18 skipped=0 experimental=0 passed=18 failed=0`，`repair.enabled=false repair.attemptedCount=0 repair.failedCount=0`。
+- repair-enabled full canary：`artifacts/asset-semantic-canary/20260613T064842Z`，`runnable=18 skipped=0 experimental=0 passed=18 failed=0`，`repair.enabled=true repair.attemptedCount=0 repair.failedCount=0`。
+- comparison artifact：`artifacts/asset-semantic-canary-comparison/20260613T064842Z/comparison.json`，`ok=true`，default / repair-enabled 均 `failure_diagnostic_count=0`、`diagnostic_codes=[]`、`medium_warning_count=3`，delta 均为 0。
+- `npm run test:contracts` 通过：14 个测试文件，161 个测试通过。
+- `npm test` 通过：contracts 161 个测试通过，workspace 125 个测试通过。
+- `npm run typecheck` 通过。
+- `npm run metadata:validate -- assets/metadata/examples` 通过：`OK 5 metadata files`。
+- `npm run metadata:export-runtime -- --json assets/metadata/examples` 通过：`ok=true`、`diagnostics=[]`、`asset_count=5`。
+- `git diff --check` 通过。
+
+审查记录：
+
+- Oracle 预审：P0 无；P1 要求校验 exact comparable case set 和 default / repair-enabled repair flag，并避免输出误导性的固定空 repair action arrays；P2 要求 `failure_diagnostic_count` 不包含 medium warnings。已按此收紧。
+- Oracle 最终审查：P0/P1/P2 均无；P3 提醒 CLI 成功日志应打印 case set 摘要，已补充 `case.total` / `case.runnable` / `case.skipped` / `case.experimental` 输出；本步可提交。
 
 ### 2.25 Asset Semantic Fidelity Step 8c: Canary Fixture Pack v0.2
 

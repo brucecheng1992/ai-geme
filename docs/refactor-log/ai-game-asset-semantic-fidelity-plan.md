@@ -33,7 +33,7 @@
 - generated project 根目录已写出 `asset_resolution_report.json`，记录 selected / rejected / fallback diagnostics。
 - QA report 已包含 `asset_report`，Workbench Assets 面板可展示 manifest/runtime load 状态和 source pack。
 
-当前状态：Step 8c canary fixture pack v0.2 已完成，下一步可进入 Step 8d 默认 / repair-enabled canary comparison。
+当前状态：Step 8d 默认 / repair-enabled canary comparison 已完成；本步只比较 Step 8c v0.2 small canary pack 的两份既有 canary summary，不改变默认运行时、resolver、QA、Workbench、Phaser 或 asset pack loading。
 
 - QA / Workbench 已能识别 runtime pass 但 hard semantic mismatch 的 `NEEDS_ASSET_REPAIR`，并展示 per-asset semanticFit 摘要。
 - 第一批 canary brief fixture 已建立，batch runner 已能默认运行 supported cases、跳过 `expectedUnsupported` cases，并写出 summary report。
@@ -44,6 +44,7 @@
 - 已新增 Step 8a taxonomy v0.2：只补当前 unsupported canary cases 需要的 canonical concept / synonym normalization，不接入资源、不 promotion fixture、不改变 resolver / QA / Workbench / Phaser / repair 行为。
 - 已新增 Step 8b canary fixture promotion：Step 8a 已支持的 5 个 canary marker 已移除 `expectedUnsupported`，默认 canary 现在运行 14 条 first-batch fixtures，仍不接入资源库、不改变 runtime/default behavior。
 - 已新增 Step 8c canary fixture pack v0.2：只把 canary brief fixture 小包从 14 条扩展到 18 条，不接生产 local asset pack、不改变 resolver / runtime / QA / Workbench / Phaser / asset pack loading。
+- 已新增 Step 8d default / repair-enabled canary comparison：只新增 deterministic comparison helper / CLI / report，repair 仍显式开启，不设为默认。
 
 ## 4. 分步落地计划
 
@@ -64,6 +65,7 @@
 | Step 8a | Taxonomy v0.2 | unsupported canary wording 的 canonical / synonym normalization | 已完成 |
 | Step 8b | Canary fixture promotion | 将 Step 8a 已支持 wording 从 expectedUnsupported 提升为默认 canary | 已完成 |
 | Step 8c | Canary fixture pack v0.2 | 小包 canary brief fixture 扩展，不接生产资源包 | 已完成 |
+| Step 8d | Default / repair-enabled canary comparison | 比较两份 canary summary 的 pass/fail、诊断与 repair metadata | 已完成 |
 
 ## 5. Step 1 最小实现边界
 
@@ -671,7 +673,57 @@ Step 8c 已执行：
 - Oracle 预审：P0/P1 无；P2 提醒 `tank_fishbone_battlefield_shooter` 不应断言 medium warning 为 0；P3 提醒 `battlefield` 只作为 canary v0.2 baseline，不应被写成 taxonomy/resource expansion。已按此收紧。
 - Oracle 最终审查：P0/P1/P2/P3 均无，可提交；确认 diff 只包含 6 个 Step 8c 文件，未触碰 `assets/asset-packs`、runtime、resolver、QA、Workbench、Phaser、shooter HUD 或 metadata examples。
 
-## 20. 审查门禁
+## 20. Step 8d 最小实现边界
+
+状态：已完成。
+
+Step 8d 只处理 Step 8c v0.2 small canary pack 的 default summary 与 repair-enabled summary 对比：
+
+- 新增 deterministic comparison helper / CLI，只读取两份 `summary.json` 并可选写出 `comparison.json`。
+- 校验两份输入的 comparable case set：case id、顺序、`skipped` 与 `experimental` 必须一致；default summary 必须是 `repair.enabled=false`，repair-enabled summary 必须是 `repair.enabled=true`。
+- 对比 `total`、`runnable`、`skipped`、`experimental`、`passed`、`failed`、`exitCode`、failure diagnostic count / codes、medium warning count 与 repair attempted / failed / action metadata。
+- failure diagnostic count 只统计 `NEEDS_ASSET_REPAIR`、`QA_FAILED`、hard mismatch / unknown、required asset missing、asset load failure 和 placeholder；medium warning 单独记录，不计入 failure diagnostic。
+- repair action 只从 case-level `repair.repairedRequirements[].action` 归一化为去重排序结果，不制造固定空的 proposed / rejected action aggregate。
+- comparison report 不包含 timestamp 或绝对路径，diagnostic code 与 repair action 必须排序，便于提交外的本地 artifact 对比。
+
+Step 8d 不修改：
+
+- canary fixture pack、taxonomy、production local asset pack、large asset library、AI image provider 或 Metadata Step 4A。
+- resolver ranking、Step 3 hard gate、fallback 策略、manifest `semanticFit`、`asset_resolution_report`、QA aggregation、Workbench UI、Phaser runtime、repair planner / executor / pipeline、asset pack loading、runtime default behavior 或 shooter HUD 文件。
+- repair 默认开关；repair-enabled canary 仍只能通过显式 `--repair-enabled` 运行。
+
+Step 8d 已执行：
+
+    npx vitest run tests/contracts/asset-semantic-canary-comparison.test.ts
+    npm run qa:asset-semantic:canary
+    npm run qa:asset-semantic:canary -- --repair-enabled
+    npm run qa:asset-semantic:compare -- --default-summary <default-summary.json> --repair-enabled-summary <repair-summary.json> --out <comparison.json>
+    npm run test:contracts
+    npm test
+    npm run typecheck
+    npm run metadata:validate -- assets/metadata/examples
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+    git diff --check
+
+结果：
+
+- TDD 红灯：focused comparison test 先因 `scripts/asset-semantic-canary-comparison.js` 不存在失败；补充 helper / CLI / npm script 后 focused suite 5 个测试通过。
+- 默认 full canary：`artifacts/asset-semantic-canary/20260613T064654Z`，`runnable=18 skipped=0 experimental=0 passed=18 failed=0`，`repair.enabled=false repair.attemptedCount=0 repair.failedCount=0`。
+- repair-enabled full canary：`artifacts/asset-semantic-canary/20260613T064842Z`，`runnable=18 skipped=0 experimental=0 passed=18 failed=0`，`repair.enabled=true repair.attemptedCount=0 repair.failedCount=0`。
+- comparison artifact：`artifacts/asset-semantic-canary-comparison/20260613T064842Z/comparison.json`，`ok=true`，default / repair-enabled 均 `failure_diagnostic_count=0`、`diagnostic_codes=[]`、`medium_warning_count=3`，delta 均为 0。
+- `npm run test:contracts` 通过：14 个测试文件，161 个测试通过。
+- `npm test` 通过：contracts 161 个测试通过，workspace 125 个测试通过。
+- `npm run typecheck` 通过。
+- `npm run metadata:validate -- assets/metadata/examples` 通过：`OK 5 metadata files`。
+- `npm run metadata:export-runtime -- --json assets/metadata/examples` 通过：`ok=true`、`diagnostics=[]`、`asset_count=5`。
+- `git diff --check` 通过。
+
+审查记录：
+
+- Oracle 预审：P0 无；P1 要求校验 exact comparable case set 和 default / repair-enabled repair flag，并避免输出误导性的固定空 repair action arrays；P2 要求 `failure_diagnostic_count` 不包含 medium warnings。已按此收紧 helper / tests / report shape。
+- Oracle 最终审查：P0/P1/P2 均无；P3 提醒 CLI 成功日志应打印 case set 摘要，已补充 `case.total` / `case.runnable` / `case.skipped` / `case.experimental` 输出；本步可提交。
+
+## 21. 审查门禁
 
 每一步按 review-gated-refactor 执行：
 
@@ -681,12 +733,12 @@ Step 8c 已执行：
 4. 把修改范围、验证命令、审查结论写回 `docs/refactor-log/ai-game-dsl-p0-review-gated.md`。
 5. 再做文档复审门禁。
 
-## 21. 当前注意事项
+## 22. 当前注意事项
 
 - provider `survive_duration` 修复已单独提交；后续 asset semantic fidelity 步骤仍不要混入 provider 改动。
 - Step 7 已用默认和 repair-enabled canary summary 证明批量 supported cases 不退化；后续新增 taxonomy / 资源库 / AI image provider 仍必须另起小步，并重新跑 release guard。
-- Step 8c 已只完成 canary fixture pack / brief pack v0.2；下一步如果继续 asset semantic 主线，应进入 Step 8d 默认 / repair-enabled canary comparison。
-- Step 8d 默认 / repair-enabled 对比仍未开始，应另起小步。
+- Step 8c 已只完成 canary fixture pack / brief pack v0.2；Step 8d 已只完成 default / repair-enabled canary summary comparison，不扩展资源或运行时行为。
+- 后续应先关闭 Step 8d branch boundary；如继续资产主线，仍需另起小步，不能混入 Metadata Step 4A、大资源库接入或 runtime / resolver / QA / Workbench / Phaser 变更。
 - shooter HUD stash 仍是独立任务，不应混入 Asset Semantic Fidelity 后续步骤。
 - 可选技术债治理应另起命名，例如 pipeline split，不再复用 Step 8a / Step 8b 编号。
 - 后续涉及真实验收时仍必须用 Workbench / generated project / QA 产物证明，不只看单测。
