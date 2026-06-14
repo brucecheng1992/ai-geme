@@ -103,7 +103,10 @@ export class TemplateCompilerService {
       await writeFile(join(outputDir, `${genre}`, 'src', 'runtime-plan.generated.json'), JSON.stringify(ir.runtime_plan, null, 2));
     }
     if (genre === 'shooter') {
-      await writeFile(join(outputDir, `${genre}`, 'src', 'live-edit-registry.generated.json'), JSON.stringify(readShooterLiveEditRegistry(ir.template_params.params), null, 2));
+      await writeFile(
+        join(outputDir, `${genre}`, 'src', 'live-edit-registry.generated.json'),
+        JSON.stringify({ ...readShooterLiveEditRegistry(ir.template_params.params), runId: input.runId }, null, 2)
+      );
     }
     await writeFile(join(outputDir, 'package.json'), this.renderPackageJson(input.projectId));
     await writeFile(join(outputDir, 'index.html'), this.renderIndexHtml());

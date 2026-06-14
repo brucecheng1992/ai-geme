@@ -1,6 +1,8 @@
 import type { JobEventRecord, ProjectRecord, ProjectStatus, RunRecord } from './project-state.types.js';
 import type { QaReport } from '../qa/qa.types.js';
 import type { DslRepairReport } from '../repair/dsl-repair.types.js';
+import type { GameDslArtifact, LiveEditCapabilities, LiveUpdatePlan, PatchValidationReport, RuntimeApplyReport, RuntimeCapabilityReport } from '../../../../packages/game-dsl/src/index.js';
+import type { EditAuditRecord, LiveVersionRecord, PatchHistoryRecord } from './dsl-live-edit.service.js';
 
 export type GenerateProjectRequest = {
   idea: string;
@@ -38,4 +40,42 @@ export type RepairReportResponse = {
 export type BuildLogResponse = {
   ok: true;
   build_log: string;
+};
+
+export type PrepareDeterministicPatchResponse = {
+  ok: true;
+  patch_id: string;
+  status: LiveUpdatePlan['status'];
+  apply_mode: LiveUpdatePlan['applyMode'];
+  runtime_patch?: NonNullable<LiveUpdatePlan['runtimePatch']>;
+  validation_report: PatchValidationReport;
+  live_update_plan: LiveUpdatePlan;
+  live_update_plan_ref: RuntimeApplyReport['liveUpdatePlanRef'];
+  artifact_refs: Record<string, string>;
+};
+
+export type LiveCurrentResponse = {
+  ok: true;
+  current_version: LiveVersionRecord;
+  game_dsl: GameDslArtifact;
+  runtime_capability_report: RuntimeCapabilityReport;
+  live_edit_capabilities: LiveEditCapabilities;
+  patch_history: PatchHistoryRecord[];
+  edit_audit_log: EditAuditRecord[];
+};
+
+export type PrepareLiveEditRequest = {
+  intent?: string;
+  op?: 'replace';
+  path?: string;
+  value?: unknown;
+};
+
+export type RuntimeApplyResultResponse = {
+  ok: true;
+  patch_id: string;
+  status: RuntimeApplyReport['status'];
+  apply_mode: RuntimeApplyReport['applyMode'];
+  version_id?: string;
+  runtime_apply_report: RuntimeApplyReport;
 };

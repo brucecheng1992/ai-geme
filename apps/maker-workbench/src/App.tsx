@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { AssetStatusPanel } from './AssetStatusPanel.js';
 import { QaStatusPanel } from './QaStatusPanel.js';
+import { buildEditableFields, buildLiveObjectTree, buildReplacePrepareBody, buildRuntimeApplyReportFromPatchResult, type LiveEditableField } from './live-edit-client.js';
 import './styles.css';
 import {
   API_BASE,
@@ -16,9 +17,14 @@ import {
   shouldLoadRepairReport,
   type ArtAssetWorkbenchPreview,
   type DashboardData,
+  type LiveCurrentResponse,
+  type PreparedDeterministicPatch,
   type ProjectStatus,
   type QaReport,
   type RepairReport,
+  type RuntimeApplyResponse,
+  type RuntimePatch,
+  type RuntimePatchResult,
   type RunEvents
 } from './workbench-api.js';
 
@@ -71,9 +77,16 @@ export function App() {
   const [runId, setRunId] = useState('');
   const [data, setData] = useState<DashboardData>({ events: [] });
   const [error, setError] = useState<string | null>(null);
+  const [liveEditStatus, setLiveEditStatus] = useState('Runtime not connected');
+  const [liveCurrent, setLiveCurrent] = useState<LiveCurrentResponse | undefined>(undefined);
+  const [runtimeReady, setRuntimeReady] = useState(false);
+  const [pendingPatchId, setPendingPatchId] = useState<string | null>(null);
+  const [selectedObjectPath, setSelectedObjectPath] = useState('/player');
+  const [previewInstanceId, setPreviewInstanceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const previewHostRef = useRef<HTMLDivElement | null>(null);
   const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
+  const pendingPatchRef = useRef<PreparedDeterministicPatch | null>(null);
 
   const previewUrl = useMemo(() => {
     if (data.project?.project.preview_url) {
@@ -91,6 +104,11 @@ export function App() {
     const status = latestRun?.status;
     return status === undefined || ['PLAYABLE', 'QA_FAILED', 'BUILD_FAILED', 'PREVIEW_ARTIFACT_MISSING', 'DSL_VALIDATION_FAILED', 'FAILED'].includes(status);
   }, [latestRun?.status]);
+  const liveObjectTree = useMemo(() => (liveCurrent ? buildLiveObjectTree(liveCurrent.game_dsl) : []), [liveCurrent]);
+  const liveEditableFields = useMemo(
+    () => (liveCurrent ? buildEditableFields(liveCurrent.game_dsl, liveCurrent.live_edit_capabilities, selectedObjectPath) : []),
+    [liveCurrent, selectedObjectPath]
+  );
 
   useEffect(() => {
     if (!projectId || !runId || isTerminal) {
@@ -134,6 +152,73 @@ export function App() {
     };
   }, [previewUrl, previewBlankScreen]);
 
+  useEffect(() => {
+    setRuntimeReady(false);
+    setPendingPatchId(null);
+    setPreviewInstanceId(null);
+    pendingPatchRef.current = null;
+    setLiveEditStatus(previewUrl && !previewBlankScreen ? 'Waiting for runtime' : 'Runtime not connected');
+  }, [previewUrl, previewBlankScreen]);
+
+  useEffect(() => {
+    const handleRuntimeMessage = (event: MessageEvent) => {
+      const data = event.data;
+      if (!isRuntimeMessage(data)) {
+        return;
+      }
+      if (event.source !== previewFrameRef.current?.contentWindow) {
+        return;
+      }
+
+      if (data.type === 'AIGAME_RUNTIME_READY') {
+        if (runId && typeof data.runId === 'string' && data.runId !== runId) {
+          return;
+        }
+        if (typeof data.previewInstanceId !== 'string') {
+          return;
+        }
+        setPreviewInstanceId(data.previewInstanceId);
+        setRuntimeReady(true);
+        setLiveEditStatus(`Runtime ready: ${typeof data.runtimeTarget === 'string' ? data.runtimeTarget : 'preview'}`);
+        previewFrameRef.current?.contentWindow?.postMessage({ type: 'AIGAME_GET_CAPABILITIES', runId, previewInstanceId: data.previewInstanceId }, '*');
+        return;
+      }
+
+      if (data.type === 'AIGAME_RUNTIME_ERROR') {
+        const prepared = pendingPatchRef.current;
+        if (!runtimeMessageMatchesPending(data, prepared, runId, previewInstanceId)) {
+          return;
+        }
+        const message = typeof data.message === 'string' ? data.message : 'Runtime bridge error.';
+        setLiveEditStatus(`Runtime error: ${message}`);
+        if (prepared !== null) {
+          void recordRuntimePatchResult(prepared, {
+            status: 'failed_runtime_apply',
+            applyMode: 'none',
+            runtimeTarget: 'phaser:top_down_shooter',
+            appliedPaths: [],
+            warnings: [],
+            errors: [{ code: 'AIGAME_RUNTIME_ERROR', path: 'runtime', message }]
+          });
+        }
+        return;
+      }
+
+      if (data.type !== 'AIGAME_PATCH_RESULT' || !isRuntimePatchResult(data.result)) {
+        return;
+      }
+
+      const prepared = pendingPatchRef.current;
+      if (!runtimeMessageMatchesPending(data, prepared, runId, previewInstanceId)) {
+        return;
+      }
+      void recordRuntimePatchResult(prepared, data.result);
+    };
+
+    window.addEventListener('message', handleRuntimeMessage);
+    return () => window.removeEventListener('message', handleRuntimeMessage);
+  }, [projectId, runId, previewInstanceId]);
+
   async function generateProject() {
     await runAction(async () => {
       const created = await requestJson<{ ok: true; project_id: string; run_id: string }>(`${API_BASE}/api/projects/generate`, {
@@ -152,13 +237,14 @@ export function App() {
       const project = await requestJson<ProjectStatus>(`${API_BASE}/api/projects/${selectedProjectId}`);
       const events = await requestJson<RunEvents>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/events`);
       const status = project.latest_run.status;
-      const [qaReport, repairReport, buildLog, artAssetPreview] = await Promise.all([
+      const [qaReport, repairReport, buildLog, artAssetPreview, live] = await Promise.all([
         shouldLoadQaReport(status) ? optionalJson<{ qa_report: QaReport }>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/qa-report`) : undefined,
         shouldLoadRepairReport(status)
           ? optionalJson<{ repair_report: RepairReport }>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/repair-report`)
           : undefined,
         shouldLoadBuildLog(status) ? optionalJson<{ build_log: string }>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/build-log`) : undefined,
-        optionalJson<{ preview: ArtAssetWorkbenchPreview }>(`${API_BASE}/api/art-assets/preview/small-library`)
+        optionalJson<{ preview: ArtAssetWorkbenchPreview }>(`${API_BASE}/api/art-assets/preview/small-library`),
+        optionalJson<LiveCurrentResponse>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/live/current`)
       ]);
 
       setData({
@@ -169,7 +255,66 @@ export function App() {
         buildLog: buildLog?.build_log,
         artAssetPreview: artAssetPreview?.preview
       });
+      setLiveCurrent(live);
     }, options);
+  }
+
+  async function applyLiveField(field: LiveEditableField, nextValue: number) {
+    await runAction(async () => {
+      if (pendingPatchRef.current !== null) {
+        throw new Error('A live edit patch is already waiting for runtime confirmation.');
+      }
+      if (!runtimeReady || previewInstanceId === null) {
+        throw new Error('Preview runtime is not ready for live edit.');
+      }
+      setLiveEditStatus(`Preparing ${field.path}`);
+      const prepared = await requestJson<PreparedDeterministicPatch>(`${API_BASE}/api/projects/${projectId}/runs/${runId}/live-edits/prepare`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildReplacePrepareBody(field.path, nextValue))
+      });
+      setLiveEditStatus(`Plan: ${prepared.status}`);
+
+      if (prepared.validation_report?.status === 'invalid') {
+        return;
+      }
+      if (prepared.apply_mode !== 'hot' || prepared.runtime_patch === undefined) {
+        pendingPatchRef.current = null;
+        setPendingPatchId(null);
+        return;
+      }
+
+      const previewWindow = previewFrameRef.current?.contentWindow;
+      if (previewWindow === undefined || previewWindow === null) {
+        throw new Error('Preview runtime is not available.');
+      }
+
+      pendingPatchRef.current = prepared;
+      setPendingPatchId(prepared.patch_id);
+      previewWindow.postMessage(
+        { type: 'AIGAME_APPLY_PATCH', runId, patchId: prepared.patch_id, previewInstanceId, runtimePatch: prepared.runtime_patch },
+        '*'
+      );
+      setLiveEditStatus(`Patch sent: ${prepared.patch_id}`);
+    });
+  }
+
+  async function recordRuntimePatchResult(prepared: PreparedDeterministicPatch, result: RuntimePatchResult) {
+    try {
+      const report = buildRuntimeApplyReportFromPatchResult(runId, prepared, result);
+      const recorded = await requestJson<RuntimeApplyResponse>(`${API_BASE}/api/projects/${projectId}/runs/${runId}/live-edits/${prepared.patch_id}/runtime-result`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(report)
+      });
+      setLiveEditStatus(`${recorded.status}${recorded.version_id ? ` -> ${recorded.version_id}` : ''}`);
+      await loadProject(projectId, runId, { silent: true });
+    } catch (applyError) {
+      setError(applyError instanceof Error ? applyError.message : 'Runtime apply recording failed.');
+    } finally {
+      pendingPatchRef.current = null;
+      setPendingPatchId(null);
+    }
   }
 
   async function runAction(action: () => Promise<void>, options: { silent?: boolean } = {}) {
@@ -288,9 +433,14 @@ export function App() {
                 <p className="m-0 text-[11px] font-extrabold uppercase text-[#ffb13b]">Live preview</p>
                 <h2 className="m-0 text-[23px] font-black leading-tight text-[#fdf3df] [overflow-wrap:anywhere]">{projectId || 'Waiting for a generated project'}</h2>
               </div>
-              <span className="shrink-0 rounded-full border border-[#314e66] px-3 py-1.5 text-xs font-extrabold text-[#c6d7e6]">
-                {observedCounts.length} telemetry signals
-              </span>
+              <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                <span className="rounded-full border border-[#314e66] px-3 py-1.5 text-xs font-extrabold text-[#c6d7e6]">
+                  {observedCounts.length} telemetry signals
+                </span>
+                <span className="max-w-[260px] rounded-full border border-[#314e66] px-3 py-1.5 text-xs font-extrabold text-[#c6d7e6] [overflow-wrap:anywhere]">
+                  {pendingPatchId ?? liveEditStatus}
+                </span>
+              </div>
             </div>
             {previewBlankScreen ? (
               <div className="flex h-[clamp(360px,50vh,560px)] flex-col items-center justify-center gap-2 bg-[#2d1114] p-6 text-center text-[#ffd8ce]">
@@ -329,6 +479,72 @@ export function App() {
                 {observedCounts.length === 0 ? (
                   <span className="rounded-full border border-[#d0b993] bg-[#ece1ce] px-2.5 py-1.5 text-xs font-extrabold text-[#69645d]">No events yet</span>
                 ) : null}
+              </div>
+            </article>
+
+            <article className={`${panelClass} min-h-64`}>
+              <div className={panelHeadingClass}>
+                <div>
+                  <p className={eyebrowClass}>Live edit</p>
+                  <h2 className={headingClass}>AIGame Controls</h2>
+                </div>
+                <span className="rounded-full border border-[#d0b993] bg-[#ece1ce] px-2.5 py-1 text-[11px] font-black text-[#69645d]">
+                  {liveCurrent?.current_version.versionId ?? 'No version'}
+                </span>
+              </div>
+              <div className="grid grid-cols-[minmax(120px,0.8fr)_minmax(180px,1.2fr)] gap-3 max-sm:grid-cols-1">
+                <div className="grid content-start gap-2">
+                  {liveObjectTree.map((node) => (
+                    <button
+                      className={`min-h-9 rounded-lg border px-2.5 text-left text-xs font-black [overflow-wrap:anywhere] ${
+                        selectedObjectPath === node.path ? 'border-[#15130f] bg-[#ffefc2] text-[#15130f]' : 'border-[#d0b993] bg-[#fffaf0] text-[#69645d]'
+                      }`}
+                      key={`${node.kind}-${node.id}`}
+                      type="button"
+                      onClick={() => setSelectedObjectPath(node.path)}
+                    >
+                      {node.id}
+                    </button>
+                  ))}
+                  {liveObjectTree.length === 0 ? <span className="text-sm font-bold text-[#69645d]">No live DSL</span> : null}
+                </div>
+                <div className="grid content-start gap-2">
+                  {liveEditableFields.map((field) => (
+                    <label className="grid grid-cols-[1fr_96px_auto] items-center gap-2 text-xs font-black text-[#69645d] max-sm:grid-cols-1" key={field.path}>
+                      <span className="[overflow-wrap:anywhere]">{field.label}</span>
+                      <input
+                        className={`${fieldClass} min-h-9 px-2 py-1 text-xs`}
+                        defaultValue={field.value ?? 0}
+                        disabled={!field.enabled || pendingPatchId !== null || !runtimeReady || previewInstanceId === null}
+                        key={`${liveCurrent?.current_version.versionId ?? 'none'}:${field.path}`}
+                        step="0.1"
+                        type="number"
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            void applyLiveField(field, Number((event.currentTarget as HTMLInputElement).value));
+                          }
+                        }}
+                      />
+                      <button
+                        className={secondaryButtonClass}
+                        disabled={!field.enabled || !runtimeReady || previewInstanceId === null || pendingPatchId !== null}
+                        type="button"
+                        onClick={(event) => {
+                          const input = event.currentTarget.parentElement?.querySelector('input');
+                          void applyLiveField(field, Number(input?.value ?? field.value ?? 0));
+                        }}
+                      >
+                        Apply
+                      </button>
+                    </label>
+                  ))}
+                  {liveEditableFields.length === 0 ? <span className="text-sm font-bold text-[#69645d]">Select player, enemy, or projectile</span> : null}
+                </div>
+              </div>
+              <div className="mt-3 grid gap-1 border-t border-[#ead9ba] pt-3 text-xs font-bold text-[#69645d]">
+                <span>{`Runtime: ${runtimeReady ? 'ready' : 'waiting'} · ${liveEditStatus}`}</span>
+                <span>{`History: ${liveCurrent?.patch_history.map((item) => `${item.patchId}:${item.status}:${item.ops?.map((op) => op.path).join('|') ?? ''}`).join(', ') || 'none'}`}</span>
+                <span>{`Audit: ${liveCurrent?.edit_audit_log.map((item) => `${item.patchId}:${item.status}:${item.applyMode}${item.errors?.length ? `:${item.errors.map((issue) => issue.code).join('|')}` : ''}`).join(', ') || 'none'}`}</span>
               </div>
             </article>
 
@@ -391,4 +607,36 @@ function isFormControlTarget(target: EventTarget | null): boolean {
   }
 
   return target.isContentEditable || ['BUTTON', 'INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName);
+}
+
+function isRuntimeMessage(value: unknown): value is { type: string; runId?: unknown; patchId?: unknown; previewInstanceId?: unknown; runtimeTarget?: unknown; message?: unknown; result?: unknown } {
+  return typeof value === 'object' && value !== null && 'type' in value && typeof value.type === 'string';
+}
+
+function runtimeMessageMatchesPending(
+  data: { runId?: unknown; patchId?: unknown; previewInstanceId?: unknown },
+  prepared: PreparedDeterministicPatch | null,
+  runId: string,
+  previewInstanceId: string | null
+): prepared is PreparedDeterministicPatch {
+  if (prepared === null) {
+    return false;
+  }
+  return data.runId === runId && data.patchId === prepared.patch_id && data.previewInstanceId === previewInstanceId;
+}
+
+function isRuntimePatchResult(value: unknown): value is RuntimePatchResult {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const candidate = value as Partial<RuntimePatchResult>;
+  return (
+    (candidate.status === 'applied_hot' || candidate.status === 'failed_runtime_apply' || candidate.status === 'unsupported') &&
+    (candidate.applyMode === 'hot' || candidate.applyMode === 'none') &&
+    typeof candidate.runtimeTarget === 'string' &&
+    Array.isArray(candidate.appliedPaths) &&
+    Array.isArray(candidate.warnings) &&
+    Array.isArray(candidate.errors)
+  );
 }

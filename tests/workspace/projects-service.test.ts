@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -8,6 +8,9 @@ import { ProjectStoreService } from '../../apps/maker-api/src/projects/project-s
 import { createProjectRunIds, ProjectsService } from '../../apps/maker-api/src/projects/projects.service.js';
 import { RunStoreService } from '../../apps/maker-api/src/projects/run-store.service.js';
 import { LocalWorkspaceService } from '../../apps/maker-api/src/workspace/local-workspace.service.js';
+import { DslLiveEditService } from '../../apps/maker-api/src/projects/dsl-live-edit.service.js';
+import { buildGameDslArtifact, buildRuntimeCapabilityReport, RawGameDslSchema, type GameDslArtifact } from '../../packages/game-dsl/src/index.js';
+import { createShooterRawDsl } from '../contracts/fixtures.js';
 
 describe('ProjectsService', () => {
   let root: string;
@@ -15,16 +18,19 @@ describe('ProjectsService', () => {
   let runStore: RunStoreService;
   let workspace: LocalWorkspaceService;
   let service: ProjectsService;
+  let liveEdit: DslLiveEditService;
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'ai-game-maker-api-'));
     workspace = new LocalWorkspaceService(root);
     projectStore = new ProjectStoreService(workspace);
     runStore = new RunStoreService(workspace);
+    liveEdit = new DslLiveEditService(workspace);
     service = new ProjectsService(
       projectStore,
       runStore,
       workspace,
+      liveEdit,
       {
         async run() {
           return 'CREATED';
@@ -134,6 +140,190 @@ describe('ProjectsService', () => {
 
     await expect(service.getProject(created.project_id)).rejects.toThrow('latest run does not match project');
   });
+
+  it('prepares the Workbench deterministic hot patch and records runtime-confirmed version advancement', async () => {
+    const created = await service.generateProject({ idea: '小猫大战坦克', language: 'zh' });
+    const gameDsl = await writeCatVsTankArtifacts(workspace, liveEdit, created.project_id, created.run_id);
+
+    const prepared = await service.prepareWorkbenchDeterministicPatch(created.project_id, created.run_id);
+
+    expect(prepared).toMatchObject({
+      ok: true,
+      patch_id: expect.stringMatching(/^patch_workbench_[a-z0-9]+$/),
+      status: 'hot_patchable',
+      apply_mode: 'hot',
+      runtime_patch: {
+        player: { scale: 1.3, maxSpeed: 320 },
+        enemyTypes: { tank_basic: { speed: 80 } }
+      }
+    });
+    await expect(readFile(workspace.getLiveCurrentVersionPath(created.project_id, created.run_id), 'utf8')).resolves.toContain('"versionId": "v_initial"');
+    await expect(readFile(workspace.getLiveArtifactPath(created.project_id, created.run_id, `${prepared.patch_id}.dsl_patch.json`), 'utf8')).resolves.toContain(
+      '/enemyTypes/tank_basic/physics/speed'
+    );
+
+    const recorded = await service.recordWorkbenchRuntimeApplyResult(created.project_id, created.run_id, prepared.patch_id, {
+      artifactKind: 'runtime_apply_report',
+      schemaVersion: 'runtime_apply_report.v1',
+      runId: created.run_id,
+      patchId: prepared.patch_id,
+      liveUpdatePlanRef: { artifact: `${prepared.patch_id}.live_update_plan.json`, patchId: prepared.patch_id },
+      status: 'applied_hot',
+      applyMode: 'hot',
+      runtimeTarget: 'phaser:top_down_shooter',
+      appliedPaths: ['/player/render/scale', '/player/physics/maxSpeed', '/enemyTypes/tank_basic/physics/speed'],
+      warnings: [],
+      errors: []
+    });
+
+    expect(recorded).toMatchObject({
+      ok: true,
+      patch_id: prepared.patch_id,
+      status: 'applied_hot',
+      apply_mode: 'hot',
+      version_id: expect.stringContaining(prepared.patch_id)
+    });
+    await expect(readFile(workspace.getLivePatchHistoryPath(created.project_id, created.run_id), 'utf8')).resolves.toContain(prepared.patch_id);
+  });
+
+  it('loads Workbench live current state with version, DSL, capabilities, history, and audit log', async () => {
+    const created = await service.generateProject({ idea: '小猫大战坦克', language: 'zh' });
+    const gameDsl = await writeCatVsTankArtifacts(workspace, liveEdit, created.project_id, created.run_id);
+
+    const current = await service.getLiveCurrent(created.project_id, created.run_id);
+
+    expect(current).toMatchObject({
+      ok: true,
+      current_version: { versionId: 'v_initial', dslId: gameDsl.dslId },
+      game_dsl: { dslId: gameDsl.dslId, player: { id: 'player' }, enemyTypes: { tank_basic: { id: 'tank_basic' } } },
+      runtime_capability_report: { status: 'supported' },
+      live_edit_capabilities: { hot: expect.arrayContaining(['/player/render/scale', '/enemyTypes/*/physics/speed']) },
+      patch_history: [],
+      edit_audit_log: []
+    });
+  });
+
+  it('prepares a generic Workbench replace op and records failed runtime result without advancing current_version', async () => {
+    const created = await service.generateProject({ idea: '小猫大战坦克', language: 'zh' });
+    await writeCatVsTankArtifacts(workspace, liveEdit, created.project_id, created.run_id);
+    const before = await readFile(workspace.getLiveCurrentVersionPath(created.project_id, created.run_id), 'utf8').catch(() => '');
+
+    const prepared = await service.prepareWorkbenchLiveEdit(created.project_id, created.run_id, {
+      op: 'replace',
+      path: '/player/render/scale',
+      value: 1.3
+    });
+
+    expect(prepared).toMatchObject({
+      status: 'hot_patchable',
+      runtime_patch: { player: { scale: 1.3 } },
+      validation_report: { status: 'valid' }
+    });
+    const recorded = await service.recordWorkbenchRuntimeApplyResult(created.project_id, created.run_id, prepared.patch_id, {
+      artifactKind: 'runtime_apply_report',
+      schemaVersion: 'runtime_apply_report.v1',
+      runId: created.run_id,
+      patchId: prepared.patch_id,
+      liveUpdatePlanRef: prepared.live_update_plan_ref,
+      status: 'failed_runtime_apply',
+      applyMode: 'hot',
+      runtimeTarget: 'phaser:top_down_shooter',
+      appliedPaths: [],
+      warnings: [],
+      errors: [{ code: 'MOCK_RUNTIME_FAILURE', path: '/player/render/scale', message: 'mock failure' }]
+    });
+
+    expect(recorded).toMatchObject({ status: 'failed_runtime_apply', version_id: undefined });
+    await expect(readFile(workspace.getLiveCurrentVersionPath(created.project_id, created.run_id), 'utf8')).resolves.toBe(before);
+    await expect(readFile(workspace.getLivePatchHistoryPath(created.project_id, created.run_id), 'utf8')).rejects.toThrow();
+  });
+
+  it('rejects stale runtime success without advancing patch history', async () => {
+    const created = await service.generateProject({ idea: '小猫大战坦克', language: 'zh' });
+    await writeCatVsTankArtifacts(workspace, liveEdit, created.project_id, created.run_id);
+    const first = await service.prepareWorkbenchLiveEdit(created.project_id, created.run_id, { op: 'replace', path: '/player/render/scale', value: 1.3 });
+    const second = await service.prepareWorkbenchLiveEdit(created.project_id, created.run_id, { op: 'replace', path: '/player/physics/maxSpeed', value: 320 });
+    await service.recordWorkbenchRuntimeApplyResult(created.project_id, created.run_id, first.patch_id, {
+      artifactKind: 'runtime_apply_report',
+      schemaVersion: 'runtime_apply_report.v1',
+      runId: created.run_id,
+      patchId: first.patch_id,
+      liveUpdatePlanRef: first.live_update_plan_ref,
+      status: 'applied_hot',
+      applyMode: 'hot',
+      runtimeTarget: 'phaser:top_down_shooter',
+      appliedPaths: ['/player/render/scale'],
+      warnings: [],
+      errors: []
+    });
+
+    const stale = await service.recordWorkbenchRuntimeApplyResult(created.project_id, created.run_id, second.patch_id, {
+      artifactKind: 'runtime_apply_report',
+      schemaVersion: 'runtime_apply_report.v1',
+      runId: created.run_id,
+      patchId: second.patch_id,
+      liveUpdatePlanRef: second.live_update_plan_ref,
+      status: 'applied_hot',
+      applyMode: 'hot',
+      runtimeTarget: 'phaser:top_down_shooter',
+      appliedPaths: ['/player/physics/maxSpeed'],
+      warnings: [],
+      errors: []
+    });
+
+    expect(stale).toMatchObject({ status: 'failed_runtime_apply', version_id: undefined });
+    const history = (await readFile(workspace.getLivePatchHistoryPath(created.project_id, created.run_id), 'utf8')).trim().split('\n');
+    expect(history).toHaveLength(1);
+    expect(history[0]).toContain(first.patch_id);
+  });
+
+  it('rejects runtime success reports with mismatched plan artifact, extra paths, or errors', async () => {
+    const created = await service.generateProject({ idea: '小猫大战坦克', language: 'zh' });
+    await writeCatVsTankArtifacts(workspace, liveEdit, created.project_id, created.run_id);
+    const artifactMismatch = await service.prepareWorkbenchLiveEdit(created.project_id, created.run_id, {
+      op: 'replace',
+      path: '/player/render/scale',
+      value: 1.3
+    });
+    const extraPath = await service.prepareWorkbenchLiveEdit(created.project_id, created.run_id, {
+      op: 'replace',
+      path: '/player/physics/maxSpeed',
+      value: 320
+    });
+    const successWithErrors = await service.prepareWorkbenchLiveEdit(created.project_id, created.run_id, {
+      op: 'replace',
+      path: '/enemyTypes/tank_basic/physics/speed',
+      value: 80
+    });
+
+    const mismatchResult = await recordApplied(service, created.project_id, created.run_id, artifactMismatch.patch_id, {
+      liveUpdatePlanRef: { artifact: 'wrong.live_update_plan.json', patchId: artifactMismatch.patch_id },
+      appliedPaths: ['/player/render/scale']
+    });
+    const extraPathResult = await recordApplied(service, created.project_id, created.run_id, extraPath.patch_id, {
+      liveUpdatePlanRef: extraPath.live_update_plan_ref,
+      appliedPaths: ['/player/physics/maxSpeed', '/player/render/scale']
+    });
+    const errorResult = await recordApplied(service, created.project_id, created.run_id, successWithErrors.patch_id, {
+      liveUpdatePlanRef: successWithErrors.live_update_plan_ref,
+      appliedPaths: ['/enemyTypes/tank_basic/physics/speed'],
+      errors: [{ code: 'RUNTIME_SUCCESS_WITH_ERROR_FIXTURE', path: '/enemyTypes/tank_basic/physics/speed', message: 'fixture' }]
+    });
+
+    expect(mismatchResult).toMatchObject({ status: 'failed_runtime_apply', version_id: undefined });
+    expect(extraPathResult).toMatchObject({ status: 'failed_runtime_apply', version_id: undefined });
+    expect(errorResult).toMatchObject({ status: 'failed_runtime_apply', version_id: undefined });
+    await expect(readFile(workspace.getLivePatchHistoryPath(created.project_id, created.run_id), 'utf8')).rejects.toThrow();
+  });
+
+  it('does not recreate live current_version when the existing record is malformed', async () => {
+    const created = await service.generateProject({ idea: '小猫大战坦克', language: 'zh' });
+    await writeCatVsTankArtifacts(workspace, liveEdit, created.project_id, created.run_id);
+    await writeTextFile(workspace.getLiveCurrentVersionPath(created.project_id, created.run_id), '{"versionId":123}\n');
+
+    await expect(service.getLiveCurrent(created.project_id, created.run_id)).rejects.toThrow();
+    await expect(readFile(workspace.getLiveCurrentVersionPath(created.project_id, created.run_id), 'utf8')).resolves.toBe('{"versionId":123}\n');
+  });
 });
 
 async function writeJsonFile(path: string, value: unknown): Promise<void> {
@@ -143,4 +333,50 @@ async function writeJsonFile(path: string, value: unknown): Promise<void> {
 async function writeTextFile(path: string, value: string): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, value, 'utf8');
+}
+
+async function writeCatVsTankArtifacts(workspace: LocalWorkspaceService, liveEdit: DslLiveEditService, projectId: string, runId: string): Promise<GameDslArtifact> {
+  const rawDsl = RawGameDslSchema.parse(createShooterRawDsl());
+  rawDsl.player.label = '小猫';
+  rawDsl.entities = [
+    { id: 'fishbone', kind: 'projectile', label: '鱼骨头', damage: 1, movement: { type: 'move_right', speed_px_per_sec: 520 } },
+    { id: 'tank_basic', kind: 'enemy', label: '坦克', count: 8, health: 1, movement: { type: 'chase_player', speed_px_per_sec: 100 } }
+  ];
+  rawDsl.player.actions = rawDsl.player.actions.map((action) => ({ ...action, spawns: 'fishbone' }));
+  rawDsl.rules.collisions = rawDsl.rules.collisions.map((collision) => ({ ...collision, source: 'fishbone', target: 'tank_basic' }));
+  rawDsl.objectives.win = { type: 'enemy_cleared', target: 8 };
+  const gameDsl = buildGameDslArtifact({
+    rawDsl,
+    runId,
+    intentPlan: { normalizedGenre: 'top_down_shooter', matchedAlias: '小猫大战坦克' }
+  });
+  await liveEdit.initializeLiveVersion({ projectId, runId, artifact: gameDsl });
+  await writeJsonFile(workspace.getModelOutputPath(projectId, runId, 'runtime_capability_report.json'), buildRuntimeCapabilityReport({ runId, validatedDsl: gameDsl }));
+  return gameDsl;
+}
+
+async function recordApplied(
+  service: ProjectsService,
+  projectId: string,
+  runId: string,
+  patchId: string,
+  overrides: {
+    liveUpdatePlanRef: { artifact: string; patchId: string };
+    appliedPaths: string[];
+    errors?: Array<{ code: string; path: string; message: string }>;
+  }
+) {
+  return service.recordWorkbenchRuntimeApplyResult(projectId, runId, patchId, {
+    artifactKind: 'runtime_apply_report',
+    schemaVersion: 'runtime_apply_report.v1',
+    runId,
+    patchId,
+    liveUpdatePlanRef: overrides.liveUpdatePlanRef,
+    status: 'applied_hot',
+    applyMode: 'hot',
+    runtimeTarget: 'phaser:top_down_shooter',
+    appliedPaths: overrides.appliedPaths,
+    warnings: [],
+    errors: overrides.errors ?? []
+  });
 }

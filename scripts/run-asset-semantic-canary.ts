@@ -12,6 +12,7 @@ import { GameBriefSchema, RawGameDslSchema } from '../packages/game-dsl/src/inde
 import { TemplateCompilerService } from '../apps/maker-api/src/compiler/template-compiler.service.js';
 import { ViteBuildRunnerService } from '../apps/maker-api/src/compiler/vite-build-runner.service.js';
 import type { CommandRunner } from '../apps/maker-api/src/compiler/compiler.types.js';
+import { DslLiveEditService } from '../apps/maker-api/src/projects/dsl-live-edit.service.js';
 import { GenerationPipelineService, type AssetSemanticRepairConfig } from '../apps/maker-api/src/projects/generation-pipeline.service.js';
 import { ProjectStoreService } from '../apps/maker-api/src/projects/project-store.service.js';
 import { ProjectsService } from '../apps/maker-api/src/projects/projects.service.js';
@@ -142,6 +143,7 @@ async function runCanaryCase(
     projectStore,
     runStore,
     workspace,
+    new DslLiveEditService(workspace),
     new GenerationPipelineService(
       projectStore,
       runStore,

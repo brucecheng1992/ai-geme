@@ -196,6 +196,109 @@ export type DashboardData = {
   artAssetPreview?: ArtAssetWorkbenchPreview;
 };
 
+export type LiveVersionRecord = {
+  versionId: string;
+  baseVersionId?: string;
+  dslId: string;
+  dslArtifactPath: string;
+  updatedAt: string;
+};
+
+export type GameDslArtifact = {
+  dslId: string;
+  runId: string;
+  genre: string;
+  player: {
+    id: string;
+    label?: string;
+    controller?: string;
+    render?: { scale?: number };
+    physics?: { maxSpeed?: number };
+    health?: { max?: number };
+  };
+  enemyTypes: Record<string, { id: string; label?: string; physics?: { speed?: number }; health?: { max?: number } }>;
+  projectiles: Record<string, { id: string; label?: string; speed?: number; damage?: number }>;
+  level: { id: string; waves?: Array<{ id: string }> };
+};
+
+export type LiveUpdatePlanStatus = 'hot_patchable' | 'warm_restart_required' | 'rebuild_required' | 'unsupported' | 'failed_validation';
+export type LiveUpdateApplyMode = 'hot' | 'warm_restart' | 'rebuild' | 'none';
+export type RuntimeIssue = { code: string; path: string; message: string };
+export type DslPatchOp = { op: 'replace' | 'add' | 'remove'; path: string; value?: unknown };
+export type LiveEditCapabilities = { hot: string[]; assetSwap: string[]; warmRestart: string[]; rebuildRequired: string[] };
+export type RuntimeCapabilityReport = {
+  status: 'supported' | 'unsupported';
+  liveEditCapabilities: LiveEditCapabilities;
+};
+export type RuntimePatch = {
+  player?: { scale?: number; maxSpeed?: number; maxHealth?: number };
+  enemyTypes?: Record<string, { speed?: number; maxHealth?: number }>;
+  projectiles?: Record<string, { speed?: number; damage?: number }>;
+};
+
+export type PreparedDeterministicPatch = {
+  ok: true;
+  patch_id: string;
+  status: LiveUpdatePlanStatus;
+  apply_mode: LiveUpdateApplyMode;
+  runtime_patch?: RuntimePatch;
+  live_update_plan_ref: { artifact: string; patchId: string };
+  validation_report?: { status: 'valid' | 'invalid'; errors: RuntimeIssue[] };
+  live_update_plan?: { status: LiveUpdatePlanStatus; applyMode: LiveUpdateApplyMode; reason?: string; affectedPaths: string[] };
+  artifact_refs?: Record<string, string>;
+};
+
+export type RuntimePatchResult = {
+  status: 'applied_hot' | 'failed_runtime_apply' | 'unsupported';
+  applyMode: 'hot' | 'none';
+  runtimeTarget: string;
+  appliedPaths: string[];
+  warnings: RuntimeIssue[];
+  errors: RuntimeIssue[];
+};
+
+export type RuntimeApplyReport = {
+  artifactKind: 'runtime_apply_report';
+  schemaVersion: 'runtime_apply_report.v1';
+  runId: string;
+  patchId: string;
+  liveUpdatePlanRef: PreparedDeterministicPatch['live_update_plan_ref'];
+  status: 'applied_hot' | 'applied_warm_restart' | 'failed_runtime_apply' | 'unsupported' | 'requires_rebuild';
+  applyMode: LiveUpdateApplyMode;
+  runtimeTarget: string;
+  appliedPaths: string[];
+  warnings: RuntimeIssue[];
+  errors: RuntimeIssue[];
+};
+
+export type RuntimeApplyResponse = {
+  ok: true;
+  patch_id: string;
+  status: RuntimeApplyReport['status'];
+  apply_mode: RuntimeApplyReport['applyMode'];
+  version_id?: string;
+  runtime_apply_report: RuntimeApplyReport;
+};
+
+export type LiveCurrentResponse = {
+  ok: true;
+  current_version: LiveVersionRecord;
+  game_dsl: GameDslArtifact;
+  runtime_capability_report: RuntimeCapabilityReport;
+  live_edit_capabilities: LiveEditCapabilities;
+  patch_history: Array<{ patchId: string; versionId: string; baseVersionId: string; status: string; ops?: DslPatchOp[]; artifactRefs?: Record<string, string> }>;
+  edit_audit_log: Array<{
+    patchId: string;
+    baseVersionId: string;
+    status: string;
+    applyMode: LiveUpdateApplyMode;
+    ops?: DslPatchOp[];
+    errors?: RuntimeIssue[];
+    artifactRefs?: Record<string, string>;
+    createdAt: string;
+  }>;
+};
+
 export async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   if (!response.ok) {

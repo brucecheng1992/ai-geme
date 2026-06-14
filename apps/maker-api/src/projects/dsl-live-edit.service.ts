@@ -1,10 +1,12 @@
 import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
+import { z } from 'zod';
 
 import {
   buildRuntimeCapabilityReport,
   DslPatchV1Schema,
   GameDslArtifactSchema,
+  LiveUpdatePlanSchema,
   RuntimeApplyReportSchema,
   validateAndPlanDslPatch,
   type DslPatchV1,
@@ -23,6 +25,14 @@ export type LiveVersionRecord = {
   dslArtifactPath: string;
   updatedAt: string;
 };
+
+const LiveVersionRecordSchema = z.strictObject({
+  versionId: z.string().min(1),
+  baseVersionId: z.string().min(1).optional(),
+  dslId: z.string().min(1),
+  dslArtifactPath: z.string().min(1),
+  updatedAt: z.string().min(1)
+});
 
 /**
  * `patch_history.jsonl` is applied-version history only. It is the replay/undo/redo/export-folding log,
@@ -100,6 +110,20 @@ export class DslLiveEditService {
     await writeJson(gameDslPath, input.artifact);
     await writeJson(this.workspace.getLiveCurrentVersionPath(input.projectId, input.runId), version);
     return version;
+  }
+
+  async ensureLiveVersion(input: { projectId: string; runId: string }): Promise<LiveVersionRecord> {
+    try {
+      return await this.readCurrentVersion(input.projectId, input.runId);
+    } catch (error) {
+      if (!isNodeErrorCode(error, 'ENOENT')) {
+        throw error;
+      }
+      const artifact = GameDslArtifactSchema.parse(
+        JSON.parse(await readFile(this.workspace.getModelOutputPath(input.projectId, input.runId, 'game_dsl.json'), 'utf8'))
+      );
+      return await this.initializeLiveVersion({ ...input, artifact });
+    }
   }
 
   async applyPatch(input: ApplyDslPatchInput): Promise<PrepareLiveEditPatchResult> {
@@ -187,17 +211,20 @@ export class DslLiveEditService {
 
     const current = await this.readCurrentVersion(input.projectId, input.runId);
     const patch = await this.readPreparedPatch(input.projectId, input.runId, input.patchId);
+    const liveUpdatePlan = await this.readLiveUpdatePlan(input.projectId, input.runId, input.patchId);
     const patchRefs = this.patchArtifactRefs(input.projectId, input.runId, input.patchId);
     const runtimeApplyReportPath = this.workspace.getLiveArtifactPath(input.projectId, input.runId, `${input.patchId}.runtime_apply_report.json`);
-    await writeJson(runtimeApplyReportPath, report);
+    const reportFailure = runtimeReportFailure(report, liveUpdatePlan, patch, current);
+    const persistedReport = reportFailure === undefined ? report : buildFailedRuntimeReport(report, reportFailure);
+    await writeJson(runtimeApplyReportPath, persistedReport);
     const artifactRefs = { ...patchRefs, runtimeApplyReport: runtimeApplyReportPath };
 
-    if (report.status !== 'applied_hot' && report.status !== 'applied_warm_restart') {
+    if (persistedReport.status !== 'applied_hot' && persistedReport.status !== 'applied_warm_restart') {
       await this.appendEditAudit(input.projectId, input.runId, {
         patchId: input.patchId,
         baseVersionId: current.versionId,
-        status: auditStatusForRuntimeReport(report),
-        applyMode: report.applyMode,
+        status: auditStatusForRuntimeReport(persistedReport),
+        applyMode: persistedReport.applyMode,
         ops: patch.ops,
         artifactRefs,
         createdAt: new Date().toISOString()
@@ -205,9 +232,9 @@ export class DslLiveEditService {
 
       return {
         patchId: input.patchId,
-        status: report.status,
-        applyMode: report.applyMode,
-        runtimeApplyReport: report
+        status: persistedReport.status,
+        applyMode: persistedReport.applyMode,
+        runtimeApplyReport: persistedReport
       };
     }
 
@@ -238,7 +265,7 @@ export class DslLiveEditService {
       patchId: input.patchId,
       baseVersionId: current.versionId,
       status: 'applied',
-      applyMode: report.applyMode,
+      applyMode: persistedReport.applyMode,
       ops: patch.ops,
       artifactRefs: historyRecord.artifactRefs,
       createdAt: new Date().toISOString()
@@ -246,15 +273,15 @@ export class DslLiveEditService {
 
     return {
       patchId: input.patchId,
-      status: report.status,
-      applyMode: report.applyMode,
+      status: persistedReport.status,
+      applyMode: persistedReport.applyMode,
       versionId,
-      runtimeApplyReport: report
+      runtimeApplyReport: persistedReport
     };
   }
 
   private async readCurrentVersion(projectId: string, runId: string): Promise<LiveVersionRecord> {
-    return JSON.parse(await readFile(this.workspace.getLiveCurrentVersionPath(projectId, runId), 'utf8')) as LiveVersionRecord;
+    return LiveVersionRecordSchema.parse(JSON.parse(await readFile(this.workspace.getLiveCurrentVersionPath(projectId, runId), 'utf8')));
   }
 
   private async writePatchArtifacts(
@@ -289,6 +316,11 @@ export class DslLiveEditService {
   private async readPreparedPatch(projectId: string, runId: string, patchId: string): Promise<DslPatchV1> {
     const patchPath = this.workspace.getLiveArtifactPath(projectId, runId, `${patchId}.dsl_patch.json`);
     return DslPatchV1Schema.parse(JSON.parse(await readFile(patchPath, 'utf8')));
+  }
+
+  private async readLiveUpdatePlan(projectId: string, runId: string, patchId: string): Promise<LiveUpdatePlan> {
+    const planPath = this.workspace.getLiveArtifactPath(projectId, runId, `${patchId}.live_update_plan.json`);
+    return LiveUpdatePlanSchema.parse(JSON.parse(await readFile(planPath, 'utf8')));
   }
 
   private async writePendingPatchArtifacts(
@@ -350,4 +382,53 @@ function auditStatusForRuntimeReport(report: RuntimeApplyReport): EditAuditRecor
     return 'rebuild_required';
   }
   return 'applied';
+}
+
+function runtimeReportFailure(
+  report: RuntimeApplyReport,
+  plan: LiveUpdatePlan,
+  patch: DslPatchV1,
+  current: LiveVersionRecord
+): { code: string; path: string; message: string } | undefined {
+  if (report.liveUpdatePlanRef.patchId !== patch.patchId || plan.patchId !== patch.patchId) {
+    return { code: 'RUNTIME_PLAN_MISMATCH', path: 'liveUpdatePlanRef.patchId', message: 'Runtime report does not reference the prepared live update plan.' };
+  }
+  if (report.liveUpdatePlanRef.artifact !== `${patch.patchId}.live_update_plan.json`) {
+    return { code: 'RUNTIME_PLAN_ARTIFACT_MISMATCH', path: 'liveUpdatePlanRef.artifact', message: 'Runtime report references an unexpected live update plan artifact.' };
+  }
+  if (patch.baseVersionId !== current.versionId) {
+    return { code: 'STALE_PATCH_VERSION', path: 'baseVersionId', message: 'Patch baseVersionId no longer matches current live version.' };
+  }
+  if (report.status !== 'applied_hot' && report.status !== 'applied_warm_restart') {
+    return undefined;
+  }
+  if (report.errors.length > 0) {
+    return { code: 'RUNTIME_SUCCESS_WITH_ERRORS', path: 'errors', message: 'Successful runtime apply reports must not include errors.' };
+  }
+  if (report.applyMode !== plan.applyMode) {
+    return { code: 'RUNTIME_APPLY_MODE_MISMATCH', path: 'applyMode', message: 'Runtime report applyMode does not match the live update plan.' };
+  }
+  const missingPath = plan.affectedPaths.find((path) => !report.appliedPaths.includes(path));
+  if (missingPath !== undefined) {
+    return { code: 'RUNTIME_APPLIED_PATH_MISSING', path: missingPath, message: 'Runtime report did not confirm every affected path.' };
+  }
+  const extraPath = report.appliedPaths.find((path) => !plan.affectedPaths.includes(path));
+  if (extraPath !== undefined) {
+    return { code: 'RUNTIME_APPLIED_PATH_UNEXPECTED', path: extraPath, message: 'Runtime report included an applied path outside the live update plan.' };
+  }
+
+  return undefined;
+}
+
+function buildFailedRuntimeReport(report: RuntimeApplyReport, failure: { code: string; path: string; message: string }): RuntimeApplyReport {
+  return RuntimeApplyReportSchema.parse({
+    ...report,
+    status: failure.code === 'RUNTIME_PLAN_MISMATCH' ? 'unsupported' : 'failed_runtime_apply',
+    appliedPaths: [],
+    errors: [...report.errors, failure]
+  });
+}
+
+function isNodeErrorCode(error: unknown, code: string): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === code;
 }

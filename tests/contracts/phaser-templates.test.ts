@@ -144,6 +144,8 @@ describe('Phaser templates', () => {
         expect(main).toContain('AIGAME_APPLY_PATCH');
         expect(main).toContain('AIGAME_PATCH_RESULT');
         expect(main).toContain('AIGAME_RUNTIME_ERROR');
+        expect(main).toContain('messageTargetsThisPreview(requestRunId, requestPreviewInstanceId, runtimeRunId, previewInstanceId)');
+        expect(main).toContain('requestPatchId === undefined');
       } else if (genre === 'collector') {
         expect(main).toContain("from './asset-manifest.generated.json'");
         expect(main).toContain('new CollectorGameScene(collectorParams, collectorArt)');

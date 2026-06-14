@@ -79,30 +79,51 @@ export { scene };
 
 function installLiveEditProtocol(gameScene: ShooterGameScene): void {
   const bridge = gameScene.getLiveEditBridge();
-  window.parent?.postMessage({ type: 'AIGAME_RUNTIME_READY', runtimeTarget: 'phaser:top_down_shooter' }, '*');
+  const runtimeRunId = typeof generatedLiveEditRegistry.runId === 'string' ? generatedLiveEditRegistry.runId : '';
+  const previewInstanceId = `preview_${Math.random().toString(36).slice(2, 10)}`;
+  window.parent?.postMessage({ type: 'AIGAME_RUNTIME_READY', runId: runtimeRunId, previewInstanceId, runtimeTarget: 'phaser:top_down_shooter' }, '*');
   window.addEventListener('message', (event) => {
     const data = event.data;
     if (data === null || typeof data !== 'object' || typeof data.type !== 'string') {
       return;
     }
+    const requestPatchId = 'patchId' in data && typeof data.patchId === 'string' ? data.patchId : undefined;
+    const requestRunId = 'runId' in data && typeof data.runId === 'string' ? data.runId : undefined;
+    const requestPreviewInstanceId = 'previewInstanceId' in data && typeof data.previewInstanceId === 'string' ? data.previewInstanceId : undefined;
 
     try {
       if (data.type === 'AIGAME_GET_CAPABILITIES') {
-        event.source?.postMessage({ type: 'AIGAME_PATCH_RESULT', status: 'capabilities', capabilities: bridge.getCapabilities() }, { targetOrigin: event.origin || '*' });
+        if (!messageTargetsThisPreview(requestRunId, requestPreviewInstanceId, runtimeRunId, previewInstanceId)) {
+          return;
+        }
+        event.source?.postMessage(
+          { type: 'AIGAME_PATCH_RESULT', runId: runtimeRunId, patchId: requestPatchId, previewInstanceId, status: 'capabilities', capabilities: bridge.getCapabilities() },
+          { targetOrigin: event.origin || '*' }
+        );
       } else if (data.type === 'AIGAME_APPLY_PATCH') {
+        if (requestPatchId === undefined || !messageTargetsThisPreview(requestRunId, requestPreviewInstanceId, runtimeRunId, previewInstanceId)) {
+          return;
+        }
         const result = bridge.applyPatch('runtimePatch' in data ? data.runtimePatch : undefined);
-        event.source?.postMessage({ type: 'AIGAME_PATCH_RESULT', result }, { targetOrigin: event.origin || '*' });
+        event.source?.postMessage({ type: 'AIGAME_PATCH_RESULT', runId: runtimeRunId, patchId: requestPatchId, previewInstanceId, result }, { targetOrigin: event.origin || '*' });
       }
     } catch (error) {
       event.source?.postMessage(
         {
           type: 'AIGAME_RUNTIME_ERROR',
+          runId: runtimeRunId,
+          patchId: requestPatchId,
+          previewInstanceId,
           message: error instanceof Error ? error.message : 'Unknown runtime bridge error.'
         },
         { targetOrigin: event.origin || '*' }
       );
     }
   });
+}
+
+function messageTargetsThisPreview(requestRunId: string | undefined, requestPreviewInstanceId: string | undefined, runtimeRunId: string, previewInstanceId: string): boolean {
+  return requestRunId !== undefined && requestPreviewInstanceId !== undefined && (runtimeRunId === '' || requestRunId === runtimeRunId) && requestPreviewInstanceId === previewInstanceId;
 }
 
 function mergeShooterParams(params: Partial<ShooterTemplateParams>): ShooterTemplateParams {

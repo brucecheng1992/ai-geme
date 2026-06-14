@@ -9,6 +9,7 @@ import { PlaywrightQaRunnerService } from '../qa/playwright-qa-runner.service.js
 import { QaModule } from '../qa/qa.module.js';
 import { LocalWorkspaceModule } from '../workspace/local-workspace.module.js';
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
+import { DslLiveEditService } from './dsl-live-edit.service.js';
 import { GenerationPipelineService } from './generation-pipeline.service.js';
 import { ProjectStoreService } from './project-store.service.js';
 import { ProjectsController } from './projects.controller.js';
@@ -30,10 +31,20 @@ import { RunStoreService } from './run-store.service.js';
       inject: [LocalWorkspaceService]
     },
     {
+      provide: DslLiveEditService,
+      useFactory: (workspace: LocalWorkspaceService) => new DslLiveEditService(workspace),
+      inject: [LocalWorkspaceService]
+    },
+    {
       provide: ProjectsService,
-      useFactory: (projectStore: ProjectStoreService, runStore: RunStoreService, workspace: LocalWorkspaceService, pipeline: GenerationPipelineService) =>
-        new ProjectsService(projectStore, runStore, workspace, pipeline),
-      inject: [ProjectStoreService, RunStoreService, LocalWorkspaceService, GenerationPipelineService]
+      useFactory: (
+        projectStore: ProjectStoreService,
+        runStore: RunStoreService,
+        workspace: LocalWorkspaceService,
+        liveEdit: DslLiveEditService,
+        pipeline: GenerationPipelineService
+      ) => new ProjectsService(projectStore, runStore, workspace, liveEdit, pipeline),
+      inject: [ProjectStoreService, RunStoreService, LocalWorkspaceService, DslLiveEditService, GenerationPipelineService]
     },
     {
       provide: GenerationPipelineService,
@@ -57,6 +68,6 @@ import { RunStoreService } from './run-store.service.js';
       ]
     }
   ],
-  exports: [ProjectStoreService, RunStoreService, ProjectsService, GenerationPipelineService]
+  exports: [ProjectStoreService, RunStoreService, ProjectsService, GenerationPipelineService, DslLiveEditService]
 })
 export class ProjectsModule {}

@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { TemplateCompilerService } from '../../apps/maker-api/src/compiler/template-compiler.service.js';
 import { ViteBuildRunnerService } from '../../apps/maker-api/src/compiler/vite-build-runner.service.js';
+import { DslLiveEditService } from '../../apps/maker-api/src/projects/dsl-live-edit.service.js';
 import { GenerationPipelineService } from '../../apps/maker-api/src/projects/generation-pipeline.service.js';
 import { ProjectStoreService } from '../../apps/maker-api/src/projects/project-store.service.js';
 import { ProjectsService } from '../../apps/maker-api/src/projects/projects.service.js';
@@ -118,7 +119,7 @@ function createProjectsService(): ProjectsService {
     new PlaywrightQaRunnerService(workspace, qaGate)
   );
 
-  return new ProjectsService(projectStore, runStore, workspace, pipeline, () => ({ projectId, runId }));
+  return new ProjectsService(projectStore, runStore, workspace, new DslLiveEditService(workspace), pipeline, () => ({ projectId, runId }));
 }
 
 async function cleanSmokeArtifacts(): Promise<void> {

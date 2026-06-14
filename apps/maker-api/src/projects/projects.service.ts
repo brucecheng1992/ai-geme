@@ -5,19 +5,25 @@ import { NotFoundException } from '@nestjs/common';
 
 import { normalizePersistedQaReport } from '../qa/qa-report-normalizer.js';
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
+import { DslLiveEditService } from './dsl-live-edit.service.js';
 import { GenerationPipelineService } from './generation-pipeline.service.js';
 import type {
   BuildLogResponse,
   GenerateProjectRequest,
   GenerateProjectResponse,
+  LiveCurrentResponse,
+  PrepareLiveEditRequest,
+  PrepareDeterministicPatchResponse,
   ProjectStatusResponse,
   QaReportResponse,
   RepairReportResponse,
+  RuntimeApplyResultResponse,
   RunEventsResponse
 } from './project-api.types.js';
 import { ProjectRequestError } from './project-request.error.js';
 import { ProjectStoreService } from './project-store.service.js';
 import { RunStoreService } from './run-store.service.js';
+import { DslPatchV1Schema, GameDslArtifactSchema, RuntimeCapabilityReportSchema, type GameDslArtifact } from '../../../../packages/game-dsl/src/index.js';
 
 type IdFactory = (date: Date) => { projectId: string; runId: string };
 type SuffixFactory = () => string;
@@ -45,6 +51,7 @@ export class ProjectsService {
     private readonly projectStore: ProjectStoreService,
     private readonly runStore: RunStoreService,
     private readonly workspace: LocalWorkspaceService,
+    private readonly liveEdit: DslLiveEditService,
     private readonly pipeline: GenerationPipeline,
     private readonly idFactory: IdFactory = createProjectRunIds
   ) {}
@@ -136,11 +143,108 @@ export class ProjectsService {
     };
   }
 
+  async getLiveCurrent(projectId: string, runId: string): Promise<LiveCurrentResponse> {
+    await this.assertRunBelongsToProject(projectId, runId);
+    const current = await this.liveEdit.ensureLiveVersion({ projectId, runId });
+    const gameDsl = GameDslArtifactSchema.parse(JSON.parse(await readFile(current.dslArtifactPath, 'utf8')));
+    const runtimeCapabilityReport = RuntimeCapabilityReportSchema.parse(
+      JSON.parse(await this.readRequiredFile(this.workspace.getModelOutputPath(projectId, runId, 'runtime_capability_report.json'), 'Runtime capability report not found.'))
+    );
+
+    return {
+      ok: true,
+      current_version: current,
+      game_dsl: gameDsl,
+      runtime_capability_report: runtimeCapabilityReport,
+      live_edit_capabilities: runtimeCapabilityReport.liveEditCapabilities,
+      patch_history: await this.readOptionalJsonLines(this.workspace.getLivePatchHistoryPath(projectId, runId)),
+      edit_audit_log: await this.readOptionalJsonLines(this.workspace.getLiveEditAuditLogPath(projectId, runId))
+    };
+  }
+
+  async prepareWorkbenchLiveEdit(projectId: string, runId: string, body: unknown): Promise<PrepareDeterministicPatchResponse> {
+    await this.assertRunBelongsToProject(projectId, runId);
+    const request = this.parsePrepareLiveEditRequest(body);
+    const current = await this.liveEdit.ensureLiveVersion({ projectId, runId });
+    const baseDsl = GameDslArtifactSchema.parse(JSON.parse(await readFile(current.dslArtifactPath, 'utf8')));
+    const patchId = `patch_workbench_${randomBytes(4).toString('hex')}`;
+    const patch = DslPatchV1Schema.parse({
+      artifactKind: 'dsl_patch',
+      schemaVersion: 'dsl_patch.v1',
+      patchId,
+      runId,
+      baseDslId: baseDsl.dslId,
+      baseVersionId: current.versionId,
+      source: 'workbench',
+      intent: request.intent ?? `Workbench edit ${request.path}`,
+      ops: [{ op: 'replace', path: request.path, value: request.value }]
+    });
+    const prepared = await this.liveEdit.prepareLiveEditPatch({ projectId, runId, patch });
+
+    return toPrepareResponse(prepared);
+  }
+
+  async prepareWorkbenchDeterministicPatch(projectId: string, runId: string): Promise<PrepareDeterministicPatchResponse> {
+    await this.assertRunBelongsToProject(projectId, runId);
+    const current = await this.liveEdit.ensureLiveVersion({ projectId, runId });
+    const baseDsl = GameDslArtifactSchema.parse(JSON.parse(await readFile(current.dslArtifactPath, 'utf8')));
+    const enemyTypeId = selectDeterministicEnemyTypeId(baseDsl);
+    const patchId = `patch_workbench_${randomBytes(4).toString('hex')}`;
+    const patch = DslPatchV1Schema.parse({
+      artifactKind: 'dsl_patch',
+      schemaVersion: 'dsl_patch.v1',
+      patchId,
+      runId,
+      baseDslId: baseDsl.dslId,
+      baseVersionId: current.versionId,
+      source: 'workbench',
+      intent: 'Workbench deterministic top_down_shooter hot patch',
+      ops: [
+        { op: 'replace', path: '/player/render/scale', value: 1.3 },
+        { op: 'replace', path: '/player/physics/maxSpeed', value: 320 },
+        { op: 'replace', path: `/enemyTypes/${enemyTypeId}/physics/speed`, value: 80 }
+      ]
+    });
+    const prepared = await this.liveEdit.prepareLiveEditPatch({ projectId, runId, patch });
+
+    return toPrepareResponse(prepared);
+  }
+
+  async recordWorkbenchRuntimeApplyResult(projectId: string, runId: string, patchId: string, report: unknown): Promise<RuntimeApplyResultResponse> {
+    await this.assertRunBelongsToProject(projectId, runId);
+    const recorded = await this.liveEdit.recordRuntimeApplyResult({ projectId, runId, patchId, report });
+
+    return {
+      ok: true,
+      patch_id: recorded.patchId,
+      status: recorded.status,
+      apply_mode: recorded.applyMode,
+      version_id: recorded.versionId,
+      runtime_apply_report: recorded.runtimeApplyReport
+    };
+  }
+
   private async readRequiredFile(path: string, message: string): Promise<string> {
     try {
       return await readFile(path, 'utf8');
     } catch {
       throw new NotFoundException(message);
+    }
+  }
+
+  private async readOptionalJsonLines<T>(path: string): Promise<T[]> {
+    try {
+      const content = await readFile(path, 'utf8');
+      return content
+        .trim()
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => JSON.parse(line) as T);
+    } catch (error) {
+      if (isNodeErrorCode(error, 'ENOENT')) {
+        return [];
+      }
+      throw error;
     }
   }
 
@@ -170,4 +274,54 @@ export class ProjectsService {
       language: body.language.trim()
     };
   }
+
+  private parsePrepareLiveEditRequest(body: unknown): Required<Pick<PrepareLiveEditRequest, 'op' | 'path'>> & Pick<PrepareLiveEditRequest, 'value' | 'intent'> {
+    if (!isRecord(body)) {
+      throw new ProjectRequestError('Request body must be an object.');
+    }
+    if (body.op !== 'replace') {
+      throw new ProjectRequestError('Only replace live edit operations are supported.');
+    }
+    if (typeof body.path !== 'string' || body.path.trim().length === 0) {
+      throw new ProjectRequestError('path is required.');
+    }
+
+    return {
+      op: 'replace',
+      path: body.path.trim(),
+      value: body.value,
+      intent: typeof body.intent === 'string' && body.intent.trim().length > 0 ? body.intent.trim() : undefined
+    };
+  }
+}
+
+function toPrepareResponse(prepared: Awaited<ReturnType<DslLiveEditService['prepareLiveEditPatch']>>): PrepareDeterministicPatchResponse {
+  return {
+    ok: true,
+    patch_id: prepared.patchId,
+    status: prepared.status,
+    apply_mode: prepared.applyMode,
+    runtime_patch: prepared.runtimePatch,
+    validation_report: prepared.validationReport,
+    live_update_plan: prepared.liveUpdatePlan,
+    live_update_plan_ref: { artifact: `${prepared.patchId}.live_update_plan.json`, patchId: prepared.patchId },
+    artifact_refs: prepared.artifactRefs
+  };
+}
+
+function selectDeterministicEnemyTypeId(baseDsl: GameDslArtifact): string {
+  if (baseDsl.enemyTypes.tank_basic !== undefined) {
+    return 'tank_basic';
+  }
+
+  const [firstEnemyTypeId] = Object.keys(baseDsl.enemyTypes).sort();
+  if (firstEnemyTypeId === undefined) {
+    throw new ProjectRequestError('Cannot prepare deterministic patch without enemyTypes.');
+  }
+
+  return firstEnemyTypeId;
+}
+
+function isNodeErrorCode(error: unknown, code: string): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === code;
 }

@@ -11,6 +11,7 @@ export type ShooterLiveEditRegistry = {
   playerId: 'player_main';
   enemyTypeId: string;
   projectileId: string;
+  runId?: string;
 };
 
 export type ShooterRuntimeBridgeResult = {
