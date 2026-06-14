@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { createCollectorRawDsl, createShooterRawDsl } from '../contracts/fixtures.js';
@@ -315,6 +315,44 @@ describe('GenerationPipelineService failure states', () => {
     );
   });
 
+  it('writes a pipeline artifact index for the valid generation path without stale or absolute refs', async () => {
+    const rawDsl = RawGameDslSchema.parse(createShooterRawDsl());
+    const pipeline = createPipeline({
+      modelProvider: createModelProviderForRawDsl(rawDsl),
+      compiler: { compile: compileWithArtifactFiles },
+      buildRunner: {
+        async build() {
+          await writeTextFile(workspace.getBuildLogPath(projectId, runId), 'vite build ok');
+          return { ok: true, projectId, distDir: workspace.getGeneratedProjectDistDir(projectId), logPath: workspace.getBuildLogPath(projectId, runId) };
+        }
+      }
+    });
+
+    await expect(runPipeline(pipeline, { idea: '小猫大战坦克', language: 'zh' })).resolves.toBe('PLAYABLE');
+
+    const index = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_artifact_index.json'), 'utf8'));
+    expect(index).toMatchObject({
+      indexVersion: 'pipeline-artifact-index-v0.1',
+      projectId,
+      runId,
+      artifacts: expect.arrayContaining([
+        expect.objectContaining({ id: 'gameDsl', status: 'present', path: 'game_dsl.json' }),
+        expect.objectContaining({ id: 'dslValidationReport', status: 'present', path: 'dsl_validation_report.json' }),
+        expect.objectContaining({ id: 'runtimeCapabilityReport', status: 'present', path: 'runtime_capability_report.json' }),
+        expect.objectContaining({ id: 'assetPlan', status: 'present', path: 'asset_plan.json' }),
+        expect.objectContaining({ id: 'publicAssetManifest', status: 'present', path: 'public/asset_manifest.json' }),
+        expect.objectContaining({ id: 'phaserPreviewManifest', status: 'present', path: 'shooter/src/asset-manifest.generated.json' }),
+        expect.objectContaining({ id: 'assetResolutionReport', status: 'present', path: 'asset_resolution_report.json' }),
+        expect.objectContaining({ id: 'assetPipelineReport', status: 'present', path: 'asset_pipeline_report.json' }),
+        expect.objectContaining({ id: 'buildLog', status: 'present', artifactRoot: 'build-log' }),
+        expect.objectContaining({ id: 'qaReport', status: 'present', artifactRoot: 'qa-report' }),
+        expect.objectContaining({ id: 'pipelineArtifactIndex', status: 'present', path: 'pipeline_artifact_index.json' })
+      ])
+    });
+    expect(JSON.stringify(index)).not.toContain(root);
+    expect(JSON.stringify(index)).not.toContain('stale_asset_pipeline_report');
+  });
+
   it('writes game_dsl.candidate.json and blocks downstream steps when artifact validation fails', async () => {
     const rawDsl = {
       ...RawGameDslSchema.parse(createShooterRawDsl()),
@@ -324,6 +362,8 @@ describe('GenerationPipelineService failure states', () => {
       }
     } as RawGameDsl;
     let compileRuns = 0;
+    await mkdir(workspace.getGeneratedProjectDir(projectId), { recursive: true });
+    await writeFile(join(workspace.getGeneratedProjectDir(projectId), 'asset_pipeline_report.json'), 'stale_asset_pipeline_report', 'utf8');
     const pipeline = createPipeline({
       modelProvider: createModelProviderForRawDsl(rawDsl),
       compiler: {
@@ -346,6 +386,7 @@ describe('GenerationPipelineService failure states', () => {
     await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'runtime_capability_report.json'), 'utf8')).rejects.toThrow();
     const candidate = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'game_dsl.candidate.json'), 'utf8'));
     const validationReport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'dsl_validation_report.json'), 'utf8'));
+    const index = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_artifact_index.json'), 'utf8'));
     expect(candidate).toMatchObject({
       artifactKind: 'game_dsl',
       schemaVersion: 'game_dsl.v1',
@@ -361,6 +402,18 @@ describe('GenerationPipelineService failure states', () => {
         expect.objectContaining({ code: 'UNRESOLVED_PROJECTILE_REFERENCE' })
       ])
     });
+    expect(index).toMatchObject({
+      projectId,
+      runId,
+      artifacts: expect.arrayContaining([
+        expect.objectContaining({ id: 'gameDslCandidate', status: 'present', path: 'game_dsl.candidate.json' }),
+        expect.objectContaining({ id: 'dslValidationReport', status: 'present', path: 'dsl_validation_report.json' }),
+        expect.objectContaining({ id: 'runtimeCapabilityReport', status: 'skipped', reason: 'dsl_validation_failed_before_runtime_capability' }),
+        expect.objectContaining({ id: 'assetPipelineReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),
+        expect.objectContaining({ id: 'pipelineArtifactIndex', status: 'present', path: 'pipeline_artifact_index.json' })
+      ])
+    });
+    expect(JSON.stringify(index)).not.toContain('stale_asset_pipeline_report');
     await expect(projectStore.readProject(projectId)).resolves.toMatchObject({ status: 'DSL_VALIDATION_FAILED' });
   });
 
@@ -460,6 +513,28 @@ describe('GenerationPipelineService failure states', () => {
     await expect(runPipeline(pipeline)).resolves.toBe('PREVIEW_ARTIFACT_MISSING');
     await expect(projectStore.readProject(projectId)).resolves.toMatchObject({ status: 'PREVIEW_ARTIFACT_MISSING' });
     await expect(runStore.readEvents(runId)).resolves.toEqual(expect.arrayContaining([expect.objectContaining({ type: 'build.failed' })]));
+  });
+
+  it('refreshes the pipeline artifact index with a build log ref when build fails', async () => {
+    const pipeline = createPipeline({
+      compiler: { compile: compileWithArtifactFiles },
+      buildRunner: {
+        async build() {
+          await writeTextFile(workspace.getBuildLogPath(projectId, runId), 'vite build failed');
+          return { ok: false, projectId, logPath: workspace.getBuildLogPath(projectId, runId), message: 'build failed' };
+        }
+      }
+    });
+
+    await expect(runPipeline(pipeline)).resolves.toBe('BUILD_FAILED');
+
+    const index = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_artifact_index.json'), 'utf8'));
+    expect(index.artifacts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'buildLog', status: 'present', artifactRoot: 'build-log', path: `${runId}.log` }),
+        expect.objectContaining({ id: 'qaReport', status: 'missing', reason: 'qa_report_not_available_yet' })
+      ])
+    );
   });
 
   it('maps QA runner exceptions to QA_FAILED and writes a QA report', async () => {
@@ -1048,6 +1123,20 @@ describe('GenerationPipelineService failure states', () => {
     return compileResult();
   }
 
+  async function compileWithArtifactFiles(): Promise<RuntimeCompileResult> {
+    const distDir = workspace.getGeneratedProjectDistDir(projectId);
+    await mkdir(distDir, { recursive: true });
+    await writeFile(join(distDir, 'index.html'), '<html></html>', 'utf8');
+    return compileResult([
+      'asset_plan.json',
+      'public/asset_manifest.json',
+      'asset_resolution_report.json',
+      'shooter/src/asset-manifest.generated.json',
+      'asset_pipeline_report.json',
+      'pipeline_artifact_index.json'
+    ]);
+  }
+
   async function compileWithHardSemanticMismatchArtifacts(
     ir: NormalizedGameIr,
     options: { source?: 'local_asset_pack' | 'template_svg'; assetPlanProjectId?: string } = {}
@@ -1072,14 +1161,14 @@ describe('GenerationPipelineService failure states', () => {
     return compileResult();
   }
 
-  function compileResult(): RuntimeCompileResult {
+  function compileResult(files: string[] = []): RuntimeCompileResult {
     return {
       ok: true,
       projectId,
       outputDir: workspace.getGeneratedProjectDir(projectId),
       distDir: workspace.getGeneratedProjectDistDir(projectId),
       templateId: 'shooter_v1',
-      files: []
+      files
     };
   }
 
@@ -1320,4 +1409,9 @@ async function collectFiles(dir: string): Promise<string[]> {
   );
 
   return files.flat();
+}
+
+async function writeTextFile(path: string, value: string): Promise<void> {
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, value, 'utf8');
 }

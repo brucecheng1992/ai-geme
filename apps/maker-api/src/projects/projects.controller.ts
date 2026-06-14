@@ -4,6 +4,7 @@ import type {
   BuildLogResponse,
   GenerateProjectResponse,
   LiveCurrentResponse,
+  PipelineArtifactsResponse,
   PrepareDeterministicPatchResponse,
   ProjectStatusResponse,
   QaReportResponse,
@@ -45,6 +46,11 @@ export class ProjectsController {
   @Get(':projectId/runs/:runId/build-log')
   async getBuildLog(@Param('projectId') projectId: string, @Param('runId') runId: string): Promise<BuildLogResponse> {
     return await this.projectsService.getBuildLog(projectId, runId);
+  }
+
+  @Get(':projectId/runs/:runId/artifacts')
+  async getPipelineArtifacts(@Param('projectId') projectId: string, @Param('runId') runId: string): Promise<PipelineArtifactsResponse> {
+    return await this.projectsService.getPipelineArtifacts(projectId, runId);
   }
 
   @Get(':projectId/runs/:runId/live/current')

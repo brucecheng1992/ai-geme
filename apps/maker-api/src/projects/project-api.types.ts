@@ -3,6 +3,7 @@ import type { QaReport } from '../qa/qa.types.js';
 import type { DslRepairReport } from '../repair/dsl-repair.types.js';
 import type { GameDslArtifact, LiveEditCapabilities, LiveUpdatePlan, PatchValidationReport, RuntimeApplyReport, RuntimeCapabilityReport } from '../../../../packages/game-dsl/src/index.js';
 import type { EditAuditRecord, LiveVersionRecord, PatchHistoryRecord } from './dsl-live-edit.service.js';
+import type { PipelineArtifactIndex } from './pipeline-artifact-index.js';
 
 export type GenerateProjectRequest = {
   idea: string;
@@ -40,6 +41,11 @@ export type RepairReportResponse = {
 export type BuildLogResponse = {
   ok: true;
   build_log: string;
+};
+
+export type PipelineArtifactsResponse = {
+  ok: true;
+  pipeline_artifact_index: PipelineArtifactIndex;
 };
 
 export type PrepareDeterministicPatchResponse = {

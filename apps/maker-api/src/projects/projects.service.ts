@@ -12,6 +12,7 @@ import type {
   GenerateProjectRequest,
   GenerateProjectResponse,
   LiveCurrentResponse,
+  PipelineArtifactsResponse,
   PrepareLiveEditRequest,
   PrepareDeterministicPatchResponse,
   ProjectStatusResponse,
@@ -20,6 +21,7 @@ import type {
   RuntimeApplyResultResponse,
   RunEventsResponse
 } from './project-api.types.js';
+import { PipelineArtifactIndexSchema } from './pipeline-artifact-index.js';
 import { ProjectRequestError } from './project-request.error.js';
 import { ProjectStoreService } from './project-store.service.js';
 import { RunStoreService } from './run-store.service.js';
@@ -140,6 +142,27 @@ export class ProjectsService {
     return {
       ok: true,
       build_log: await this.readRequiredFile(this.workspace.getBuildLogPath(projectId, runId), 'Build log not found.')
+    };
+  }
+
+  async getPipelineArtifacts(projectId: string, runId: string): Promise<PipelineArtifactsResponse> {
+    await this.assertRunBelongsToProject(projectId, runId);
+    const index = PipelineArtifactIndexSchema.parse(
+      JSON.parse(
+        await this.readRequiredFile(
+          this.workspace.getModelOutputPath(projectId, runId, 'pipeline_artifact_index.json'),
+          'Pipeline artifact index not found.'
+        )
+      )
+    );
+
+    if (index.projectId !== projectId || index.runId !== runId) {
+      throw new ProjectRequestError(`pipeline artifact index identity does not match run: ${projectId}/${runId}`);
+    }
+
+    return {
+      ok: true,
+      pipeline_artifact_index: index
     };
   }
 

@@ -123,6 +123,86 @@ describe('ProjectsService', () => {
     await expect(service.getQaReport('proj_other', created.run_id)).rejects.toThrow('run does not belong to project');
   });
 
+  it('reads the pipeline artifact index after validating run ownership', async () => {
+    const created = await service.generateProject({ idea: 'cat shooter', language: 'en' });
+    await writeJsonFile(workspace.getModelOutputPath(created.project_id, created.run_id, 'pipeline_artifact_index.json'), {
+      indexVersion: 'pipeline-artifact-index-v0.1',
+      projectId: created.project_id,
+      runId: created.run_id,
+      artifacts: [
+        {
+          id: 'gameDsl',
+          role: 'dsl',
+          artifactRoot: 'model-output',
+          path: 'game_dsl.json',
+          status: 'present',
+          required: true,
+          producedBy: 'generation',
+          format: 'json'
+        },
+        {
+          id: 'assetPipelineReport',
+          role: 'asset',
+          artifactRoot: 'generated-project',
+          path: 'asset_pipeline_report.json',
+          status: 'present',
+          required: true,
+          producedBy: 'asset-pipeline',
+          format: 'json'
+        }
+      ]
+    });
+
+    await expect(service.getPipelineArtifacts(created.project_id, created.run_id)).resolves.toMatchObject({
+      ok: true,
+      pipeline_artifact_index: {
+        projectId: created.project_id,
+        runId: created.run_id,
+        artifacts: [
+          expect.objectContaining({ id: 'gameDsl', path: 'game_dsl.json' }),
+          expect.objectContaining({ id: 'assetPipelineReport', path: 'asset_pipeline_report.json' })
+        ]
+      }
+    });
+    const response = await service.getPipelineArtifacts(created.project_id, created.run_id);
+    expect(JSON.stringify(response)).not.toContain(root);
+    await expect(service.getPipelineArtifacts('proj_other', created.run_id)).rejects.toThrow('run does not belong to project');
+  });
+
+  it('returns a clear missing artifact index error', async () => {
+    const created = await service.generateProject({ idea: 'cat shooter', language: 'en' });
+
+    await expect(service.getPipelineArtifacts(created.project_id, created.run_id)).rejects.toMatchObject({
+      status: 404,
+      message: 'Pipeline artifact index not found.'
+    });
+  });
+
+  it('rejects a pipeline artifact index whose identity does not match the requested run', async () => {
+    const created = await service.generateProject({ idea: 'cat shooter', language: 'en' });
+    await writeJsonFile(workspace.getModelOutputPath(created.project_id, created.run_id, 'pipeline_artifact_index.json'), {
+      indexVersion: 'pipeline-artifact-index-v0.1',
+      projectId: 'proj_20260609_153000_other',
+      runId: 'run_20260609_153000_other',
+      artifacts: [
+        {
+          id: 'gameDsl',
+          role: 'dsl',
+          artifactRoot: 'model-output',
+          path: 'game_dsl.json',
+          status: 'present',
+          required: true,
+          producedBy: 'generation',
+          format: 'json'
+        }
+      ]
+    });
+
+    await expect(service.getPipelineArtifacts(created.project_id, created.run_id)).rejects.toThrow(
+      `pipeline artifact index identity does not match run: ${created.project_id}/${created.run_id}`
+    );
+  });
+
   it('uses the same random suffix for project and run ids to avoid cross-project run collisions', () => {
     expect(createProjectRunIds(new Date('2026-06-09T15:30:00.000Z'), () => 'abcd')).toEqual({
       projectId: 'proj_20260609_153000_abcd',

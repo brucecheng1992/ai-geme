@@ -33,6 +33,7 @@ import { PlaywrightQaRunnerService } from '../qa/playwright-qa-runner.service.js
 import type { QaAssetSemanticRepairReport, QaAssetSemanticRepairSkippedReason, QaGenre, QaReport } from '../qa/qa.types.js';
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
 import { createDeterministicRawGameDsl } from './deterministic-game-dsl.js';
+import { buildInvalidDslPipelineArtifactIndex, buildValidPipelineArtifactIndex, writePipelineArtifactIndex } from './pipeline-artifact-index.js';
 import { ProjectStoreService } from './project-store.service.js';
 import type { JobEventRecord, ProjectStatus } from './project-state.types.js';
 import { RunStoreService } from './run-store.service.js';
@@ -212,6 +213,7 @@ export class GenerationPipelineService {
     }
 
     await this.setStatus(input.projectId, input.runId, 'COMPILED', 'project-generation', 'DONE');
+    await this.writeValidPipelineArtifactIndex(input, compiled);
     await this.appendEvent(input.runId, 'project.generated', `Phaser/Vite project generated at ${compiled.outputDir}.`);
     return compiled;
   }
@@ -228,6 +230,8 @@ export class GenerationPipelineService {
       await this.appendEvent(input.runId, 'build.failed', errorMessage(error, 'Build runner failed.'));
       return 'BUILD_FAILED';
     }
+
+    await this.writeValidPipelineArtifactIndex(input, compiled, { buildLogPresent: true });
 
     if (!build.ok) {
       await this.setStatus(input.projectId, input.runId, 'BUILD_FAILED', 'build', 'FAILED');
@@ -254,6 +258,7 @@ export class GenerationPipelineService {
     const finalReport = withAssetSemanticRepairReport(repairResult.report, repairResult.assetSemanticRepair);
 
     await this.writeQaReport(input.projectId, input.runId, finalReport);
+    await this.writeValidPipelineArtifactIndex(input, compiled, { buildLogPresent: true, qaReportPresent: true });
 
     if (repairResult.kind === 'status') {
       await this.setPipelineStep(input.projectId, input.runId, 'qa', 'DONE');
@@ -503,6 +508,7 @@ export class GenerationPipelineService {
       const report = withDslValidationSourceArtifact(validation.report, 'game_dsl.candidate.json');
       await this.writeDslValidationReport(input, report);
       await this.writeGameDslCandidate(input, validation.candidate);
+      await this.writeInvalidDslPipelineArtifactIndex(input);
       await this.setStatus(input.projectId, input.runId, 'DSL_VALIDATION_FAILED', 'dsl-validation', 'FAILED');
       await this.appendEvent(input.runId, 'dsl.validation.failed', report.errors.map((issue) => `${issue.path}: ${issue.message}`).join('; '));
       return { ok: false };
@@ -548,6 +554,30 @@ export class GenerationPipelineService {
 
     await mkdir(dirname(outputPath), { recursive: true });
     await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  }
+
+  private async writeValidPipelineArtifactIndex(
+    input: GenerationPipelineInput,
+    compiled: RuntimeCompileSuccess,
+    options: { buildLogPresent?: boolean; qaReportPresent?: boolean } = {}
+  ): Promise<void> {
+    await writePipelineArtifactIndex(
+      this.workspace.getModelOutputPath(input.projectId, input.runId, 'pipeline_artifact_index.json'),
+      buildValidPipelineArtifactIndex({
+        projectId: input.projectId,
+        runId: input.runId,
+        compileFiles: compiled.files,
+        buildLogPresent: options.buildLogPresent,
+        qaReportPresent: options.qaReportPresent
+      })
+    );
+  }
+
+  private async writeInvalidDslPipelineArtifactIndex(input: GenerationPipelineInput): Promise<void> {
+    await writePipelineArtifactIndex(
+      this.workspace.getModelOutputPath(input.projectId, input.runId, 'pipeline_artifact_index.json'),
+      buildInvalidDslPipelineArtifactIndex({ projectId: input.projectId, runId: input.runId })
+    );
   }
 
   private async writeIntentPlan(input: GenerationPipelineInput, intentPlan: IntentPlan): Promise<void> {

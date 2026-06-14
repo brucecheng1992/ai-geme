@@ -4345,3 +4345,85 @@ fixture size check：
 当前下一步：
 
 - 继续 2D pipeline stabilization Step 3：选择最小 pipeline artifact index / API visibility 挂接点，让 Workbench 或项目 API 能稳定看到 `game_dsl.json`、`dsl_validation_report.json`、`runtime_capability_report.json`、`asset_pipeline_report.json` 等 artifact refs；不得改变 QA verdict 总结构或重复 Step 20 asset report。
+
+### 22. 2D Pipeline Stabilization Step 3：Pipeline Artifact Index / API Visibility
+
+完成时间：2026-06-15
+
+已完成内容：
+
+- 新增 `apps/maker-api/src/projects/pipeline-artifact-index.ts`，定义 `pipeline_artifact_index.json` 的 stable contract：
+  - `indexVersion: "pipeline-artifact-index-v0.1"`。
+  - `projectId` / `runId`。
+  - deterministic `artifacts` refs array。
+  - 每个 ref 只包含 `id`、`role`、`artifactRoot`、artifact-root-relative `path`、`status`、`required`、`producedBy`、`format` 和 missing/skipped `reason`。
+  - schema 拒绝绝对路径、`..` 和反斜杠路径。
+- `GenerationPipelineService` 在 valid generation path 写入并刷新 `pipeline_artifact_index.json`：
+  - compile 后可见 DSL validation、runtime capability、asset plan、public AssetManifest、Phaser preview manifest、asset resolution report 和 asset pipeline report refs。
+  - build runner 正常返回后标记 build log ref present，覆盖 build failed / preview missing / build success 路径。
+  - QA report 写出后标记 QA report ref present。
+- `GenerationPipelineService` 在 invalid DSL path 写入最小 index：
+  - `game_dsl.candidate.json` 和 `dsl_validation_report.json` 为 present。
+  - `game_dsl.json`、runtime capability、asset / preview / build / QA 下游 refs 明确 skipped，不读取或暴露旧 generated-project stale artifacts。
+- 新增只读 API：
+  - `GET /api/projects/:projectId/runs/:runId/artifacts`。
+  - `ProjectsService.getPipelineArtifacts` 先校验 run ownership，再读取固定 `pipeline_artifact_index.json` 并按 schema parse。
+  - parse 后校验 index 内部 `projectId` / `runId` 必须匹配 URL 参数，防止错误 index 暴露其他 run refs。
+  - 缺失 index 返回明确 `404 Pipeline artifact index not found.`。
+- 新增 / 扩展测试：
+  - `tests/workspace/pipeline-artifact-index.test.ts` 覆盖 deterministic ordering、无绝对路径、不复制 report payload、invalid DSL skipped refs、writer parseability，以及 `/abs`、`..`、反斜杠、`C:/...` path 拒绝。
+  - `tests/workspace/generation-pipeline.service.test.ts` 覆盖 valid / invalid pipeline 写出 index、invalid DSL 不读取 stale generated-project report、build failed 后 buildLog ref present。
+  - `tests/workspace/projects-service.test.ts` 覆盖 API service 读取、run ownership mismatch、缺失 index 404、index identity mismatch、不泄漏 workspace absolute path。
+
+阶段结果：
+
+- 本步只暴露已知 artifact refs，不复制 `asset_pipeline_report.json`、`dsl_validation_report.json` 或其他 report 内容。
+- API 不枚举目录、不暴露任意文件系统路径、不提供 artifact 内容下载能力。
+- `pipeline_artifact_index.json` 位于当前 project/run 的 model-output artifact 区；generated-project refs 均通过 compile result 已知文件列表派生。
+- 本步不改变 QA verdict 总结构、不改变 Step 20 `asset_pipeline_report.json` 或 Step 21 `dsl_validation_report.json` 语义。
+- 本步不扩 DSL schema、不改 LLM prompt、不改 Phaser gameplay / visual polish、不扩 live edit、不接 provider abstraction / 外部 asset 服务、不扩大 asset pack、不改 resolver ranking / fallback、不碰 Chrome MCP integration。
+
+已通过验证：
+
+    npx vitest run tests/workspace/pipeline-artifact-index.test.ts
+    # 1 个测试文件，4 个测试通过
+
+    npx vitest run tests/workspace/projects-service.test.ts tests/workspace/generation-pipeline.service.test.ts
+    # 2 个测试文件，45 个测试通过
+
+    npx vitest run tests/workspace/pipeline-artifact-index.test.ts tests/workspace/generation-pipeline.service.test.ts tests/workspace/compiler-service.test.ts
+    # 3 个测试文件，45 个测试通过
+
+    npx vitest run tests/workspace/projects-service.test.ts
+    # 1 个测试文件，15 个测试通过
+
+    npx vitest run tests/workspace/asset-pipeline-report.test.ts tests/workspace/dsl-validation-report.test.ts tests/contracts/asset-pipeline.test.ts
+    # 3 个测试文件，32 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+    npm test
+    # contracts：24 个测试文件，224 个测试通过
+    # workspace：17 个测试文件，213 个测试通过
+
+审查记录：
+
+- Oracle 首轮：P0 无；发现 1 个 P1、2 个 P2、1 个 P3：
+  - P1：API 返回前未校验 index 文件内部 `projectId` / `runId` 与 URL 参数一致。
+  - P2：build failed 路径未刷新 buildLog ref，导致实际 build log 可能存在但 index 仍标 missing。
+  - P2：path schema 未拒绝 `C:/tmp/file.json` 这类 Windows drive absolute 形态。
+  - P3：invalid DSL stale generated-project artifact 防回归测试不够实证。
+- 已修复：
+  - `ProjectsService.getPipelineArtifacts` parse 后增加 index identity 校验，并补 mismatch 测试。
+  - `GenerationPipelineService.buildProject` 在 build runner 正常返回后、`build.ok` 判断前刷新 index，使 build failed / preview missing 也暴露 buildLog ref，并补 build failed 测试。
+  - `PipelineArtifactRefSchema` path guard 拒绝 Windows drive absolute path，并补 schema boundary 测试。
+  - invalid DSL 测试预先写入 stale `asset_pipeline_report.json`，确认 index 仍标 downstream skipped 且不包含 stale payload。
+- Oracle 复审：P0/P1/P2 无；代码侧无新增问题。P3 仅提示 review log 未更新，本段已补齐。
+
+当前下一步：
+
+- 本步代码侧 P0/P1/P2 已清零；等待文档补充后的最终门禁确认。本步未提交、未 push。
