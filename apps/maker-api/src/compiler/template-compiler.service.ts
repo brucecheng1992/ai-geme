@@ -48,6 +48,7 @@ export class TemplateCompilerService {
       ...(genre === 'shooter' ? [`${genre}/src/template-visuals.ts`] : []),
       `${genre}/src/template-params.ts`,
       'shared/kernel.ts',
+      'shared/end-screen.ts',
       ...(genre === 'collector' || genre === 'dodger' || genre === 'shooter' ? [`${genre}/src/asset-manifest.generated.json`] : []),
       ...(genre === 'dodger' || genre === 'shooter' ? [`${genre}/src/runtime-plan.generated.json`] : []),
       `${genre}/src/template-params.generated.json`

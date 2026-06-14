@@ -233,7 +233,8 @@ function buildTemplateParams(raw: RawGameDsl): Record<string, unknown> {
       startX: Math.round(raw.world.width / 2),
       startY: Math.round(raw.world.height / 2)
     },
-    objective: raw.objectives
+    objective: raw.objectives,
+    ui: raw.ui
   };
 
   if (raw.game.genre === 'collector') {

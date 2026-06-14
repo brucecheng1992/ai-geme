@@ -60,7 +60,11 @@ const validCollectorExample: RawGameDsl = {
   },
   ui: {
     hud: ['score', 'objective'],
-    restart: true
+    restart: true,
+    screens: {
+      win: { title: 'VICTORY', subtitle: 'All gems collected' },
+      lose: { title: 'DEFEAT', subtitle: 'Try again' }
+    }
   }
 };
 
@@ -131,7 +135,11 @@ const validDodgerExample: RawGameDsl = {
   },
   ui: {
     hud: ['score', 'health', 'timer'],
-    restart: true
+    restart: true,
+    screens: {
+      win: { title: 'VICTORY', subtitle: 'Survived the timer' },
+      lose: { title: 'DEFEAT', subtitle: 'Health depleted' }
+    }
   }
 };
 
@@ -201,7 +209,11 @@ const validShooterExample: RawGameDsl = {
   },
   ui: {
     hud: ['score', 'health', 'objective'],
-    restart: true
+    restart: true,
+    screens: {
+      win: { title: 'VICTORY', subtitle: 'Enemies cleared' },
+      lose: { title: 'DEFEAT', subtitle: 'Health depleted' }
+    }
   }
 };
 

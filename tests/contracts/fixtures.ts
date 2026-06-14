@@ -55,7 +55,11 @@ export function createCollectorRawDsl() {
     },
     ui: {
       hud: ['score', 'objective'],
-      restart: true
+      restart: true,
+      screens: {
+        win: { title: 'VICTORY', subtitle: 'All gems collected' },
+        lose: { title: 'DEFEAT', subtitle: 'Try again' }
+      }
     }
   };
 }
@@ -131,7 +135,11 @@ export function createDodgerRawDsl() {
     },
     ui: {
       hud: ['score', 'health', 'timer'],
-      restart: true
+      restart: true,
+      screens: {
+        win: { title: 'VICTORY', subtitle: 'Survived the timer' },
+        lose: { title: 'DEFEAT', subtitle: 'Health depleted' }
+      }
     }
   };
 }
@@ -165,7 +173,14 @@ export function createShooterRawDsl() {
       ]
     },
     objectives: { win: { type: 'enemy_cleared', target: 6 }, lose: { type: 'player_health_zero' } },
-    ui: { hud: ['score', 'health', 'objective'], restart: true }
+    ui: {
+      hud: ['score', 'health', 'objective'],
+      restart: true,
+      screens: {
+        win: { title: 'VICTORY', subtitle: 'Enemies cleared' },
+        lose: { title: 'DEFEAT', subtitle: 'Health depleted' }
+      }
+    }
   };
 }
 

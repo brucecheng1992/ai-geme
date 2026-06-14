@@ -57,6 +57,7 @@
   ],
   "gameplay_role": [
     "npc",
+    "player_character",
     "vendor",
     "quest_giver",
     "enemy",

@@ -4,10 +4,14 @@ import { z } from 'zod';
 
 const AssetIdSchema = z.string().regex(/^[a-z][a-z0-9_]{1,39}$/);
 export const AssetRoleSchema = z.enum(['player_character', 'enemy', 'projectile', 'collectible', 'hazard', 'background', 'ui_panel']);
-const AssetProviderSchema = z.enum(['local_asset_pack', 'template_svg', 'placeholder']);
+const AssetProviderSchema = z.enum(['local_asset_pack', 'runtime_asset', 'template_svg', 'placeholder']);
+const RuntimeAssetFormatSchema = z.enum(['svg', 'png']);
 const AssetLoadKeySchema = z.string().regex(/^agm\.[a-z][a-z0-9_]{1,39}$/);
 export const SemanticTagSchema = z.string().regex(/^[a-z][a-z0-9_]{1,39}$/);
 const AssetSizeSchema = z.strictObject({ w: z.number().int().min(1).max(1920), h: z.number().int().min(1).max(1080) });
+const AssetRenderTransformSchema = z.strictObject({
+  rotationDegrees: z.number().int().min(0).max(359)
+});
 const SafeAssetPathSchema = z.string().min(1).refine(isSafeRelativeAssetPath, {
   message: 'asset path must be relative and must not contain .., URL schemes, or absolute path segments'
 });
@@ -73,7 +77,7 @@ export const AssetManifestAssetSchema = z.strictObject({
   loadKey: AssetLoadKeySchema,
   role: AssetRoleSchema,
   type: z.literal('image'),
-  format: z.literal('svg'),
+  format: RuntimeAssetFormatSchema,
   path: SafeAssetPathSchema,
   source: AssetProviderSchema,
   sourcePack: z.string().regex(/^[a-z][a-z0-9_-]{1,63}$/).optional(),
@@ -81,9 +85,19 @@ export const AssetManifestAssetSchema = z.strictObject({
   licenseName: z.string().min(1).max(120).optional(),
   attribution: z.string().min(1).max(160).optional(),
   sourceUrl: z.string().url().optional(),
+  runtimeAssetId: z.string().min(1).max(120).optional(),
+  runtimeContext: z.string().min(1).max(80).optional(),
+  conversion: z
+    .strictObject({
+      status: z.enum(['not_required', 'thumbnail_copied', 'template_generated']),
+      sourcePath: z.string().min(1).optional(),
+      outputPath: SafeAssetPathSchema
+    })
+    .optional(),
   required: z.boolean(),
   status: z.enum(['ready', 'fallback_used', 'missing']),
   size: AssetSizeSchema,
+  renderTransform: AssetRenderTransformSchema.optional(),
   semanticFit: AssetSemanticFitSchema.optional()
 });
 
@@ -147,7 +161,7 @@ export function summarizeManifestAssets(assets: AssetManifestAsset[]): AssetMani
 }
 
 function addDuplicateIdIssues(
-  items: ReadonlyArray<{ id: string; path?: string; loadKey?: string }>,
+  items: ReadonlyArray<{ id: string; path?: string; loadKey?: string; format?: string }>,
   ctx: z.RefinementCtx,
   pathPrefix: 'items' | 'assets' = 'items'
 ): void {
@@ -174,11 +188,12 @@ function addDuplicateIdIssues(
         });
       }
 
-      if (item.path !== `assets/${item.id}.svg`) {
+      const expectedPath = `assets/${item.id}.${item.format}`;
+      if (item.path !== expectedPath) {
         ctx.addIssue({
           code: 'custom',
           path: [pathPrefix, index, 'path'],
-          message: `asset path must match assets/${item.id}.svg`
+          message: `asset path must match ${expectedPath}`
         });
       }
 
@@ -216,5 +231,5 @@ function isSafeRelativeAssetPath(value: string): boolean {
     return false;
   }
 
-  return /^assets\/[a-z][a-z0-9_]{1,39}\.svg$/.test(value);
+  return /^assets\/[a-z][a-z0-9_]{1,39}\.(svg|png)$/.test(value);
 }

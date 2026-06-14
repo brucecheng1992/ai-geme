@@ -8,6 +8,7 @@ import {
 
 const SMALL_LIBRARY_METADATA_DIR = 'tests/fixtures/art-library-small-v0.1/metadata';
 const CAT_ASSET_ID = 'creature_kenney_cube_pet_cat_001';
+const BLOCKED_CONTEXT_ASSET_ID = 'creature_kenney_cube_pet_bee_001';
 
 describe('asset resolver diagnostics contracts', () => {
   it('resolves existing requested asset_id values without diagnostics', async () => {
@@ -113,7 +114,7 @@ describe('asset resolver diagnostics contracts', () => {
 
     const blockedSummary = createAssetResolverDiagnosticsSummary({
       runtimeMetadataArtifact: artifact,
-      requestedAssetIds: [CAT_ASSET_ID],
+      requestedAssetIds: [BLOCKED_CONTEXT_ASSET_ID],
       context: { contextId: 'production_default_runtime' }
     });
 
@@ -121,8 +122,8 @@ describe('asset resolver diagnostics contracts', () => {
       expect.objectContaining({
         severity: 'error',
         code: 'ASSET_RESOLVER_DIAGNOSTIC_BLOCKED_CONTEXT',
-        assetId: CAT_ASSET_ID,
-        jsonPath: '$.runtimeMetadataArtifact.assets[2].gameplay.blocked_contexts'
+        assetId: BLOCKED_CONTEXT_ASSET_ID,
+        jsonPath: '$.runtimeMetadataArtifact.assets[0].gameplay.blocked_contexts'
       })
     ]);
   });

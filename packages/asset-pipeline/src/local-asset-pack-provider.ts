@@ -2,12 +2,17 @@ import { copyFile, readdir, readFile, stat } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve } from 'node:path';
 
 import type { AssetManifestAsset, AssetPlan } from './schemas.js';
+import { exportRuntimeArtAssetMetadataFromDirectory, type RuntimeArtAssetMetadata } from './art-asset-metadata.runtime-export.js';
 import { indexLocalAssetPackMetadata, LocalAssetPackSchema, type LocalAssetPack } from './local-asset-pack.schema.js';
 import { buildHardSemanticRejection, buildLocalAssetSemanticFit, type AssetResolutionCandidate, type AssetResolutionMissingAsset } from './resolution-report.js';
+
+const SMALL_LIBRARY_METADATA_DIR = 'tests/fixtures/art-library-small-v0.1/metadata';
+const RUNTIME_CONTEXT = 'production_default_runtime';
 
 export type LocalAssetSelection = {
   manifestAssets: AssetManifestAsset[];
   files: string[];
+  provider: 'local_asset_pack' | 'local_mixed_assets';
 };
 
 export type LocalAssetResolution = {
@@ -19,7 +24,13 @@ export type ProjectLocalAssetBlacklist = {
   candidates: Array<{ packId: string; assetId: string; role: string; reason: string }>;
 };
 
-type ResolveLocalAssetPackInput = { plan: AssetPlan; projectAssetsDir: string; packsDir?: string; blacklist?: ProjectLocalAssetBlacklist };
+type ResolveLocalAssetPackInput = {
+  plan: AssetPlan;
+  projectAssetsDir: string;
+  packsDir?: string;
+  blacklist?: ProjectLocalAssetBlacklist;
+  enableMixed?: boolean;
+};
 
 export async function selectLocalAssetPack(input: ResolveLocalAssetPackInput): Promise<LocalAssetSelection | undefined> {
   return (await resolveLocalAssetPack(input)).selection;
@@ -67,6 +78,7 @@ export async function resolveLocalAssetPack(input: ResolveLocalAssetPackInput): 
     return {
       candidates,
       selection: {
+        provider: 'local_asset_pack',
         files,
         manifestAssets: selected.assets.map(({ planItem, packAsset }) => {
           const license = packAsset.license ?? pack.license;
@@ -93,7 +105,12 @@ export async function resolveLocalAssetPack(input: ResolveLocalAssetPackInput): 
     };
   }
 
-  return { candidates };
+  if (input.enableMixed === false) {
+    return { candidates };
+  }
+
+  const mixedSelection = await selectMixedAssetsByRole({ ...input, packs });
+  return mixedSelection === undefined ? { candidates } : { candidates, selection: mixedSelection };
 }
 
 async function readLocalPacks(packsRoot: string): Promise<LocalAssetPack[]> {
@@ -185,6 +202,197 @@ function selectCompletePackAssets(plan: AssetPlan, pack: LocalAssetPack) {
   }
 
   return { ok: true, assets } as const;
+}
+
+async function selectMixedAssetsByRole(input: ResolveLocalAssetPackInput & { packs: LocalAssetPack[] }): Promise<LocalAssetSelection | undefined> {
+  const packsRoot = resolve(input.packsDir ?? process.env.AGM_ASSET_PACKS_DIR ?? join(process.cwd(), 'assets', 'asset-packs'));
+  const runtimeLibrary = await readRuntimeSmallLibraryAssets(packsRoot);
+  const manifestAssets: AssetManifestAsset[] = [];
+  const files: string[] = [];
+  let usedLocalAsset = false;
+
+  for (const planItem of input.plan.items) {
+    const localAsset = findMixedLocalPackAsset(input.plan, planItem, input.packs);
+    if (localAsset !== undefined) {
+      const sourcePath = resolve(input.packsDir ?? process.env.AGM_ASSET_PACKS_DIR ?? join(process.cwd(), 'assets', 'asset-packs'), localAsset.pack.id, localAsset.packAsset.file);
+      const packRoot = resolve(input.packsDir ?? process.env.AGM_ASSET_PACKS_DIR ?? join(process.cwd(), 'assets', 'asset-packs'), localAsset.pack.id);
+      assertInside(packRoot, sourcePath, `asset ${planItem.id}`);
+      await copyFile(sourcePath, join(input.projectAssetsDir, `${planItem.id}.svg`));
+      files.push(`public/assets/${planItem.id}.svg`);
+      manifestAssets.push(buildMixedLocalPackManifestAsset(planItem, localAsset.pack, localAsset.packAsset));
+      usedLocalAsset = true;
+      continue;
+    }
+
+    const runtimeAsset = findRuntimeAsset(planItem, runtimeLibrary.assets);
+    if (runtimeAsset !== undefined) {
+      const thumbnailPath = resolve(runtimeLibrary.projectRoot, runtimeAsset.technical.thumbnail_path);
+      assertInside(runtimeLibrary.projectRoot, thumbnailPath, `runtime asset ${runtimeAsset.asset_id}`);
+      await copyFile(thumbnailPath, join(input.projectAssetsDir, `${planItem.id}.png`));
+      files.push(`public/assets/${planItem.id}.png`);
+      manifestAssets.push(buildRuntimeManifestAsset(planItem, runtimeAsset));
+      usedLocalAsset = true;
+    }
+  }
+
+  if (!usedLocalAsset) {
+    return undefined;
+  }
+
+  return {
+    provider: 'local_mixed_assets',
+    files,
+    manifestAssets
+  };
+}
+
+function findMixedLocalPackAsset(plan: AssetPlan, planItem: AssetPlan['items'][number], packs: LocalAssetPack[]) {
+  const genre = assetPlanGenre(plan);
+  for (const pack of packs) {
+    if (!pack.style.genres.includes(genre) || pack.style.camera !== plan.style.camera) {
+      continue;
+    }
+
+    const packAsset = indexLocalAssetPackMetadata(pack).assetsById.get(planItem.id);
+    if (packAsset === undefined || packAsset.role !== planItem.role || packAsset.format !== planItem.format) {
+      continue;
+    }
+
+    if (buildHardSemanticRejection(planItem, packAsset.semantic) !== undefined) {
+      continue;
+    }
+
+    if (planItem.role === 'projectile' && planItem.semantic?.expectedConcept === 'fishbone' && !packAsset.semantic?.subjectTags.includes('fishbone')) {
+      continue;
+    }
+
+    return { pack, packAsset };
+  }
+
+  return undefined;
+}
+
+async function readRuntimeSmallLibraryAssets(packsRoot: string): Promise<{ assets: RuntimeArtAssetMetadata[]; projectRoot: string }> {
+  const projectRoot = resolve(packsRoot, '..', '..');
+  const metadataDir = resolve(projectRoot, SMALL_LIBRARY_METADATA_DIR);
+  const result = await exportRuntimeArtAssetMetadataFromDirectory(metadataDir);
+  return {
+    assets: result.ok ? result.artifact?.assets ?? [] : [],
+    projectRoot
+  };
+}
+
+function findRuntimeAsset(planItem: AssetPlan['items'][number], runtimeAssets: RuntimeArtAssetMetadata[]): RuntimeArtAssetMetadata | undefined {
+  const constraint = planItem.semantic;
+  const runtimeRole = toRuntimeGameplayRole(planItem.role);
+  if (constraint === undefined || runtimeRole === undefined) {
+    return undefined;
+  }
+
+  return runtimeAssets.find((asset) => {
+    if (asset.status !== 'approved') {
+      return false;
+    }
+    if (!asset.gameplay.role.includes(runtimeRole)) {
+      return false;
+    }
+    if (!asset.gameplay.allowed_contexts.includes(RUNTIME_CONTEXT) || asset.gameplay.blocked_contexts.includes(RUNTIME_CONTEXT)) {
+      return false;
+    }
+
+    const tags = asset.semantic.tags;
+    const hasExpectedTag = constraint.expectedAnyTags.some((tag) => tags.includes(tag));
+    const hasForbiddenTag = constraint.forbiddenTags.some((tag) => tags.includes(tag));
+    return hasExpectedTag && !hasForbiddenTag;
+  });
+}
+
+function toRuntimeGameplayRole(role: AssetPlan['items'][number]['role']): RuntimeArtAssetMetadata['gameplay']['role'][number] | undefined {
+  return role === 'player_character' || role === 'enemy' || role === 'projectile' || role === 'collectible' ? role : undefined;
+}
+
+function buildMixedLocalPackManifestAsset(
+  planItem: AssetPlan['items'][number],
+  pack: LocalAssetPack,
+  packAsset: LocalAssetPack['assets'][number]
+): AssetManifestAsset {
+  const license = packAsset.license ?? pack.license;
+  return {
+    id: planItem.id,
+    loadKey: `agm.${planItem.id}`,
+    role: planItem.role,
+    type: 'image',
+    format: 'svg',
+    path: `assets/${planItem.id}.svg`,
+    source: 'local_asset_pack',
+    sourcePack: pack.id,
+    licenseId: license.id,
+    licenseName: license.name,
+    attribution: license.attribution,
+    sourceUrl: license.sourceUrl,
+    required: planItem.required,
+    status: 'ready',
+    size: planItem.size,
+    semanticFit: buildLocalAssetSemanticFit(planItem, packAsset.semantic)
+  };
+}
+
+function buildRuntimeManifestAsset(planItem: AssetPlan['items'][number], runtimeAsset: RuntimeArtAssetMetadata): AssetManifestAsset {
+  return {
+    id: planItem.id,
+    loadKey: `agm.${planItem.id}`,
+    role: planItem.role,
+    type: 'image',
+    format: 'png',
+    path: `assets/${planItem.id}.png`,
+    source: 'runtime_asset',
+    licenseId: 'CC0-1.0',
+    licenseName: 'Creative Commons CC0 1.0 Universal',
+    attribution: runtimeAsset.title,
+    sourceUrl: 'https://kenney.nl/assets/cube-pets',
+    runtimeAssetId: runtimeAsset.asset_id,
+    runtimeContext: RUNTIME_CONTEXT,
+    conversion: {
+      status: 'thumbnail_copied',
+      sourcePath: runtimeAsset.technical.thumbnail_path,
+      outputPath: `assets/${planItem.id}.png`
+    },
+    required: planItem.required,
+    status: 'ready',
+    size: planItem.size,
+    renderTransform: runtimeAsset.asset_id === 'creature_kenney_cube_pet_cat_001' ? { rotationDegrees: 180 } : undefined,
+    semanticFit: buildRuntimeAssetSemanticFit(planItem, runtimeAsset)
+  };
+}
+
+function buildRuntimeAssetSemanticFit(planItem: AssetPlan['items'][number], runtimeAsset: RuntimeArtAssetMetadata) {
+  const constraint = planItem.semantic;
+  const actualTags = runtimeAsset.semantic.tags;
+  if (constraint === undefined) {
+    return {
+      status: 'not_applicable' as const,
+      confidence: 1,
+      actualTags,
+      reason: 'No semantic constraint was requested for this runtime asset.'
+    };
+  }
+
+  const missingTags = constraint.expectedAnyTags.filter((tag) => !actualTags.includes(tag));
+  const conflictingTags = actualTags.filter((tag) => constraint.forbiddenTags.includes(tag));
+  const exact = actualTags.includes(constraint.expectedConcept);
+  return {
+    status: exact ? ('exact' as const) : ('compatible' as const),
+    confidence: exact ? 1 : 0.85,
+    strictness: constraint.strictness,
+    expectedConcept: constraint.expectedConcept,
+    expectedAnyTags: constraint.expectedAnyTags,
+    actualTags,
+    missingTags,
+    conflictingTags,
+    reason: exact
+      ? `Runtime asset semantic tags exactly match expected ${constraint.expectedConcept}.`
+      : `Runtime asset semantic tags are compatible with expected ${constraint.expectedConcept}.`
+  };
 }
 
 function buildStyleMismatchCandidate(pack: LocalAssetPack, expectedGenre: string, expectedCamera: AssetPlan['style']['camera']): AssetResolutionCandidate {

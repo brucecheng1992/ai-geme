@@ -100,7 +100,12 @@ describe('Small art library v0.1 fixture', () => {
       expect(metadata.technical.source_path).not.toMatch(/^\/|:|\.\./);
       expect(metadata.technical.thumbnail_path).not.toMatch(/^\/|:|\.\./);
       expect(metadata.gameplay.allowed_contexts).toContain('small_art_library_fixture');
-      expect(metadata.gameplay.blocked_contexts).toEqual(['production_default_runtime', 'large_library_rollout']);
+      if (basename === 'animal-cat') {
+        expect(metadata.gameplay.allowed_contexts).toContain('production_default_runtime');
+        expect(metadata.gameplay.blocked_contexts).toEqual(['large_library_rollout']);
+      } else {
+        expect(metadata.gameplay.blocked_contexts).toEqual(['production_default_runtime', 'large_library_rollout']);
+      }
     }
   });
 });

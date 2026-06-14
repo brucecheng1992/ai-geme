@@ -60,6 +60,11 @@ function mergeCollectorParams(params: Partial<CollectorTemplateParams>): Collect
     world: { ...defaultCollectorParams.world, ...params.world },
     player: { ...defaultCollectorParams.player, ...params.player },
     collectible: { ...defaultCollectorParams.collectible, ...params.collectible },
-    objective: { ...defaultCollectorParams.objective, ...params.objective }
+    objective: { ...defaultCollectorParams.objective, ...params.objective },
+    ui: {
+      ...defaultCollectorParams.ui,
+      ...params.ui,
+      screens: { ...defaultCollectorParams.ui.screens, ...params.ui?.screens }
+    }
   };
 }

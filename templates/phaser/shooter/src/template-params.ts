@@ -13,6 +13,12 @@ export type ShooterTemplateParams = {
   };
   scoring: { scorePerEnemy: number };
   objective: { winType: 'enemy_cleared' | 'target_score'; targetCount?: number; targetScore?: number };
+  ui: {
+    screens: {
+      win: { title: string; subtitle: string };
+      lose: { title: string; subtitle: string };
+    };
+  };
 };
 
 export type ShooterEntityVisualParams = {
@@ -41,5 +47,11 @@ export const defaultShooterParams: ShooterTemplateParams = {
     visual: { kind: 'alien', fillColor: 0x72f28f, accentColor: 0x86ffb7 }
   },
   scoring: { scorePerEnemy: 1 },
-  objective: { winType: 'enemy_cleared', targetCount: 6 }
+  objective: { winType: 'enemy_cleared', targetCount: 6 },
+  ui: {
+    screens: {
+      win: { title: 'VICTORY', subtitle: 'Enemies cleared' },
+      lose: { title: 'DEFEAT', subtitle: 'Health depleted' }
+    }
+  }
 };

@@ -237,7 +237,14 @@ function createRawGameDslForCanary(brief: AssetSemanticCanaryBrief): RawGameDsl 
       ]
     },
     objectives: { win: { type: 'enemy_cleared', target: 6 }, lose: { type: 'player_health_zero' } },
-    ui: { hud: ['score', 'health', 'objective'], restart: true }
+    ui: {
+      hud: ['score', 'health', 'objective'],
+      restart: true,
+      screens: {
+        win: { title: 'VICTORY', subtitle: 'Enemies cleared' },
+        lose: { title: 'DEFEAT', subtitle: 'Health depleted' }
+      }
+    }
   };
 }
 

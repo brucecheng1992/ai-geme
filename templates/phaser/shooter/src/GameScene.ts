@@ -13,6 +13,7 @@ import {
   createRuntimeState,
   exposeRuntime
 } from '../../shared/kernel.js';
+import { EndScreenRenderer } from '../../shared/end-screen.js';
 import {
   advanceShooterWorld,
   createShooterRuntimeState,
@@ -43,6 +44,7 @@ export class ShooterGameScene {
   private readonly gameState;
   private readonly objective;
   private readonly renderer;
+  private readonly endScreen: EndScreenRenderer;
   private readonly enemyWave: ResolvedShooterEnemyWave;
   private runtime: ShooterRuntimeState;
   private readonly moveInput: Record<ShooterDirection, boolean> = { left: false, right: false, up: false, down: false };
@@ -63,6 +65,7 @@ export class ShooterGameScene {
     this.gameState = new GameStateSystem(this.state, this.telemetry);
     this.objective = new ObjectiveSystem(this.state, this.gameState);
     this.renderer = new ShooterRenderer(params, art);
+    this.endScreen = new EndScreenRenderer(params.world, params.ui.screens);
     this.enemyWave = resolveShooterEnemyWave(runtimePlan, params);
     this.runtime = createShooterRuntimeState(params);
     primeShooterEnemyWave(this.runtime, this.enemyWave);
@@ -174,6 +177,7 @@ export class ShooterGameScene {
     this.renderer.syncEntityPositions(this.requireScene(), this.runtime);
     this.objective.completeWhen(this.objectiveReached());
     this.objective.loseWhen(this.state.health <= 0);
+    this.renderEndScreenIfTerminal();
     this.renderHud();
   }
 
@@ -184,6 +188,7 @@ export class ShooterGameScene {
     this.resetMoveInput();
     this.renderer.clearDynamicObjects();
     this.renderer.setPlayerPosition(this.runtime.player.x, this.runtime.player.y);
+    this.endScreen.clear();
     this.gameState.restart();
     this.renderHud();
   }
@@ -238,6 +243,18 @@ export class ShooterGameScene {
 
   private renderHud(): void {
     this.renderer.renderHud(this.state.score, this.state.health, this.objectiveText());
+  }
+
+  private renderEndScreenIfTerminal(): void {
+    const scene = this.phaserScene;
+    if (scene === undefined) {
+      return;
+    }
+    if (this.state.gameStatus === 'WON') {
+      this.endScreen.show(scene, 'win');
+    } else if (this.state.gameStatus === 'LOST') {
+      this.endScreen.show(scene, 'lose');
+    }
   }
 
   private objectiveText(): string {

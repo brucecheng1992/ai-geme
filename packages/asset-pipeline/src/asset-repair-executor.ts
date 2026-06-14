@@ -72,7 +72,8 @@ export async function executeAssetRepairPlan(input: AssetRepairExecutionInput): 
             plan: project.plan,
             projectAssetsDir: stagingAssetsDir,
             packsDir: input.assetPacksDir,
-            blacklist: { candidates: blacklistedCandidates }
+            blacklist: { candidates: blacklistedCandidates },
+            enableMixed: false
           });
     const replacementById = new Map(localResolution.selection?.manifestAssets.map((asset) => [asset.id, asset]) ?? []);
     const planById = new Map(project.plan.items.map((item) => [item.id, item]));

@@ -139,7 +139,17 @@ const ObjectivesSchema = z.strictObject({
 
 const UiSchema = z.strictObject({
   hud: z.array(z.enum(['score', 'health', 'timer', 'objective'])).min(1).max(4),
-  restart: z.boolean()
+  restart: z.boolean(),
+  screens: z.strictObject({
+    win: z.strictObject({
+      title: z.string().min(1).max(40),
+      subtitle: z.string().min(1).max(120)
+    }),
+    lose: z.strictObject({
+      title: z.string().min(1).max(40),
+      subtitle: z.string().min(1).max(120)
+    })
+  })
 });
 
 /** Raw DSL 只允许表达引擎无关的玩法语义，不能包含 runtime API 或任意脚本。 */

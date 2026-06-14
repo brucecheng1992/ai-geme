@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { AssetRepairReportSection } from './asset-repair-executor.types.js';
 
 const AssetIdSchema = z.string().regex(/^[a-z][a-z0-9_]{1,39}$/);
-const AssetProviderSchema = z.enum(['local_asset_pack', 'template_svg', 'placeholder']);
+const AssetProviderSchema = z.enum(['local_asset_pack', 'runtime_asset', 'template_svg', 'placeholder']);
 const PackIdSchema = z.string().regex(/^[a-z][a-z0-9_-]{1,63}$/);
 
 const AssetRepairSnapshotSchema = z.strictObject({

@@ -302,7 +302,7 @@
     },
     "gameplay_role": {
       "type": "string",
-      "enum": ["npc", "vendor", "quest_giver", "enemy", "ally", "loot_container", "cover", "decoration", "environment", "ui", "icon", "material", "texture", "collectible", "projectile"]
+      "enum": ["npc", "player_character", "vendor", "quest_giver", "enemy", "ally", "loot_container", "cover", "decoration", "environment", "ui", "icon", "material", "texture", "collectible", "projectile"]
     },
     "affordance": {
       "type": "string",

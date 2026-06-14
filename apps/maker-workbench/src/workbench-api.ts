@@ -86,7 +86,7 @@ export type QaAssetReport = {
 export type QaAssetSemanticSummary = {
   id: string;
   role: string;
-  source: 'local_asset_pack' | 'template_svg' | 'placeholder';
+  source: 'local_asset_pack' | 'runtime_asset' | 'template_svg' | 'placeholder';
   source_pack?: string;
   semantic_status: AssetSemanticStatus;
   semantic_fit?: QaAssetSemanticFit;

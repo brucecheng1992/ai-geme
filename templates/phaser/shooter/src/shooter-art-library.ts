@@ -7,12 +7,15 @@ type ManifestAsset = {
   loadKey: string;
   role: ShooterAssetRole;
   type: 'image';
-  format: 'svg';
+  format: 'svg' | 'png';
   path: string;
   source: string;
   required: boolean;
   status: 'ready' | 'fallback_used' | 'missing';
   size: { w: number; h: number };
+  renderTransform?: {
+    rotationDegrees?: number;
+  };
 };
 
 type GameAssetManifest = {
@@ -71,7 +74,11 @@ export function createShooterArtRuntime(manifest: GameAssetManifest): {
     }
 
     addUnique(telemetryState.loaded, asset.id);
-    return scene.add.image(x, y, asset.loadKey).setDisplaySize(displayWidth, displayHeight);
+    const image = scene.add.image(x, y, asset.loadKey).setDisplaySize(displayWidth, displayHeight);
+    if (asset.renderTransform?.rotationDegrees !== undefined) {
+      image.setAngle(asset.renderTransform.rotationDegrees);
+    }
+    return image;
   };
 
   return {
@@ -89,7 +96,11 @@ export function createShooterArtRuntime(manifest: GameAssetManifest): {
         }
 
         loadKeyToId.set(asset.loadKey, asset.id);
-        scene.load.svg(asset.loadKey, `./${asset.path}`, { width: asset.size.w, height: asset.size.h });
+        if (asset.format === 'svg') {
+          scene.load.svg(asset.loadKey, `./${asset.path}`, { width: asset.size.w, height: asset.size.h });
+        } else {
+          scene.load.image(asset.loadKey, `./${asset.path}`);
+        }
       }
 
       scene.load.on('filecomplete', (key: string) => {

@@ -171,7 +171,14 @@ describe('Asset pipeline contracts', () => {
       return;
     }
 
-    const result = await writeAssetArtifacts({ projectId, projectDir: root, ir: normalized.ir });
+    const params = normalized.ir.template_params.params as { player: { label: string }; enemy: { label: string }; projectile: { label: string } };
+    params.player.label = 'Caterpillar';
+    params.enemy.label = 'Tankard';
+    params.projectile.label = 'Boneless';
+    const emptyPacksDir = join(root, 'empty-packs');
+    await mkdir(emptyPacksDir, { recursive: true });
+
+    const result = await writeAssetArtifacts({ projectId, projectDir: root, ir: normalized.ir, assetPacksDir: emptyPacksDir });
 
     expect(result.manifest.summary).toEqual({ required: 4, ready: 4, fallback_used: 0, missing: 0, placeholder_used: 0 });
     await expect(readFile(join(root, 'asset_plan.json'), 'utf8')).resolves.toContain('"asset-plan-v0.1"');
@@ -222,7 +229,7 @@ describe('Asset pipeline contracts', () => {
     await expect(validateGeneratedProjectAssets({ projectId, projectDir: root })).resolves.toMatchObject({ ok: true });
   });
 
-  it('falls back to template SVG when a higher-priority complete shooter pack hard-mismatches core semantics', async () => {
+  it('uses mixed local assets when a complete shooter pack hard-mismatches some core semantics', async () => {
     const normalized = validateAndNormalizeRawGameDsl(createShooterRawDsl());
     expect(normalized.ok).toBe(true);
     if (!normalized.ok) {
@@ -232,19 +239,19 @@ describe('Asset pipeline contracts', () => {
     const result = await writeAssetArtifacts({ projectId, projectDir: root, ir: normalized.ir });
 
     expect(result.manifest.assets.map((asset) => [asset.id, asset.source, asset.sourcePack])).toEqual([
-      ['background_main', 'template_svg', undefined],
-      ['player', 'template_svg', undefined],
+      ['background_main', 'local_asset_pack', 'kenney-tiny-shooter-tanks'],
+      ['player', 'runtime_asset', undefined],
       ['enemy', 'template_svg', undefined],
-      ['projectile', 'template_svg', undefined]
+      ['projectile', 'local_asset_pack', 'kenney-tiny-shooter-tanks']
     ]);
-    await expect(readFile(join(root, 'public/assets/player.svg'), 'utf8')).resolves.toContain('<svg');
+    await expect(readFile(join(root, 'public/assets/player.png'))).resolves.toBeInstanceOf(Buffer);
     await expect(readFile(join(root, 'public/assets/enemy.svg'), 'utf8')).resolves.toContain('<svg');
     expect(result.manifest.assets.find((asset) => asset.id === 'player')?.semanticFit).toMatchObject({
-      status: 'fallback_generated',
+      status: 'exact',
       strictness: 'hard',
       expectedConcept: 'cat',
       expectedAnyTags: ['cat', 'kitten', 'feline'],
-      actualTags: ['template_svg']
+      actualTags: expect.arrayContaining(['cat', 'kitten', 'feline'])
     });
     expect(result.manifest.assets.find((asset) => asset.id === 'enemy')?.semanticFit).toMatchObject({
       status: 'fallback_generated',
@@ -259,15 +266,17 @@ describe('Asset pipeline contracts', () => {
       version: 'asset-resolution-report-v0.1',
       projectId,
       summary: {
-        selectedProvider: 'template_svg',
-        fallbackUsed: true,
-        reason: 'No semantic-compatible complete local asset pack was selected; generated deterministic template SVG assets.'
+        selectedProvider: 'local_mixed_assets',
+        fallbackUsed: false,
+        fullFallbackUsed: false,
+        perRoleFallbackUsed: true,
+        reason: 'Selected mixed local assets by role after complete local packs failed.'
       }
     });
     expect(report.assets.find((asset) => asset.id === 'player')).toMatchObject({
-      selected: { source: 'template_svg', path: 'assets/player.svg' },
+      selected: { source: 'runtime_asset', path: 'assets/player.png' },
       semanticFit: {
-        status: 'fallback_generated',
+        status: 'exact',
         strictness: 'hard',
         expectedConcept: 'cat'
       }
@@ -348,6 +357,123 @@ describe('Asset pipeline contracts', () => {
       ])
     );
     await expect(validateGeneratedProjectAssets({ projectId, projectDir: root })).resolves.toMatchObject({ ok: true });
+  });
+
+  it('mixes a runtime-safe small library cat with local tank shooter assets for 小猫大战坦克', async () => {
+    const normalized = validateAndNormalizeRawGameDsl(createCatVsTankShooterRawDsl());
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const result = await writeAssetArtifacts({ projectId, projectDir: root, ir: normalized.ir });
+    const manifestById = new Map(result.manifest.assets.map((asset) => [asset.id, asset]));
+
+    expect(result.manifest.assets.map((asset) => [asset.id, asset.source, asset.sourcePack, asset.path])).toEqual([
+      ['background_main', 'local_asset_pack', 'kenney-tiny-shooter-tanks', 'assets/background_main.svg'],
+      ['player', 'runtime_asset', undefined, 'assets/player.png'],
+      ['enemy', 'local_asset_pack', 'kenney-tiny-shooter-tanks', 'assets/enemy.svg'],
+      ['projectile', 'template_svg', undefined, 'assets/projectile.svg']
+    ]);
+    expect(manifestById.get('player')?.format).toBe('png');
+    expect(manifestById.get('player')?.renderTransform).toEqual({ rotationDegrees: 180 });
+    expect(manifestById.get('player')?.semanticFit).toMatchObject({
+      status: 'exact',
+      expectedConcept: 'cat',
+      expectedAnyTags: ['cat', 'kitten', 'feline'],
+      actualTags: expect.arrayContaining(['cat', 'kitten', 'feline'])
+    });
+    expect(manifestById.get('enemy')?.semanticFit).toMatchObject({
+      status: 'exact',
+      expectedConcept: 'tank',
+      actualTags: expect.arrayContaining(['tank', 'vehicle'])
+    });
+    await expect(readFile(join(root, 'public/assets/player.png'))).resolves.toBeInstanceOf(Buffer);
+    await expect(readFile(join(root, 'public/assets/enemy.svg'), 'utf8')).resolves.toContain('Kenney grey tank enemy sprite');
+    await expect(readFile(join(root, 'public/assets/projectile.svg'), 'utf8')).resolves.toContain('<svg');
+
+    const report = await readAssetResolutionReport(root);
+    expect(report.summary).toMatchObject({
+      selectedProvider: 'local_mixed_assets',
+      fallbackUsed: false,
+      fullFallbackUsed: false,
+      perRoleFallbackUsed: true,
+      reason: 'Selected mixed local assets by role after complete local packs failed.'
+    });
+    expect(report.selectedAssets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'player',
+          role: 'player_character',
+          source: 'runtime_asset',
+          runtimeContext: 'production_default_runtime',
+          conversion: expect.objectContaining({
+            status: 'thumbnail_copied',
+            outputPath: 'assets/player.png'
+          }),
+          renderTransform: {
+            rotationDegrees: 180
+          },
+          semanticFit: expect.objectContaining({
+            expectedConcept: 'cat',
+            actualTags: expect.arrayContaining(['cat', 'kitten', 'feline'])
+          })
+        }),
+        expect.objectContaining({
+          id: 'enemy',
+          role: 'enemy',
+          source: 'local_asset_pack',
+          sourcePack: 'kenney-tiny-shooter-tanks',
+          semanticFit: expect.objectContaining({
+            expectedConcept: 'tank',
+            actualTags: expect.arrayContaining(['tank', 'vehicle'])
+          })
+        }),
+        expect.objectContaining({
+          id: 'projectile',
+          role: 'projectile',
+          source: 'template_svg',
+          fallbackScope: 'per_role'
+        })
+      ])
+    );
+    await expect(validateGeneratedProjectAssets({ projectId, projectDir: root })).resolves.toMatchObject({ ok: true });
+  });
+
+  it('resolves Small Library runtime assets from assetPacksDir when cwd is not the repo root', async () => {
+    const normalized = validateAndNormalizeRawGameDsl(createCatVsTankShooterRawDsl());
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const originalCwd = process.cwd();
+    try {
+      process.chdir(join(originalCwd, 'apps/maker-api'));
+      const result = await writeAssetArtifacts({
+        projectId,
+        projectDir: root,
+        ir: normalized.ir,
+        assetPacksDir: join(originalCwd, 'assets/asset-packs')
+      });
+
+      expect(result.manifest.assets.find((asset) => asset.id === 'player')).toMatchObject({
+        id: 'player',
+        source: 'runtime_asset',
+        format: 'png',
+        path: 'assets/player.png',
+        runtimeContext: 'production_default_runtime',
+        renderTransform: {
+          rotationDegrees: 180
+        },
+        semanticFit: expect.objectContaining({
+          expectedConcept: 'cat',
+          actualTags: expect.arrayContaining(['cat', 'kitten', 'feline'])
+        })
+      });
+    } finally {
+      process.chdir(originalCwd);
+    }
   });
 
   it('does not block local pack selection for medium or soft semantic constraints', async () => {
@@ -770,5 +896,24 @@ function createTankShooterRawDsl() {
   rawDsl.player.label = 'Tank';
   rawDsl.entities = rawDsl.entities.map((entity) => (entity.kind === 'enemy' ? { ...entity, id: 'enemy_tank', label: 'Tank' } : entity));
   rawDsl.rules.collisions = rawDsl.rules.collisions.map((collision) => ({ ...collision, target: 'enemy_tank' }));
+  return rawDsl;
+}
+
+function createCatVsTankShooterRawDsl() {
+  const rawDsl = createShooterRawDsl();
+  rawDsl.metadata.title = '小猫大战坦克';
+  rawDsl.player.label = '小猫';
+  rawDsl.entities = [
+    { id: 'fishbone', kind: 'projectile', label: '鱼骨头', damage: 1, movement: { type: 'move_right', speed_px_per_sec: 520 } },
+    { id: 'tank', kind: 'enemy', label: '坦克', count: 8, health: 1, movement: { type: 'move_left', speed_px_per_sec: 80 } }
+  ];
+  rawDsl.player.actions = rawDsl.player.actions.map((action) => ({ ...action, spawns: 'fishbone' }));
+  rawDsl.rules.collisions = rawDsl.rules.collisions.map((collision) => ({
+    ...collision,
+    id: 'fishbone_hits_tank',
+    source: 'fishbone',
+    target: 'tank'
+  }));
+  rawDsl.objectives.win = { type: 'enemy_cleared', target: 8 };
   return rawDsl;
 }

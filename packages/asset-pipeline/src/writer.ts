@@ -29,9 +29,13 @@ export async function writeAssetArtifacts(input: {
 
   const localPackResolution = await resolveLocalAssetPack({ plan, projectAssetsDir: assetsDir, packsDir: input.assetPacksDir });
   const manifest =
-    localPackResolution.selection === undefined ? await writeTemplateSvgAssets(plan, assetsDir) : buildManifest(plan, localPackResolution.selection.manifestAssets);
+    localPackResolution.selection === undefined
+      ? await writeTemplateSvgAssets(plan, assetsDir)
+      : localPackResolution.selection.provider === 'local_mixed_assets'
+        ? await writeMixedAssetManifest(plan, assetsDir, localPackResolution.selection.manifestAssets)
+        : buildManifest(plan, localPackResolution.selection.manifestAssets);
   const report = buildAssetResolutionReport({ plan, manifest, candidates: localPackResolution.candidates });
-  const assetFiles = localPackResolution.selection?.files ?? plan.items.map((item) => `public/assets/${item.id}.svg`);
+  const assetFiles = manifest.assets.map((item) => `public/${item.path}`);
 
   await writeFile(join(publicDir, 'asset_manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   await writeFile(join(input.projectDir, 'asset_resolution_report.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
@@ -41,6 +45,41 @@ export async function writeAssetArtifacts(input: {
     manifest,
     files: ['asset_plan.json', 'public/asset_manifest.json', 'asset_resolution_report.json', ...assetFiles]
   };
+}
+
+async function writeMixedAssetManifest(plan: AssetPlan, assetsDir: string, selectedAssets: AssetManifestAsset[]): Promise<AssetManifest> {
+  const selectedById = new Map(selectedAssets.map((asset) => [asset.id, asset]));
+  const assets: AssetManifestAsset[] = [];
+
+  for (const item of plan.items) {
+    const selected = selectedById.get(item.id);
+    if (selected !== undefined) {
+      assets.push(selected);
+      continue;
+    }
+
+    const fileName = `${item.id}.svg`;
+    await writeFile(join(assetsDir, fileName), renderTemplateSvg(item), 'utf8');
+    assets.push({
+      id: item.id,
+      loadKey: `agm.${item.id}`,
+      role: item.role,
+      type: 'image',
+      format: 'svg',
+      path: `assets/${item.id}.svg`,
+      source: 'template_svg',
+      required: item.required,
+      status: 'ready',
+      size: item.size,
+      semanticFit: buildTemplateSemanticFit(item),
+      conversion: {
+        status: 'template_generated',
+        outputPath: `assets/${item.id}.svg`
+      }
+    });
+  }
+
+  return buildManifest(plan, assets);
 }
 
 async function writeTemplateSvgAssets(plan: AssetPlan, assetsDir: string): Promise<AssetManifest> {

@@ -165,7 +165,8 @@ function validateRequiredPlanAssets(
       };
     }
 
-    if (asset.role !== item.role || asset.format !== item.format || asset.size.w !== item.size.w || asset.size.h !== item.size.h) {
+    const formatMatches = asset.format === item.format || (item.format === 'svg' && asset.source === 'runtime_asset' && asset.format === 'png');
+    if (asset.role !== item.role || !formatMatches || asset.size.w !== item.size.w || asset.size.h !== item.size.h) {
       return {
         ok: false,
         code: 'ASSET_MANIFEST_INVALID',

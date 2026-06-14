@@ -13,7 +13,8 @@ import {
   createRuntimeState,
   exposeRuntime
 } from '../../shared/kernel.js';
-import { createDodgerArtRuntime, emitClearBurst, emitCoinSpark, type DodgerArtRuntime } from './dodger-art-library.js';
+import { EndScreenRenderer } from '../../shared/end-screen.js';
+import { createDodgerArtRuntime, emitCoinSpark, type DodgerArtRuntime } from './dodger-art-library.js';
 import {
   defaultDodgerRuntimePlan,
   resolveDodgerDifficultyCurve,
@@ -72,7 +73,7 @@ export class DodgerGameScene {
   private playerLabel?: Phaser.GameObjects.Text;
   private scoreText?: Phaser.GameObjects.Text;
   private statusText?: Phaser.GameObjects.Text;
-  private resultText?: Phaser.GameObjects.Text;
+  private readonly endScreen: EndScreenRenderer;
   private playerLaneIndex = 1;
   private readonly hazards: HazardSprite[] = [];
   private nextHazardSpawnMs = 0;
@@ -99,6 +100,7 @@ export class DodgerGameScene {
     this.score = new ScoreSystem(this.state, this.telemetry);
     this.gameState = new GameStateSystem(this.state, this.telemetry);
     this.objective = new ObjectiveSystem(this.state, this.gameState);
+    this.endScreen = new EndScreenRenderer(params.world, params.ui.screens);
   }
 
   create(phaserScene?: Phaser.Scene): void {
@@ -187,6 +189,7 @@ export class DodgerGameScene {
     this.nextCollectibleSlotIndex = 0;
     this.clearHazards();
     this.clearCollectibles();
+    this.endScreen.clear();
     this.movePlayerToLane(1);
     this.spawnNextHazard();
     this.spawnNextCollectible();
@@ -347,43 +350,27 @@ export class DodgerGameScene {
 
     if (this.state.gameStatus === 'WON') {
       this.statusText?.setText(`Health ${this.state.health}  Time ${this.state.frame}s  COMPLETE  R restart`);
-      this.renderResultText('CLEAR!');
+      this.renderEndScreen('win');
       return;
     }
 
     if (this.state.gameStatus === 'LOST') {
       this.statusText?.setText(`Health ${this.state.health}  Time ${this.state.frame}s  GAME OVER  R restart`);
-      this.renderResultText('GAME OVER');
+      this.renderEndScreen('lose');
       return;
     }
 
-    this.resultText?.setVisible(false);
+    this.endScreen.clear();
     this.statusText?.setText(`Health ${this.state.health}  Time ${this.state.frame}s  Running  ArrowUp/Down dodge  ArrowRight quick dodge  H hit${collectHint}  R restart`);
   }
 
-  private renderResultText(label: string): void {
+  private renderEndScreen(state: 'win' | 'lose'): void {
     const scene = this.phaserScene;
     if (scene === undefined) {
       return;
     }
 
-    if (this.resultText === undefined) {
-      this.resultText = scene.add.text(this.params.world.width / 2 - 92, this.params.world.height / 2 - 36, label, {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '42px',
-        color: '#fff7c2'
-      });
-      if (label === 'CLEAR!') {
-        emitClearBurst(scene, this.params.world.width, this.params.world.height);
-      }
-      return;
-    }
-
-    if (label === 'CLEAR!' && this.resultText.text !== label) {
-      emitClearBurst(scene, this.params.world.width, this.params.world.height);
-    }
-    this.resultText.setText(label);
-    this.resultText.setVisible(true);
+    this.endScreen.show(scene, state);
   }
 
   private advanceSurvival(deltaMs: number): void {

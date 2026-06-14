@@ -60,6 +60,7 @@ export const ART_ASSET_MOODS = [
 
 export const ART_ASSET_GAMEPLAY_ROLES = [
   'npc',
+  'player_character',
   'vendor',
   'quest_giver',
   'enemy',

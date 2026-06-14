@@ -5,7 +5,8 @@ import { AssetResolutionRepairSectionSchema } from './asset-repair-report.schema
 import { AssetSemanticConstraintSchema, AssetSemanticFitSchema, SemanticTagSchema, type AssetManifest, type AssetManifestAsset, type AssetPlan, type AssetPlanItem, type AssetSemanticFit } from './schemas.js';
 
 const AssetIdSchema = z.string().regex(/^[a-z][a-z0-9_]{1,39}$/);
-const AssetProviderSchema = z.enum(['local_asset_pack', 'template_svg', 'placeholder']);
+const AssetProviderSchema = z.enum(['local_asset_pack', 'runtime_asset', 'template_svg', 'placeholder']);
+const AssetResolutionSummaryProviderSchema = z.enum(['local_asset_pack', 'local_mixed_assets', 'template_svg', 'placeholder']);
 
 export const AssetResolutionCandidateRejectionSchema = z.strictObject({
   assetId: AssetIdSchema,
@@ -42,9 +43,11 @@ export const AssetResolutionReportSchema = z.strictObject({
   version: z.literal('asset-resolution-report-v0.1'),
   projectId: z.string().regex(/^proj_[A-Za-z0-9_-]+$/),
   summary: z.strictObject({
-    selectedProvider: AssetProviderSchema,
+    selectedProvider: AssetResolutionSummaryProviderSchema,
     selectedPackId: z.string().regex(/^[a-z][a-z0-9_-]{1,63}$/).optional(),
     fallbackUsed: z.boolean(),
+    fullFallbackUsed: z.boolean().optional(),
+    perRoleFallbackUsed: z.boolean().optional(),
     reason: z.string().min(1).max(240)
   }),
   assets: z.array(
@@ -61,6 +64,31 @@ export const AssetResolutionReportSchema = z.strictObject({
       semanticFit: AssetSemanticFitSchema
     })
   ),
+  selectedAssets: z
+    .array(
+      z.strictObject({
+        id: AssetIdSchema,
+        role: z.string().min(1),
+        source: AssetProviderSchema,
+        sourcePack: z.string().regex(/^[a-z][a-z0-9_-]{1,63}$/).optional(),
+        path: z.string().min(1),
+        status: z.enum(['ready', 'fallback_used', 'missing']),
+        runtimeAssetId: z.string().min(1).max(120).optional(),
+        runtimeContext: z.string().min(1).max(80).optional(),
+        fallbackScope: z.enum(['none', 'full', 'per_role']).optional(),
+        conversion: z
+          .strictObject({
+            status: z.enum(['not_required', 'thumbnail_copied', 'template_generated']),
+            sourcePath: z.string().min(1).optional(),
+            outputPath: z.string().min(1)
+          })
+          .optional(),
+        renderTransform: z.strictObject({ rotationDegrees: z.number().int().min(0).max(359) }).optional(),
+        expectedSemantic: AssetSemanticConstraintSchema.optional(),
+        semanticFit: AssetSemanticFitSchema
+      })
+    )
+    .optional(),
   candidates: z.array(AssetResolutionCandidateSchema),
   repair: AssetResolutionRepairSectionSchema.optional()
 });
@@ -179,24 +207,32 @@ export function buildHardSemanticRejection(planItem: AssetPlanItem, assetSemanti
 
 export function buildAssetResolutionReport(input: { plan: AssetPlan; manifest: AssetManifest; candidates: AssetResolutionCandidate[] }): AssetResolutionReport {
   const planById = new Map(input.plan.items.map((item) => [item.id, item]));
-  const selectedProvider = input.manifest.assets[0]?.source ?? 'template_svg';
+  const sources = [...new Set(input.manifest.assets.map((asset) => asset.source))];
+  const selectedProvider = sources.length === 1 ? sources[0] ?? 'template_svg' : 'local_mixed_assets';
   const selectedPackId = firstDefined(input.manifest.assets.map((asset) => asset.sourcePack));
-  const fallbackUsed = input.manifest.assets.some((asset) => asset.source === 'template_svg');
+  const fullFallbackUsed = input.manifest.assets.every((asset) => asset.source === 'template_svg');
+  const perRoleFallbackUsed = !fullFallbackUsed && input.manifest.assets.some((asset) => asset.source === 'template_svg');
+  const fallbackUsed = fullFallbackUsed;
   const reason =
     selectedProvider === 'local_asset_pack' && selectedPackId !== undefined
       ? `Selected complete local asset pack ${selectedPackId}.`
-      : 'No semantic-compatible complete local asset pack was selected; generated deterministic template SVG assets.';
+      : selectedProvider === 'local_mixed_assets'
+        ? 'Selected mixed local assets by role after complete local packs failed.'
+        : 'No semantic-compatible complete local asset pack was selected; generated deterministic template SVG assets.';
 
   return AssetResolutionReportSchema.parse({
     version: 'asset-resolution-report-v0.1',
     projectId: input.plan.projectId,
     summary: {
       selectedProvider,
-      selectedPackId,
+      selectedPackId: selectedProvider === 'local_asset_pack' ? selectedPackId : undefined,
       fallbackUsed,
+      fullFallbackUsed,
+      perRoleFallbackUsed,
       reason
     },
     assets: input.manifest.assets.map((asset) => buildReportAsset(asset, planById.get(asset.id))),
+    selectedAssets: input.manifest.assets.map((asset) => buildSelectedAsset(asset, planById.get(asset.id), fullFallbackUsed)),
     candidates: input.candidates
   });
 }
@@ -215,6 +251,29 @@ function buildReportAsset(asset: AssetManifestAsset, planItem: AssetPlanItem | u
     },
     expectedSemantic: planItem?.semantic,
     semanticFit
+  };
+}
+
+function buildSelectedAsset(
+  asset: AssetManifestAsset,
+  planItem: AssetPlanItem | undefined,
+  fullFallbackUsed: boolean
+): NonNullable<AssetResolutionReport['selectedAssets']>[number] {
+  const reportAsset = buildReportAsset(asset, planItem);
+  return {
+    id: reportAsset.id,
+    role: reportAsset.role,
+    source: reportAsset.selected.source,
+    sourcePack: reportAsset.selected.sourcePack,
+    path: reportAsset.selected.path,
+    status: reportAsset.selected.status,
+    runtimeAssetId: 'runtimeAssetId' in asset ? asset.runtimeAssetId : undefined,
+    runtimeContext: 'runtimeContext' in asset ? asset.runtimeContext : undefined,
+    fallbackScope: asset.source === 'template_svg' ? (fullFallbackUsed ? 'full' : 'per_role') : 'none',
+    conversion: 'conversion' in asset ? asset.conversion : undefined,
+    renderTransform: 'renderTransform' in asset ? asset.renderTransform : undefined,
+    expectedSemantic: reportAsset.expectedSemantic,
+    semanticFit: reportAsset.semanticFit
   };
 }
 

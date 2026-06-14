@@ -84,7 +84,12 @@ function mergeDodgerParams(params: Partial<DodgerTemplateParams>): DodgerTemplat
     player: { ...defaultDodgerParams.player, ...params.player },
     hazard: { ...defaultDodgerParams.hazard, ...params.hazard },
     ...(params.collectible ? { collectible: params.collectible } : {}),
-    objective: { ...defaultDodgerParams.objective, ...params.objective }
+    objective: { ...defaultDodgerParams.objective, ...params.objective },
+    ui: {
+      ...defaultDodgerParams.ui,
+      ...params.ui,
+      screens: { ...defaultDodgerParams.ui.screens, ...params.ui?.screens }
+    }
   };
 }
 

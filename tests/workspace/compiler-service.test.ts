@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { TemplateCompilerService } from '../../apps/maker-api/src/compiler/template-compiler.service.js';
 import { ViteBuildRunnerService } from '../../apps/maker-api/src/compiler/vite-build-runner.service.js';
 import { LocalWorkspaceService } from '../../apps/maker-api/src/workspace/local-workspace.service.js';
+import { AssetManifestSchema, AssetResolutionReportSchema } from '../../packages/asset-pipeline/src/index.js';
 import { validateAndNormalizeRawGameDsl } from '../../packages/game-dsl/src/index.js';
 import { createCollectorRawDsl, createDodgerRawDsl, createShooterRawDsl } from '../contracts/fixtures.js';
 
@@ -112,6 +113,52 @@ describe('Compiler + Build + Preview services', () => {
     await expect(readFile(join(second.outputDir, 'public/assets/projectile.svg'), 'utf8')).resolves.toContain('data:image/png;base64');
     await expect(readFile(join(second.outputDir, 'public/assets/collectible.svg'), 'utf8')).rejects.toThrow();
     await expect(readFile(join(second.outputDir, 'collector/src/GameScene.ts'), 'utf8')).rejects.toThrow();
+  });
+
+  it('compiles 小猫大战坦克 with mixed local runtime assets and Phaser-loadable textures', async () => {
+    const normalized = validateAndNormalizeRawGameDsl(createCatVsTankShooterRawDsl());
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const result = await new TemplateCompilerService(workspace, templateRoot).compile({ projectId, runId, ir: normalized.ir });
+    const manifest = AssetManifestSchema.parse(JSON.parse(await readFile(join(result.outputDir, 'public/asset_manifest.json'), 'utf8')));
+    const report = AssetResolutionReportSchema.parse(JSON.parse(await readFile(join(result.outputDir, 'asset_resolution_report.json'), 'utf8')));
+    const manifestById = new Map(manifest.assets.map((asset) => [asset.id, asset]));
+
+    expect(report.summary).toMatchObject({
+      selectedProvider: 'local_mixed_assets',
+      fallbackUsed: false,
+      fullFallbackUsed: false,
+      perRoleFallbackUsed: true
+    });
+    expect(manifestById.get('player')).toMatchObject({
+      source: 'runtime_asset',
+      format: 'png',
+      path: 'assets/player.png',
+      renderTransform: {
+        rotationDegrees: 180
+      },
+      semanticFit: {
+        expectedConcept: 'cat',
+        actualTags: expect.arrayContaining(['cat', 'kitten', 'feline'])
+      }
+    });
+    expect(manifestById.get('enemy')).toMatchObject({
+      source: 'local_asset_pack',
+      sourcePack: 'kenney-tiny-shooter-tanks',
+      path: 'assets/enemy.svg',
+      semanticFit: {
+        expectedConcept: 'tank',
+        actualTags: expect.arrayContaining(['tank', 'vehicle'])
+      }
+    });
+    await expect(readFile(join(result.outputDir, 'public/assets/player.png'))).resolves.toBeInstanceOf(Buffer);
+    await expect(readFile(join(result.outputDir, 'public/assets/enemy.svg'), 'utf8')).resolves.toContain('Kenney grey tank enemy sprite');
+    await expect(readFile(join(result.outputDir, 'public/assets/projectile.svg'), 'utf8')).resolves.toContain('<svg');
+    await expect(readFile(join(result.outputDir, 'shooter/src/shooter-art-library.ts'), 'utf8')).resolves.toContain('scene.load.image');
+    await expect(readFile(join(result.outputDir, 'shooter/src/shooter-art-library.ts'), 'utf8')).resolves.toContain('image.setAngle');
   });
 
   it('writes optional dodger collectible params when the DSL includes coins', async () => {
@@ -222,5 +269,24 @@ function createTankShooterRawDsl() {
   rawDsl.player.label = 'Tank';
   rawDsl.entities = rawDsl.entities.map((entity) => (entity.kind === 'enemy' ? { ...entity, id: 'enemy_tank', label: 'Tank' } : entity));
   rawDsl.rules.collisions = rawDsl.rules.collisions.map((collision) => ({ ...collision, target: 'enemy_tank' }));
+  return rawDsl;
+}
+
+function createCatVsTankShooterRawDsl() {
+  const rawDsl = createShooterRawDsl();
+  rawDsl.metadata.title = '小猫大战坦克';
+  rawDsl.player.label = '小猫';
+  rawDsl.entities = [
+    { id: 'fishbone', kind: 'projectile', label: '鱼骨头', damage: 1, movement: { type: 'move_right', speed_px_per_sec: 520 } },
+    { id: 'tank', kind: 'enemy', label: '坦克', count: 8, health: 1, movement: { type: 'move_left', speed_px_per_sec: 80 } }
+  ];
+  rawDsl.player.actions = rawDsl.player.actions.map((action) => ({ ...action, spawns: 'fishbone' }));
+  rawDsl.rules.collisions = rawDsl.rules.collisions.map((collision) => ({
+    ...collision,
+    id: 'fishbone_hits_tank',
+    source: 'fishbone',
+    target: 'tank'
+  }));
+  rawDsl.objectives.win = { type: 'enemy_cleared', target: 8 };
   return rawDsl;
 }

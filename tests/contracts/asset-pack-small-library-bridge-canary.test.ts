@@ -13,6 +13,7 @@ const SMALL_LIBRARY_METADATA_DIR = `${FIXTURE_ROOT}/metadata`;
 const MISSING_ASSET_ID = 'creature_kenney_cube_pet_otter_001';
 const BLOCKED_CONTEXT_ID = 'production_default_runtime';
 const BLOCKED_CONTEXT_ASSET_ID = 'creature_kenney_cube_pet_cat_001';
+const STILL_BLOCKED_CONTEXT_ASSET_ID = 'creature_kenney_cube_pet_bee_001';
 const EXPECTED_ASSET_IDS = [
   'creature_kenney_cube_pet_bee_001',
   'creature_kenney_cube_pet_bunny_001',
@@ -160,7 +161,7 @@ describe('Step 10B small library bridge canary', () => {
     const artifact = await loadSmallLibraryArtifact();
     const summary = expectDeterministic(() => createAssetResolverDiagnosticsSummary({
       runtimeMetadataArtifact: artifact,
-      requestedAssetIds: [BLOCKED_CONTEXT_ASSET_ID],
+      requestedAssetIds: [STILL_BLOCKED_CONTEXT_ASSET_ID],
       context: { contextId: BLOCKED_CONTEXT_ID }
     }));
 
@@ -174,9 +175,9 @@ describe('Step 10B small library bridge canary', () => {
         {
           severity: 'error',
           code: 'ASSET_RESOLVER_DIAGNOSTIC_BLOCKED_CONTEXT',
-          message: `Requested asset_id "${BLOCKED_CONTEXT_ASSET_ID}" is blocked in context "${BLOCKED_CONTEXT_ID}".`,
-          assetId: BLOCKED_CONTEXT_ASSET_ID,
-          jsonPath: '$.runtimeMetadataArtifact.assets[2].gameplay.blocked_contexts'
+          message: `Requested asset_id "${STILL_BLOCKED_CONTEXT_ASSET_ID}" is blocked in context "${BLOCKED_CONTEXT_ID}".`,
+          assetId: STILL_BLOCKED_CONTEXT_ASSET_ID,
+          jsonPath: '$.runtimeMetadataArtifact.assets[0].gameplay.blocked_contexts'
         }
       ]
     });

@@ -39,7 +39,14 @@ function createShooterRawDsl(language: 'zh' | 'en'): RawGameDsl {
       ]
     },
     objectives: { win: { type: 'enemy_cleared', target: 6 }, lose: { type: 'player_health_zero' } },
-    ui: { hud: ['score', 'health', 'objective'], restart: true }
+    ui: {
+      hud: ['score', 'health', 'objective'],
+      restart: true,
+      screens: {
+        win: { title: 'VICTORY', subtitle: 'Enemies cleared' },
+        lose: { title: 'DEFEAT', subtitle: 'Health depleted' }
+      }
+    }
   };
 }
 
@@ -68,6 +75,13 @@ function createCollectorRawDsl(language: 'zh' | 'en'): RawGameDsl {
       ]
     },
     objectives: { win: { type: 'target_score', target: 8 }, lose: { type: 'none' } },
-    ui: { hud: ['score', 'objective'], restart: true }
+    ui: {
+      hud: ['score', 'objective'],
+      restart: true,
+      screens: {
+        win: { title: 'VICTORY', subtitle: 'All gems collected' },
+        lose: { title: 'DEFEAT', subtitle: 'Try again' }
+      }
+    }
   };
 }

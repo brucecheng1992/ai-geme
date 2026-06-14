@@ -204,7 +204,7 @@ describe('Phaser templates', () => {
     expect(scene).toContain('renderCollectibleShape');
     expect(scene).toContain("this.art.addImage(scene, 'player_character'");
     expect(scene).toContain('emitCoinSpark');
-    expect(scene).toContain('emitClearBurst');
+    expect(scene).toContain('EndScreenRenderer');
     expect(scene).toContain('Math.min(this.state.score, this.collectibleTargetScore)');
     expect(scene).toContain('impactHoldMs');
     expect(scene).toContain('player: { x: this.params.player.startX, y: this.playerY');
@@ -856,6 +856,48 @@ describe('Phaser templates', () => {
     expect(sceneMock.textValues).toContain('Score 0  HP 3\nObjective Clear enemies 0/6');
   });
 
+  it('renders win and lose screens for every playable template through shared UI contract', async () => {
+    const { CollectorGameScene } = await import('../../templates/phaser/collector/src/GameScene.js');
+    const { defaultCollectorParams } = await import('../../templates/phaser/collector/src/template-params.js');
+    const { DodgerGameScene } = await import('../../templates/phaser/dodger/src/GameScene.js');
+    const { defaultDodgerParams } = await import('../../templates/phaser/dodger/src/template-params.js');
+    const { ShooterGameScene } = await import('../../templates/phaser/shooter/src/GameScene.js');
+    const { defaultShooterParams } = await import('../../templates/phaser/shooter/src/template-params.js');
+
+    const collectorWinScene = createPhaserSceneMock();
+    const collectorWin = new CollectorGameScene({ ...defaultCollectorParams, objective: { targetScore: 1 } });
+    collectorWin.create(collectorWinScene as unknown as Parameters<typeof collectorWin.create>[0]);
+    collectorWin.start();
+    collectorWin.collectItem();
+    expect(collectorWinScene.textValues).toEqual(expect.arrayContaining(['VICTORY', 'All gems collected', 'Press R to restart']));
+
+    const dodgerWinScene = createPhaserSceneMock();
+    const dodgerWin = new DodgerGameScene({ ...defaultDodgerParams, objective: { surviveDurationMs: 1000 } });
+    dodgerWin.create(dodgerWinScene as unknown as Parameters<typeof dodgerWin.create>[0]);
+    dodgerWin.update(1000);
+    expect(dodgerWinScene.textValues).toEqual(expect.arrayContaining(['VICTORY', 'Survived the timer', 'Press R to restart']));
+
+    const dodgerLoseScene = createPhaserSceneMock();
+    const dodgerLose = new DodgerGameScene({ ...defaultDodgerParams, player: { ...defaultDodgerParams.player, health: 1 } });
+    dodgerLose.create(dodgerLoseScene as unknown as Parameters<typeof dodgerLose.create>[0]);
+    dodgerLose.hitHazard();
+    expect(dodgerLoseScene.textValues).toEqual(expect.arrayContaining(['DEFEAT', 'Health depleted', 'Press R to restart']));
+
+    const shooterWinScene = createPhaserSceneMock();
+    const shooterWin = new ShooterGameScene({ ...defaultShooterParams, objective: { winType: 'target_score', targetScore: 0 } });
+    shooterWin.create(shooterWinScene as unknown as Parameters<typeof shooterWin.create>[0]);
+    shooterWin.start();
+    shooterWin.update(0, 16);
+    expect(shooterWinScene.textValues).toEqual(expect.arrayContaining(['VICTORY', 'Enemies cleared', 'Press R to restart']));
+
+    const shooterLoseScene = createPhaserSceneMock();
+    const shooterLose = new ShooterGameScene({ ...defaultShooterParams, player: { ...defaultShooterParams.player, health: 0 } });
+    shooterLose.create(shooterLoseScene as unknown as Parameters<typeof shooterLose.create>[0]);
+    shooterLose.start();
+    shooterLose.update(0, 16);
+    expect(shooterLoseScene.textValues).toEqual(expect.arrayContaining(['DEFEAT', 'Health depleted', 'Press R to restart']));
+  });
+
   it('shooter runtime requires real movement and projectile collision before enemy clear', async () => {
     const {
       advanceShooterWorld,
@@ -943,6 +985,7 @@ function createPhaserSceneMock() {
     setText(value: unknown): TextMock;
     setX(...args: unknown[]): TextMock;
     setY(...args: unknown[]): TextMock;
+    setOrigin(...args: unknown[]): TextMock;
     setVisible(...args: unknown[]): TextMock;
     destroy(...args: unknown[]): undefined;
   };
@@ -966,6 +1009,7 @@ function createPhaserSceneMock() {
       },
       setX: () => text,
       setY: () => text,
+      setOrigin: () => text,
       setVisible: () => text,
       destroy: () => undefined
     };

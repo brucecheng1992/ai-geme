@@ -13,6 +13,7 @@ import {
   createRuntimeState,
   exposeRuntime
 } from '../../shared/kernel.js';
+import { EndScreenRenderer } from '../../shared/end-screen.js';
 import type { CollectorAssetTelemetry } from './collector-art-library.js';
 import type { CollectorTemplateParams } from './template-params.js';
 
@@ -34,6 +35,7 @@ export class CollectorGameScene {
   private phaserScene?: Phaser.Scene;
   private scoreText?: Phaser.GameObjects.Text;
   private statusText?: Phaser.GameObjects.Text;
+  private readonly endScreen: EndScreenRenderer;
 
   constructor(
     private readonly params: CollectorTemplateParams,
@@ -48,6 +50,7 @@ export class CollectorGameScene {
     this.score = new ScoreSystem(this.state, this.telemetry);
     this.gameState = new GameStateSystem(this.state, this.telemetry);
     this.objective = new ObjectiveSystem(this.state, this.gameState);
+    this.endScreen = new EndScreenRenderer(params.world, params.ui.screens);
   }
 
   create(phaserScene?: Phaser.Scene): void {
@@ -73,12 +76,14 @@ export class CollectorGameScene {
     this.telemetry.emit('item.collected');
     this.score.add(this.params.collectible.scorePerItem);
     this.objective.completeWhen(this.state.score >= this.params.objective.targetScore);
+    this.renderEndScreenIfTerminal();
     this.renderHud();
   }
 
   restart(): void {
     this.input.receive('restart');
     this.gameState.restart();
+    this.endScreen.clear();
     this.renderHud();
   }
 
@@ -160,5 +165,17 @@ export class CollectorGameScene {
   private renderHud(): void {
     this.scoreText?.setText(`Score ${this.state.score}/${this.params.objective.targetScore}`);
     this.statusText?.setText('Enter start  ArrowRight collect  R restart');
+  }
+
+  private renderEndScreenIfTerminal(): void {
+    const scene = this.phaserScene;
+    if (scene === undefined) {
+      return;
+    }
+    if (this.state.gameStatus === 'WON') {
+      this.endScreen.show(scene, 'win');
+    } else if (this.state.gameStatus === 'LOST') {
+      this.endScreen.show(scene, 'lose');
+    }
   }
 }
