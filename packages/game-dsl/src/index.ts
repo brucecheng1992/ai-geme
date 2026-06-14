@@ -6,17 +6,20 @@ export {
   buildGameDslArtifact,
   buildDslValidationReport,
   validateGameDslArtifact,
+  withDslValidationSourceArtifact,
   GameDslArtifactSchema,
   DslValidationReportSchema,
   GAME_DSL_ARTIFACT_KIND,
   GAME_DSL_SCHEMA_VERSION,
   DSL_VALIDATION_REPORT_ARTIFACT_KIND,
   DSL_VALIDATION_REPORT_SCHEMA_VERSION,
+  DSL_VALIDATION_REPORT_VERSION,
   type GameDslArtifact,
   type GameDslArtifactValidationResult,
   type StableGameGenre,
   type DslValidationReport,
-  type DslValidationReportIssue
+  type DslValidationReportIssue,
+  type DslValidationSourceArtifact
 } from './artifact-contract.js';
 export {
   buildRuntimeCapabilityReport,

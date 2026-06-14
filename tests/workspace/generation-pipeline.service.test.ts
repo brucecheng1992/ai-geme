@@ -276,11 +276,25 @@ describe('GenerationPipelineService failure states', () => {
     });
     expect(validationReport).toMatchObject({
       artifactKind: 'dsl_validation_report',
+      reportVersion: 'dsl-validation-report-v1',
       schemaVersion: 'dsl_validation_report.v1',
       runId,
+      sourceArtifact: 'game_dsl.json',
       validatedArtifact: { artifactKind: 'game_dsl', schemaVersion: 'game_dsl.v1', dslId: gameDsl.dslId },
       status: 'valid',
+      valid: true,
       errorCount: 0,
+      checkedPaths: expect.arrayContaining(['schemaVersion', 'player.id', 'level.waves.alien_wave.id']),
+      stableIdSummary: expect.objectContaining({
+        duplicateIds: [],
+        checked: expect.arrayContaining([{ path: 'player.id', id: 'player' }])
+      }),
+      objectCounts: expect.objectContaining({
+        player: 1,
+        enemyTypes: 1,
+        projectiles: 1,
+        waves: 1
+      }),
       requiredCapabilities: expect.arrayContaining(['top_down_camera', 'projectile_combat'])
     });
     expect(runtimeCapabilityReport).toMatchObject({
@@ -338,7 +352,9 @@ describe('GenerationPipelineService failure states', () => {
       player: { actions: [expect.objectContaining({ projectileRef: 'ghost_projectile' })] }
     });
     expect(validationReport).toMatchObject({
+      sourceArtifact: 'game_dsl.candidate.json',
       status: 'invalid',
+      valid: false,
       errorCount: expect.any(Number),
       errors: expect.arrayContaining([
         expect.objectContaining({ code: 'UNRESOLVED_REFERENCE', path: 'sourceDsl.player.actions.0.spawns' }),

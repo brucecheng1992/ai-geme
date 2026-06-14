@@ -274,7 +274,7 @@ export function validateAndPlanDslPatch(input: {
 
   if (capabilityReport.status !== 'supported') {
     const candidateDsl = applyCandidatePatch(input.baseDsl, patch);
-    const candidateDslValidation = validateGameDslArtifact(candidateDsl);
+    const candidateDslValidation = validateGameDslArtifact(candidateDsl, { sourceArtifact: 'game_dsl.candidate.json' });
     const report = buildPatchValidationReport(patch.patchId, [], checks);
     return {
       ok: true,
@@ -288,7 +288,7 @@ export function validateAndPlanDslPatch(input: {
 
   const classification = classifyPatch(patch);
   const candidateDsl = classification.kind === 'hot' ? applyHotPatch(input.baseDsl, patch) : applyCandidatePatch(input.baseDsl, patch);
-  const candidateDslValidation = validateGameDslArtifact(candidateDsl);
+  const candidateDslValidation = validateGameDslArtifact(candidateDsl, { sourceArtifact: 'game_dsl.candidate.json' });
   if (classification.kind === 'hot') {
     checks.push({ name: 'patched_dsl_valid', status: candidateDslValidation.ok ? 'passed' : 'failed' });
   }

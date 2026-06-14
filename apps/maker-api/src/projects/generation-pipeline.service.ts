@@ -19,6 +19,7 @@ import {
   checkPhaserRuntimeCapabilities,
   validateAndNormalizeRawGameDsl,
   validateGameDslArtifact,
+  withDslValidationSourceArtifact,
   type DslValidationReport,
   type GameDslArtifact,
   type RuntimeCapabilityReport
@@ -498,15 +499,16 @@ export class GenerationPipelineService {
     const candidate = buildGameDslArtifact({ rawDsl, runId: input.runId, intentPlan });
     const validation = validateGameDslArtifact(candidate);
 
-    await this.writeDslValidationReport(input, validation.report);
-
     if (!validation.ok) {
+      const report = withDslValidationSourceArtifact(validation.report, 'game_dsl.candidate.json');
+      await this.writeDslValidationReport(input, report);
       await this.writeGameDslCandidate(input, validation.candidate);
       await this.setStatus(input.projectId, input.runId, 'DSL_VALIDATION_FAILED', 'dsl-validation', 'FAILED');
-      await this.appendEvent(input.runId, 'dsl.validation.failed', validation.report.errors.map((issue) => `${issue.path}: ${issue.message}`).join('; '));
+      await this.appendEvent(input.runId, 'dsl.validation.failed', report.errors.map((issue) => `${issue.path}: ${issue.message}`).join('; '));
       return { ok: false };
     }
 
+    await this.writeDslValidationReport(input, validation.report);
     await this.writeGameDslArtifact(input, validation.artifact);
     await this.writeRuntimeCapabilityReport(input, buildRuntimeCapabilityReport({ runId: input.runId, validatedDsl: validation.artifact }));
     await this.appendEvent(input.runId, 'dsl.validation.passed', 'Versioned Game DSL artifact validated.');

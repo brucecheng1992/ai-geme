@@ -8,11 +8,11 @@
 
 ## 当前阶段
 
-当前处于 2D pipeline stabilization / asset artifact observability lane。Step 20 已完成 compiler 侧 `asset_pipeline_report.json`：为 `AssetPlan -> AssetManifest -> Phaser preview manifest -> asset files -> compile files` 增加 deterministic、可追溯的 report，并通过 compiler / asset-pipeline / full test 验证与 Oracle 门禁。本步不接 production asset packs、不改变 runtime/default integration、resolver、QA verdict、Workbench、Phaser gameplay、asset pack loading 或 repair behavior。历史 Step 14C controlled rollout verification / closeout 已关闭 controlled rollout lane：`ART_ASSET_SEMANTIC_ROLLOUT_ENABLED` 默认关闭，flag-off 保持当前/default behavior，flag-on 仅限 approved Pirate Kit 20-asset runtime-safe input，rollback 为关闭 flag。
+当前处于 2D pipeline stabilization / DSL artifact contract lane。Step 21 已完成 `dsl_validation_report.json` 稳定 contract：为 `game_dsl.json` / `game_dsl.candidate.json` 增加 deterministic validation report 字段、stable id summary、object counts、checked paths、source artifact 归属和 schema-level report invariant 校验；invalid DSL 仍明确阻断 compile / build / QA。本步不扩 DSL 能力、不改变 prompt、Phaser gameplay、resolver / fallback、QA verdict、Workbench UI、asset pack、provider abstraction 或 live edit 能力。历史 Step 20 已完成 compiler 侧 `asset_pipeline_report.json`，历史 Step 14C controlled rollout verification / closeout 已关闭 controlled rollout lane。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：继续 2D pipeline stabilization Step 2，补 DSL schema v1 validation report artifact，并把 `game_dsl.json` / `dsl_validation_report.json` 写成稳定 pipeline contract。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：继续 2D pipeline stabilization Step 3，选择最小 pipeline artifact index / API visibility 挂接点，让 Workbench 或项目 API 能稳定看到 `game_dsl.json`、`dsl_validation_report.json`、`runtime_capability_report.json`、`asset_pipeline_report.json` 等 artifact refs；不得改变 QA verdict 总结构或重复 Step 20 asset report。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
 
 ### 2.50 Step 14C: Controlled Rollout Verification / Closeout
 
@@ -4278,3 +4278,70 @@ fixture size check：
 当前下一步：
 
 - 继续 2D pipeline stabilization Step 2：补 DSL schema v1 validation report artifact，并把 `game_dsl.json` / `dsl_validation_report.json` 写成稳定 pipeline contract。
+
+### 21. DSL Pipeline Step 7：Deterministic DSL Validation Report Contract
+
+完成时间：2026-06-15
+
+已完成内容：
+
+- 扩展 `packages/game-dsl/src/artifact-contract.ts` 的 `DslValidationReportSchema`：
+  - 新增 `reportVersion: "dsl-validation-report-v1"`。
+  - 新增 `sourceArtifact`，区分 valid 路径的 `game_dsl.json` 和 invalid 路径的 `game_dsl.candidate.json`。
+  - 新增 `valid` boolean，并用 schema-level invariant 保证 `status` / `valid` 一致。
+  - 新增 `checkedPaths`，按稳定顺序记录 schema / semantic checks / issue paths / stable id paths。
+  - 新增 `stableIdSummary`，记录 stable id 总数、唯一数、重复 id 和按 path 排序的 checked id 列表。
+  - 新增 `objectCounts`，记录 player、player actions、enemyTypes、projectiles、waves、pickups、bosses、terrain、segments 计数。
+  - 用 schema-level invariant 保证 `errorCount === errors.length`、`warningCount === warnings.length`。
+- `buildDslValidationReport` 现在对 `errors`、`warnings`、`checkedPaths`、`stableIdSummary.checked` 和 `duplicateIds` 做 deterministic ordering。
+- `validateGameDslArtifact` 增加可选 `sourceArtifact` 参数，默认仍为 `game_dsl.json`。
+- `GenerationPipelineService` 在 invalid artifact 路径中写出 `sourceArtifact: "game_dsl.candidate.json"` 的 `dsl_validation_report.json`，并保持 invalid DSL 阻断 compile / build / QA。
+- live edit candidate validation report 仅校正 `sourceArtifact: "game_dsl.candidate.json"` 元数据，不改变 patch 能力、plan、runtime apply 或 live edit 流程。
+- 新增 `tests/workspace/dsl-validation-report.test.ts`，覆盖 deterministic happy path、missing required field、duplicate stable id、dangling reference、report invariant 失败。
+- 扩展 `tests/workspace/generation-pipeline.service.test.ts`，覆盖 valid / invalid generation pipeline 中 `sourceArtifact`、`valid`、stable id summary、object counts 和 checked paths。
+
+阶段结果：
+
+- `game_dsl.json` / `dsl_validation_report.json` 成为稳定、可回归、可审计的 DSL pipeline contract。
+- invalid DSL 继续写 `game_dsl.candidate.json` 和 `dsl_validation_report.json`，并明确返回 `DSL_VALIDATION_FAILED`，不进入 preview success。
+- 本步不改变 `asset_pipeline_report.json` 语义，也不改变 resolver ranking / fallback、provider abstraction、asset pack、Phaser gameplay、prompt、QA verdict、Workbench UI 或 live edit 能力。
+
+本步未做：
+
+- 未新增 DSL schema 能力或玩法表达。
+- 未新增 provider / 外部 asset 服务。
+- 未扩大 asset pack。
+- 未把 DSL artifact refs 接入 Workbench UI 或项目 API 聚合面。
+- 未改变 `RuntimeCompileSuccess.files` 的语义；compile files 仍只描述生成的 Phaser/Vite 项目目录，DSL artifacts 仍位于 model-output artifact 区。
+
+已通过验证：
+
+    npx vitest run tests/workspace/dsl-validation-report.test.ts tests/workspace/compiler-service.test.ts tests/workspace/generation-pipeline.service.test.ts
+    # 3 个测试文件，44 个测试通过
+
+    npx vitest run tests/workspace/asset-pipeline-report.test.ts tests/contracts/asset-pipeline.test.ts
+    # 2 个测试文件，27 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+    npm test
+    # contracts：24 个测试文件，224 个测试通过
+    # workspace：16 个测试文件，204 个测试通过
+
+审查记录：
+
+- Oracle 首轮：P0/P1/P2 无；发现 1 个 P3：
+  - `DslValidationReportSchema` 只校验结构，不校验 `status` / `valid` / `errorCount` / `warningCount` 与 arrays 一致性。
+- 已修复：
+  - 增加 schema-level invariant，保证 `status` / `valid`、`errorCount` / `errors.length`、`warningCount` / `warnings.length` 一致。
+  - 增加 focused test 覆盖 report invariant 失败路径。
+- Oracle 增量复审：P0/P1/P2 无；上一轮 P3 已关闭。第二轮 P3 提醒外部 report 仍可声明 `invalid` 但没有 errors；已继续收紧 schema invariant，要求 `status` / `valid` 必须由 `errors.length` 推导，并补 schema boundary 测试。
+- Oracle 最终复审：P0/P1/P2/P3 无。
+
+当前下一步：
+
+- 继续 2D pipeline stabilization Step 3：选择最小 pipeline artifact index / API visibility 挂接点，让 Workbench 或项目 API 能稳定看到 `game_dsl.json`、`dsl_validation_report.json`、`runtime_capability_report.json`、`asset_pipeline_report.json` 等 artifact refs；不得改变 QA verdict 总结构或重复 Step 20 asset report。

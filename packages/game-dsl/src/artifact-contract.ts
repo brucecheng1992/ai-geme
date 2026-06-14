@@ -7,6 +7,7 @@ export const GAME_DSL_ARTIFACT_KIND = 'game_dsl';
 export const GAME_DSL_SCHEMA_VERSION = 'game_dsl.v1';
 export const DSL_VALIDATION_REPORT_ARTIFACT_KIND = 'dsl_validation_report';
 export const DSL_VALIDATION_REPORT_SCHEMA_VERSION = 'dsl_validation_report.v1';
+export const DSL_VALIDATION_REPORT_VERSION = 'dsl-validation-report-v1';
 
 const DslIdSchema = z.string().regex(/^[a-z][a-z0-9_]{1,39}$/);
 const CriticalFieldSchema = z.never();
@@ -178,24 +179,60 @@ export type StableGameGenre = GameDslArtifact['genre'];
 
 export type DslValidationReport = z.infer<typeof DslValidationReportSchema>;
 export type DslValidationReportIssue = DslValidationReport['errors'][number];
+export type DslValidationSourceArtifact = DslValidationReport['sourceArtifact'];
 
 export const DslValidationReportSchema = z.strictObject({
   artifactKind: z.literal(DSL_VALIDATION_REPORT_ARTIFACT_KIND),
+  reportVersion: z.literal(DSL_VALIDATION_REPORT_VERSION),
   schemaVersion: z.literal(DSL_VALIDATION_REPORT_SCHEMA_VERSION),
   runId: z.string().min(1).max(120),
+  sourceArtifact: z.enum(['game_dsl.json', 'game_dsl.candidate.json']),
   validatedArtifact: z.strictObject({
     artifactKind: z.literal(GAME_DSL_ARTIFACT_KIND),
     schemaVersion: z.literal(GAME_DSL_SCHEMA_VERSION),
     dslId: DslIdSchema
   }),
   status: z.enum(['valid', 'invalid']),
+  valid: z.boolean(),
   errorCount: z.number().int().min(0),
   warningCount: z.number().int().min(0),
   errors: z.array(z.strictObject({ code: z.string().min(1), path: z.string().min(1), message: z.string().min(1) })),
   warnings: z.array(z.strictObject({ code: z.string().min(1), path: z.string().min(1), message: z.string().min(1) })),
+  checkedPaths: z.array(z.string().min(1)),
+  stableIdSummary: z.strictObject({
+    total: z.number().int().min(0),
+    unique: z.number().int().min(0),
+    duplicateIds: z.array(DslIdSchema),
+    checked: z.array(z.strictObject({ path: z.string().min(1), id: DslIdSchema }))
+  }),
+  objectCounts: z.strictObject({
+    player: z.number().int().min(0),
+    playerActions: z.number().int().min(0),
+    enemyTypes: z.number().int().min(0),
+    projectiles: z.number().int().min(0),
+    waves: z.number().int().min(0),
+    pickups: z.number().int().min(0),
+    bosses: z.number().int().min(0),
+    terrain: z.number().int().min(0),
+    segments: z.number().int().min(0)
+  }),
   normalizedDefaults: z.array(z.strictObject({ path: z.string().min(1), value: z.unknown(), reason: z.string().min(1) })),
   semanticChecks: z.array(z.strictObject({ name: z.string().min(1), status: z.enum(['passed', 'failed']), message: z.string().optional() })),
   requiredCapabilities: z.array(CapabilitySchema)
+}).superRefine((report, ctx) => {
+  const expectedStatus = report.errors.length === 0 ? 'valid' : 'invalid';
+  if (report.status !== expectedStatus) {
+    ctx.addIssue({ code: 'custom', path: ['status'], message: 'status must match errors length.' });
+  }
+  if (report.valid !== (report.errors.length === 0)) {
+    ctx.addIssue({ code: 'custom', path: ['valid'], message: 'valid must match status.' });
+  }
+  if (report.errorCount !== report.errors.length) {
+    ctx.addIssue({ code: 'custom', path: ['errorCount'], message: 'errorCount must match errors length.' });
+  }
+  if (report.warningCount !== report.warnings.length) {
+    ctx.addIssue({ code: 'custom', path: ['warningCount'], message: 'warningCount must match warnings length.' });
+  }
 });
 
 export type GameDslArtifactValidationResult =
@@ -354,7 +391,10 @@ export function buildGameDslArtifact(input: {
   };
 }
 
-export function validateGameDslArtifact(input: unknown): GameDslArtifactValidationResult {
+export function validateGameDslArtifact(
+  input: unknown,
+  options: { sourceArtifact?: DslValidationSourceArtifact } = {}
+): GameDslArtifactValidationResult {
   const parsed = GameDslArtifactSchema.safeParse(input);
   const schemaErrors = parsed.success
     ? []
@@ -369,6 +409,8 @@ export function validateGameDslArtifact(input: unknown): GameDslArtifactValidati
   const report = buildDslValidationReport({
     runId: readRunId(input),
     dslId: readDslId(input),
+    sourceArtifact: options.sourceArtifact ?? 'game_dsl.json',
+    artifact,
     errors,
     warnings: [],
     normalizedDefaults: [],
@@ -382,30 +424,152 @@ export function validateGameDslArtifact(input: unknown): GameDslArtifactValidati
 export function buildDslValidationReport(input: {
   runId: string;
   dslId: string;
+  sourceArtifact?: DslValidationSourceArtifact;
+  artifact?: GameDslArtifact;
   errors: DslValidationReportIssue[];
   warnings: DslValidationReportIssue[];
   normalizedDefaults: DslValidationReport['normalizedDefaults'];
   semanticChecks: DslValidationReport['semanticChecks'];
   requiredCapabilities: GameDslArtifact['requiredCapabilities'];
 }): DslValidationReport {
+  const errors = sortIssues(input.errors);
+  const warnings = sortIssues(input.warnings);
+  const checkedIds = input.artifact === undefined ? [] : collectArtifactIds(input.artifact);
+  const stableIdSummary = buildStableIdSummary(checkedIds);
+  const objectCounts = input.artifact === undefined ? emptyObjectCounts() : buildObjectCounts(input.artifact);
+  const checkedPaths = buildCheckedPaths(input.artifact, input.semanticChecks, errors, warnings);
+
   return {
     artifactKind: DSL_VALIDATION_REPORT_ARTIFACT_KIND,
+    reportVersion: DSL_VALIDATION_REPORT_VERSION,
     schemaVersion: DSL_VALIDATION_REPORT_SCHEMA_VERSION,
     runId: input.runId,
+    sourceArtifact: input.sourceArtifact ?? 'game_dsl.json',
     validatedArtifact: {
       artifactKind: GAME_DSL_ARTIFACT_KIND,
       schemaVersion: GAME_DSL_SCHEMA_VERSION,
       dslId: input.dslId
     },
-    status: input.errors.length === 0 ? 'valid' : 'invalid',
-    errorCount: input.errors.length,
-    warningCount: input.warnings.length,
-    errors: input.errors,
-    warnings: input.warnings,
+    status: errors.length === 0 ? 'valid' : 'invalid',
+    valid: errors.length === 0,
+    errorCount: errors.length,
+    warningCount: warnings.length,
+    errors,
+    warnings,
+    checkedPaths,
+    stableIdSummary,
+    objectCounts,
     normalizedDefaults: input.normalizedDefaults,
     semanticChecks: input.semanticChecks,
     requiredCapabilities: input.requiredCapabilities
   };
+}
+
+export function withDslValidationSourceArtifact(
+  report: DslValidationReport,
+  sourceArtifact: DslValidationSourceArtifact
+): DslValidationReport {
+  return DslValidationReportSchema.parse({ ...report, sourceArtifact });
+}
+
+function sortIssues(issues: DslValidationReportIssue[]): DslValidationReportIssue[] {
+  return [...issues].sort((left, right) => compareStrings(`${left.path}\u0000${left.code}\u0000${left.message}`, `${right.path}\u0000${right.code}\u0000${right.message}`));
+}
+
+function buildCheckedPaths(
+  artifact: GameDslArtifact | undefined,
+  semanticChecks: DslValidationReport['semanticChecks'],
+  errors: DslValidationReportIssue[],
+  warnings: DslValidationReportIssue[]
+): string[] {
+  const paths = new Set<string>([
+    '<root>',
+    'artifactKind',
+    'schemaVersion',
+    'dslId',
+    'runId',
+    'sourceDsl',
+    ...semanticChecks.map((check) => `semanticChecks.${check.name}`),
+    ...errors.map((issue) => issue.path),
+    ...warnings.map((issue) => issue.path)
+  ]);
+
+  if (artifact !== undefined) {
+    for (const [path] of collectArtifactIds(artifact)) {
+      paths.add(path);
+    }
+    for (const path of [
+      'intentPlanRef',
+      'genre',
+      'requiredCapabilities',
+      'ipPolicy',
+      'world',
+      'camera',
+      'player',
+      'enemyTypes',
+      'projectiles',
+      'level',
+      'assets',
+      'winLose',
+      'pickups',
+      'bosses'
+    ]) {
+      paths.add(path);
+    }
+  }
+
+  return [...paths].sort(compareStrings);
+}
+
+function buildStableIdSummary(ids: Array<[string, string]>): DslValidationReport['stableIdSummary'] {
+  const checked = ids.map(([path, id]) => ({ path, id })).sort((left, right) => compareStrings(left.path, right.path));
+  const counts = new Map<string, number>();
+  for (const [, id] of ids) {
+    counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  const duplicateIds = [...counts.entries()]
+    .filter(([, count]) => count > 1)
+    .map(([id]) => id)
+    .sort(compareStrings);
+
+  return {
+    total: checked.length,
+    unique: counts.size,
+    duplicateIds,
+    checked
+  };
+}
+
+function buildObjectCounts(artifact: GameDslArtifact): DslValidationReport['objectCounts'] {
+  return {
+    player: 1,
+    playerActions: artifact.player.actions.length,
+    enemyTypes: Object.keys(artifact.enemyTypes).length,
+    projectiles: Object.keys(artifact.projectiles).length,
+    waves: Object.keys(artifact.level.waves).length,
+    pickups: Object.keys(artifact.pickups ?? {}).length,
+    bosses: Object.keys(artifact.bosses ?? {}).length,
+    terrain: artifact.level.terrain?.length ?? 0,
+    segments: artifact.level.segments?.length ?? 0
+  };
+}
+
+function emptyObjectCounts(): DslValidationReport['objectCounts'] {
+  return {
+    player: 0,
+    playerActions: 0,
+    enemyTypes: 0,
+    projectiles: 0,
+    waves: 0,
+    pickups: 0,
+    bosses: 0,
+    terrain: 0,
+    segments: 0
+  };
+}
+
+function compareStrings(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function validateGameDslSemantics(artifact: GameDslArtifact): {
