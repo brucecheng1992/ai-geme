@@ -87,19 +87,35 @@ const validDodgerExample: RawGameDsl = {
     label: 'Runner',
     health: 3,
     movement: { type: 'horizontal', speed_px_per_sec: 300 },
-    actions: []
+    actions: [{ id: 'collect_action', type: 'collect' }]
   },
   entities: [
+    {
+      id: 'coin',
+      kind: 'collectible',
+      label: 'Coin',
+      count: 6,
+      movement: { type: 'static' },
+      spawn: { strategy: 'fixed_positions', max_active: 2, interval_ms: 1000 }
+    },
     {
       id: 'barrier',
       kind: 'hazard',
       label: 'Barrier',
       count: 6,
-      movement: { type: 'fall_down', speed_px_per_sec: 180 }
+      movement: { type: 'fall_down', speed_px_per_sec: 180 },
+      spawn: { strategy: 'right_edge_wave', max_active: 3, interval_ms: 800, lane_count: 3 }
     }
   ],
   rules: {
     collisions: [
+      {
+        id: 'collect_coin',
+        source: 'player',
+        target: 'coin',
+        type: 'overlap',
+        effects: [{ type: 'score_add', value: 1 }, { type: 'destroy' }]
+      },
       {
         id: 'player_hits_barrier',
         source: 'player',
@@ -114,7 +130,7 @@ const validDodgerExample: RawGameDsl = {
     lose: { type: 'player_health_zero' }
   },
   ui: {
-    hud: ['health', 'timer'],
+    hud: ['score', 'health', 'timer'],
     restart: true
   }
 };
@@ -227,6 +243,16 @@ export function buildRawDslPromptContext(params: BuildRawDslPromptContextParams)
       'onCreate',
       'expression',
       'projectile_id',
+      'runtime_plan',
+      'template_params',
+      'enemy_waves',
+      'waveSource',
+      'wave_source',
+      'runtime_wave',
+      'difficulty_curve',
+      'speed_multiplier',
+      'spawn_interval_multiplier',
+      'ramp_duration_ms',
       'cooldown_sec',
       'spawn_interval_sec',
       'spawn_interval_decrease_per_sec',
@@ -240,9 +266,12 @@ export function buildRawDslPromptContext(params: BuildRawDslPromptContextParams)
       'Do not add fields outside the schema. Use cooldown_ms and spawns on player.actions; use movement.speed_px_per_sec, not entity-level speed.',
       'Collision effects only support type and optional value. Do not add target inside effects.',
       'Objectives support type and optional target only. Do not add duration_sec.',
+      'Do not output runtime_plan or template_params fields in Raw Game DSL.',
       'For shooter in P0, include one primary projectile entity and one primary enemy entity that form the required fire-hit-clear loop.',
-      'If shooter uses target_score instead, target must be less than or equal to the sum of every scoring collision score_add value multiplied by its target entity count.',
+      'For shooter in P0, use enemy_cleared or reachable target_score as win type. Do not use survive_duration for shooter.',
+      'If shooter uses target_score instead, target must be less than or equal to the primary enemy projectile_hit score_add value multiplied by the primary enemy count.',
       'For shooter in P0, do not include collectibles or multiple enemy kinds because the current runtime template only consumes one primary projectile and one primary enemy.',
+      'Only dodger hazard right_edge_wave and dodger collectible fixed_positions may use spawn. Do not add spawn to collector, shooter, projectile or enemy entities.',
       'Do not output a different genre by renaming entities while keeping incompatible mechanics.',
       'Do not invent unsupported mechanics when they cannot be represented by game-dsl-v0.1.'
     ],
@@ -250,7 +279,8 @@ export function buildRawDslPromptContext(params: BuildRawDslPromptContextParams)
       'Only collector, dodger and shooter are supported.',
       'Only top_down camera is supported.',
       'Only engine-agnostic gameplay semantics are allowed.',
-      'Shooter template currently supports one player, one projectile type and one enemy type.'
+      'Shooter template currently supports one player, one projectile type and one enemy type.',
+      'Runtime plan spawn execution is currently verified for dodger hazard right_edge_wave, dodger collectible fixed_positions, and shooter enemy right_edge_wave.'
     ],
     anti_shell_rules: [
       'Do not simulate one genre by renaming another genre.',
@@ -261,6 +291,51 @@ export function buildRawDslPromptContext(params: BuildRawDslPromptContextParams)
       'Select genre from the base loop, not from skin or wording alone: collector must still collect for score, dodger must still avoid hazards, and shooter must still fire at clearable enemies.',
       'When an idea mixes themes, keep the selected genre objective inside the current P0 template envelope instead of declaring a win or lose type that the template cannot realize.',
       'Use labels, theme and movement to express mixed ideas within the selected template; do not add extra entities to carry scoring, win or lose semantics that the current template will not consume.'
-    ]
+    ],
+    spawn_generation_guidance: buildSpawnGenerationGuidance(params.brief.genre),
+    difficulty_runtime_guidance: buildDifficultyRuntimeGuidance(params.brief.genre),
+    enemy_wave_runtime_guidance: buildEnemyWaveRuntimeGuidance(params.brief.genre)
   };
+}
+
+function buildEnemyWaveRuntimeGuidance(genre: SupportedGameGenre): string[] {
+  if (genre !== 'shooter') {
+    return ['Do not output shooter enemy wave runtime fields in Raw Game DSL.'];
+  }
+
+  return [
+    'For shooter, choose a clear primary enemy count, health, movement.speed_px_per_sec, game.difficulty, and target_play_time_sec; the runtime derives the enemy wave pressure from those Raw DSL facts.',
+    'Do not output runtime_plan, enemy_waves, waveSource, speed_multiplier, maxActive, intervalMs, or runtime wave fields in Raw Game DSL.'
+  ];
+}
+
+function buildDifficultyRuntimeGuidance(genre: SupportedGameGenre): string[] {
+  if (genre !== 'dodger') {
+    return ['Keep game.difficulty equal to the Game Brief. Do not output runtime difficulty curves or engine tuning fields.'];
+  }
+
+  return [
+    'Keep game.difficulty equal to the Game Brief; the runtime derives a dodger difficulty curve from game.difficulty and target_play_time_sec.',
+    'easy means a gentler hazard speed and spawn interval curve; normal means hazard speed ramps up and spawn intervals tighten over the run.',
+    'Do not output runtime_plan, template_params, difficulty_curve, speed multipliers, spawn interval multipliers, or ramp values in Raw Game DSL.'
+  ];
+}
+
+function buildSpawnGenerationGuidance(genre: SupportedGameGenre): string[] {
+  if (genre !== 'dodger') {
+    return [
+      'Do not output entity.spawn for this genre.',
+      'Runtime plan spawn execution is currently verified only for dodger hazard right_edge_wave and dodger collectible fixed_positions.'
+    ];
+  }
+
+  return [
+    'Use entity.spawn only for dodger hazard entities and dodger collectible entities when their entry pattern should be generated by the runtime plan.',
+    'For dodger hazards, the only executable spawn strategy is right_edge_wave. Do not output fixed_positions or top_edge_stream for hazards.',
+    'For dodger hazard spawn, set max_active between 2 and 4, interval_ms between 600 and 1200, and lane_count between 3 and 4.',
+    'The hazard entity count remains the total spawn budget; choose count between 5 and 12 for a short playable run.',
+    'For dodger collectibles, the only executable spawn strategy is fixed_positions. Set count between 3 and 10, max_active between 1 and 3, interval_ms between 700 and 1600, and omit lane_count.',
+    'fixed_positions means the model chooses fixed slot spawning with count, max_active, and interval_ms; the runtime derives the actual slot coordinates from the world geometry.',
+    'Do not put spawn in rules, template_params, projectiles, enemies, collector or shooter games.'
+  ];
 }

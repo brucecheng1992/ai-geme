@@ -1,16 +1,26 @@
 import Phaser from 'phaser';
 
 import { DodgerGameScene } from './GameScene.js';
+import generatedAssetManifest from './asset-manifest.generated.json';
+import generatedRuntimePlan from './runtime-plan.generated.json';
 import generatedParams from './template-params.generated.json';
+import { createDodgerArtRuntime } from './dodger-art-library.js';
+import { defaultDodgerRuntimePlan, type DodgerRuntimePlan } from './dodger-runtime-plan.js';
 import { defaultDodgerParams, type DodgerTemplateParams } from './template-params.js';
 
 const dodgerParams = mergeDodgerParams(generatedParams as Partial<DodgerTemplateParams>);
-const scene = new DodgerGameScene(dodgerParams);
+const dodgerRuntimePlan = mergeDodgerRuntimePlan(generatedRuntimePlan as Partial<DodgerRuntimePlan>);
+const dodgerArt = createDodgerArtRuntime(generatedAssetManifest);
+const scene = new DodgerGameScene(dodgerParams, dodgerRuntimePlan, dodgerArt);
 
 if (typeof window !== 'undefined') {
   class DodgerPhaserScene extends Phaser.Scene {
     constructor() {
       super('DodgerPhaserScene');
+    }
+
+    preload(): void {
+      dodgerArt.preload(this, { collectible: dodgerParams.collectible !== undefined });
     }
 
     create(): void {
@@ -75,5 +85,14 @@ function mergeDodgerParams(params: Partial<DodgerTemplateParams>): DodgerTemplat
     hazard: { ...defaultDodgerParams.hazard, ...params.hazard },
     ...(params.collectible ? { collectible: params.collectible } : {}),
     objective: { ...defaultDodgerParams.objective, ...params.objective }
+  };
+}
+
+function mergeDodgerRuntimePlan(plan: Partial<DodgerRuntimePlan>): DodgerRuntimePlan {
+  return {
+    ...defaultDodgerRuntimePlan,
+    ...plan,
+    spawn_rules: plan.spawn_rules ?? defaultDodgerRuntimePlan.spawn_rules,
+    ...(plan.difficulty_curve ? { difficulty_curve: plan.difficulty_curve } : {})
   };
 }

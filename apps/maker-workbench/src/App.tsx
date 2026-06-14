@@ -1,15 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { AssetStatusPanel } from './AssetStatusPanel.js';
+import { QaStatusPanel } from './QaStatusPanel.js';
 import './styles.css';
 import {
   API_BASE,
   countEvents,
   fallbackSteps,
+  getWorkbenchStatusTone,
   optionalJson,
   requestJson,
+  resolveWorkbenchDisplayStatus,
   shouldLoadBuildLog,
   shouldLoadQaReport,
   shouldLoadRepairReport,
+  type ArtAssetWorkbenchPreview,
   type DashboardData,
   type ProjectStatus,
   type QaReport,
@@ -31,11 +36,16 @@ const secondaryButtonClass =
   'inline-flex min-h-10 items-center justify-center rounded-lg border border-[#15130f] bg-[#fffef9] px-4 text-sm font-extrabold text-[#15130f] transition hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-[#fff7e8] hover:shadow-[4px_4px_0_#ffb13b] disabled:translate-x-0 disabled:translate-y-0 disabled:border-[#978f82] disabled:text-[#978f82] disabled:shadow-none';
 
 function statusToneClass(status: string) {
-  if (['PLAYABLE', 'PASSED', 'DONE'].includes(status)) {
+  const tone = getWorkbenchStatusTone(status);
+  if (tone === 'good') {
     return 'bg-[#208a4d]';
   }
 
-  if (['QA_FAILED', 'BUILD_FAILED', 'PREVIEW_ARTIFACT_MISSING', 'DSL_VALIDATION_FAILED', 'FAILED', 'VISUAL_QA_FAILED'].includes(status)) {
+  if (tone === 'warn') {
+    return 'bg-[#c58a1c]';
+  }
+
+  if (tone === 'bad') {
     return 'bg-[#c93d35]';
   }
 
@@ -62,6 +72,8 @@ export function App() {
   const [data, setData] = useState<DashboardData>({ events: [] });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const previewHostRef = useRef<HTMLDivElement | null>(null);
+  const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
 
   const previewUrl = useMemo(() => {
     if (data.project?.project.preview_url) {
@@ -71,10 +83,9 @@ export function App() {
   }, [data.project?.project.preview_url, projectId]);
   const observedCounts = useMemo(() => countEvents(data.qaReport?.observed_events ?? []), [data.qaReport?.observed_events]);
   const previewBlankScreen = data.qaReport?.code === 'PREVIEW_BLANK_SCREEN';
-  const displayStatus = data.qaReport?.visual_status === 'VISUAL_QA_FAILED' ? 'VISUAL_QA_FAILED' : (data.project?.project.status ?? 'LOCAL');
+  const displayStatus = resolveWorkbenchDisplayStatus(data.project?.project.status, data.qaReport);
   const latestRun = data.project?.latest_run;
   const timelineSteps = latestRun?.steps.length ? latestRun.steps : fallbackSteps(latestRun?.status);
-  const qaMissingLabel = (data.qaReport?.missing_events ?? []).join(', ') || 'none';
   const repairMessage = data.repairReport?.message ?? data.repairReport?.attempts?.[0]?.reason ?? 'none';
   const isTerminal = useMemo(() => {
     const status = latestRun?.status;
@@ -92,6 +103,36 @@ export function App() {
 
     return () => window.clearInterval(timer);
   }, [projectId, runId, isTerminal]);
+
+  useEffect(() => {
+    if (!previewUrl || previewBlankScreen) {
+      return undefined;
+    }
+
+    const forwardKey = (event: globalThis.KeyboardEvent) => {
+      if (!isPreviewControlKey(event.key) || isFormControlTarget(event.target)) {
+        return;
+      }
+
+      previewFrameRef.current?.contentWindow?.postMessage(
+        {
+          type: 'agm.preview.key',
+          eventType: event.type,
+          key: event.key
+        },
+        '*'
+      );
+      event.preventDefault();
+    };
+
+    window.addEventListener('keydown', forwardKey);
+    window.addEventListener('keyup', forwardKey);
+
+    return () => {
+      window.removeEventListener('keydown', forwardKey);
+      window.removeEventListener('keyup', forwardKey);
+    };
+  }, [previewUrl, previewBlankScreen]);
 
   async function generateProject() {
     await runAction(async () => {
@@ -111,12 +152,13 @@ export function App() {
       const project = await requestJson<ProjectStatus>(`${API_BASE}/api/projects/${selectedProjectId}`);
       const events = await requestJson<RunEvents>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/events`);
       const status = project.latest_run.status;
-      const [qaReport, repairReport, buildLog] = await Promise.all([
+      const [qaReport, repairReport, buildLog, artAssetPreview] = await Promise.all([
         shouldLoadQaReport(status) ? optionalJson<{ qa_report: QaReport }>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/qa-report`) : undefined,
         shouldLoadRepairReport(status)
           ? optionalJson<{ repair_report: RepairReport }>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/repair-report`)
           : undefined,
-        shouldLoadBuildLog(status) ? optionalJson<{ build_log: string }>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/build-log`) : undefined
+        shouldLoadBuildLog(status) ? optionalJson<{ build_log: string }>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/build-log`) : undefined,
+        optionalJson<{ preview: ArtAssetWorkbenchPreview }>(`${API_BASE}/api/art-assets/preview/small-library`)
       ]);
 
       setData({
@@ -124,7 +166,8 @@ export function App() {
         events: events.events,
         qaReport: qaReport?.qa_report,
         repairReport: repairReport?.repair_report,
-        buildLog: buildLog?.build_log
+        buildLog: buildLog?.build_log,
+        artAssetPreview: artAssetPreview?.preview
       });
     }, options);
   }
@@ -143,6 +186,10 @@ export function App() {
         setLoading(false);
       }
     }
+  }
+
+  function focusPreviewFrame() {
+    previewHostRef.current?.focus();
   }
 
   return (
@@ -251,24 +298,20 @@ export function App() {
                 <span className="max-w-xl text-[#ffc1b5]">Visual QA failed: the preview returned a blank rendered frame, so this run is not PLAYABLE.</span>
               </div>
             ) : previewUrl ? (
-              <iframe className="h-[clamp(360px,50vh,560px)] w-full border-0" title="Game preview" src={previewUrl} sandbox="allow-scripts" />
+              <div
+                className="h-[clamp(360px,50vh,560px)] w-full outline-none focus-visible:ring-4 focus-visible:ring-[#ffb13b]"
+                ref={previewHostRef}
+                tabIndex={0}
+              >
+                <iframe className="h-full w-full border-0" title="Game preview" src={previewUrl} sandbox="allow-scripts" ref={previewFrameRef} onLoad={focusPreviewFrame} />
+              </div>
             ) : (
               <div className="flex h-[clamp(360px,50vh,560px)] items-center justify-center text-[#b8cadd]">No preview</div>
             )}
           </section>
 
           <section className="grid grid-cols-[minmax(260px,0.95fr)_minmax(320px,1.05fr)] gap-4 max-lg:grid-cols-1">
-            <article className={panelClass}>
-              <div className={panelHeadingClass}>
-                <div>
-                  <p className={eyebrowClass}>Quality</p>
-                  <h2 className={headingClass}>QA</h2>
-                </div>
-              </div>
-              <div className="mb-2 text-4xl font-black leading-none text-[#15130f]">{data.qaReport?.status ?? 'No report'}</div>
-              <p className="m-0 mb-1 text-sm leading-snug text-[#69645d]">{data.qaReport?.code ?? 'No failure code'}</p>
-              <p className="m-0 text-sm leading-snug text-[#69645d]">Missing: {qaMissingLabel}</p>
-            </article>
+            <QaStatusPanel report={data.qaReport} />
 
             <article className={`${panelClass} min-h-40`}>
               <div className={panelHeadingClass}>
@@ -288,6 +331,8 @@ export function App() {
                 ) : null}
               </div>
             </article>
+
+            <AssetStatusPanel report={data.qaReport?.asset_report} preview={data.artAssetPreview} />
 
             <article className={panelClass}>
               <div className={panelHeadingClass}>
@@ -333,4 +378,17 @@ export function App() {
       </section>
     </main>
   );
+}
+
+function isPreviewControlKey(key: string): boolean {
+  const normalized = key.toLowerCase();
+  return key === ' ' || key === 'Enter' || key.startsWith('Arrow') || normalized === 'w' || normalized === 'a' || normalized === 's' || normalized === 'd' || normalized === 'r';
+}
+
+function isFormControlTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  return target.isContentEditable || ['BUTTON', 'INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName);
 }

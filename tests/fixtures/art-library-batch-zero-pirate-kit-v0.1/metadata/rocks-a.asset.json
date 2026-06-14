@@ -1,0 +1,121 @@
+{
+  "asset_id": "pirate_kit_rocks_a_001",
+  "project_code": "ai_game",
+  "asset_type": "environment",
+  "asset_subtype": "rocks",
+  "title": "Kenney Pirate Kit Rocks A",
+  "description": "A low-poly stylized rocks environment prop from Kenney Pirate Kit for batch-zero metadata validation.",
+  "version": "1.0.0",
+  "status": "approved",
+  "semantic": {
+    "world": "kenney_pirate_kit",
+    "genre": [
+      "adventure",
+      "arcade"
+    ],
+    "subject": [
+      "rocks",
+      "island",
+      "environment"
+    ],
+    "semantic_tags": [
+      "rocks",
+      "stone",
+      "island",
+      "environment",
+      "cover",
+      "low_poly"
+    ],
+    "visual_style": [
+      "stylized",
+      "low_poly",
+      "toon"
+    ],
+    "mood": [
+      "friendly",
+      "warm"
+    ],
+    "color_palette": [
+      "gray",
+      "stone"
+    ],
+    "dominant_colors": [
+      "#77736A",
+      "#4E4B45"
+    ]
+  },
+  "gameplay": {
+    "gameplay_role": [
+      "environment",
+      "cover",
+      "decoration"
+    ],
+    "affordances": [
+      "cover",
+      "ambient",
+      "decorative"
+    ],
+    "biome": [
+      "island",
+      "beach"
+    ],
+    "rarity": "common",
+    "spawnable": false,
+    "allowed_contexts": [
+      "pirate_kit_batch_zero",
+      "island_scene",
+      "beach_scene"
+    ],
+    "blocked_contexts": [
+      "production_default_runtime",
+      "large_library_rollout"
+    ],
+    "interaction_type": []
+  },
+  "technical": {
+    "source_path": "tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/assets/rocks-a.glb",
+    "thumbnail_path": "tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/thumbnails/rocks-a.png",
+    "file_format": "glb",
+    "engine_targets": [
+      "web"
+    ],
+    "platform_budget": [
+      "desktop",
+      "mobile"
+    ]
+  },
+  "ai_generation": {
+    "generated_by_ai": false,
+    "human_edit_level": "human_made"
+  },
+  "rights": {
+    "creator": "Kenney",
+    "owner": "Kenney",
+    "license": "cc0",
+    "commercial_use": true,
+    "training_use_allowed": true,
+    "third_party_sources": [
+      "https://kenney.nl/assets/pirate-kit",
+      "https://kenney.nl/media/pages/assets/pirate-kit/e6d4bb1525-1771333093/kenney_pirate-kit.zip"
+    ],
+    "rights_risk_level": "low"
+  },
+  "workflow": {
+    "owner": "asset_semantic_step_13c_b",
+    "reviewed_by": "main_agent",
+    "review_notes": "Step 13C-B batch-zero fixture only; not wired into runtime/default asset loading or production asset packs.",
+    "created_at": "2026-06-13",
+    "updated_at": "2026-06-13",
+    "approved_at": "2026-06-13"
+  },
+  "relations": {
+    "variant_of": null,
+    "derived_from": [],
+    "depends_on": [],
+    "compatible_with": [],
+    "used_by": []
+  },
+  "search": {
+    "embedding_input": "Kenney Pirate Kit Rocks A rocks stone island environment cover low_poly for Pirate Kit batch-zero metadata validation."
+  }
+}

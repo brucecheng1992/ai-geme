@@ -99,7 +99,12 @@ describe('ProjectsService', () => {
 
     await expect(service.getQaReport(created.project_id, created.run_id)).resolves.toMatchObject({
       ok: true,
-      qa_report: { status: 'PASSED' }
+      qa_report: {
+        status: 'PASSED',
+        runtime_status: 'PASSED',
+        asset_semantic_status: 'PASSED',
+        overall_status: 'PLAYABLE'
+      }
     });
     await expect(service.getRepairReport(created.project_id, created.run_id)).resolves.toMatchObject({
       ok: true,

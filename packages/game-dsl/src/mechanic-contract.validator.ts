@@ -27,6 +27,10 @@ export function validateMechanicContract(raw: RawGameDsl): DslValidationIssue[] 
 }
 
 export function validateObjectiveReachability(raw: RawGameDsl): DslValidationIssue[] {
+  if (raw.game.genre === 'shooter') {
+    return validateShooterObjectiveReachability(raw);
+  }
+
   if (raw.objectives.win.type !== 'target_score') {
     return [];
   }
@@ -37,6 +41,40 @@ export function validateObjectiveReachability(raw: RawGameDsl): DslValidationIss
   return reachable
     ? []
     : [{ code: 'UNREACHABLE_OBJECTIVE', path: 'objectives.win.target', message: 'target_score cannot be reached from scoring rules' }];
+}
+
+function validateShooterObjectiveReachability(raw: RawGameDsl): DslValidationIssue[] {
+  const enemy = raw.entities.find((entity) => entity.kind === 'enemy');
+  const projectile = raw.entities.find((entity) => entity.kind === 'projectile');
+  const hitCollision = projectile && enemy ? findCollision(raw, projectile.id, enemy.id, 'projectile_hit') : undefined;
+  const enemyCount = enemy?.count ?? 1;
+
+  if (raw.objectives.win.type === 'enemy_cleared') {
+    return (raw.objectives.win.target ?? enemyCount) <= enemyCount
+      ? []
+      : [
+          {
+            code: 'UNREACHABLE_OBJECTIVE',
+            path: 'objectives.win.target',
+            message: 'enemy_cleared target cannot exceed primary enemy count'
+          }
+        ];
+  }
+
+  if (raw.objectives.win.type !== 'target_score') {
+    return [];
+  }
+
+  const reachableScore = enemyCount * scoreAddValue(hitCollision);
+  return reachableScore >= (raw.objectives.win.target ?? 1)
+    ? []
+    : [
+        {
+          code: 'UNREACHABLE_OBJECTIVE',
+          path: 'objectives.win.target',
+          message: 'target_score cannot be reached from primary shooter enemy wave'
+        }
+      ];
 }
 
 function validateCollector(raw: RawGameDsl): DslValidationIssue[] {
@@ -73,6 +111,8 @@ function validateDodger(raw: RawGameDsl): DslValidationIssue[] {
 }
 
 function validateShooter(raw: RawGameDsl): DslValidationIssue[] {
+  const enemies = raw.entities.filter((entity) => entity.kind === 'enemy');
+  const projectiles = raw.entities.filter((entity) => entity.kind === 'projectile');
   const projectile = raw.entities.find((entity) => entity.kind === 'projectile');
   const enemy = raw.entities.find((entity) => entity.kind === 'enemy');
   const fireAction = raw.player.actions.find((action) => action.type === 'shoot_projectile');
@@ -80,7 +120,7 @@ function validateShooter(raw: RawGameDsl): DslValidationIssue[] {
   const damagesEnemy = hitCollision?.effects.some((effect) => effect.type === 'damage' || effect.type === 'destroy') === true;
   const clearsEnemy = hitCollision?.effects.some((effect) => effect.type === 'destroy') === true;
   const scoreValue = scoreAddValue(hitCollision);
-  const maxScore = maxReachableScoreForKind(raw, 'enemy');
+  const maxScore = (enemy?.count ?? 1) * scoreValue;
   const winAllowed = raw.objectives.win.type === 'enemy_cleared' || raw.objectives.win.type === 'target_score';
   const progresses =
     (raw.objectives.win.type === 'enemy_cleared' && clearsEnemy) ||
@@ -91,6 +131,8 @@ function validateShooter(raw: RawGameDsl): DslValidationIssue[] {
     [fireAction !== undefined, 'player.can_fire'],
     [projectile !== undefined && fireAction?.spawns === projectile.id, 'projectile.exists'],
     [enemy !== undefined, 'enemy.exists'],
+    [enemies.length === 1, 'enemy.single_primary'],
+    [projectiles.length === 1, 'projectile.single_primary'],
     [hitCollision !== undefined, 'collision.projectile_hits_enemy'],
     [enemy?.health !== undefined && damagesEnemy, 'enemy.can_take_damage'],
     [clearsEnemy, 'enemy.can_be_cleared'],

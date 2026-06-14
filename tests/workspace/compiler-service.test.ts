@@ -44,12 +44,23 @@ describe('Compiler + Build + Preview services', () => {
       distDir: workspace.getGeneratedProjectDistDir(projectId)
     });
     await expect(readFile(join(result.outputDir, 'collector/src/GameScene.ts'), 'utf8')).resolves.toContain('CollectorGameScene');
+    await expect(readFile(join(result.outputDir, 'collector/src/collector-art-library.ts'), 'utf8')).resolves.toContain('createCollectorArtRuntime');
+    await expect(readFile(join(result.outputDir, 'collector/src/asset-manifest.generated.json'), 'utf8')).resolves.toContain('"sourcePack": "agm-tiny-collector"');
     await expect(readFile(join(result.outputDir, 'collector/src/template-params.generated.json'), 'utf8')).resolves.toContain('collectible');
     await expect(readFile(join(result.outputDir, 'collector/src/main.ts'), 'utf8')).resolves.toContain('template-params.generated.json');
-    await expect(readFile(join(result.outputDir, 'collector/src/main.ts'), 'utf8')).resolves.toContain('new CollectorGameScene(collectorParams)');
+    await expect(readFile(join(result.outputDir, 'collector/src/main.ts'), 'utf8')).resolves.toContain('collectorArt.preload(this)');
+    await expect(readFile(join(result.outputDir, 'collector/src/main.ts'), 'utf8')).resolves.toContain('new CollectorGameScene(collectorParams, collectorArt)');
     await expect(readFile(join(result.outputDir, 'index.html'), 'utf8')).resolves.toContain('./src/main.ts');
+    await expect(readFile(join(result.outputDir, 'index.html'), 'utf8')).resolves.toContain('agm.preview.key');
     await expect(readFile(join(result.outputDir, 'src/main.ts'), 'utf8')).resolves.toContain("../collector/src/main.js");
     await expect(readFile(join(result.outputDir, 'package.json'), 'utf8')).resolves.toContain('vite build');
+    await expect(readFile(join(result.outputDir, 'game.ir.json'), 'utf8')).resolves.toContain('"game-ir-v0.1"');
+    await expect(readFile(join(result.outputDir, 'asset_plan.json'), 'utf8')).resolves.toContain('"asset-plan-v0.1"');
+    await expect(readFile(join(result.outputDir, 'public/asset_manifest.json'), 'utf8')).resolves.toContain('"sourcePack": "agm-tiny-collector"');
+    await expect(readFile(join(result.outputDir, 'public/asset_manifest.json'), 'utf8')).resolves.toContain('"licenseId": "CC0-1.0"');
+    await expect(readFile(join(result.outputDir, 'public/assets/player.svg'), 'utf8')).resolves.toContain('<svg');
+    await expect(readFile(join(result.outputDir, 'public/assets/background_main.svg'), 'utf8')).resolves.toContain('<svg');
+    await expect(readFile(join(result.outputDir, 'public/assets/background_main.svg'), 'utf8')).resolves.toContain('Arcade field background');
   });
 
   it('resolves the default template root from the workspace root when started in the API package', async () => {
@@ -75,7 +86,7 @@ describe('Compiler + Build + Preview services', () => {
 
   it('cleans stale template files before recompiling the same generated project', async () => {
     const collector = validateAndNormalizeRawGameDsl(createCollectorRawDsl());
-    const shooter = validateAndNormalizeRawGameDsl(createShooterRawDsl());
+    const shooter = validateAndNormalizeRawGameDsl(createTankShooterRawDsl());
     expect(collector.ok).toBe(true);
     expect(shooter.ok).toBe(true);
     if (!collector.ok || !shooter.ok) {
@@ -88,7 +99,18 @@ describe('Compiler + Build + Preview services', () => {
 
     const second = await compiler.compile({ projectId, runId, ir: shooter.ir });
     await expect(readFile(join(second.outputDir, 'shooter/src/GameScene.ts'), 'utf8')).resolves.toContain('ShooterGameScene');
+    await expect(readFile(join(second.outputDir, 'shooter/src/shooter-art-library.ts'), 'utf8')).resolves.toContain('createShooterArtRuntime');
+    await expect(readFile(join(second.outputDir, 'shooter/src/asset-manifest.generated.json'), 'utf8')).resolves.toContain('"sourcePack": "kenney-tiny-shooter-tanks"');
+    await expect(readFile(join(second.outputDir, 'shooter/src/asset-manifest.generated.json'), 'utf8')).resolves.toContain('"attribution": "Kenney Tanks by Kenney Vleugels"');
+    await expect(readFile(join(second.outputDir, 'asset_resolution_report.json'), 'utf8')).resolves.toContain('"asset-resolution-report-v0.1"');
+    expect(second.files).toContain('asset_resolution_report.json');
     await expect(readFile(join(second.outputDir, 'shooter/src/template-visuals.ts'), 'utf8')).resolves.toContain('drawShooterPlayer');
+    await expect(readFile(join(second.outputDir, 'shooter/src/runtime-plan.generated.json'), 'utf8')).resolves.toContain('"enemy_waves"');
+    await expect(readFile(join(second.outputDir, 'shooter/src/main.ts'), 'utf8')).resolves.toContain('runtime-plan.generated.json');
+    await expect(readFile(join(second.outputDir, 'shooter/src/main.ts'), 'utf8')).resolves.toContain('shooterArt.preload(this)');
+    await expect(readFile(join(second.outputDir, 'public/assets/enemy.svg'), 'utf8')).resolves.toContain('Kenney grey tank enemy sprite');
+    await expect(readFile(join(second.outputDir, 'public/assets/projectile.svg'), 'utf8')).resolves.toContain('data:image/png;base64');
+    await expect(readFile(join(second.outputDir, 'public/assets/collectible.svg'), 'utf8')).rejects.toThrow();
     await expect(readFile(join(second.outputDir, 'collector/src/GameScene.ts'), 'utf8')).rejects.toThrow();
   });
 
@@ -102,7 +124,38 @@ describe('Compiler + Build + Preview services', () => {
     const result = await new TemplateCompilerService(workspace, templateRoot).compile({ projectId, runId, ir: normalized.ir });
 
     await expect(readFile(join(result.outputDir, 'dodger/src/template-params.generated.json'), 'utf8')).resolves.toContain('"collectible"');
+    await expect(readFile(join(result.outputDir, 'dodger/src/runtime-plan.generated.json'), 'utf8')).resolves.toContain('"spawn_rules"');
+    await expect(readFile(join(result.outputDir, 'dodger/src/runtime-plan.generated.json'), 'utf8')).resolves.toContain('"entity_id": "obstacle"');
+    await expect(readFile(join(result.outputDir, 'dodger/src/asset-manifest.generated.json'), 'utf8')).resolves.toContain('"loadKey": "agm.hazard"');
     await expect(readFile(join(result.outputDir, 'dodger/src/GameScene.ts'), 'utf8')).resolves.toContain('collectItem()');
+    await expect(readFile(join(result.outputDir, 'dodger/src/dodger-art-library.ts'), 'utf8')).resolves.toContain('createDodgerArtRuntime');
+    await expect(readFile(join(result.outputDir, 'dodger/src/main.ts'), 'utf8')).resolves.toContain('runtime-plan.generated.json');
+    await expect(readFile(join(result.outputDir, 'dodger/src/asset-manifest.generated.json'), 'utf8')).resolves.toContain('"sourcePack": "kenney-tiny-dodger-tanks"');
+    await expect(readFile(join(result.outputDir, 'dodger/src/asset-manifest.generated.json'), 'utf8')).resolves.toContain('"attribution": "Kenney Tanks by Kenney Vleugels"');
+    await expect(readFile(join(result.outputDir, 'public/assets/hazard.svg'), 'utf8')).resolves.toContain('<svg');
+    await expect(readFile(join(result.outputDir, 'public/assets/hazard.svg'), 'utf8')).resolves.toContain('data:image/png;base64');
+    await expect(readFile(join(result.outputDir, 'public/assets/collectible.svg'), 'utf8')).resolves.toContain('<svg');
+  });
+
+  it('does not emit or preload collectible assets for dodger games without coins', async () => {
+    const raw = createDodgerRawDsl();
+    raw.player.actions = [];
+    raw.entities = raw.entities.filter((entity) => entity.kind !== 'collectible');
+    raw.rules.collisions = raw.rules.collisions.filter((collision) => collision.target !== 'coin');
+    raw.ui.hud = ['health', 'timer'];
+    const normalized = validateAndNormalizeRawGameDsl(raw);
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const result = await new TemplateCompilerService(workspace, templateRoot).compile({ projectId, runId, ir: normalized.ir });
+
+    await expect(readFile(join(result.outputDir, 'dodger/src/template-params.generated.json'), 'utf8')).resolves.not.toContain('"collectible"');
+    await expect(readFile(join(result.outputDir, 'public/assets/hazard.svg'), 'utf8')).resolves.toContain('<svg');
+    await expect(readFile(join(result.outputDir, 'public/assets/collectible.svg'), 'utf8')).rejects.toThrow();
+    await expect(readFile(join(result.outputDir, 'dodger/src/main.ts'), 'utf8')).resolves.toContain('dodgerParams.collectible !== undefined');
+    await expect(readFile(join(result.outputDir, 'dodger/src/asset-manifest.generated.json'), 'utf8')).resolves.not.toContain('"id": "collectible"');
   });
 
   it('runs the injectable Vite build command and writes build logs', async () => {
@@ -162,3 +215,12 @@ describe('Compiler + Build + Preview services', () => {
     await expect(readFile(indexPath, 'utf8')).resolves.toBe('<html></html>');
   });
 });
+
+function createTankShooterRawDsl() {
+  const rawDsl = createShooterRawDsl();
+  rawDsl.metadata.title = 'Tank Battle';
+  rawDsl.player.label = 'Tank';
+  rawDsl.entities = rawDsl.entities.map((entity) => (entity.kind === 'enemy' ? { ...entity, id: 'enemy_tank', label: 'Tank' } : entity));
+  rawDsl.rules.collisions = rawDsl.rules.collisions.map((collision) => ({ ...collision, target: 'enemy_tank' }));
+  return rawDsl;
+}

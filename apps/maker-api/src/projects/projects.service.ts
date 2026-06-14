@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 import { NotFoundException } from '@nestjs/common';
 
+import { normalizePersistedQaReport } from '../qa/qa-report-normalizer.js';
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
 import { GenerationPipelineService } from './generation-pipeline.service.js';
 import type {
@@ -111,7 +112,7 @@ export class ProjectsService {
 
     return {
       ok: true,
-      qa_report: JSON.parse(await this.readRequiredFile(this.workspace.getQaReportPath(projectId, runId), 'QA report not found.')) as QaReportResponse['qa_report']
+      qa_report: normalizePersistedQaReport(JSON.parse(await this.readRequiredFile(this.workspace.getQaReportPath(projectId, runId), 'QA report not found.')))
     };
   }
 

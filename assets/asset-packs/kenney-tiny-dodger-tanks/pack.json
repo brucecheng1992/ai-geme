@@ -1,0 +1,48 @@
+{
+  "version": "local-asset-pack-v0.1",
+  "id": "kenney-tiny-dodger-tanks",
+  "label": "Kenney Tiny Dodger Tanks",
+  "license": {
+    "id": "CC0-1.0",
+    "name": "Creative Commons CC0 1.0 Universal",
+    "attribution": "Kenney Tanks by Kenney Vleugels",
+    "sourceUrl": "https://kenney.nl/assets/tanks"
+  },
+  "style": {
+    "genres": ["dodger"],
+    "camera": "top_down",
+    "tags": ["kenney", "tanks", "arcade", "vehicles"]
+  },
+  "assets": [
+    {
+      "id": "background_main",
+      "role": "background",
+      "file": "background_main.svg",
+      "format": "svg",
+      "license": {
+        "id": "CC0-1.0",
+        "name": "Creative Commons CC0 1.0 Universal",
+        "attribution": "AI Game Maker local background",
+        "sourceUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
+      }
+    },
+    {
+      "id": "player",
+      "role": "player_character",
+      "file": "player.svg",
+      "format": "svg"
+    },
+    {
+      "id": "hazard",
+      "role": "hazard",
+      "file": "hazard.svg",
+      "format": "svg"
+    },
+    {
+      "id": "collectible",
+      "role": "collectible",
+      "file": "collectible.svg",
+      "format": "svg"
+    }
+  ]
+}

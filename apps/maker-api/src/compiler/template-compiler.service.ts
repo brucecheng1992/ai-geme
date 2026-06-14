@@ -3,6 +3,7 @@ import { join } from 'node:path';
 
 import { Injectable } from '@nestjs/common';
 
+import { writeAssetArtifacts } from '../../../../packages/asset-pipeline/src/index.js';
 import { NormalizedGameIrSchema } from '../../../../packages/game-dsl/src/index.js';
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
 import type { RuntimeCompileInput, RuntimeCompileResult } from './compiler.types.js';
@@ -37,11 +38,18 @@ export class TemplateCompilerService {
       'src/main.ts',
       `${genre}/src/main.ts`,
       `${genre}/src/GameScene.ts`,
+      ...(genre === 'collector' ? [`${genre}/src/collector-art-library.ts`] : []),
+      ...(genre === 'dodger' ? [`${genre}/src/dodger-art-library.ts`] : []),
+      ...(genre === 'dodger' ? [`${genre}/src/dodger-runtime-plan.ts`] : []),
       ...(genre === 'shooter' ? [`${genre}/src/shooter-runtime.ts`] : []),
+      ...(genre === 'shooter' ? [`${genre}/src/shooter-runtime-plan.ts`] : []),
       ...(genre === 'shooter' ? [`${genre}/src/shooter-renderer.ts`] : []),
+      ...(genre === 'shooter' ? [`${genre}/src/shooter-art-library.ts`] : []),
       ...(genre === 'shooter' ? [`${genre}/src/template-visuals.ts`] : []),
       `${genre}/src/template-params.ts`,
       'shared/kernel.ts',
+      ...(genre === 'collector' || genre === 'dodger' || genre === 'shooter' ? [`${genre}/src/asset-manifest.generated.json`] : []),
+      ...(genre === 'dodger' || genre === 'shooter' ? [`${genre}/src/runtime-plan.generated.json`] : []),
       `${genre}/src/template-params.generated.json`
     ];
 
@@ -50,7 +58,20 @@ export class TemplateCompilerService {
     await cp(join(this.templateRoot, genre), join(outputDir, genre), { recursive: true });
     await cp(join(this.templateRoot, 'shared'), join(outputDir, 'shared'), { recursive: true });
     await mkdir(join(outputDir, 'src'), { recursive: true });
+    const assetArtifacts = await writeAssetArtifacts({
+      projectId: input.projectId,
+      projectDir: outputDir,
+      ir,
+      assetPacksDir: join(this.templateRoot, '..', '..', 'assets', 'asset-packs')
+    });
+    await writeFile(join(outputDir, 'game.ir.json'), `${JSON.stringify(ir, null, 2)}\n`, 'utf8');
     await writeFile(join(outputDir, `${genre}`, 'src', 'template-params.generated.json'), JSON.stringify(ir.template_params.params, null, 2));
+    if (genre === 'collector' || genre === 'dodger' || genre === 'shooter') {
+      await writeFile(join(outputDir, `${genre}`, 'src', 'asset-manifest.generated.json'), JSON.stringify(assetArtifacts.manifest, null, 2));
+    }
+    if (genre === 'dodger' || genre === 'shooter') {
+      await writeFile(join(outputDir, `${genre}`, 'src', 'runtime-plan.generated.json'), JSON.stringify(ir.runtime_plan, null, 2));
+    }
     await writeFile(join(outputDir, 'package.json'), this.renderPackageJson(input.projectId));
     await writeFile(join(outputDir, 'index.html'), this.renderIndexHtml());
     await writeFile(join(outputDir, 'src', 'main.ts'), this.renderMainEntry(genre));
@@ -62,7 +83,7 @@ export class TemplateCompilerService {
       outputDir,
       distDir,
       templateId,
-      files
+      files: [...files, 'game.ir.json', ...assetArtifacts.files]
     };
   }
 
@@ -117,6 +138,16 @@ export class TemplateCompilerService {
   </head>
   <body>
     <div id="game"></div>
+    <script>
+      window.addEventListener('message', (event) => {
+        const data = event.data;
+        if (!data || data.type !== 'agm.preview.key' || (data.eventType !== 'keydown' && data.eventType !== 'keyup') || typeof data.key !== 'string') {
+          return;
+        }
+
+        window.dispatchEvent(new KeyboardEvent(data.eventType, { key: data.key, bubbles: true, cancelable: true }));
+      });
+    </script>
     <script type="module" src="./src/main.ts"></script>
   </body>
 </html>

@@ -1,17 +1,27 @@
 import Phaser from 'phaser';
 
 import { ShooterGameScene } from './GameScene.js';
+import generatedAssetManifest from './asset-manifest.generated.json';
+import { createShooterArtRuntime } from './shooter-art-library.js';
+import generatedRuntimePlan from './runtime-plan.generated.json';
 import type { ShooterDirection } from './shooter-runtime.js';
+import { defaultShooterRuntimePlan, type ShooterRuntimePlan } from './shooter-runtime-plan.js';
 import generatedParams from './template-params.generated.json';
 import { defaultShooterParams, type ShooterTemplateParams } from './template-params.js';
 
 const shooterParams = mergeShooterParams(generatedParams as Partial<ShooterTemplateParams>);
-const scene = new ShooterGameScene(shooterParams);
+const shooterRuntimePlan = mergeShooterRuntimePlan(generatedRuntimePlan as Partial<ShooterRuntimePlan>);
+const shooterArt = createShooterArtRuntime(generatedAssetManifest);
+const scene = new ShooterGameScene(shooterParams, shooterRuntimePlan, shooterArt);
 
 if (typeof window !== 'undefined') {
   class ShooterPhaserScene extends Phaser.Scene {
     constructor() {
       super('ShooterPhaserScene');
+    }
+
+    preload(): void {
+      shooterArt.preload(this);
     }
 
     create(): void {
@@ -75,6 +85,14 @@ function mergeShooterParams(params: Partial<ShooterTemplateParams>): ShooterTemp
     enemy: { ...defaultShooterParams.enemy, ...params.enemy, visual: { ...defaultShooterParams.enemy.visual, ...params.enemy?.visual } },
     scoring: { ...defaultShooterParams.scoring, ...params.scoring },
     objective: { ...defaultShooterParams.objective, ...params.objective }
+  };
+}
+
+function mergeShooterRuntimePlan(plan: Partial<ShooterRuntimePlan>): ShooterRuntimePlan {
+  return {
+    ...defaultShooterRuntimePlan,
+    ...plan,
+    enemy_waves: plan.enemy_waves ?? defaultShooterRuntimePlan.enemy_waves
   };
 }
 

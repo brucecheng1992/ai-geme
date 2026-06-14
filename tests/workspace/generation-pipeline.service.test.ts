@@ -3,14 +3,26 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { createCollectorRawDsl } from '../contracts/fixtures.js';
-import { GenerationPipelineService } from '../../apps/maker-api/src/projects/generation-pipeline.service.js';
+import { createCollectorRawDsl, createShooterRawDsl } from '../contracts/fixtures.js';
+import {
+  GenerationPipelineService,
+  readAssetSemanticRepairConfig,
+  type AssetSemanticRepairConfig
+} from '../../apps/maker-api/src/projects/generation-pipeline.service.js';
 import { ProjectStoreService } from '../../apps/maker-api/src/projects/project-store.service.js';
 import { RunStoreService } from '../../apps/maker-api/src/projects/run-store.service.js';
 import { LocalWorkspaceService } from '../../apps/maker-api/src/workspace/local-workspace.service.js';
 import type { RuntimeCompileResult } from '../../apps/maker-api/src/compiler/compiler.types.js';
-import type { QaGenre } from '../../apps/maker-api/src/qa/qa.types.js';
-import { GameBriefSchema, RawGameDslSchema } from '../../packages/game-dsl/src/index.js';
+import type { QaGenre, QaReport } from '../../apps/maker-api/src/qa/qa.types.js';
+import {
+  AssetManifestSchema,
+  AssetResolutionReportSchema,
+  buildAssetPlanFromIr,
+  type AssetManifest,
+  type AssetPlan,
+  type AssetResolutionReport
+} from '../../packages/asset-pipeline/src/index.js';
+import { GameBriefSchema, RawGameDslSchema, type NormalizedGameIr, type RawGameDsl } from '../../packages/game-dsl/src/index.js';
 
 const projectId = 'proj_20260610_050000_pipe';
 const runId = 'run_20260610_050000_pipe';
@@ -20,6 +32,7 @@ type PipelineOverrides = {
   compiler?: ConstructorParameters<typeof GenerationPipelineService>[4];
   buildRunner?: ConstructorParameters<typeof GenerationPipelineService>[5];
   qaRunner?: ConstructorParameters<typeof GenerationPipelineService>[6];
+  assetSemanticRepairConfig?: AssetSemanticRepairConfig;
 };
 
 describe('GenerationPipelineService failure states', () => {
@@ -40,6 +53,74 @@ describe('GenerationPipelineService failure states', () => {
 
   afterEach(async () => {
     await rm(root, { recursive: true, force: true });
+  });
+
+  async function resetStores(): Promise<void> {
+    await rm(root, { recursive: true, force: true });
+    await mkdir(root, { recursive: true });
+    workspace = new LocalWorkspaceService(root);
+    projectStore = new ProjectStoreService(workspace);
+    runStore = new RunStoreService(workspace);
+    await projectStore.createProject({ projectId, runId, idea: 'cat shooter', language: 'en' });
+    const run = await runStore.createRun({ projectId, runId });
+    await projectStore.writeLatestRun(projectId, run);
+  }
+
+  it('keeps semantic asset repair disabled by default config and clamps explicit attempts to one', () => {
+    expect(readAssetSemanticRepairConfig({} as NodeJS.ProcessEnv)).toMatchObject({
+      enabled: false,
+      maxAttempts: 1
+    });
+    expect(
+      readAssetSemanticRepairConfig({
+        ASSET_SEMANTIC_REPAIR_ENABLED: 'true',
+        ASSET_SEMANTIC_REPAIR_MAX_ATTEMPTS: '5',
+        AGM_ASSET_PACKS_DIR: '/tmp/asset-packs'
+      } as NodeJS.ProcessEnv)
+    ).toEqual({
+      enabled: true,
+      maxAttempts: 1,
+      assetPacksDir: '/tmp/asset-packs'
+    });
+  });
+
+  it('does not execute repair when the explicit max attempt budget is zero', async () => {
+    let qaRuns = 0;
+    const pipeline = createPipeline({
+      compiler: { compile: compileWithDist },
+      buildRunner: {
+        async build() {
+          return { ok: true, projectId, distDir: workspace.getGeneratedProjectDistDir(projectId), logPath: workspace.getBuildLogPath(projectId, runId) };
+        }
+      },
+      qaRunner: {
+        async run(input: { genre: QaGenre }) {
+          qaRuns += 1;
+          return createQaReport(input.genre, {
+            asset_semantic_status: 'FAILED',
+            overall_status: 'NEEDS_ASSET_REPAIR'
+          });
+        }
+      },
+      assetSemanticRepairConfig: { enabled: true, maxAttempts: 0 }
+    });
+
+    await expect(runPipeline(pipeline)).resolves.toBe('PLAYABLE');
+    expect(qaRuns).toBe(1);
+    await expect(runStore.readEvents(runId)).resolves.not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: 'asset-repair.started' })])
+    );
+    await expect(readQaReport()).resolves.toMatchObject({
+      asset_semantic_repair: {
+        enabled: true,
+        attempted: false,
+        skippedReason: 'max_attempts_exhausted',
+        attemptCount: 0,
+        maxAttempts: 0,
+        beforeOverallStatus: 'NEEDS_ASSET_REPAIR',
+        beforeAssetSemanticStatus: 'FAILED'
+      }
+    });
   });
 
   it('maps compiler exceptions to BUILD_FAILED and records build.failed', async () => {
@@ -183,6 +264,9 @@ describe('GenerationPipelineService failure states', () => {
         async run(input: { genre: QaGenre }) {
           return {
             status: 'QA_FAILED',
+            runtime_status: 'FAILED',
+            asset_semantic_status: 'PASSED',
+            overall_status: 'QA_FAILED',
             visual_status: 'VISUAL_QA_FAILED',
             project_id: projectId,
             run_id: runId,
@@ -207,6 +291,493 @@ describe('GenerationPipelineService failure states', () => {
     await expect(runStore.readEvents(runId)).resolves.toEqual(expect.arrayContaining([expect.objectContaining({ type: 'qa.failed', message: 'PREVIEW_BLANK_SCREEN' })]));
   });
 
+  it('keeps project status PLAYABLE when runtime QA passes but asset semantic QA needs repair', async () => {
+    let qaRuns = 0;
+    const pipeline = createPipeline({
+      compiler: { compile: compileWithDist },
+      buildRunner: {
+        async build() {
+          return { ok: true, projectId, distDir: workspace.getGeneratedProjectDistDir(projectId), logPath: workspace.getBuildLogPath(projectId, runId) };
+        }
+      },
+      qaRunner: {
+        async run(input: { genre: QaGenre }) {
+          qaRuns += 1;
+          return createQaReport(input.genre, {
+            asset_semantic_status: 'FAILED',
+            overall_status: 'NEEDS_ASSET_REPAIR'
+          });
+        }
+      }
+    });
+
+    await expect(runPipeline(pipeline)).resolves.toBe('PLAYABLE');
+    expect(qaRuns).toBe(1);
+    await expect(projectStore.readProject(projectId)).resolves.toMatchObject({ status: 'PLAYABLE' });
+    await expect(runStore.readEvents(runId)).resolves.toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: 'qa.passed' })])
+    );
+    await expect(runStore.readEvents(runId)).resolves.not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: 'asset-repair.started' })])
+    );
+    await expect(readQaReport()).resolves.toMatchObject({
+      asset_semantic_repair: {
+        enabled: false,
+        attempted: false,
+        skippedReason: 'asset_semantic_repair_disabled',
+        attemptCount: 0,
+        maxAttempts: 1,
+        beforeOverallStatus: 'NEEDS_ASSET_REPAIR',
+        beforeAssetSemanticStatus: 'FAILED'
+      }
+    });
+  });
+
+  it('runs one semantic asset repair attempt behind the explicit flag and reruns QA once', async () => {
+    const rawDsl = RawGameDslSchema.parse(createShooterRawDsl());
+    let buildRuns = 0;
+    let qaRuns = 0;
+    const pipeline = createPipeline({
+      modelProvider: createModelProviderForRawDsl(rawDsl),
+      compiler: {
+        async compile(input) {
+          return await compileWithHardSemanticMismatchArtifacts(input.ir);
+        }
+      },
+      buildRunner: {
+        async build() {
+          buildRuns += 1;
+          return { ok: true, projectId, distDir: workspace.getGeneratedProjectDistDir(projectId), logPath: workspace.getBuildLogPath(projectId, runId) };
+        }
+      },
+      qaRunner: {
+        async run(input: { genre: QaGenre }) {
+          qaRuns += 1;
+          if (qaRuns === 1) {
+            return createQaReport(input.genre, {
+              asset_semantic_status: 'FAILED',
+              overall_status: 'NEEDS_ASSET_REPAIR'
+            });
+          }
+
+          return createQaReport(input.genre, {
+            overall_status: 'PLAYABLE_WITH_FALLBACK_ASSETS'
+          });
+        }
+      },
+      assetSemanticRepairConfig: { enabled: true, maxAttempts: 3 }
+    });
+
+    await expect(runPipeline(pipeline)).resolves.toBe('PLAYABLE');
+
+    expect(buildRuns).toBe(2);
+    expect(qaRuns).toBe(2);
+    await expect(projectStore.readProject(projectId)).resolves.toMatchObject({ status: 'PLAYABLE' });
+    const repairedReport = await readResolutionReport();
+    expect(repairedReport.repair).toMatchObject({
+      status: 'repaired',
+      attempts: 1,
+      maxAttempts: 1
+    });
+    expect(repairedReport.repair?.items.length).toBeGreaterThan(0);
+    const repairedManifest = await readManifest(join(workspace.getGeneratedProjectPublicDir(projectId), 'asset_manifest.json'));
+    expect(repairedManifest.assets.some((asset) => asset.semanticFit?.status === 'fallback_generated')).toBe(true);
+    await expect(runStore.readEvents(runId)).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'asset-repair.started' }),
+        expect.objectContaining({ type: 'asset-repair.applied' }),
+        expect.objectContaining({ type: 'qa.rerun.started' }),
+        expect.objectContaining({ type: 'qa.passed' })
+      ])
+    );
+    await expect(readQaReport()).resolves.toMatchObject({
+      asset_semantic_repair: {
+        enabled: true,
+        attempted: true,
+        attemptCount: 1,
+        maxAttempts: 1,
+        repairPlanTriggered: true,
+        beforeOverallStatus: 'NEEDS_ASSET_REPAIR',
+        beforeAssetSemanticStatus: 'FAILED',
+        afterOverallStatus: 'PLAYABLE_WITH_FALLBACK_ASSETS',
+        afterAssetSemanticStatus: 'PASSED',
+        repairedRequirements: expect.arrayContaining([
+          expect.objectContaining({
+            requirementId: 'player',
+            role: 'player_character',
+            expectedConcept: 'cat',
+            previousSource: 'local_asset_pack',
+            previousSemanticFitStatus: 'mismatch',
+            newSource: 'template_svg',
+            newSemanticFitStatus: 'fallback_generated'
+          })
+        ])
+      }
+    });
+  });
+
+  it('does not repair fallback or warning playable statuses even when the flag is enabled', async () => {
+    for (const report of [
+      createQaReport('shooter', { overall_status: 'PLAYABLE_WITH_FALLBACK_ASSETS' }),
+      createQaReport('shooter', { asset_semantic_status: 'WARNING', overall_status: 'PLAYABLE_WITH_ART_WARNINGS' }),
+      createQaReport('shooter', { asset_semantic_status: 'FAILED', overall_status: 'PLAYABLE_WITH_FALLBACK_ASSETS' }),
+      createQaReport('shooter', { asset_semantic_status: 'FAILED', overall_status: 'PLAYABLE_WITH_ART_WARNINGS' })
+    ]) {
+      await resetStores();
+      let qaRuns = 0;
+      const pipeline = createPipeline({
+        compiler: { compile: compileWithDist },
+        buildRunner: {
+          async build() {
+            return { ok: true, projectId, distDir: workspace.getGeneratedProjectDistDir(projectId), logPath: workspace.getBuildLogPath(projectId, runId) };
+          }
+        },
+        qaRunner: {
+          async run() {
+            qaRuns += 1;
+            return report;
+          }
+        },
+        assetSemanticRepairConfig: { enabled: true, maxAttempts: 1 }
+      });
+
+      await expect(runPipeline(pipeline)).resolves.toBe('PLAYABLE');
+      expect(qaRuns).toBe(1);
+      await expect(runStore.readEvents(runId)).resolves.not.toEqual(
+        expect.arrayContaining([expect.objectContaining({ type: 'asset-repair.started' })])
+      );
+      await expect(readQaReport()).resolves.toMatchObject({
+        asset_semantic_repair: {
+          enabled: true,
+          attempted: false,
+          skippedReason: 'no_asset_semantic_repair_needed',
+          attemptCount: 0,
+          maxAttempts: 1,
+          beforeOverallStatus: report.overall_status,
+          beforeAssetSemanticStatus: report.asset_semantic_status
+        }
+      });
+    }
+  });
+
+  it('does not repair runtime QA failures even when semantic fields are failed', async () => {
+    let qaRuns = 0;
+    const pipeline = createPipeline({
+      compiler: { compile: compileWithDist },
+      buildRunner: {
+        async build() {
+          return { ok: true, projectId, distDir: workspace.getGeneratedProjectDistDir(projectId), logPath: workspace.getBuildLogPath(projectId, runId) };
+        }
+      },
+      qaRunner: {
+        async run(input: { genre: QaGenre }) {
+          qaRuns += 1;
+          return createQaReport(input.genre, {
+            status: 'QA_FAILED',
+            runtime_status: 'FAILED',
+            asset_semantic_status: 'FAILED',
+            overall_status: 'QA_FAILED',
+            code: 'PREVIEW_BLANK_SCREEN'
+          });
+        }
+      },
+      assetSemanticRepairConfig: { enabled: true, maxAttempts: 1 }
+    });
+
+    await expect(runPipeline(pipeline)).resolves.toBe('QA_FAILED');
+    expect(qaRuns).toBe(1);
+    await expect(runStore.readEvents(runId)).resolves.toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: 'qa.failed', message: 'PREVIEW_BLANK_SCREEN' })])
+    );
+    await expect(runStore.readEvents(runId)).resolves.not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: 'asset-repair.started' })])
+    );
+    await expect(readQaReport()).resolves.toMatchObject({
+      asset_semantic_repair: {
+        enabled: true,
+        attempted: false,
+        skippedReason: 'runtime_failed_not_asset_semantic_repair',
+        attemptCount: 0,
+        maxAttempts: 1
+      }
+    });
+  });
+
+  it('does not repair asset load failures even when semantic fields are failed', async () => {
+    let qaRuns = 0;
+    const pipeline = createPipeline({
+      compiler: { compile: compileWithDist },
+      buildRunner: {
+        async build() {
+          return { ok: true, projectId, distDir: workspace.getGeneratedProjectDistDir(projectId), logPath: workspace.getBuildLogPath(projectId, runId) };
+        }
+      },
+      qaRunner: {
+        async run(input: { genre: QaGenre }) {
+          qaRuns += 1;
+          return createQaReport(input.genre, {
+            asset_semantic_status: 'FAILED',
+            overall_status: 'NEEDS_ASSET_REPAIR',
+            asset_report: {
+              semantic_status: 'FAILED',
+              required: ['player'],
+              ready: ['player'],
+              fallback_used: [],
+              placeholder_used: [],
+              missing: [],
+              assets: [],
+              semantic_issues: [],
+              failures: [
+                {
+                  code: 'ASSET_LOAD_FAILED',
+                  message: 'Runtime failed to load player asset.',
+                  asset_ids: ['player'],
+                  roles: ['player_character']
+                }
+              ]
+            }
+          });
+        }
+      },
+      assetSemanticRepairConfig: { enabled: true, maxAttempts: 1 }
+    });
+
+    await expect(runPipeline(pipeline)).resolves.toBe('PLAYABLE');
+    expect(qaRuns).toBe(1);
+    await expect(runStore.readEvents(runId)).resolves.not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: 'asset-repair.started' })])
+    );
+    await expect(readQaReport()).resolves.toMatchObject({
+      asset_semantic_repair: {
+        enabled: true,
+        attempted: false,
+        skippedReason: 'runtime_asset_failure_not_asset_semantic_repair',
+        attemptCount: 0,
+        maxAttempts: 1
+      }
+    });
+  });
+
+  it('records no executable item when QA asks for repair without hard semantic evidence', async () => {
+    const rawDsl = RawGameDslSchema.parse(createShooterRawDsl());
+    let qaRuns = 0;
+    const pipeline = createPipeline({
+      modelProvider: createModelProviderForRawDsl(rawDsl),
+      compiler: {
+        async compile(input) {
+          return await compileWithExactSemanticArtifacts(input.ir);
+        }
+      },
+      buildRunner: {
+        async build() {
+          return { ok: true, projectId, distDir: workspace.getGeneratedProjectDistDir(projectId), logPath: workspace.getBuildLogPath(projectId, runId) };
+        }
+      },
+      qaRunner: {
+        async run(input: { genre: QaGenre }) {
+          qaRuns += 1;
+          return createQaReport(input.genre, {
+            asset_semantic_status: 'FAILED',
+            overall_status: 'NEEDS_ASSET_REPAIR'
+          });
+        }
+      },
+      assetSemanticRepairConfig: { enabled: true, maxAttempts: 1 }
+    });
+
+    await expect(runPipeline(pipeline)).resolves.toBe('PLAYABLE');
+    expect(qaRuns).toBe(1);
+    await expect(runStore.readEvents(runId)).resolves.not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: 'asset-repair.started' })])
+    );
+    await expect(readQaReport()).resolves.toMatchObject({
+      asset_semantic_repair: {
+        enabled: true,
+        attempted: false,
+        skippedReason: 'no_executable_repair_items',
+        repairPlanTriggered: true,
+        executableItemCount: 0
+      }
+    });
+  });
+
+  it('records executor failures without rerunning QA', async () => {
+    const rawDsl = RawGameDslSchema.parse(createShooterRawDsl());
+    let qaRuns = 0;
+    const pipeline = createPipeline({
+      modelProvider: createModelProviderForRawDsl(rawDsl),
+      compiler: {
+        async compile(input) {
+          return await compileWithHardSemanticMismatchArtifacts(input.ir, { assetPlanProjectId: 'proj_other' });
+        }
+      },
+      buildRunner: {
+        async build() {
+          return { ok: true, projectId, distDir: workspace.getGeneratedProjectDistDir(projectId), logPath: workspace.getBuildLogPath(projectId, runId) };
+        }
+      },
+      qaRunner: {
+        async run(input: { genre: QaGenre }) {
+          qaRuns += 1;
+          return createQaReport(input.genre, {
+            asset_semantic_status: 'FAILED',
+            overall_status: 'NEEDS_ASSET_REPAIR'
+          });
+        }
+      },
+      assetSemanticRepairConfig: { enabled: true, maxAttempts: 1 }
+    });
+
+    await expect(runPipeline(pipeline)).resolves.toBe('PLAYABLE');
+    expect(qaRuns).toBe(1);
+    await expect(runStore.readEvents(runId)).resolves.toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: 'asset-repair.failed' })])
+    );
+    await expect(readQaReport()).resolves.toMatchObject({
+      asset_semantic_repair: {
+        enabled: true,
+        attempted: true,
+        skippedReason: 'repair_execution_failed',
+        attemptCount: 1,
+        failureReasons: [expect.stringContaining('Asset repair project identity mismatch')]
+      }
+    });
+  });
+
+  it('records rebuild failure after a successful repair without rerunning QA', async () => {
+    const rawDsl = RawGameDslSchema.parse(createShooterRawDsl());
+    let buildRuns = 0;
+    let qaRuns = 0;
+    const pipeline = createPipeline({
+      modelProvider: createModelProviderForRawDsl(rawDsl),
+      compiler: {
+        async compile(input) {
+          return await compileWithHardSemanticMismatchArtifacts(input.ir);
+        }
+      },
+      buildRunner: {
+        async build() {
+          buildRuns += 1;
+          if (buildRuns === 1) {
+            return { ok: true, projectId, distDir: workspace.getGeneratedProjectDistDir(projectId), logPath: workspace.getBuildLogPath(projectId, runId) };
+          }
+
+          return { ok: false, projectId, logPath: workspace.getBuildLogPath(projectId, runId), message: 'repair rebuild failed' };
+        }
+      },
+      qaRunner: {
+        async run(input: { genre: QaGenre }) {
+          qaRuns += 1;
+          return createQaReport(input.genre, {
+            asset_semantic_status: 'FAILED',
+            overall_status: 'NEEDS_ASSET_REPAIR'
+          });
+        }
+      },
+      assetSemanticRepairConfig: { enabled: true, maxAttempts: 1 }
+    });
+
+    await expect(runPipeline(pipeline)).resolves.toBe('BUILD_FAILED');
+    expect(buildRuns).toBe(2);
+    expect(qaRuns).toBe(1);
+    await expect(readQaReport()).resolves.toMatchObject({
+      asset_semantic_repair: {
+        enabled: true,
+        attempted: true,
+        skippedReason: 'repair_rebuild_failed',
+        attemptCount: 1,
+        failureReasons: ['Repair build/preview ended with status BUILD_FAILED.']
+      }
+    });
+    await expect(runStore.readRun(runId)).resolves.toMatchObject({
+      status: 'BUILD_FAILED',
+      steps: expect.arrayContaining([
+        { name: 'build', status: 'FAILED' },
+        { name: 'qa', status: 'DONE' }
+      ])
+    });
+  });
+
+  it('records force template fallback repair actions through pipeline metadata', async () => {
+    const rawDsl = RawGameDslSchema.parse(createShooterRawDsl());
+    let qaRuns = 0;
+    const pipeline = createPipeline({
+      modelProvider: createModelProviderForRawDsl(rawDsl),
+      compiler: {
+        async compile(input) {
+          return await compileWithHardSemanticMismatchArtifacts(input.ir, { source: 'template_svg' });
+        }
+      },
+      buildRunner: {
+        async build() {
+          return { ok: true, projectId, distDir: workspace.getGeneratedProjectDistDir(projectId), logPath: workspace.getBuildLogPath(projectId, runId) };
+        }
+      },
+      qaRunner: {
+        async run(input: { genre: QaGenre }) {
+          qaRuns += 1;
+          return qaRuns === 1
+            ? createQaReport(input.genre, {
+                asset_semantic_status: 'FAILED',
+                overall_status: 'NEEDS_ASSET_REPAIR'
+              })
+            : createQaReport(input.genre);
+        }
+      },
+      assetSemanticRepairConfig: { enabled: true, maxAttempts: 1 }
+    });
+
+    await expect(runPipeline(pipeline)).resolves.toBe('PLAYABLE');
+    expect(qaRuns).toBe(2);
+    await expect(readQaReport()).resolves.toMatchObject({
+      asset_semantic_repair: {
+        enabled: true,
+        attempted: true,
+        repairedRequirements: expect.arrayContaining([
+          expect.objectContaining({
+            requirementId: 'player',
+            action: 'force_template_svg_fallback',
+            previousSource: 'template_svg',
+            newSource: 'template_svg',
+            newSemanticFitStatus: 'fallback_generated'
+          })
+        ])
+      }
+    });
+  });
+
+  it('does not repair inconsistent QA_FAILED overall status', async () => {
+    let qaRuns = 0;
+    const pipeline = createPipeline({
+      compiler: { compile: compileWithDist },
+      buildRunner: {
+        async build() {
+          return { ok: true, projectId, distDir: workspace.getGeneratedProjectDistDir(projectId), logPath: workspace.getBuildLogPath(projectId, runId) };
+        }
+      },
+      qaRunner: {
+        async run(input: { genre: QaGenre }) {
+          qaRuns += 1;
+          return createQaReport(input.genre, {
+            asset_semantic_status: 'FAILED',
+            overall_status: 'QA_FAILED'
+          });
+        }
+      },
+      assetSemanticRepairConfig: { enabled: true, maxAttempts: 1 }
+    });
+
+    await expect(runPipeline(pipeline)).resolves.toBe('PLAYABLE');
+    expect(qaRuns).toBe(1);
+    await expect(readQaReport()).resolves.toMatchObject({
+      asset_semantic_repair: {
+        enabled: true,
+        attempted: false,
+        skippedReason: 'runtime_failed_not_asset_semantic_repair'
+      }
+    });
+  });
+
   function createPipeline(overrides: PipelineOverrides = {}): GenerationPipelineService {
     return new GenerationPipelineService(
       projectStore,
@@ -228,23 +799,10 @@ describe('GenerationPipelineService failure states', () => {
       },
       overrides.qaRunner ?? {
         async run(input: { genre: QaGenre }) {
-          return {
-            status: 'PASSED',
-            project_id: projectId,
-            run_id: runId,
-            genre: input.genre,
-            preview_url: 'http://localhost/preview/index.html',
-            seed: 'golden',
-            required_events: { all: [], any_groups: [] },
-            observed_events: [],
-            missing_events: [],
-            missing_any_groups: [],
-            console_errors: [],
-            started_at: new Date().toISOString(),
-            completed_at: new Date().toISOString()
-          };
+          return createQaReport(input.genre);
         }
-      }
+      },
+      overrides.assetSemanticRepairConfig ?? { enabled: false, maxAttempts: 1 }
     );
   }
 
@@ -256,6 +814,25 @@ describe('GenerationPipelineService failure states', () => {
     const distDir = workspace.getGeneratedProjectDistDir(projectId);
     await mkdir(distDir, { recursive: true });
     await writeFile(join(distDir, 'index.html'), '<html></html>', 'utf8');
+    return compileResult();
+  }
+
+  async function compileWithHardSemanticMismatchArtifacts(
+    ir: NormalizedGameIr,
+    options: { source?: 'local_asset_pack' | 'template_svg'; assetPlanProjectId?: string } = {}
+  ): Promise<RuntimeCompileResult> {
+    const distDir = workspace.getGeneratedProjectDistDir(projectId);
+    await mkdir(distDir, { recursive: true });
+    await writeFile(join(distDir, 'index.html'), '<html></html>', 'utf8');
+    await writeHardSemanticMismatchArtifacts(buildAssetPlanFromIr(projectId, ir), options);
+    return compileResult();
+  }
+
+  async function compileWithExactSemanticArtifacts(ir: NormalizedGameIr): Promise<RuntimeCompileResult> {
+    const distDir = workspace.getGeneratedProjectDistDir(projectId);
+    await mkdir(distDir, { recursive: true });
+    await writeFile(join(distDir, 'index.html'), '<html></html>', 'utf8');
+    await writeExactSemanticArtifacts(buildAssetPlanFromIr(projectId, ir));
     return compileResult();
   }
 
@@ -273,6 +850,232 @@ describe('GenerationPipelineService failure states', () => {
       templateId: 'shooter_v1',
       files: []
     };
+  }
+
+  function createModelProviderForRawDsl(rawDsl: RawGameDsl): NonNullable<PipelineOverrides['modelProvider']> {
+    const brief = GameBriefSchema.parse({
+      brief_version: 'game-brief-v0.1',
+      title: rawDsl.metadata.title,
+      genre: rawDsl.game.genre,
+      camera: rawDsl.game.camera,
+      core_loop: [rawDsl.metadata.description, 'Use the generated mechanics to satisfy the objective.'],
+      difficulty: rawDsl.game.difficulty,
+      target_play_time_sec: rawDsl.game.target_play_time_sec
+    });
+
+    return {
+      async generateGameBrief() {
+        return {
+          ok: true,
+          value: brief,
+          rawText: '{}',
+          rawOutputPath: workspace.getModelOutputPath(projectId, runId, 'game-brief.raw.json')
+        };
+      },
+      async generateRawGameDsl() {
+        return {
+          ok: true,
+          value: rawDsl,
+          rawText: JSON.stringify(rawDsl),
+          rawOutputPath: workspace.getModelOutputPath(projectId, runId, 'raw-game-dsl.raw.json')
+        };
+      }
+    };
+  }
+
+  function createQaReport(genre: QaGenre, patch: Partial<QaReport> = {}): QaReport {
+    const now = new Date().toISOString();
+    return {
+      status: 'PASSED',
+      runtime_status: 'PASSED',
+      asset_semantic_status: 'PASSED',
+      overall_status: 'PLAYABLE',
+      project_id: projectId,
+      run_id: runId,
+      genre,
+      preview_url: 'http://localhost/preview/index.html',
+      seed: 'golden',
+      required_events: { all: [], any_groups: [] },
+      observed_events: [],
+      missing_events: [],
+      missing_any_groups: [],
+      console_errors: [],
+      started_at: now,
+      completed_at: now,
+      ...patch
+    };
+  }
+
+  async function writeHardSemanticMismatchArtifacts(
+    plan: AssetPlan,
+    options: { source?: 'local_asset_pack' | 'template_svg'; assetPlanProjectId?: string } = {}
+  ): Promise<void> {
+    const projectDir = workspace.getGeneratedProjectDir(projectId);
+    const publicAssetsDir = join(projectDir, 'public', 'assets');
+    const source = options.source ?? 'local_asset_pack';
+    const writtenPlan = options.assetPlanProjectId === undefined ? plan : { ...plan, projectId: options.assetPlanProjectId };
+    await mkdir(publicAssetsDir, { recursive: true });
+    await writeFile(join(projectDir, 'asset_plan.json'), `${JSON.stringify(writtenPlan, null, 2)}\n`, 'utf8');
+
+    const assets = plan.items.map((item) => ({
+      id: item.id,
+      loadKey: `agm.${item.id}`,
+      role: item.role,
+      type: 'image' as const,
+      format: item.format,
+      path: `assets/${item.id}.svg`,
+      source,
+      ...(source === 'local_asset_pack'
+        ? {
+            sourcePack: 'kenney-tiny-shooter-tanks',
+            licenseId: 'CC0-1.0',
+            licenseName: 'Creative Commons CC0 1.0 Universal',
+            attribution: 'Kenney Tanks by Kenney Vleugels',
+            sourceUrl: 'https://kenney.nl/assets/tanks'
+          }
+        : {}),
+      required: item.required,
+      status: 'ready' as const,
+      size: item.size,
+      semanticFit:
+        item.semantic?.strictness === 'hard'
+          ? {
+              status: 'mismatch' as const,
+              confidence: 0,
+              strictness: 'hard' as const,
+              expectedConcept: item.semantic.expectedConcept,
+              expectedAnyTags: item.semantic.expectedAnyTags,
+              actualTags: ['tank', 'vehicle', 'turret'],
+              missingTags: item.semantic.expectedAnyTags,
+              conflictingTags: ['tank', 'vehicle'],
+              reason: `Local asset semantic tags do not satisfy expected ${item.semantic.expectedConcept}.`
+            }
+          : {
+              status: 'exact' as const,
+              confidence: 1,
+              strictness: item.semantic?.strictness,
+              expectedConcept: item.semantic?.expectedConcept,
+              expectedAnyTags: item.semantic?.expectedAnyTags,
+              actualTags: item.semantic?.expectedAnyTags,
+              reason: `Local asset semantic tags exactly match expected ${item.semantic?.expectedConcept ?? item.id}.`
+            }
+    }));
+    const manifest = AssetManifestSchema.parse({
+      version: 'asset-manifest-v0.1',
+      projectId,
+      strict: true,
+      assets,
+      summary: {
+        required: assets.filter((asset) => asset.required).length,
+        ready: assets.length,
+        fallback_used: 0,
+        missing: 0,
+        placeholder_used: 0
+      }
+    });
+
+    for (const asset of manifest.assets) {
+      await writeFile(join(projectDir, 'public', asset.path), '<svg xmlns="http://www.w3.org/2000/svg"></svg>', 'utf8');
+    }
+    await writeFile(join(projectDir, 'public', 'asset_manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+    await writeFile(join(projectDir, 'asset_resolution_report.json'), `${JSON.stringify(createBadResolutionReport(plan, manifest), null, 2)}\n`, 'utf8');
+  }
+
+  async function writeExactSemanticArtifacts(plan: AssetPlan): Promise<void> {
+    const projectDir = workspace.getGeneratedProjectDir(projectId);
+    const publicAssetsDir = join(projectDir, 'public', 'assets');
+    await mkdir(publicAssetsDir, { recursive: true });
+    await writeFile(join(projectDir, 'asset_plan.json'), `${JSON.stringify(plan, null, 2)}\n`, 'utf8');
+
+    const assets = plan.items.map((item) => ({
+      id: item.id,
+      loadKey: `agm.${item.id}`,
+      role: item.role,
+      type: 'image' as const,
+      format: item.format,
+      path: `assets/${item.id}.svg`,
+      source: 'template_svg' as const,
+      required: item.required,
+      status: 'ready' as const,
+      size: item.size,
+      semanticFit: {
+        status: 'exact' as const,
+        confidence: 1,
+        strictness: item.semantic?.strictness,
+        expectedConcept: item.semantic?.expectedConcept,
+        expectedAnyTags: item.semantic?.expectedAnyTags,
+        actualTags: item.semantic?.expectedAnyTags,
+        reason: `Test asset semantic tags exactly match expected ${item.semantic?.expectedConcept ?? item.id}.`
+      }
+    }));
+    const manifest = AssetManifestSchema.parse({
+      version: 'asset-manifest-v0.1',
+      projectId,
+      strict: true,
+      assets,
+      summary: {
+        required: assets.filter((asset) => asset.required).length,
+        ready: assets.length,
+        fallback_used: 0,
+        missing: 0,
+        placeholder_used: 0
+      }
+    });
+
+    for (const asset of manifest.assets) {
+      await writeFile(join(projectDir, 'public', asset.path), '<svg xmlns="http://www.w3.org/2000/svg"></svg>', 'utf8');
+    }
+    await writeFile(join(projectDir, 'public', 'asset_manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+    await writeFile(join(projectDir, 'asset_resolution_report.json'), `${JSON.stringify(createBadResolutionReport(plan, manifest), null, 2)}\n`, 'utf8');
+  }
+
+  function createBadResolutionReport(plan: AssetPlan, manifest: AssetManifest): AssetResolutionReport {
+    const planById = new Map(plan.items.map((item) => [item.id, item]));
+    const hasSelectedPack = manifest.assets.some((asset) => asset.sourcePack !== undefined);
+    return AssetResolutionReportSchema.parse({
+      version: 'asset-resolution-report-v0.1',
+      projectId,
+      summary: {
+        selectedProvider: hasSelectedPack ? 'local_asset_pack' : 'template_svg',
+        selectedPackId: hasSelectedPack ? 'kenney-tiny-shooter-tanks' : undefined,
+        fallbackUsed: false,
+        reason: 'Selected complete local asset pack kenney-tiny-shooter-tanks.'
+      },
+      assets: manifest.assets.map((asset) => ({
+        id: asset.id,
+        role: asset.role,
+        selected: {
+          source: asset.source,
+          sourcePack: asset.sourcePack,
+          path: asset.path,
+          status: asset.status
+        },
+        expectedSemantic: planById.get(asset.id)?.semantic,
+        semanticFit: asset.semanticFit
+      })),
+      candidates: hasSelectedPack
+        ? [
+            {
+              packId: 'kenney-tiny-shooter-tanks',
+              status: 'selected',
+              reason: 'selected',
+              message: 'Selected complete local asset pack kenney-tiny-shooter-tanks.'
+            }
+          ]
+        : []
+    });
+  }
+
+  async function readManifest(path: string): Promise<AssetManifest> {
+    return AssetManifestSchema.parse(JSON.parse(await readFile(path, 'utf8')));
+  }
+
+  async function readQaReport(): Promise<QaReport> {
+    return JSON.parse(await readFile(workspace.getQaReportPath(projectId, runId), 'utf8')) as QaReport;
+  }
+
+  async function readResolutionReport(): Promise<AssetResolutionReport> {
+    return AssetResolutionReportSchema.parse(JSON.parse(await readFile(join(workspace.getGeneratedProjectDir(projectId), 'asset_resolution_report.json'), 'utf8')));
   }
 });
 

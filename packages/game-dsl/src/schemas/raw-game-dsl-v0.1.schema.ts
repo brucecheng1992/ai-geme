@@ -79,6 +79,14 @@ const MovementSchema = z.strictObject({
   speed_px_per_sec: z.number().int().min(0).max(1000).optional()
 });
 
+/** Entity spawn 是模型可生成的引擎无关入场语义，不允许表达脚本或坐标运算。 */
+const SpawnSchema = z.strictObject({
+  strategy: z.enum(['fixed_positions', 'right_edge_wave', 'top_edge_stream']),
+  max_active: z.number().int().min(1).max(12).optional(),
+  interval_ms: z.number().int().min(200).max(10000).optional(),
+  lane_count: z.number().int().min(1).max(6).optional()
+});
+
 const ActionSchema = z.strictObject({
   id: DslIdSchema,
   type: z.enum(['shoot_projectile', 'collect', 'restart']),
@@ -101,7 +109,8 @@ const EntitySchema = z.strictObject({
   count: z.number().int().min(1).max(50).optional(),
   health: z.number().int().min(1).max(20).optional(),
   damage: z.number().int().min(0).max(20).optional(),
-  movement: MovementSchema
+  movement: MovementSchema,
+  spawn: SpawnSchema.optional()
 });
 
 const EffectSchema = z.strictObject({
@@ -161,14 +170,22 @@ export const RawGameDslSchema = z.strictObject({
   ui: UiSchema
 }).superRefine((value, ctx) => {
   const violation = findForbiddenDslValue(value);
-  if (!violation) {
-    return;
+  if (violation) {
+    ctx.addIssue({
+      code: 'custom',
+      message: violation
+    });
   }
 
-  ctx.addIssue({
-    code: 'custom',
-    message: violation
-  });
+  for (const [index, entity] of value.entities.entries()) {
+    if (value.game.genre !== 'dodger' && entity.spawn !== undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['entities', index, 'spawn'],
+        message: 'entity.spawn is currently supported only for dodger runtime_plan v0'
+      });
+    }
+  }
 });
 
 export type RawGameDsl = z.infer<typeof RawGameDslSchema>;

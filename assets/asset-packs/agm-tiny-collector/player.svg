@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Runner token">
+  <circle cx="32" cy="32" r="23" fill="#ffd48b"/>
+  <path d="M20 13h11l-7 13H12zM34 13h11l7 13H41z" fill="#ffd48b"/>
+  <circle cx="24" cy="31" r="4" fill="#08233a"/>
+  <circle cx="40" cy="31" r="4" fill="#08233a"/>
+  <path d="M26 43h12l-6 8z" fill="#ff7191"/>
+  <path d="M18 54c8 5 20 5 28 0" fill="none" stroke="#f4b763" stroke-width="4" stroke-linecap="round"/>
+</svg>

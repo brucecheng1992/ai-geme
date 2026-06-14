@@ -11,6 +11,7 @@ const TelemetryEventNameSchema = z.enum([
   'player.fired',
   'projectile.spawned',
   'collision.detected',
+  'enemy.fired',
   'enemy.hit',
   'enemy.cleared',
   'item.spawned',
@@ -50,6 +51,55 @@ const RuntimeRequirementsSchema = z.strictObject({
   telemetry: z.literal(true)
 });
 
+const RuntimePlanSchema = z.strictObject({
+  /** Spawn rules are DSL-authored world entry semantics preserved for runtime interpreters. */
+  spawn_rules: z.array(
+    z.strictObject({
+      entity_id: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/),
+      entity_kind: z.enum(['enemy', 'projectile', 'collectible', 'hazard']),
+      strategy: z.enum(['fixed_positions', 'right_edge_wave', 'top_edge_stream']),
+      count: z.number().int().min(1).max(50),
+      max_active: z.number().int().min(1).max(12),
+      interval_ms: z.number().int().min(200).max(10000),
+      lane_count: z.number().int().min(1).max(6).optional()
+    })
+  ).default([]),
+  /** Difficulty curves are normalizer-derived runtime hints from model-authored game fields. */
+  difficulty_curve: z
+    .strictObject({
+      derived_from: z.tuple([z.literal('game.difficulty'), z.literal('game.target_play_time_sec')]),
+      level: z.enum(['easy', 'normal']),
+      speed_multiplier_start: z.number().min(0.5).max(2),
+      speed_multiplier_end: z.number().min(0.5).max(2),
+      spawn_interval_multiplier_start: z.number().min(0.5).max(2),
+      spawn_interval_multiplier_end: z.number().min(0.5).max(2),
+      ramp_duration_ms: z.number().int().min(1000).max(120000)
+    })
+    .optional(),
+  /** Enemy waves are normalizer-derived shooter pressure plans from the primary enemy DSL facts. */
+  enemy_waves: z
+    .array(
+      z.strictObject({
+        derived_from: z.tuple([
+          z.literal('entities.enemy.id'),
+          z.literal('entities.enemy.count'),
+          z.literal('entities.enemy.health'),
+          z.literal('entities.enemy.movement.speed_px_per_sec'),
+          z.literal('game.difficulty'),
+          z.literal('game.target_play_time_sec')
+        ]),
+        entity_id: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/),
+        strategy: z.literal('right_edge_wave'),
+        count: z.number().int().min(1).max(50),
+        max_active: z.number().int().min(1).max(8),
+        interval_ms: z.number().int().min(200).max(10000),
+        speed_multiplier: z.number().min(0.5).max(2)
+      })
+    )
+    .max(1)
+    .default([])
+});
+
 const TemplateParamsSchema = z.strictObject({
   template_id: z.enum(['collector_v1', 'dodger_v1', 'shooter_v1']),
   params: z.record(z.string(), z.unknown())
@@ -85,6 +135,7 @@ export const NormalizedGameIrSchema = z.strictObject({
     height: z.number().int().min(360).max(720)
   }),
   runtime_requirements: RuntimeRequirementsSchema,
+  runtime_plan: RuntimePlanSchema,
   template_params: TemplateParamsSchema,
   telemetry_contract: TelemetryContractSchema,
   qa_plan: QaPlanSchema
@@ -95,6 +146,30 @@ export const NormalizedGameIrSchema = z.strictObject({
       code: 'custom',
       path: ['template_params', 'template_id'],
       message: `template_id must match genre: expected ${expectedTemplateId}`
+    });
+  }
+
+  if (value.game.genre !== 'dodger' && value.runtime_plan.spawn_rules.length > 0) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['runtime_plan', 'spawn_rules'],
+      message: 'runtime_plan.spawn_rules is currently supported only for dodger runtime_plan v0'
+    });
+  }
+
+  if (value.game.genre !== 'dodger' && value.runtime_plan.difficulty_curve !== undefined) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['runtime_plan', 'difficulty_curve'],
+      message: 'runtime_plan.difficulty_curve is currently supported only for dodger runtime_plan v0'
+    });
+  }
+
+  if (value.game.genre !== 'shooter' && value.runtime_plan.enemy_waves.length > 0) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['runtime_plan', 'enemy_waves'],
+      message: 'runtime_plan.enemy_waves is currently supported only for shooter runtime_plan v0'
     });
   }
 

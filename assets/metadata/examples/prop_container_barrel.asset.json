@@ -1,0 +1,73 @@
+{
+  "asset_id": "prop_forest_container_barrel_001",
+  "project_code": "ai_game",
+  "asset_type": "prop",
+  "asset_subtype": "container",
+  "title": "Destructible Wooden Barrel",
+  "description": "A stylized wooden barrel for forest village loot and decoration scenes.",
+  "version": "1.0.0",
+  "status": "approved",
+  "semantic": {
+    "world": "forest_village",
+    "genre": ["cozy_fantasy", "adventure"],
+    "subject": ["barrel", "wooden_container", "village_prop"],
+    "semantic_tags": ["barrel", "wood", "storage", "village", "loot", "destructible"],
+    "visual_style": ["stylized", "hand_painted"],
+    "mood": ["warm"],
+    "color_palette": ["brown", "earth_tone"],
+    "dominant_colors": ["#6B4F2A", "#9A6B3F", "#D0A46A"]
+  },
+  "gameplay": {
+    "gameplay_role": ["loot_container", "cover", "decoration"],
+    "affordances": ["destructible", "container", "physics_object", "cover"],
+    "biome": ["forest"],
+    "rarity": "common",
+    "spawnable": true,
+    "allowed_contexts": ["forest_village", "village_market", "forest_camp", "storage_room"],
+    "blocked_contexts": ["sci_fi_city", "boss_arena"],
+    "interaction_type": ["break", "loot", "push"]
+  },
+  "technical": {
+    "source_path": "assets/art/props/barrel_001/barrel.png",
+    "thumbnail_path": "assets/art/props/barrel_001/barrel_thumb.png",
+    "file_format": "png",
+    "engine_targets": ["web"],
+    "platform_budget": ["desktop", "mobile"]
+  },
+  "ai_generation": {
+    "generated_by_ai": true,
+    "ai_system_used": "internal_image_pipeline",
+    "ai_system_version": "v0_3",
+    "prompt_summary": "stylized hand-painted wooden barrel for cozy fantasy forest village",
+    "negative_prompt_summary": "no modern logo, no sci-fi material, no horror elements",
+    "seed": "123456",
+    "human_edit_level": "paintover_minor"
+  },
+  "rights": {
+    "creator": "internal_art_team",
+    "owner": "studio",
+    "license": "internal_project_only",
+    "commercial_use": true,
+    "training_use_allowed": false,
+    "third_party_sources": [],
+    "rights_risk_level": "low"
+  },
+  "workflow": {
+    "owner": "lead_prop_artist",
+    "reviewed_by": "art_director",
+    "review_notes": "Approved for forest village scenes.",
+    "created_at": "2026-06-12",
+    "updated_at": "2026-06-12",
+    "approved_at": "2026-06-12"
+  },
+  "relations": {
+    "variant_of": null,
+    "derived_from": [],
+    "depends_on": ["material_forest_texture_wood_plank_001"],
+    "compatible_with": ["env_forest_area_clearing_001"],
+    "used_by": []
+  },
+  "search": {
+    "embedding_input": "stylized wooden barrel prop for cozy fantasy forest village loot container cover and destructible decoration"
+  }
+}

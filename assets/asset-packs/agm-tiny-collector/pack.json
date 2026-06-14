@@ -1,0 +1,36 @@
+{
+  "version": "local-asset-pack-v0.1",
+  "id": "agm-tiny-collector",
+  "label": "AGM Tiny Collector",
+  "license": {
+    "id": "CC0-1.0",
+    "name": "Creative Commons CC0 1.0 Universal",
+    "attribution": "AI Game Maker local asset pack",
+    "sourceUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
+  },
+  "style": {
+    "genres": ["collector"],
+    "camera": "top_down",
+    "tags": ["flat", "arcade", "high_contrast", "warm_neutral"]
+  },
+  "assets": [
+    {
+      "id": "background_main",
+      "role": "background",
+      "file": "background_main.svg",
+      "format": "svg"
+    },
+    {
+      "id": "player",
+      "role": "player_character",
+      "file": "player.svg",
+      "format": "svg"
+    },
+    {
+      "id": "collectible",
+      "role": "collectible",
+      "file": "collectible.svg",
+      "format": "svg"
+    }
+  ]
+}

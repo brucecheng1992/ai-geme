@@ -4,7 +4,16 @@ import { dirname } from 'node:path';
 import type { Browser, Page } from 'playwright';
 
 import { TelemetryEventSchema } from '../../../../packages/runtime-core/src/index.js';
-import type { QaBrowserResult, QaBrowserRunner, QaFailureCode, QaGenre, QaRequiredEvents, QaVisualMetrics, RunQaInput } from './qa.types.js';
+import type {
+  QaAssetRuntimeTelemetry,
+  QaBrowserResult,
+  QaBrowserRunner,
+  QaFailureCode,
+  QaGenre,
+  QaRequiredEvents,
+  QaVisualMetrics,
+  RunQaInput
+} from './qa.types.js';
 
 const GENRE_KEYS: Record<QaGenre, string[]> = {
   collector: ['Enter', 'ArrowRight', 'r'],
@@ -67,6 +76,11 @@ export const runPlaywrightQaBrowser: QaBrowserRunner = async (input, requiredEve
       return failedInteractionResult(consoleErrors.length > 0 ? 'FATAL_CONSOLE_ERROR' : 'QA_BRIDGE_MISSING', consoleErrors, visualGate, error);
     }
 
+    const assetAssertion = await verifyRuntimeAssetsLoaded(page, input.genre);
+    if (!assetAssertion.ok) {
+      return failedInteractionResult('ASSET_LOAD_FAILED', consoleErrors, visualGate, assetAssertion.message, assetAssertion.telemetry);
+    }
+
     const interactionAssertion = await runDeterministicInteraction(page, input.genre, timeoutMs);
 
     await page
@@ -110,7 +124,8 @@ export const runPlaywrightQaBrowser: QaBrowserRunner = async (input, requiredEve
       failure_code: consoleErrors.length > 0 ? 'FATAL_CONSOLE_ERROR' : !gateReady ? 'REQUIRED_TELEMETRY_MISSING' : interactionAssertion.ok ? undefined : 'QA_RUNNER_FAILED',
       message: interactionAssertion.message,
       screenshot_path: visualGate.screenshot_path,
-      visual_metrics: visualGate.visual_metrics
+      visual_metrics: visualGate.visual_metrics,
+      asset_runtime: assetAssertion.telemetry
     };
   } catch (error) {
     return {
@@ -145,7 +160,8 @@ function failedInteractionResult(
   failureCode: QaBrowserResult['failure_code'],
   consoleErrors: string[],
   visualGate: Extract<VisualGateResult, { ok: true }>,
-  error: unknown
+  error: unknown,
+  assetRuntime?: QaAssetRuntimeTelemetry
 ): QaBrowserResult {
   return {
     ok: false,
@@ -155,9 +171,10 @@ function failedInteractionResult(
     telemetry: [],
     console_errors: consoleErrors,
     failure_code: failureCode,
-    message: error instanceof Error ? error.message : 'Playwright interaction QA failed',
+    message: errorMessage(error, 'Playwright interaction QA failed'),
     screenshot_path: visualGate.screenshot_path,
-    visual_metrics: visualGate.visual_metrics
+    visual_metrics: visualGate.visual_metrics,
+    asset_runtime: assetRuntime
   };
 }
 
@@ -180,6 +197,13 @@ async function evaluateVisualRenderGate(
     return { ok: false, failure_code: 'CANVAS_ZERO_SIZE', message: `Canvas has zero-size bounds: ${canvasBox.width}x${canvasBox.height}.` };
   }
 
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        const { requestAnimationFrame: waitForFrame } = globalThis as unknown as { requestAnimationFrame: (callback: () => void) => number };
+        waitForFrame(() => waitForFrame(() => resolve()));
+      })
+  );
   await page.waitForTimeout(250);
   const screenshot = await canvas.screenshot();
 
@@ -335,6 +359,11 @@ async function runDeterministicInteraction(page: Page, genre: QaGenre, timeoutMs
       if (!movementAssertion.ok) {
         return movementAssertion;
       }
+
+      const runtimePlanAssertion = await verifyDodgerRuntimePlanSpawns(page);
+      if (!runtimePlanAssertion.ok) {
+        return runtimePlanAssertion;
+      }
     }
 
     for (const key of GENRE_KEYS[genre]) {
@@ -351,15 +380,70 @@ async function runDeterministicInteraction(page: Page, genre: QaGenre, timeoutMs
   }
 
   const progressed = await fireUntilShooterProgress(page, timeoutMs);
+  if (!progressed) {
+    await page.keyboard.press('r');
+    return { ok: false, message: 'Shooter QA expected repeated firing to produce enemy.cleared or score.changed.' };
+  }
+
+  const runtimePlanAssertion = await verifyShooterRuntimePlanEnemyWave(page);
   await page.keyboard.press('r');
 
-  return progressed
-    ? { ok: true }
-    : { ok: false, message: 'Shooter QA expected repeated firing to produce enemy.cleared or score.changed.' };
+  return runtimePlanAssertion;
 }
 
 async function readQaSnapshot(page: Page): Promise<unknown> {
   return await page.evaluate(() => (globalThis as BrowserQaGlobal).__GAME_QA__?.snapshot());
+}
+
+async function verifyRuntimeAssetsLoaded(page: Page, genre: QaGenre): Promise<{ ok: boolean; message?: string; telemetry?: QaAssetRuntimeTelemetry }> {
+  if (genre !== 'collector' && genre !== 'dodger' && genre !== 'shooter') {
+    return { ok: true };
+  }
+  const genreLabel = qaGenreLabel(genre);
+
+  const telemetry = await page.evaluate(() => {
+    const target = (globalThis as BrowserQaGlobal).__GAME_TELEMETRY__;
+    if (typeof target !== 'object' || target === null || !('assets' in target)) {
+      return undefined;
+    }
+    return (target as { assets?: unknown }).assets;
+  });
+
+  const assets = readAssetTelemetry(telemetry);
+  if (assets === undefined) {
+    return { ok: false, message: `${genreLabel} QA expected __GAME_TELEMETRY__.assets from the manifest loader.` };
+  }
+  const assetRuntime = toQaAssetRuntimeTelemetry(assets);
+
+  if (!assets.manifestLoaded) {
+    return { ok: false, message: `${genreLabel} QA expected asset manifest telemetry to report manifestLoaded=true.`, telemetry: assetRuntime };
+  }
+
+  if (assets.required.length === 0) {
+    return { ok: false, message: `${genreLabel} QA expected at least one required runtime asset.`, telemetry: assetRuntime };
+  }
+
+  const loaded = new Set(assets.loaded);
+  const missingRequired = assets.required.filter((id) => !loaded.has(id));
+  if (missingRequired.length > 0) {
+    return { ok: false, message: `${genreLabel} QA expected required assets to load: ${missingRequired.join(', ')}`, telemetry: assetRuntime };
+  }
+
+  const failed = new Set(assets.failed);
+  const failedRequired = assets.required.filter((id) => failed.has(id));
+  if (failedRequired.length > 0) {
+    return { ok: false, message: `${genreLabel} QA observed failed required assets: ${failedRequired.join(', ')}`, telemetry: assetRuntime };
+  }
+
+  if (assets.missing.length > 0) {
+    return { ok: false, message: `${genreLabel} QA observed missing manifest assets: ${assets.missing.join(', ')}`, telemetry: assetRuntime };
+  }
+
+  if (assets.missingRequiredRoles.length > 0) {
+    return { ok: false, message: `${genreLabel} QA observed missing required asset roles: ${assets.missingRequiredRoles.join(', ')}`, telemetry: assetRuntime };
+  }
+
+  return { ok: true, telemetry: assetRuntime };
 }
 
 async function verifyDodgerAutoProgress(page: Page): Promise<{ ok: boolean; message?: string }> {
@@ -387,13 +471,159 @@ async function verifyDodgerMovement(page: Page): Promise<{ ok: boolean; message?
   }
 
   const healthAfterMove = readSnapshotHealth(await readQaSnapshot(page));
-  await page.waitForTimeout(900);
+  await page.waitForTimeout(250);
   const healthAfterHazardPass = readSnapshotHealth(await readQaSnapshot(page));
   if (healthAfterMove !== undefined && healthAfterHazardPass !== undefined && healthAfterHazardPass < healthAfterMove) {
-    return { ok: false, message: 'Dodger QA expected a lane dodge to avoid hazard damage.' };
+    return { ok: false, message: 'Dodger QA expected a lane dodge to avoid immediate hazard damage.' };
   }
 
   return { ok: true };
+}
+
+async function verifyDodgerRuntimePlanSpawns(page: Page): Promise<{ ok: boolean; message?: string }> {
+  const snapshot = await readQaSnapshot(page);
+  const difficultyPlan = readSnapshotDodgerDifficultyPlan(snapshot);
+  if (difficultyPlan.kind === 'malformed') {
+    return { ok: false, message: difficultyPlan.message };
+  }
+  if (difficultyPlan.kind === 'runtime_plan') {
+    const difficultyAssertion = await verifyDodgerRuntimePlanDifficulty(page, difficultyPlan);
+    if (!difficultyAssertion.ok) {
+      return difficultyAssertion;
+    }
+  }
+
+  for (const entityKind of ['hazard', 'collectible'] as const) {
+    const spawnPlan = readSnapshotDodgerSpawnPlan(snapshot, entityKind);
+    if (spawnPlan.kind === 'absent' || spawnPlan.kind === 'not_runtime_plan') {
+      continue;
+    }
+
+    if (spawnPlan.kind === 'malformed') {
+      return { ok: false, message: spawnPlan.message };
+    }
+
+    const eventType = entityKind === 'hazard' ? 'hazard.spawned' : 'item.spawned';
+    const observedRuntimePlanSpawn = await page
+      .waitForFunction(
+        ({ eventType: expectedEventType, entityKind: expectedEntityKind, entityId, strategy, maxActive, count, intervalMs, laneCount }) => {
+          const qa = (globalThis as BrowserQaGlobal).__GAME_QA__;
+          return (
+            qa?.telemetry().some((event) => {
+              if (typeof event !== 'object' || event === null || !('type' in event) || event.type !== expectedEventType) {
+                return false;
+              }
+
+              const payload = (event as { payload?: unknown }).payload;
+              if (typeof payload !== 'object' || payload === null) {
+                return false;
+              }
+
+              const observed = payload as {
+                entityId?: unknown;
+                strategy?: unknown;
+                source?: unknown;
+                maxActive?: unknown;
+                count?: unknown;
+                intervalMs?: unknown;
+                effectiveIntervalMs?: unknown;
+                laneCount?: unknown;
+                difficultyLevel?: unknown;
+                difficultySource?: unknown;
+                rampProgress?: unknown;
+                speedMultiplier?: unknown;
+                spawnIntervalMultiplier?: unknown;
+              };
+              const laneMatches = laneCount === undefined || observed.laneCount === laneCount;
+              return (
+                observed.source === 'runtime_plan' &&
+                observed.entityId === entityId &&
+                observed.strategy === strategy &&
+                observed.maxActive === maxActive &&
+                observed.count === count &&
+                observed.intervalMs === intervalMs &&
+                laneMatches
+              );
+            }) === true
+          );
+        },
+        {
+          eventType,
+          entityKind,
+          entityId: spawnPlan.entityId,
+          strategy: spawnPlan.strategy,
+          maxActive: spawnPlan.maxActive,
+          count: spawnPlan.count,
+          intervalMs: spawnPlan.intervalMs,
+          laneCount: spawnPlan.laneCount
+        },
+        { timeout: 1500 }
+      )
+      .then(() => true)
+      .catch(() => false);
+
+    if (!observedRuntimePlanSpawn) {
+      return { ok: false, message: `Dodger QA expected runtime_plan ${entityKind} spawn telemetry to match the snapshot spawnPlan.` };
+    }
+  }
+
+  return { ok: true };
+}
+
+async function verifyDodgerRuntimePlanDifficulty(
+  page: Page,
+  difficulty: Extract<DodgerDifficultyPlanRead, { kind: 'runtime_plan' }>
+): Promise<{ ok: boolean; message?: string }> {
+  const observedRuntimePlanDifficulty = await page
+    .waitForFunction(
+      ({ level, speedMultiplierMin, speedMultiplierMax, spawnIntervalMultiplierMin, spawnIntervalMultiplierMax }) => {
+        const qa = (globalThis as BrowserQaGlobal).__GAME_QA__;
+        return (
+          qa?.telemetry().some((event) => {
+            if (typeof event !== 'object' || event === null || !('type' in event) || event.type !== 'hazard.spawned') {
+              return false;
+            }
+
+            const payload = (event as { payload?: unknown }).payload;
+            if (typeof payload !== 'object' || payload === null) {
+              return false;
+            }
+
+            const observed = payload as {
+              difficultyLevel?: unknown;
+              difficultySource?: unknown;
+              rampProgress?: unknown;
+              speedMultiplier?: unknown;
+              spawnIntervalMultiplier?: unknown;
+              effectiveIntervalMs?: unknown;
+            };
+            return (
+              observed.difficultyLevel === level &&
+              observed.difficultySource === 'runtime_plan' &&
+              typeof observed.rampProgress === 'number' &&
+              observed.rampProgress >= 0 &&
+              observed.rampProgress <= 1 &&
+              typeof observed.speedMultiplier === 'number' &&
+              observed.speedMultiplier >= speedMultiplierMin &&
+              observed.speedMultiplier <= speedMultiplierMax &&
+              typeof observed.spawnIntervalMultiplier === 'number' &&
+              observed.spawnIntervalMultiplier >= spawnIntervalMultiplierMin &&
+              observed.spawnIntervalMultiplier <= spawnIntervalMultiplierMax &&
+              typeof observed.effectiveIntervalMs === 'number' &&
+              observed.effectiveIntervalMs >= 200
+            );
+          }) === true
+        );
+      },
+      difficulty,
+      { timeout: 1500 }
+    )
+    .then(() => true)
+    .catch(() => false);
+
+  return observedRuntimePlanDifficulty
+    ? { ok: true }
+    : { ok: false, message: 'Dodger QA expected runtime_plan difficulty_curve metadata on hazard spawn telemetry.' };
 }
 
 async function verifyShooterMovement(page: Page): Promise<{ ok: boolean; message?: string }> {
@@ -452,6 +682,75 @@ async function fireUntilShooterProgress(page: Page, timeoutMs: number): Promise<
   return false;
 }
 
+async function verifyShooterRuntimePlanEnemyWave(page: Page): Promise<{ ok: boolean; message?: string }> {
+  const snapshot = await readQaSnapshot(page);
+  const enemyWavePlan = readSnapshotShooterEnemyWavePlan(snapshot);
+  if (enemyWavePlan.kind === 'absent' || enemyWavePlan.kind === 'not_runtime_plan') {
+    return { ok: true };
+  }
+
+  if (enemyWavePlan.kind === 'malformed') {
+    return { ok: false, message: enemyWavePlan.message };
+  }
+
+  const activeCount = readSnapshotEnemiesActive(snapshot);
+  if (activeCount !== undefined && activeCount > enemyWavePlan.maxActive) {
+    return {
+      ok: false,
+      message: `Shooter QA expected runtime_plan enemyWavePlan maxActive ${enemyWavePlan.maxActive}, observed ${activeCount} active enemies.`
+    };
+  }
+
+  const observedRuntimePlanHit = await page
+    .waitForFunction(
+      ({ entityId, strategy, speedMultiplier }) => {
+        const qa = (globalThis as BrowserQaGlobal).__GAME_QA__;
+        return (
+          qa?.telemetry().some((event) => {
+            if (
+              typeof event !== 'object' ||
+              event === null ||
+              !('type' in event) ||
+              (event.type !== 'enemy.hit' && event.type !== 'enemy.cleared')
+            ) {
+              return false;
+            }
+
+            const payload = (event as { payload?: unknown }).payload;
+            if (typeof payload !== 'object' || payload === null) {
+              return false;
+            }
+
+            const observed = payload as {
+              entityId?: unknown;
+              waveSource?: unknown;
+              strategy?: unknown;
+              speedMultiplier?: unknown;
+            };
+            return (
+              observed.waveSource === 'runtime_plan' &&
+              observed.entityId === entityId &&
+              observed.strategy === strategy &&
+              observed.speedMultiplier === speedMultiplier
+            );
+          }) === true
+        );
+      },
+      {
+        entityId: enemyWavePlan.entityId,
+        strategy: enemyWavePlan.strategy,
+        speedMultiplier: enemyWavePlan.speedMultiplier
+      },
+      { timeout: 1500 }
+    )
+    .then(() => true)
+    .catch(() => false);
+
+  return observedRuntimePlanHit
+    ? { ok: true }
+    : { ok: false, message: 'Shooter QA expected runtime_plan enemy wave hit or clear telemetry to match the snapshot enemyWavePlan.' };
+}
+
 function movedHorizontally(before: unknown, after: unknown, minDelta: number): boolean {
   const beforePlayer = readSnapshotPlayer(before);
   const afterPlayer = readSnapshotPlayer(after);
@@ -506,6 +805,262 @@ function readSnapshotHealth(snapshot: unknown): number | undefined {
   return typeof health === 'number' ? health : undefined;
 }
 
+function readSnapshotEnemiesActive(snapshot: unknown): number | undefined {
+  if (typeof snapshot !== 'object' || snapshot === null || !('enemiesActive' in snapshot)) {
+    return undefined;
+  }
+
+  const { enemiesActive } = snapshot as { enemiesActive?: unknown };
+  return typeof enemiesActive === 'number' ? enemiesActive : undefined;
+}
+
+type DodgerSpawnPlanRead =
+  | { kind: 'absent' }
+  | { kind: 'not_runtime_plan' }
+  | { kind: 'malformed'; message: string }
+  | { kind: 'runtime_plan'; entityId: string; strategy: string; source: 'runtime_plan'; maxActive: number; count: number; intervalMs: number; laneCount?: number };
+
+type DodgerDifficultyPlanRead =
+  | { kind: 'absent' }
+  | { kind: 'not_runtime_plan' }
+  | { kind: 'malformed'; message: string }
+  | {
+      kind: 'runtime_plan';
+      level: 'easy' | 'normal';
+      speedMultiplierMin: number;
+      speedMultiplierMax: number;
+      spawnIntervalMultiplierMin: number;
+      spawnIntervalMultiplierMax: number;
+    };
+
+type ShooterEnemyWavePlanRead =
+  | { kind: 'absent' }
+  | { kind: 'not_runtime_plan' }
+  | { kind: 'malformed'; message: string }
+  | {
+      kind: 'runtime_plan';
+      entityId: string;
+      strategy: 'right_edge_wave';
+      source: 'runtime_plan';
+      count: number;
+      maxActive: number;
+      intervalMs: number;
+      speedMultiplier: number;
+    };
+
+function readSnapshotShooterEnemyWavePlan(snapshot: unknown): ShooterEnemyWavePlanRead {
+  if (typeof snapshot !== 'object' || snapshot === null || !('enemyWavePlan' in snapshot)) {
+    return { kind: 'absent' };
+  }
+
+  const enemyWavePlan = (snapshot as { enemyWavePlan?: unknown }).enemyWavePlan;
+  if (typeof enemyWavePlan !== 'object' || enemyWavePlan === null) {
+    return { kind: 'malformed', message: 'Shooter QA expected runtime_plan enemyWavePlan to be an object.' };
+  }
+
+  const { derivedFrom, entityId, strategy, source, count, maxActive, intervalMs, speedMultiplier } = enemyWavePlan as Record<string, unknown>;
+  if (source !== 'runtime_plan') {
+    return { kind: 'not_runtime_plan' };
+  }
+
+  if (
+    derivedFrom !==
+      'entities.enemy.id,entities.enemy.count,entities.enemy.health,entities.enemy.movement.speed_px_per_sec,game.difficulty,game.target_play_time_sec' ||
+    typeof entityId !== 'string' ||
+    strategy !== 'right_edge_wave' ||
+    typeof count !== 'number' ||
+    typeof maxActive !== 'number' ||
+    typeof intervalMs !== 'number' ||
+    typeof speedMultiplier !== 'number'
+  ) {
+    return {
+      kind: 'malformed',
+      message:
+        'Shooter QA expected runtime_plan enemyWavePlan to include derivedFrom, entityId, strategy, count, maxActive, intervalMs, and speedMultiplier.'
+    };
+  }
+
+  return { kind: 'runtime_plan', entityId, strategy, source, count, maxActive, intervalMs, speedMultiplier };
+}
+
+function readSnapshotDodgerDifficultyPlan(snapshot: unknown): DodgerDifficultyPlanRead {
+  if (typeof snapshot !== 'object' || snapshot === null || !('difficultyPlan' in snapshot)) {
+    return { kind: 'absent' };
+  }
+
+  const difficultyPlan = (snapshot as { difficultyPlan?: unknown }).difficultyPlan;
+  if (typeof difficultyPlan !== 'object' || difficultyPlan === null) {
+    return { kind: 'malformed', message: 'Dodger QA expected runtime_plan difficultyPlan to be an object.' };
+  }
+
+  const {
+    level,
+    source,
+    derivedFrom,
+    rampDurationMs,
+    rampProgress,
+    speedMultiplierStart,
+    speedMultiplierEnd,
+    speedMultiplier,
+    spawnIntervalMultiplierStart,
+    spawnIntervalMultiplierEnd,
+    spawnIntervalMultiplier
+  } = difficultyPlan as Record<string, unknown>;
+
+  if (source !== 'runtime_plan') {
+    return { kind: 'not_runtime_plan' };
+  }
+
+  if (
+    (level !== 'easy' && level !== 'normal') ||
+    derivedFrom !== 'game.difficulty,game.target_play_time_sec' ||
+    typeof rampDurationMs !== 'number' ||
+    typeof rampProgress !== 'number' ||
+    rampProgress < 0 ||
+    rampProgress > 1 ||
+    typeof speedMultiplierStart !== 'number' ||
+    typeof speedMultiplierEnd !== 'number' ||
+    typeof speedMultiplier !== 'number' ||
+    typeof spawnIntervalMultiplierStart !== 'number' ||
+    typeof spawnIntervalMultiplierEnd !== 'number' ||
+    typeof spawnIntervalMultiplier !== 'number'
+  ) {
+    return {
+      kind: 'malformed',
+      message:
+        'Dodger QA expected runtime_plan difficultyPlan to include level, derivedFrom, rampDurationMs, rampProgress, speed multipliers, and spawn interval multipliers.'
+    };
+  }
+
+  const speedMultiplierMin = Math.min(speedMultiplierStart, speedMultiplierEnd);
+  const speedMultiplierMax = Math.max(speedMultiplierStart, speedMultiplierEnd);
+  const spawnIntervalMultiplierMin = Math.min(spawnIntervalMultiplierStart, spawnIntervalMultiplierEnd);
+  const spawnIntervalMultiplierMax = Math.max(spawnIntervalMultiplierStart, spawnIntervalMultiplierEnd);
+
+  if (
+    speedMultiplier < speedMultiplierMin ||
+    speedMultiplier > speedMultiplierMax ||
+    spawnIntervalMultiplier < spawnIntervalMultiplierMin ||
+    spawnIntervalMultiplier > spawnIntervalMultiplierMax
+  ) {
+    return { kind: 'malformed', message: 'Dodger QA expected runtime_plan difficultyPlan current multipliers to stay inside curve bounds.' };
+  }
+
+  return {
+    kind: 'runtime_plan',
+    level,
+    speedMultiplierMin,
+    speedMultiplierMax,
+    spawnIntervalMultiplierMin,
+    spawnIntervalMultiplierMax
+  };
+}
+
+function readSnapshotDodgerSpawnPlan(snapshot: unknown, entityKind: 'hazard' | 'collectible'): DodgerSpawnPlanRead {
+  if (typeof snapshot !== 'object' || snapshot === null || !('spawnPlan' in snapshot)) {
+    return { kind: 'absent' };
+  }
+
+  const spawnPlan = (snapshot as { spawnPlan?: unknown }).spawnPlan;
+  if (typeof spawnPlan !== 'object' || spawnPlan === null || !(entityKind in spawnPlan)) {
+    return { kind: 'absent' };
+  }
+
+  const plan = (spawnPlan as { hazard?: unknown; collectible?: unknown })[entityKind];
+  if (typeof plan !== 'object' || plan === null) {
+    return { kind: 'malformed', message: `Dodger QA expected runtime_plan spawnPlan.${entityKind} to be an object.` };
+  }
+
+  const { entityId, strategy, source, maxActive, count, intervalMs, laneCount } = plan as {
+    entityId?: unknown;
+    strategy?: unknown;
+    source?: unknown;
+    maxActive?: unknown;
+    count?: unknown;
+    intervalMs?: unknown;
+    laneCount?: unknown;
+  };
+  if (source !== 'runtime_plan') {
+    return { kind: 'not_runtime_plan' };
+  }
+
+  if (entityKind === 'hazard' && strategy !== 'right_edge_wave') {
+    return { kind: 'malformed', message: 'Dodger QA expected runtime_plan hazard strategy to be right_edge_wave.' };
+  }
+
+  if (entityKind === 'collectible' && (strategy !== 'fixed_positions' || laneCount !== undefined)) {
+    return { kind: 'malformed', message: 'Dodger QA expected runtime_plan collectible strategy to be fixed_positions without laneCount.' };
+  }
+
+  return typeof entityId === 'string' &&
+    typeof strategy === 'string' &&
+    typeof maxActive === 'number' &&
+    typeof count === 'number' &&
+    typeof intervalMs === 'number' &&
+    (entityKind === 'collectible' || typeof laneCount === 'number')
+    ? { kind: 'runtime_plan', entityId, strategy, source, maxActive, count, intervalMs, ...(typeof laneCount === 'number' ? { laneCount } : {}) }
+    : {
+        kind: 'malformed',
+        message:
+          entityKind === 'hazard'
+            ? 'Dodger QA expected runtime_plan spawnPlan.hazard to include entityId, strategy, count, maxActive, intervalMs, and laneCount.'
+            : 'Dodger QA expected runtime_plan spawnPlan.collectible to include entityId, strategy, count, maxActive, and intervalMs.'
+      };
+}
+
+function readAssetTelemetry(value: unknown): RuntimeAssetTelemetry | undefined {
+  if (typeof value !== 'object' || value === null) {
+    return undefined;
+  }
+
+  const assets = value as Record<string, unknown>;
+  if (
+    typeof assets.manifestLoaded !== 'boolean' ||
+    !Array.isArray(assets.required) ||
+    !Array.isArray(assets.loaded) ||
+    !Array.isArray(assets.failed) ||
+    !Array.isArray(assets.fallbackUsed) ||
+    !Array.isArray(assets.placeholderUsed) ||
+    !Array.isArray(assets.missing) ||
+    !Array.isArray(assets.missingRequiredRoles)
+  ) {
+    return undefined;
+  }
+
+  const required = readStringArray(assets.required);
+  const loaded = readStringArray(assets.loaded);
+  const failed = readStringArray(assets.failed);
+  const fallbackUsed = readStringArray(assets.fallbackUsed);
+  const placeholderUsed = readStringArray(assets.placeholderUsed);
+  const missing = readStringArray(assets.missing);
+  const missingRequiredRoles = readStringArray(assets.missingRequiredRoles);
+  if (
+    required === undefined ||
+    loaded === undefined ||
+    failed === undefined ||
+    fallbackUsed === undefined ||
+    placeholderUsed === undefined ||
+    missing === undefined ||
+    missingRequiredRoles === undefined
+  ) {
+    return undefined;
+  }
+
+  return { manifestLoaded: assets.manifestLoaded, required, loaded, failed, fallbackUsed, placeholderUsed, missing, missingRequiredRoles };
+}
+
+function readStringArray(value: unknown[]): string[] | undefined {
+  return value.every((item) => typeof item === 'string') ? (value as string[]) : undefined;
+}
+
+function errorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return typeof error === 'string' && error.length > 0 ? error : fallback;
+}
+
 function withQaParams(previewUrl: string, seed: string): string {
   const url = new URL(previewUrl);
   url.searchParams.set('qa', '1');
@@ -520,3 +1075,31 @@ type BrowserQaGlobal = typeof globalThis & {
   };
   __GAME_TELEMETRY__?: unknown;
 };
+
+type RuntimeAssetTelemetry = {
+  manifestLoaded: boolean;
+  required: string[];
+  loaded: string[];
+  failed: string[];
+  fallbackUsed: string[];
+  placeholderUsed: string[];
+  missing: string[];
+  missingRequiredRoles: string[];
+};
+
+function toQaAssetRuntimeTelemetry(assets: RuntimeAssetTelemetry): QaAssetRuntimeTelemetry {
+  return {
+    manifest_loaded: assets.manifestLoaded,
+    required: [...assets.required],
+    loaded: [...assets.loaded],
+    failed: [...assets.failed],
+    fallback_used: [...assets.fallbackUsed],
+    placeholder_used: [...assets.placeholderUsed],
+    missing: [...assets.missing],
+    missing_required_roles: [...assets.missingRequiredRoles]
+  };
+}
+
+function qaGenreLabel(genre: QaGenre): string {
+  return `${genre.slice(0, 1).toUpperCase()}${genre.slice(1)}`;
+}

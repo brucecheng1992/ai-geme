@@ -8,11 +8,2697 @@
 
 ## 当前阶段
 
-P0 主链路修复和模型 DSL 视觉执行复核修复已完成。
+Step 14C controlled rollout verification / closeout 已验证并关闭 controlled rollout lane：`ART_ASSET_SEMANTIC_ROLLOUT_ENABLED` 默认关闭，flag-off 保持当前/default behavior，flag-on 仅限 approved Pirate Kit 20-asset runtime-safe input，rollback 为关闭 flag。本步不接 production asset packs、不改变 runtime/default integration、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 repair behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate、Step 10B implementation、Step 11A-11C non-default runtime canary lane、Step 12A preview gate、Step 12B preview implementation、Step 12C preview signoff、Step 13A large-library intake gate、Step 13B read-only inventory dry-run、Step 13C-A docs-only gate、Step 13C-B fixture import、Step 13D-A docs-only gate、Step 13D-B implementation、Step 13E-A docs-only gate、Step 13E-B controlled expansion、Step 14A docs-only gate、Step 14B rollout decision 和 Step 14C controlled rollout closeout。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：P0 实施文档范围已完成；后续扩展应新开 P1/P2 阶段。
+当前下一步：提交 Step 14C verification / closeout docs commit，然后关闭分支边界。当前分支为 `docs/asset-semantic-step-14c-rollout-verification-closeout`。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.50 Step 14C: Controlled Rollout Verification / Closeout
+
+完成时间：2026-06-14
+
+已完成内容：
+
+- 新增 `docs/refactor-log/art-asset-pipeline-production-rollout/step-14c-controlled-rollout-closeout.md`。
+- 更新 rollout README、decision points 和 semantic fidelity plan。
+- 验证 Step 14B controlled rollout helper 已实现并保持非默认。
+- 记录 feature flag：`ART_ASSET_SEMANTIC_ROLLOUT_ENABLED`。
+- 记录 flag-off 为当前/default behavior，且不调用 metadata exporter。
+- 记录 flag-on 仅允许 `pirate-kit-v0.1` 和 approved Pirate Kit 20-asset runtime-safe input。
+- 记录 rollback 为关闭 `ART_ASSET_SEMANTIC_ROLLOUT_ENABLED`。
+- 记录 production asset packs、runtime/default behavior、resolver、QA、Workbench、Phaser、asset pack loading、metadata sidecars 和 source assets 均未改变。
+- 记录 broad/default production rollout 仍未批准，未来需要单独 approval gate。
+
+行为边界：
+
+- Step 14C is verification / closeout only。
+- No new rollout behavior implemented。
+- No runtime/default behavior changed。
+- No resolver behavior changed。
+- No QA / Workbench / Phaser / asset pack loading changed。
+- No production asset packs changed。
+- No assets imported。
+- No metadata sidecars changed。
+- No generated artifacts committed。
+- No large-library scan。
+- Repair-enabled remains non-default。
+- No metadata repair/writeback。
+- Broad/default production rollout remains not approved。
+
+验证：
+
+    npx vitest run tests/contracts/art-asset-semantic-rollout.test.ts
+    npm run metadata:validate -- tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- --check-paths tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run test:contracts
+    npm test
+    npm run typecheck
+    npm run qa:asset-semantic:canary -- --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1 --timestamp 20260614Tstep14c-default
+    npm run qa:asset-semantic:canary -- --repair-enabled --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1 --timestamp 20260614Tstep14c-repair
+    npm run qa:asset-semantic:compare -- --default-summary artifacts/asset-semantic-canary/20260614Tstep14c-default/summary.json --repair-enabled-summary artifacts/asset-semantic-canary/20260614Tstep14c-repair/summary.json --out artifacts/asset-semantic-canary-comparison/20260614Tstep14c/comparison.json
+
+验证结果：
+
+- Focused rollout test passed：1 file / 6 tests。
+- Pirate Kit metadata validate passed：20 metadata files。
+- Pirate Kit JSON validate passed：`ok=true`，`diagnostics=[]`。
+- Pirate Kit check-paths passed：20 metadata files。
+- Pirate Kit runtime-safe export passed：`ok=true`，`diagnostics=[]`，`asset_count=20`。
+- `npm run test:contracts` passed：24 files / 216 tests。
+- `npm test` passed：contracts 24 files / 216 tests，workspace 12 files / 125 tests。
+- `npm run typecheck` passed：root、maker-api、maker-workbench。
+- Default canary passed：`runnable=20 skipped=0 experimental=0 passed=20 failed=0`，`repair.enabled=false`。
+- Repair-enabled canary passed：`runnable=20 skipped=0 experimental=0 passed=20 failed=0`，`repair.enabled=true repair.attemptedCount=0 repair.failedCount=0`。
+- Comparison passed：`ok=true case.total=20 case.runnable=20 case.skipped=0 case.experimental=0 default.failed=0 repair.failed=0 failureDiagnosticDelta=0`。
+- Generated canary / comparison artifacts remain under ignored `artifacts/` and are not committed。
+
+最终状态：
+
+- The art asset semantic pipeline is controlled-rollout ready.
+- It is not broad/default production rollout.
+- Broad/default rollout requires a separate future approval gate.
+
+审查门禁结论：
+
+- Oracle review completed。
+- P0/P1 blockers：none。
+- Initial P2：review log still said Oracle review pending。
+- Initial P3：legacy `step-14c-production-verification-rollback.md` still exists as a future draft, but current README points to the new Step 14C closeout document; left untouched because it is outside the allowed Step 14C docs scope。
+- Resolution：updated this review log to record the Step 14C Oracle conclusion before commit。
+
+### 2.49 Step 14B: Controlled Rollout Implementation
+
+完成时间：2026-06-14
+
+已完成内容：
+
+- 新增 `scripts/art-asset-semantic-rollout.ts`。
+- 新增 `tests/contracts/art-asset-semantic-rollout.test.ts`。
+- 引入非默认 feature flag：`ART_ASSET_SEMANTIC_ROLLOUT_ENABLED`。
+- 唯一 enabled value：`pirate-kit-v0.1`。
+- flag unset / empty 时返回 disabled summary，且不调用 metadata exporter。
+- flag-on 时只使用 `tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata` 的 runtime-safe export。
+- rollout summary 锁定 fixture root、metadata dir、asset count `20`、rollback instruction 和 deterministic diagnostics。
+- invalid export、asset count mismatch 和 fixture-root 外路径均 fail closed。
+- 更新 Step 14B rollout docs、rollout README 和 semantic fidelity plan。
+
+行为边界：
+
+- Default behavior remains unchanged when flag is off。
+- No production asset packs changed。
+- No runtime/default resolver path changed。
+- No QA / Workbench / Phaser / asset pack loading changed。
+- No assets imported。
+- No metadata sidecars changed。
+- No thumbnails generated。
+- No large-library scan。
+- Repair-enabled remains non-default。
+- No metadata repair/writeback。
+- Broad/default production rollout remains not approved。
+- Generated artifacts are not committed。
+
+验证：
+
+    npx vitest run tests/contracts/art-asset-semantic-rollout.test.ts
+    npx vitest run tests/contracts/art-asset-semantic-rollout.test.ts tests/contracts/art-asset-runtime-canary.test.ts
+    npm run metadata:validate -- tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- --check-paths tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- assets/metadata/examples
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+    npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata
+    npm run test:contracts
+    npm test
+    npm run typecheck
+    git diff --check
+    npm run qa:asset-semantic:canary -- --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1 --timestamp 20260614Tstep14b-default
+    npm run qa:asset-semantic:canary -- --repair-enabled --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1 --timestamp 20260614Tstep14b-repair
+    npm run qa:asset-semantic:compare -- --default-summary artifacts/asset-semantic-canary/20260614Tstep14b-default/summary.json --repair-enabled-summary artifacts/asset-semantic-canary/20260614Tstep14b-repair/summary.json --out artifacts/asset-semantic-canary-comparison/20260614Tstep14b/comparison.json
+
+验证结果：
+
+- Focused rollout test RED：failed because `scripts/art-asset-semantic-rollout.js` did not exist。
+- Focused rollout test GREEN：6 tests passed。
+- Focused rollout + existing runtime canary regression passed：2 files / 11 tests。
+- Pirate Kit metadata validate / JSON validate / check-paths passed：20 files。
+- Pirate Kit runtime-safe export passed：`asset_count=20`。
+- Baseline examples validate/export passed：5 files / `asset_count=5`。
+- Baseline small fixture validate/export passed：10 files / `asset_count=10`。
+- `npm run test:contracts` passed：24 files / 216 tests。
+- `npm test` passed：contracts 24 files / 216 tests，workspace 12 files / 125 tests。
+- `npm run typecheck` passed：root、maker-api、maker-workbench。
+- `git diff --check` passed。
+- Default canary passed：`runnable=20 skipped=0 experimental=0 passed=20 failed=0`，`repair.enabled=false`。
+- Repair-enabled canary passed：`runnable=20 skipped=0 experimental=0 passed=20 failed=0`，`repair.enabled=true repair.attemptedCount=0 repair.failedCount=0`。
+- Comparison passed：`ok=true case.total=20 case.runnable=20 default.failed=0 repair.failed=0 failureDiagnosticDelta=0`。
+- Generated canary / comparison artifacts remain under ignored `artifacts/` and are not committed。
+
+审查门禁结论：
+
+- Oracle review completed。
+- P0/P1 blockers：none。
+- Initial P2：review log / rollout README still said Oracle review pending。
+- Initial P3：Step 14B document still said implementation in progress。
+- Resolution：updated Step 14B docs and rollout README to reflect completed validation and Oracle review result。
+
+### 2.48 Step 14A: Production Rollout Gate
+
+完成时间：2026-06-14
+
+已完成内容：
+
+- 更新 `docs/refactor-log/art-asset-pipeline-production-rollout/step-14a-production-rollout-gate.md`。
+- 将 Step 14A 明确为 docs-only approval gate，不实现 rollout。
+- 总结 Step 13E-B evidence：20 GLB assets、20 selected existing previews、20 metadata sidecars、metadata validate/export、default canary、repair-enabled canary、comparison、bridge summary、resolver-adjacent diagnostics、contracts、full tests 和 typecheck 均已通过。
+- 判定当前 evidence 足够进入 limited Step 14B proposal，但不足以 broad/default production rollout。
+- 推荐 Step 14B 只走 Mode B：off-by-default non-default feature flag path；Mode C internal preview / QA-only path 仅在需要检查同一 approved fixture-backed output 时允许。
+- 定义 Step 14B feature flag / guard policy、production asset pack policy、runtime/default behavior policy、QA / Workbench / Phaser policy、rollback policy、failure budget、performance / size policy、rights / license policy 和 allowed boundary。
+- 更新 semantic fidelity plan、rollout README 和 decision points。
+
+行为边界：
+
+- Step 14A is docs-only。
+- No code, tests or scripts changed。
+- No assets imported。
+- No metadata sidecars changed。
+- No thumbnails generated。
+- No generated artifacts created or committed。
+- Runtime/default behavior did not change。
+- Resolver behavior did not change。
+- QA / Workbench / Phaser / asset pack loading did not change。
+- Production asset packs did not change。
+- Step 14B implementation did not start。
+- Repair-enabled did not become default。
+- Metadata repair/writeback remains disallowed。
+- Large-library bulk scan remains disallowed。
+- `AGENTS.md` was not restored。
+- Parked plan patch was not applied。
+- No tag / stash / push / sync operations。
+
+验证：
+
+    git diff --check
+    git diff --name-only
+
+验证结果：
+
+- `git diff --check` passed。
+- `git diff --name-only` confirmed only Step 14A docs / plan / rollout tracking docs changed。
+
+审查门禁结论：
+
+- Main-agent self-review completed before commit。
+- Oracle review completed after commit `bb398b3`。
+- P0/P1/P2 blockers：none。
+- Initial P3：README / review log still used pre-commit status wording。
+- Resolution：updated Step 14A status wording to reflect committed `bb398b3` and branch-boundary next step。
+
+### 2.47 Step 13E-B: Controlled Large-Library Expansion Implementation
+
+完成时间：2026-06-14
+
+已完成内容：
+
+- 扩展 `tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/`。
+- 从同一 approved Kenney Pirate Kit archive 只新增 10 个 GLB assets。
+- 只新增对应 10 个 selected existing `Previews/*.png` 到 `thumbnails/`；没有生成 thumbnails。
+- 新增 10 个 sidecar `.asset.json` metadata files。
+- 更新 fixture `README.md`，记录 100% additional-asset review sampling evidence。
+- 更新 `tests/contracts/asset-semantic-large-library-batch-zero-pirate-kit.test.ts`，锁定 20-asset exact set、10 additional assets、sidecar/thumbnail parity、path safety、runtime-safe export 和 README evidence。
+- 更新 `tests/contracts/asset-semantic-large-library-batch-zero-dry-run.test.ts`，将 default / repair-enabled canary、comparison、bridge summary 和 resolver-adjacent diagnostics 提升到 20 assets。
+- 更新 Step 13E 文档、semantic fidelity plan 和 rollout README。
+
+Added asset basenames:
+
+- `bottle`
+- `cannon-ball`
+- `cannon-mobile`
+- `crate-bottles`
+- `rocks-b`
+- `rocks-c`
+- `patch-sand`
+- `structure-platform-dock-small`
+- `mast`
+- `tool-paddle`
+
+阶段结果：
+
+- Additional asset count：10。
+- Expanded fixture asset count：20。
+- Thumbnail count：20 selected existing preview PNGs。
+- Metadata sidecar count：20。
+- Target fixture path：`tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/`。
+- Total fixture size：`719199` bytes。
+- Largest imported file：`assets/ship-pirate-small.glb`，`131464` bytes。
+- Downloaded zip remains under ignored `artifacts/` and is not tracked。
+- Generated canary/comparison artifacts remain under ignored `artifacts/` and are not tracked。
+
+行为边界：
+
+- Full archive was not imported。
+- No unapproved source was used。
+- No thumbnails were generated。
+- No metadata was created for unselected archive files。
+- No production asset packs changed。
+- Runtime/default behavior did not change。
+- Resolver behavior did not change。
+- QA / Workbench / Phaser / asset pack loading did not change。
+- Repair-enabled did not become default。
+- Step 14A production rollout remains future。
+- `AGENTS.md` was not restored。
+- Parked plan patch was not applied。
+- No tag / stash / push / sync operations。
+
+验证：
+
+    npx vitest run tests/contracts/asset-semantic-large-library-batch-zero-pirate-kit.test.ts
+    npx vitest run tests/contracts/asset-semantic-large-library-batch-zero-dry-run.test.ts
+    npm run metadata:validate -- tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- --check-paths tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run qa:asset-semantic:canary -- --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1 --timestamp 20260614Tstep13e-expanded-default
+    npm run qa:asset-semantic:canary -- --repair-enabled --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1 --timestamp 20260614Tstep13e-expanded-repair
+    npm run qa:asset-semantic:compare -- --default-summary artifacts/asset-semantic-canary/20260614Tstep13e-expanded-default/summary.json --repair-enabled-summary artifacts/asset-semantic-canary/20260614Tstep13e-expanded-repair/summary.json --out artifacts/asset-semantic-canary-comparison/20260614Tstep13e-expanded/comparison.json
+    npm run metadata:validate -- assets/metadata/examples
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+    npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata
+    npm run test:contracts
+    npm test
+    npm run typecheck
+    git diff --check
+
+验证结果：
+
+- Focused expanded fixture test passed：1 file / 6 tests。
+- Focused expanded dry-run / bridge test passed：1 file / 7 tests。
+- Expanded fixture metadata validate / JSON validate / check-paths / runtime export passed：20 metadata files，`asset_count=20`，no diagnostics。
+- Default canary passed：`runnable=20 passed=20 failed=0`。
+- Repair-enabled canary passed：`runnable=20 passed=20 failed=0`，`repair.attemptedCount=0`。
+- Comparison passed：`ok=true`，`case.total=20`，`default.failed=0`，`repair.failed=0`。
+- Bridge green summary asserted by focused test：`ok=true`，`matched_count=20`，`diagnostic_count=0`。
+- Resolver-adjacent green summary asserted by focused test：`ok=true`，`requested_count=20`，`resolved_count=20`，`diagnostic_count=0`。
+- Baseline examples validate / runtime export passed：5 files，`asset_count=5`。
+- Baseline small fixture validate / runtime export passed：10 files，`asset_count=10`。
+- `npm run test:contracts` passed：23 files / 210 tests。
+- `npm test` passed：contracts 23 files / 210 tests，workspace 12 files / 125 tests。
+- `npm run typecheck` passed：root、maker-api、maker-workbench。
+- `git diff --check` passed。
+
+Generated artifacts:
+
+- Default canary artifact path：`artifacts/asset-semantic-canary/20260614Tstep13e-expanded-default/summary.json`。
+- Repair-enabled canary artifact path：`artifacts/asset-semantic-canary/20260614Tstep13e-expanded-repair/summary.json`。
+- Comparison artifact path：`artifacts/asset-semantic-canary-comparison/20260614Tstep13e-expanded/comparison.json`。
+- Generated artifacts remain ignored and are not committed。
+
+审查门禁结论：
+
+- Oracle review completed with `PASS_WITH_P3_NOTES`。
+- P0/P1/P2 blockers：none。
+- P3：Step 13E 文档顶部仍保留旧 Step 13E-A gate wording；review log / Step 13E doc 仍写 Oracle pending。
+- Resolution：已清理 Step 13E 顶部旧 gate wording，并把 pending placeholders 更新为本次 Oracle verdict。
+- Final gate：Step 13E-B 可进入 commit；Step 14A remains parked。
+
+### 2.46 Step 13E-A: Large-Library Batch Expansion Gate
+
+完成时间：2026-06-14
+
+已完成内容：
+
+- 扩展 `docs/refactor-log/art-asset-pipeline-production-rollout/step-13e-batch-expansion-gate.md`。
+- 文档定义 Step 13E-A 只回答是否允许 Step 13E-B 扩展，不执行 import。
+- 文档批准 Step 13E-B 只能继续使用同一 Kenney Pirate Kit source family。
+- 文档将 Step 13E-B additional assets capped at 10。
+- 文档将 Step 13E-B 后 committed Pirate Kit fixture total capped at 20。
+- 文档要求每个新增 asset 都有 matching sidecar metadata 和 existing selected preview/reference image。
+- 文档要求 Step 13E-B 对 100% additional assets 做 main-agent implementation evidence 和 Oracle read-only review coverage，覆盖 source path、committed path、preview path、sidecar path、license/source inheritance、file size、runtime-safe path 和 semantic-role rationale。
+- 文档要求 Step 13E-B 复跑 metadata validate / JSON validate / check-paths / runtime-safe export / default canary / repair-enabled canary / comparison / bridge diagnostics / contracts / full tests / typecheck。
+- 更新 rollout README、decision points、validation matrix 和 semantic fidelity plan。
+
+行为边界：
+
+- Step 13E-A is docs-only。
+- No assets imported。
+- No sidecar metadata changed。
+- No thumbnails changed or generated。
+- No generated artifacts created or committed。
+- No code/tests/scripts changed。
+- Runtime/default behavior did not change。
+- Resolver behavior did not change。
+- QA / Workbench / Phaser / asset pack loading did not change。
+- Production asset packs did not change。
+- Step 13E-B implementation remains future。
+- Step 14A production rollout remains parked。
+- `AGENTS.md` was not restored。
+- Parked plan patch was not applied。
+- No tag / stash / push / sync operations。
+
+验证：
+
+    git diff --check
+
+审查门禁结论：
+
+- Local validation completed: `git diff --check` passed.
+- Oracle review completed.
+- Initial P1: Step 13E-B review sampling was unclear.
+- Resolution: Step 13E-B now requires 100% review of additional assets, with main-agent implementation evidence and Oracle read-only review ownership plus required per-asset coverage fields.
+- Initial P3: review log still said validation / Oracle review pending.
+- Resolution: review log updated with validation and review conclusion.
+- Remaining P0/P1/P2 blockers: none after resolution.
+
+### 2.45 Step 13D-B: Batch Zero Semantic Dry-Run / Bridge Implementation
+
+完成时间：2026-06-14
+
+已完成内容：
+
+- 新增 `tests/contracts/asset-semantic-large-library-batch-zero-dry-run.test.ts`。
+- 扩展现有 metadata-only canary dry-run support，让 `tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/` 明确输出 `fixture.kind=large_art_library_batch_zero`。
+- 保持 Step 9C small-library dry-run 兼容，既有 small fixture 仍输出 `fixture.kind=small_art_library`。
+- 扩展 canary comparison schema / report type 以接受 `large_art_library_batch_zero` fixture kind。
+- 更新 Step 13D 文档、semantic fidelity plan 和 review log。
+
+阶段结果：
+
+- Exact batch-zero asset ids used:
+  - `pirate_kit_barrel_001`
+  - `pirate_kit_boat_row_small_001`
+  - `pirate_kit_cannon_001`
+  - `pirate_kit_chest_001`
+  - `pirate_kit_crate_001`
+  - `pirate_kit_flag_pirate_001`
+  - `pirate_kit_palm_straight_001`
+  - `pirate_kit_rocks_a_001`
+  - `pirate_kit_ship_pirate_small_001`
+  - `pirate_kit_tower_complete_small_001`
+- Default canary artifact path: `artifacts/asset-semantic-canary/20260614Tstep13d-default/summary.json`.
+- Repair-enabled canary artifact path: `artifacts/asset-semantic-canary/20260614Tstep13d-repair/summary.json`.
+- Comparison artifact path: `artifacts/asset-semantic-canary-comparison/20260614Tstep13d-batch-zero/comparison.json`.
+- Bridge green summary: `ok=true`, `matched_count=10`, `diagnostic_count=0`.
+- Resolver-adjacent green summary: `ok=true`, `requested_count=10`, `resolved_count=10`, `diagnostic_count=0`.
+- Negative diagnostics summary: missing requested id、missing bridge candidate、candidate without runtime metadata 和 blocked context 均由 focused tests 单独覆盖，未混入 green path。
+
+行为边界：
+
+- No additional assets imported。
+- No sidecar metadata changed。
+- No thumbnails changed。
+- No generated artifacts committed。
+- Runtime/default behavior did not change。
+- Resolver behavior did not change。
+- QA / Workbench / Phaser / asset pack loading did not change。
+- Production asset packs did not change。
+- Repair-enabled did not become default。
+- `resolveLocalAssetPack` / `selectLocalAssetPack` were not imported or called by Step 13D-B tests。
+- `AGENTS.md` was not restored。
+- Parked plan patch was not applied。
+- No tag / stash / push / sync operations。
+
+验证：
+
+    npx vitest run tests/contracts/asset-semantic-large-library-batch-zero-dry-run.test.ts
+    npx vitest run tests/contracts/asset-semantic-small-library-dry-run.test.ts
+    npx vitest run tests/contracts/asset-semantic-canary-comparison.test.ts tests/contracts/asset-pack-small-library-bridge-canary.test.ts
+    npm run metadata:validate -- tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- --check-paths tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run qa:asset-semantic:canary -- --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1 --timestamp 20260614Tstep13d-default
+    npm run qa:asset-semantic:canary -- --repair-enabled --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1 --timestamp 20260614Tstep13d-repair
+    npm run qa:asset-semantic:compare -- --default-summary artifacts/asset-semantic-canary/20260614Tstep13d-default/summary.json --repair-enabled-summary artifacts/asset-semantic-canary/20260614Tstep13d-repair/summary.json --out artifacts/asset-semantic-canary-comparison/20260614Tstep13d-batch-zero/comparison.json
+    npm run metadata:validate -- assets/metadata/examples
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+    npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata
+    npm run test:contracts
+    npm test
+    npm run typecheck
+
+验证结果：
+
+- Focused Step 13D-B test passed：1 file / 7 tests。
+- Existing small-library dry-run regression passed：1 file / 4 tests。
+- Existing comparison / small bridge regressions passed：2 files / 9 tests。
+- Batch-zero metadata validate / JSON validate / check-paths / runtime export passed：10 metadata files, `asset_count=10`, no diagnostics。
+- Default canary passed：`passed=10 failed=0`。
+- Repair-enabled canary passed：`passed=10 failed=0`，`repair.attemptedCount=0`。
+- Comparison passed：`ok=true`，`case.total=10`，`default.failed=0`，`repair.failed=0`。
+- Baseline examples validate / runtime export passed。
+- Baseline small fixture validate / runtime export passed。
+- `npm run test:contracts` passed：23 files / 209 tests。
+- `npm test` passed：contracts 23 files / 209 tests，workspace 12 files / 125 tests。
+- `npm run typecheck` passed：root、maker-api、maker-workbench。
+
+审查门禁结论：
+
+- Oracle review completed.
+- P0/P2/P3: none.
+- P1: new focused test file `tests/contracts/asset-semantic-large-library-batch-zero-dry-run.test.ts` was untracked at review time and must be included in final commit scope.
+- Resolution: include the new focused test in the final staged scope with the related Step 13D-B scripts/docs changes before committing.
+
+### 2.44 Step 13D-A: Batch Zero Semantic Dry-Run / Bridge Gate
+
+完成时间：2026-06-14
+
+已完成内容：
+
+- 新增 `docs/refactor-log/asset-semantic-large-library-step-13d-batch-zero-dry-run.md`。
+- 文档定义 Step 13D-B 只能使用 `tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/`、其 `metadata/`、同一 metadata directory 的 runtime-safe export、同源 explicit bridge candidates、exact 10 batch-zero asset ids 和独立 focused negative test ids。
+- 文档定义 green path：10 个 sidecars validation、10 个 assets runtime-safe export、同一 fixture 的 default canary、repair-enabled canary、comparison、bridge summary `ok=true`、resolver-adjacent diagnostics `ok=true`。
+- 文档要求 default 与 repair-enabled 使用 identical fixture input，repair-enabled 仍保持 non-default。
+- 文档要求 focused negative diagnostics 与 green path 分离：missing requested id、missing bridge candidate、candidate without runtime metadata、metadata 支持时的 blocked context，以及必要时 helper-level path mismatch / absolute path cases。
+- 文档固定 Step 13D-B 只能使用 `createAssetPackMetadataBridgeSummary` / `createAssetResolverDiagnosticsSummary`，不得调用 `resolveLocalAssetPack` / `selectLocalAssetPack` / runtime/default resolver paths / production/default asset pack loading。
+- 更新 semantic fidelity plan 和 review log，把 Step 13C-B 标为 done、Step 13D-A 标为 current/done-after-validation、Step 13D-B 标为 next，runtime/default integration 与 production rollout 继续 parked。
+
+阶段结果：
+
+- Step 13D-A is docs-only。
+- No assets imported。
+- No code/tests/scripts changed。
+- No sidecar metadata changed。
+- No thumbnails changed。
+- No generated artifacts added。
+- Runtime/default behavior did not change。
+- Resolver behavior did not change。
+- Production asset packs did not change。
+- Step 13D-B remains future implementation。
+- `AGENTS.md` was not restored。
+- Parked plan patch was not applied。
+
+Step 13D-B required commands:
+
+    npm run metadata:validate -- tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- --check-paths tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run qa:asset-semantic:canary -- --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1
+    npm run qa:asset-semantic:canary -- --repair-enabled --fixture tests/fixtures/art-library-batch-zero-pirate-kit-v0.1
+    npm run qa:asset-semantic:compare -- --default-summary <default-summary.json> --repair-enabled-summary <repair-summary.json> --out <comparison-summary.json>
+    npx vitest run <focused Step 13D-B test file(s)>
+    npm run test:contracts
+    npm test
+    npm run typecheck
+    git diff --check
+
+验证：
+
+    git diff --check
+
+审查门禁结论：
+
+- 主 agent 只读自审完成：P0/P1/P2/P3 均无。
+- Oracle 未派发：当前可用 multi-agent 工具要求用户显式要求 sub-agent work；本次请求要求 review gate / review findings，但未明确要求派发 Oracle 子 agent。
+
+### 2.43 Step 13C-B: Kenney Pirate Kit Metadata Batch Zero Implementation
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 新增 `tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/` fixture。
+- 从 Step 13C-A 批准的 Kenney Pirate Kit archive 只导入 10 个 GLB assets。
+- 只导入对应 10 个 selected existing `Previews/*.png` 到 `thumbnails/`；没有生成 thumbnails。
+- 新增 10 个 sidecar `.asset.json` metadata files。
+- 新增 fixture `README.md` 和 `source/LICENSE.txt` source evidence。
+- 新增 `tests/contracts/asset-semantic-large-library-batch-zero-pirate-kit.test.ts`，覆盖 exact set、fixture size/format、metadata validation、project-relative paths、unique deterministic asset ids 和 runtime-safe export。
+- 更新 Step 13C 文档、semantic fidelity plan 和 review log。
+
+Imported asset basenames:
+
+- `barrel`
+- `chest`
+- `crate`
+- `cannon`
+- `flag-pirate`
+- `palm-straight`
+- `rocks-a`
+- `ship-pirate-small`
+- `tower-complete-small`
+- `boat-row-small`
+
+阶段结果：
+
+- Imported asset count：10 GLB。
+- Thumbnail count：10 selected existing preview PNGs。
+- Metadata sidecar count：10。
+- Target fixture path：`tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/`。
+- Total fixture size：`409374` bytes。
+- Largest imported file：`assets/ship-pirate-small.glb`，`131464` bytes。
+- Downloaded zip remains under ignored `artifacts/` and is not tracked。
+- Selected extraction temp remains under ignored `artifacts/` and is not tracked。
+
+行为边界：
+
+- Full archive was not imported。
+- No thumbnails were generated。
+- No metadata was created for unselected archive files。
+- No production asset packs changed。
+- Runtime/default behavior did not change。
+- Resolver behavior did not change。
+- QA / Workbench / Phaser / asset pack loading did not change。
+- Generated artifacts were not added。
+- Step 13D、large library expansion、runtime/default integration 和 production rollout remain future。
+
+验证：
+
+    npx vitest run tests/contracts/asset-semantic-large-library-batch-zero-pirate-kit.test.ts
+    npm run metadata:validate -- tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- --check-paths tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/metadata
+    npm run metadata:validate -- assets/metadata/examples
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+    npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata
+    npm run test:contracts
+    npm test
+    npm run typecheck
+    git diff --check
+
+验证结果：
+
+- Focused test passed：5 tests。
+- Batch-zero metadata validate / check-paths / runtime export passed。
+- Batch-zero metadata JSON validate passed：`ok=true`，10 files，no diagnostics。
+- Baseline examples validate / runtime export passed。
+- Baseline small fixture validate / runtime export passed。
+- `npm run test:contracts` passed：22 files / 202 tests。
+- `npm test` passed：contracts and workspace tests。
+- `npm run typecheck` passed：root、maker-api、maker-workbench。
+- `git diff --check` passed。
+
+审查门禁结论：
+
+- Sage/Oracle 审查完成：P0/P1/P2 均无。
+- P3：初审指出 Step 13C 文档和 review log 仍写 Sage/Oracle review pending；已补充本轮审查结论。
+
+### 2.42 Step 13C-A: Batch Zero Selection / Import Gate
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 新增 `docs/refactor-log/asset-semantic-large-library-step-13c-batch-zero.md`。
+- 文档批准 Step 13C-B 只能使用 Kenney Pirate Kit source page 和 direct archive URL。
+- 文档定义 Step 13C-B 可再次下载 exact archive 到 ignored temp path，并只可把 approved selected files 解到 ignored selected-extraction temp path。
+- 文档批准 Pirate Kit batch zero 为 10 个 GLB model candidates 及对应 existing `Previews/*.png` reference images。
+- 文档推荐 fixture layout：`tests/fixtures/art-library-batch-zero-pirate-kit-v0.1/{assets,metadata,source,thumbnails}`。
+- 文档定义 metadata policy、thumbnail policy、Step 13C-B allowed / forbidden operations、validation requirements、review gate 和 rollback / failure policy。
+- 更新 semantic fidelity plan；可选 Step 13B follow-up pointer 记录 Step 13C-A gate 已打开。
+
+Approved Step 13C-B source:
+
+- Source page：`https://kenney.nl/assets/pirate-kit`。
+- Archive URL：`https://kenney.nl/media/pages/assets/pirate-kit/e6d4bb1525-1771333093/kenney_pirate-kit.zip`。
+- License evidence：Creative Commons CC0, based on Step 13B source page evidence。
+
+Batch size policy:
+
+- General target：10 to 30 assets。
+- Hard max：50 assets。
+- Pirate Kit Step 13C-B approved batch-zero asset count：10。
+- Do not import the whole Pirate Kit archive。
+
+Approved candidate archive paths:
+
+- `Models/GLB format/barrel.glb` + `Previews/barrel.png`
+- `Models/GLB format/chest.glb` + `Previews/chest.png`
+- `Models/GLB format/crate.glb` + `Previews/crate.png`
+- `Models/GLB format/cannon.glb` + `Previews/cannon.png`
+- `Models/GLB format/flag-pirate.glb` + `Previews/flag-pirate.png`
+- `Models/GLB format/palm-straight.glb` + `Previews/palm-straight.png`
+- `Models/GLB format/rocks-a.glb` + `Previews/rocks-a.png`
+- `Models/GLB format/ship-pirate-small.glb` + `Previews/ship-pirate-small.png`
+- `Models/GLB format/tower-complete-small.glb` + `Previews/tower-complete-small.png`
+- `Models/GLB format/boat-row-small.glb` + `Previews/boat-row-small.png`
+
+行为边界：
+
+- 本步 docs-only，没有 archive extraction。
+- 本步没有 import assets、sidecar metadata、thumbnails、tests、scripts、code 或 generated artifacts。
+- 本步没有修改 runtime/default behavior、resolver、QA、Workbench、Phaser、asset pack loading 或 production asset packs。
+- Step 13C-B implementation 仍为 future step；production rollout 继续 parked。
+
+验证：
+
+    git diff --check
+    git status --short --branch
+    git diff --name-only
+
+验证结果：
+
+- `git diff --check` 通过。
+- `git status --short --branch` 只显示允许的 docs 改动和新增 Step 13C-A gate 文档。
+- `git diff --name-only` 只显示允许的既有 docs 改动；新增文档为 `docs/refactor-log/asset-semantic-large-library-step-13c-batch-zero.md`。
+- `find tests/fixtures/art-library-batch-zero-pirate-kit-v0.1 artifacts/asset-semantic-large-library-batch-zero -maxdepth 3 -print 2>/dev/null || true` 无输出，确认没有创建 batch-zero fixture、extraction temp directory 或 generated artifacts。
+
+审查门禁结论：
+
+- Sage/Oracle 审查完成：P0/P1/P2 均无。
+- P3：初审指出 Step 13C-A gate 文档和 review log 仍写 validation / review pending；已补充本地验证和审查结论。
+
+### 2.41 Step 13B: Kenney Pirate Kit Large-Library Inventory Dry-Run
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 以 clean `main` 为边界新建 `test/asset-semantic-step-13b-large-library-inventory` 分支。
+- 使用用户明确提供并完成 preflight 的 Kenney Pirate Kit direct archive URL。
+- 将 archive 仅下载到 ignored local artifacts：`artifacts/asset-semantic-large-library-inventory/tmp/kenney_pirate-kit.zip`。
+- 使用 archive listing metadata 生成 ignored dry-run outputs：`raw-entries.json` 与 `inventory-summary.json`。
+- 新增 `docs/refactor-log/asset-semantic-large-library-step-13b-inventory.md`，只沉淀 deterministic inventory summary、边界和 Step 13C recommendation。
+- 更新 rollout README、semantic fidelity plan 和 step index 的当前阶段状态。
+
+Inventory 结果：
+
+- Archive size：`3154665` bytes。
+- Archive entries：`379` total entries，`370` files，`9` directories。
+- Total uncompressed bytes：`9335467`。
+- Extension counts：`fbx=72`、`glb=72`、`obj=72`、`mtl=72`、`png=77`、`txt=1`、`html=1`、`url=3`。
+- Coarse media counts：`model_3d=216`、`image_texture=77`、`documentation=2`、`unknown=75`。
+- License / readme candidate：`License.txt`。
+- Preview / reference image candidates：`74`，包括 `Preview.png`、`Sample.png` 和 `Previews/*.png`。
+- Filename-convention animation-specific entries：`0`；source page still advertises `Animation` as page-level evidence only。
+- Candidate asset count by unique model basename：`72`。
+- Metadata sidecar entries detected：`0`；missing metadata estimate by unique model basename：`72`。
+- Thumbnail/reference coverage by unique model basename：`72/72`；missing thumbnail/reference estimate by unique model basename：`0`。
+- Coverage method：archive-entry paths only；no extraction、hashing、image reads or image dimension probes。
+
+行为边界：
+
+- 本步只 list archive entries，没有 extraction。
+- 本步没有把 zip、raw entries、summary JSON 或 asset binaries 加入 git。
+- 本步没有复制或导入 assets，没有生成 sidecar metadata、thumbnails、hashes、embeddings 或 image dimension probes。
+- 本步没有 code、UI、runtime、QA runner、resolver、Phaser、Workbench 或 asset pack loading 行为改动。
+- 本步没有启动 Step 13C；Step 13C batch zero 仍需用户显式批准。
+
+验证：
+
+    npm run test:contracts
+    npm test
+    npm run typecheck
+    git diff --check
+    git status --short --branch
+    git diff --name-only
+    git status --ignored --short artifacts/asset-semantic-large-library-inventory || true
+
+验证结果：
+
+- `npm run test:contracts` 通过：21 files / 197 tests。
+- `npm test` 通过：contracts 与 workspace tests 均通过。
+- `npm run typecheck` 通过：root、maker-api、maker-workbench。
+- `git diff --check` 通过。
+- `git status --short --branch` 只显示本步 docs 改动和新增 Step 13B inventory 文档。
+- `git status --ignored --short artifacts/asset-semantic-large-library-inventory || true` 显示 `artifacts/` ignored。
+- `git ls-files artifacts/asset-semantic-large-library-inventory` 无输出，确认 ignored artifacts 未进入 tracked files。
+
+审查门禁结论：
+
+- Sage/Oracle 初审发现两个 P2：missing metadata / thumbnail coverage estimate 缺失，以及 step index 后段残留 Step 13A 当前状态。
+- 已修复：补充 archive-entry-path-only coverage estimates；同步 step index 为 Step 13B 当前状态且 Step 13C 仍需显式批准。
+- Sage/Oracle 复审完成：P0/P1/P2 均无。
+- P3：Sage 建议 docs-prefixed commit message；本步保留用户任务明确要求的 `test: inventory large art library candidates`。
+
+### 2.40 Step 13A: Large Library Intake Gate
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 关闭 Step 12C 分支边界：`docs/art-asset-step-12c-qa-preview-signoff` 已 fast-forward 合并回 `main`。
+- 新建 `docs/art-asset-step-13a-large-library-intake-gate` 分支。
+- 更新 `docs/refactor-log/art-asset-pipeline-production-rollout/step-13a-large-library-intake-gate.md`，定义 large-library location rule、storage mode、allowed formats、batch size、size limits、metadata coverage、thumbnail policy、rights/licensing tracking、review owner、sampling policy、rollback path、failure budget 和 Step 13B boundary。
+- 更新 rollout README、semantic fidelity plan 和 step index 的当前阶段状态。
+
+Gate 决策：
+
+- Step 13A 不批准任何具体大库路径；Step 13B 只有在用户提供一个明确 read-only source location 或 external artifact reference 后才能开始。
+- 默认 storage mode 是外部/本地 ignored read-only source；repo bulk binaries forbidden；Git LFS 未批准。
+- Step 13B 只能 read-only inventory/report，不复制、不生成 metadata、不写 sidecars、不导入 fixtures、不触碰 runtime/default paths。
+- Step 13C batch zero 若到达，最多 10 assets；每个 source asset 不超过 5 MB、每个 thumbnail 不超过 512 KB、总 fixture payload 不超过 30 MB，除非后续 gate 显式修改。
+- batch-zero import 要求 100% sidecar metadata、已知 rights/licensing、thumbnail coverage 和 runtime-safe export 通过。
+- unknown-rights assets 禁止进入 pipeline。
+
+行为边界：
+
+- 本步没有访问、扫描、inventory、复制或导入大库。
+- 本步没有 code、UI、runtime、QA runner、resolver、Phaser 或 Workbench 行为改动。
+- 本步没有 metadata generation、source mutation、repair writeback、production/default integration 或 AI image provider。
+
+验证：
+
+    git diff --check
+
+验证结果：
+
+- `git diff --check` 通过。
+
+审查门禁结论：
+
+- Oracle 审查完成：P0/P1/P2/P3 均无。
+- Oracle 确认 Step 13A 未批准、触碰、inventory 或导入任何大库；storage、formats、batch/size、metadata、thumbnail、rights、rollback 和 failure budget 清楚；review ownership 和 sampling policy 清楚；Step 13B 仍为 read-only report-only，且需要用户提供明确 source location。
+
+### 2.39 Step 12C: QA Preview Signoff Report
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 关闭 Step 12B 分支边界：`feat/art-asset-step-12b-workbench-qa-preview` 已 fast-forward 合并回 `main`。
+- 新建 `docs/art-asset-step-12c-qa-preview-signoff` 分支。
+- 更新 `docs/refactor-log/art-asset-pipeline-production-rollout/step-12c-qa-preview-signoff.md`，记录 textual report、displayed field list、diagnostic semantics、known limitations、production/default unchanged statement 和 Step 13A recommendation。
+- 更新 rollout README、semantic fidelity plan 和 step index 的当前阶段状态。
+
+阶段结果：
+
+- Step 12B 的 small-library preview 可作为 QA-facing internal preview signoff 继续向 Step 13A gate 推进。
+- 本 signoff 只覆盖 small fixture library，不覆盖 large library、不证明 production readiness、不批准 production/default runtime integration。
+- Step 13A 只能作为 docs-only large library intake gate 继续，必须先定义 size limits、license / provenance review、metadata validation、storage policy、scan/report commands、rollback policy 和 no-runtime/default-integration boundary。
+
+行为边界：
+
+- 本步没有 code、UI、runtime、QA runner、resolver、Phaser 或 Workbench 行为改动。
+- 本步没有触碰 large library、production/default integration、metadata mutation、repair writeback 或 AI image provider。
+- 本步没有声称 QA signoff 代表 production readiness。
+
+验证：
+
+    git diff --check
+
+验证结果：
+
+- `git diff --check` 通过。
+
+审查门禁结论：
+
+- Oracle 审查完成：P0/P1/P2/P3 均无。
+- Oracle 确认本 signoff 未声称 production readiness、未批准 large-library intake、未提交 generated screenshots/artifacts、未改变 runtime/default behavior 或 QA verdict semantics，且 Step 13A 仍是 docs-only gate。
+
+### 2.38 Step 12B: Workbench / QA Preview Implementation
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 关闭 Step 12A 分支边界：`docs/art-asset-step-12a-workbench-qa-preview-gate` 已 fast-forward 合并回 `main`。
+- 新建 `feat/art-asset-step-12b-workbench-qa-preview` 分支。
+- 新增 `packages/asset-pipeline/src/art-asset-workbench-preview.ts`，从 runtime-safe small fixture metadata export 构建 read-only preview DTO，并复用 deterministic bridge / resolver diagnostics summaries。
+- 新增 `apps/maker-api/src/art-asset-preview/*`，提供 `GET /api/art-assets/preview/small-library` preview-only endpoint。
+- 更新 Workbench optional fetch 与 Assets 面板，在 preview DTO 可用时展示 small-library preview-only 区块。
+- 新增 `tests/contracts/art-asset-workbench-preview.test.ts`，覆盖 source scope、read-only、deterministic / non-mutating output、sensitive-field exclusion、out-of-scope path fail-closed behavior 和 maker-api service output。
+- 更新 Step 12B rollout 文档和总览状态。
+
+阶段结果：
+
+- preview source 固定为 `small-library-runtime-safe-export`。
+- preview fixture 固定为 `tests/fixtures/art-library-small-v0.1`。
+- preview DTO 明确 `read_only: true`，不写 metadata、manifest、QA report、repair output 或 generated artifacts。
+- preview builder 在构造 DTO 前校验 runtime artifact path-like fields 必须留在 `tests/fixtures/art-library-small-v0.1/` 下；越界时 fail closed，且错误不回显原始路径。
+- Workbench fetch 使用 optional path；preview endpoint 失败不会影响 project status、QA report、repair report 或 build log。
+- preview asset DTO 不包含 `technical.source_path`，不暴露 raw sidecar-only fields、rights/legal/creator/source details、workflow/review notes、search/embedding input、AI generation fields、absolute local paths、production/default asset pack paths 或 large-library paths。
+
+行为边界：
+
+- 本步没有修改 default project generation、Phaser templates、QA runner、QA verdict semantics、resolver selection、production/default asset pack loading 或 large-library path。
+- 本步没有让 repair-enabled mode 成为默认。
+- 本步没有接 AI image provider。
+
+验证：
+
+    npx vitest run tests/contracts/art-asset-workbench-preview.test.ts
+    npm run typecheck:root
+    npm run test:contracts
+    npm run typecheck
+    npm test
+    curl -s http://localhost:3000/api/art-assets/preview/small-library
+    Playwright smoke against http://127.0.0.1:5173/
+    git diff --check
+
+验证结果：
+
+- Focused Workbench preview contract 通过：4 tests。
+- Root typecheck 通过。
+- Contract suite 通过：21 files，197 tests。
+- Full typecheck 通过：root、maker-api、maker-workbench。
+- Full test suite 通过：contracts 21 files / 197 tests，workspace 12 files / 125 tests。
+- API smoke 通过：`GET /api/art-assets/preview/small-library` 返回 `ok: true`、10 assets、`read_only: true`、0 bridge diagnostics、0 resolver diagnostics，preview asset technical data 不暴露 `source_path`。
+- Workbench Playwright smoke 通过：生成项目后 `Small library preview`、`Ready` 和 safe thumbnail path text 可见，无 console/page errors。
+- `git diff --check` 通过。
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出 preview builder 接受任意 runtime artifact 但固定标记 small-library preview，且可能把非 small fixture 相对路径透出到 thumbnail / diagnostics；P3 指出 review log 顶部仍以 Step 10B 为锚点。
+- 已修复：`createSmallLibraryWorkbenchPreview()` 在构造 candidates / diagnostics / DTO 前校验 artifact path-like fields 必须留在 `tests/fixtures/art-library-small-v0.1/` 下；越界时 fail closed 且不回显原始路径；补充 `assets/asset-packs/large-library/...` negative test；review log 顶部改为 Step 12B 当前阶段。
+- Oracle 复审：P0/P1/P2/P3 均无；确认上一轮 sensitive path P1 已关闭，无 large-library / default behavior / QA verdict / docs consistency 问题，可以进入提交门禁。
+
+### 2.37 Step 12A: Workbench / QA Preview Gate
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 关闭 Step 11C 分支边界：`docs/art-asset-step-11c-runtime-canary-closure` 已 fast-forward 合并回 `main`。
+- 新建 `docs/art-asset-step-12a-workbench-qa-preview-gate` 分支。
+- 更新 `docs/refactor-log/art-asset-pipeline-production-rollout/step-12a-workbench-qa-preview-gate.md`，定义 Workbench / QA preview 的 source-of-truth、safe field allowlist、sensitive field blocklist、read-only policy、privacy note、non-goals 和 Step 12B boundary。
+- 更新 rollout README、semantic fidelity plan 和 step index 的当前阶段状态。
+
+Gate 决策：
+
+- Workbench preview 在 large-library rollout 前需要，但只能在 Step 12B 中作为 small-fixture-only preview-only implementation 继续。
+- QA CLI/report 是必要证据，但不足以替代人工 preview signoff。
+- preview source of truth 是 runtime-safe export 加 deterministic bridge / resolver diagnostics summaries；raw sidecar metadata 只可作为 runtime-safe export 输入，不可由 UI / QA preview 直接读取或渲染。
+- preview 必须 read-only，不得修改 metadata、manifest、QA verdict、repair output、generated artifacts 或 runtime/default behavior。
+- thumbnails 只允许来自 small fixture runtime-safe `technical.thumbnail_path`，且必须保持在 `tests/fixtures/art-library-small-v0.1/` 下。
+- diagnostics 只允许展示 deterministic / sanitized code、severity、asset id、json path、message 和由既有 safe diagnostic helper 生成的 safe relative fixture path。
+
+行为边界：
+
+- 本步没有 code、UI、runtime、QA runner 或 Workbench 改动。
+- 本步没有触碰 large library、production/default integration、metadata mutation、repair writeback 或 AI image provider。
+- 本步没有声称 QA signoff 完成。
+
+验证：
+
+    git diff --check
+
+验证结果：
+
+- `git diff --check` 通过。
+
+审查门禁结论：
+
+- Oracle 审查完成：P0/P1/P2/P3 均无。
+- Oracle 确认 Step 12A 仍为 docs-only gate，preview source 清楚，safe allowlist / sensitive blocklist 明确，read-only policy 清楚，diagnostics 必须 deterministic / sanitized，Step 12B 仍是 small-fixture-only preview-only，且 rollout README、semantic plan、review log、step index 当前状态一致。
+
+### 2.36 Step 11C: Runtime Canary Verification and Closure
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 关闭 Step 11B 分支边界：`test/art-asset-step-11b-non-default-runtime-canary` 已 fast-forward 合并回 `main`。
+- 新建 `docs/art-asset-step-11c-runtime-canary-closure` 分支。
+- 更新 `docs/refactor-log/art-asset-pipeline-production-rollout/step-11c-runtime-canary-closure.md`，沉淀 flag-off safety、flag-on isolation、rollback path、known limitations 和 Step 12A decision。
+- 更新 rollout README、semantic fidelity plan 和 step index 的当前阶段状态。
+
+阶段结果：
+
+- Step 11 non-default runtime canary lane 可以关闭。
+- flag-off rollback 为移除或不设置 `ASSET_RUNTIME_METADATA_CANARY`；不需要生产/default 配置变更。
+- flag-on 仍只允许 `ASSET_RUNTIME_METADATA_CANARY=small-library-v0.1`，只读取 `tests/fixtures/art-library-small-v0.1/metadata`。
+- Step 12A 只允许作为 docs-only Workbench / QA preview gate 继续；实现仍 parked，必须等 Step 12A 审查后再决定。
+
+行为边界：
+
+- 本步没有修改 default project generation、Phaser templates、Workbench、QA aggregation、resolver selection、production/default asset pack loading 或 large-library path。
+- 本步没有让 repair-enabled mode 成为默认。
+- 本步没有写 generated artifacts。
+- 本步没有批准 large-library intake、runtime/default integration 或 AI image provider。
+
+验证：
+
+    npx vitest run tests/contracts/art-asset-runtime-canary.test.ts tests/contracts/asset-pack-small-library-bridge-canary.test.ts
+    npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata | rg '"ok"|"asset_count"|"diagnostics"'
+    git diff --check
+
+验证结果：
+
+- Focused runtime canary + small-library bridge tests 通过：2 files，9 tests。
+- small-library metadata validation 通过：10 metadata files。
+- small-library runtime metadata export 证据：`"ok": true`、`"diagnostics": []`、`"asset_count": 10`。
+- `git diff --check` 通过。
+
+审查门禁结论：
+
+- Oracle 审查完成：P0/P1/P2/P3 均无。
+- Oracle 确认 closure 未声称 default runtime integration 完成，已记录 flag-off safety evidence 和 rollback path，未批准 large-library intake，Step 12A 仍是 docs-only gate，且 rollout README、semantic plan、review log、step index 当前状态一致。
+
+### 2.35 Step 11B: Non-Default Runtime Canary Implementation
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 关闭 Step 11A 分支边界：`docs/art-asset-step-11a-runtime-integration-gate` 已 fast-forward 合并回 `main`。
+- 新建 `test/art-asset-step-11b-non-default-runtime-canary` 分支。
+- 新增 `scripts/art-asset-runtime-canary.ts`，提供 `ASSET_RUNTIME_METADATA_CANARY` 的非默认配置解析和 small-library runtime metadata canary summary。
+- 新增 `tests/contracts/art-asset-runtime-canary.test.ts`，覆盖 default disabled、flag-on small fixture、unsupported flag、export failure、invalid artifact 和 deterministic / non-leaking summary。
+- 更新 Step 11B rollout 文档和总览状态。
+
+阶段结果：
+
+- 默认缺省或空 `ASSET_RUNTIME_METADATA_CANARY` 时 canary disabled，并且不执行 metadata export I/O。
+- 只有 `ASSET_RUNTIME_METADATA_CANARY=small-library-v0.1` 会启用 canary，且只读取 `tests/fixtures/art-library-small-v0.1/metadata`。
+- invalid artifact / export failure fail closed，diagnostics 不回显 production/default asset pack path 或本机绝对路径。
+
+行为边界：
+
+- 本步没有修改 default project generation、Phaser templates、Workbench、QA aggregation、resolver selection、production/default asset pack loading 或 large-library path。
+- 本步没有让 repair-enabled mode 成为默认。
+- 本步没有写 generated artifacts。
+
+验证：
+
+    npx vitest run tests/contracts/art-asset-runtime-canary.test.ts
+    npx vitest run tests/contracts/asset-pack-small-library-bridge-canary.test.ts
+    npx vitest run tests/contracts/art-asset-runtime-canary.test.ts tests/contracts/asset-pack-small-library-bridge-canary.test.ts
+    npm run typecheck:root
+    npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata
+    npm run test:contracts
+    npm run typecheck
+    npm test
+    git diff --check
+
+验证结果：
+
+- Focused runtime canary tests 通过：5 tests。
+- Focused small-library bridge + runtime canary tests 通过：9 tests。
+- small-library metadata validation 通过：10 metadata files。
+- small-library runtime metadata JSON export 通过：`ok: true`，10 assets，0 diagnostics。
+- contract suite 通过：20 files，193 tests。
+- full typecheck 通过：root、maker-api、maker-workbench。
+- full test suite 通过：contract suite + workspace suite。
+- `git diff --check` 通过。
+
+审查门禁结论：
+
+- Oracle 审查完成：P0/P1/P2/P3 均无。
+- Oracle 确认默认行为未改变、unsupported flag fail closed、flag-on scope 固定到 small fixture metadata directory、unsafe path diagnostics 不回显原始 unsafe path，测试覆盖 Step 11B gate，文档未误称 Step 11C / production default integration / large library 已完成。
+
+### 2.34 Step 11A: Non-Default Runtime Integration Gate
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 关闭 Step 10B 分支边界：`test/asset-semantic-step-10b-small-library-bridge-canary` 已 fast-forward 合并回 `main`。
+- 新建 `docs/art-asset-step-11a-runtime-integration-gate` 分支。
+- 更新 `docs/refactor-log/art-asset-pipeline-production-rollout/step-11a-non-default-runtime-integration-gate.md`，定义 Step 11B 的非默认 canary flag、输入契约、flag-off 等价测试、flag-on canary 测试、失败关闭、rollback 和候选文件范围。
+- 更新 rollout README 与 semantic fidelity plan，标记 Step 11A 为当前 docs-only gate。
+
+Gate 决策：
+
+- Step 11B 只能作为非默认 canary 继续。
+- proposed flag：`ASSET_RUNTIME_METADATA_CANARY=small-library-v0.1`。
+- 默认状态 off；flag 缺失或空值时必须等价于当前行为。
+- 只允许读取 `tests/fixtures/art-library-small-v0.1/metadata` 派生的 runtime-safe metadata。
+- 非法 flag value 或 invalid runtime artifact 必须 fail closed。
+- rollback 为移除或不设置该非默认 flag path；不能要求生产/default 配置变更。
+
+行为边界：
+
+- 本步没有修改代码、测试、脚本或 generated artifacts。
+- 本步没有修改 runtime/default behavior。
+- 本步没有修改 resolver、QA、Workbench、Phaser 或 asset pack loading。
+- 本步没有触碰 large art library。
+- 本步没有让 repair-enabled mode 成为默认。
+
+验证：
+
+    git diff --check
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0/P1/P3 无；P2 指出 `docs/refactor-log/ai-game-dsl-p0-step-index.md` 后段仍保留旧 Step 8d branch boundary 当前下一步，与顶部 Step 11A 冲突。
+- 已修复：将 step index 后段当前下一步同步为 Art Asset Pipeline Production Rollout 阶段，Step 10B 已关闭分支边界，当前 Step 11A docs-only gate，Step 11A 提交并通过 Oracle 门禁后才可决定是否进入 Step 11B。
+- Oracle 复审：P0/P1/P2/P3 均无；确认 Step 11A 仍是 docs-only，未误称 Step 11B、production rollout、large library 或 runtime/default integration 已完成。
+- 审查模式：Oracle 新建后复用。
+
+### 2.33 Art Asset Pipeline Production Rollout Split
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 从 `/Users/dahufa/Documents/workspace/art_asset_pipeline_production_rollout_plan.zip` 萃取剩余 rollout 计划。
+- 新增 `docs/refactor-log/art-asset-pipeline-production-rollout/README.md`，记录当前状态、硬边界、分步索引和 branch boundary。
+- 新增 Step 11A 到 Step 14D 的逐步 docs，按步骤类型记录 allowed/not allowed、required output 或 required decisions，并统一记录 validation 和 P0/P1/P2/P3 review gate。
+- 新增 supporting docs：validation matrix、review gates、artifact storage policy、decision points。
+
+阶段结果：
+
+- 没有启动 Step 11A implementation。
+- 没有修改 runtime/default behavior。
+- 没有触碰 large art library、QA、Workbench、Phaser、resolver 或 asset pack loading。
+- 后续执行必须从 Step 11A docs-only gate 开始，且不能继续在 Step 10B 分支上落后续步骤。
+
+验证：
+
+    git diff --check
+
+审查门禁结论：
+
+- Oracle 新建审查：P0/P1/P2 均无；P3 指出部分 step 文档缺 `P3` 小节，以及 2.33 描述对 allowed/not allowed 的承诺过宽。
+- 已修复：所有 Step 11A-14D step 文档补齐 `P3` 小节；2.33 描述改为按步骤类型记录 allowed/not allowed、required output 或 required decisions。
+- Oracle 复审：P0/P1/P2/P3 均无；确认没有 runtime/default、large library、Workbench/QA、Phaser、resolver 或 repair default 的越界暗示。
+- 审查模式：Oracle 新建后复用。
+
+### 2.32 Step 10B: Small Library Bridge Canary Implementation
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 新增 `tests/contracts/asset-pack-small-library-bridge-canary.test.ts`，实现 fixture-only small library bridge canary。
+- 从 `tests/fixtures/art-library-small-v0.1/metadata` 生成 runtime-safe metadata。
+- 从同一份 runtime-safe metadata 派生 explicit bridge candidates。
+- 使用 exact 10 small-library asset ids 作为 sorted `requestedAssetIds`。
+- 使用 Step 4B pure report-only helpers：
+  - `createAssetPackMetadataBridgeSummary`
+  - `createAssetResolverDiagnosticsSummary`
+- 更新 `docs/refactor-log/asset-pack-metadata-bridge-step-10a-small-library-canary.md` 与 semantic fidelity plan，记录 Step 10B follow-up。
+
+Gate 摘要：
+
+- Bridge green canary `ok=true`、`matched_count=10`、`diagnostic_count=0`。
+- Resolver-adjacent green canary `ok=true`、`requested_count=10`、`resolved_count=10`、`diagnostic_count=0`。
+- Missing requested id、missing bridge candidate 和 blocked context diagnostics 都是独立 negative cases，不混入 green canary。
+- Summary objects 不包含 timestamp、absolute local path 或 production/default asset pack path。
+- Unsupported semantic diagnostics 未被发明；当前 helper API 没有 explicit expected semantic input。
+
+行为边界：
+
+- 本步没有修改 runtime/default asset loading。
+- 本步没有修改 resolver behavior。
+- 本步没有调用 `resolveLocalAssetPack` 或 `selectLocalAssetPack`。
+- 本步没有使用 real/default resolver paths。
+- 本步没有修改 QA runtime behavior、Workbench、Phaser 或 asset pack loading。
+- 本步没有触碰、扫描、导入或处理 large asset library。
+- 本步没有修改 source assets、metadata sidecars 或 source metadata。
+- 本步没有新增 generated artifacts、CLI scripts 或 npm scripts。
+- 本步没有让 repair-enabled mode 成为默认。
+
+验证：
+
+    npx vitest run tests/contracts/asset-pack-small-library-bridge-canary.test.ts
+
+审查记录：
+
+- Oracle 只读审查：P0/P1/P2/P3 均无。
+- Oracle 确认 green canary 只从 `tests/fixtures/art-library-small-v0.1/metadata` runtime export 派生输入，只调用 `createAssetPackMetadataBridgeSummary` / `createAssetResolverDiagnosticsSummary`。
+- Oracle 确认 missing-id、missing-candidate、blocked-context negative diagnostics 与 green canary 分离且 deterministic。
+- Oracle 确认 docs 未误称 runtime integration、production/default loading、real resolver execution、large library rollout 或 Workbench/Phaser integration 已完成。
+
+Future boundaries：
+
+- Step 11A：non-default runtime integration gate remains future if needed。
+- Step 13A：large library gate remains future and separate。
+
+### 2.31 Step 10A: Small Library Bridge Canary Review Gate
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 新增 `docs/refactor-log/asset-pack-metadata-bridge-step-10a-small-library-canary.md`，定义 Step 10B small library bridge canary 的 docs-only gate。
+- 更新 `docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md`，将 Step 4B 标为已完成，Step 10A 标为当前 docs-only gate，Step 10B 标为下一步。
+- 更新本 review log，记录 Step 10A 是 docs-only gate，不实现 Step 10B。
+
+Gate 摘要：
+
+- Step 10B 必须是 fixture-only explicit-input small library bridge canary。
+- Step 10B 只能使用 `createAssetPackMetadataBridgeSummary` 和 `createAssetResolverDiagnosticsSummary`。
+- Step 10B 不得调用 `resolveLocalAssetPack`、`selectLocalAssetPack`、real resolver path、runtime/default resolver path、QA runtime path、Workbench path、Phaser runtime path 或 asset pack loading path。
+- Bridge candidates 必须一条 small library metadata asset 对一条 explicit candidate，字段来自 runtime-safe metadata `asset_id`、`technical.source_path`、`technical.thumbnail_path`，可选 `asset_type`。
+- Resolver-adjacent `requestedAssetIds` green path 必须使用 exact 10 known small-library asset ids。
+- Green canary 与 negative diagnostics 必须分离；missing-id / blocked-context 只能作为 focused negative cases。
+- Step 10B 不要求 unsupported semantic diagnostics；当前 helper API 没有 explicit expected semantic input。
+
+行为边界：
+
+- 本步没有实现代码。
+- 本步没有新增 tests、scripts、CLI 或 generated artifacts。
+- 本步没有修改 runtime/default asset loading。
+- 本步没有修改 resolver behavior。
+- 本步没有修改 QA runtime behavior、Workbench、Phaser 或 asset pack loading。
+- 本步没有扫描、导入或处理 large asset library。
+- 本步没有修改 asset imports、metadata sidecars、source metadata 或 source assets。
+- 本步没有启动 Step 10B implementation。
+
+Future boundaries：
+
+- Step 10B：implement fixture-only explicit-input small library bridge canary。
+- Step 11A：docs-only gate for optional non-default runtime integration, if still needed。
+- Step 13A：large library gate remains future and separate。
+
+验证：
+
+    git diff --check
+    # 无输出
+
+审查记录：
+
+- Oracle pre-review：Go for docs-only；要求 Step 10B 写成 fixture-only explicit-input canary，禁止 runtime/default resolver integration，并明确 green canary 与 negative diagnostics 分离。
+- Oracle 首轮审查：P0/P2/P3 未发现；P1 指出 Step 9C dry-run output wording 可能放宽 Step 10B executable input boundary。已收窄为 prior evidence only，Step 10B executable inputs 必须 fresh derive from small fixture metadata、runtime-safe export 和 explicit test/dry-run input。
+- Oracle 复审：P0/P1/P2/P3 均无；确认 Step 10A docs-only gate 可在 staged diff 检查后提交。
+
+### 2.30 Metadata Step 4B: Asset Pack Metadata Bridge / Resolver Diagnostics Implementation
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 新增 `packages/asset-pipeline/src/asset-pack-metadata-bridge.ts`，提供 deterministic report-only `createAssetPackMetadataBridgeSummary`。
+- 新增 `packages/asset-pipeline/src/asset-pack-resolver-diagnostics.ts`，提供 deterministic report-only `createAssetResolverDiagnosticsSummary`。
+- 更新 `packages/asset-pipeline/src/index.ts`，只导出新增 pure helper API / types。
+- 新增 `tests/contracts/asset-pack-metadata-bridge.test.ts`，覆盖 small library explicit candidates、missing / duplicate / mismatch / absolute path / deterministic / non-mutation。
+- 新增 `tests/contracts/asset-pack-resolver-diagnostics.test.ts`，覆盖 requested id、missing id、duplicate id、absolute path、blocked context、no fabricated unsupported semantic diagnostic、deterministic / non-mutation。
+- 新增 `docs/refactor-log/asset-pack-metadata-bridge-step-4b.md`，记录 Step 4B boundary、API、diagnostic codes、validation 和 review gate。
+- 更新 `docs/refactor-log/asset-pack-metadata-bridge-step-4a.md` 与 semantic fidelity plan，记录 Step 4B follow-up。
+
+API 摘要：
+
+- Bridge input 为 runtime-safe metadata artifact + explicit candidates；candidate `asset_id` 保持 optional，以便 missing id 成为可诊断输入。
+- Bridge output 为 `bridge_version: "0.1"`、counts 和 deterministic diagnostics。
+- Resolver diagnostics input 为 runtime-safe metadata artifact + explicit requested ids + optional explicit context id。
+- Resolver diagnostics output 为 `diagnostics_version: "0.1"`、counts 和 deterministic diagnostics。
+
+Diagnostic codes：
+
+- Bridge：`ASSET_PACK_METADATA_BRIDGE_DUPLICATE_RUNTIME_ASSET_ID`、`ASSET_PACK_METADATA_BRIDGE_DUPLICATE_CANDIDATE_ASSET_ID`、`ASSET_PACK_METADATA_BRIDGE_RUNTIME_ASSET_WITHOUT_CANDIDATE`、`ASSET_PACK_METADATA_BRIDGE_CANDIDATE_WITHOUT_RUNTIME_ASSET`、`ASSET_PACK_METADATA_BRIDGE_SOURCE_PATH_MISMATCH`、`ASSET_PACK_METADATA_BRIDGE_THUMBNAIL_PATH_MISMATCH`、`ASSET_PACK_METADATA_BRIDGE_ABSOLUTE_PATH_REJECTED`、`ASSET_PACK_METADATA_BRIDGE_MISSING_ASSET_ID`。
+- Resolver diagnostics：`ASSET_RESOLVER_DIAGNOSTIC_MISSING_ASSET_ID`、`ASSET_RESOLVER_DIAGNOSTIC_BLOCKED_CONTEXT`、`ASSET_RESOLVER_DIAGNOSTIC_DUPLICATE_ASSET_ID`、`ASSET_RESOLVER_DIAGNOSTIC_ABSOLUTE_PATH_REJECTED`。
+
+Unsupported semantic diagnostic decision：
+
+- Step 4B 不实现 unsupported semantic diagnostics。
+- 当前 helper input 没有 explicit expected tags / expected roles / expected semantic constraints；从 requested asset id 或 context 推断 unsupported semantic 会误导。
+- 后续如需该能力，必须先扩展显式 expected semantic input 并新增 tests。
+
+行为边界：
+
+- 本步没有修改 runtime/default asset loading。
+- 本步没有修改 resolver decisions 或 production resolver implementation。
+- 本步没有调用 `resolveLocalAssetPack` 或 `selectLocalAssetPack`。
+- 本步没有修改 QA runtime behavior、Workbench、Phaser 或 asset pack loading。
+- 本步没有接入 production/default asset packs。
+- 本步没有扫描、导入或处理 large asset library。
+- 本步没有修改 source metadata、source assets 或 repair writeback。
+- 本步没有生成或提交 artifacts。
+
+已通过验证：
+
+    npx vitest run tests/contracts/asset-pack-metadata-bridge.test.ts tests/contracts/asset-pack-resolver-diagnostics.test.ts
+    # 2 个测试文件，15 个测试通过
+
+    npm run test:contracts
+    # 18 个测试文件，184 个测试通过
+
+    npm test
+    # contracts 184 个测试通过；workspace 125 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+    # OK 10 metadata files
+
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata
+    # ok=true，artifact.asset_count=10，diagnostics=[]
+
+    npm run metadata:validate -- assets/metadata/examples
+    # OK 5 metadata files
+
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+    # ok=true，artifact.asset_count=5，diagnostics=[]
+
+    git diff --check
+    # 无输出
+
+审查记录：
+
+- Oracle 首轮审查：P0/P1/P2 未发现；P3 指出 thumbnail mismatch diagnostic 的 `jsonPath` 应指向 candidate thumbnail field。已改为 `$.candidates[index].thumbnail_path` 并补测试锁定。
+- Oracle 复审：P0/P1/P2/P3 均无；确认 Step 4B 可以在 staged diff 检查后提交。
+
+### 2.29 Metadata Step 4A: Asset Pack Metadata Bridge / Resolver Diagnostics Review Gate
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 新增 `docs/refactor-log/asset-pack-metadata-bridge-step-4a.md`，定义 future asset pack metadata bridge / resolver diagnostics review gate。
+- 更新 `docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md`，记录 Step 9C branch boundary 已关闭、Step 4A 为当前 docs-only gate、Step 4B 为下一步，large asset library 和 runtime/default integration 继续 parked。
+- 更新本 review log，记录 Step 4A docs-only 边界和 Step 4B future implementation boundary。
+
+Gate 摘要：
+
+- Step 4A 只是 review gate，用于把既有 metadata validation、runtime-safe export、Step 9C small library dry-run 和 canary comparison 输出连接到未来 bridge / diagnostics 设计。
+- Step 4B 未来可以读取 runtime-safe metadata artifacts、small library dry-run outputs 或 fixture metadata，生成 deterministic bridge summary、resolver diagnostics JSON 或 compatibility report。
+- Resolver diagnostics 必须 report-only、deterministic、stable diagnostic code style，不改变 resolver decision、runtime/default behavior、repair writeback 或 unsupported asset promotion。
+- Small library dry-run output 可以作为 fixture / canary / bridge diagnostic input，但不能成为 production/default asset loading 输入。
+- Large asset library 继续 parked；未来必须另走 large library gate。
+
+行为边界：
+
+- 本步没有实现代码。
+- 本步没有新增或修改 tests。
+- 本步没有修改 asset imports、metadata sidecars 或 generated artifacts。
+- 本步没有修改 runtime/default asset loading、resolver default behavior、QA aggregation、Workbench、Phaser、asset pack loading 或 repair-enabled default。
+- 本步没有扫描、导入或处理 large asset library。
+- 本步没有启动 Step 4B implementation。
+
+Step 4B 未来允许：
+
+- bridge helper。
+- resolver diagnostic helper。
+- focused tests。
+- deterministic report schema。
+- docs update。
+
+Step 4B 未来不允许：
+
+- runtime/default loading。
+- production asset pack integration。
+- Workbench UI。
+- Phaser runtime loading。
+- large library rollout。
+- repair-enabled default。
+- source metadata rewrite。
+- large asset library scan/import。
+
+后续路线：
+
+1. Metadata Step 4B asset pack metadata bridge / resolver diagnostics implementation。
+2. Small library bridge canary，仍为 fixture-only / non-production。
+3. Non-default runtime integration，必须显式 opt-in。
+4. Workbench / QA preview，只预览 diagnostics，不改变 default verdict。
+5. Large library gate，单独审查 size、license、scan/import 和 rollout policy。
+6. Production rollout gate，单独审查 default asset pack behavior、resolver consumer 和 runtime loading。
+
+验证：
+
+    git diff --check
+
+审查记录：
+
+- Oracle 审查：P0/P1/P2/P3 均无阻塞；确认 Step 4A docs-only gate 可在主 agent 重新确认 `git diff --check`、`git status --short --branch` 和 staged diff 范围后提交。
+
+### 2.28 Asset Semantic Fidelity Step 9C: Small Art Library Dry-Run Validation / Canary / Comparison
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 新增 `scripts/asset-semantic-small-art-library-dry-run.ts`，当 `--fixture` 指向包含 `metadata/` 的 fixture root 时，只在 canary dry-run 内执行 metadata validation / runtime-safe export，并生成 deterministic canary summary。
+- 更新 `scripts/run-asset-semantic-canary.ts`，保持默认 JSON canary brief fixture 行为不变；small library directory fixture 不启动 preview server / project generation / runtime resolver。
+- 更新 `scripts/asset-semantic-canary-report.ts`，给 summary 增加 optional fixture identity。
+- 更新 `scripts/asset-semantic-canary-comparison.ts`，要求 default 和 repair-enabled summary 使用相同 fixture path / identity / asset count，并在 comparison output 写入 deterministic fixture summary。
+- 新增 `tests/contracts/asset-semantic-small-library-dry-run.test.ts`，覆盖 small library root detection、default / repair-enabled same fixture identity、comparison deterministic output、ignored artifacts path。
+- 扩展 `tests/contracts/asset-semantic-canary-comparison.test.ts`，覆盖 fixture path mismatch rejection。
+
+行为边界：
+
+- 未修改 runtime/default asset loading、resolver default behavior、QA aggregation、Workbench、Phaser、asset pack loading 或 repair-enabled default。
+- 未启动 Metadata Step 4A bridge / resolver diagnostics。
+- 未触碰 large asset library。
+- 未导入 Step 9B 之外的新资产，small library fixture asset count 仍为 10。
+- 未静默修复或重写 source metadata。
+- generated runtime / canary / comparison artifacts 全部留在 ignored `artifacts/` 路径，未加入 git。
+
+已通过验证：
+
+    npx vitest run tests/contracts/asset-semantic-small-library-dry-run.test.ts tests/contracts/asset-semantic-canary-comparison.test.ts
+    # 2 个测试文件，9 个测试通过
+
+    npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+    # OK 10 metadata files
+
+    npm run metadata:validate -- --json tests/fixtures/art-library-small-v0.1/metadata
+    # ok=true，10 个 files，diagnostics=[]
+
+    npm run metadata:validate -- --check-paths tests/fixtures/art-library-small-v0.1/metadata
+    # OK 10 metadata files
+
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata
+    # ok=true，artifact.asset_count=10，diagnostics=[]
+
+    npm run metadata:validate -- assets/metadata/examples
+    # OK 5 metadata files
+
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+    # ok=true，artifact.asset_count=5，diagnostics=[]
+
+    npm run qa:asset-semantic:canary -- --fixture tests/fixtures/art-library-small-v0.1 --timestamp 20260613Tstep9c-default
+    # artifacts/asset-semantic-canary/20260613Tstep9c-default，runnable=10 skipped=0 experimental=0 passed=10 failed=0，repair.enabled=false
+
+    npm run qa:asset-semantic:canary -- --repair-enabled --fixture tests/fixtures/art-library-small-v0.1 --timestamp 20260613Tstep9c-repair
+    # artifacts/asset-semantic-canary/20260613Tstep9c-repair，runnable=10 skipped=0 experimental=0 passed=10 failed=0，repair.enabled=true
+
+    npm run qa:asset-semantic:compare -- --default-summary artifacts/asset-semantic-canary/20260613Tstep9c-default/summary.json --repair-enabled-summary artifacts/asset-semantic-canary/20260613Tstep9c-repair/summary.json --out artifacts/asset-semantic-canary-comparison/20260613Tstep9c-small-library/comparison.json
+    # ok=true，case.total=10，case.runnable=10，default.failed=0，repair.failed=0，failureDiagnosticDelta=0
+
+    npm run qa:asset-semantic:canary -- --limit 1 --timestamp 20260613Tstep9c-default-behavior-smoke
+    # default JSON fixture smoke 仍通过：runnable=1 skipped=17 passed=1 failed=0
+
+    git ls-files --others --exclude-standard artifacts/asset-semantic-canary/20260613Tstep9c-default artifacts/asset-semantic-canary/20260613Tstep9c-repair artifacts/asset-semantic-canary-comparison/20260613Tstep9c-small-library
+    # 无输出
+
+阶段结果：
+
+- default canary artifact：`artifacts/asset-semantic-canary/20260613Tstep9c-default/summary.json`。
+- repair-enabled canary artifact：`artifacts/asset-semantic-canary/20260613Tstep9c-repair/summary.json`。
+- comparison artifact：`artifacts/asset-semantic-canary-comparison/20260613Tstep9c-small-library/comparison.json`。
+- comparison summary：`ok=true`，fixture identity `art-library-small-v0.1`，`asset_count=10`，default / repair-enabled 均 `failure_diagnostic_count=0`、`diagnostic_codes=[]`、`medium_warning_count=0`，所有 delta 为 0。
+
+审查记录：
+
+- Oracle 复审：P0/P1/P2 未发现问题；确认 Step 9C 改动保持在 canary/dry-run/reporting 层，未越界到 runtime/default behavior、resolver、QA aggregation、Workbench、Phaser、asset pack loading、large library 或 Metadata Step 4A。
+- Oracle 重点确认：`--fixture` directory branch 未劫持默认 JSON canary；default / repair-enabled summary 校验相同 small library fixture path / identity / asset count；generated artifacts 保持在 ignored `artifacts/` 路径且未进入 git。
+- P3 可选：未来若继续修改 runner，可补 CLI 级 small-library smoke test；本步已有本地命令验证，不阻塞提交。
+
+### 2.27 Asset Semantic Fidelity Step 9A: Small Art Library Intake Review Gate
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 新增 `docs/refactor-log/asset-semantic-small-art-library-v0.1.md`，定义 small art library dry-run 的目的、与 Step 8a-8d 的关系、尺寸限制、布局建议、二进制资产策略、metadata 要求、validation / export / canary / comparison 要求、runtime/default 非目标、Step 9B / Step 9C 边界和 P0/P1/P2/P3 gate。
+- 更新 `docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md`，把 Step 9A 标为已完成，Step 9B 标为下一步，Step 9C 标为后续。
+- 更新本 review log，记录 Step 9A 是 docs-only gate。
+
+行为边界：
+
+- 本步没有导入任何 art library。
+- 本步没有新增真实 binary assets、metadata sidecar、runtime export artifacts、canary fixtures、tests 或 code。
+- 本步没有创建 `tests/fixtures/art-library-small-v0.1/` 或 `assets/canary/art-library-small-v0.1/` 目录。
+- 本步没有修改 runtime/default behavior、asset pack loading、resolver、QA、Workbench、Phaser、repair planner / executor / pipeline 或 shooter HUD。
+- 本步没有启动 Metadata Step 4A、large asset library、DAM / vector / image embedding、Unity / Unreal / glTF / USD 或 C2PA pipeline。
+
+Gate 摘要：
+
+- small art library target size 为 10 到 30 个 assets，最大 50 个；超过 50 个必须另走 large-library rollout gate。
+- 默认推荐路径为 `tests/fixtures/art-library-small-v0.1/`，因为 Step 9 是 test / dry-run fixture；只有仓库先建立 `assets/canary` 约定时才考虑 `assets/canary/art-library-small-v0.1/`。
+- Step 9B import 前必须明确 per-file、total-size、allowed binary formats、thumbnail 计入规则和外部 artifact reference 表达方式。
+- Step 9B 每个 asset 必须有 sidecar metadata，并通过既有 metadata validation，兼容 taxonomy v0.2，且 runtime-safe export 不包含 prompt / seed / legal / review notes / absolute local paths。
+- Step 9C 必须跑 metadata validate / JSON validate / runtime-safe export / default canary / repair-enabled canary / comparison；canary 当前应使用 `--fixture <small-library-canary-briefs.json>`，comparison 应使用 `--default-summary` / `--repair-enabled-summary` / `--out`；如果现有 `--fixture` 不足以表达 small library dry-run，Step 9B 或 Step 9C 只能新增 canary-only input option，不能改变默认行为。
+
+验证：
+
+    git diff --check
+
+审查记录：
+
+- Oracle 初审：P0/P2/P3 无；P1 要求把 canary / comparison 命令从 positional placeholder 改成当前 CLI 的 `--fixture`、`--default-summary`、`--repair-enabled-summary` 和 `--out` flag 语法。
+- Oracle 复审：P0/P1/P2/P3 均无；确认 Step 9A 仍为 docs-only，未越界到 assets、metadata sidecars、generated artifacts、runtime / resolver / QA / Workbench / Phaser 或 asset pack loading。
+
+### 2.26 Asset Semantic Fidelity Step 8d: Default / Repair-Enabled Canary Comparison
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 新增 `scripts/asset-semantic-canary-comparison.ts`，只读取两份 canary `summary.json` 并构建 deterministic comparison object。
+- 新增 `scripts/compare-asset-semantic-canaries.ts` 和 `npm run qa:asset-semantic:compare`，支持 `--default-summary`、`--repair-enabled-summary` 与可选 `--out`。
+- 新增 `tests/contracts/asset-semantic-canary-comparison.test.ts`，覆盖 green comparison、case set / repair flag mismatch、failure diagnostic code delta、medium warning 分离、case-level repair action normalization 和 CLI args。
+- 更新 `docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md`，记录 Step 8d 边界、验证命令与结果。
+
+行为边界：
+
+- comparison CLI 不运行 canary，只读取调用方传入的两份 summary；只有 build 成功后才写 `comparison.json`。
+- default input 必须 `repair.enabled=false`，repair-enabled input 必须 `repair.enabled=true`；两份 summary 的 case id 顺序、`skipped`、`experimental`、`total`、`runnable`、`skipped`、`experimental` 必须一致。
+- `failure_diagnostic_count` 只统计 `NEEDS_ASSET_REPAIR`、`QA_FAILED`、hard mismatch / unknown、required asset missing、asset load failure 和 placeholder；medium warning 只进入 `medium_warning_count`。
+- repair action 只从 case-level `repair.repairedRequirements[].action` 去重排序为 `actionsAccepted`，不制造固定空的 proposed / rejected action aggregate。
+- 未修改 canary fixture pack、taxonomy、生产资源包、large asset library、AI image provider、Metadata Step 4A、resolver、QA、Workbench、Phaser、asset pack loading、runtime default behavior、repair planner / executor / pipeline 或 shooter HUD。
+
+验证：
+
+    npx vitest run tests/contracts/asset-semantic-canary-comparison.test.ts
+    npm run qa:asset-semantic:canary
+    npm run qa:asset-semantic:canary -- --repair-enabled
+    npm run qa:asset-semantic:compare -- --default-summary artifacts/asset-semantic-canary/20260613T064654Z/summary.json --repair-enabled-summary artifacts/asset-semantic-canary/20260613T064842Z/summary.json --out artifacts/asset-semantic-canary-comparison/20260613T064842Z/comparison.json
+    npm run test:contracts
+    npm test
+    npm run typecheck
+    npm run metadata:validate -- assets/metadata/examples
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+    git diff --check
+
+结果：
+
+- TDD 红灯：focused comparison test 先因 `scripts/asset-semantic-canary-comparison.js` 不存在失败；补充 helper / CLI / npm script 后 focused suite 5 个测试通过。
+- 默认 full canary：`artifacts/asset-semantic-canary/20260613T064654Z`，`runnable=18 skipped=0 experimental=0 passed=18 failed=0`，`repair.enabled=false repair.attemptedCount=0 repair.failedCount=0`。
+- repair-enabled full canary：`artifacts/asset-semantic-canary/20260613T064842Z`，`runnable=18 skipped=0 experimental=0 passed=18 failed=0`，`repair.enabled=true repair.attemptedCount=0 repair.failedCount=0`。
+- comparison artifact：`artifacts/asset-semantic-canary-comparison/20260613T064842Z/comparison.json`，`ok=true`，default / repair-enabled 均 `failure_diagnostic_count=0`、`diagnostic_codes=[]`、`medium_warning_count=3`，delta 均为 0。
+- `npm run test:contracts` 通过：14 个测试文件，161 个测试通过。
+- `npm test` 通过：contracts 161 个测试通过，workspace 125 个测试通过。
+- `npm run typecheck` 通过。
+- `npm run metadata:validate -- assets/metadata/examples` 通过：`OK 5 metadata files`。
+- `npm run metadata:export-runtime -- --json assets/metadata/examples` 通过：`ok=true`、`diagnostics=[]`、`asset_count=5`。
+- `git diff --check` 通过。
+
+审查记录：
+
+- Oracle 预审：P0 无；P1 要求校验 exact comparable case set 和 default / repair-enabled repair flag，并避免输出误导性的固定空 repair action arrays；P2 要求 `failure_diagnostic_count` 不包含 medium warnings。已按此收紧。
+- Oracle 最终审查：P0/P1/P2 均无；P3 提醒 CLI 成功日志应打印 case set 摘要，已补充 `case.total` / `case.runnable` / `case.skipped` / `case.experimental` 输出；本步可提交。
+
+### 2.25 Asset Semantic Fidelity Step 8c: Canary Fixture Pack v0.2
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- `tests/fixtures/asset-semantic-canary.briefs.json` 从 14 条扩展到 18 条，保持 5-20 条 small canary fixture pack 边界。
+- 新增 fixtures：`tank_battlefield_shooter`、`tank_fishbone_battlefield_shooter`、`cat_vs_tank_space_shooter`、`alien_vs_alien_space_shooter`。
+- 新增覆盖：tank + battlefield local-pack positive path、tank + fishbone medium projectile warning boundary、cat/tank mixed fallback boundary、alien-only creature fallback boundary。
+- `tests/contracts/asset-semantic-canary-fixture.test.ts` 断言 Step 8c fixture id、pack size、canary v0.2 taxonomy baseline 和 Step 8c notes。
+- `tests/contracts/asset-semantic-canary-runner.test.ts` 断言默认 runner selection 现在选中 18 条、skipped 为空。
+
+行为边界：
+
+- 本步是 canary fixture pack / brief pack v0.2，不是生产 local asset pack 接入；未新增或修改 `assets/asset-packs`。
+- 未修改 resolver ranking、Step 3 hard gate、fallback 策略、manifest `semanticFit`、`asset_resolution_report`、QA aggregation、Workbench UI、Phaser runtime、repair planner / executor / pipeline 或 asset pack loading。
+- 未接入真实第三方资源切片、large asset library、AI image provider、Metadata Step 4A 或 shooter HUD 文件。
+- 默认 canary 与 repair-enabled canary 仅作为 Step 8c release guard，不作为 Step 8d comparison；未生成 comparison report 或 script。
+
+验证：
+
+    npx vitest run tests/contracts/asset-semantic-canary-fixture.test.ts tests/contracts/asset-semantic-canary-runner.test.ts
+    npm run qa:asset-semantic:canary
+    npm run qa:asset-semantic:canary -- --repair-enabled
+    npm run test:contracts
+    npm test
+    npm run typecheck
+    npm run metadata:validate -- assets/metadata/examples
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+
+结果：
+
+- TDD 红灯：focused canary tests 先因 fixture 仍为 14 条失败；补充 4 条 Step 8c fixture 后 2 个测试文件 24 个测试通过。
+- 默认 full canary：`artifacts/asset-semantic-canary/20260613T061551Z`，`runnable=18 skipped=0 experimental=0 passed=18 failed=0`，`repair.enabled=false repair.attemptedCount=0 repair.failedCount=0`。
+- repair-enabled full canary：`artifacts/asset-semantic-canary/20260613T061743Z`，`runnable=18 skipped=0 experimental=0 passed=18 failed=0`，`repair.enabled=true repair.attemptedCount=0 repair.failedCount=0`。
+- default / repair-enabled summaries 均为 `NEEDS_ASSET_REPAIR=0`、`QA_FAILED=0`、`hardMismatch=0`、`hardUnknown=0`、`requiredAssetMissing=0`、`assetLoadFailures=0`、`placeholderUsed=0`。
+- `tank_fishbone_battlefield_shooter` 产生的 medium warning 保持为 `PLAYABLE_WITH_ART_WARNINGS`，没有升级为 hard mismatch 或 repair trigger。
+- `npm run test:contracts` 通过：13 个测试文件，156 个测试通过。
+- `npm test` 通过：contracts 156 个测试通过，workspace 125 个测试通过。
+- `npm run typecheck` 通过。
+- `npm run metadata:validate -- assets/metadata/examples` 通过：`OK 5 metadata files`。
+- `npm run metadata:export-runtime -- --json assets/metadata/examples` 通过：`ok=true`、`diagnostics=[]`、`asset_count=5`。
+
+审查记录：
+
+- Oracle 预审：P0/P1 无；P2 提醒 `tank_fishbone_battlefield_shooter` 不应断言 medium warning 为 0；P3 提醒 `battlefield` 只作为 canary v0.2 baseline，不应被写成 taxonomy/resource expansion。已按此收紧。
+- Oracle 最终审查：P0/P1/P2/P3 均无，可提交；确认本步只改 6 个 Step 8c 文件，没有 `assets/asset-packs`、runtime、resolver、QA、Workbench、Phaser、shooter HUD 或 metadata examples 变更。
+
+### 2.24 Asset Semantic Fidelity Step 8b: Canary Fixture Promotion
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- `tests/fixtures/asset-semantic-canary.briefs.json` 移除 5 个 Step 8a 已支持 canary 的 `expectedUnsupported` / `unsupportedReason` marker。
+- promoted fixtures：`cat_fishbone_alien_shooter`、`kitten_extraterrestrial_shooter`、`orange_cat_starfield_alien_shooter`、`armored_vehicle_vs_tank`、`cat_space_alien_fishbone`。
+- promotion rationale：Step 8a taxonomy v0.2 已支持 `fishbone` projectile、`异星人`、`星空`、`装甲车`。
+- `tests/contracts/asset-semantic-canary-fixture.test.ts` 断言默认 fixture 不再携带 unsupported marker，并保留 promoted fixture id 集。
+- `tests/contracts/asset-semantic-canary-runner.test.ts` 断言默认 runner selection 现在选中 14 条、skipped 为空；runner 对 synthetic `expectedUnsupported` 的 skip / experimental 机制仍由既有测试覆盖。
+
+行为边界：
+
+- 未修改 resolver ranking、Step 3 hard gate、fallback 策略、manifest `semanticFit`、`asset_resolution_report`、QA aggregation、Workbench UI、Phaser runtime、repair planner / executor / pipeline 或 asset pack loading。
+- 未接入新资源库、真实美术资源、AI image provider、large asset library、Metadata Step 4A 或 shooter HUD 文件。
+- 未启动 Step 8c 小包资源扩展或 Step 8d 默认 / repair-enabled 对比。
+
+验证：
+
+    npx vitest run tests/contracts/asset-semantic-canary-fixture.test.ts tests/contracts/asset-semantic-canary-runner.test.ts
+    npm run qa:asset-semantic:canary
+    npm run qa:asset-semantic:canary -- --repair-enabled
+    npm run test:contracts
+    npm test
+    npm run typecheck
+    npm run metadata:validate -- assets/metadata/examples
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+
+结果：
+
+- TDD 红灯：focused canary tests 先因 5 个旧 `expectedUnsupported` marker 失败；移除 marker 后 2 个测试文件 23 个测试通过。
+- 默认 full canary：`artifacts/asset-semantic-canary/20260612T190227Z`，`runnable=14 skipped=0 experimental=0 passed=14 failed=0`，`repair.enabled=false repair.attemptedCount=0 repair.failedCount=0`。
+- repair-enabled full canary：`artifacts/asset-semantic-canary/20260612T190351Z`，`runnable=14 skipped=0 experimental=0 passed=14 failed=0`，`repair.enabled=true repair.attemptedCount=0 repair.failedCount=0`。
+- `npm run test:contracts` 通过：13 个测试文件，155 个测试通过。
+- `npm test` 通过：contracts 155 个测试通过，workspace 125 个测试通过。
+- `npm run typecheck` 通过。
+- `npm run metadata:validate -- assets/metadata/examples` 通过：`OK 5 metadata files`。
+- `npm run metadata:export-runtime -- --json assets/metadata/examples` 通过：`ok=true`、`diagnostics=[]`、`asset_count=5`。
+
+审查记录：
+
+- Oracle 只读审查：P0/P1/P2/P3 均无，可提交；确认本步只 promotion 5 个 Step 8a 已支持 canary fixture，未触碰 runtime/default behavior、resolver、QA、Workbench、Phaser、asset pack loading、large asset library、Step 8c/8d 或 Metadata Step 4A。
+
+### 2.23 Asset Semantic Fidelity Step 8a: Taxonomy v0.2 for Canary Unsupported Concepts
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- `packages/asset-pipeline/src/taxonomy.ts` 新增 projectile-only canonical concept `fishbone`，覆盖 `fishbone`、`fish_bone`、`fish bone`、`鱼骨`、`鱼骨头`、`鱼骨头子弹`、`鱼骨子弹`。
+- `fishbone` 保持 `strictness="medium"`，不把 projectile 语义升级为 hard gate；forbidden tags 覆盖 `shell`、`tank_bullet`、`missile`、`alien`、`extraterrestrial`。
+- 扩展现有 canonical concept 的输入 alias：`异星人`、`异星`、`外星怪物`、`异星怪物`、`ufo_creature`、`ufo creature`、`space_creature`、`space creature` -> `alien`；`星空`、`银河`、`星海`、`stars`、`starfield`、`star_field`、`star field`、`cosmic` -> `space`；`装甲车`、`armored_vehicle`、`armored vehicle`、`armoured_vehicle`、`armoured vehicle` -> `tank`。
+- 这些 alias 只属于当前 canary unsupported wording 对应的 `alien` / `space` / `tank` concept family input normalization；不扩大 `expectedAnyTags`、resolver ranking、report schema 或资源选择行为。
+- taxonomy 匹配 helper 改为先 normalize，再对 ASCII alias 使用 token / token-sequence 匹配；保留 `tankard` 不命中 `tank`、`caterpillar` 不命中 `cat` 的负例。
+- `tests/contracts/asset-pipeline.test.ts` 增加 taxonomy v0.2 alias 覆盖和 substring 负例。
+- `tests/contracts/asset-semantic-canary-fixture.test.ts` 将 `fishbone` 纳入当前 supported canonical baseline，同时显式断言 5 个 `expectedUnsupported` fixture 仍未 promotion，留给 Step 8b。
+
+行为边界：
+
+- 未修改 resolver ranking、Step 3 hard gate、fallback 策略、manifest `semanticFit`、`asset_resolution_report`、QA aggregation、Workbench UI、Phaser runtime、repair planner / executor / pipeline 或 canary runner 行为。
+- 未接入新资源库、真实美术资源或 AI image provider。
+- 未修改 shooter HUD 文件。
+
+验证：
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts
+    npx vitest run tests/contracts/asset-semantic-canary-fixture.test.ts
+    npm test
+    npm run typecheck
+    npm run qa:asset-semantic:canary -- --limit 3
+    npm run qa:asset-semantic:canary -- --repair-enabled --limit 3
+    git diff --check
+
+结果：
+
+- `tests/contracts/asset-pipeline.test.ts`：20 个测试通过。
+- `tests/contracts/asset-semantic-canary-fixture.test.ts`：6 个测试通过。
+- `npm test` 通过：contracts 119 个测试通过，workspace 125 个测试通过。
+- `npm run typecheck` 通过。
+- 默认 canary smoke：`artifacts/asset-semantic-canary/20260612T094445Z`，`runnable=3 skipped=11 experimental=0 passed=3 failed=0`，`repair.enabled=false repair.attemptedCount=0 repair.failedCount=0`。
+- repair-enabled canary smoke：`artifacts/asset-semantic-canary/20260612T094506Z`，`runnable=3 skipped=11 experimental=0 passed=3 failed=0`，`repair.enabled=true repair.attemptedCount=0 repair.failedCount=0`。
+- `git diff --check` 通过。
+
+审查记录：
+
+- Oracle 预审：确认 Step 8a 应只做 taxonomy / synonym normalization 和契约测试，不直接 promotion fixture；`fishbone` 应作为 projectile-only canonical concept，strictness 保持 `medium`；P0 风险是 substring 匹配、projectile hard gate、runner / resolver / QA / repair 行为外溢。
+- Oracle 复审：P0/P1/P3 无；P2 指出裸词 `vehicle -> tank` 范围超过当前 canary 需求，已移除裸 `vehicle` alias，并补充 `Vehicle` 不命中 hard tank 的负例后复验。
+- Oracle 修复确认：P2 已解决，最终 P0/P1/P2/P3 均无。
+- Oracle 二次复审：P0/P1/P3 无；P2 指出代码和文档列出的 alias 范围不一致，已补全文档中的 `alien` / `space` / `tank` input normalization alias 列表并声明不扩大 resolver / report / resource behavior。
+- Oracle 二次修复确认：P2 已解决，最终 P0/P1/P2/P3 均无。
+
+### 2.22 Asset Semantic Fidelity Step 7: Repair-Enabled Canary Safety + Release Guard
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- `scripts/run-asset-semantic-canary.ts` 新增 `--repair-enabled`，显式开启时把 `AssetSemanticRepairConfig` 传入 `GenerationPipelineService`，并强制 `maxAttempts=1`。
+- 新增 `scripts/asset-semantic-canary-options.ts`，把 runner CLI parsing / help / repair config resolver 提炼为无副作用纯模块，便于合约测试覆盖 default、`--repair-enabled`、env 等价开启和 parser 错误。
+- 未传 `--repair-enabled` 时继续读取既有 `readAssetSemanticRepairConfig()`；默认环境下 repair 仍关闭，env 等价路径仍可生效。
+- `scripts/asset-semantic-canary-report.ts` 开始解析最终 QA report 的 optional `asset_semantic_repair` metadata。
+- `summary.json` 新增顶层 `repair` 聚合对象，并提供 `repairEnabled`、`repairAttempted`、`repairAttemptedCount`、`repairSucceededCount`、`repairFailedCount`、`repairSkippedReasons` 顶层 release guard 别名。
+- `repairFailedCount > 0` 会让 supported summary 失败；successful repair attempt 会被记录为 `repairAttemptedCount > 0` / `repairSucceededCount > 0`，但不自动失败。
+- 每个 completed case 新增 `repair` metadata；旧 QA report 缺少 repair metadata 时兼容为 `attempted=false`、`skippedReason="missing_repair_metadata"`，不让历史 report 解析失败。
+- `summary.md` 新增 `## Repair`、`## Repair skipped reasons`，case table 新增 repair 列。
+- 扩展 `tests/contracts/asset-semantic-canary-runner.test.ts`，覆盖 runner default repair disabled、`--repair-enabled` enabled、env 等价开启、parser `--help` / unknown arg / timestamp override / missing flag value、repair-enabled green no-attempt pass、repair attempted success、repair failure fail summary、expectedUnsupported 默认跳过、`--include-unsupported --repair-enabled` 标为 experimental、旧 report 兼容、missing metadata、Markdown repair sections。
+- 扩展 `tests/workspace/generation-pipeline.service.test.ts` 的 synthetic hard mismatch repair case：repair 后 QA rerun 返回 `PLAYABLE_WITH_FALLBACK_ASSETS`，并断言 `maxAttempts=1`、before/after status、role / expectedConcept / previous semantic fit / repaired requirement metadata。
+
+阶段结果：
+
+- 解决层级：边界适配 + release guard observability；未改变 repair planner / executor / pipeline 触发规则本身。
+- 默认 canary：`artifacts/asset-semantic-canary/20260612T085457Z`，`total=14 runnable=9 skipped=5 experimental=0 passed=9 failed=0`，`repair.enabled=false repair.attemptedCount=0 repair.failedCount=0`。
+- repair-enabled canary：`artifacts/asset-semantic-canary/20260612T085600Z`，`total=14 runnable=9 skipped=5 experimental=0 passed=9 failed=0`，`repair.enabled=true repair.attemptedCount=0 repair.failedCount=0`，`repair.skippedReasons.no_asset_semantic_repair_needed=9`。
+- 未修改 resolver ranking、Step 3 hard gate、fallback 策略、QA status 聚合、Workbench 大 UI、Phaser runtime、taxonomy、新资源库、AI image provider 或 provider `survive_duration`。
+- 未修改 `templates/phaser/shooter/src/GameScene.ts`、`templates/phaser/shooter/src/shooter-renderer.ts` 或 `tests/contracts/phaser-templates.test.ts`。
+
+已通过验证（本步实际执行）：
+
+    npx vitest run tests/contracts/asset-semantic-canary-runner.test.ts tests/workspace/generation-pipeline.service.test.ts
+    # 2 个测试文件，35 个测试通过
+
+    npx vitest run tests/contracts/asset-semantic-canary-runner.test.ts
+    # 1 个测试文件，17 个测试通过
+
+    npx vitest run tests/workspace/generation-pipeline.service.test.ts
+    # 1 个测试文件，19 个测试通过
+
+    npx vitest run tests/contracts/asset-repair-plan.test.ts tests/contracts/asset-repair-executor.test.ts
+    # 2 个测试文件，11 个测试通过
+
+    npm run typecheck:root
+    # 通过
+
+    npm test
+    # contracts: 8 个测试文件，116 个测试通过
+    # workspace: 12 个测试文件，125 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    npm run qa:asset-semantic:canary
+    # summary 写入 artifacts/asset-semantic-canary/20260612T085457Z
+    # runnable=9 skipped=5 experimental=0 passed=9 failed=0
+    # repair.enabled=false repair.attemptedCount=0 repair.failedCount=0
+
+    npm run qa:asset-semantic:canary -- --repair-enabled
+    # summary 写入 artifacts/asset-semantic-canary/20260612T085600Z
+    # runnable=9 skipped=5 experimental=0 passed=9 failed=0
+    # repair.enabled=true repair.attemptedCount=0 repair.failedCount=0
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 预审：P0 红线确认，建议最小影响面限定在 canary runner / summary / pipeline 测试 / 文档，不触碰 resolver、hard gate、fallback、QA 聚合、Workbench、Phaser runtime、taxonomy、资源库或 AI image provider。
+- Oracle 代码审查：P0/P1/P2 均无；P3 指出 `repairSucceededCount` 对 attempted 但缺 after status 的坏 metadata 计数偏宽。
+- 已处理：新增 `isRepairSuccess()`，只有 repair 后 `afterOverallStatus` 为 playable 类状态且 `afterAssetSemanticStatus` 为 `PASSED` / `WARNING` 时才计入 succeeded；`afterOverallStatus="NEEDS_ASSET_REPAIR"` / `QA_FAILED` 计入 failed；补充 `repair_incomplete_metadata_case` 测试。
+- Oracle 复审：P0/P1/P2/P3 均无；确认上一轮 P3 已关闭。
+- Oracle 补测审查：P0/P1/P2 均无；P3 建议补 parser 纯单测并将三份 refactor 文档纳入复审。
+- 已处理：补充 `--help`、unknown arg、`--timestamp` override、缺失 flag value parser 测试，并复跑 runner contract test 与 root typecheck。
+- 审查模式：Oracle 复用。
+
+### 2.21 Asset Semantic Fidelity Step 6c: Repair Pipeline Integration Behind Flag
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- `GenerationPipelineService` 新增 `AssetSemanticRepairConfig`，默认 `enabled=false`，仅 `ASSET_SEMANTIC_REPAIR_ENABLED=true` 或测试显式配置才会进入 repair integration。
+- 首次 QA 完成后只在 `status="PASSED"`、`runtime_status="PASSED"`，且 `overall_status="NEEDS_ASSET_REPAIR"` 或 `asset_semantic_status="FAILED"` 时考虑 repair。
+- repair 触发前额外拒绝 `asset_report.failures`、runtime asset `failed` / `missing` / `missing_required_roles`，确保 required asset load failure、missing file/path 或 runtime QA failure 不进入 semantic repair。
+- pipeline 读取 generated project 的 `public/asset_manifest.json` 和 `asset_resolution_report.json`，调用 `buildAssetRepairPlan`；只有 `plan.triggered=true` 且存在 hard semantic executable item 时才调用 `executeAssetRepairPlan`。
+- repair 最多执行 1 次；`maxAttempts` 即使配置为更大也 clamp 到 1。
+- repair 成功后重新执行 build / preview artifact check / QA 一次；不循环重试。
+- repair 执行结果继续写入 generated project `asset_resolution_report.json.repair`；pipeline 额外写入 `asset-repair.*` timeline event 和 `asset-repair` run step。
+- 最终 `qa-report.json` 写入 `asset_semantic_repair` audit metadata，覆盖 disabled / skipped / attempted / failed / repaired outcomes，并记录 before / after semantic status、repair plan triggered、executable item count、repaired requirements 和 failure reasons。
+- `PLAYABLE`、`PLAYABLE_WITH_FALLBACK_ASSETS`、`PLAYABLE_WITH_ART_WARNINGS`、`fallback_generated`、medium / soft warning、runtime `QA_FAILED` 和 asset load failure 均不会触发 repair。
+- 新增/扩展 `tests/workspace/generation-pipeline.service.test.ts`，覆盖默认关闭、显式开启后 hard semantic repair + 一次 QA rerun、fallback/warning 不修、runtime failure 不修、asset load failure 不修、inconsistent `overall_status="QA_FAILED"` 不修、inconsistent fallback/warning overall 不修、zero attempt budget、no executable item、executor failure、repair rebuild failure step 收敛和 final report metadata。
+
+阶段结果：
+
+- 解决层级：边界适配 + pipeline 业务规则门禁。
+- 行为边界：未修改 resolver ranking、Step 3 hard gate、fallback 策略、Phaser runtime、Workbench 大 UI、taxonomy、新资源库、AI image provider 或 provider `survive_duration`。
+- 默认 canary 路径未开启 repair，`NEEDS_ASSET_REPAIR=0`、`QA_FAILED=0`、`hardMismatch=0`、`hardUnknown=0`、`requiredAssetMissing=0`、`assetLoadFailures=0`、`placeholderUsed=0` 维持健康。
+- shooter HUD stash 不属于本步 scope；本步没有修改 `templates/phaser/shooter/src/GameScene.ts`、`templates/phaser/shooter/src/shooter-renderer.ts` 或 `tests/contracts/phaser-templates.test.ts`。
+
+已通过验证（本步实际执行）：
+
+    npx vitest run tests/workspace/generation-pipeline.service.test.ts
+    # 1 个测试文件，19 个测试通过
+
+    npm run typecheck:root
+    # 通过
+
+    npm run typecheck --workspace @ai-game-maker/maker-api
+    # 通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    npx vitest run tests/contracts/asset-repair-plan.test.ts tests/contracts/asset-repair-executor.test.ts tests/workspace/generation-pipeline.service.test.ts tests/workspace/playwright-qa-runner.test.ts
+    # 4 个测试文件，61 个测试通过
+
+    npm run qa:asset-semantic:canary
+    # summary 写入 artifacts/asset-semantic-canary/20260612T081700Z
+    # total=14 runnable=9 skipped=5 experimental=0 passed=9 failed=0
+    # NEEDS_ASSET_REPAIR=0 QA_FAILED=0 hardMismatch=0 hardUnknown=0 requiredAssetMissing=0 assetLoadFailures=0 placeholderUsed=0
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 代码审查：P0/P1/P2 均无；P3 指出默认关闭测试未覆盖 `readAssetSemanticRepairConfig` env 解析和 maxAttempts clamp。
+- 已处理：新增 `readAssetSemanticRepairConfig` 配置测试，覆盖默认 `enabled=false` 和显式开启时 `maxAttempts` clamp 到 1；复跑 `tests/workspace/generation-pipeline.service.test.ts`、相关四件套、全量 `npm run typecheck` 和 `git diff --check`。
+- Oracle 文档复审：首轮 P2 指出验证记录缺少全量 `npm run typecheck` 和 `git diff --check` 结果；已补齐 review log 与 semantic fidelity plan 的验证结果后复审，P0/P1/P2/P3 均无。
+- 附件规格复核首轮：P0 无；P1 指出缺少结构化 `asset_semantic_repair` report metadata；P2 指出 skip reason 不够显式且缺少 inconsistent `overall_status="QA_FAILED"` 等边界测试。
+- 已处理：`QaReport` 新增 optional `asset_semantic_repair`，pipeline 在最终 report 写入 disabled / skipped / attempted / failed / repaired metadata；补充 no executable item、executor failure、rebuild failure、runtime asset failure、inconsistent QA_FAILED、fallback / warning skip 和 repaired requirements 断言。
+- Oracle 复审 P2：指出 inconsistent fallback/warning overall 仍可能被 `asset_semantic_status="FAILED"` 放行、repair rebuild failure 时 `qa` step 可能残留 `RUNNING`、Step 7 文档措辞像提前验收完成。
+- 已处理：precheck 显式按 overall 拒绝 `PLAYABLE` / fallback / art warning；repair rebuild failure 返回前收敛 `qa` step 为 `DONE`；Step 7 表格改为“待验收目标”；补充 zero attempt budget、inconsistent fallback/warning、rebuild failure step 断言并复跑验证。
+- Oracle 最终复审：P0/P1/P2/P3 均无；确认上一轮 3 个 P2 和 1 个 P3 已关闭，Step 6c 代码与文档门禁通过。
+- 审查模式：Oracle 复用。
+
+### 2.20 Asset Semantic Fidelity Step 6b: Conservative Repair Executor
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- 新增 `packages/asset-pipeline/src/asset-repair-executor.ts` 和 `asset-repair-executor.types.ts`，导出显式 `executeAssetRepairPlan`。
+- 新增 `packages/asset-pipeline/src/asset-repair-report.schema.ts`，让 `AssetResolutionReportSchema` 可选携带 `repair` section。
+- `plan.triggered=false` 时 no-op；`plan.triggered=true` 时只处理 hard semantic failed executable item。
+- `LocalAssetPackProvider` 仅新增 optional project-local blacklist 输入；默认不传 blacklist 时选择行为不变。
+- rerresolve 使用临时 staging assets 目录，只有 repaired requirement ID 对应的 SVG 会被 copy 回项目，避免覆盖非 repair 目标文件。
+- 无合格 local asset 时强制 deterministic `template_svg` fallback，并保持 requirement id / `loadKey`。
+- 修复成功时重写 project root `asset_manifest.json`、`public/asset_manifest.json` 和 `asset_resolution_report.json.repair`。
+- `triggered=true` 但无 executable hard item 时只写 `repair.status = "no_action"` 审计 section，不写 manifest 或 assets。
+- 写入前校验 `repairPlan.projectId`、`asset_plan.json.projectId`、`public/asset_manifest.json.projectId` 和 `asset_resolution_report.json.projectId` 一致。
+- 新增 `tests/contracts/asset-repair-executor.test.ts`，覆盖 fallback repair、第二个合格 local pack rerresolve、no-action audit、project id mismatch 和 blacklisted selected candidate 清理。
+
+阶段结果：
+
+- 解决层级：数据契约 + repair executor 边界适配 + 文件 I/O 审计。
+- 行为边界：未默认挂入 `GenerationPipeline`；未修改 QA 聚合、Workbench UI、Phaser runtime、taxonomy、Step 3 hard gate、正常 resolver ranking、新资源库、AI image provider 或 provider `survive_duration`。
+- 修复范围只包含 hard semantic failed executable item；不修 medium / soft warning 或 `fallback_generated`。
+- shooter HUD stash 不属于本步 scope；本步没有修改 `templates/phaser/shooter/src/GameScene.ts`、`templates/phaser/shooter/src/shooter-renderer.ts` 或 `tests/contracts/phaser-templates.test.ts`。
+
+已通过验证（本步实际执行）：
+
+    npx vitest run tests/contracts/asset-repair-executor.test.ts
+    # 1 个测试文件，5 个测试通过
+
+    npm run test:contracts
+    # contracts 8 个测试文件 / 109 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    npm run qa:asset-semantic:canary -- --limit 3
+    # summary 写入 artifacts/asset-semantic-canary/20260612T065850Z
+    # runnable=3 skipped=11 experimental=0 passed=3 failed=0
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出 rerresolve 直接写真实 `public/assets` 会覆盖非 repair 目标文件；P2 指出 triggered/no executable 未写 no-action audit、缺少 project identity 校验；P3 指出 repaired report 可能同时保留同一 pack 的旧 `selected` 和新 `rejected` candidate。
+- 已处理：rerresolve 改用 staging 目录并只 copy repaired SVG；triggered/no executable 写 `repair.status = "no_action"`；写入前校验 project id；过滤被 blacklist pack 的旧 selected candidate；blacklisted candidate 增加 `role` 审计字段。
+- Oracle 复审：P0/P1/P2/P3 均无；确认未自动挂入 GenerationPipeline，未触碰禁止范围，Step 6b 可以进入文档更新阶段。
+- 审查模式：Oracle 复用。
+
+### 2.19 Asset Semantic Fidelity Step 6a: Asset Repair Planner
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- 新增 `packages/asset-pipeline/src/asset-repair-plan.ts` 和 `asset-repair-plan.types.ts`，导出 `asset-repair-plan-v0.1` 的 `AssetRepairPlan` 类型和 `buildAssetRepairPlan` 纯函数。
+- Planner 消费 normalized QA report 最小形状、`AssetManifest` 和必需 `AssetResolutionReport`，合并 manifest `semanticFit`、resolution report expected semantic 和 QA semantic issue。
+- 只在 `NEEDS_ASSET_REPAIR`、`asset_semantic_status: "FAILED"`、hard `mismatch`、hard `unknown` 或 hard requirement 缺 `semanticFit` 时触发。
+- 只为 hard semantic failed assets 生成 executable `items`；selected local pack 输出 `blacklist_candidate_then_reresolve`，无可 blacklist pack 时输出 `force_template_svg_fallback`。
+- 当 QA 顶层状态要求 repair 但 manifest / resolution report 没有 hard semantic evidence 时，输出 `no_action` diagnostic item，供 Step 6b 审计但不得执行修复。
+- `fallback_generated`、`PLAYABLE_WITH_FALLBACK_ASSETS`、`PLAYABLE_WITH_ART_WARNINGS`、medium / soft mismatch 或 unknown 不触发 repair，进入 `ignored` 作为审计说明。
+- 新增 `tests/contracts/asset-repair-plan.test.ts`，覆盖 hard mismatch、hard unknown、hard missing semanticFit、force template fallback、status-only diagnostic、passing fit status 和 fallback / warning 不触发契约。
+
+阶段结果：
+
+- 解决层级：数据契约 + repair 业务规则。
+- 结构变化：新增一个 `packages/asset-pipeline` 纯 planner 文件、一个类型文件、一个 contract 测试文件，并通过 `packages/asset-pipeline/src/index.ts` 导出最小 API。
+- 行为边界：未修改 resolver ranking、hard semantic gate、fallback 策略、manifest `semanticFit` 生成、QA 聚合、Workbench UI、Phaser runtime、repair executor、资源库、taxonomy、AI image provider 或 provider `survive_duration`。
+- 本步只返回结构化对象，暂不落盘 `asset_repair_plan.json`。
+- shooter HUD stash 不属于本步 scope；本步没有修改 `templates/phaser/shooter/src/GameScene.ts`、`templates/phaser/shooter/src/shooter-renderer.ts` 或 `tests/contracts/phaser-templates.test.ts`。
+
+已通过验证（本步实际执行）：
+
+    npx vitest run tests/contracts/asset-repair-plan.test.ts
+    # 1 个测试文件，6 个测试通过
+
+    npm run test:contracts
+    # contracts 7 个测试文件 / 104 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    npm run qa:asset-semantic:canary -- --limit 3
+    # summary 写入 artifacts/asset-semantic-canary/20260612T062028Z
+    # runnable=3 skipped=11 experimental=0 passed=3 failed=0
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出 `resolutionReport` optional 会让 hard requirement 缺 `semanticFit` 的证据静默缺失；P2 指出 status-only 触发可能 `triggered: true` 但 `items: []`、plan item 缺少语义证据字段、测试边界不足；P3 指出 `no_action` 若不用应移除或补语义。
+- 已处理：`resolutionReport` 改为必需输入；plan item 增加 `actualTags`、`missingTags`、`conflictingTags`、`selectedPath` 和 `semanticFitReason`；status-only repair signal 输出 `no_action` diagnostic item；新增 hard unknown、force fallback、passing fit status、medium unknown 和 status-only diagnostic 契约测试。
+- Oracle 复审：P0/P1/P2/P3 均无；确认首轮 P1/P2/P3 已处理，Step 6a 仍保持只生成 planner 的边界，没有文件写入、blacklist 执行、重新 resolve、QA 聚合、Workbench、Phaser runtime、schema 或 provider 越界改动。
+- 审查模式：Oracle 复用。
+
+### 2.18 Asset Semantic Fidelity Step 5.5b: Canary batch runner + summary report
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- 新增 `scripts/run-asset-semantic-canary.ts`，读取 `tests/fixtures/asset-semantic-canary.briefs.json`，用 deterministic local provider 调用现有生成 / 编译 / QA 流程。
+- 新增 `scripts/asset-semantic-canary-report.ts`，集中处理 fixture parse、默认 supported case selection、`expectedUnsupported` skip、`--include-unsupported` experimental、failure threshold 和 summary 渲染。
+- 新增 package script `npm run qa:asset-semantic:canary`。
+- CLI 支持 `--include-unsupported`、`--case <id>`、`--limit <n>`、`--fixture`、`--output-root`、`--timestamp` 和 `--allow-network`。
+- 默认给 generated project 的 `npm install` 增加 `--offline`，避免默认 canary 依赖外部网络；需要网络时必须显式 `--allow-network`。
+- summary 写出 `artifacts/asset-semantic-canary/<timestamp>/summary.json` 和 `summary.md`，包含 overall/runtime/asset semantic status、fallback_generated、mismatch、unknown、warning、placeholder、required missing、asset load failure、selected packs、manifest path、asset_resolution_report path 和 QA report path。
+- 新增 `tests/contracts/asset-semantic-canary-runner.test.ts`，只测 aggregation / parsing / threshold，不把真实 batch generation 放进 `npm test` 的昂贵路径。
+- `artifacts/` 加入 `.gitignore`，避免本地 canary summary 进入版本控制；根 `tsconfig.json` 纳入 `scripts/**/*.ts`，让 CLI 接受 root typecheck。
+
+阶段结果：
+
+- 解决层级：canary 工具配置 + runner 边界适配 + summary 业务阈值聚合。
+- 结构变化：新增两个 `scripts/asset-semantic-canary*` 文件和一个 contract 测试；更新 package script、root devDependency / lockfile、root typecheck include、`.gitignore` 和 refactor 文档。
+- 行为边界：未修改 resolver ranking、hard semantic gate、fallback 策略、manifest semanticFit 生成逻辑、QA status 聚合规则、Workbench UI、Phaser runtime、asset repair loop、新资源库、AI image provider、taxonomy expansion 或 provider `survive_duration`。
+- 当前工作区既有 shooter HUD 脏文件不属于本步 scope；本步没有修改 `templates/phaser/shooter/src/GameScene.ts`、`templates/phaser/shooter/src/shooter-renderer.ts` 或 `tests/contracts/phaser-templates.test.ts`。
+- `fallback_generated`、`PLAYABLE_WITH_FALLBACK_ASSETS` 和 `PLAYABLE_WITH_ART_WARNINGS` 不算失败；medium warning 只统计不阻断；hard mismatch / hard unknown / required missing / asset load failure / 未允许 placeholder 会失败。
+- `expectedUnsupported: true` 默认 skipped，不算失败；`--include-unsupported` 仅用于实验性运行，并标记为 `experimental`。
+- Step 6 repair loop 仍未实现；Step 5.5b summary 只作为后续 repair loop 范围判断依据。
+
+已通过验证（本步实际执行）：
+
+    npx vitest run tests/contracts/asset-semantic-canary-fixture.test.ts
+    # 1 个测试文件，5 个测试通过
+
+    npx vitest run tests/contracts/asset-semantic-canary-runner.test.ts
+    # 1 个测试文件，9 个测试通过
+
+    npm run typecheck:root
+    # 根 TypeScript 检查通过，覆盖 scripts/**/*.ts
+
+    npm run qa:asset-semantic:canary -- --limit 3
+    # summary 写入 artifacts/asset-semantic-canary/20260612T053854Z
+    # runnable=3 skipped=11 experimental=0 passed=3 failed=0
+
+    npm test
+    # contracts 6 个测试文件 / 99 个测试通过；workspace 12 个测试文件 / 114 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出根脚本使用 `tsx` 但 root `package.json` 未声明 devDependency；P2 指出 `--case` 拼错时会 0 case 假绿；P3 指出 `mediumWarnings` 实际统计所有 warning，字段语义容易误导。
+- 已处理：root `devDependencies` 和 lockfile 显式声明 `tsx`；`selectAssetSemanticCanaryBriefs` 对未知 case id 抛错并补测试；warning 统计拆为 per-case all warnings 和 summary medium warnings，并补 soft warning 不进入 medium aggregate 的测试。
+- Oracle 代码复审：P0/P1/P2 无；P3 指出文档中 contracts 测试数仍为 98，已修正为 99。
+- Oracle 文档复审：P0/P1/P2/P3 均无；确认三份文档准确记录 Step 5.5b 已完成、Step 6 为当前下一步，未声称 repair loop、resolver / QA / Workbench / Phaser runtime / fallback、taxonomy expansion、新资源库或 AI image provider 已变更。
+- 审查模式：Oracle 复用。
+
+### 2.17 Asset Semantic Fidelity Step 5.5a: Canary brief fixture v0.1
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- 新增 `tests/fixtures/asset-semantic-canary.briefs.json`，作为 Step 5.5b canary batch runner 的第一批输入 fixture。
+- fixture 包含 14 条 brief，覆盖 `cat`、`alien`、`tank`、`space`、`fishbone` 和 generic shooter。
+- 每条 brief 写出 semantic expectations：`disallowOverall`、runtime / asset failure 是否允许、optional `allowedOverall`、per-role `expectedCore`、optional `preferredPack` 和 notes。
+- 对当前 taxonomy 尚未确认支持的 wording / concept 显式标记 `expectedUnsupported: true`，包括 `fishbone` projectile、`异星人`、`星空`、`装甲车`。
+- 新增 `tests/contracts/asset-semantic-canary-fixture.test.ts`，只做 fixture parse / validation：JSON parse、id 唯一、brief 非空、expect 契约、concept baseline、strictness、forbidden expansion concepts、preferredPack pack id 和当前 taxonomy core inference。
+
+阶段结果：
+
+- 解决层级：测试 fixture 数据契约。
+- 结构变化：新增 `tests/fixtures/asset-semantic-canary.briefs.json` 和 `tests/contracts/asset-semantic-canary-fixture.test.ts`。
+- 行为边界：未修改 resolver ranking、hard gate、fallback 策略、manifest semanticFit、QA status 聚合、Workbench UI、Phaser runtime、asset repair loop、AI image provider、新资源库或 provider survive_duration。
+- 本步不实现 canary runner，不批量生成真实游戏；Step 5.5b 才实现 runner 和 summary report。
+- dog / rabbit / robot / bird / slime / asteroid 等扩展概念未进入 v0.1 fixture。
+- Step 5.5b runner 应把 `expectedUnsupported: true` 作为 skip / expected-unsupported report 维度，不按普通 canary failure 聚合。
+
+已通过验证（本步实际执行）：
+
+    npx vitest run tests/contracts/asset-semantic-canary-fixture.test.ts
+    # 红灯：fixture 文件不存在；转绿后 1 个测试文件，5 个测试通过
+
+    npm test
+    # contracts 5 个测试文件 / 90 个测试通过；workspace 12 个测试文件 / 114 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0/P1/P2 无；P3 建议补 `preferredPack.roles` 真实覆盖校验、`allowedOverall` / `disallowOverall` 互斥校验，并明确 Step 5.5b runner 如何处理 `expectedUnsupported`。
+- 已处理：fixture validation test 现在校验 preferred pack role coverage 和 overall allow/disallow disjoint；文档明确 Step 5.5b runner 应把 `expectedUnsupported: true` 作为 skip / expected-unsupported report 维度，不按普通 canary failure 聚合。
+- 复验通过：`npx vitest run tests/contracts/asset-semantic-canary-fixture.test.ts`、`npm run typecheck`、`npm test`、`git diff --check`。
+- 文档复审：Oracle 复审 P0/P1/P2/P3 均无；确认三份文档未声称已实现 runner、batch report、真实批量生成、repair loop 或产品行为变化，Step 5.5b / Step 6 顺序一致，`expectedUnsupported` 和 provider survive_duration out of scope 表述准确。
+- 审查模式：Oracle 复用。
+
+### 2.16 Asset Semantic Fidelity Step 5: QA + Workbench semantic status
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- `QaReport` 新增 `runtime_status`、`asset_semantic_status`、`overall_status`，保留既有 `status` 作为 runtime QA pass/fail 结果。
+- `QaAssetReport` 新增 `semantic_status`、per-asset `assets[].semantic_fit` 摘要和 `semantic_issues`，由 `asset-semantic-qa.ts` 从 manifest `semanticFit` 派生。
+- `fallback_generated` 归类为 semantic passed；hard `mismatch/unknown` 归类为 failed；medium/soft `mismatch/unknown` 归类为 warning；缺少 optional `semanticFit` 按旧 manifest 兼容为 passed。
+- `qa-asset-report.ts` 集中组装 asset report 和 overall status：runtime failed 优先返回 `QA_FAILED`，semantic failed 返回 `NEEDS_ASSET_REPAIR`，semantic warning 返回 `PLAYABLE_WITH_ART_WARNINGS`，语义 fallback 返回 `PLAYABLE_WITH_FALLBACK_ASSETS`。
+- `ProjectsService.getQaReport()` 在读取旧磁盘 QA report 时通过 `normalizePersistedQaReport()` 补齐新字段，避免历史 report 缺字段破坏 API 契约。
+- Workbench header 优先展示 `qaReport.overall_status`；`QaStatusPanel` 展示 Overall / Runtime / Asset semantic 三类状态；`AssetStatusPanel` 展示 semantic issue 数量、issue 列表和每个 asset 的 semanticFit 摘要。
+- 测试覆盖 hard semantic mismatch 的 `NEEDS_ASSET_REPAIR`、`fallback_generated` 的 fallback playable、medium mismatch warning、旧 QA report normalize，以及 pipeline 仍按 runtime `status: "PASSED"` 写入 `PLAYABLE`。
+
+阶段结果：
+
+- 解决层级：QA 数据契约 + Workbench 状态建模 / 展示。
+- 结构变化：新增 `asset-semantic-qa.ts`、`qa-asset-report.ts`、`qa-report-normalizer.ts`、`workbench-status.ts`、`QaStatusPanel.tsx`、`AssetSemanticList.tsx` 和 `workbench-semantic-status.test.ts`。
+- 行为边界：未修改 resolver ranking、hard gate、fallback 策略、manifest semanticFit 生成、Phaser runtime、asset repair loop、AI image provider 或 provider survive_duration。
+- runtime QA 与 asset semantic QA 保持独立：semantic failed 不把 `QaReport.status` 改成 `QA_FAILED`，由 `overall_status` 表达 asset repair 需求。
+- 文件规模：`playwright-qa-runner.service.ts` 由 232 行降至 142 行；新增 QA / Workbench helper 文件均低于 220 行；`App.tsx` 仍超过 220 行但本步只减少 QA 面板职责并保持主组合层边界。
+- 未改范围：尚未实现 asset repair loop；未做新资源库、AI image provider 或真实修复闭环。
+
+已通过验证（本步实际执行）：
+
+    npx vitest run tests/workspace/playwright-qa-runner.test.ts tests/workspace/workbench-semantic-status.test.ts
+    # 红灯后转绿：2 个测试文件，34 个测试通过
+
+    npx vitest run tests/workspace/playwright-qa-runner.test.ts tests/workspace/workbench-semantic-status.test.ts tests/workspace/generation-pipeline.service.test.ts
+    # 3 个测试文件，41 个测试通过
+
+    npx vitest run tests/workspace/projects-service.test.ts tests/workspace/generation-pipeline.service.test.ts tests/workspace/workbench-semantic-status.test.ts
+    # Oracle 反馈修复后，3 个测试文件，17 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    npm exec --workspace @ai-game-maker/maker-workbench -- vite build
+    # Workbench production build 通过
+
+    npm test
+    # contracts 84 个测试通过，workspace 114 个测试通过
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0/P1 无；P2 指出历史磁盘 QA report 缺少新必填字段时 API 类型兼容风险；P3 指出旧 report 在 QA 面板 overall tone 上可能显示 neutral，并建议补 pipeline 边界测试。
+- 已处理：新增 `normalizePersistedQaReport()` 并接入 `ProjectsService.getQaReport()`；`QaStatusPanel` 改用 `getWorkbenchStatusTone(overallStatus)`；补充 pipeline 回归测试。
+- Oracle 复审：P0/P1/P2 无；P3 残留为旧 report runtime 行颜色可 polish。
+- 复审后处理：已进一步改为用推导后的 runtime / semantic label 计算 tone，并通过 `npm run typecheck`、Workbench build 和相关测试。
+- 审查模式：Oracle 复用
+
+### 2.15 Asset Semantic Fidelity Step 4: Manifest semanticFit + resolution report
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- `AssetManifestAssetSchema` 新增 optional `semanticFit`，字段包含 status、confidence、strictness、expected concept/tags、actual/missing/conflicting tags 和 reason。
+- 新增 `resolution-report.ts`，定义 `asset-resolution-report-v0.1` schema，并集中计算 template fallback、local asset fit、hard semantic rejection 和 final report assets / candidates。
+- `writeAssetArtifacts` 继续沿用既有 selection / fallback 结果，只在 manifest assets 上挂 `semanticFit`，并额外写出 project 根目录 `asset_resolution_report.json`。
+- `resolveLocalAssetPack` 只增加 diagnostics：记录 selected、style mismatch、incomplete pack、hard semantic mismatch candidates；保留 `selectLocalAssetPack` 兼容 API。
+- report 能解释 cat/alien shooter 为什么 fallback 到 template SVG、`kenney-tiny-shooter-tanks` 的 player/enemy 为什么 hard mismatch、tank/tank shooter 为什么 selected local pack，以及 style / incomplete pack 为什么未选中。
+
+阶段结果：
+
+- 解决层级：manifest 数据契约 + asset resolution 诊断产物。
+- 结构变化：新增 `packages/asset-pipeline/src/resolution-report.ts`；`schemas.ts`、`local-asset-pack-provider.ts`、`writer.ts`、`index.ts` 同步类型和写出路径；合同测试与 compiler 测试补充 report 断言。
+- 行为边界：未修改 resolver ranking / final selection / fallback 策略；未改变 Step 3 hard gate；未修改 QA overall status、Workbench PLAYABLE、Phaser runtime 或 provider。
+- 文件规模：`schemas.ts`、`resolution-report.ts` 均为 220 行，`local-asset-pack-provider.ts` 为 213 行，仍保持职责集中。
+- 未改范围：尚未实现 QA semantic status、Workbench semantic display、repair loop、medium/soft blocking、AI image provider 或新资源库接入。
+
+已通过验证：
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts
+    # 实现前红灯：cat/alien fallback 与 tank/tank selected 两个测试均失败在 semanticFit undefined；P3 诊断测试失败在 style/incomplete candidate 缺字段
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts tests/workspace/compiler-service.test.ts
+    # 2 个测试文件，28 个测试全部通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    npx vitest run tests/workspace/playwright-qa-runner.test.ts
+    # 1 个测试文件，28 个测试全部通过，证明 QA overall status 边界未改变
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0/P1/P2 无；P3 指出 `incomplete_pack` / `style_mismatch` candidate 解释粒度偏粗。
+- 已处理：为 candidate schema 增加 `expectedStyle`、`actualStyle`、`missingAssets`，并增加合同测试覆盖 style mismatch 和 incomplete pack diagnostics。
+- Oracle 复审：P0/P1/P2/P3 均无。
+- 审查模式：Oracle 新建 + 复用
+
+### 2.14 Asset Semantic Fidelity Step 3: Resolver semantic hard gate
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- `selectCompletePackAssets` 新增 hard-only semantic gate：local pack 仍先按 `id` / `role` / `format` 完整覆盖；若 plan item `semantic.strictness === "hard"`，pack asset 必须有 asset-level semantic metadata。
+- hard gate 要求 asset `subjectTags` 命中 plan `expectedAnyTags`，并要求 asset `subjectTags/themeTags` 不命中 plan `forbiddenTags`，asset `forbiddenTags` 不命中 plan `expectedAnyTags`。
+- `semantic.strictness !== "hard"` 直接放过，不阻断 medium / soft constraint。
+- hard mismatch 的 complete local pack 返回 `undefined`，由 `writeAssetArtifacts` 保持既有 `template_svg` fallback；未新增新的 fallback 分支。
+- 合同测试覆盖默认 cat/alien shooter 回退 `template_svg`、tank/tank shooter 仍选择 `kenney-tiny-shooter-tanks`、medium / soft constraint 不阻断 local pack selection。
+- `compiler-service.test.ts` 同步把保留 tank pack wiring 断言的 stale-file 清理测试改用 tank shooter fixture，避免默认 cat/alien shooter 的新 fallback 契约和旧断言冲突。
+
+阶段结果：
+
+- 解决层级：resolver 业务规则。
+- 结构变化：`local-asset-pack-provider.ts` 从 138 行增至 167 行；`tests/contracts/asset-pipeline.test.ts` 增至 558 行；`tests/workspace/compiler-service.test.ts` 仅补 tank shooter fixture。
+- 行为边界：未修改 manifest schema / writer、QA、Workbench、Phaser runtime 或 provider；未写 manifest `semanticFit`，未写 `asset_resolution_report.json`，未改变 QA / Workbench PLAYABLE 判定。
+- 未改范围：尚未实现 manifest semantic fit、asset resolution report、QA semantic status、Workbench semantic display 或 repair loop。
+
+已通过验证：
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts
+    # 实现前红灯：默认 cat/alien shooter 仍选中 kenney-tiny-shooter-tanks；实现后 18 个测试通过
+
+    npx vitest run tests/workspace/compiler-service.test.ts
+    # 修复同步前红灯：旧测试仍期待默认 shooter 选 tank pack；同步后通过
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts tests/workspace/compiler-service.test.ts
+    # 2 个测试文件，27 个测试全部通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check -- packages/asset-pipeline/src/local-asset-pack-provider.ts tests/contracts/asset-pipeline.test.ts tests/workspace/compiler-service.test.ts docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md docs/refactor-log/ai-game-dsl-p0-step-index.md docs/refactor-log/ai-game-dsl-p0-review-gated.md
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出 `tests/workspace/compiler-service.test.ts` 仍使用默认 cat/alien shooter 并断言 `kenney-tiny-shooter-tanks`，会和新 hard gate 契约冲突；P2 建议文档同步；P3 无。
+- 已处理：先复现 compiler test 红灯；将该 stale-file 清理测试的 shooter fixture 改成 tank shooter，保留 tank pack wiring 断言，同时由 contract test 保留默认 cat/alien fallback 契约。
+- Oracle 复审：P0/P1/P2/P3 均无。
+- 文档复审：Oracle 指出 plan 顶部仍把 cat/alien 选中 tank pack 写成“当前系统”问题、Step 3 表格使用 `gate before priority / score` 容易误导；已改为 “Step 3 前的典型案例” 和 `complete-pack selection hard gate`，复审 P0/P1/P2/P3 均无。
+- 审查模式：Oracle 新建 + 复用
+
+### 2.13 Asset Semantic Fidelity Step 2: Local pack metadata profile
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- 新增 `packages/asset-pipeline/src/local-asset-pack.schema.ts`，把 local pack schema 从 provider 文件拆出，并新增 `AssetPackProfileSchema`、asset-level `semantic` metadata schema 和 `indexLocalAssetPackMetadata`。
+- `LocalAssetPackSchema` 支持 pack-level `profile`，字段包含 `version`、`packId`、`taxonomyVersion`、`priority`、`primaryGenre`、`primaryTheme`、`styleTags`、`camera`、`subjectCoverageByRole`、`incompatibleConcepts` 和 `notes`。
+- `PackAssetSchema` 支持 optional `semantic.subjectTags/themeTags/forbiddenTags`。
+- `LocalAssetPackSchema.superRefine` 新增 metadata lint：profile `packId` 必须匹配 pack id；profile `priority` 必须匹配 pack priority；asset id 不允许重复；`profile.subjectCoverageByRole` 与 asset-level `semantic.subjectTags` 必须双向一致。
+- `kenney-tiny-shooter-tanks` 增加明确的 tank/battlefield/top_down shooter profile：player/enemy 暴露 `tank` / `vehicle` / `turret`，background 暴露 `battlefield` / `road` / `grassland`，projectile 只暴露 `projectile` / `shell`，`tank` 只作为 projectile theme tag。
+- `local-asset-pack-provider.ts` 只改为导入 schema 和 metadata index；`selectCompletePackAssets` 仍只按 `id` / `role` / `format` 判断完整覆盖，不读取 semantic score，不过滤，不改变 fallback。
+- `tests/contracts/asset-pipeline.test.ts` 增加 pack profile/index 断言、非法 metadata lint 断言，并保留现有 shooter selection 结果仍为 `kenney-tiny-shooter-tanks`。
+
+阶段结果：
+
+- 解决层级：local asset pack 数据契约 + metadata lint。
+- 结构变化：`local-asset-pack-provider.ts` 从 189 行降到 138 行；新增 `local-asset-pack.schema.ts` 为 199 行；`schemas.ts` 保持 210 行；既有合同测试文件集中保留并扩展到 506 行。
+- 行为边界：未修改 resolver ranking / selection / fallback 行为；未启用 semantic hard gate；未修改 `AssetManifestAssetSchema`、QA、Workbench 或 Phaser runtime。
+- 未改范围：尚未实现 resolver hard gate、manifest `semanticFit`、`asset_resolution_report.json`、QA semantic status 或 Workbench semantic display。
+- 注意：当前工作区仍有 Step 1 基线改动和 provider `survive_duration` 修复改动；本步没有触碰 provider 修复文件。
+
+已通过验证：
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts
+    # 1 个测试文件，16 个测试全部通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check -- packages/asset-pipeline/src/local-asset-pack.schema.ts packages/asset-pipeline/src/local-asset-pack-provider.ts packages/asset-pipeline/src/schemas.ts packages/asset-pipeline/src/index.ts assets/asset-packs/kenney-tiny-shooter-tanks/pack.json tests/contracts/asset-pipeline.test.ts docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md docs/refactor-log/ai-game-dsl-p0-step-index.md docs/refactor-log/ai-game-dsl-p0-review-gated.md
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出 Step 1 既有未提交基线容易被误判为本步越界；P2 指出 metadata index 依赖 asset id 唯一，且 hard gate 前需要校验 pack-level coverage 与 asset-level tags 一致；P3 建议测试名可更宽。
+- 已处理：向 Oracle 明确 Step 1 是本轮既有基线；补充 duplicate asset id lint；补充 `subjectCoverageByRole` 与 asset-level `subjectTags` 双向一致性校验；补对应负例测试。
+- Oracle 复审：P0/P1/P2 均无；P3 仅保留测试名可更宽的轻微建议，不阻塞 Step 2。
+- 审查模式：Oracle 复用
+
+### 2.12 Asset Semantic Fidelity Step 1: Taxonomy and AssetPlan semantic constraint
+
+完成时间：2026-06-11
+
+已完成内容：
+
+- `AssetPlanItemSchema` 新增 optional `semantic` 字段，字段包含 `expectedConcept`、`expectedAnyTags`、`forbiddenTags` 和 `strictness`。
+- 新增 `packages/asset-pipeline/src/taxonomy.ts`，最小覆盖 `cat`、`alien`、`tank`、`space`、`battlefield` canonical tags 和中英文同义词。
+- `buildAssetPlanFromIr` 在生成 plan item 时写入 semantic hints；player/enemy 明确核心实体为 hard，background 主题为 medium，非核心和泛化角色保持 soft。
+- background semantic 会读取 `template_params.params.world.visual_theme` 作为 style hint。
+- 合同测试覆盖 cat/alien hard、tank hard、`caterpillar` / `tankard` 英文子串负例、非核心 projectile 含 tank 仍 soft、space background medium。
+
+阶段结果：
+
+- 解决层级：AssetPlan 数据契约 + taxonomy 纯规则。
+- 行为边界：未修改 `selectLocalAssetPack`、manifest、QA、Workbench 或 Phaser runtime；当前 resolver 仍不消费 `semantic`。
+- 未改范围：尚未给 local asset pack 补 subject/theme metadata；尚未实现 semantic hard gate、manifest `semanticFit` 或 QA semantic status。
+
+已通过验证：
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts
+    # 1 个测试文件，14 个测试全部通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check -- packages/asset-pipeline/src/schemas.ts packages/asset-pipeline/src/plan.ts packages/asset-pipeline/src/taxonomy.ts packages/asset-pipeline/src/index.ts tests/contracts/asset-pipeline.test.ts
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0/P1 无；P2 指出非 background 角色统一套 core hard rules 会让 projectile/collectible/hazard 误变 hard；P2 指出英文 `includes` 会让 `caterpillar` / `tankard` 误命中；P3 建议 `expectedConcept` 复用 tag schema，并把 `world.visual_theme` 传给 background。
+- 已修复：core hard rules 仅限 `player_character` / `enemy`；英文 concept/alias 改为 token matching；非核心角色保持 soft；`expectedConcept` 复用 `SemanticTagSchema`；background 读取 style theme；补充负例与背景测试。
+- Oracle 复审：P0/P1/P2/P3 均无，Step 1 可通过代码审查门禁。
+- 审查模式：Oracle 复用
+
+### 2.11 Asset Semantic Fidelity Step 0: requirement split and execution plan
+
+完成时间：2026-06-11
+
+已完成内容：
+
+- 读取 `AGM_Asset_Semantic_Fidelity_Markdown_Folder.zip`，确认核心问题是资源加载成功但语义错配，而不是 `ASSET_LOAD_FAILED`。
+- 新增 `docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md`，把方案拆成 Step 0 到 Step 7：taxonomy、pack metadata、resolver hard gate、manifest semanticFit、QA/Workbench、repair loop、回归验收。
+- 更新 `docs/refactor-log/ai-game-dsl-p0-step-index.md`，把当前下一步切到 Asset Semantic Fidelity Step 1。
+
+阶段结果：
+
+- 解决层级：文档规则 + 后续数据契约执行计划。
+- 行为边界：未修改 asset resolver、manifest schema、QA、Workbench 或 Phaser runtime。
+- 未改范围：尚未实现 taxonomy、semantic hard gate、manifest semanticFit 或 Workbench semantic display。
+- 注意：当前工作区另有未提交 provider 修复改动，属于 shooter `survive_duration` 归一化；本步文档没有触碰这些文件。
+
+已通过验证：
+
+    unzip -l /Users/dahufa/Documents/workspace/AGM_Asset_Semantic_Fidelity_Markdown_Folder.zip
+    rg -n "Asset Semantic|semantic|asset|DSL|QA|Workbench|P0|Step" /Users/dahufa/.codex/memories/MEMORY.md
+    rg -n "AssetPlan|AssetManifest|semantic|fallback|priority|selectCompletePackAssets|asset_report" packages/asset-pipeline/src apps/maker-api/src/qa apps/maker-workbench/src docs/refactor-log -g "*.ts" -g "*.tsx" -g "*.md"
+    git diff --check -- docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md docs/refactor-log/ai-game-dsl-p0-step-index.md docs/refactor-log/ai-game-dsl-p0-review-gated.md
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0/P1 无；P2 指出 `step-index` 顶部完成状态仍停在 Asset Pipeline Step 4.1，和后文 Step 5.1 完成记录不一致；P3 建议补充 scoped `git diff --check` 验证记录。
+- 已修复：顶部完成状态改为 Asset Pipeline P0 Step 1-5（含 Step 5.1），并补充 scoped `git diff --check` 验证命令。
+- 审查模式：Oracle 新建
+
+### 2.10 Asset Pipeline P0 Step 5.1: tiny local asset pack slice
+
+完成时间：2026-06-11
+
+已完成内容：
+
+- 新增 `assets/asset-packs/agm-tiny-collector`，只包含 collector 最小闭环资源：`background_main.svg`、`player.svg`、`collectible.svg` 和 `pack.json` license/style 元数据。
+- `writeAssetArtifacts` 优先选择完整覆盖当前 `AssetPlan` 的 local asset pack；若没有完整覆盖，则整体回退到 `template_svg`，避免同一玩法半套资源混搭。
+- `AssetManifestAsset` 增加 `sourcePack`、`licenseId`、`licenseName`、`attribution`、`sourceUrl`；当 `source === "local_asset_pack"` 时这些字段必须存在。
+- collector template 新增 manifest-driven art runtime，`preload()` 加载 `asset-manifest.generated.json`，首帧优先渲染 manifest image，并通过 `__GAME_TELEMETRY__.assets` 暴露 required / loaded / failed。
+- QA runtime asset gate 扩展到 collector：collector 缺 runtime asset telemetry 或 required asset 未 loaded 时不能 PASS。
+- QA report 聚合 `asset_report.sources`，Workbench Assets 面板展示 source pack、license 和 attribution。
+- 真实 Maker stack 生成 `proj_20260611_064732_c31d` / `run_20260611_064732_c31d`，状态 `PLAYABLE`，QA report 显示 collector runtime assets `background_main/player/collectible` 全部 loaded。
+- Workbench 桌面和移动端均展示 `agm-tiny-collector`、`CC0-1.0` 和 `Creative Commons CC0 1.0 Universal`，无水平溢出。
+
+阶段结果：
+
+- 解决层级：asset selection 数据契约 + generated project 边界适配 + collector runtime asset loading + Workbench 展示。
+- DSL-first 边界：未新增 Raw DSL asset path / URL / base64 字段；资源选择仍从 trusted IR 派生的 `AssetPlan` 进入系统侧 provider。
+- 未改范围：没有全量导入 Kenney / itch.io / OpenGameArt；dodger/shooter 暂不使用这个 tiny pack，仍按现有资源路径运行。
+
+已通过验证：
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/compiler-service.test.ts tests/workspace/playwright-qa-runner.test.ts
+    # 4 个测试文件，67 个测试全部通过
+
+    npm run typecheck --workspace @ai-game-maker/maker-workbench
+    npm run typecheck --workspace @ai-game-maker/maker-api
+    npm run typecheck:root
+    # 三段类型检查通过
+
+    Real Maker stack:
+    # POST /api/projects/generate -> proj_20260611_064732_c31d / run_20260611_064732_c31d / PLAYABLE
+    # QA visual_status=PASSED, asset_report.runtime.loaded=[background_main, player, collectible]
+    # Workbench screenshots: /tmp/agm-tiny-pack-workbench/workbench-desktop.png, /tmp/agm-tiny-pack-workbench/workbench-mobile.png
+
+审查门禁结论：
+
+- Oracle 只读审查指出：collector 必须实际 preload/render manifest 资源、local asset license 不能 optional 丢失、QA/Workbench 需要展示 source pack/license。
+- 已修复：collector runtime manifest preload/render、collector QA runtime asset gate、`local_asset_pack` license 必填、Workbench source pack/license 展示、缺 local pack 整体回退测试。
+
+### 2.9 Asset Pipeline P0 Step 4.1: Workbench asset status panel
+
+完成时间：2026-06-11
+
+已完成内容：
+
+- `workbench-api.ts` 为 Workbench 侧 `QaReport` 补齐 `asset_report?: QaAssetReport` 类型，字段对齐 maker-api QA report 合同。
+- 新增 `AssetStatusPanel` 纯展示组件，展示 `required`、`ready`、`loaded`、`failed`、`placeholder`、`missing` 指标。
+- Assets 面板展示 required asset ids、runtime loaded asset ids，以及 `asset_report.failures[].code/message/asset_ids/roles`。
+- `App.tsx` 只挂载 `<AssetStatusPanel report={data.qaReport?.asset_report} />`，未继续堆叠资产 JSX 或新增数据请求。
+
+阶段结果：
+
+- 解决层级：Workbench 数据契约消费 + React 组件职责拆分。
+- 行为边界：未修改 API 返回结构、QA 生成、DSL、compiler、asset pipeline 或 Phaser template。
+- UI 铺路结果：Workbench 不需要解析 QA failure message 即可展示 asset failure reason。
+- 未改范围：尚未用真实新生成 run 做 Workbench 桌面 / 移动端视觉验收；尚未展示 license / attribution；collector / shooter runtime asset telemetry 仍待后续分步接入。
+
+已通过验证：
+
+    npm run typecheck --workspace @ai-game-maker/maker-workbench
+    # maker-workbench 类型检查通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查均通过
+
+    npm exec --workspace @ai-game-maker/maker-workbench -- vite build
+    # Vite production build 通过
+
+    git diff --check
+    # 无输出
+
+    Workbench Playwright smoke: http://127.0.0.1:5174/
+    # 无数据状态：Manifest Status=1、No asset report=1、console errors=[]
+    # mocked QA asset_report：Blocked=1、ASSET_LOAD_FAILED=2、enemy.hazard=2、failure reason=1、console errors=[]
+
+审查门禁结论：
+
+- Oracle 代码审查：P0/P1/P2 均无；P3 建议补 Workbench production build。
+- 已补验证：`npm exec --workspace @ai-game-maker/maker-workbench -- vite build` 通过。
+- 审查模式：Oracle 新建
+
+下一步建议：
+
+- Asset Pipeline P0 Step 4.2：启动真实 Maker stack，生成或加载一个包含 `asset_report` 的 run，在 Workbench 桌面 / 移动端验证 Assets 面板与 QA/Telemetry/Preview 区域布局不互相挤压。
+
+### 2.8 Asset Pipeline P0 Step 3: QA asset report enrichment
+
+完成时间：2026-06-11
+
+已完成内容：
+
+- `QaReport` 新增 `asset_report`，保留既有 `asset_manifest_summary` 兼容字段。
+- `asset_report` 汇总 manifest 派生的 `required`、`ready`、`fallback_used`、`placeholder_used`、`missing`、runtime asset telemetry 和结构化 `failures`。
+- `runPlaywrightQaBrowser` 将 `__GAME_TELEMETRY__.assets` 规范化为 snake_case `asset_runtime`，并在 `ASSET_LOAD_FAILED` 分支带出 runtime telemetry。
+- `validateGeneratedProjectAssets` 的可定位失败带出 `assetId` 和 `role`，QA service 将其写入 `asset_report.failures[].asset_ids/roles`。
+- `PlaywrightQaRunnerService` 对 dodger alternate runner 增加 service-level guard：当 browser runner 报告通过但缺少 runtime asset telemetry 时，report 以 `ASSET_LOAD_FAILED` 失败。
+- 测试覆盖 passed report 的 asset 明细、manifest 缺失、preview asset missing、core placeholder、runtime required not loaded、runtime missing asset、missing required role 和 alternate runner 缺 runtime telemetry。
+
+阶段结果：
+
+- 解决层级：QA report 数据契约 + browser runner 边界适配 + asset validator failure metadata。
+- Workbench 铺路结果：后续 UI 可直接读取 `asset_report.manifest_summary`、`asset_report.runtime` 和 `asset_report.failures`，不需要解析 message。
+- DSL-first 边界：未新增 Raw DSL asset path / URL / base64 字段；未改资源 provider；未改 Phaser 模板；未接 Workbench UI。
+- 未改范围：Workbench Assets 面板仍未接入；QA report 还未展示 license / attribution 细节；collector / shooter runtime asset telemetry 仍待后续分步接入。
+
+已通过验证：
+
+    npx vitest run tests/workspace/playwright-qa-runner.test.ts
+    # 1 个测试文件，26 个测试全部通过
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/compiler-service.test.ts tests/workspace/playwright-qa-runner.test.ts && npm run typecheck
+    # 4 个测试文件，63 个测试全部通过；root、maker-api、maker-workbench 三段类型检查均通过
+
+    npm test
+    # 11 个测试文件，104 个测试全部通过
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出 `asset_report.fallback_used` 把 `source=template_svg` 误判为 fallback，与 manifest `summary.fallback_used` 语义不一致；P2 指出 asset gate failure 缺结构化 asset id / role；P2 指出 injected browser runner 缺 runtime asset telemetry 时 service 层可能误判 PASSED；P3 建议文档沉淀。
+- 已修复：`asset_report.fallback_used` 改为只按 `status === "fallback_used"`；validator 可定位失败返回 `assetId` / `role`；QA service 写入结构化 failure ids / roles；dodger alternate runner 缺 `asset_runtime` 时 service 层返回 `ASSET_LOAD_FAILED`；补 preview `ASSET_MISSING`、core placeholder 和缺 runtime telemetry 测试。
+- Oracle 复审：P0/P1/P2/P3 均无，Step 3 代码门禁通过。
+- 审查模式：Oracle 新建
+
+下一步建议：
+
+- Asset Pipeline P0 Step 4：Workbench asset status panel，优先消费 `asset_report`，避免前端解析 QA failure message。
+
+### 2.7 Asset Pipeline P0 Step 2: dodger manifest preload / runtime asset gate
+
+完成时间：2026-06-11
+
+已完成内容：
+
+- `AssetManifestAssetSchema` 新增 `loadKey`，收紧为 `agm.<asset_id>`，并校验重复 `loadKey` 与 id 不一致。
+- `writeAssetArtifacts` 为 manifest assets 写入稳定 `loadKey`，继续保持 path 限制为 `assets/<id>.svg`。
+- `TemplateCompilerService` 为 dodger 生成项目写入 `dodger/src/asset-manifest.generated.json`，内容来自 Asset Pipeline 生成的 manifest。
+- dodger template 新增 manifest-driven art runtime：`preload()` 使用 manifest `loadKey` 和 manifest `path` 加载 SVG，主渲染对象优先通过 manifest `loadKey` 创建 image；graphics 仅作为缺纹理时的降级绘制和粒子效果。
+- `exposeRuntime` 支持暴露 telemetry extras；dodger runtime 在 `__GAME_TELEMETRY__.assets` 暴露 `manifestLoaded`、`required`、`loaded`、`failed`、`fallbackUsed`、`placeholderUsed`、`missing` 和 `missingRequiredRoles`。
+- Playwright QA 在 dodger 交互 QA 前读取 runtime asset telemetry，要求 manifest loaded、required 非空、required 全部 loaded，且 `failed`、`missing`、`missingRequiredRoles` 不包含阻塞项；失败码使用 `ASSET_LOAD_FAILED`。
+- 测试覆盖 manifest `loadKey` 合同、compiler 生成 `asset-manifest.generated.json`、dodger template manifest preload、runtime asset loaded gate、missing asset、缺 required role，以及 collectible 资源非必需时不生成/不加载。
+
+阶段结果：
+
+- 解决层级：数据契约 + compiler 生成边界 + Phaser runtime 解释 + Playwright QA runtime 门禁。
+- DSL-first 边界：模型仍不输出 asset path / URL / base64；资源 manifest 继续由 IR 派生并由 compiler 写入生成项目。
+- 本步先只接入 dodger，以验证 manifest consumption 和 runtime loaded gate；collector / shooter 仍待后续分步接入。
+- 未改范围：QA report 还未持久化 required / loaded / failed 明细；Workbench Assets 面板未接入；第三方固定资源库、LicensePolicy、NoticeWriter 仍待后续步骤。
+
+已通过验证：
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/compiler-service.test.ts tests/workspace/playwright-qa-runner.test.ts
+    # 4 个测试文件，60 个测试全部通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查均通过
+
+    npm test
+    # 11 个测试文件，101 个测试全部通过
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出 `required` 只收集 manifest 中存在的 asset id，而 `missing` 可能记录 role 名，导致缺 `player_character` role 时 QA 可能假阳性；P2 指出 runtime required 语义没有完全体现 manifest `required` 字段，建议避免合同误读；P2 建议补 `missing` 和缺 role 负例；P3 提醒新增文件提交时必须纳入。
+- 已修复：dodger asset telemetry 中 `required` / `missing` 统一使用 asset id；缺失或 `required !== true` 的 template-consumed role 写入 `missingRequiredRoles`；QA 对 `missing` 非空和 `missingRequiredRoles` 非空直接 `ASSET_LOAD_FAILED`；补 runtime asset missing 与 required role absent 两个负例。
+- Oracle 复审：P0/P1/P2 均无，Step 2 代码门禁通过。
+- 审查模式：Oracle 复用
+
+下一步建议：
+
+- Asset Pipeline P0 Step 3：把 runtime asset telemetry 和 manifest summary 写进 QA report，区分 `ASSET_MISSING`、`REQUIRED_CORE_ASSET_PLACEHOLDER_USED` 与 `ASSET_LOAD_FAILED` 的明细，为 Workbench Assets 面板铺路。
+
+### 2.6 Asset Pipeline P0 Step 1: AssetPlan / AssetManifest artifact gate
+
+完成时间：2026-06-11
+
+已完成内容：
+
+- 新增 `packages/asset-pipeline`，拆分为 `schemas.ts`、`plan.ts`、`writer.ts`、`validator.ts`、`template-svg-provider.ts` 和 `index.ts`。
+- `AssetPlanSchema` / `AssetManifestSchema` 固化 `asset-plan-v0.1` 与 `asset-manifest-v0.1`，禁止绝对路径、URL scheme、`..` 路径和 manifest path / id 不一致。
+- `buildAssetPlanFromIr` 从 `NormalizedGameIr` 派生 deterministic `AssetPlan`，不新增 Raw DSL asset 字段，也不读取模型生成路径。
+- `writeAssetArtifacts` 在 generated project 写入 `asset_plan.json`、`public/asset_manifest.json` 和 `public/assets/<id>.svg` template SVG 资源。
+- `TemplateCompilerService` 在编译生成项目时写入 `game.ir.json` 和 asset artifacts，并把这些文件计入 compile result。
+- `PlaywrightQaRunnerService` 在进入浏览器前调用 `validateGeneratedProjectAssets`，要求 `asset_plan.json` 中所有 required items 被 manifest 覆盖，manifest asset 必须 `required=true`、`status=ready`、metadata 与 plan 一致，且路径指向普通文件。
+- QA failure code 新增 `ASSET_MANIFEST_INVALID`、`ASSET_MISSING`、`REQUIRED_CORE_ASSET_PLACEHOLDER_USED`；通过 asset gate 的 QA report 写入 `asset_manifest_summary`。
+- 测试覆盖 AssetPlan 派生、manifest 路径安全、required asset 漏报、目录伪装 SVG、核心 placeholder 阻断、编译落盘和 QA 浏览器前置阻断。
+
+阶段结果：
+
+- 解决层级：数据契约 + 编译边界 + QA 门禁。
+- DSL-first 边界：模型仍只生成 Raw DSL；本步从已校验 IR deterministic 派生资源计划，没有开放模型输出 asset path / URL / base64。
+- 结构结果：`packages/asset-pipeline/src/validator.ts` 191 行，`schemas.ts` 158 行，`template-svg-provider.ts` 74 行，`plan.ts` 68 行，`writer.ts` 62 行，没有继续保留 492 行混合入口文件。
+- 未改范围：Phaser templates 尚未 preload / render manifest assets；QA 还未证明 Phaser runtime 的 required assets loaded telemetry；Workbench asset panel 尚未接入。
+
+已通过验证：
+
+    npm install --package-lock-only --ignore-scripts
+    # 通过；package-lock 新增 @ai-game-maker/asset-pipeline workspace link；npm audit 仍报告既有 5 vulnerabilities，未执行 audit fix
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts tests/workspace/compiler-service.test.ts tests/workspace/playwright-qa-runner.test.ts
+    # 3 个测试文件，33 个测试全部通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查均通过
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出 asset gate 只信任 manifest 自声明资产集合，无法发现 manifest 漏报 core required assets；P1 指出文件门禁只用 `stat`，目录伪装 `.svg` 也会通过；P2 建议收紧 path 到 `assets/<id>.svg` 并补测试。
+- 已修复：`validateGeneratedProjectAssets` 改为读取 `asset_plan.json` + `asset_manifest.json`，required plan item 必须被 manifest 覆盖且 metadata 一致；文件检查改为 `stat(...).isFile()`；manifest path 收紧为 `assets/${id}.svg`，并检查重复 path / path 与 id 一致；补漏报 plan required item 和目录伪装 `.svg` 测试。
+- Oracle 复审：P0/P1/P2/P3 均无，Asset Pipeline P0 Step 1 代码门禁通过。
+- 审查模式：Oracle 复用
+
+下一步建议：
+
+- Asset Pipeline P0 Step 2：让 Phaser templates 读取 generated `asset_manifest.json`，preload manifest 中 required assets，并在 runtime telemetry / QA 中证明 `assetsLoaded` / `assetsFailed` 与 manifest required assets 对齐。
+- 暂不接 AI image provider；继续保持 deterministic template SVG provider，先打通 manifest consumption 与 QA loaded gate。
+
+### 2.5 DSL-first dodger difficulty curve runtime_plan
+
+完成时间：2026-06-11
+
+已完成内容：
+
+- `NormalizedGameIrSchema` 新增 `runtime_plan.difficulty_curve`，字段包括 `derived_from`、`level`、speed / spawn interval multiplier start/end 和 `ramp_duration_ms`。
+- `runtime_plan.difficulty_curve` 当前只允许 dodger；collector / shooter 携带该字段会被 schema 拒绝。
+- `normalizer` 不新增 Raw DSL 字段，而是从模型已生成的 `game.difficulty` 与 `game.target_play_time_sec` 派生 deterministic runtime hints。
+- dodger runtime 新增 difficulty resolver 与 interpolation；hazard 创建时使用当前 curve 计算 speed multiplier，并用 spawn interval multiplier 计算下一次 hazard spawn delay。
+- `DodgerGameScene` 在 QA snapshot 暴露 `difficultyPlan`，并在 `hazard.spawned` payload 暴露 `difficultyLevel`、`difficultySource`、`rampProgress`、`speedMultiplier`、`spawnIntervalMultiplier` 和 `effectiveIntervalMs`。
+- Playwright QA 对 `difficultyPlan.source === "runtime_plan"` 做独立语义门禁：不依赖 `spawnPlan.hazard.source`，必须观察到任意 `hazard.spawned` event 携带合法 difficulty metadata。
+- prompt context 增加 `difficulty_runtime_guidance`，说明 dodger difficulty 会派生 runtime curve，同时禁止模型输出 `runtime_plan`、`template_params`、`difficulty_curve`、multiplier 或 ramp 字段。
+- QA visual gate 截图前等待两个 `requestAnimationFrame`，稳定全量测试中的 canvas 绘制时序；dodger movement QA 改为短窗口验证移动后不会立即受伤，避免把后续正常难度压力误判为 lane dodge 失败。
+
+阶段结果：
+
+- 解决层级：IR contract + normalizer 派生 + dodger runtime 解释 + QA 语义门禁 + prompt/provider 边界；没有新增 Raw DSL 字段，也没有让模型输出模板私有参数。
+- DSL-first 边界：大模型仍只生成 Raw DSL 的 `game.difficulty` / `target_play_time_sec`；normalizer 生成 `runtime_plan.difficulty_curve`；生成项目写入 `runtime-plan.generated.json`；dodger runtime 执行；QA 证明 runtime_plan difficulty metadata 被 hazard spawn 消费。
+- 当前 difficulty 语义为 spawn-time tuning：新生成 hazard 使用当时 curve multiplier，已有 hazard 的速度在创建时固化。
+- 当前 curve：
+  - `easy`: speed 0.9 -> 1.0，spawn interval 1.15 -> 1.05。
+  - `normal`: speed 1.0 -> 1.25，spawn interval 1.0 -> 0.8。
+  - `ramp_duration_ms = game.target_play_time_sec * 1000`。
+- 未改范围：未新增 Raw DSL difficulty curve 字段；未新增 telemetry event type；未扩展 collector / shooter；未把全量 telemetry payload 持久化到 QA report。
+
+已通过验证：
+
+    npx vitest run tests/contracts/phaser-templates.test.ts tests/contracts/dsl-validator-normalizer.test.ts tests/contracts/contract-freeze.test.ts
+    # 3 个测试文件，55 个测试全部通过
+
+    npx vitest run tests/workspace/playwright-qa-runner.test.ts tests/workspace/game-dsl-provider.test.ts
+    # 2 个测试文件，44 个测试全部通过
+
+    npm test
+    # 11 个测试文件，91 个测试全部通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查均通过
+
+    git diff --check
+    # 无输出
+
+    npx tsx "<DeepSeek dodger Raw DSL -> normalize -> compile -> Vite build -> Playwright QA>"
+    # DeepSeek deepseek-v4-flash 生成 dodger Raw DSL，genre=dodger，difficulty=normal
+    # runtime-plan.generated.json 包含 coin fixed_positions、barrier right_edge_wave 和 normal difficulty_curve
+    # compile=true；build=true；QA rerun PASS；visual PASS
+    # 产物：proj_20260611_step5_20260610161928
+    # QA report: data/local-data/qa-reports/proj_20260611_step5_20260610161928/run_20260611_step5_20260610161928_rerun3.json
+    # runtime plan: data/generated-projects/proj_20260611_step5_20260610161928/dodger/src/runtime-plan.generated.json
+
+审查门禁结论：
+
+- Oracle 方案审查：P0 无；允许执行 Step 5；要求 difficulty QA 独立证明，避免连续 multiplier 精确相等；要求 genre gate、派生值冻结、restart reset 覆盖。
+- Oracle 首轮代码审查：P0 无；P1 指出 difficulty QA 依赖 `spawnPlan.hazard.source === "runtime_plan"`，当只有 difficulty_curve 来自 runtime_plan 时证明不足；P2 建议明确 spawn-time tuning 或改 per-frame multiplier，并补 ramp 后新 hazard 调度测试；P3 建议补 forbidden_fields。
+- 已修复：新增独立 `verifyDodgerRuntimePlanDifficulty`；补 `difficultyPlan.source=runtime_plan` 但 hazard telemetry 缺 metadata 的负例；补 ramp 后新 hazard `effectiveIntervalMs` / multiplier 集成测试；`forbidden_fields` 增加 difficulty / multiplier / ramp 字段。
+- Oracle 复审：P0/P1/P2/P3 均无，Step 5 代码门禁通过。
+- 审查模式：Oracle 复用
+
+下一步建议：
+
+- DSL-first P1 Step 6：优先选择 shooter 或 collector 的一个小型可执行薄片，继续按 contract -> normalizer/IR -> runtime -> QA -> prompt/provider -> real E2E 的顺序推进。
+- 如果继续 dodger，应优先扩展已验证 runtime_plan 能力，而不是新增 Raw DSL 自由数值字段。
+
+### 2.4 DSL-first dodger collectible fixed_positions spawn
+
+完成时间：2026-06-10
+
+已完成内容：
+
+- dodger fixture/golden 将 collectible spawn 收敛为 `fixed_positions`，hazard 继续使用 `right_edge_wave`。
+- dodger runtime 解释 `runtime_plan.spawn_rules` 中的 collectible `fixed_positions`：模型控制 `count`、`max_active`、`interval_ms`，runtime 根据 world/lane 几何派生固定 slot pool。
+- `DodgerGameScene` 新增 collectible runtime object、spawn budget、max active、interval 补发、收集后隐藏与补发节奏；`dodgeFrame()` 与真实 `update()` 一样推进 collectible runtime。
+- `item.spawned` payload 暴露 `entityId`、`strategy`、`source`、`count`、`maxActive`、`intervalMs`；`item.collected` payload 暴露 `entityId`、`source`、`slotIndex`。
+- Playwright QA 对 `spawnPlan.hazard` 和 `spawnPlan.collectible` 分别做 semantic check；hazard 必须是 `right_edge_wave + laneCount`，collectible 必须是 `fixed_positions` 且无 `laneCount`。
+- provider scope gate 只放行两个模型可生成 slice：`dodger hazard right_edge_wave` 与 `dodger collectible fixed_positions`。
+- provider 拒绝 duplicate same-kind spawn、spawn-bearing entity 与 template primary entity 不一致、collectible 携带 `lane_count`、collectible 缺少 `player <overlap> collectible` 且 `score_add > 0` 的可执行收集语义。
+- dodger prompt valid example 增加 collectible、collect action、collect collision 和 fixed_positions guidance；修复真实模型验证暴露的 prompt example action/collision 重复 id。
+
+阶段结果：
+
+- 解决层级：数据契约 golden + 模板 runtime 解释 + QA 语义门禁 + 模型 prompt/provider 边界；没有新增 genre，也没有让模型输出 `runtime_plan` 或 `template_params`。
+- DSL-first 边界：模型生成 Raw DSL 的 `entity.spawn`；normalizer 写入 `ir.runtime_plan.spawn_rules`；dodger runtime 解释执行；QA 通过 snapshot/telemetry 证明 runtime_plan 行为发生。
+- 当前 executable + prompt-exposed subset：
+  - `dodger` / `hazard` / `right_edge_wave`，count 5..12、max_active 2..4、interval_ms 600..1200、lane_count 3..4。
+  - `dodger` / `collectible` / `fixed_positions`，count 3..10、max_active 1..3、interval_ms 700..1600，必须省略 lane_count，且必须有正向 collect scoring collision。
+- 未改范围：未开放 collector/shooter spawn、hazard fixed_positions、hazard top_edge_stream、collectible right_edge_wave、collectible top_edge_stream，也未允许多 primary hazard/collectible。
+
+已通过验证：
+
+    npx vitest run tests/contracts/dsl-validator-normalizer.test.ts tests/contracts/phaser-templates.test.ts
+    # 2 个测试文件，37 个测试全部通过
+
+    npm run test:contracts
+    # 3 个测试文件，50 个测试全部通过
+
+    npx vitest run tests/workspace/game-dsl-provider.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/compiler-service.test.ts
+    # 3 个测试文件，49 个测试全部通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查均通过
+
+    git diff --check
+    # 无输出
+
+    npx tsx --eval "<DeepSeek dodger Raw DSL -> normalize -> compile -> Vite build -> Playwright QA>"
+    # 第一次真实模型验证暴露 prompt valid example action/collision id 重复，已修复为 collect_action / collect_coin
+    # 第二次 DeepSeek deepseek-v4-flash 生成 dodger Raw DSL；collectible spawn 为 fixed_positions；hazard spawn 为 right_edge_wave
+    # runtime_plan.spawn_rules 写入 coin fixed_positions 与 barrier right_edge_wave；compile=true；build=true；QA PASSED；observed_events=23
+    # 产物：proj_20260610_step4_20260610t155627 / run_20260610_step4_20260610t155627
+    # QA report: data/local-data/qa-reports/proj_20260610_step4_20260610t155627/run_20260610_step4_20260610t155627.json
+    # screenshot: data/generated-projects/proj_20260610_step4_20260610t155627/qa/screenshot.png
+    # 本命令为本地一次性 eval 验证，未固化为仓库脚本
+
+审查门禁结论：
+
+- Oracle 计划审查：P0 无；P1 要求收紧 provider 范围、定义 fixed_positions 语义、QA 独立检查 collectible、旧兼容按 entity kind 保留；P2/P3 建议补数值/策略/文档约束。
+- Oracle 首轮代码审查：P0 无；P1 指出 spawn-bearing entity 与 template primary entity 可能不一致，导致 runtime 混用或忽略模型语义；P2 建议加强调度测试、QA 策略白名单、`item.collected.slotIndex`。
+- 已修复：provider 要求 spawn-bearing hazard/collectible 在 DSL 中是唯一 primary entity；补 duplicate、primary mismatch、range、lane_count、缺 collect scoring collision 负例；QA 增加 hazard/collectible 策略白名单和 malformed/mismatch 负例；runtime 补 count/maxActive/interval 调度测试。
+- Oracle 二次代码复审：P1 指出 collectible fixed_positions 未要求 collect scoring collision，normalizer 可能不生成 `template_params.collectible`，runtime/QA 会跳过。
+- 已修复：provider 要求 player overlap collectible collision 且 `score_add > 0`；补 missing collision、missing score_add、score_add=0 三个负例；补 hazard unsupported strategy QA 负例。
+- Oracle 最终代码复审：P0/P1/P2/P3 均无，Step 4 代码门禁通过。
+- 审查模式：Oracle 复用
+
+下一步建议：
+
+- DSL-first P1 Step 5：继续用同样顺序扩展一个薄片，优先考虑 dodger 难度曲线 runtime 字段；也可以选择 shooter/collector 的一个小 contract/runtime/QA/prompt 闭环。
+- 进入下一步前继续保持规则：先 contract/runtime/QA，再 prompt/provider，最后真实模型链路验证。
+
+### 2.3 DSL-first prompt/context: verified dodger spawn generation
+
+完成时间：2026-06-10
+
+已完成内容：
+
+- `RawDslPromptContext` 新增 `spawn_generation_guidance`，避免把 IR 字段名 `runtime_plan` 暴露成模型可输出字段。
+- dodger prompt valid example 的 hazard 增加 `spawn: { strategy: "right_edge_wave", max_active: 3, interval_ms: 800, lane_count: 3 }`。
+- prompt context 对 collector/shooter 明确禁止 `entity.spawn`；对 dodger 只允许 hazard 使用 `right_edge_wave`，并给出 `count`、`max_active`、`interval_ms`、`lane_count` 的已验证范围。
+- `GameDslProviderService` 删除 `rules.spawns` 静默剥离逻辑，Raw DSL 直接进入 strict schema；模型输出 `rules.spawns` 会失败。
+- provider 在 schema 通过后、brief mismatch 检查前新增 `checkRawDslMatchesVerifiedPromptScope`：只放行 `dodger + hazard + right_edge_wave`，并硬校验 count 5..12、max_active 2..4、interval_ms 600..1200、lane_count 3..4。
+- provider 测试覆盖 prompt guidance、dodger 成功路径、collectible spawn 拒绝、`fixed_positions` / `top_edge_stream` 拒绝、各数值范围独立拒绝、`rules.spawns` strict schema 拒绝。
+
+阶段结果：
+
+- 解决层级：模型 prompt/context + provider 边界校验；没有修改 runtime/template 已通过门禁的执行逻辑。
+- DSL-first 边界：大模型现在可以生成 Raw DSL 的 `entity.spawn`，但 provider 只允许进入当前已由 contract + runtime + QA 验证过的 dodger hazard `right_edge_wave` 子集。
+- 当前 executable + prompt-exposed subset：`dodger` / `hazard` / `right_edge_wave`，范围为 count 5..12、max_active 2..4、interval_ms 600..1200、lane_count 3..4。
+- 未改范围：未开放 collectible spawn、collector/shooter spawn、`fixed_positions`、`top_edge_stream`，也未把 `runtime_plan` 或 `template_params` 作为 Raw DSL 输出字段。
+
+已通过验证：
+
+    npx vitest run tests/workspace/game-dsl-provider.test.ts
+    # 1 个测试文件，19 个测试全部通过
+
+    npm run test:contracts
+    # 3 个测试文件，48 个测试全部通过
+
+    npx vitest run tests/workspace/game-dsl-provider.test.ts tests/workspace/generation-pipeline.service.test.ts tests/workspace/generation-pipeline.smoke.test.ts
+    # 3 个测试文件，27 个测试全部通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查均通过
+
+    git diff --check
+    # 无输出
+
+    npx tsx --eval "<DeepSeek provider prompt shape check>"
+    # dodger context 输出 spawn_generation_guidance；valid example hazard spawn 为 right_edge_wave；prompt 明确禁止 runtime_plan/template_params
+    # 本命令为本地一次性 eval 验证，未固化为仓库脚本
+
+    npx tsx --eval "<DeepSeek dodger Raw DSL -> normalize -> compile -> Vite build -> Playwright QA>"
+    # DeepSeek deepseek-v4-flash 生成 dodger Raw DSL；hazard spawn 为 right_edge_wave；runtime_plan.spawn_rules 写入 obstacle；compile=true；build=true；QA PASSED
+    # 产物：proj_20260610_232000_step3_e2e / run_20260610_232000_step3_e2e
+    # QA report: data/local-data/qa-reports/proj_20260610_232000_step3_e2e/run_20260610_232000_step3_e2e.json
+    # 本命令为本地一次性 eval 验证，未固化为仓库脚本
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出 `rules.spawns` 仍会被 provider 静默剥离、prompt 数值范围未在 provider 硬校验；P2 建议补 `fixed_positions/top_edge_stream` 和独立范围分支测试；P3 建议避免 `runtime_plan_guidance` 诱导模型输出 IR 字段。
+- 已修复：删除 `rules.spawns` 剥离；provider 硬校验 count/max_active/interval_ms/lane_count；字段改为 `spawn_generation_guidance`；prompt 明确禁止 `runtime_plan/template_params`；补 strategy/range/`rules.spawns` 测试。
+- Oracle 二次复审：P0/P1/P2/P3 均无，Step 3 代码门禁通过。
+- 审查模式：Oracle 复用
+
+下一步建议：
+
+- DSL-first P1 Step 4：继续用同样方式扩展一个可执行薄片，优先从 `collectible spawn` 或 dodger 难度曲线中选一个；必须先 contract/runtime/QA，再 prompt。
+- 若选择继续提升 dodger 可玩性，应让模型字段进入 runtime 可观察行为，并用 Playwright QA 或 template runtime 单测证明。
+
+### 2.2 DSL-first runtime_plan v0: dodger runtime/semantic QA
+
+完成时间：2026-06-10
+
+已完成内容：
+
+- `TemplateCompilerService` 现在为 dodger 生成项目复制 `dodger-runtime-plan.ts` / `runtime-plan.generated.json`，并把 `ir.runtime_plan` 原样写入生成项目。
+- dodger `main.ts` import `runtime-plan.generated.json`，合并后传入 `DodgerGameScene`；模型 DSL/IR 仍是事实来源，模板只解释 runtime plan。
+- 新增 `templates/phaser/dodger/src/dodger-runtime-plan.ts`，把 `runtime_plan.spawn_rules` 解析为 dodger runtime 可执行的 `ResolvedDodgerSpawnRule`。
+- `DodgerGameScene` 当前只执行 `hazard + right_edge_wave` 薄片：使用 `count`、`maxActive`、`intervalMs`、`laneCount` 控制 hazard 入场，并在 `hazard.spawned` payload 和 QA snapshot 中暴露 `entityId`、`strategy`、`source`、`maxActive`、`laneCount`。
+- `SpawnSystem.spawn(...)` 支持透传 payload 到 telemetry。
+- Playwright QA 增加 dodger semantic check：当 snapshot 声明 `spawnPlan.hazard.source === "runtime_plan"` 时，必须观察到匹配 `source/entityId/strategy/maxActive/laneCount` 的 `hazard.spawned` telemetry；runtime_plan snapshot 缺字段会失败，而不是跳过。
+- 合同/工作区测试覆盖 runtime plan 解析、unsupported strategy 不冒充已执行、fallback lane 几何不漂移、编译器落盘、QA mismatch 和 malformed snapshot 负例。
+
+阶段结果：
+
+- 解决层级：IR 编译边界 + 模板运行时解释 + QA 语义门禁；没有把 prompt 直接扩展到尚未可执行的字段。
+- DSL-first 边界：`runtime_plan.spawn_rules` 已能从模型 DSL 归一化结果进入生成项目，并真实影响 dodger hazard 的入场节奏、最大活跃数和轨道数。
+- 当前 executable subset：`dodger` / `hazard` / `right_edge_wave`；`fixed_positions` 与 `top_edge_stream` 仍保留在合同枚举中，但不会被 dodger runtime 标记为 `source: "runtime_plan"` 执行。
+- 旧兼容：没有 runtime plan 时保留模板默认 3 lane 几何 `[startY - 110, startY, startY + 110]`。
+- 未改范围：本步未更新 prompt、未要求模型开始生成 spawn 字段、未实现 collectible spawn 或其他 genre 的 runtime_plan 执行。
+
+已通过验证：
+
+    npx vitest run tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts
+    # 2 个测试文件，21 个测试全部通过
+
+    npm run test:contracts
+    # 3 个测试文件，48 个测试全部通过
+
+    npx vitest run tests/workspace/compiler-service.test.ts tests/workspace/playwright-qa-runner.test.ts
+    # 2 个测试文件，16 个测试全部通过
+
+    npm run typecheck:root
+    # tsc --noEmit -p tsconfig.json 通过
+
+    npm run typecheck --workspace @ai-game-maker/maker-api
+    # maker-api 类型检查通过
+
+    git diff --check
+    # 无输出
+
+    npx tsx --eval "<dodger compile + Vite build quick check>"
+    # compile=true, build=true；临时生成项目和 build log 已清理
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出 runtime 把所有 strategy 标记为 `runtime_plan`，但实际只执行 `right_edge_wave`；P2 指出 fallback lane 几何漂移、QA 未比对 `maxActive/laneCount`。
+- 已修复：`resolveDodgerSpawnRule` 只在 strategy 等于当前 executable fallback strategy 时返回 `source: "runtime_plan"`；fallback 3 lane 恢复旧几何；QA 比对 `maxActive/laneCount`。
+- Oracle 二次复审：P0/P1 无；P2 指出 malformed runtime_plan snapshot 会被折叠成 no-op。
+- 已修复：`readSnapshotDodgerSpawnPlan` 改为 `absent/not_runtime_plan/malformed/runtime_plan` 四态；`source: "runtime_plan"` 但缺必需字段时 QA 失败；补缺 `laneCount` 负例。
+- Oracle 最终复审：P0/P1/P2/P3 均无，Step 2.2 代码门禁通过。
+- 审查模式：Oracle 复用
+
+下一步建议：
+
+- DSL-first P1 Step 3：更新模型 prompt/context，只允许生成 `dodger` 的 `entity.spawn.strategy = "right_edge_wave"`，并明确 `max_active/interval_ms/lane_count` 范围与可玩性目标。
+- DSL-first P1 Step 3 后必须跑真实模型生成链路，检查 raw DSL、IR、生成项目、QA report 和 Workbench 状态，而不是只看 prompt 文案。
+
+### 2.1 DSL-first runtime_plan v0: dodger spawn contract/golden
+
+完成时间：2026-06-10
+
+已完成内容：
+
+- 在 Raw Game DSL 的 entity 上新增可选 `spawn` 语义，当前仅允许 `dodger` 使用；`collector` / `shooter` 携带 `entity.spawn` 会稳定拒绝。
+- 在 Normalized IR 中新增 `runtime_plan.spawn_rules`，用于保留模型生成的入场语义，避免只压入模板私有 `template_params`。
+- `normalizer` 新增 `buildRuntimePlan(...)`，把 `raw.entities[].spawn` 映射为结构化 `spawn_rules`；缺省 `max_active` / `interval_ms` 明确为 normalizer-derived runtime hints，不是模型事实。
+- `NormalizedGameIrSchema` 同步限制：当前 `runtime_plan.spawn_rules` 只允许 `dodger`，直接构造 collector/shooter IR 携带 spawn plan 会被拒绝。
+- 合同测试新增 dodger spawn golden、非 dodger spawn 负例、spawn 数值范围 code、partial spawn 缺省值、runtime_plan 严格枚举与额外字段拒绝。
+
+阶段结果：
+
+- 解决层级：数据契约 + IR contract；本步未修改 prompt、Phaser runtime、QA runner 或 Workbench。
+- DSL-first 边界：`spawn` 从 Raw DSL contract 进入 `ir.runtime_plan.spawn_rules`；测试断言 `template_params.params` 不包含 `"spawn"`。
+- 当前只承诺 contract/golden：`runtime_plan.spawn_rules` 已可被验证和编译输入解析，但模板尚未解释执行，QA 尚未证明 spawn 语义发生。
+- 文件规模：`raw-game-dsl-v0.1.schema.ts` 183 行、`normalized-game-ir-v0.1.schema.ts` 153 行、`normalizer.ts` 280 行；`normalizer.ts` 超过 220 行但本步只在数据契约边界增加局部函数，未继续扩展模板职责。
+
+已通过验证：
+
+    npx vitest run tests/contracts/dsl-validator-normalizer.test.ts
+    # 22 个测试全部通过
+
+    npx vitest run tests/contracts/contract-freeze.test.ts
+    # 13 个测试全部通过
+
+    npm run test:contracts
+    # 3 个测试文件，45 个测试全部通过
+
+    npm run typecheck:root
+    # tsc --noEmit -p tsconfig.json 通过
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；P1 指出 `spawn` 实际放开到所有 genre/entity kind，超出 dodger 薄片边界；P2 指出 normalizer 缺省值语义未冻结、runtime_plan 缺少 freeze 负例；P3 建议后续拆 explicit spawn fixture。
+- 已修复：Raw DSL 限制 `entity.spawn` 当前仅 dodger 可用；补充非 dodger spawn 拒绝、spawn 数值范围、template_params 不含 spawn、runtime_plan 严格枚举/额外字段拒绝测试。
+- Oracle 二次复审：P1 指出 Normalized IR 入口仍允许非 dodger `runtime_plan.spawn_rules`；P2 建议冻结缺省值，并让 Raw schema superRefine 同时检查 engine leakage 和 spawn genre 边界。
+- 已修复：Normalized IR 拒绝 collector/shooter spawn_rules；补 partial spawn 缺省值 golden；Raw schema superRefine 不再提前 return。
+- Oracle 最终复审：P0/P1/P2/P3 均无，Step 2.1 代码门禁通过，可以进入文档沉淀。
+- 审查模式：Oracle 复用
+
+下一步建议：
+
+- Step 2.2：让 dodger runtime 读取并解释 `runtime_plan.spawn_rules`，旧默认行为保持兼容。
+- Step 2.2 同步新增最小 semantic QA：当 IR 声明 spawn rule 时，QA report 能证明对应 entity spawn event 或 snapshot 状态变化发生。
+- DSL-first P1 Step 3：runtime 和 semantic QA 通过后，再更新 prompt context，让模型开始生成当前已验证的 `spawn` 字段。
 
 ### 1.24 Shooter 模板真实移动与 QA 可玩性门禁
 
@@ -1058,3 +3744,407 @@ Step 9 阶段结果：
 最终结果：
 
 - P0 复核缺口已关闭：当前链路不再只是“模型换 label”，而是 `LLM Raw DSL -> validated IR template_params -> Phaser primitive visual execution -> browser playable -> QA PASSED`。
+
+### 12. DSL-first P1 Step 6：Shooter enemy wave runtime_plan 薄片
+
+完成时间：2026-06-11
+
+目标与边界：
+
+- 选择 shooter 做一个小但收益高的闭环：大模型仍只生成 Raw Game DSL；normalizer 从 Raw DSL 的 enemy count / health / movement speed、`game.difficulty`、`target_play_time_sec` 派生 `runtime_plan.enemy_waves`；Phaser shooter runtime 执行该 IR；QA 证明玩法链路真实消费了 runtime_plan。
+- 不新增 Raw DSL 字段，不允许模型输出 `runtime_plan` / `enemy_waves`，不新增 `enemy.spawned` telemetry，不把模板改成绕过 DSL 的“完美模板”。
+
+已完成内容：
+
+- `NormalizedGameIrSchema` 新增 shooter-only `runtime_plan.enemy_waves`，严格限定 `derived_from` 字段列表、`right_edge_wave` strategy、数值范围、最多 1 条 wave，并拒绝非 shooter genre 携带 enemy waves。
+- `normalizer` 新增 `buildShooterEnemyWaves(...)`，从现有 Raw DSL 派生 `entity_id`、`count`、`max_active`、`interval_ms`、`speed_multiplier`，并保持 `template_params.enemy` 只作为 label/visual/base stats/default fallback。
+- compiler 为 shooter 复制 `shooter-runtime-plan.ts` 并写入 `shooter/src/runtime-plan.generated.json`。
+- shooter runtime 新增 `resolveShooterEnemyWave(...)`，`advanceShooterWorld(...)` 用 resolved wave 控制 spawn budget、`maxActive`、interval 和 enemy speed multiplier。
+- enemy 实例保存 `entityId`、`waveSource`、`strategy`、`speedMultiplier`；`enemy.hit` / `enemy.cleared` payload 从 enemy state 发出，QA 不依赖全局猜测。
+- `GameScene` 的 QA snapshot 新增 `enemyWavePlan`，Playwright QA 在 source 为 `runtime_plan` 时验证 `maxActive` 与 hit/clear telemetry 元数据匹配。
+- prompt context 仅轻量提示模型不要输出 runtime fields，并说明 shooter enemy pressure 由 runtime 从 Raw DSL facts 派生。
+
+已通过验证：
+
+    npm run test:contracts
+    # 3 个测试文件，58 个测试通过
+
+    npm run test:workspace -- --run tests/workspace/compiler-service.test.ts tests/workspace/game-dsl-provider.test.ts tests/workspace/playwright-qa-runner.test.ts
+    # 11 个测试文件，94 个测试通过，包含 shooter enemyWavePlan QA 正负例
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查均通过
+
+    npx tsx "<临时真实 DeepSeek shooter 端到端脚本>"
+    # DeepSeek deepseek-v4-flash 生成 Game Brief / Raw DSL，未走 deterministic fallback
+    # projectId = proj_20260611_step6_shooter_20260610170325
+    # runId = run_20260611_step6_shooter_20260610170325
+    # Raw DSL: genre=shooter, title=小猫太空射击, enemy alien count=12, hasRuntimePlan=false
+    # runtime-plan.generated.json: enemy_waves[0] entity_id=alien, count=12, max_active=3, interval_ms=600, speed_multiplier=1.15
+    # QA report: status=PASSED, visual_status=PASSED；observed enemy.hit / enemy.cleared / score.changed / game.restarted
+
+阶段结果：
+
+- 当前 shooter 链路已经是 `LLM Raw DSL -> validator/normalizer -> runtime_plan.enemy_waves -> compiler generated runtime plan -> shooter runtime execution -> Playwright QA PASSED`。
+- QA report 只保存 observed events 与 snapshot，不保存完整 telemetry payload；payload 匹配由 `tests/workspace/playwright-qa-runner.test.ts` 的正负例覆盖。
+
+审查门禁结论：
+
+- Oracle 首轮复审发现 P1：shooter 的 `runtime_plan.enemy_waves[0].count` 与胜利目标未绑定，可能出现 enemy wave 最多刷 6 个但 `enemy_cleared.target=99` 或 `target_score` 依赖 secondary enemy 的不可胜利 DSL。
+- 已修复：`validateObjectiveReachability` 增加 shooter 分支，`enemy_cleared.target` 必须小于等于 primary enemy count；`target_score` 只能按 primary enemy `projectile_hit` score budget 判断可达。
+- 已修复：shooter mechanic contract 要求当前 P0 runtime envelope 下恰好一个 primary enemy 和一个 primary projectile；provider prompt scope 同步拒绝模型输出多个 shooter enemy/projectile。
+- 已修复：provider 的 unreachable shooter `target_score` normalize 逻辑改为只按 primary enemy score budget 计算，并同步更新 prompt 文案。
+- 已补测试：`enemy_cleared target > primary enemy count` 负例、multi-enemy `target_score` 负例、primary enemy budget 可达正例，以及 provider 多 enemy 拒绝用例。
+- P1 修复后验证：
+
+    npm run test:contracts
+    # 3 个测试文件，60 个测试通过
+
+    npm run test:workspace -- --run tests/workspace/game-dsl-provider.test.ts tests/workspace/compiler-service.test.ts tests/workspace/playwright-qa-runner.test.ts
+    # 11 个测试文件，95 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查均通过
+
+- Oracle 复审：原 P1 已关闭，未发现新的 P0/P1/P2，代码门禁通过。
+- Oracle 只读复现确认：`enemy_cleared target=99` 返回 `UNREACHABLE_OBJECTIVE`；multi-enemy `target_score=14` 返回 `enemy.single_primary` 和 primary wave 不可达错误；multi-projectile 返回 `projectile.single_primary`；primary enemy 可达 `target_score=6` 仍可通过；provider unreachable `target_score=10` 会 normalize 为 `enemy_cleared target=6`。
+- P3：provider 对 shooter 多 enemy/projectile 的顶层 message 仍复用 `Raw Game DSL uses unsupported spawn generation scope.`，但 `issues` 中已有精确原因，不阻塞本次门禁。
+
+### 13. AI Game Art Asset Metadata v0.1 Step 0：需求拆分与文档入口
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- 新增 `docs/refactor-log/ai-game-art-asset-metadata-v0.1-index.md`，把外部 metadata 规范拆成 metadata v0.1 的目标、边界、推荐工程落点和 Step 0-6 分步计划。
+- 新增 `docs/refactor-log/ai-game-art-asset-metadata-v0.1-step-0-requirement-map.md`，记录需求分层、字段范围、runtime export 白名单 / 排除项、非目标和后续 Step 1 边界。
+- 更新 `docs/refactor-log/ai-game-dsl-p0-step-index.md`，增加 Metadata v0.1 独立入口，并把过期的“提交 Step 8a”下一步改成 Asset Semantic Fidelity Step 8b / 8c 与 Metadata v0.1 Step 1 并列说明。
+
+阶段结果：
+
+- 本步只完成文档拆分和门禁入口，不修改源码、测试、脚本、package scripts 或现有 asset pack。
+- 未改变 `AssetPlan`、`AssetManifest`、resolver ranking、fallback、repair、QA、Workbench 或 Phaser runtime。
+- Metadata v0.1 被拆为独立 infrastructure 工作；Asset Semantic Fidelity Step 8b / 8c 仍保留为资源扩展主线，不和 metadata 工作混成一个大改。
+- 文档行数：index 83 行，requirement map 166 行，step index 137 行。
+
+已通过验证：
+
+    git diff --check
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0/P1/P2 均无。
+- Oracle 首轮 P3：Step Index 顶部仍写“提交 Step 8a”，与 Step 8a 已完成及 Metadata v0.1 下一步冲突。
+- 已修复：Step Index 顶部改为并列说明 Asset Semantic Fidelity Step 8b / 8c 和 Metadata v0.1 Step 1。
+- Oracle 复审：P0/P1/P2/P3 均无。
+- 审查模式：Oracle 新建后复用。
+
+当前下一步：
+
+- Metadata v0.1 Step 1：schema / controlled vocabulary / examples / contract tests。
+- Asset Semantic Fidelity 主线若继续扩展，仍先做 Step 8b canary fixture promotion，再做 Step 8c 小包资源扩展。
+
+### 14. AI Game Art Asset Metadata v0.1 Step 1：Schema / Vocabulary / Examples
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- 新增 `packages/asset-pipeline/src/art-asset-metadata.vocabulary.ts`，集中定义 v0.1 controlled vocabulary、Zod vocab schema 和 `ART_ASSET_CONTROLLED_VOCABULARY`。
+- 新增 `packages/asset-pipeline/src/art-asset-metadata.schema.ts`，提供 `ArtAssetMetadataSchema` 和 `parseArtAssetMetadata`。
+- `packages/asset-pipeline/src/index.ts` 导出 metadata schema / vocab。
+- 新增 `assets/metadata/controlled_vocabulary.json`、`assets/metadata/schema/ai_game_art_asset.schema.json` 和 5 个 `assets/metadata/examples/*.asset.json`。
+- 新增 `tests/contracts/art-asset-metadata.test.ts`，覆盖 JSON Schema artifact、vocab 同步、example manifests、invalid enum、required semantic tags、unsafe path 和 slug policy。
+- 新增 `docs/refactor-log/ai-game-art-asset-metadata-v0.1-step-1-schema-vocabulary.md` 记录本步边界、验证和审查结论。
+
+阶段结果：
+
+- Metadata v0.1 已具备 TypeScript/Zod schema、非 TS 工具可读 JSON Schema artifact、controlled vocabulary 和 5 类示例 sidecar manifest。
+- JSON Schema artifact 已补齐与 Zod 对齐的关键约束：asset id、slug、date、safe project-relative path、required/min/max、`additionalProperties: false`、`relations` / `search` shape 和 enum。
+- 本步只新增 metadata contract/export surface；未接 CLI、runtime-safe export、resolver、QA、Workbench 或 Phaser runtime。
+- 文件行数：`art-asset-metadata.vocabulary.ts` 175 行，`art-asset-metadata.schema.ts` 119 行，`art-asset-metadata.test.ts` 211 行；JSON Schema 336 行，属于 declarative schema artifact。
+
+已通过验证：
+
+    npx vitest run tests/contracts/art-asset-metadata.test.ts
+    # 6 个测试通过
+
+    npm run test:contracts
+    # 9 个测试文件，125 个测试通过
+
+    npm test
+    # contracts 125 个测试通过；workspace 125 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无。
+- Oracle 首轮 P1：JSON Schema artifact 弱于 Zod 契约，尤其 path safety、slug pattern、array min/max、relations/search shape。
+- 已修复：JSON Schema 补齐 `$defs.asset_metadata_id`、`$defs.slug`、`$defs.date_string`、`$defs.project_relative_path`，source / thumbnail path 引用 safe path，补齐 required/min/max、`additionalProperties: false`、relations/search shape 和 enum 一致性测试。
+- Oracle 首轮 P2：文档状态仍停在 Step 0；已更新 index、step index、Step 0 文档和本 review log。
+- Oracle 首轮 P3：slug policy 需显式测试，JSON Schema enum 第三份副本需一致性测试；已补测试。
+- Oracle 代码复审：P0/P1/P2/P3 均无。
+- 审查模式：Oracle 新建后复用。
+
+当前下一步：
+
+- Metadata v0.1 Step 3：runtime-safe metadata export，按白名单输出 runtime 可消费字段，并剔除 prompt、seed、review notes、third-party source details 等内部或敏感字段。
+
+### 15. AI Game Art Asset Metadata v0.1 Step 2：Validation Command
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- 新增 `packages/asset-pipeline/src/art-asset-metadata-validation.ts`，提供 `validateArtAssetMetadataFiles`、human / JSON formatter 和 validation exit code helper。
+- 新增 `packages/asset-pipeline/src/art-asset-metadata-validation.types.ts`，固定 validation result、diagnostic 和 exit code 类型。
+- 新增 `packages/asset-pipeline/src/art-asset-metadata-validation.diagnostics.ts`，将 Zod issue 映射为稳定 diagnostic code / `jsonPath` / `assetId`。
+- 新增 `packages/asset-pipeline/src/art-asset-metadata-validation.discovery.ts`，递归发现目录内 `.asset.json` sidecar 文件，并保持确定性排序。
+- `packages/asset-pipeline/src/index.ts` 导出 validation API 和类型。
+- 新增 `scripts/validate-art-asset-metadata.ts`，支持 `--json`、`--check-paths`、`--project-root`、单文件和目录输入。
+- `package.json` 新增 `metadata:validate` 脚本。
+- 新增 `tests/contracts/art-asset-metadata-validation.test.ts`，覆盖 valid examples、missing required field、invalid enum、duplicate `asset_id`、schema-invalid duplicate、malformed JSON、deterministic JSON output、human output 和显式 path existence check。
+- 新增 `tests/contracts/art-asset-metadata-validation-cli.test.ts`，真实执行 CLI，覆盖 usage error / input error 的 exit code 2。
+- 新增 `docs/refactor-log/ai-game-art-asset-metadata-v0.1-step-2-validation-command.md`，记录命令用法、diagnostic contract、exit code 和非目标。
+
+阶段结果：
+
+- CLI exit code 固定为：0 valid，1 validation diagnostics，2 CLI usage / internal error。
+- Diagnostic contract 固定包含 `severity`、`code`、`message`、`filePath`，并在可定位时提供 `jsonPath` 和 `assetId`。
+- 默认只校验 Step 1 schema 要求的 safe project-relative path；`source_path` / `thumbnail_path` 文件存在性必须显式传 `--check-paths` 才会检查。
+- 本步只新增 metadata validation infrastructure；未接 runtime-safe export、existing asset pack bridge、resolver、QA、Workbench、Phaser runtime、数据库、UI 或 runtime loader。
+- Step 2 固定验收口径已写入步骤文档：P0 重点守住 invalid metadata 不误过、duplicate `asset_id` 必检、diagnostics 不得 exit 0、不得 import / mutate runtime-resolver-Workbench 链路、JSON Schema artifact 不得弱于 Zod contract；P1 重点守住 diagnostics 稳定、JSON output deterministic、path checks 显式开启、validation 复用 Step 1 contract layer。
+- 当前顺序固定为 Step 0 文档规则、Step 1 数据契约、Step 2 validation command、Step 3 runtime-safe export、Step 4 asset pack metadata bridge / resolver diagnostics；Step 2 只做门禁，不做消费方。
+- 文件规模：validation API 207 行，diagnostics 92 行，discovery 63 行，types 46 行，CLI 85 行，validation test 206 行，CLI test 78 行。
+
+已通过验证：
+
+    npx vitest run tests/contracts/art-asset-metadata-validation.test.ts tests/contracts/art-asset-metadata-validation-cli.test.ts
+    # 2 个测试文件，12 个测试通过
+
+    npx vitest run tests/contracts/art-asset-metadata.test.ts
+    # 6 个测试通过
+
+    npm run test:contracts
+    # 11 个测试文件，137 个测试通过
+
+    npm test
+    # contracts 137 个测试通过；workspace 125 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    npm run metadata:validate -- assets/metadata/examples
+    # OK 5 metadata files
+
+    npm run metadata:validate -- --json assets/metadata/examples
+    # 输出 version=art-asset-metadata-validation-v0.1、ok=true、5 个 files、diagnostics=[]
+
+审查门禁结论：
+
+- Oracle 首轮审查：P0 无；确认未越界到 runtime、resolver、QA、Workbench、Phaser 或 existing asset pack。
+- Oracle 首轮 P1：input / usage 类错误会返回 1，无法和 validation errors 区分；duplicate `asset_id` 只覆盖 schema-valid 文件。
+- 已修复：`ArtAssetMetadataValidationExitCode` 扩为 `0 | 1 | 2`，input / usage diagnostics 返回 2；duplicate detection 改为 JSON parse 成功且 `asset_id` 是 string 后即收集，不依赖 schema 成功。
+- Oracle 首轮 P2：缺少真实 CLI exit code 回归测试；human output 对非法文件显示 `0 metadata files`。
+- 已修复：新增 CLI contract test 覆盖 unknown flag、缺 `--project-root` value 和 missing input path 的 exit code 2；`files` 现在记录发现到的 sidecar 文件，human summary 对非法文件也显示正确文件数。
+- Oracle 首轮 P3：missing required field 分类依赖 Zod message 文本。
+- 已修复：required field 判断改为基于原始 JSON path 是否存在。
+- Oracle 复审：上一轮 P1/P2/P3 均关闭，未发现新的 P0/P1/P2。
+- 审查模式：Oracle 新建后复用。
+
+当前下一步：
+
+- Metadata v0.1 Step 3：runtime-safe metadata export，按白名单输出 runtime 可消费字段，并剔除 prompt、negative prompt、seed、review notes、third-party source details 等内部或敏感字段。
+
+### 16. AI Game Art Asset Metadata v0.1 Step 3A：Runtime-Safe Export Review Gate
+
+完成时间：2026-06-12
+
+已完成内容：
+
+- 新增 `docs/refactor-log/ai-game-art-asset-metadata-v0.1-step-3-runtime-safe-export.md`。
+- 文档固定 Step 3 runtime-safe export 的目标：把通过 Step 2 validation 的完整 `.asset.json` sidecar metadata 转成未来 runtime / tool consumers 可用的 runtime-safe JSON artifact。
+- 文档明确 Step 3A 只写 review gate，不实现 runtime-safe export code。
+- 文档明确 Step 3B 必须复用 Step 2 validation，invalid metadata、malformed JSON 和 duplicate `asset_id` 不得成功 export。
+- 文档明确 runtime-safe export 必须使用 explicit allowlist，不能把 full metadata schema 当作 runtime schema，也不能用“delete a few unsafe fields and keep the rest”策略。
+- 文档列出必须排除的 AI generation / provenance、rights / legal / review、workflow / private production fields，并声明 creator / credit fields 默认不导出，除非未来定义 public credits artifact。
+- 文档记录 Step 3B 的 candidate CLI、exit codes、diagnostic codes 和 expected future implementation files。
+- 更新 `docs/refactor-log/ai-game-dsl-p0-step-index.md`，把当前下一步改为 Metadata v0.1 Step 3B runtime-safe export implementation。
+
+阶段结果：
+
+- 本步只修改文档。
+- 未创建 `packages/asset-pipeline/src/art-asset-metadata.runtime-export.ts`。
+- 未创建 `packages/asset-pipeline/src/art-asset-metadata.runtime-export.cli.ts`。
+- 未创建 `tests/contracts/art-asset-metadata-runtime-export.test.ts`。
+- 未修改 runtime、resolver、QA、Workbench、Phaser、asset pack loading 或 Step 2 validator implementation。
+
+已通过验证：
+
+    git diff --check
+    # 无输出
+
+审查门禁结论：
+
+- Oracle 文档审查：PASS_WITH_NOTES；P0/P1/P2 无。
+- Oracle P3：顶部“当前阶段”仍写 Metadata v0.1 只完成到 Step 0-2；顶部“当前下一步”仍写 Step 3 runtime-safe metadata export。
+- 已修复：顶部状态同步为 Step 0-2 + Step 3A runtime-safe export review gate 已完成，下一步同步为 Step 3B runtime-safe export implementation。
+- 审查模式：Oracle 新建。
+
+当前下一步：
+
+- Metadata v0.1 Step 3B：runtime-safe export implementation，必须先复用 Step 2 validation，再实现 explicit allowlist export。
+
+### 17. AI Game Art Asset Metadata v0.1 Step 3B：Runtime-Safe Export Implementation
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 新增 `packages/asset-pipeline/src/art-asset-metadata.runtime-export.ts`，实现 runtime-safe export API。
+- 新增 `scripts/export-art-runtime-metadata.ts`，按 Step 2 root script convention 提供 `npm run metadata:export-runtime`。
+- `package.json` 只新增 `metadata:export-runtime` script。
+- `packages/asset-pipeline/src/index.ts` 只导出 runtime export API / types / formatter / exit helper。
+- 新增 `tests/contracts/art-asset-metadata-runtime-export-api.test.ts`。
+- 新增 `tests/contracts/art-asset-metadata-runtime-export-cli.test.ts`。
+- 更新 `docs/refactor-log/ai-game-art-asset-metadata-v0.1-step-3-runtime-safe-export.md`，记录 Step 3B 已实现、grouped runtime artifact shape、uppercase diagnostics、CLI / `--out` / `--json` 行为和非目标。
+- 更新 `docs/refactor-log/ai-game-dsl-p0-step-index.md`，把 Metadata v0.1 下一步推进到 Step 4。
+
+阶段结果：
+
+- Runtime export 先复用 Step 2 `validateArtAssetMetadataFiles`；invalid metadata、malformed JSON、duplicate `asset_id` 均不会导出成功。
+- Runtime artifact 使用 explicit allowlist，不把 full metadata schema 当作 runtime schema。
+- Runtime artifact 保留 safe grouped shape：`semantic`、`gameplay`、`technical`、`relations`。
+- Runtime export 排除 `ai_generation`、`rights`、`workflow`、`search`、creator / credit、review notes、prompt summary、seed、third-party sources、non-allowlisted technical / relations fields。
+- Runtime export output deterministic，assets 按 `asset_id` 排序。
+- `--json` 优先控制 stdout；`--json + --out` 输出 deterministic JSON envelope，并包含 `outputPath` 和 `artifact`。
+- `--out` 成功可覆盖既有 artifact；validation / export failure 不创建、不覆盖 successful-looking artifact。
+- Step 3B 没有接 resolver、QA、Workbench、Phaser runtime、asset pack loading 或 runtime consumer。
+- Step 3B 没有实现 Step 4 asset pack metadata bridge / resolver diagnostics。
+- 未修改 `packages/asset-pipeline/src/art-asset-metadata-validation.ts`。
+
+已通过验证：
+
+    npx vitest run tests/contracts/art-asset-metadata.test.ts tests/contracts/art-asset-metadata-validation.test.ts tests/contracts/art-asset-metadata-validation-cli.test.ts tests/contracts/art-asset-metadata-runtime-export-api.test.ts tests/contracts/art-asset-metadata-runtime-export-cli.test.ts
+    # 5 个测试文件，35 个测试通过
+
+    npm run test:contracts
+    # 13 个测试文件，154 个测试通过
+
+    npm test
+    # contracts 154 个测试通过；workspace 125 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+    npm run metadata:validate -- assets/metadata/examples
+    # OK 5 metadata files
+
+    npm run metadata:validate -- --json assets/metadata/examples
+    # ok=true，5 个 files，diagnostics=[]
+
+    npm run metadata:export-runtime -- assets/metadata/examples
+    # 输出 runtime_metadata_version=0.1、generated_by=metadata:export-runtime、asset_count=5
+
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+    # ok=true，artifact.asset_count=5
+
+    npm run metadata:export-runtime -- assets/metadata/examples --out /tmp/.../runtime-art-assets.json
+    # OK 5 runtime metadata assets，并写入临时 artifact
+
+    npm run metadata:export-runtime -- --json assets/metadata/examples --out /tmp/.../runtime-art-assets.json
+    # ok=true，JSON envelope 包含 outputPath 和 artifact
+
+审查门禁结论：
+
+- Sage / Oracle 首轮审查：PASS_WITH_NOTES；P0/P1/P2 无。
+- Sage 首轮 P3：`--file` / `--dir` 只选择 API entrypoint，未额外强制目标类型。
+- 已修复：`exportRuntimeArtAssetMetadataFromFile()` / `exportRuntimeArtAssetMetadataFromDirectory()` 增加 explicit input kind check；`--file <directory>` / `--dir <file>` 均返回 usage diagnostic 和 exit code 2，并补 CLI contract tests。
+- Sage 复审：PASS_WITH_NOTES；上一轮 P3 已关闭，未发现新的 P0/P1/P2；仅要求把审查结论写回本文档。
+- 审查模式：Oracle / Sage 复用。
+
+当前下一步：
+
+- Metadata v0.1 Step 4：asset pack metadata bridge / resolver diagnostics，必须作为未来独立步骤推进。
+
+### 18. Asset Semantic Fidelity Step 9B：Small Art Library Metadata Intake / Fixture Import
+
+完成时间：2026-06-13
+
+已完成内容：
+
+- 新增 `tests/fixtures/art-library-small-v0.1/`，作为 Step 9B 小型真实资源 dry-run fixture。
+- 来源为 Kenney Cube Pets：`https://kenney.nl/assets/cube-pets`，许可证为 Creative Commons Zero / CC0。
+- 导入 10 个 GLB 模型和 10 个匹配 PNG thumbnail：`animal-bee`、`animal-bunny`、`animal-cat`、`animal-crab`、`animal-dog`、`animal-fish`、`animal-fox`、`animal-lion`、`animal-penguin`、`animal-tiger`。
+- 新增 `tests/fixtures/art-library-small-v0.1/metadata/*.asset.json`，每个 asset 均具备 complete metadata sidecar，包含 semantic、gameplay、technical、ai_generation、rights、workflow、relations 和 search 字段。
+- 新增 `tests/contracts/asset-semantic-small-art-library-fixture.test.ts`，锁定 exact 10 basename、目录布局、全 fixture size / extension policy、metadata validation 和 project-relative referenced paths。
+- 更新 `docs/refactor-log/asset-semantic-small-art-library-v0.1.md` 和 `docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md`，记录 Step 9B 资源来源、导入范围、size policy、非目标和验证命令。
+
+阶段结果：
+
+- 只导入小型 fixture，不导入完整 Cube Pets 包。
+- 不提交下载 zip、FBX、OBJ、overview / preview / URL helper 文件或 runtime export artifact。
+- `source/` 只保存 provenance / license evidence，不作为 production source-art 目录。
+- Sidecar metadata 的 `technical.source_path` / `thumbnail_path` 均保持 project-relative path。
+- Runtime-safe export 只作为 validation command 运行，不生成提交 artifact。
+
+Step 9B 未做：
+
+- 未启动 Step 9C default / repair-enabled canary / comparison。
+- 未启动 Metadata Step 4A。
+- 未修改 runtime/default asset loading、resolver、QA、Workbench、Phaser、asset pack loading 或 repair-enabled default。
+- 未导入 large asset library、DAM / database / vector / image embedding、Unity / Unreal / glTF / USD 或 C2PA pipeline。
+
+已通过验证：
+
+    npx vitest run tests/contracts/asset-semantic-small-art-library-fixture.test.ts
+    # 1 个测试文件，4 个测试通过
+
+    npm run metadata:validate -- tests/fixtures/art-library-small-v0.1/metadata
+    # OK 10 metadata files
+
+    npm run metadata:validate -- --json tests/fixtures/art-library-small-v0.1/metadata
+    # ok=true，10 个 files，diagnostics=[]
+
+    npm run metadata:validate -- --check-paths tests/fixtures/art-library-small-v0.1/metadata
+    # OK 10 metadata files
+
+    npm run metadata:export-runtime -- --json tests/fixtures/art-library-small-v0.1/metadata
+    # ok=true，artifact.asset_count=10，diagnostics=[]
+
+    npm run metadata:validate -- assets/metadata/examples
+    # OK 5 metadata files
+
+    npm run metadata:export-runtime -- --json assets/metadata/examples
+    # ok=true，artifact.asset_count=5，diagnostics=[]
+
+    npm run test:contracts
+    # 15 个测试文件，165 个测试通过
+
+    npm test
+    # contracts 165 个测试通过；workspace 125 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+fixture size check：
+
+- `tests/fixtures/art-library-small-v0.1/` 当前 `du -sh` 为 1.5M。
+- 全 fixture 文件字节总和为 1,486,226 bytes。
+- 最大文件为 `assets/animal-lion.glb`，172,936 bytes。
+
+审查记录：
+
+- Oracle 预审：P0 无；P1 要求 metadata complete schema、对新 fixture 运行 runtime export、focused test 锁 exact 10 basenames；P2 要求避免给所有动物统一 collectible role、README 记录来源/排除项/size policy、size gate 遍历整个 fixture；P3 要求说明 `source/` 语义，并考虑 `semantic.world=kenney_cube_pet`。
+- 已落实：sidecar metadata 补齐 complete schema；focused test 锁 exact basenames / full fixture size；README 记录 provenance、排除项和边界；所有动物 gameplay role 保持 `npc` / `decoration`；`semantic.world` 使用 `kenney_cube_pet`。

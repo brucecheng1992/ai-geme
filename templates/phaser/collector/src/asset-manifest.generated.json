@@ -1,0 +1,44 @@
+{
+  "version": "asset-manifest-v0.1",
+  "projectId": "proj_template_collector",
+  "strict": true,
+  "assets": [
+    {
+      "id": "background_main",
+      "loadKey": "agm.background_main",
+      "role": "background",
+      "type": "image",
+      "format": "svg",
+      "path": "assets/background_main.svg",
+      "source": "template_svg",
+      "required": true,
+      "status": "ready",
+      "size": { "w": 960, "h": 540 }
+    },
+    {
+      "id": "player",
+      "loadKey": "agm.player",
+      "role": "player_character",
+      "type": "image",
+      "format": "svg",
+      "path": "assets/player.svg",
+      "source": "template_svg",
+      "required": true,
+      "status": "ready",
+      "size": { "w": 64, "h": 64 }
+    },
+    {
+      "id": "collectible",
+      "loadKey": "agm.collectible",
+      "role": "collectible",
+      "type": "image",
+      "format": "svg",
+      "path": "assets/collectible.svg",
+      "source": "template_svg",
+      "required": true,
+      "status": "ready",
+      "size": { "w": 48, "h": 48 }
+    }
+  ],
+  "summary": { "required": 3, "ready": 3, "fallback_used": 0, "missing": 0, "placeholder_used": 0 }
+}
