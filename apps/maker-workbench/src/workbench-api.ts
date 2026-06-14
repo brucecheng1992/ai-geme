@@ -196,6 +196,42 @@ export type DashboardData = {
   artAssetPreview?: ArtAssetWorkbenchPreview;
 };
 
+export type PromptOptimizationMode = 'mock' | 'llm';
+export type PromptOptimizationStrategy = 'mock-v1' | 'llm-v1';
+
+export type PromptOptimizationReport = {
+  reportVersion: 'prompt_optimization_report.v1';
+  projectId: string;
+  optimizationId: string;
+  runId?: string;
+  originalPrompt: string;
+  optimizedPrompt: string;
+  intentSummary: string;
+  dslFitWarnings: string[];
+  unsupportedRequests: string[];
+  suggestedQuestions: string[];
+  supportedDslVersion: 'v1';
+  capabilitiesUsed: string[];
+  status: 'prepared';
+  applied: false;
+  strategy: PromptOptimizationStrategy;
+  mode: PromptOptimizationMode;
+  modelProfile?: string;
+};
+
+export type PromptOptimizationArtifactRef = {
+  id: 'promptOptimizationReport' | 'optimizedPrompt';
+  artifactRoot: 'model-output';
+  path: string;
+  format: 'json' | 'txt';
+};
+
+export type PreparePromptOptimizationResponse = {
+  ok: true;
+  report: PromptOptimizationReport;
+  artifacts: PromptOptimizationArtifactRef[];
+};
+
 export type LiveVersionRecord = {
   versionId: string;
   baseVersionId?: string;

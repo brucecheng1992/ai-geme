@@ -8,11 +8,69 @@
 
 ## 当前阶段
 
-当前处于 Step 10 Prompt Coach gated LLM mode lane。Step 10 已在 Step 9 Prompt Coach artifact contract 上增加显式 `mode: "mock" | "llm"`：mock 仍为默认且 deterministic；LLM mode 只有 `mode="llm"` 且 `PROMPT_COACH_LLM_ENABLED=true` 时才启用；启用且显式请求时，会通过 Prompt Coach 专用 DeepSeek adapter 获取 JSON，经过 schema validation / deterministic normalization 后才写 `prompt_optimization_report.json` 和 `optimized_prompt.txt`。本步不改变现有 DSL generation prompt、不覆盖玩家原始 prompt、不写 `game_dsl.json`、不触发 generation pipeline、不改 Phaser gameplay / visual polish、不改 `asset_pipeline_report` / `dsl_validation_report` / `pipeline_artifact_index` / QA verdict / DSL schema / live edit / Chrome MCP。
+当前处于 Step 11 Prompt Coach Workbench opt-in panel lane。Step 11 已把 Step 9/10 Prompt Coach prepare API 接到 Workbench 的最小可见 UI：玩家可在 Workbench 输入 prompt draft、选择 `mock | llm` mode、手动调用 `POST /api/projects/:projectId/prompt-optimizations/prepare`、查看 optimized prompt candidate / DSL warnings / unsupported requests / suggested questions / safe artifact refs，并可 copy 或将 candidate 仅填回本地 Game brief 输入框。mock 仍为默认；LLM mode 仍由后端 gating 决定，未配置时在 Workbench 显示明确错误且不 silent fallback。Prompt Coach Workbench panel 不自动 apply、不自动触发 generation、不覆盖 persisted project prompt、不写 `game_dsl.json`、不暴露 API key / env / provider config / raw provider response。本步不改变现有 DSL generation prompt、不改 Step 10 LLM adapter / schema normalizer、不做 provider abstraction、不改 Phaser gameplay / visual polish、不改 `asset_pipeline_report` / `dsl_validation_report` / `pipeline_artifact_index` / QA verdict / DSL schema / live edit / Chrome MCP。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：等待 Step 10 提交确认；后续如继续 Prompt Coach，应另开 gate 再讨论手动 apply、Workbench 展示、failure artifact contract 或 provider 平台化。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：等待 Step 11 提交确认；后续如继续 Prompt Coach，应另开 gate 再讨论服务端 apply endpoint、failure artifact contract、Workbench 历史列表或 provider 平台化。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.53 Step 11: Prompt Coach Workbench Opt-in Panel
+
+完成时间：2026-06-15
+
+已完成内容：
+
+- 新增 Workbench 侧 Prompt Coach types：`PromptOptimizationMode`、`PromptOptimizationReport`、`PromptOptimizationArtifactRef` 和 `PreparePromptOptimizationResponse`。
+- 新增 `prompt-coach-client.ts`，只调用 `POST /api/projects/:projectId/prompt-optimizations/prepare`；request body 包含 `originalPrompt`、optional `runId` 和 `mode`，缺省 mode 为 `mock`。
+- 新增 `PromptCoachPanel.tsx`：提供 local prompt draft、`mock | llm` selector、prepare loading/error/result 三态、copy optimized prompt 和 `Use optimized prompt`。
+- Workbench `App.tsx` 只挂接 `PromptCoachPanel`；`Use optimized prompt` 仅调用 `setIdea(candidate)`，不会 submit generate、不会写 project prompt。
+- result view 展示 optimized prompt candidate、original prompt、intent summary、DSL warnings、unsupported requests、suggested questions、supported DSL version、mode / strategy 和 safe artifact refs。
+- Workbench client 过滤 artifact refs：只展示 `model-output` 下非空安全相对路径，并要求 `promptOptimizationReport/json` 或 `optimizedPrompt/txt` 的 id/format 配对。
+- Workbench client 对后端错误文本做脱敏：命中 env / provider / secret / authorization / raw provider / absolute path 类文本时，只显示稳定通用错误 `Prompt Coach LLM mode is unavailable.`；普通 gating 错误如 `Prompt Coach LLM mode is not configured.` 仍可显示。
+- Prompt Coach draft 使用 `{ draft, dirty }`：主 Game brief 变化时，未编辑的 panel draft 会同步；用户已编辑的独立 draft 不会被自动覆盖；`Use game brief` 显式重置为当前主输入。
+
+阶段结果：
+
+- Prompt Coach Workbench 仍是 opt-in prepare / preview，不新增服务端 apply endpoint。
+- 未修改 Step 10 LLM adapter、schema normalizer、后端 PromptOptimizationReport contract、`GenerationPipelineService`、DSL generation prompt、DSL schema、QA verdict、Phaser、live edit、asset reports 或 `pipeline_artifact_index`。
+- 未新增 provider、未做 provider abstraction，未把 API key / env / provider config / raw provider response 暴露到 Workbench。
+- `App.tsx` 只新增 import 和组件挂接，主要状态 / 请求 / view-model 被收敛在 `PromptCoachPanel.tsx` 和 `prompt-coach-client.ts`。
+
+已通过验证：
+
+    npx vitest run tests/workspace/workbench-prompt-coach-client.test.ts
+    # 1 个测试文件，11 个测试通过
+
+    npx vitest run tests/workspace/workbench-prompt-coach-client.test.ts tests/workspace/prompt-coach.test.ts tests/workspace/projects-service.test.ts
+    # 3 个测试文件，38 个测试通过
+
+    npx vitest run tests/workspace/pipeline-artifact-index.test.ts tests/workspace/prompt-coach-llm-client.test.ts
+    # 2 个测试文件，6 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+    npm test
+    # contracts：24 个测试文件，224 个测试通过
+    # workspace：20 个测试文件，238 个测试通过
+
+浏览器验收：
+
+- 本地启动 `npm run maker:start` 后，用 Playwright 打开 `http://127.0.0.1:5173/`。
+- 使用既有 project/run，mock prepare 显示 candidate、warnings、unsupported requests、suggested questions 和相对 artifact refs。
+- `Use optimized prompt` 只更新本地 `Idea` textarea；未观察到 `/generate`、`/live-edits` 或 `/live-edit/` 请求。
+- `mode=llm` 未配置时显示 `Prompt Coach LLM mode is not configured.`，没有 silent fallback mock。
+- 页面正文未出现 `DEEPSEEK_API_KEY`、`secret-test-key`、`authorization: Bearer` 或 `raw provider`。
+
+审查门禁结论：
+
+- Oracle 首轮：P0 clear；P1 指出 Workbench 错误展示路径可能原样暴露 env/provider 错误文本；P2 指出 Prompt Coach local draft 不随主 Idea 更新；P3 指出 artifact ref 过滤可补 id/format/path 非空校验。
+- 已修复：错误消息脱敏、clean/dirty draft 同步模型、artifact ref id/format/path 白名单，并补 3 类测试覆盖。
+- Oracle 复审：P0/P1/P2 clear，P3 acceptable；确认未引入自动 apply/generation、未触碰 Step 10 adapter / schema normalizer / DSL schema / QA verdict / Phaser / asset pipeline / `pipeline_artifact_index`。
+- 审查模式：Oracle 新建 + 复审。
 
 ### 2.52 Step 10: Prompt Coach Gated LLM Mode
 

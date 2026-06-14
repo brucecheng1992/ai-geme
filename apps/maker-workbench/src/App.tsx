@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { AssetStatusPanel } from './AssetStatusPanel.js';
+import { PromptCoachPanel } from './PromptCoachPanel.js';
 import { QaStatusPanel } from './QaStatusPanel.js';
 import { buildEditableFields, buildLiveObjectTree, buildReplacePrepareBody, buildRuntimeApplyReportFromPatchResult, type LiveEditableField } from './live-edit-client.js';
 import './styles.css';
@@ -462,6 +463,8 @@ export function App() {
 
           <section className="grid grid-cols-[minmax(260px,0.95fr)_minmax(320px,1.05fr)] gap-4 max-lg:grid-cols-1">
             <QaStatusPanel report={data.qaReport} />
+
+            <PromptCoachPanel projectId={projectId} runId={runId} currentPrompt={idea} onUseOptimizedPrompt={setIdea} />
 
             <article className={`${panelClass} min-h-40`}>
               <div className={panelHeadingClass}>
