@@ -52,7 +52,9 @@ const MovementSchema = z.strictObject({
 
 const PlayerSchema = GameDslBaseObjectSchema.extend({
   controller: ControllerSchema,
-  health: z.number().int().min(1).max(20).optional(),
+  health: z.strictObject({ max: z.number().int().min(1).max(20) }),
+  physics: z.strictObject({ maxSpeed: z.number().int().min(1).max(2000) }),
+  render: z.strictObject({ scale: z.number().min(0.1).max(5) }),
   movement: MovementSchema,
   actions: z
     .array(
@@ -68,7 +70,8 @@ const PlayerSchema = GameDslBaseObjectSchema.extend({
 });
 
 const EnemyTypeSchema = GameDslBaseObjectSchema.extend({
-  health: z.number().int().min(1).max(50),
+  health: z.strictObject({ max: z.number().int().min(1).max(50) }),
+  physics: z.strictObject({ speed: z.number().int().min(0).max(2000) }),
   damage: z.number().int().min(0).max(50).optional(),
   movement: MovementSchema,
   projectileRef: DslIdSchema.optional()
@@ -76,6 +79,7 @@ const EnemyTypeSchema = GameDslBaseObjectSchema.extend({
 
 const ProjectileSchema = GameDslBaseObjectSchema.extend({
   damage: z.number().int().min(1).max(50),
+  speed: z.number().int().min(1).max(2000),
   speedPxPerSec: z.number().int().min(1).max(2000)
 });
 
@@ -317,7 +321,9 @@ export function buildGameDslArtifact(input: {
       id: input.rawDsl.player.id,
       label: input.rawDsl.player.label,
       controller: genre === 'side_scrolling_platformer' ? contract.controller : input.rawDsl.player.controller ?? contract.controller,
-      health: input.rawDsl.player.health,
+      health: { max: input.rawDsl.player.health ?? 3 },
+      physics: { maxSpeed: input.rawDsl.player.movement.speed_px_per_sec ?? 240 },
+      render: { scale: 1 },
       movement: toArtifactMovement(input.rawDsl.player.movement),
       actions: input.rawDsl.player.actions.map((action) => ({
         id: action.id,
@@ -647,15 +653,38 @@ function projectionComparisons(artifact: GameDslArtifact, expected: GameDslArtif
     ['ipPolicy', artifact.ipPolicy, expected.ipPolicy],
     ['world', artifact.world, expected.world],
     ['camera', artifact.camera, expected.camera],
-    ['player', artifact.player, expected.player],
-    ['enemyTypes', artifact.enemyTypes, expected.enemyTypes],
-    ['projectiles', artifact.projectiles, expected.projectiles],
+    ['player', sourceConsistentPlayer(artifact.player), sourceConsistentPlayer(expected.player)],
+    ['enemyTypes', sourceConsistentEnemyTypes(artifact.enemyTypes), sourceConsistentEnemyTypes(expected.enemyTypes)],
+    ['projectiles', sourceConsistentProjectiles(artifact.projectiles), sourceConsistentProjectiles(expected.projectiles)],
     ['level', artifact.level, expected.level],
     ['assets', artifact.assets, expected.assets],
     ['winLose', artifact.winLose, expected.winLose],
     ['pickups', artifact.pickups ?? {}, expected.pickups ?? {}],
     ['bosses', artifact.bosses ?? {}, expected.bosses ?? {}]
   ];
+}
+
+function sourceConsistentPlayer(player: GameDslArtifact['player']): Omit<GameDslArtifact['player'], 'health' | 'physics' | 'render'> {
+  const { health: _health, physics: _physics, render: _render, ...rest } = player;
+  return rest;
+}
+
+function sourceConsistentEnemyTypes(enemyTypes: GameDslArtifact['enemyTypes']): Record<string, Omit<GameDslArtifact['enemyTypes'][string], 'health' | 'physics'>> {
+  return Object.fromEntries(
+    Object.entries(enemyTypes).map(([id, enemyType]) => {
+      const { health: _health, physics: _physics, ...rest } = enemyType;
+      return [id, rest];
+    })
+  );
+}
+
+function sourceConsistentProjectiles(projectiles: GameDslArtifact['projectiles']): Record<string, Omit<GameDslArtifact['projectiles'][string], 'damage' | 'speed' | 'speedPxPerSec'>> {
+  return Object.fromEntries(
+    Object.entries(projectiles).map(([id, projectile]) => {
+      const { damage: _damage, speed: _speed, speedPxPerSec: _speedPxPerSec, ...rest } = projectile;
+      return [id, rest];
+    })
+  );
 }
 
 function canonicalJson(value: unknown): string {
@@ -760,7 +789,8 @@ function buildEnemyTypes(rawDsl: RawGameDsl): GameDslArtifact['enemyTypes'] {
       {
         id: entity.id,
         label: entity.label,
-        health: entity.health ?? 1,
+        health: { max: entity.health ?? 1 },
+        physics: { speed: entity.movement.speed_px_per_sec ?? 0 },
         damage: 'damage' in entity && typeof entity.damage === 'number' ? entity.damage : undefined,
         movement: toArtifactMovement(entity.movement)
       }
@@ -781,6 +811,7 @@ function buildProjectiles(rawDsl: RawGameDsl): GameDslArtifact['projectiles'] {
         id: entity.id,
         label: entity.label,
         damage: entity.damage ?? 1,
+        speed: 'speed_px_per_sec' in entity ? entity.speed_px_per_sec : entity.movement.speed_px_per_sec ?? 480,
         speedPxPerSec: 'speed_px_per_sec' in entity ? entity.speed_px_per_sec : entity.movement.speed_px_per_sec ?? 480
       }
     ])

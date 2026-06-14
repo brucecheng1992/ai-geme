@@ -18,6 +18,23 @@ export {
   type DslValidationReport,
   type DslValidationReportIssue
 } from './artifact-contract.js';
+export {
+  buildRuntimeCapabilityReport,
+  validateAndPlanDslPatch,
+  DslPatchV1Schema,
+  PatchValidationReportSchema,
+  RuntimeCapabilityReportSchema,
+  LiveUpdatePlanSchema,
+  RuntimeApplyReportSchema,
+  topDownShooterPhaserLiveEditCapabilities,
+  type DslPatchV1,
+  type DslPatchV1Operation,
+  type RuntimeCapabilityReport,
+  type PatchValidationReport,
+  type LiveUpdatePlan,
+  type RuntimeApplyReport,
+  type LiveEditCapabilities
+} from './live-edit.js';
 export { validateRawGameDsl } from './dsl-validator.js';
 export { normalizeRawGameDsl, validateAndNormalizeRawGameDsl } from './normalizer.js';
 export { checkPhaserRuntimeCapabilities, type RuntimeCapabilityGateResult, type UnsupportedRuntimeCapability } from './runtime-capability-gate.js';

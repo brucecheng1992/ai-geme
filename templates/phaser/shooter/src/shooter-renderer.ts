@@ -57,6 +57,10 @@ export class ShooterRenderer {
     this.playerObject?.setPosition(x, y);
   }
 
+  setPlayerScale(scale: number): void {
+    (this.playerObject as OrientableRenderObject | undefined)?.setScale?.(scale);
+  }
+
   renderEnemy(scene: Phaser.Scene, enemy: ShooterEnemyState): void {
     const image = this.art?.addImage(scene, 'enemy', enemy.x, enemy.y, 88, 70);
     const enemyObject = image ?? drawShooterEnemy(scene, enemy.x, enemy.y, this.params.enemy.label, this.params.enemy.visual);

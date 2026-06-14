@@ -137,7 +137,13 @@ describe('Phaser templates', () => {
       } else if (genre === 'shooter') {
         expect(main).toContain("from './runtime-plan.generated.json'");
         expect(main).toContain("from './asset-manifest.generated.json'");
-        expect(main).toContain('new ShooterGameScene(shooterParams, shooterRuntimePlan, shooterArt)');
+        expect(main).toContain("from './live-edit-registry.generated.json'");
+        expect(main).toContain('new ShooterGameScene(shooterParams, shooterRuntimePlan, shooterArt, generatedLiveEditRegistry)');
+        expect(main).toContain('AIGAME_RUNTIME_READY');
+        expect(main).toContain('AIGAME_GET_CAPABILITIES');
+        expect(main).toContain('AIGAME_APPLY_PATCH');
+        expect(main).toContain('AIGAME_PATCH_RESULT');
+        expect(main).toContain('AIGAME_RUNTIME_ERROR');
       } else if (genre === 'collector') {
         expect(main).toContain("from './asset-manifest.generated.json'");
         expect(main).toContain('new CollectorGameScene(collectorParams, collectorArt)');
@@ -336,6 +342,89 @@ describe('Phaser templates', () => {
       rampProgress: 1,
       speedMultiplier: 1.25,
       spawnIntervalMultiplier: 0.8
+    });
+  });
+
+  it('mock shooter runtime bridge applies hot player and entity patches', async () => {
+    const { createShooterRuntimeBridge } = await import('../../templates/phaser/shooter/src/live-edit-bridge.js');
+    const { createShooterRuntimeState } = await import('../../templates/phaser/shooter/src/shooter-runtime.js');
+    const { defaultShooterParams } = await import('../../templates/phaser/shooter/src/template-params.js');
+    const params = structuredClone(defaultShooterParams);
+    const runtime = createShooterRuntimeState(params);
+    runtime.enemies.push({
+      id: 1,
+      entityId: 'tank_basic',
+      waveSource: 'runtime_plan',
+      waveStrategy: 'right_edge_wave',
+      speedMultiplier: 1,
+      x: 800,
+      y: 260,
+      health: 1,
+      active: true,
+      lastFireAtMs: 0
+    });
+    runtime.projectiles.push({ id: 1, owner: 'player', x: 200, y: 260, velocityX: 520, active: true });
+    const playerScales: number[] = [];
+    const bridge = createShooterRuntimeBridge({
+      params,
+      runtime,
+      registry: {
+        playerId: 'player_main',
+        enemyTypeId: 'tank_basic',
+        projectileId: 'fishbone'
+      },
+      renderer: {
+        setPlayerScale(scale: number) {
+          playerScales.push(scale);
+        }
+      }
+    });
+
+    expect(bridge.getCapabilities().hot).toEqual(expect.arrayContaining(['/player/render/scale', '/enemyTypes/*/physics/speed']));
+    expect(
+      bridge.applyPatch({
+        player: { scale: 1.3, maxSpeed: 320 },
+        enemyTypes: { tank_basic: { speed: 80, maxHealth: 4 } },
+        projectiles: { fishbone: { speed: 700, damage: 2 } }
+      })
+    ).toMatchObject({
+      status: 'applied_hot',
+      appliedPaths: expect.arrayContaining([
+        '/player/render/scale',
+        '/player/physics/maxSpeed',
+        '/enemyTypes/tank_basic/physics/speed',
+        '/enemyTypes/tank_basic/health/max',
+        '/projectiles/fishbone/speed',
+        '/projectiles/fishbone/damage'
+      ])
+    });
+    expect(playerScales).toEqual([1.3]);
+    expect(params.player.speedPxPerSec).toBe(320);
+    expect(params.enemy.speedPxPerSec).toBe(80);
+    expect(runtime.enemies[0].health).toBe(4);
+    expect(params.projectile.speedPxPerSec).toBe(700);
+    expect(params.projectile.damage).toBe(2);
+    expect(runtime.projectiles[0].velocityX).toBe(700);
+  });
+
+  it('mock shooter runtime bridge rejects unsupported and code-like runtime patches', async () => {
+    const { createShooterRuntimeBridge } = await import('../../templates/phaser/shooter/src/live-edit-bridge.js');
+    const { createShooterRuntimeState } = await import('../../templates/phaser/shooter/src/shooter-runtime.js');
+    const { defaultShooterParams } = await import('../../templates/phaser/shooter/src/template-params.js');
+    const params = structuredClone(defaultShooterParams);
+    const bridge = createShooterRuntimeBridge({
+      params,
+      runtime: createShooterRuntimeState(params),
+      registry: { playerId: 'player_main', enemyTypeId: 'tank_basic', projectileId: 'fishbone' }
+    });
+
+    expect(bridge.applyPatch({ genre: 'vertical_shooter' })).toMatchObject({
+      status: 'unsupported',
+      errors: [expect.objectContaining({ code: 'UNSUPPORTED_RUNTIME_PATCH' })]
+    });
+    expect(bridge.applyPatch({ player: { scale: 'javascript:eval(code)' } })).toMatchObject({
+      status: 'failed_runtime_apply',
+      errors: [expect.objectContaining({ code: 'RUNTIME_PATCH_INVALID' })]
     });
   });
 

@@ -14,12 +14,14 @@ import {
 } from '../../../../packages/asset-pipeline/src/index.js';
 import type { NormalizedGameIr, RawGameDsl } from '../../../../packages/game-dsl/src/index.js';
 import {
+  buildRuntimeCapabilityReport,
   buildGameDslArtifact,
   checkPhaserRuntimeCapabilities,
   validateAndNormalizeRawGameDsl,
   validateGameDslArtifact,
   type DslValidationReport,
-  type GameDslArtifact
+  type GameDslArtifact,
+  type RuntimeCapabilityReport
 } from '../../../../packages/game-dsl/src/index.js';
 import type { RuntimeCompileResult, RuntimeCompileSuccess } from '../compiler/compiler.types.js';
 import { TemplateCompilerService } from '../compiler/template-compiler.service.js';
@@ -506,6 +508,7 @@ export class GenerationPipelineService {
     }
 
     await this.writeGameDslArtifact(input, validation.artifact);
+    await this.writeRuntimeCapabilityReport(input, buildRuntimeCapabilityReport({ runId: input.runId, validatedDsl: validation.artifact }));
     await this.appendEvent(input.runId, 'dsl.validation.passed', 'Versioned Game DSL artifact validated.');
     return { ok: true, value: validation.artifact };
   }
@@ -533,6 +536,13 @@ export class GenerationPipelineService {
 
   private async writeDslValidationReport(input: GenerationPipelineInput, report: DslValidationReport): Promise<void> {
     const outputPath = this.workspace.getModelOutputPath(input.projectId, input.runId, 'dsl_validation_report.json');
+
+    await mkdir(dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  }
+
+  private async writeRuntimeCapabilityReport(input: GenerationPipelineInput, report: RuntimeCapabilityReport): Promise<void> {
+    const outputPath = this.workspace.getModelOutputPath(input.projectId, input.runId, 'runtime_capability_report.json');
 
     await mkdir(dirname(outputPath), { recursive: true });
     await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');

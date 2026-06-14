@@ -30,6 +30,7 @@ import {
   type ShooterRuntimePlan
 } from './shooter-runtime-plan.js';
 import type { ShooterArtRuntime } from './shooter-art-library.js';
+import { createShooterRuntimeBridge, type ShooterLiveEditRegistry } from './live-edit-bridge.js';
 import { ShooterRenderer } from './shooter-renderer.js';
 import type { ShooterTemplateParams } from './template-params.js';
 
@@ -46,6 +47,7 @@ export class ShooterGameScene {
   private readonly renderer;
   private readonly endScreen: EndScreenRenderer;
   private readonly enemyWave: ResolvedShooterEnemyWave;
+  private readonly liveEditBridge;
   private runtime: ShooterRuntimeState;
   private readonly moveInput: Record<ShooterDirection, boolean> = { left: false, right: false, up: false, down: false };
   private phaserScene?: Phaser.Scene;
@@ -53,7 +55,8 @@ export class ShooterGameScene {
   constructor(
     private readonly params: ShooterTemplateParams,
     runtimePlan: ShooterRuntimePlan = defaultShooterRuntimePlan,
-    private readonly art?: ShooterArtRuntime
+    private readonly art?: ShooterArtRuntime,
+    liveEditRegistry?: Partial<ShooterLiveEditRegistry>
   ) {
     this.state = createRuntimeState(params.player.health);
     this.telemetry = new TelemetrySystem(this.state);
@@ -68,6 +71,21 @@ export class ShooterGameScene {
     this.endScreen = new EndScreenRenderer(params.world, params.ui.screens);
     this.enemyWave = resolveShooterEnemyWave(runtimePlan, params);
     this.runtime = createShooterRuntimeState(params);
+    this.liveEditBridge = createShooterRuntimeBridge({
+      params,
+      getRuntime: () => this.runtime,
+      registry: {
+        playerId: 'player_main',
+        enemyTypeId: liveEditRegistry?.enemyTypeId ?? this.enemyWave.entityId,
+        projectileId: liveEditRegistry?.projectileId ?? 'projectile'
+      },
+      renderer: this.renderer,
+      setPlayerMaxHealth: (maxHealth) => {
+        this.state.maxHealth = maxHealth;
+        this.state.health = Math.min(this.state.health, maxHealth);
+        this.renderHud();
+      }
+    });
     primeShooterEnemyWave(this.runtime, this.enemyWave);
   }
 
@@ -179,6 +197,10 @@ export class ShooterGameScene {
     this.objective.loseWhen(this.state.health <= 0);
     this.renderEndScreenIfTerminal();
     this.renderHud();
+  }
+
+  getLiveEditBridge(): ReturnType<typeof createShooterRuntimeBridge> {
+    return this.liveEditBridge;
   }
 
   restart(): void {

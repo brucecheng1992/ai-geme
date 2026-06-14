@@ -303,6 +303,11 @@ function buildTemplateParams(raw: RawGameDsl): Record<string, unknown> {
     scoring: {
       scorePerEnemy: scoreAddValue(hitCollision) || 1
     },
+    liveEditRegistry: {
+      playerId: 'player_main',
+      enemyTypeId: enemy?.id ?? 'enemy',
+      projectileId: projectile?.id ?? 'projectile'
+    },
     objective:
       raw.objectives.win.type === 'target_score'
         ? { winType: 'target_score', targetScore: raw.objectives.win.target ?? 1 }

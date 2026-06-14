@@ -256,6 +256,7 @@ describe('GenerationPipelineService failure states', () => {
     const intentPlan = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'intent_plan.json'), 'utf8'));
     const gameDsl = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'game_dsl.json'), 'utf8'));
     const validationReport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'dsl_validation_report.json'), 'utf8'));
+    const runtimeCapabilityReport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'runtime_capability_report.json'), 'utf8'));
     expect(intentPlan).toMatchObject({
       schemaVersion: 'intent-plan-v0.1',
       sourcePrompt: '小猫大战坦克',
@@ -281,6 +282,19 @@ describe('GenerationPipelineService failure states', () => {
       status: 'valid',
       errorCount: 0,
       requiredCapabilities: expect.arrayContaining(['top_down_camera', 'projectile_combat'])
+    });
+    expect(runtimeCapabilityReport).toMatchObject({
+      artifactKind: 'runtime_capability_report',
+      schemaVersion: 'runtime_capability_report.v1',
+      runId,
+      validatedDslRef: { artifactKind: 'game_dsl', schemaVersion: 'game_dsl.v1', dslId: gameDsl.dslId },
+      selectedAdapterId: 'top_down_shooter.phaser.v1',
+      status: 'supported',
+      liveEditCapabilities: {
+        hot: expect.arrayContaining(['/player/render/scale', '/projectiles/*/damage']),
+        warmRestart: expect.arrayContaining(['/level/waves']),
+        rebuildRequired: expect.arrayContaining(['/genre', '/world/coordinateSystem'])
+      }
     });
     await expect(runStore.readEvents(runId)).resolves.toEqual(
       expect.arrayContaining([expect.objectContaining({ type: 'intent.planned', message: 'Intent normalized to top_down_shooter.' })])
@@ -315,6 +329,7 @@ describe('GenerationPipelineService failure states', () => {
     expect(compileRuns).toBe(0);
 
     await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'game_dsl.json'), 'utf8')).rejects.toThrow();
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'runtime_capability_report.json'), 'utf8')).rejects.toThrow();
     const candidate = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'game_dsl.candidate.json'), 'utf8'));
     const validationReport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'dsl_validation_report.json'), 'utf8'));
     expect(candidate).toMatchObject({

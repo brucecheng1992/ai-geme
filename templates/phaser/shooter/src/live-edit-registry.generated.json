@@ -1,0 +1,5 @@
+{
+  "playerId": "player_main",
+  "enemyTypeId": "enemy",
+  "projectileId": "projectile"
+}

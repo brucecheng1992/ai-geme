@@ -71,6 +71,7 @@ export class TemplateCompilerService {
       ...(genre === 'shooter' ? [`${genre}/src/shooter-runtime.ts`] : []),
       ...(genre === 'shooter' ? [`${genre}/src/shooter-runtime-plan.ts`] : []),
       ...(genre === 'shooter' ? [`${genre}/src/shooter-renderer.ts`] : []),
+      ...(genre === 'shooter' ? [`${genre}/src/live-edit-bridge.ts`] : []),
       ...(genre === 'shooter' ? [`${genre}/src/shooter-art-library.ts`] : []),
       ...(genre === 'shooter' ? [`${genre}/src/template-visuals.ts`] : []),
       `${genre}/src/template-params.ts`,
@@ -78,6 +79,7 @@ export class TemplateCompilerService {
       'shared/end-screen.ts',
       ...(genre === 'collector' || genre === 'dodger' || genre === 'shooter' ? [`${genre}/src/asset-manifest.generated.json`] : []),
       ...(genre === 'dodger' || genre === 'shooter' ? [`${genre}/src/runtime-plan.generated.json`] : []),
+      ...(genre === 'shooter' ? [`${genre}/src/live-edit-registry.generated.json`] : []),
       `${genre}/src/template-params.generated.json`
     ];
 
@@ -99,6 +101,9 @@ export class TemplateCompilerService {
     }
     if (genre === 'dodger' || genre === 'shooter') {
       await writeFile(join(outputDir, `${genre}`, 'src', 'runtime-plan.generated.json'), JSON.stringify(ir.runtime_plan, null, 2));
+    }
+    if (genre === 'shooter') {
+      await writeFile(join(outputDir, `${genre}`, 'src', 'live-edit-registry.generated.json'), JSON.stringify(readShooterLiveEditRegistry(ir.template_params.params), null, 2));
     }
     await writeFile(join(outputDir, 'package.json'), this.renderPackageJson(input.projectId));
     await writeFile(join(outputDir, 'index.html'), this.renderIndexHtml());
@@ -199,4 +204,18 @@ export default defineConfig({
 });
 `;
   }
+}
+
+function readShooterLiveEditRegistry(params: Record<string, unknown>): { playerId: 'player_main'; enemyTypeId: string; projectileId: string } {
+  const registry = params.liveEditRegistry;
+  if (registry !== null && typeof registry === 'object' && !Array.isArray(registry)) {
+    const record = registry as Record<string, unknown>;
+    return {
+      playerId: 'player_main',
+      enemyTypeId: typeof record.enemyTypeId === 'string' ? record.enemyTypeId : 'enemy',
+      projectileId: typeof record.projectileId === 'string' ? record.projectileId : 'projectile'
+    };
+  }
+
+  return { playerId: 'player_main', enemyTypeId: 'enemy', projectileId: 'projectile' };
 }

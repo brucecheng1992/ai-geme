@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 
 import { ShooterGameScene } from './GameScene.js';
 import generatedAssetManifest from './asset-manifest.generated.json';
+import generatedLiveEditRegistry from './live-edit-registry.generated.json';
 import { createShooterArtRuntime } from './shooter-art-library.js';
 import generatedRuntimePlan from './runtime-plan.generated.json';
 import type { ShooterDirection } from './shooter-runtime.js';
@@ -12,7 +13,7 @@ import { defaultShooterParams, type ShooterTemplateParams } from './template-par
 const shooterParams = mergeShooterParams(generatedParams as Partial<ShooterTemplateParams>);
 const shooterRuntimePlan = mergeShooterRuntimePlan(generatedRuntimePlan as Partial<ShooterRuntimePlan>);
 const shooterArt = createShooterArtRuntime(generatedAssetManifest);
-const scene = new ShooterGameScene(shooterParams, shooterRuntimePlan, shooterArt);
+const scene = new ShooterGameScene(shooterParams, shooterRuntimePlan, shooterArt, generatedLiveEditRegistry);
 
 if (typeof window !== 'undefined') {
   class ShooterPhaserScene extends Phaser.Scene {
@@ -41,6 +42,7 @@ if (typeof window !== 'undefined') {
     backgroundColor: '#07111f',
     scene: ShooterPhaserScene
   });
+  installLiveEditProtocol(scene);
 
   window.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
@@ -74,6 +76,34 @@ if (typeof window !== 'undefined') {
 }
 
 export { scene };
+
+function installLiveEditProtocol(gameScene: ShooterGameScene): void {
+  const bridge = gameScene.getLiveEditBridge();
+  window.parent?.postMessage({ type: 'AIGAME_RUNTIME_READY', runtimeTarget: 'phaser:top_down_shooter' }, '*');
+  window.addEventListener('message', (event) => {
+    const data = event.data;
+    if (data === null || typeof data !== 'object' || typeof data.type !== 'string') {
+      return;
+    }
+
+    try {
+      if (data.type === 'AIGAME_GET_CAPABILITIES') {
+        event.source?.postMessage({ type: 'AIGAME_PATCH_RESULT', status: 'capabilities', capabilities: bridge.getCapabilities() }, { targetOrigin: event.origin || '*' });
+      } else if (data.type === 'AIGAME_APPLY_PATCH') {
+        const result = bridge.applyPatch('runtimePatch' in data ? data.runtimePatch : undefined);
+        event.source?.postMessage({ type: 'AIGAME_PATCH_RESULT', result }, { targetOrigin: event.origin || '*' });
+      }
+    } catch (error) {
+      event.source?.postMessage(
+        {
+          type: 'AIGAME_RUNTIME_ERROR',
+          message: error instanceof Error ? error.message : 'Unknown runtime bridge error.'
+        },
+        { targetOrigin: event.origin || '*' }
+      );
+    }
+  });
+}
 
 function mergeShooterParams(params: Partial<ShooterTemplateParams>): ShooterTemplateParams {
   return {

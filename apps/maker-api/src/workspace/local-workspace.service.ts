@@ -93,6 +93,64 @@ export class LocalWorkspaceService {
     );
   }
 
+  getLiveDir(projectId: string, runId: string): string {
+    return this.resolveInsideWorkspace(
+      LOCAL_DATA_DIR,
+      LOCAL_DATA_SUBDIRS.modelOutputs,
+      this.assertSafeSegment(projectId, 'projectId'),
+      this.assertSafeSegment(runId, 'runId'),
+      'live'
+    );
+  }
+
+  getLiveArtifactPath(projectId: string, runId: string, name: string): string {
+    return this.resolveInsideWorkspace(
+      LOCAL_DATA_DIR,
+      LOCAL_DATA_SUBDIRS.modelOutputs,
+      this.assertSafeSegment(projectId, 'projectId'),
+      this.assertSafeSegment(runId, 'runId'),
+      'live',
+      this.assertSafeFileName(name, 'name')
+    );
+  }
+
+  getLivePatchHistoryPath(projectId: string, runId: string): string {
+    return this.getLiveArtifactPath(projectId, runId, 'patch_history.jsonl');
+  }
+
+  getLiveEditAuditLogPath(projectId: string, runId: string): string {
+    return this.getLiveArtifactPath(projectId, runId, 'edit_audit_log.jsonl');
+  }
+
+  getLiveCurrentVersionPath(projectId: string, runId: string): string {
+    return this.getLiveArtifactPath(projectId, runId, 'current_version.json');
+  }
+
+  getLivePendingDir(projectId: string, runId: string, patchId: string): string {
+    return this.resolveInsideWorkspace(
+      LOCAL_DATA_DIR,
+      LOCAL_DATA_SUBDIRS.modelOutputs,
+      this.assertSafeSegment(projectId, 'projectId'),
+      this.assertSafeSegment(runId, 'runId'),
+      'live',
+      'pending',
+      this.assertSafeSegment(patchId, 'patchId')
+    );
+  }
+
+  getLivePendingArtifactPath(projectId: string, runId: string, patchId: string, name: string): string {
+    return this.resolveInsideWorkspace(
+      LOCAL_DATA_DIR,
+      LOCAL_DATA_SUBDIRS.modelOutputs,
+      this.assertSafeSegment(projectId, 'projectId'),
+      this.assertSafeSegment(runId, 'runId'),
+      'live',
+      'pending',
+      this.assertSafeSegment(patchId, 'patchId'),
+      this.assertSafeFileName(name, 'name')
+    );
+  }
+
   /** Resolves model-generated Raw DSL snapshots under data/local-data/result grouped by UTC date. */
   getResultRawDslPath(projectId: string, runId: string, createdAt = new Date()): string {
     const timestamp = createdAt.toISOString();
