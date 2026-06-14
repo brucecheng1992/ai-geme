@@ -230,7 +230,7 @@ describe('GenerationPipelineService failure states', () => {
       }
     });
 
-    await expect(runPipeline(pipeline)).resolves.toBe('PLAYABLE');
+    await expect(runPipeline(pipeline, { idea: 'collect gems', language: 'en' })).resolves.toBe('PLAYABLE');
 
     const resultFiles = await collectFiles(join(root, 'data/local-data/result'));
     expect(resultFiles).toHaveLength(1);
@@ -254,15 +254,83 @@ describe('GenerationPipelineService failure states', () => {
     await expect(runPipeline(pipeline, { idea: '小猫大战坦克', language: 'zh' })).resolves.toBe('PLAYABLE');
 
     const intentPlan = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'intent_plan.json'), 'utf8'));
+    const gameDsl = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'game_dsl.json'), 'utf8'));
+    const validationReport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'dsl_validation_report.json'), 'utf8'));
     expect(intentPlan).toMatchObject({
       schemaVersion: 'intent-plan-v0.1',
       sourcePrompt: '小猫大战坦克',
       normalizedGenre: 'top_down_shooter',
       runtimeDslSupport: 'supported'
     });
+    expect(gameDsl).toMatchObject({
+      artifactKind: 'game_dsl',
+      schemaVersion: 'game_dsl.v1',
+      runId,
+      intentPlanRef: { artifact: 'intent_plan.json', normalizedGenre: 'top_down_shooter' },
+      genre: 'top_down_shooter',
+      player: { id: 'player' },
+      enemyTypes: { alien: expect.objectContaining({ id: 'alien' }) },
+      projectiles: { bolt: expect.objectContaining({ id: 'bolt' }) },
+      level: { id: 'level_main', waves: { alien_wave: expect.objectContaining({ id: 'alien_wave' }) } }
+    });
+    expect(validationReport).toMatchObject({
+      artifactKind: 'dsl_validation_report',
+      schemaVersion: 'dsl_validation_report.v1',
+      runId,
+      validatedArtifact: { artifactKind: 'game_dsl', schemaVersion: 'game_dsl.v1', dslId: gameDsl.dslId },
+      status: 'valid',
+      errorCount: 0,
+      requiredCapabilities: expect.arrayContaining(['top_down_camera', 'projectile_combat'])
+    });
     await expect(runStore.readEvents(runId)).resolves.toEqual(
       expect.arrayContaining([expect.objectContaining({ type: 'intent.planned', message: 'Intent normalized to top_down_shooter.' })])
     );
+  });
+
+  it('writes game_dsl.candidate.json and blocks downstream steps when artifact validation fails', async () => {
+    const rawDsl = {
+      ...RawGameDslSchema.parse(createShooterRawDsl()),
+      player: {
+        ...createShooterRawDsl().player,
+        actions: [{ id: 'fire', type: 'shoot_projectile', cooldown_ms: 300, spawns: 'ghost_projectile' }]
+      }
+    } as RawGameDsl;
+    let compileRuns = 0;
+    const pipeline = createPipeline({
+      modelProvider: createModelProviderForRawDsl(rawDsl),
+      compiler: {
+        async compile() {
+          compileRuns += 1;
+          return compileResult();
+        }
+      },
+      buildRunner: {
+        async build() {
+          throw new Error('invalid DSL should not build');
+        }
+      }
+    });
+
+    await expect(runPipeline(pipeline, { idea: '小猫大战坦克', language: 'zh' })).resolves.toBe('DSL_VALIDATION_FAILED');
+    expect(compileRuns).toBe(0);
+
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'game_dsl.json'), 'utf8')).rejects.toThrow();
+    const candidate = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'game_dsl.candidate.json'), 'utf8'));
+    const validationReport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'dsl_validation_report.json'), 'utf8'));
+    expect(candidate).toMatchObject({
+      artifactKind: 'game_dsl',
+      schemaVersion: 'game_dsl.v1',
+      player: { actions: [expect.objectContaining({ projectileRef: 'ghost_projectile' })] }
+    });
+    expect(validationReport).toMatchObject({
+      status: 'invalid',
+      errorCount: expect.any(Number),
+      errors: expect.arrayContaining([
+        expect.objectContaining({ code: 'UNRESOLVED_REFERENCE', path: 'sourceDsl.player.actions.0.spawns' }),
+        expect.objectContaining({ code: 'UNRESOLVED_PROJECTILE_REFERENCE' })
+      ])
+    });
+    await expect(projectStore.readProject(projectId)).resolves.toMatchObject({ status: 'DSL_VALIDATION_FAILED' });
   });
 
   it.each([

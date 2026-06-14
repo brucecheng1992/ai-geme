@@ -4,7 +4,15 @@ import { GameDslProviderService } from '../../apps/maker-api/src/model-provider/
 import { buildIntentPlan } from '../../apps/maker-api/src/model-provider/intent-plan.js';
 import { buildRawDslPromptContext } from '../../apps/maker-api/src/model-provider/prompt-context.builder.js';
 import type { GenerateJsonResult, JsonChatParams } from '../../apps/maker-api/src/model-provider/model-provider.types.js';
-import type { GameBrief } from '../../packages/game-dsl/src/index.js';
+import {
+  buildGameDslArtifact,
+  checkPhaserRuntimeCapabilities,
+  RawGameDslSchema,
+  validateAndNormalizeRawGameDsl,
+  validateGameDslArtifact,
+  type GameBrief,
+  type GameDslArtifact
+} from '../../packages/game-dsl/src/index.js';
 import { createCollectorRawDsl, createDodgerRawDsl, createShooterRawDsl, createSideScrollingRunAndGunRawDsl } from '../contracts/fixtures.js';
 
 const brief: GameBrief = {
@@ -796,3 +804,294 @@ describe('GameDslProviderService', () => {
     }
   });
 });
+
+describe('game_dsl.v1 artifact contract', () => {
+  it('validates 小猫大战坦克 as a stable top_down_shooter artifact', () => {
+    const artifact = buildGameDslArtifact({
+      rawDsl: RawGameDslSchema.parse(createShooterRawDsl()),
+      runId: requestBase.runId,
+      intentPlan: { normalizedGenre: 'top_down_shooter', matchedAlias: '小猫大战坦克' }
+    });
+
+    const result = validateGameDslArtifact(artifact);
+
+    expect(result).toMatchObject({
+      ok: true,
+      artifact: {
+        artifactKind: 'game_dsl',
+        schemaVersion: 'game_dsl.v1',
+        dslId: expect.any(String),
+        runId: requestBase.runId,
+        intentPlanRef: { artifact: 'intent_plan.json', normalizedGenre: 'top_down_shooter' },
+        genre: 'top_down_shooter',
+        world: { coordinateSystem: 'top_down_2d' },
+        player: { id: 'player', controller: 'eight_direction_shoot' },
+        enemyTypes: { alien: expect.objectContaining({ id: 'alien' }) },
+        projectiles: { bolt: expect.objectContaining({ id: 'bolt' }) },
+        level: { id: 'level_main', waves: { alien_wave: expect.objectContaining({ id: 'alien_wave', enemyTypeRef: 'alien' }) } },
+        requiredCapabilities: expect.arrayContaining(['top_down_camera', 'projectile_combat'])
+      },
+      report: {
+        artifactKind: 'dsl_validation_report',
+        schemaVersion: 'dsl_validation_report.v1',
+        status: 'valid',
+        errorCount: 0,
+        semanticChecks: expect.arrayContaining([
+          expect.objectContaining({ name: 'source_dsl_validation', status: 'passed' }),
+          expect.objectContaining({ name: 'source_projection_consistency', status: 'passed' })
+        ])
+      }
+    });
+  });
+
+  it('validates 飞机大战 as a vertical_shooter artifact contract without requiring runtime support', () => {
+    const artifact = buildGameDslArtifact({
+      rawDsl: RawGameDslSchema.parse(createShooterRawDsl()),
+      runId: requestBase.runId,
+      intentPlan: { normalizedGenre: 'vertical_shooter', matchedAlias: '飞机大战' }
+    });
+
+    expect(validateGameDslArtifact(artifact)).toMatchObject({
+      ok: true,
+      artifact: {
+        genre: 'vertical_shooter',
+        world: { coordinateSystem: 'vertical_scroll_2d' },
+        camera: { mode: 'vertical_scroll' },
+        player: { controller: 'vertical_shooter' },
+        level: { structure: 'vertical_scroll' },
+        requiredCapabilities: expect.arrayContaining(['vertical_scroll_camera', 'projectile_combat'])
+      }
+    });
+  });
+
+  it('validates 马里奥式平台跳跃 as a side_scrolling_platformer artifact contract', () => {
+    const artifact = platformerArtifact();
+
+    expect(validateGameDslArtifact(artifact)).toMatchObject({
+      ok: true,
+      artifact: {
+        genre: 'side_scrolling_platformer',
+        world: { coordinateSystem: 'side_view_2d' },
+        player: { controller: 'run_jump' },
+        level: { structure: 'side_scrolling_stage', terrain: expect.arrayContaining([expect.objectContaining({ id: 'ground_intro' })]) },
+        pickups: { field_medkit: expect.objectContaining({ id: 'field_medkit' }) },
+        requiredCapabilities: expect.arrayContaining(['gravity_platformer_physics', 'platforms_terrain_collision'])
+      }
+    });
+  });
+
+  it('validates 魂斗罗式横版射击 as side_scrolling_run_and_gun even when runtime is unsupported later', () => {
+    const rawDsl = RawGameDslSchema.parse(createSideScrollingRunAndGunRawDsl());
+    const artifact = buildGameDslArtifact({
+      rawDsl,
+      runId: requestBase.runId,
+      intentPlan: { normalizedGenre: 'side_scrolling_run_and_gun', matchedAlias: '魂斗罗式' }
+    });
+    const normalized = validateAndNormalizeRawGameDsl(rawDsl);
+
+    expect(validateGameDslArtifact(artifact)).toMatchObject({
+      ok: true,
+      artifact: {
+        genre: 'side_scrolling_run_and_gun',
+        player: { controller: 'run_jump_shoot' },
+        requiredCapabilities: expect.arrayContaining(['side_view_camera', 'checkpoint_or_lives_system'])
+      }
+    });
+    expect(normalized.ok).toBe(true);
+    if (normalized.ok) {
+      expect(checkPhaserRuntimeCapabilities(normalized.ir)).toMatchObject({
+        ok: false,
+        unsupportedCapabilities: expect.arrayContaining([expect.objectContaining({ capability: 'side_view_camera' })])
+      });
+    }
+  });
+
+  it('rejects missing projectile references', () => {
+    const artifact = buildGameDslArtifact({
+      rawDsl: RawGameDslSchema.parse(createShooterRawDsl()),
+      runId: requestBase.runId,
+      intentPlan: { normalizedGenre: 'top_down_shooter' }
+    });
+
+    const result = validateGameDslArtifact({
+      ...artifact,
+      player: { ...artifact.player, actions: [{ ...artifact.player.actions[0], projectileRef: 'ghost_projectile' }] }
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      report: {
+        status: 'invalid',
+        errors: expect.arrayContaining([expect.objectContaining({ code: 'UNRESOLVED_PROJECTILE_REFERENCE' })])
+      }
+    });
+  });
+
+  it('rejects missing enemyType references', () => {
+    const artifact = buildGameDslArtifact({
+      rawDsl: RawGameDslSchema.parse(createShooterRawDsl()),
+      runId: requestBase.runId,
+      intentPlan: { normalizedGenre: 'top_down_shooter' }
+    });
+
+    const result = validateGameDslArtifact({
+      ...artifact,
+      level: { ...artifact.level, waves: { alien_wave: { ...artifact.level.waves.alien_wave, enemyTypeRef: 'ghost_enemy' } } }
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      report: {
+        status: 'invalid',
+        errors: expect.arrayContaining([expect.objectContaining({ code: 'UNRESOLVED_ENEMY_TYPE_REFERENCE' })])
+      }
+    });
+  });
+
+  it('rejects unknown critical fields', () => {
+    const artifact = buildGameDslArtifact({
+      rawDsl: RawGameDslSchema.parse(createShooterRawDsl()),
+      runId: requestBase.runId,
+      intentPlan: { normalizedGenre: 'top_down_shooter' }
+    });
+
+    expect(validateGameDslArtifact({ ...artifact, runtimeAdapter: 'phaser' })).toMatchObject({
+      ok: false,
+      report: {
+        errors: expect.arrayContaining([expect.objectContaining({ code: 'UNKNOWN_CRITICAL_FIELD' })])
+      }
+    });
+  });
+
+  it('requires all editable and runtime-addressable objects to have stable IDs', () => {
+    const artifact = buildGameDslArtifact({
+      rawDsl: RawGameDslSchema.parse(createShooterRawDsl()),
+      runId: requestBase.runId,
+      intentPlan: { normalizedGenre: 'top_down_shooter' }
+    });
+
+    const result = validateGameDslArtifact({
+      ...artifact,
+      projectiles: { bolt: { ...artifact.projectiles.bolt, id: 'bolt_renamed' } }
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      report: {
+        errors: expect.arrayContaining([expect.objectContaining({ code: 'STABLE_ID_REQUIRED', path: 'projectiles.bolt.id' })])
+      }
+    });
+  });
+
+  it('rejects invalid camera target references', () => {
+    const artifact = buildGameDslArtifact({
+      rawDsl: RawGameDslSchema.parse(createShooterRawDsl()),
+      runId: requestBase.runId,
+      intentPlan: { normalizedGenre: 'top_down_shooter' }
+    });
+
+    expect(validateGameDslArtifact({ ...artifact, camera: { ...artifact.camera, targetRef: 'missing_target' } })).toMatchObject({
+      ok: false,
+      report: {
+        errors: expect.arrayContaining([expect.objectContaining({ code: 'UNRESOLVED_CAMERA_TARGET_REFERENCE' })])
+      }
+    });
+  });
+
+  it('rejects duplicate IDs across editable artifact objects', () => {
+    const artifact = buildGameDslArtifact({
+      rawDsl: RawGameDslSchema.parse(createShooterRawDsl()),
+      runId: requestBase.runId,
+      intentPlan: { normalizedGenre: 'top_down_shooter' }
+    });
+
+    expect(
+      validateGameDslArtifact({
+        ...artifact,
+        player: { ...artifact.player, actions: [{ ...artifact.player.actions[0], id: artifact.level.id }] }
+      })
+    ).toMatchObject({
+      ok: false,
+      report: {
+        errors: expect.arrayContaining([expect.objectContaining({ code: 'DUPLICATE_ID', path: 'player.actions.0.id' })])
+      }
+    });
+  });
+
+  it('rejects genre coordinate system and controller mismatches', () => {
+    const artifact = buildGameDslArtifact({
+      rawDsl: RawGameDslSchema.parse(createShooterRawDsl()),
+      runId: requestBase.runId,
+      intentPlan: { normalizedGenre: 'top_down_shooter' }
+    });
+
+    expect(
+      validateGameDslArtifact({
+        ...artifact,
+        world: { ...artifact.world, coordinateSystem: 'side_view_2d' },
+        player: { ...artifact.player, controller: 'run_jump_shoot' }
+      })
+    ).toMatchObject({
+      ok: false,
+      report: {
+        errors: expect.arrayContaining([
+          expect.objectContaining({ code: 'GENRE_CONTRACT_MISMATCH', path: 'world.coordinateSystem' }),
+          expect.objectContaining({ code: 'GENRE_CONTRACT_MISMATCH', path: 'player.controller' })
+        ])
+      }
+    });
+  });
+
+  it('rejects protected source alias leakage into editable entity names', () => {
+    const artifact = buildGameDslArtifact({
+      rawDsl: RawGameDslSchema.parse(createShooterRawDsl()),
+      runId: requestBase.runId,
+      intentPlan: { normalizedGenre: 'top_down_shooter', matchedAlias: '小猫大战坦克' }
+    });
+
+    expect(validateGameDslArtifact({ ...artifact, player: { ...artifact.player, label: '小猫大战坦克 Hero' } })).toMatchObject({
+      ok: false,
+      report: {
+        errors: expect.arrayContaining([expect.objectContaining({ code: 'IP_ALIAS_LEAKAGE', path: 'player.label' })])
+      }
+    });
+  });
+
+  it('rejects top-level projections that drift from sourceDsl', () => {
+    const artifact = buildGameDslArtifact({
+      rawDsl: RawGameDslSchema.parse(createShooterRawDsl()),
+      runId: requestBase.runId,
+      intentPlan: { normalizedGenre: 'top_down_shooter' }
+    });
+
+    expect(validateGameDslArtifact({ ...artifact, genre: 'vertical_shooter' })).toMatchObject({
+      ok: false,
+      report: {
+        errors: expect.arrayContaining([expect.objectContaining({ code: 'SOURCE_PROJECTION_MISMATCH', path: 'genre' })])
+      }
+    });
+  });
+
+  it('rejects ipPolicy drift that would hide protected aliases', () => {
+    const artifact = buildGameDslArtifact({
+      rawDsl: RawGameDslSchema.parse(createShooterRawDsl()),
+      runId: requestBase.runId,
+      intentPlan: { normalizedGenre: 'top_down_shooter', matchedAlias: '小猫大战坦克' }
+    });
+
+    expect(validateGameDslArtifact({ ...artifact, ipPolicy: { ...artifact.ipPolicy, sourceAliases: [] } })).toMatchObject({
+      ok: false,
+      report: {
+        errors: expect.arrayContaining([expect.objectContaining({ code: 'SOURCE_PROJECTION_MISMATCH', path: 'ipPolicy' })])
+      }
+    });
+  });
+});
+
+function platformerArtifact(): GameDslArtifact {
+  return buildGameDslArtifact({
+    rawDsl: RawGameDslSchema.parse(createSideScrollingRunAndGunRawDsl()),
+    runId: requestBase.runId,
+    intentPlan: { normalizedGenre: 'side_scrolling_platformer', matchedAlias: '马里奥式' }
+  });
+}

@@ -13,7 +13,14 @@ import {
   type AssetResolutionReport
 } from '../../../../packages/asset-pipeline/src/index.js';
 import type { NormalizedGameIr, RawGameDsl } from '../../../../packages/game-dsl/src/index.js';
-import { checkPhaserRuntimeCapabilities, validateAndNormalizeRawGameDsl } from '../../../../packages/game-dsl/src/index.js';
+import {
+  buildGameDslArtifact,
+  checkPhaserRuntimeCapabilities,
+  validateAndNormalizeRawGameDsl,
+  validateGameDslArtifact,
+  type DslValidationReport,
+  type GameDslArtifact
+} from '../../../../packages/game-dsl/src/index.js';
 import type { RuntimeCompileResult, RuntimeCompileSuccess } from '../compiler/compiler.types.js';
 import { TemplateCompilerService } from '../compiler/template-compiler.service.js';
 import { ViteBuildRunnerService } from '../compiler/vite-build-runner.service.js';
@@ -39,7 +46,7 @@ type DslProvider = Pick<GameDslProviderService, 'generateGameBrief' | 'generateR
 type RuntimeCompiler = Pick<TemplateCompilerService, 'compile'>;
 type RuntimeBuilder = Pick<ViteBuildRunnerService, 'build'>;
 type RuntimeQaRunner = Pick<PlaywrightQaRunnerService, 'run'>;
-type RawDslGenerationResult = { ok: true; value: RawGameDsl } | { ok: false; status: ProjectStatus };
+type RawDslGenerationResult = { ok: true; artifact: GameDslArtifact } | { ok: false; status: ProjectStatus };
 type QaPipelineResult =
   | { kind: 'report'; report: QaReport; assetSemanticRepair: QaAssetSemanticRepairReport }
   | { kind: 'status'; status: ProjectStatus; report: QaReport; assetSemanticRepair: QaAssetSemanticRepairReport };
@@ -79,7 +86,7 @@ export class GenerationPipelineService {
       return generated.status;
     }
 
-    const rawDsl = generated.value;
+    const rawDsl = generated.artifact.sourceDsl;
     await this.appendEvent(input.runId, 'dsl.generated', 'Raw Game DSL generated.');
 
     await this.setStatus(input.projectId, input.runId, 'DSL_VALIDATING', 'dsl-validation', 'RUNNING');
@@ -153,8 +160,12 @@ export class GenerationPipelineService {
 
       if (raw.ok) {
         await this.writeModelGeneratedRawDsl(input, raw.value);
+        const artifact = await this.writeValidatedGameDslArtifact(input, raw.value, intentPlan);
+        if (!artifact.ok) {
+          return { ok: false, status: 'DSL_VALIDATION_FAILED' };
+        }
         await this.setStatus(input.projectId, input.runId, 'DSL_GENERATED', 'dsl-generation', 'DONE');
-        return { ok: true, value: raw.value };
+        return { ok: true, artifact: artifact.value };
       }
 
       return await this.handleModelGenerationFailure(input, raw);
@@ -441,7 +452,7 @@ export class GenerationPipelineService {
     failure: GameDslProviderResult<unknown>
   ): Promise<RawDslGenerationResult> {
     if (shouldUseLocalFallback(failure)) {
-      return { ok: true, value: await this.writeDeterministicFallback(input, failure) };
+      return await this.writeDeterministicFallback(input, failure);
     }
 
     const reason = failure.ok ? 'unknown' : `${failure.code}: ${failure.message}`;
@@ -459,16 +470,44 @@ export class GenerationPipelineService {
     await this.appendEvent(input.runId, 'model.failed', message);
   }
 
-  private async writeDeterministicFallback(input: GenerationPipelineInput, failure: GameDslProviderResult<unknown>): Promise<RawGameDsl> {
+  private async writeDeterministicFallback(input: GenerationPipelineInput, failure: GameDslProviderResult<unknown>): Promise<RawDslGenerationResult> {
     const fallback = createDeterministicRawGameDsl(input.idea, input.language);
     const outputPath = this.workspace.getModelOutputPath(input.projectId, input.runId, 'raw-game-dsl.raw.json');
     const reason = failure.ok ? 'unknown' : `${failure.code}: ${failure.message}`;
 
     await mkdir(dirname(outputPath), { recursive: true });
     await writeFile(outputPath, `${JSON.stringify(fallback, null, 2)}\n`, 'utf8');
+    const intentPlan = buildIntentPlan({ idea: input.idea, language: normalizeLanguage(input.language) });
+    const artifact = await this.writeValidatedGameDslArtifact(input, fallback, intentPlan);
+    if (!artifact.ok) {
+      return { ok: false, status: 'DSL_VALIDATION_FAILED' };
+    }
     await this.setStatus(input.projectId, input.runId, 'DSL_GENERATED', 'dsl-generation', 'DONE');
     await this.appendEvent(input.runId, 'model.fallback', `Using deterministic local DSL fallback because model generation failed: ${reason}`);
-    return fallback;
+    return { ok: true, artifact: artifact.value };
+  }
+
+  private async writeValidatedGameDslArtifact(
+    input: GenerationPipelineInput,
+    rawDsl: RawGameDsl,
+    intentPlan: IntentPlan
+  ): Promise<{ ok: true; value: GameDslArtifact } | { ok: false }> {
+    await this.setStatus(input.projectId, input.runId, 'DSL_VALIDATING', 'dsl-validation', 'RUNNING');
+    const candidate = buildGameDslArtifact({ rawDsl, runId: input.runId, intentPlan });
+    const validation = validateGameDslArtifact(candidate);
+
+    await this.writeDslValidationReport(input, validation.report);
+
+    if (!validation.ok) {
+      await this.writeGameDslCandidate(input, validation.candidate);
+      await this.setStatus(input.projectId, input.runId, 'DSL_VALIDATION_FAILED', 'dsl-validation', 'FAILED');
+      await this.appendEvent(input.runId, 'dsl.validation.failed', validation.report.errors.map((issue) => `${issue.path}: ${issue.message}`).join('; '));
+      return { ok: false };
+    }
+
+    await this.writeGameDslArtifact(input, validation.artifact);
+    await this.appendEvent(input.runId, 'dsl.validation.passed', 'Versioned Game DSL artifact validated.');
+    return { ok: true, value: validation.artifact };
   }
 
   private async writeModelGeneratedRawDsl(input: GenerationPipelineInput, rawDsl: RawGameDsl): Promise<void> {
@@ -476,6 +515,27 @@ export class GenerationPipelineService {
 
     await mkdir(dirname(resultPath), { recursive: true });
     await writeFile(resultPath, `${JSON.stringify(rawDsl, null, 2)}\n`, 'utf8');
+  }
+
+  private async writeGameDslArtifact(input: GenerationPipelineInput, artifact: GameDslArtifact): Promise<void> {
+    const outputPath = this.workspace.getModelOutputPath(input.projectId, input.runId, 'game_dsl.json');
+
+    await mkdir(dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, `${JSON.stringify(artifact, null, 2)}\n`, 'utf8');
+  }
+
+  private async writeGameDslCandidate(input: GenerationPipelineInput, candidate: unknown): Promise<void> {
+    const outputPath = this.workspace.getModelOutputPath(input.projectId, input.runId, 'game_dsl.candidate.json');
+
+    await mkdir(dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, `${JSON.stringify(candidate, null, 2)}\n`, 'utf8');
+  }
+
+  private async writeDslValidationReport(input: GenerationPipelineInput, report: DslValidationReport): Promise<void> {
+    const outputPath = this.workspace.getModelOutputPath(input.projectId, input.runId, 'dsl_validation_report.json');
+
+    await mkdir(dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   }
 
   private async writeIntentPlan(input: GenerationPipelineInput, intentPlan: IntentPlan): Promise<void> {
