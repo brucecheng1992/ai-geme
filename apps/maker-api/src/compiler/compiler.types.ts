@@ -1,4 +1,4 @@
-import type { NormalizedGameIr } from '../../../../packages/game-dsl/src/index.js';
+import type { NormalizedGameIr, UnsupportedRuntimeCapability } from '../../../../packages/game-dsl/src/index.js';
 
 export type RuntimeCompileInput = {
   projectId: string;
@@ -6,7 +6,7 @@ export type RuntimeCompileInput = {
   ir: NormalizedGameIr;
 };
 
-export type RuntimeCompileResult = {
+export type RuntimeCompileSuccess = {
   ok: true;
   projectId: string;
   outputDir: string;
@@ -14,6 +14,16 @@ export type RuntimeCompileResult = {
   templateId: 'collector_v1' | 'dodger_v1' | 'shooter_v1';
   files: string[];
 };
+
+export type RuntimeCompileUnsupported = {
+  ok: false;
+  code: 'RUNTIME_UNSUPPORTED';
+  projectId: string;
+  templateId: string;
+  unsupportedCapabilities: UnsupportedRuntimeCapability[];
+};
+
+export type RuntimeCompileResult = RuntimeCompileSuccess | RuntimeCompileUnsupported;
 
 export type BuildInput = {
   projectId: string;

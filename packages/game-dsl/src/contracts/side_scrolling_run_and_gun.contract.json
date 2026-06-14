@@ -1,0 +1,50 @@
+{
+  "contract_version": "mechanic-contract-v0.1",
+  "genre": "side_scrolling_run_and_gun",
+  "template_id": "side_scrolling_run_and_gun.v1",
+  "aliases": ["魂斗罗", "魂斗罗式", "横版跑枪", "横版射击", "run and gun", "contra-like"],
+  "copyright_safety": {
+    "forbidden_source_terms": ["contra", "魂斗罗"],
+    "rule": "Normalize user references to the generic genre and do not emit copyrighted names, characters, levels, or assets."
+  },
+  "required_mechanics": [
+    "camera.side_view_follow_x",
+    "world.side_view_2d",
+    "world.gravity",
+    "player.run_jump_shoot_controller",
+    "player.multi_direction_aiming",
+    "projectile.exists",
+    "enemy.exists",
+    "collision.projectile_hits_enemy",
+    "level.platforms_exist",
+    "level.spawn_triggers_exist",
+    "checkpoint_or_lives.exists",
+    "win_lose.exists"
+  ],
+  "required_runtime_capabilities": [
+    "side_view_camera",
+    "gravity_platformer_physics",
+    "run_jump_controller",
+    "multi_direction_shooting",
+    "projectile_combat",
+    "enemy_spawn_triggers",
+    "terrain_collision",
+    "checkpoint_or_lives_system"
+  ],
+  "asset_roles": ["player", "enemy", "projectile", "tileset", "background", "pickup"],
+  "allowed_win_types": ["reach_exit", "enemy_cleared"],
+  "required_telemetry_all": [
+    "game.started",
+    "input.received",
+    "player.moved",
+    "player.jumped",
+    "player.fired",
+    "projectile.spawned",
+    "enemy.hit",
+    "checkpoint.reached",
+    "game.restarted"
+  ],
+  "required_telemetry_any_groups": [
+    ["enemy.cleared", "level.segment.completed", "game.won"]
+  ]
+}

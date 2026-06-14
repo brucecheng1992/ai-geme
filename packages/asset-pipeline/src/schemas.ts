@@ -3,7 +3,17 @@ import { isAbsolute } from 'node:path';
 import { z } from 'zod';
 
 const AssetIdSchema = z.string().regex(/^[a-z][a-z0-9_]{1,39}$/);
-export const AssetRoleSchema = z.enum(['player_character', 'enemy', 'projectile', 'collectible', 'hazard', 'background', 'ui_panel']);
+export const AssetRoleSchema = z.enum([
+  'player_character',
+  'enemy',
+  'projectile',
+  'collectible',
+  'hazard',
+  'background',
+  'ui_panel',
+  'tileset',
+  'pickup'
+]);
 const AssetProviderSchema = z.enum(['local_asset_pack', 'runtime_asset', 'template_svg', 'placeholder']);
 const RuntimeAssetFormatSchema = z.enum(['svg', 'png']);
 const AssetLoadKeySchema = z.string().regex(/^agm\.[a-z][a-z0-9_]{1,39}$/);
@@ -41,7 +51,7 @@ export const AssetPlanItemSchema = z.strictObject({
   role: AssetRoleSchema,
   subject: z.string().min(1).max(120),
   semantic: AssetSemanticConstraintSchema.optional(),
-  view: z.enum(['top_down']).default('top_down'),
+  view: z.enum(['top_down', 'side_view']).default('top_down'),
   size: AssetSizeSchema,
   format: z.literal('svg'),
   required: z.boolean(),
@@ -54,7 +64,7 @@ export const AssetPlanSchema = z
     projectId: z.string().regex(/^proj_[A-Za-z0-9_-]+$/),
     style: z.strictObject({
       visual_theme: z.string().min(1).max(80),
-      camera: z.literal('top_down')
+      camera: z.enum(['top_down', 'side_view'])
     }),
     items: z.array(AssetPlanItemSchema).min(1)
   })

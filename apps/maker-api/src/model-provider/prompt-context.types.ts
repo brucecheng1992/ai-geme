@@ -9,7 +9,7 @@ export type RawDslPromptContext = {
   selected_contract: unknown;
   allowed_enums: {
     genres: SupportedGameGenre[];
-    cameras: ['top_down'];
+    cameras: Array<GameBrief['camera']>;
     difficulties: Array<GameBrief['difficulty']>;
     languages: Array<'zh' | 'en'>;
     movement_types: string[];
@@ -20,6 +20,13 @@ export type RawDslPromptContext = {
     win_types: string[];
     lose_types: string[];
     hud_items: string[];
+    coordinate_systems: string[];
+    camera_modes: string[];
+    player_controllers: string[];
+    aiming_modes: string[];
+    terrain_kinds: string[];
+    spawn_triggers: string[];
+    pickup_kinds: string[];
   };
   forbidden_terms: string[];
   forbidden_fields: string[];

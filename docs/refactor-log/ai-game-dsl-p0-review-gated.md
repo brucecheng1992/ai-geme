@@ -4148,3 +4148,67 @@ fixture size check：
 
 - Oracle 预审：P0 无；P1 要求 metadata complete schema、对新 fixture 运行 runtime export、focused test 锁 exact 10 basenames；P2 要求避免给所有动物统一 collectible role、README 记录来源/排除项/size policy、size gate 遍历整个 fixture；P3 要求说明 `source/` 语义，并考虑 `semantic.world=kenney_cube_pet`。
 - 已落实：sidecar metadata 补齐 complete schema；focused test 锁 exact basenames / full fixture size；README 记录 provenance、排除项和边界；所有动物 gameplay role 保持 `npc` / `decoration`；`semantic.world` 使用 `kenney_cube_pet`。
+
+### 19. 2D Generation Pipeline Stabilization Step 1：Intent Plan / Genre Taxonomy Gate
+
+完成时间：2026-06-14
+
+已完成内容：
+
+- 新增 `apps/maker-api/src/model-provider/intent-plan.ts`，把短 prompt 先归一为 `intent_plan.json`：
+  - 正式 2D genre taxonomy：`top_down_shooter`、`side_scrolling_platformer`、`side_scrolling_run_and_gun`、`vertical_shooter`、`dodger_collector`、`breakout`、`maze_chase`。
+  - 多语言 alias：`小猫大战坦克`、`魂斗罗`、`魂斗罗式`、`横版跑枪`、`横版射击`、`run and gun`、`contra-like`、`飞机大战`、`马里奥式`、`平台跳跃`、`打砖块`、`迷宫追逐`。
+  - 内部 `unrecognized_2d_genre` 只用于未知 prompt 早停，不作为正式 taxonomy enum。
+- `GameDslProviderService` 接入 intent plan：
+  - model prompt 显式携带 `intent_plan` 和 alias 表。
+  - `小猫大战坦克` 映射到当前可执行 brief genre `shooter` / `top_down`。
+  - run-and-gun alias 仍归一为 generic `side_scrolling_run_and_gun`，并清理 `Contra` / `魂斗罗` 等版权特定 title 文本。
+- `GenerationPipelineService` 在 `DSL_GENERATING` 阶段先写 `intent_plan.json`。
+- 当前 runtime DSL 未覆盖的 genre 明确返回 `RUNTIME_UNSUPPORTED` 和 `unsupportedCapabilities`，不进入 model brief/raw DSL 生成：
+  - `side_scrolling_run_and_gun`
+  - `side_scrolling_platformer`
+  - `vertical_shooter`
+  - `breakout`
+  - `maze_chase`
+  - `unrecognized_2d_genre`
+- 保持 DSL-first 边界：本步不扩 asset coverage，不实现新的 Phaser runtime adapter，不把 side-scrolling run-and-gun 静默降级为 top-down shooter。
+
+阶段结果：
+
+- Pipeline artifact 链路新增第一个稳定节点：`intent_plan.json`。
+- 当前可运行闭环仍以 `top_down_shooter -> shooter` 为主。
+- 当前未支持 genre 在 runtime 生成前结构化早停，后续 Phase 2/3/5 可继续补 `dsl_validation_report.json`、`runtime_capability_report.json`、schema v1 和 runtime adapters。
+
+本步未做：
+
+- 未实现 DSL schema v1 的完整严格字段集。
+- 未生成 `dsl_validation_report.json`、`runtime_capability_report.json`、`asset_plan.json`、`asset_resolution_report.json`、`runtime_manifest.json`、`build_report.json` 的全链路新 artifact 序列。
+- 未扩大 local asset pack 覆盖面。
+- 未实现 side-scrolling platformer / run-and-gun Phaser playable runtime。
+
+已通过验证：
+
+    npx vitest run tests/workspace/game-dsl-provider.test.ts tests/workspace/generation-pipeline.service.test.ts
+    # 2 个测试文件，78 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+审查记录：
+
+- Oracle 首轮：发现 2 个 P1：
+  - `side_scrolling_run_and_gun` 在 intent 层被标记 supported，但实际 runtime capability gate / template compiler 仍不支持。
+  - 未命中 alias 的 prompt 默认降级为 supported `top_down_shooter`，会掩盖未知或未覆盖 genre。
+- 已修复：
+  - `supportedRuntimeDslGenres` 只保留 `top_down_shooter` 和 `dodger_collector`。
+  - `side_scrolling_run_and_gun`、`side_scrolling_platformer`、`vertical_shooter`、`breakout`、`maze_chase` 均返回 explicit unsupported capabilities。
+  - 未识别 prompt 返回内部 `unrecognized_2d_genre` 并早停，不静默降级。
+  - pipeline 测试覆盖 `飞机大战`、`contra-like`、`横版跑枪打外星人`、`马里奥式平台跳跃`、`平台跳跃` 和未知 prompt 的 `intent_plan.json` / `RUNTIME_UNSUPPORTED` 行为。
+- Oracle 复审：P0/P1 无，两个上一轮 P1 已关闭；可进入 docs / commit。
+
+当前下一步：
+
+- 2D pipeline stabilization Step 2：补 DSL schema v1 validation report artifact，并把 `game_dsl.json` / `dsl_validation_report.json` 写成稳定 pipeline contract。

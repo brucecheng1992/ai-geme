@@ -4,6 +4,7 @@ export { NormalizedGameIrSchema, type NormalizedGameIr } from './schemas/normali
 export { DslPatchSchema, type DslPatch, type DslPatchOperation } from './schemas/dsl-patch-v0.1.schema.js';
 export { validateRawGameDsl } from './dsl-validator.js';
 export { normalizeRawGameDsl, validateAndNormalizeRawGameDsl } from './normalizer.js';
+export { checkPhaserRuntimeCapabilities, type RuntimeCapabilityGateResult, type UnsupportedRuntimeCapability } from './runtime-capability-gate.js';
 export { DslValidationError } from './validation.types.js';
 export type {
   DslValidationFailure,

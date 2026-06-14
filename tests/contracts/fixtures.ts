@@ -184,38 +184,125 @@ export function createShooterRawDsl() {
   };
 }
 
+export function createSideScrollingRunAndGunRawDsl() {
+  return {
+    dsl_version: 'game-dsl-v0.1',
+    metadata: {
+      title: 'Frontier Blast',
+      description: 'Run, jump, and shoot through generic side-view platform segments.',
+      language: 'en'
+    },
+    game: { genre: 'side_scrolling_run_and_gun', camera: 'side_view', difficulty: 'normal', target_play_time_sec: 60 },
+    world: {
+      width: 960,
+      height: 540,
+      visual_theme: 'generic alien frontier',
+      coordinateSystem: 'side_view_2d',
+      gravity: 1200
+    },
+    camera: { mode: 'follow_player_x' },
+    player: {
+      id: 'player',
+      label: 'Runner',
+      health: 3,
+      movement: { type: 'horizontal', speed_px_per_sec: 260 },
+      controller: 'run_jump_shoot',
+      aiming: { mode: 'multi_direction' },
+      actions: [{ id: 'fire', type: 'shoot_projectile', cooldown_ms: 260, spawns: 'pulse_bolt' }]
+    },
+    entities: [
+      { id: 'pulse_bolt', kind: 'projectile', label: 'Pulse Bolt', damage: 1, movement: { type: 'move_right', speed_px_per_sec: 620 } },
+      { id: 'drone', kind: 'enemy', label: 'Alien Drone', count: 8, health: 1, movement: { type: 'patrol', speed_px_per_sec: 90 } }
+    ],
+    projectiles: [{ id: 'pulse_bolt_spec', label: 'Pulse Bolt', damage: 1, speed_px_per_sec: 620 }],
+    enemyTypes: [{ id: 'drone_type', label: 'Alien Drone', health: 1, movement: { type: 'patrol', speed_px_per_sec: 90 } }],
+    level: {
+      segments: [
+        { id: 'segment_intro', startX: 0, endX: 900 },
+        { id: 'segment_bridge', startX: 900, endX: 1800 }
+      ],
+      terrain: [
+        { id: 'ground_intro', kind: 'ground', x: 0, y: 500, width: 900, height: 40 },
+        { id: 'platform_bridge', kind: 'platform', x: 980, y: 380, width: 280, height: 24 }
+      ],
+      spawns: [
+        { id: 'spawn_intro_drone', enemyType: 'drone_type', trigger: 'enter_segment', x: 640, count: 3 },
+        { id: 'spawn_bridge_drone', enemyType: 'drone_type', trigger: 'reach_x', x: 1080, count: 5 }
+      ]
+    },
+    pickups: [{ id: 'field_medkit', label: 'Medkit', kind: 'health', x: 720, y: 450 }],
+    winLose: { win: 'reach_exit', lose: 'player_health_zero', lives: 3, checkpoints: [0, 900] },
+    rules: {
+      collisions: [
+        {
+          id: 'bolt_hits_drone',
+          source: 'pulse_bolt',
+          target: 'drone',
+          type: 'projectile_hit',
+          effects: [{ type: 'damage', value: 1 }, { type: 'destroy' }, { type: 'score_add', value: 1 }]
+        },
+        {
+          id: 'drone_hits_player',
+          source: 'drone',
+          target: 'player',
+          type: 'overlap',
+          effects: [{ type: 'damage', value: 1 }]
+        }
+      ]
+    },
+    objectives: { win: { type: 'reach_exit', target: 1800 }, lose: { type: 'player_health_zero' } },
+    ui: {
+      hud: ['score', 'health', 'objective'],
+      restart: true,
+      screens: {
+        win: { title: 'VICTORY', subtitle: 'Exit reached' },
+        lose: { title: 'DEFEAT', subtitle: 'Lives depleted' }
+      }
+    }
+  };
+}
+
 type ContractTelemetry = {
   required_telemetry_all: string[];
   required_telemetry_any_groups: string[][];
 };
 
-type IrGenre = 'collector' | 'dodger' | 'shooter';
+type IrGenre = 'collector' | 'dodger' | 'shooter' | 'side_scrolling_run_and_gun';
 
 export function createIrForGenre(genre: IrGenre, contract: ContractTelemetry) {
   const templateIdByGenre = {
     collector: 'collector_v1',
     dodger: 'dodger_v1',
-    shooter: 'shooter_v1'
+    shooter: 'shooter_v1',
+    side_scrolling_run_and_gun: 'side_scrolling_run_and_gun.v1'
   } as const;
   const objectivesByGenre = {
     collector: ['target_score', 'none'],
     dodger: ['survive_duration', 'player_health_zero'],
-    shooter: ['enemy_cleared', 'player_health_zero']
+    shooter: ['enemy_cleared', 'player_health_zero'],
+    side_scrolling_run_and_gun: ['reach_exit', 'player_health_zero']
+  } as const;
+  const cameraByGenre = {
+    collector: 'top_down',
+    dodger: 'top_down',
+    shooter: 'top_down',
+    side_scrolling_run_and_gun: 'side_view'
   } as const;
 
   return {
     ir_version: 'game-ir-v0.1',
     source_dsl_version: 'game-dsl-v0.1',
     metadata: { title: 'Gem Run', language: 'en' },
-    game: { genre, camera: 'top_down', difficulty: 'easy' },
+    game: { genre, camera: cameraByGenre[genre], difficulty: 'easy' },
     world: { width: 960, height: 540 },
     runtime_requirements: {
       dimension: '2d',
-      camera: 'top_down',
+      camera: cameraByGenre[genre],
       movement: ['eight_direction', 'static'],
       collision: ['overlap'],
       actions: ['collect', 'restart'],
       objectives: [...objectivesByGenre[genre]],
+      capabilities: genre === 'side_scrolling_run_and_gun' ? ['side_view_camera'] : [],
       telemetry: true
     },
     runtime_plan: {

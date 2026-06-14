@@ -8,6 +8,7 @@ export function buildAssetPlanFromIr(projectId: string, input: NormalizedGameIr)
   const world = asRecord(params.world);
   const styleTheme = readOptionalString(world, 'visual_theme');
   const player = asRecord(params.player);
+  const itemView = ir.game.camera === 'side_view' ? 'side_view' : 'top_down';
   const items: AssetPlanItem[] = [
     createItem(
       'background_main',
@@ -17,9 +18,10 @@ export function buildAssetPlanFromIr(projectId: string, input: NormalizedGameIr)
         w: ir.world.width,
         h: ir.world.height
       },
-      styleTheme
+      styleTheme,
+      itemView
     ),
-    createItem('player', 'player_character', readLabel(player, 'Player'), { w: 64, h: 64 })
+    createItem('player', 'player_character', readLabel(player, 'Player'), { w: 64, h: 64 }, undefined, itemView)
   ];
 
   if (ir.game.genre === 'collector') {
@@ -44,6 +46,16 @@ export function buildAssetPlanFromIr(projectId: string, input: NormalizedGameIr)
     items.push(createItem('projectile', 'projectile', readLabel(projectile, 'Projectile'), { w: 32, h: 32 }));
   }
 
+  if (ir.game.genre === 'side_scrolling_run_and_gun') {
+    const enemy = firstRecord(params.enemyTypes) ?? asRecord(params.enemy);
+    const projectile = firstRecord(params.projectiles) ?? asRecord(params.projectile);
+    const pickup = firstRecord(params.pickups);
+    items.push(createItem('enemy', 'enemy', readLabel(enemy, 'Enemy'), { w: 64, h: 64 }, undefined, itemView));
+    items.push(createItem('projectile', 'projectile', readLabel(projectile, 'Projectile'), { w: 32, h: 24 }, undefined, itemView));
+    items.push(createItem('tileset', 'tileset', 'side view terrain tileset', { w: 256, h: 128 }, styleTheme, itemView));
+    items.push(createItem('pickup', 'pickup', readLabel(pickup, 'Pickup'), { w: 40, h: 40 }, undefined, itemView));
+  }
+
   return AssetPlanSchema.parse({
     version: 'asset-plan-v0.1',
     projectId,
@@ -55,18 +67,29 @@ export function buildAssetPlanFromIr(projectId: string, input: NormalizedGameIr)
   });
 }
 
-function createItem(id: string, role: AssetPlanItem['role'], subject: string, size: AssetPlanItem['size'], styleTheme?: string): AssetPlanItem {
+function createItem(
+  id: string,
+  role: AssetPlanItem['role'],
+  subject: string,
+  size: AssetPlanItem['size'],
+  styleTheme?: string,
+  view: AssetPlanItem['view'] = 'top_down'
+): AssetPlanItem {
   return AssetPlanItemSchema.parse({
     id,
     role,
     subject,
     semantic: inferAssetSemanticConstraint({ role, subject, styleTheme }),
-    view: 'top_down',
+    view,
     size,
     format: 'svg',
     required: true,
     provider_priority: ['local_asset_pack', 'template_svg', 'placeholder']
   });
+}
+
+function firstRecord(value: unknown): Record<string, unknown> | undefined {
+  return Array.isArray(value) ? asRecord(value[0]) : undefined;
 }
 
 function readLabel(record: Record<string, unknown> | undefined, fallback: string): string {

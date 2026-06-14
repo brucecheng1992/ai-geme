@@ -4,8 +4,8 @@ import { z } from 'zod';
 export const GameBriefSchema = z.object({
   brief_version: z.literal('game-brief-v0.1'),
   title: z.string().min(1).max(80),
-  genre: z.enum(['collector', 'dodger', 'shooter']),
-  camera: z.literal('top_down'),
+  genre: z.enum(['collector', 'dodger', 'shooter', 'side_scrolling_run_and_gun']),
+  camera: z.enum(['top_down', 'side_view']),
   core_loop: z.array(z.string().min(1).max(120)).min(2).max(8),
   difficulty: z.enum(['easy', 'normal']),
   target_play_time_sec: z.number().int().min(30).max(120)

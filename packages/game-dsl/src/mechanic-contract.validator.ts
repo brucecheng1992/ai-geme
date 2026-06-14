@@ -23,6 +23,10 @@ export function validateMechanicContract(raw: RawGameDsl): DslValidationIssue[] 
     return validateDodger(raw);
   }
 
+  if (raw.game.genre === 'side_scrolling_run_and_gun') {
+    return validateSideScrollingRunAndGun(raw);
+  }
+
   return validateShooter(raw);
 }
 
@@ -138,6 +142,33 @@ function validateShooter(raw: RawGameDsl): DslValidationIssue[] {
     [clearsEnemy, 'enemy.can_be_cleared'],
     [progresses && winAllowed, 'score_or_objective_progress.exists'],
     [raw.objectives.lose.type === 'player_health_zero', 'lose.player_health_zero']
+  ]);
+}
+
+function validateSideScrollingRunAndGun(raw: RawGameDsl): DslValidationIssue[] {
+  const fireAction = raw.player.actions.find((action) => action.type === 'shoot_projectile');
+  const projectile = raw.entities.find((entity) => entity.kind === 'projectile');
+  const enemy = raw.entities.find((entity) => entity.kind === 'enemy');
+  const hitCollision = projectile && enemy ? findCollision(raw, projectile.id, enemy.id, 'projectile_hit') : undefined;
+  const damagesEnemy = hitCollision?.effects.some((effect) => effect.type === 'damage' || effect.type === 'destroy') === true;
+  const hasPlatform = raw.level?.terrain.some((terrain) => terrain.kind === 'platform' || terrain.kind === 'ground') === true;
+  const hasSpawnTrigger = (raw.level?.spawns.length ?? 0) > 0;
+  const hasCheckpointOrLives = (raw.winLose?.checkpoints?.length ?? 0) > 0 || (raw.winLose?.lives ?? 0) > 0;
+
+  return mechanicIssues([
+    [raw.world.coordinateSystem === 'side_view_2d', 'world.side_view_2d'],
+    [(raw.world.gravity ?? 0) > 0, 'world.gravity'],
+    [raw.camera?.mode === 'follow_player_x', 'camera.side_view_follow_x'],
+    [raw.player.controller === 'run_jump_shoot', 'player.run_jump_shoot_controller'],
+    [raw.player.aiming?.mode === 'multi_direction' || raw.player.aiming?.mode === 'eight_direction', 'player.multi_direction_aiming'],
+    [fireAction !== undefined, 'player.can_fire'],
+    [projectile !== undefined && fireAction?.spawns === projectile.id, 'projectile.exists'],
+    [enemy !== undefined, 'enemy.exists'],
+    [hitCollision !== undefined && damagesEnemy, 'collision.projectile_hits_enemy'],
+    [hasPlatform, 'level.platforms_exist'],
+    [hasSpawnTrigger, 'level.spawn_triggers_exist'],
+    [hasCheckpointOrLives, 'checkpoint_or_lives.exists'],
+    [raw.winLose !== undefined, 'win_lose.exists']
   ]);
 }
 

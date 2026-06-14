@@ -4,11 +4,12 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { TemplateCompilerService } from '../../apps/maker-api/src/compiler/template-compiler.service.js';
+import type { RuntimeCompileResult, RuntimeCompileSuccess } from '../../apps/maker-api/src/compiler/compiler.types.js';
 import { ViteBuildRunnerService } from '../../apps/maker-api/src/compiler/vite-build-runner.service.js';
 import { LocalWorkspaceService } from '../../apps/maker-api/src/workspace/local-workspace.service.js';
 import { AssetManifestSchema, AssetResolutionReportSchema } from '../../packages/asset-pipeline/src/index.js';
 import { validateAndNormalizeRawGameDsl } from '../../packages/game-dsl/src/index.js';
-import { createCollectorRawDsl, createDodgerRawDsl, createShooterRawDsl } from '../contracts/fixtures.js';
+import { createCollectorRawDsl, createDodgerRawDsl, createShooterRawDsl, createSideScrollingRunAndGunRawDsl } from '../contracts/fixtures.js';
 
 const projectId = 'proj_20260610_020000_abcd';
 const runId = 'run_20260610_020000_abcd';
@@ -36,6 +37,7 @@ describe('Compiler + Build + Preview services', () => {
     }
 
     const result = await new TemplateCompilerService(workspace, templateRoot).compile({ projectId, runId, ir: normalized.ir });
+    expectCompileSuccess(result);
 
     expect(result).toMatchObject({
       ok: true,
@@ -76,6 +78,7 @@ describe('Compiler + Build + Preview services', () => {
     try {
       process.chdir(join(repoRoot, 'apps/maker-api'));
       const result = await new TemplateCompilerService(new LocalWorkspaceService()).compile({ projectId: cwdProjectId, runId, ir: normalized.ir });
+      expectCompileSuccess(result);
 
       expect(result.outputDir).toBe(join(repoRoot, 'data/generated-projects', cwdProjectId));
       await expect(readFile(join(result.outputDir, 'collector/src/GameScene.ts'), 'utf8')).resolves.toContain('CollectorGameScene');
@@ -96,9 +99,11 @@ describe('Compiler + Build + Preview services', () => {
 
     const compiler = new TemplateCompilerService(workspace, templateRoot);
     const first = await compiler.compile({ projectId, runId, ir: collector.ir });
+    expectCompileSuccess(first);
     await expect(readFile(join(first.outputDir, 'collector/src/GameScene.ts'), 'utf8')).resolves.toContain('CollectorGameScene');
 
     const second = await compiler.compile({ projectId, runId, ir: shooter.ir });
+    expectCompileSuccess(second);
     await expect(readFile(join(second.outputDir, 'shooter/src/GameScene.ts'), 'utf8')).resolves.toContain('ShooterGameScene');
     await expect(readFile(join(second.outputDir, 'shooter/src/shooter-art-library.ts'), 'utf8')).resolves.toContain('createShooterArtRuntime');
     await expect(readFile(join(second.outputDir, 'shooter/src/asset-manifest.generated.json'), 'utf8')).resolves.toContain('"sourcePack": "kenney-tiny-shooter-tanks"');
@@ -123,6 +128,7 @@ describe('Compiler + Build + Preview services', () => {
     }
 
     const result = await new TemplateCompilerService(workspace, templateRoot).compile({ projectId, runId, ir: normalized.ir });
+    expectCompileSuccess(result);
     const manifest = AssetManifestSchema.parse(JSON.parse(await readFile(join(result.outputDir, 'public/asset_manifest.json'), 'utf8')));
     const report = AssetResolutionReportSchema.parse(JSON.parse(await readFile(join(result.outputDir, 'asset_resolution_report.json'), 'utf8')));
     const manifestById = new Map(manifest.assets.map((asset) => [asset.id, asset]));
@@ -161,6 +167,34 @@ describe('Compiler + Build + Preview services', () => {
     await expect(readFile(join(result.outputDir, 'shooter/src/shooter-art-library.ts'), 'utf8')).resolves.toContain('image.setAngle');
   });
 
+  it('returns structured unsupported capabilities for side-scrolling run-and-gun before runtime generation', async () => {
+    const normalized = validateAndNormalizeRawGameDsl(createSideScrollingRunAndGunRawDsl());
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const result = await new TemplateCompilerService(workspace, templateRoot).compile({ projectId, runId, ir: normalized.ir });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'RUNTIME_UNSUPPORTED',
+      projectId,
+      templateId: 'side_scrolling_run_and_gun.v1',
+      unsupportedCapabilities: expect.arrayContaining([
+        expect.objectContaining({ capability: 'side_view' }),
+        expect.objectContaining({ capability: 'side_view_camera' }),
+        expect.objectContaining({ capability: 'gravity_platformer_physics' }),
+        expect.objectContaining({ capability: 'run_jump_controller' }),
+        expect.objectContaining({ capability: 'multi_direction_shooting' }),
+        expect.objectContaining({ capability: 'enemy_spawn_triggers' }),
+        expect.objectContaining({ capability: 'terrain_collision' }),
+        expect.objectContaining({ capability: 'checkpoint_or_lives_system' })
+      ])
+    });
+    await expect(readFile(join(workspace.getGeneratedProjectDir(projectId), 'src/main.ts'), 'utf8')).rejects.toThrow();
+  });
+
   it('writes optional dodger collectible params when the DSL includes coins', async () => {
     const normalized = validateAndNormalizeRawGameDsl(createDodgerRawDsl());
     expect(normalized.ok).toBe(true);
@@ -169,6 +203,7 @@ describe('Compiler + Build + Preview services', () => {
     }
 
     const result = await new TemplateCompilerService(workspace, templateRoot).compile({ projectId, runId, ir: normalized.ir });
+    expectCompileSuccess(result);
 
     await expect(readFile(join(result.outputDir, 'dodger/src/template-params.generated.json'), 'utf8')).resolves.toContain('"collectible"');
     await expect(readFile(join(result.outputDir, 'dodger/src/runtime-plan.generated.json'), 'utf8')).resolves.toContain('"spawn_rules"');
@@ -197,6 +232,7 @@ describe('Compiler + Build + Preview services', () => {
     }
 
     const result = await new TemplateCompilerService(workspace, templateRoot).compile({ projectId, runId, ir: normalized.ir });
+    expectCompileSuccess(result);
 
     await expect(readFile(join(result.outputDir, 'dodger/src/template-params.generated.json'), 'utf8')).resolves.not.toContain('"collectible"');
     await expect(readFile(join(result.outputDir, 'public/assets/hazard.svg'), 'utf8')).resolves.toContain('<svg');
@@ -270,6 +306,13 @@ function createTankShooterRawDsl() {
   rawDsl.entities = rawDsl.entities.map((entity) => (entity.kind === 'enemy' ? { ...entity, id: 'enemy_tank', label: 'Tank' } : entity));
   rawDsl.rules.collisions = rawDsl.rules.collisions.map((collision) => ({ ...collision, target: 'enemy_tank' }));
   return rawDsl;
+}
+
+function expectCompileSuccess(result: RuntimeCompileResult): asserts result is RuntimeCompileSuccess {
+  expect(result.ok).toBe(true);
+  if (!result.ok) {
+    throw new Error(`Expected compile success, got unsupported: ${JSON.stringify(result.unsupportedCapabilities)}`);
+  }
 }
 
 function createCatVsTankShooterRawDsl() {

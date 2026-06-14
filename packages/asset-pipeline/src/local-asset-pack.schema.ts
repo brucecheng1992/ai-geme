@@ -35,7 +35,9 @@ const RoleCoverageSchema = z.strictObject({
   collectible: z.array(SemanticTagSchema).min(1).max(16).optional(),
   hazard: z.array(SemanticTagSchema).min(1).max(16).optional(),
   background: z.array(SemanticTagSchema).min(1).max(16).optional(),
-  ui_panel: z.array(SemanticTagSchema).min(1).max(16).optional()
+  ui_panel: z.array(SemanticTagSchema).min(1).max(16).optional(),
+  tileset: z.array(SemanticTagSchema).min(1).max(16).optional(),
+  pickup: z.array(SemanticTagSchema).min(1).max(16).optional()
 });
 
 export const AssetPackProfileSchema = z.strictObject({
@@ -47,7 +49,7 @@ export const AssetPackProfileSchema = z.strictObject({
   primaryGenre: z.array(SemanticTagSchema).max(8).optional(),
   primaryTheme: z.array(SemanticTagSchema).max(12).optional(),
   styleTags: z.array(SemanticTagSchema).max(16).optional(),
-  camera: z.array(z.literal('top_down')).max(4).optional(),
+  camera: z.array(z.enum(['top_down', 'side_view'])).max(4).optional(),
   subjectCoverageByRole: RoleCoverageSchema.optional(),
   incompatibleConcepts: z.array(SemanticTagSchema).max(24).optional(),
   notes: z.string().min(1).max(240).optional()
@@ -67,8 +69,8 @@ export const LocalAssetPackSchema = z
       sourceUrl: z.string().url()
     }),
     style: z.strictObject({
-      genres: z.array(z.enum(['collector', 'dodger', 'shooter'])).min(1),
-      camera: z.literal('top_down'),
+      genres: z.array(z.enum(['collector', 'dodger', 'shooter', 'side_scrolling_run_and_gun'])).min(1),
+      camera: z.enum(['top_down', 'side_view']),
       tags: z.array(z.string().min(1).max(40)).min(1)
     }),
     assets: z.array(PackAssetSchema).min(1)

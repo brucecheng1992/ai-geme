@@ -1,6 +1,6 @@
 # AI Game DSL P0 Step Index
 
-最新维护时间：2026-06-13
+最新维护时间：2026-06-14
 
 ## 1. 扫描结论
 
@@ -9,8 +9,8 @@
 - 新增 AI Game Art Asset Metadata v0.1 入口，用于把外部美术资源 metadata 规范拆成可执行 infrastructure 步骤；执行索引见 `docs/refactor-log/ai-game-art-asset-metadata-v0.1-index.md`。
 - 仓库非依赖文件中当前最大文件是 `docs/ai_game_dsl_p0_local_implementation.md`，约 2880 行，属于实施规格文档。
 - 现有阶段记录位于 `docs/refactor-log/ai-game-dsl-p0-review-gated.md`。
-- 当前已完成阶段：P0 主链路修复 + 模型 DSL 视觉执行复核修复 + DSL-first P1 Step 6 shooter enemy_wave runtime_plan + Asset Pipeline P0 Step 1-5（含 Step 5.1 tiny local asset pack slice）+ Asset Semantic Fidelity Step 1-10B + Art Asset Pipeline Production Rollout split + Step 11A non-default runtime integration gate + Step 11B non-default runtime canary implementation + Step 11C runtime canary closure + Step 12A Workbench / QA preview gate + Step 12B Workbench / QA preview implementation + Step 12C QA preview signoff + Step 13A large library intake gate。
-- 当前下一步：完成 Step 13B Kenney Pirate Kit read-only inventory dry-run 的验证、Sage/Oracle 审查和 docs gate。runtime/default integration、QA verdict / Phaser / asset pack loading 仍 parked；Step 13C batch zero 需要用户显式批准。shooter HUD stash 仍作为独立任务处理；仍不批量接入新资源库、不接入 AI image provider。
+- 当前已完成阶段：P0 主链路修复 + 模型 DSL 视觉执行复核修复 + DSL-first P1 Step 6 shooter enemy_wave runtime_plan + Asset Pipeline P0 Step 1-5（含 Step 5.1 tiny local asset pack slice）+ Asset Semantic Fidelity Step 1-10B + Art Asset Pipeline Production Rollout split + Step 11A non-default runtime integration gate + Step 11B non-default runtime canary implementation + Step 11C runtime canary closure + Step 12A Workbench / QA preview gate + Step 12B Workbench / QA preview implementation + Step 12C QA preview signoff + Step 13A large library intake gate + 2D Generation Pipeline Stabilization Step 1 intent plan / genre taxonomy gate。
+- 当前下一步：进入 2D Generation Pipeline Stabilization Step 2，补 DSL schema v1 validation report artifact，稳定 `game_dsl.json` / `dsl_validation_report.json` 后再继续 runtime capability report、asset plan/report、runtime manifest 和 build report。Art Asset Pipeline Production Rollout 暂停扩展；large asset library import、runtime/default integration、QA verdict / Phaser / asset pack loading 仍 parked。
 
 ## 2. 大文档拆分索引
 
@@ -122,11 +122,12 @@ Asset Pipeline P0 v0.2 已开始，当前完成 Step 1、Step 2、Step 3、Step 
 - 每步均已完成本地验证、Sentinel/Oracle 只读审查和阶段文档记录。
 - 原 P0 主链路文档范围不再有未执行步骤；新 Asset Pipeline v0.2 文档范围继续按上方 Asset Step 推进。
 
-- 当前下一步：
+当前下一步：
 
-- 当前进入 Art Asset Pipeline Production Rollout 阶段；生产 rollout 已拆成 `docs/refactor-log/art-asset-pipeline-production-rollout/` 下的分步 gate。Step 10B small library bridge canary、Step 11A non-default runtime integration gate、Step 11B non-default runtime canary implementation、Step 11C runtime canary closure、Step 12A Workbench / QA preview gate、Step 12B Workbench / QA preview implementation、Step 12C QA preview signoff 和 Step 13A large library intake gate 均已完成并关闭分支边界；当前 Step 13B 只做 Kenney Pirate Kit read-only inventory dry-run。
-- Step 13B 验证和 Sage/Oracle 门禁通过后，才可提交本步 inventory docs。Step 13C batch zero 仍需用户显式批准。large asset library import、runtime/default integration、QA verdict / Phaser / asset pack loading 仍 parked。
-- 若转回 DSL-first P1 Step 7，应作为独立扩展继续遵守顺序：contract/runtime/QA 先于 prompt，真实模型链路验证后再沉淀文档。
+- 当前转入 2D Generation Pipeline Stabilization 阶段，按 review-gated 小步闭环推进。
+- Step 1 已完成：`intent_plan.json` / normalized 2D genre taxonomy gate。短 prompt 先归一到 genre intent；当前 runtime 未支持的 genre 明确 `RUNTIME_UNSUPPORTED`，不静默降级成 top-down shooter。
+- Step 2 建议继续补 DSL schema v1 validation report artifact：稳定 `game_dsl.json` / `dsl_validation_report.json`，再进入 runtime capability report、asset plan/report、runtime manifest、build report。
+- Art Asset Pipeline Production Rollout 暂停扩展；large asset library import、runtime/default integration、QA verdict / Phaser / asset pack loading 仍 parked。
 
 后续如继续扩展，应继续作为独立 P1/P2 阶段推进，避免把扩展能力混入 P0 收尾：
 

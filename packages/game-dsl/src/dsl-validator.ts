@@ -21,7 +21,24 @@ const numericPaths = new Set([
   'entities.spawn.lane_count',
   'rules.collisions.effects.value',
   'objectives.win.target',
-  'objectives.lose.target'
+  'objectives.lose.target',
+  'world.gravity',
+  'projectiles.damage',
+  'projectiles.speed_px_per_sec',
+  'enemyTypes.health',
+  'enemyTypes.movement.speed_px_per_sec',
+  'level.segments.startX',
+  'level.segments.endX',
+  'level.terrain.x',
+  'level.terrain.y',
+  'level.terrain.width',
+  'level.terrain.height',
+  'level.spawns.x',
+  'level.spawns.count',
+  'pickups.x',
+  'pickups.y',
+  'winLose.lives',
+  'winLose.checkpoints'
 ]);
 
 export function validateRawGameDsl(input: unknown): DslValidationResult<RawGameDsl> {
@@ -88,6 +105,12 @@ function collectIds(raw: RawGameDsl): Array<[string, string]> {
     ['player.id', raw.player.id],
     ...raw.player.actions.map((action, index) => [`player.actions.${index}.id`, action.id] as [string, string]),
     ...raw.entities.map((entity, index) => [`entities.${index}.id`, entity.id] as [string, string]),
+    ...(raw.projectiles ?? []).map((projectile, index) => [`projectiles.${index}.id`, projectile.id] as [string, string]),
+    ...(raw.enemyTypes ?? []).map((enemyType, index) => [`enemyTypes.${index}.id`, enemyType.id] as [string, string]),
+    ...(raw.level?.segments ?? []).map((segment, index) => [`level.segments.${index}.id`, segment.id] as [string, string]),
+    ...(raw.level?.terrain ?? []).map((terrain, index) => [`level.terrain.${index}.id`, terrain.id] as [string, string]),
+    ...(raw.level?.spawns ?? []).map((spawn, index) => [`level.spawns.${index}.id`, spawn.id] as [string, string]),
+    ...(raw.pickups ?? []).map((pickup, index) => [`pickups.${index}.id`, pickup.id] as [string, string]),
     ...raw.rules.collisions.map((collision, index) => [`rules.collisions.${index}.id`, collision.id] as [string, string])
   ];
 }
@@ -115,6 +138,17 @@ function validateReferences(raw: RawGameDsl): DslValidationIssue[] {
           message: `Unknown collision ${key} id "${collision[key]}"`
         });
       }
+    }
+  }
+
+  const enemyTypeIds = new Set((raw.enemyTypes ?? []).map((enemyType) => enemyType.id));
+  for (const [index, spawn] of (raw.level?.spawns ?? []).entries()) {
+    if (!enemyTypeIds.has(spawn.enemyType)) {
+      issues.push({
+        code: 'UNRESOLVED_REFERENCE',
+        path: `level.spawns.${index}.enemyType`,
+        message: `Unknown enemyType id "${spawn.enemyType}"`
+      });
     }
   }
 

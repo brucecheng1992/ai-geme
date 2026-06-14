@@ -13,11 +13,12 @@ import {
   type AssetResolutionReport
 } from '../../../../packages/asset-pipeline/src/index.js';
 import type { NormalizedGameIr, RawGameDsl } from '../../../../packages/game-dsl/src/index.js';
-import { validateAndNormalizeRawGameDsl } from '../../../../packages/game-dsl/src/index.js';
-import type { RuntimeCompileResult } from '../compiler/compiler.types.js';
+import { checkPhaserRuntimeCapabilities, validateAndNormalizeRawGameDsl } from '../../../../packages/game-dsl/src/index.js';
+import type { RuntimeCompileResult, RuntimeCompileSuccess } from '../compiler/compiler.types.js';
 import { TemplateCompilerService } from '../compiler/template-compiler.service.js';
 import { ViteBuildRunnerService } from '../compiler/vite-build-runner.service.js';
 import { GameDslProviderService, type GameDslProviderResult } from '../model-provider/game-dsl-provider.service.js';
+import { buildIntentPlan, type IntentPlan } from '../model-provider/intent-plan.js';
 import { PlaywrightQaRunnerService } from '../qa/playwright-qa-runner.service.js';
 import type { QaAssetSemanticRepairReport, QaAssetSemanticRepairSkippedReason, QaGenre, QaReport } from '../qa/qa.types.js';
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
@@ -98,7 +99,7 @@ export class GenerationPipelineService {
 
     const compiled = await this.compileProject(input, normalized.ir);
     if (!compiled.ok) {
-      return 'BUILD_FAILED';
+      return compiled.status;
     }
     const built = await this.buildProject(input, compiled);
 
@@ -106,12 +107,33 @@ export class GenerationPipelineService {
       return built;
     }
 
-    return await this.runQa(input, rawDsl.game.genre, compiled);
+    const qaGenre = toQaGenre(rawDsl.game.genre);
+    if (qaGenre === undefined) {
+      await this.setStatus(input.projectId, input.runId, 'RUNTIME_UNSUPPORTED', 'qa', 'FAILED');
+      await this.appendEvent(input.runId, 'runtime.unsupported', `QA is not available for genre ${rawDsl.game.genre}.`);
+      return 'RUNTIME_UNSUPPORTED';
+    }
+
+    return await this.runQa(input, qaGenre, compiled);
   }
 
   private async generateRawDsl(input: GenerationPipelineInput): Promise<RawDslGenerationResult> {
     await this.setStatus(input.projectId, input.runId, 'DSL_GENERATING', 'dsl-generation', 'RUNNING');
     const language = normalizeLanguage(input.language);
+    const intentPlan = buildIntentPlan({ idea: input.idea, language });
+    await this.writeIntentPlan(input, intentPlan);
+    await this.appendEvent(input.runId, 'intent.planned', `Intent normalized to ${intentPlan.normalizedGenre}.`);
+
+    if (intentPlan.runtimeDslSupport === 'unsupported') {
+      await this.setStatus(input.projectId, input.runId, 'RUNTIME_UNSUPPORTED', 'dsl-generation', 'FAILED');
+      await this.appendEvent(
+        input.runId,
+        'runtime.unsupported',
+        `Runtime unsupported capabilities: ${intentPlan.unsupportedCapabilities.join(', ')}`
+      );
+      return { ok: false, status: 'RUNTIME_UNSUPPORTED' };
+    }
+
     let brief: Awaited<ReturnType<DslProvider['generateGameBrief']>>;
 
     try {
@@ -141,7 +163,19 @@ export class GenerationPipelineService {
     return await this.handleModelGenerationFailure(input, brief);
   }
 
-  private async compileProject(input: GenerationPipelineInput, ir: NormalizedGameIr): Promise<RuntimeCompileResult | { ok: false }> {
+  private async compileProject(input: GenerationPipelineInput, ir: NormalizedGameIr): Promise<RuntimeCompileSuccess | { ok: false; status: ProjectStatus }> {
+    await this.setStatus(input.projectId, input.runId, 'RUNTIME_CHECKING', 'project-generation', 'RUNNING');
+    const runtimeGate = checkPhaserRuntimeCapabilities(ir);
+    if (!runtimeGate.ok) {
+      await this.setStatus(input.projectId, input.runId, 'RUNTIME_UNSUPPORTED', 'project-generation', 'FAILED');
+      await this.appendEvent(
+        input.runId,
+        'runtime.unsupported',
+        `Runtime unsupported capabilities: ${runtimeGate.unsupportedCapabilities.map((item) => item.capability).join(', ')}`
+      );
+      return { ok: false, status: 'RUNTIME_UNSUPPORTED' };
+    }
+
     await this.setStatus(input.projectId, input.runId, 'COMPILING', 'project-generation', 'RUNNING');
     let compiled: RuntimeCompileResult;
 
@@ -150,7 +184,17 @@ export class GenerationPipelineService {
     } catch (error) {
       await this.setStatus(input.projectId, input.runId, 'BUILD_FAILED', 'project-generation', 'FAILED');
       await this.appendEvent(input.runId, 'build.failed', errorMessage(error, 'Project generation failed before build.'));
-      return { ok: false };
+      return { ok: false, status: 'BUILD_FAILED' };
+    }
+
+    if (!compiled.ok) {
+      await this.setStatus(input.projectId, input.runId, 'RUNTIME_UNSUPPORTED', 'project-generation', 'FAILED');
+      await this.appendEvent(
+        input.runId,
+        'runtime.unsupported',
+        `Runtime unsupported capabilities: ${compiled.unsupportedCapabilities.map((item) => item.capability).join(', ')}`
+      );
+      return { ok: false, status: 'RUNTIME_UNSUPPORTED' };
     }
 
     await this.setStatus(input.projectId, input.runId, 'COMPILED', 'project-generation', 'DONE');
@@ -158,7 +202,7 @@ export class GenerationPipelineService {
     return compiled;
   }
 
-  private async buildProject(input: GenerationPipelineInput, compiled: RuntimeCompileResult): Promise<ProjectStatus> {
+  private async buildProject(input: GenerationPipelineInput, compiled: RuntimeCompileSuccess): Promise<ProjectStatus> {
     await this.setStatus(input.projectId, input.runId, 'BUILDING', 'build', 'RUNNING');
     await this.appendEvent(input.runId, 'build.started', 'Installing generated project dependencies and running Vite build.');
     let build: Awaited<ReturnType<RuntimeBuilder['build']>>;
@@ -190,7 +234,7 @@ export class GenerationPipelineService {
     return 'PREVIEW_READY';
   }
 
-  private async runQa(input: GenerationPipelineInput, genre: QaGenre, compiled: RuntimeCompileResult): Promise<ProjectStatus> {
+  private async runQa(input: GenerationPipelineInput, genre: QaGenre, compiled: RuntimeCompileSuccess): Promise<ProjectStatus> {
     const firstReport = await this.runQaAttempt(input, genre, 'initial');
     const repairResult = await this.maybeRunAssetSemanticRepair(input, genre, compiled, firstReport);
     const finalReport = withAssetSemanticRepairReport(repairResult.report, repairResult.assetSemanticRepair);
@@ -224,7 +268,7 @@ export class GenerationPipelineService {
   private async maybeRunAssetSemanticRepair(
     input: GenerationPipelineInput,
     genre: QaGenre,
-    compiled: RuntimeCompileResult,
+    compiled: RuntimeCompileSuccess,
     firstReport: QaReport
   ): Promise<QaPipelineResult> {
     const maxAttempts = normalizeAssetRepairMaxAttempts(this.assetSemanticRepairConfig.maxAttempts);
@@ -434,6 +478,13 @@ export class GenerationPipelineService {
     await writeFile(resultPath, `${JSON.stringify(rawDsl, null, 2)}\n`, 'utf8');
   }
 
+  private async writeIntentPlan(input: GenerationPipelineInput, intentPlan: IntentPlan): Promise<void> {
+    const outputPath = this.workspace.getModelOutputPath(input.projectId, input.runId, 'intent_plan.json');
+
+    await mkdir(dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, `${JSON.stringify(intentPlan, null, 2)}\n`, 'utf8');
+  }
+
   private async writeQaFailureReport(input: GenerationPipelineInput, genre: QaGenre, previewUrl: string, message: string): Promise<QaReport> {
     const now = new Date().toISOString();
     const report: QaReport = {
@@ -475,6 +526,10 @@ export class GenerationPipelineService {
 
 function normalizeLanguage(language: string): DslLanguage {
   return language === 'zh' ? 'zh' : 'en';
+}
+
+function toQaGenre(genre: RawGameDsl['game']['genre']): QaGenre | undefined {
+  return genre === 'collector' || genre === 'dodger' || genre === 'shooter' ? genre : undefined;
 }
 
 async function pathExists(path: string): Promise<boolean> {

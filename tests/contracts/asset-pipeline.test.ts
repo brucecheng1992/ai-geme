@@ -15,7 +15,7 @@ import {
   writeAssetArtifacts
 } from '../../packages/asset-pipeline/src/index.js';
 import { validateAndNormalizeRawGameDsl } from '../../packages/game-dsl/src/index.js';
-import { createCollectorRawDsl, createDodgerRawDsl, createShooterRawDsl } from './fixtures.js';
+import { createCollectorRawDsl, createDodgerRawDsl, createShooterRawDsl, createSideScrollingRunAndGunRawDsl } from './fixtures.js';
 
 const projectId = 'proj_20260611_asset_001';
 
@@ -56,6 +56,43 @@ describe('Asset pipeline contracts', () => {
     expect(plan.items.every((item) => item.provider_priority.includes('template_svg'))).toBe(true);
     expect(JSON.stringify(plan)).not.toContain('../');
     expect(JSON.stringify(plan)).not.toContain('http://');
+  });
+
+  it('plans side-scrolling run-and-gun assets by gameplay role and records selected assets by role', async () => {
+    const normalized = validateAndNormalizeRawGameDsl(createSideScrollingRunAndGunRawDsl());
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const plan = buildAssetPlanFromIr(projectId, normalized.ir);
+    expect(plan.style).toMatchObject({
+      visual_theme: 'side_scrolling_run_and_gun_normal',
+      camera: 'side_view'
+    });
+    expect(plan.items.map((item) => [item.id, item.role, item.view])).toEqual([
+      ['background_main', 'background', 'side_view'],
+      ['player', 'player_character', 'side_view'],
+      ['enemy', 'enemy', 'side_view'],
+      ['projectile', 'projectile', 'side_view'],
+      ['tileset', 'tileset', 'side_view'],
+      ['pickup', 'pickup', 'side_view']
+    ]);
+
+    const emptyPacksDir = join(root, 'empty-packs');
+    await mkdir(emptyPacksDir, { recursive: true });
+    await writeAssetArtifacts({ projectId, projectDir: root, ir: normalized.ir, assetPacksDir: emptyPacksDir });
+    const report = AssetResolutionReportSchema.parse(JSON.parse(await readFile(join(root, 'asset_resolution_report.json'), 'utf8')));
+    expect(report.selectedAssets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'player', role: 'player_character' }),
+        expect.objectContaining({ id: 'enemy', role: 'enemy' }),
+        expect.objectContaining({ id: 'projectile', role: 'projectile' }),
+        expect.objectContaining({ id: 'tileset', role: 'tileset' }),
+        expect.objectContaining({ id: 'background_main', role: 'background' }),
+        expect.objectContaining({ id: 'pickup', role: 'pickup' })
+      ])
+    );
   });
 
   it('derives tank semantic constraints for tank shooter briefs', () => {

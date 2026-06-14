@@ -137,6 +137,46 @@ describe('GenerationPipelineService failure states', () => {
     await expect(runStore.readEvents(runId)).resolves.toEqual(expect.arrayContaining([expect.objectContaining({ type: 'build.failed' })]));
   });
 
+  it('maps runtime capability gate failures to RUNTIME_UNSUPPORTED without building or running QA', async () => {
+    let buildRuns = 0;
+    let qaRuns = 0;
+    const pipeline = createPipeline({
+      compiler: {
+        async compile(input) {
+          return {
+            ok: false,
+            code: 'RUNTIME_UNSUPPORTED',
+            projectId,
+            templateId: input.ir.template_params.template_id,
+            unsupportedCapabilities: [
+              { capability: 'side_view_camera', path: 'runtime_requirements.capabilities', reason: 'Phaser adapter does not support "side_view_camera".' }
+            ]
+          };
+        }
+      },
+      buildRunner: {
+        async build() {
+          buildRuns += 1;
+          return { ok: true, projectId, distDir: workspace.getGeneratedProjectDistDir(projectId), logPath: workspace.getBuildLogPath(projectId, runId) };
+        }
+      },
+      qaRunner: {
+        async run(input: { genre: QaGenre }) {
+          qaRuns += 1;
+          return createQaReport(input.genre);
+        }
+      }
+    });
+
+    await expect(runPipeline(pipeline)).resolves.toBe('RUNTIME_UNSUPPORTED');
+    expect(buildRuns).toBe(0);
+    expect(qaRuns).toBe(0);
+    await expect(projectStore.readProject(projectId)).resolves.toMatchObject({ status: 'RUNTIME_UNSUPPORTED' });
+    await expect(runStore.readEvents(runId)).resolves.toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: 'runtime.unsupported', message: expect.stringContaining('side_view_camera') })])
+    );
+  });
+
   it('keeps deterministic fallback only for missing local model configuration', async () => {
     const pipeline = createPipeline({
       compiler: { compile: compileWithDist },
@@ -197,6 +237,98 @@ describe('GenerationPipelineService failure states', () => {
     expect(resultFiles[0]).toContain('/data/local-data/result/');
     expect(resultFiles[0]).toContain(`__${projectId}__${runId}__raw-game-dsl.json`);
     await expect(readFile(resultFiles[0], 'utf8')).resolves.toContain(`"title": "${rawDsl.metadata.title}"`);
+  });
+
+  it('stores intent_plan.json before DSL generation', async () => {
+    const rawDsl = RawGameDslSchema.parse(createShooterRawDsl());
+    const pipeline = createPipeline({
+      modelProvider: createModelProviderForRawDsl(rawDsl),
+      compiler: { compile: compileWithDist },
+      buildRunner: {
+        async build() {
+          return { ok: true, projectId, distDir: workspace.getGeneratedProjectDistDir(projectId), logPath: workspace.getBuildLogPath(projectId, runId) };
+        }
+      }
+    });
+
+    await expect(runPipeline(pipeline, { idea: '小猫大战坦克', language: 'zh' })).resolves.toBe('PLAYABLE');
+
+    const intentPlan = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'intent_plan.json'), 'utf8'));
+    expect(intentPlan).toMatchObject({
+      schemaVersion: 'intent-plan-v0.1',
+      sourcePrompt: '小猫大战坦克',
+      normalizedGenre: 'top_down_shooter',
+      runtimeDslSupport: 'supported'
+    });
+    await expect(runStore.readEvents(runId)).resolves.toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: 'intent.planned', message: 'Intent normalized to top_down_shooter.' })])
+    );
+  });
+
+  it.each([
+    ['飞机大战', 'vertical_shooter', 'vertical_scroll_camera'],
+    ['contra-like', 'side_scrolling_run_and_gun', 'side_view_camera'],
+    ['横版跑枪打外星人', 'side_scrolling_run_and_gun', 'side_view_camera'],
+    ['马里奥式平台跳跃', 'side_scrolling_platformer', 'gravity_platformer_physics'],
+    ['平台跳跃', 'side_scrolling_platformer', 'gravity_platformer_physics']
+  ] as const)(
+    'returns explicit unsupported capabilities for normalized genres outside the current runtime DSL envelope: %s',
+    async (idea, normalizedGenre, expectedCapability) => {
+      await resetStores();
+      const pipeline = createPipeline({
+        modelProvider: {
+          async generateGameBrief() {
+            throw new Error('unsupported intent should not request a Game Brief');
+          },
+          async generateRawGameDsl() {
+            throw new Error('unsupported intent should not request Raw DSL');
+          }
+        }
+      });
+
+      await expect(runPipeline(pipeline, { idea, language: idea === 'contra-like' ? 'en' : 'zh' })).resolves.toBe('RUNTIME_UNSUPPORTED');
+
+      const intentPlan = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'intent_plan.json'), 'utf8'));
+      expect(intentPlan).toMatchObject({
+        normalizedGenre,
+        runtimeDslSupport: 'unsupported',
+        unsupportedCapabilities: expect.arrayContaining([expectedCapability])
+      });
+      await expect(runStore.readEvents(runId)).resolves.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ type: 'intent.planned', message: `Intent normalized to ${normalizedGenre}.` }),
+          expect.objectContaining({ type: 'runtime.unsupported', message: expect.stringContaining(expectedCapability) })
+        ])
+      );
+    }
+  );
+
+  it('returns explicit unsupported capabilities for unrecognized prompts instead of downgrading to shooter', async () => {
+    const pipeline = createPipeline({
+      modelProvider: {
+        async generateGameBrief() {
+          throw new Error('unsupported intent should not request a Game Brief');
+        },
+        async generateRawGameDsl() {
+          throw new Error('unsupported intent should not request Raw DSL');
+        }
+      }
+    });
+
+    await expect(runPipeline(pipeline, { idea: '做一个全新的二维游戏', language: 'zh' })).resolves.toBe('RUNTIME_UNSUPPORTED');
+
+    const intentPlan = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'intent_plan.json'), 'utf8'));
+    expect(intentPlan).toMatchObject({
+      normalizedGenre: 'unrecognized_2d_genre',
+      runtimeDslSupport: 'unsupported',
+      unsupportedCapabilities: ['recognized_2d_genre']
+    });
+    await expect(runStore.readEvents(runId)).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'intent.planned', message: 'Intent normalized to unrecognized_2d_genre.' }),
+        expect.objectContaining({ type: 'runtime.unsupported', message: expect.stringContaining('recognized_2d_genre') })
+      ])
+    );
   });
 
   it('fails production generation instead of falling back when the model returns invalid DSL', async () => {
@@ -806,8 +938,8 @@ describe('GenerationPipelineService failure states', () => {
     );
   }
 
-  async function runPipeline(pipeline: GenerationPipelineService) {
-    return await pipeline.run({ projectId, runId, idea: 'cat shooter', language: 'en' });
+  async function runPipeline(pipeline: GenerationPipelineService, input: Partial<{ idea: string; language: string }> = {}) {
+    return await pipeline.run({ projectId, runId, idea: input.idea ?? 'cat shooter', language: input.language ?? 'en' });
   }
 
   async function compileWithDist(): Promise<RuntimeCompileResult> {

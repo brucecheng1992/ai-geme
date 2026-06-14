@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { GameDslProviderService } from '../../apps/maker-api/src/model-provider/game-dsl-provider.service.js';
+import { buildIntentPlan } from '../../apps/maker-api/src/model-provider/intent-plan.js';
 import { buildRawDslPromptContext } from '../../apps/maker-api/src/model-provider/prompt-context.builder.js';
 import type { GenerateJsonResult, JsonChatParams } from '../../apps/maker-api/src/model-provider/model-provider.types.js';
 import type { GameBrief } from '../../packages/game-dsl/src/index.js';
-import { createCollectorRawDsl, createDodgerRawDsl, createShooterRawDsl } from '../contracts/fixtures.js';
+import { createCollectorRawDsl, createDodgerRawDsl, createShooterRawDsl, createSideScrollingRunAndGunRawDsl } from '../contracts/fixtures.js';
 
 const brief: GameBrief = {
   brief_version: 'game-brief-v0.1',
@@ -28,6 +29,15 @@ const dodgerBrief: GameBrief = {
   title: 'Road Dodge',
   genre: 'dodger',
   core_loop: ['Move across lanes.', 'Avoid falling barriers.', 'Survive the timer.'],
+  difficulty: 'normal'
+};
+
+const sideScrollingBrief: GameBrief = {
+  ...brief,
+  title: 'Contra Like Mission',
+  genre: 'shooter',
+  camera: 'top_down',
+  core_loop: ['Move and shoot.', 'Clear enemies.'],
   difficulty: 'normal'
 };
 
@@ -72,7 +82,7 @@ describe('buildRawDslPromptContext', () => {
       output_json_rule: expect.stringContaining('JSON object')
     });
     expect(context.selected_contract).toMatchObject({ genre: 'collector', contract_version: 'mechanic-contract-v0.1' });
-    expect(context.allowed_enums.genres).toEqual(['collector', 'dodger', 'shooter']);
+    expect(context.allowed_enums.genres).toEqual(['collector', 'dodger', 'shooter', 'side_scrolling_run_and_gun']);
     expect(context.allowed_enums.action_types).toContain('shoot_projectile');
     expect(context.forbidden_terms).toContain('phaser');
     expect(context.forbidden_fields).toContain('onUpdate');
@@ -145,6 +155,71 @@ describe('buildRawDslPromptContext', () => {
     expect(context.difficulty_runtime_guidance.join('\n')).toContain('runtime derives a dodger difficulty curve from game.difficulty and target_play_time_sec');
     expect(context.difficulty_runtime_guidance.join('\n')).toContain('Do not output runtime_plan, template_params, difficulty_curve');
   });
+
+  it('selects the side-scrolling run-and-gun contract and schema envelope for alias prompts', () => {
+    const normalizedBrief: GameBrief = {
+      ...sideScrollingBrief,
+      title: 'Generic Run And Gun',
+      genre: 'side_scrolling_run_and_gun',
+      camera: 'side_view'
+    };
+    const context = buildRawDslPromptContext({ idea: '做一个魂斗罗式横版射击游戏', language: 'zh', brief: normalizedBrief });
+
+    expect(context.selected_contract).toMatchObject({
+      genre: 'side_scrolling_run_and_gun',
+      template_id: 'side_scrolling_run_and_gun.v1',
+      aliases: expect.arrayContaining(['魂斗罗', '横版跑枪', 'contra-like'])
+    });
+    expect(context.allowed_enums.genres).toContain('side_scrolling_run_and_gun');
+    expect(context.valid_example).toMatchObject({
+      game: { genre: 'side_scrolling_run_and_gun', camera: 'side_view' },
+      world: { coordinateSystem: 'side_view_2d', gravity: expect.any(Number) },
+      camera: { mode: 'follow_player_x' },
+      player: { controller: 'run_jump_shoot', aiming: { mode: 'multi_direction' } },
+      level: {
+        terrain: expect.arrayContaining([expect.objectContaining({ kind: 'platform' })]),
+        spawns: expect.arrayContaining([expect.objectContaining({ trigger: expect.any(String) })])
+      }
+    });
+    expect(context.anti_shell_rules.join('\n')).toContain('Do not output Contra');
+    expect(context.spawn_generation_guidance.join('\n')).toContain('level.spawns');
+  });
+});
+
+describe('buildIntentPlan', () => {
+  it.each([
+    ['小猫大战坦克', 'top_down_shooter'],
+    ['魂斗罗', 'side_scrolling_run_and_gun'],
+    ['横版跑枪', 'side_scrolling_run_and_gun'],
+    ['contra-like', 'side_scrolling_run_and_gun'],
+    ['飞机大战', 'vertical_shooter'],
+    ['马里奥式', 'side_scrolling_platformer'],
+    ['平台跳跃', 'side_scrolling_platformer'],
+    ['打砖块', 'breakout'],
+    ['迷宫追逐', 'maze_chase']
+  ] as const)('normalizes multilingual aliases: %s', (idea, normalizedGenre) => {
+    expect(buildIntentPlan({ idea, language: idea === 'contra-like' ? 'en' : 'zh' })).toMatchObject({
+      schemaVersion: 'intent-plan-v0.1',
+      sourcePrompt: idea,
+      normalizedGenre
+    });
+  });
+
+  it('marks currently unsupported normalized genres without downgrading them', () => {
+    expect(buildIntentPlan({ idea: '飞机大战', language: 'zh' })).toMatchObject({
+      normalizedGenre: 'vertical_shooter',
+      runtimeDslSupport: 'unsupported',
+      unsupportedCapabilities: expect.arrayContaining(['vertical_scroll_camera'])
+    });
+  });
+
+  it('does not silently downgrade unrecognized prompts to a supported shooter genre', () => {
+    expect(buildIntentPlan({ idea: '做一个全新的二维游戏', language: 'zh' })).toMatchObject({
+      normalizedGenre: 'unrecognized_2d_genre',
+      runtimeDslSupport: 'unsupported',
+      unsupportedCapabilities: ['recognized_2d_genre']
+    });
+  });
 });
 
 describe('GameDslProviderService', () => {
@@ -161,10 +236,53 @@ describe('GameDslProviderService', () => {
       required_fields: ['brief_version', 'title', 'genre', 'camera', 'core_loop', 'difficulty', 'target_play_time_sec'],
       exact_output_shape: {
         brief_version: 'game-brief-v0.1',
-        camera: 'top_down'
+        camera: 'top_down | side_view'
       },
+      intent_plan: expect.objectContaining({ normalizedGenre: 'dodger_collector' }),
       forbidden_fields: expect.arrayContaining(['player_character', 'mechanics', 'background_music'])
     });
+  });
+
+  it('normalizes top-down shooter aliases into the current executable brief genre', async () => {
+    const service = new GameDslProviderService(createModelClient(success(brief)));
+
+    await expect(service.generateGameBrief({ ...requestBase, idea: '小猫大战坦克', language: 'zh' })).resolves.toMatchObject({
+      ok: true,
+      value: {
+        genre: 'shooter',
+        camera: 'top_down',
+        core_loop: ['Move in a top-down arena.', 'Fire projectiles at generic enemies.', 'Clear enemies to win.']
+      }
+    });
+  });
+
+  it.each([
+    '做一个魂斗罗式横版射击游戏',
+    '魂斗罗一样的跑枪游戏',
+    '横版跑枪打外星人',
+    'contra-like run and gun'
+  ])('normalizes run-and-gun aliases to the generic side-scrolling genre: %s', async (idea) => {
+    const service = new GameDslProviderService(createModelClient(success(sideScrollingBrief)));
+
+    const result = await service.generateGameBrief({ ...requestBase, idea, language: idea.includes('contra') ? 'en' : 'zh' });
+
+    expect(result).toMatchObject({
+      ok: true,
+      value: {
+        genre: 'side_scrolling_run_and_gun',
+        camera: 'side_view',
+        core_loop: [
+          'Run through side-view platform segments.',
+          'Jump across terrain while avoiding enemy fire.',
+          'Shoot generic enemies and reach the exit.'
+        ]
+      }
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.title.toLowerCase()).not.toContain('contra');
+      expect(result.value.title).not.toContain('魂斗罗');
+    }
   });
 
   it('rejects invalid Game Brief JSON at the provider boundary', async () => {
@@ -217,6 +335,44 @@ describe('GameDslProviderService', () => {
       selected_contract: { genre: 'collector' }
     });
   });
+
+  it.each(['做一个魂斗罗式横版射击游戏', '魂斗罗一样的跑枪游戏', '横版跑枪打外星人'])(
+    'accepts generic side-scrolling run-and-gun Raw DSL for alias prompt: %s',
+    async (idea) => {
+      const rawDsl = createSideScrollingRunAndGunRawDsl();
+      const sideBrief: GameBrief = {
+        brief_version: 'game-brief-v0.1',
+        title: 'Generic Run And Gun',
+        genre: 'side_scrolling_run_and_gun',
+        camera: 'side_view',
+        core_loop: ['Run through side-view platform segments.', 'Shoot generic enemies and reach the exit.'],
+        difficulty: 'normal',
+        target_play_time_sec: rawDsl.game.target_play_time_sec
+      };
+      const service = new GameDslProviderService(createModelClient(success(rawDsl)));
+
+      const result = await service.generateRawGameDsl({ ...requestBase, idea, language: 'zh', brief: sideBrief });
+
+      expect(result).toMatchObject({
+        ok: true,
+        value: {
+          game: { genre: 'side_scrolling_run_and_gun', camera: 'side_view' },
+          world: { coordinateSystem: 'side_view_2d', gravity: expect.any(Number) },
+          player: { controller: 'run_jump_shoot', aiming: { mode: expect.stringMatching(/multi_direction|eight_direction/) } },
+          level: {
+            terrain: expect.arrayContaining([expect.objectContaining({ kind: expect.stringMatching(/platform|ground/) })]),
+            spawns: expect.arrayContaining([expect.objectContaining({ trigger: expect.any(String) })])
+          }
+        }
+      });
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        const serialized = JSON.stringify(result.value).toLowerCase();
+        expect(serialized).not.toContain('contra');
+        expect(JSON.stringify(result.value)).not.toContain('魂斗罗');
+      }
+    }
+  );
 
   it('accepts dodger Raw Game DSL with the verified right_edge_wave hazard spawn slice', async () => {
     const calls: JsonChatParams[] = [];

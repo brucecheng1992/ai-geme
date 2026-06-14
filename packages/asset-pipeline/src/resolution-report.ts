@@ -33,8 +33,8 @@ export const AssetResolutionCandidateSchema = z.strictObject({
   status: z.enum(['selected', 'rejected', 'skipped']),
   reason: z.enum(['selected', 'style_mismatch', 'incomplete_pack', 'hard_semantic_mismatch']),
   message: z.string().min(1).max(240),
-  expectedStyle: z.strictObject({ genre: z.string().min(1), camera: z.literal('top_down') }).optional(),
-  actualStyle: z.strictObject({ genres: z.array(z.string().min(1)), camera: z.literal('top_down') }).optional(),
+  expectedStyle: z.strictObject({ genre: z.string().min(1), camera: z.enum(['top_down', 'side_view']) }).optional(),
+  actualStyle: z.strictObject({ genres: z.array(z.string().min(1)), camera: z.enum(['top_down', 'side_view']) }).optional(),
   missingAssets: z.array(AssetResolutionMissingAssetSchema).optional(),
   assetRejections: z.array(AssetResolutionCandidateRejectionSchema).optional()
 });

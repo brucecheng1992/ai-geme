@@ -4,6 +4,7 @@ import type { ZodType } from 'zod';
 import { GameBriefSchema, RawGameDslSchema, type GameBrief, type RawGameDsl } from '../../../../packages/game-dsl/src/index.js';
 import { DeepSeekClient } from './deepseek.client.js';
 import type { GenerateJsonFailure, GenerateJsonResult } from './model-provider.types.js';
+import { buildIntentPlan, normalizeBriefWithIntentPlan } from './intent-plan.js';
 import { buildRawDslPromptContext } from './prompt-context.builder.js';
 
 type Language = 'zh' | 'en';
@@ -46,6 +47,7 @@ export class GameDslProviderService {
   constructor(private readonly modelClient: JsonModelClient) {}
 
   async generateGameBrief(params: GenerateGameBriefParams): Promise<GameDslProviderResult<GameBrief>> {
+    const intentPlan = buildIntentPlan({ idea: params.idea, language: params.language });
     const result = await this.modelClient.generateJson({
       projectId: params.projectId,
       runId: params.runId,
@@ -53,26 +55,35 @@ export class GameDslProviderService {
       system: [
         'You generate Game Brief JSON for ai-game-maker P0.',
         'Return one JSON object matching game-brief-v0.1.',
-        'P0 only supports collector, dodger and shooter with top_down camera.'
+        'P0 supports collector, dodger, shooter, and generic side_scrolling_run_and_gun.',
+        'Normalize 魂斗罗, 魂斗罗式, 横版跑枪, 横版射击, run and gun, and contra-like to side_scrolling_run_and_gun without copyrighted names.'
       ].join('\n'),
       user: {
         idea: params.idea,
         language: params.language,
         output_json_rule: 'Return one JSON object only. Do not wrap JSON in markdown.',
         schema_name: 'game-brief-v0.1',
+        intent_plan: intentPlan,
         required_fields: ['brief_version', 'title', 'genre', 'camera', 'core_loop', 'difficulty', 'target_play_time_sec'],
         exact_output_shape: {
           brief_version: 'game-brief-v0.1',
           title: '1-80 character game title',
-          genre: 'collector | dodger | shooter',
-          camera: 'top_down',
+          genre: 'collector | dodger | shooter | side_scrolling_run_and_gun',
+          camera: 'top_down | side_view',
           core_loop: ['2-8 short gameplay loop steps, each 1-120 characters'],
           difficulty: 'easy | normal',
           target_play_time_sec: 'integer from 30 to 120'
         },
         forbidden_fields: ['player_character', 'enemies', 'collectibles', 'mechanics', 'visual_style', 'sound_effects', 'background_music'],
-        allowed_genres: ['collector', 'dodger', 'shooter'],
-        allowed_camera: 'top_down',
+        aliases: {
+          top_down_shooter: ['小猫大战坦克'],
+          side_scrolling_run_and_gun: ['魂斗罗', '魂斗罗式', '横版跑枪', '横版射击', 'run and gun', 'contra-like'],
+          vertical_shooter: ['飞机大战'],
+          side_scrolling_platformer: ['马里奥式', '平台跳跃']
+        },
+        copyright_safety: 'Do not emit Contra, 魂斗罗, copyrighted character names, copied levels, or copyrighted assets.',
+        allowed_genres: ['collector', 'dodger', 'shooter', 'side_scrolling_run_and_gun'],
+        allowed_camera: ['top_down', 'side_view'],
         allowed_difficulties: ['easy', 'normal'],
         target_play_time_sec_range: [30, 120]
       },
@@ -80,7 +91,8 @@ export class GameDslProviderService {
       maxTokens: 1000
     });
 
-    return this.parseSchemaResult(result, GameBriefSchema, 'Game Brief schema validation failed.');
+    const parsed = this.parseSchemaResult(result, GameBriefSchema, 'Game Brief schema validation failed.');
+    return parsed.ok ? { ...parsed, value: normalizeBriefWithIntentPlan(parsed.value, intentPlan) } : parsed;
   }
 
   async generateRawGameDsl(params: GenerateRawGameDslParams): Promise<GameDslProviderResult<RawGameDsl>> {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import collectorContract from '../../packages/game-dsl/src/contracts/collector.contract.json' with { type: 'json' };
 import dodgerContract from '../../packages/game-dsl/src/contracts/dodger.contract.json' with { type: 'json' };
 import shooterContract from '../../packages/game-dsl/src/contracts/shooter.contract.json' with { type: 'json' };
+import sideScrollingRunAndGunContract from '../../packages/game-dsl/src/contracts/side_scrolling_run_and_gun.contract.json' with { type: 'json' };
 import { GameBriefSchema, NormalizedGameIrSchema, RawGameDslSchema } from '../../packages/game-dsl/src/index.js';
 import { TelemetryEventSchema } from '../../packages/runtime-core/src/index.js';
 import qaGate from '../../packages/runtime-core/src/qa/playable-qa-gate-v0.1.json' with { type: 'json' };
@@ -74,6 +75,7 @@ describe('Contract Freeze', () => {
     expect(() => NormalizedGameIrSchema.parse(createIrForGenre('collector', collectorContract))).not.toThrow();
     expect(() => NormalizedGameIrSchema.parse(createIrForGenre('dodger', dodgerContract))).not.toThrow();
     expect(() => NormalizedGameIrSchema.parse(createIrForGenre('shooter', shooterContract))).not.toThrow();
+    expect(() => NormalizedGameIrSchema.parse(createIrForGenre('side_scrolling_run_and_gun', sideScrollingRunAndGunContract))).not.toThrow();
   });
 
   it('keeps runtime plan spawn rules strict and enum-bounded', () => {
@@ -319,7 +321,9 @@ describe('Contract Freeze', () => {
       ...dodgerContract.required_telemetry_all,
       ...dodgerContract.required_telemetry_any_groups.flat(),
       ...shooterContract.required_telemetry_all,
-      ...shooterContract.required_telemetry_any_groups.flat()
+      ...shooterContract.required_telemetry_any_groups.flat(),
+      ...sideScrollingRunAndGunContract.required_telemetry_all,
+      ...sideScrollingRunAndGunContract.required_telemetry_any_groups.flat()
     ]);
 
     for (const type of allEvents) {
@@ -367,6 +371,22 @@ describe('Contract Freeze', () => {
       'dodger',
       'shooter'
     ]);
+    expect(sideScrollingRunAndGunContract).toMatchObject({
+      genre: 'side_scrolling_run_and_gun',
+      template_id: 'side_scrolling_run_and_gun.v1',
+      aliases: ['魂斗罗', '魂斗罗式', '横版跑枪', '横版射击', 'run and gun', 'contra-like'],
+      required_runtime_capabilities: expect.arrayContaining([
+        'side_view_camera',
+        'gravity_platformer_physics',
+        'run_jump_controller',
+        'multi_direction_shooting',
+        'projectile_combat',
+        'enemy_spawn_triggers',
+        'terrain_collision',
+        'checkpoint_or_lives_system'
+      ]),
+      asset_roles: ['player', 'enemy', 'projectile', 'tileset', 'background', 'pickup']
+    });
     expect([collectorManifest.template_id, dodgerManifest.template_id, shooterManifest.template_id]).toEqual([
       'collector_v1',
       'dodger_v1',

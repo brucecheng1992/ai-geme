@@ -1,13 +1,15 @@
 import collectorContract from '../../../../packages/game-dsl/src/contracts/collector.contract.json' with { type: 'json' };
 import dodgerContract from '../../../../packages/game-dsl/src/contracts/dodger.contract.json' with { type: 'json' };
 import shooterContract from '../../../../packages/game-dsl/src/contracts/shooter.contract.json' with { type: 'json' };
+import sideScrollingRunAndGunContract from '../../../../packages/game-dsl/src/contracts/side_scrolling_run_and_gun.contract.json' with { type: 'json' };
 import type { RawGameDsl } from '../../../../packages/game-dsl/src/index.js';
 import type { BuildRawDslPromptContextParams, RawDslPromptContext, SupportedGameGenre } from './prompt-context.types.js';
 
 const selectedContracts: Record<SupportedGameGenre, unknown> = {
   collector: collectorContract,
   dodger: dodgerContract,
-  shooter: shooterContract
+  shooter: shooterContract,
+  side_scrolling_run_and_gun: sideScrollingRunAndGunContract
 };
 
 const validCollectorExample: RawGameDsl = {
@@ -217,10 +219,92 @@ const validShooterExample: RawGameDsl = {
   }
 };
 
+const validSideScrollingRunAndGunExample: RawGameDsl = {
+  dsl_version: 'game-dsl-v0.1',
+  metadata: {
+    title: 'Frontier Blast',
+    description: 'Run, jump, and fire through side-view platform segments while clearing generic enemies.',
+    language: 'en'
+  },
+  game: {
+    genre: 'side_scrolling_run_and_gun',
+    camera: 'side_view',
+    difficulty: 'normal',
+    target_play_time_sec: 60
+  },
+  world: {
+    width: 960,
+    height: 540,
+    visual_theme: 'generic sci fi frontier',
+    coordinateSystem: 'side_view_2d',
+    gravity: 1200
+  },
+  camera: { mode: 'follow_player_x' },
+  player: {
+    id: 'player',
+    label: 'Runner',
+    health: 3,
+    movement: { type: 'horizontal', speed_px_per_sec: 260 },
+    controller: 'run_jump_shoot',
+    aiming: { mode: 'multi_direction' },
+    actions: [{ id: 'fire', type: 'shoot_projectile', cooldown_ms: 260, spawns: 'pulse_bolt' }]
+  },
+  entities: [
+    { id: 'pulse_bolt', kind: 'projectile', label: 'Pulse Bolt', damage: 1, movement: { type: 'move_right', speed_px_per_sec: 620 } },
+    { id: 'drone', kind: 'enemy', label: 'Drone', count: 8, health: 1, movement: { type: 'patrol', speed_px_per_sec: 90 } }
+  ],
+  projectiles: [{ id: 'pulse_bolt_spec', label: 'Pulse Bolt', damage: 1, speed_px_per_sec: 620 }],
+  enemyTypes: [{ id: 'drone_type', label: 'Drone', health: 1, movement: { type: 'patrol', speed_px_per_sec: 90 } }],
+  level: {
+    segments: [
+      { id: 'segment_intro', startX: 0, endX: 900 },
+      { id: 'segment_bridge', startX: 900, endX: 1800 }
+    ],
+    terrain: [
+      { id: 'ground_intro', kind: 'ground', x: 0, y: 500, width: 900, height: 40 },
+      { id: 'platform_bridge', kind: 'platform', x: 980, y: 380, width: 280, height: 24 }
+    ],
+    spawns: [
+      { id: 'spawn_intro_drone', enemyType: 'drone_type', trigger: 'enter_segment', x: 640, count: 3 },
+      { id: 'spawn_bridge_drone', enemyType: 'drone_type', trigger: 'reach_x', x: 1080, count: 5 }
+    ]
+  },
+  pickups: [{ id: 'field_medkit', label: 'Medkit', kind: 'health', x: 720, y: 450 }],
+  winLose: { win: 'reach_exit', lose: 'player_health_zero', lives: 3, checkpoints: [0, 900] },
+  rules: {
+    collisions: [
+      {
+        id: 'bolt_hits_drone',
+        source: 'pulse_bolt',
+        target: 'drone',
+        type: 'projectile_hit',
+        effects: [{ type: 'damage', value: 1 }, { type: 'destroy' }, { type: 'score_add', value: 1 }]
+      },
+      {
+        id: 'drone_hits_player',
+        source: 'drone',
+        target: 'player',
+        type: 'overlap',
+        effects: [{ type: 'damage', value: 1 }]
+      }
+    ]
+  },
+  objectives: { win: { type: 'reach_exit', target: 1800 }, lose: { type: 'player_health_zero' } },
+  ui: {
+    hud: ['score', 'health', 'objective'],
+    restart: true,
+    screens: {
+      win: { title: 'VICTORY', subtitle: 'Exit reached' },
+      lose: { title: 'DEFEAT', subtitle: 'Lives depleted' }
+    }
+  }
+};
+
 const validExamplesByGenre: Partial<Record<SupportedGameGenre, RawGameDsl>> = {
   collector: validCollectorExample,
   dodger: validDodgerExample,
-  shooter: validShooterExample
+  shooter: validShooterExample,
+  side_scrolling_run_and_gun: validSideScrollingRunAndGunExample
 };
 
 export function buildRawDslPromptContext(params: BuildRawDslPromptContextParams): RawDslPromptContext {
@@ -230,8 +314,8 @@ export function buildRawDslPromptContext(params: BuildRawDslPromptContextParams)
     brief: params.brief,
     selected_contract: selectedContracts[params.brief.genre],
     allowed_enums: {
-      genres: ['collector', 'dodger', 'shooter'],
-      cameras: ['top_down'],
+      genres: ['collector', 'dodger', 'shooter', 'side_scrolling_run_and_gun'],
+      cameras: ['top_down', 'side_view'],
       difficulties: ['easy', 'normal'],
       languages: ['zh', 'en'],
       movement_types: ['static', 'eight_direction', 'horizontal', 'vertical', 'chase_player', 'move_left', 'move_right', 'fall_down', 'patrol'],
@@ -239,9 +323,16 @@ export function buildRawDslPromptContext(params: BuildRawDslPromptContextParams)
       entity_kinds: ['enemy', 'projectile', 'collectible', 'hazard'],
       collision_types: ['overlap', 'projectile_hit'],
       effect_types: ['damage', 'destroy', 'score_add', 'heal', 'knockback', 'end_game'],
-      win_types: ['enemy_cleared', 'target_score', 'survive_duration'],
+      win_types: ['enemy_cleared', 'target_score', 'survive_duration', 'reach_exit'],
       lose_types: ['player_health_zero', 'time_up', 'none'],
-      hud_items: ['score', 'health', 'timer', 'objective']
+      hud_items: ['score', 'health', 'timer', 'objective'],
+      coordinate_systems: ['top_down_2d', 'side_view_2d'],
+      camera_modes: ['follow_player_x'],
+      player_controllers: ['run_jump_shoot'],
+      aiming_modes: ['multi_direction', 'eight_direction'],
+      terrain_kinds: ['platform', 'ground', 'slope'],
+      spawn_triggers: ['enter_segment', 'reach_x'],
+      pickup_kinds: ['health', 'score', 'weapon']
     },
     forbidden_terms: ['phaser', 'pixi', 'godot', 'cocos', 'scene', 'sprite', 'texture', 'physics', 'arcade', 'matter', 'canvas', 'webgl'],
     forbidden_fields: [
@@ -288,15 +379,18 @@ export function buildRawDslPromptContext(params: BuildRawDslPromptContextParams)
       'Do not invent unsupported mechanics when they cannot be represented by game-dsl-v0.1.'
     ],
     p0_scope: [
-      'Only collector, dodger and shooter are supported.',
-      'Only top_down camera is supported.',
+      'collector, dodger, shooter, and generic side_scrolling_run_and_gun DSL are supported.',
+      'Phaser runtime generation currently supports top_down templates; side_scrolling_run_and_gun must be rejected by the runtime capability gate until side-view platformer support exists.',
       'Only engine-agnostic gameplay semantics are allowed.',
       'Shooter template currently supports one player, one projectile type and one enemy type.',
-      'Runtime plan spawn execution is currently verified for dodger hazard right_edge_wave, dodger collectible fixed_positions, and shooter enemy right_edge_wave.'
+      'Runtime plan spawn execution is currently verified for dodger hazard right_edge_wave, dodger collectible fixed_positions, and shooter enemy right_edge_wave.',
+      'Normalize 魂斗罗, 魂斗罗式, 横版跑枪, 横版射击, run and gun, and contra-like to side_scrolling_run_and_gun without emitting copyrighted names, characters, levels, or assets.'
     ],
     anti_shell_rules: [
       'Do not simulate one genre by renaming another genre.',
       'If genre is shooter, the game must include real fire, projectile or hitscan, enemy hit, enemy clear or score progress.',
+      'If genre is side_scrolling_run_and_gun, the DSL must include side_view_2d coordinates, gravity, follow_player_x camera, run_jump_shoot controller, aiming, terrain platforms, and spawn triggers.',
+      'Do not output Contra, 魂斗罗, copyrighted character names, copied level names, or copyrighted assets.',
       'If required mechanics cannot be represented, return unsupported instead of inventing code.'
     ],
     composable_mechanics: [
@@ -311,6 +405,10 @@ export function buildRawDslPromptContext(params: BuildRawDslPromptContextParams)
 }
 
 function buildEnemyWaveRuntimeGuidance(genre: SupportedGameGenre): string[] {
+  if (genre === 'side_scrolling_run_and_gun') {
+    return ['Use level.spawns for generic side-view enemy spawn triggers. Do not output shooter enemy_waves or runtime_plan fields.'];
+  }
+
   if (genre !== 'shooter') {
     return ['Do not output shooter enemy wave runtime fields in Raw Game DSL.'];
   }
@@ -322,6 +420,10 @@ function buildEnemyWaveRuntimeGuidance(genre: SupportedGameGenre): string[] {
 }
 
 function buildDifficultyRuntimeGuidance(genre: SupportedGameGenre): string[] {
+  if (genre === 'side_scrolling_run_and_gun') {
+    return ['Keep game.difficulty equal to the Game Brief; side-view runtime tuning is gated by runtime capabilities and must not be expressed as engine fields.'];
+  }
+
   if (genre !== 'dodger') {
     return ['Keep game.difficulty equal to the Game Brief. Do not output runtime difficulty curves or engine tuning fields.'];
   }
@@ -334,6 +436,14 @@ function buildDifficultyRuntimeGuidance(genre: SupportedGameGenre): string[] {
 }
 
 function buildSpawnGenerationGuidance(genre: SupportedGameGenre): string[] {
+  if (genre === 'side_scrolling_run_and_gun') {
+    return [
+      'Use level.spawns for side-view enemy spawn triggers; each spawn references enemyTypes by enemyType.',
+      'Do not output entity.spawn for side_scrolling_run_and_gun.',
+      'Use level.terrain with platform or ground entries so terrain collision is explicit in the DSL.'
+    ];
+  }
+
   if (genre !== 'dodger') {
     return [
       'Do not output entity.spawn for this genre.',

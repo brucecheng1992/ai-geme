@@ -2,12 +2,14 @@ import { z } from 'zod';
 import collectorContract from '../contracts/collector.contract.json' with { type: 'json' };
 import dodgerContract from '../contracts/dodger.contract.json' with { type: 'json' };
 import shooterContract from '../contracts/shooter.contract.json' with { type: 'json' };
+import sideScrollingRunAndGunContract from '../contracts/side_scrolling_run_and_gun.contract.json' with { type: 'json' };
 
 const TelemetryEventNameSchema = z.enum([
   'game.ready',
   'game.started',
   'input.received',
   'player.moved',
+  'player.jumped',
   'player.fired',
   'projectile.spawned',
   'collision.detected',
@@ -18,6 +20,8 @@ const TelemetryEventNameSchema = z.enum([
   'item.collected',
   'hazard.spawned',
   'player.damaged',
+  'checkpoint.reached',
+  'level.segment.completed',
   'score.changed',
   'survival_time.changed',
   'objective.completed',
@@ -38,16 +42,21 @@ const telemetryRequirementsByGenre = {
   shooter: {
     required_events_all: shooterContract.required_telemetry_all,
     required_events_any_groups: shooterContract.required_telemetry_any_groups
+  },
+  side_scrolling_run_and_gun: {
+    required_events_all: sideScrollingRunAndGunContract.required_telemetry_all,
+    required_events_any_groups: sideScrollingRunAndGunContract.required_telemetry_any_groups
   }
 } as const;
 
 const RuntimeRequirementsSchema = z.strictObject({
   dimension: z.literal('2d'),
-  camera: z.literal('top_down'),
+  camera: z.enum(['top_down', 'side_view']),
   movement: z.array(z.string()).min(1),
   collision: z.array(z.enum(['overlap', 'projectile_hit'])).min(1),
   actions: z.array(z.enum(['shoot_projectile', 'collect', 'restart'])).min(1),
-  objectives: z.array(z.enum(['target_score', 'enemy_cleared', 'survive_duration', 'player_health_zero', 'time_up', 'none'])).min(1),
+  objectives: z.array(z.enum(['target_score', 'enemy_cleared', 'survive_duration', 'player_health_zero', 'time_up', 'none', 'reach_exit'])).min(1),
+  capabilities: z.array(z.string().min(1)).default([]),
   telemetry: z.literal(true)
 });
 
@@ -101,7 +110,7 @@ const RuntimePlanSchema = z.strictObject({
 });
 
 const TemplateParamsSchema = z.strictObject({
-  template_id: z.enum(['collector_v1', 'dodger_v1', 'shooter_v1']),
+  template_id: z.enum(['collector_v1', 'dodger_v1', 'shooter_v1', 'side_scrolling_run_and_gun.v1']),
   params: z.record(z.string(), z.unknown())
 });
 
@@ -126,8 +135,8 @@ export const NormalizedGameIrSchema = z.strictObject({
     language: z.enum(['zh', 'en'])
   }),
   game: z.strictObject({
-    genre: z.enum(['collector', 'dodger', 'shooter']),
-    camera: z.literal('top_down'),
+    genre: z.enum(['collector', 'dodger', 'shooter', 'side_scrolling_run_and_gun']),
+    camera: z.enum(['top_down', 'side_view']),
     difficulty: z.enum(['easy', 'normal'])
   }),
   world: z.strictObject({
@@ -140,12 +149,17 @@ export const NormalizedGameIrSchema = z.strictObject({
   telemetry_contract: TelemetryContractSchema,
   qa_plan: QaPlanSchema
 }).superRefine((value, ctx) => {
-  const expectedTemplateId = `${value.game.genre}_v1`;
-  if (value.template_params.template_id !== expectedTemplateId) {
+  const expectedTemplateIdByGenre = {
+    collector: 'collector_v1',
+    dodger: 'dodger_v1',
+    shooter: 'shooter_v1',
+    side_scrolling_run_and_gun: 'side_scrolling_run_and_gun.v1'
+  } as const;
+  if (value.template_params.template_id !== expectedTemplateIdByGenre[value.game.genre]) {
     ctx.addIssue({
       code: 'custom',
       path: ['template_params', 'template_id'],
-      message: `template_id must match genre: expected ${expectedTemplateId}`
+      message: `template_id must match genre: expected ${expectedTemplateIdByGenre[value.game.genre]}`
     });
   }
 

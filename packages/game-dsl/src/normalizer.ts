@@ -1,30 +1,25 @@
-import phaserCapabilities from '../../runtime-adapters/phaser/src/phaser-adapter-v0.1.capabilities.json' with { type: 'json' };
 import collectorContract from './contracts/collector.contract.json' with { type: 'json' };
 import dodgerContract from './contracts/dodger.contract.json' with { type: 'json' };
 import shooterContract from './contracts/shooter.contract.json' with { type: 'json' };
+import sideScrollingRunAndGunContract from './contracts/side_scrolling_run_and_gun.contract.json' with { type: 'json' };
 import { NormalizedGameIrSchema, type NormalizedGameIr } from './schemas/normalized-game-ir-v0.1.schema.js';
 import type { RawGameDsl } from './schemas/raw-game-dsl-v0.1.schema.js';
 import { buildShooterVisualParams } from './template-visual-params.js';
 import { validateRawGameDsl } from './dsl-validator.js';
-import { DslValidationError, type DslValidationIssue, type ValidateAndNormalizeResult } from './validation.types.js';
-
-type RuntimeRequirements = {
-  movement: string[];
-  collision: string[];
-  actions: string[];
-  objectives: string[];
-};
+import { DslValidationError, type ValidateAndNormalizeResult } from './validation.types.js';
 
 const contracts = {
   collector: collectorContract,
   dodger: dodgerContract,
-  shooter: shooterContract
+  shooter: shooterContract,
+  side_scrolling_run_and_gun: sideScrollingRunAndGunContract
 } as const;
 
 const templateIds = {
   collector: 'collector_v1',
   dodger: 'dodger_v1',
-  shooter: 'shooter_v1'
+  shooter: 'shooter_v1',
+  side_scrolling_run_and_gun: 'side_scrolling_run_and_gun.v1'
 } as const;
 
 export function validateAndNormalizeRawGameDsl(input: unknown): ValidateAndNormalizeResult {
@@ -35,12 +30,6 @@ export function validateAndNormalizeRawGameDsl(input: unknown): ValidateAndNorma
   }
 
   const ir = buildNormalizedGameIr(validRaw.value);
-  const runtimeIssues = validateRuntimeRequirements(ir.runtime_requirements);
-
-  if (runtimeIssues.length > 0) {
-    return { ok: false, issues: runtimeIssues };
-  }
-
   const parsedIr = NormalizedGameIrSchema.safeParse(ir);
 
   if (!parsedIr.success) {
@@ -92,10 +81,15 @@ function buildNormalizedGameIr(raw: RawGameDsl) {
     runtime_requirements: {
       dimension: '2d',
       camera: raw.game.camera,
-      movement,
+      movement: unique([
+        ...movement,
+        ...(raw.player.controller === 'run_jump_shoot' ? ['run_jump_controller' as const] : []),
+        ...(raw.player.aiming?.mode !== undefined ? [raw.player.aiming.mode] : [])
+      ]),
       collision,
       actions,
       objectives: unique([raw.objectives.win.type, raw.objectives.lose.type]),
+      capabilities: buildRequiredCapabilities(raw),
       telemetry: true
     },
     runtime_plan: buildRuntimePlan(raw),
@@ -202,25 +196,12 @@ function buildShooterEnemyWaves(raw: RawGameDsl) {
   ];
 }
 
-function validateRuntimeRequirements(requirements: RuntimeRequirements): DslValidationIssue[] {
-  const supports = phaserCapabilities.supports;
+function buildRequiredCapabilities(raw: RawGameDsl): string[] {
+  if (raw.game.genre !== 'side_scrolling_run_and_gun') {
+    return [];
+  }
 
-  return [
-    ...unsupported('runtime_requirements.movement', requirements.movement, supports.movement),
-    ...unsupported('runtime_requirements.collision', requirements.collision, supports.collision),
-    ...unsupported('runtime_requirements.actions', requirements.actions, supports.actions),
-    ...unsupported('runtime_requirements.objectives', requirements.objectives, supports.objectives)
-  ];
-}
-
-function unsupported(path: string, values: string[], supported: string[]): DslValidationIssue[] {
-  return values
-    .filter((value) => !supported.includes(value))
-    .map((value) => ({
-      code: 'RUNTIME_CAPABILITY_MISMATCH',
-      path,
-      message: `Runtime does not support "${value}"`
-    }));
+  return [...sideScrollingRunAndGunContract.required_runtime_capabilities];
 }
 
 function buildTemplateParams(raw: RawGameDsl): Record<string, unknown> {
@@ -281,6 +262,18 @@ function buildTemplateParams(raw: RawGameDsl): Record<string, unknown> {
       objective: {
         surviveDurationMs: (raw.objectives.win.target ?? raw.game.target_play_time_sec) * 1000
       }
+    };
+  }
+
+  if (raw.game.genre === 'side_scrolling_run_and_gun') {
+    return {
+      ...base,
+      camera: raw.camera,
+      projectiles: raw.projectiles,
+      enemyTypes: raw.enemyTypes,
+      level: raw.level,
+      pickups: raw.pickups ?? [],
+      winLose: raw.winLose
     };
   }
 

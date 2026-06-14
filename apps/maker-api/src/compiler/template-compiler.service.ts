@@ -4,14 +4,15 @@ import { join } from 'node:path';
 import { Injectable } from '@nestjs/common';
 
 import { writeAssetArtifacts } from '../../../../packages/asset-pipeline/src/index.js';
-import { NormalizedGameIrSchema } from '../../../../packages/game-dsl/src/index.js';
+import { checkPhaserRuntimeCapabilities, NormalizedGameIrSchema } from '../../../../packages/game-dsl/src/index.js';
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
 import type { RuntimeCompileInput, RuntimeCompileResult } from './compiler.types.js';
 
 const templateGenreById = {
   collector_v1: 'collector',
   dodger_v1: 'dodger',
-  shooter_v1: 'shooter'
+  shooter_v1: 'shooter',
+  'side_scrolling_run_and_gun.v1': 'side_scrolling_run_and_gun'
 } as const;
 
 @Injectable()
@@ -28,6 +29,32 @@ export class TemplateCompilerService {
   async compile(input: RuntimeCompileInput): Promise<RuntimeCompileResult> {
     const ir = NormalizedGameIrSchema.parse(input.ir);
     const templateId = ir.template_params.template_id;
+    const runtimeGate = checkPhaserRuntimeCapabilities(ir);
+    if (!runtimeGate.ok) {
+      return {
+        ok: false,
+        code: 'RUNTIME_UNSUPPORTED',
+        projectId: input.projectId,
+        templateId,
+        unsupportedCapabilities: runtimeGate.unsupportedCapabilities
+      };
+    }
+    if (templateId === 'side_scrolling_run_and_gun.v1') {
+      return {
+        ok: false,
+        code: 'RUNTIME_UNSUPPORTED',
+        projectId: input.projectId,
+        templateId,
+        unsupportedCapabilities: [
+          {
+            capability: 'side_scrolling_run_and_gun.v1',
+            path: 'template_params.template_id',
+            reason: 'Phaser adapter does not provide a side-scrolling run-and-gun template.'
+          }
+        ]
+      };
+    }
+
     const genre = templateGenreById[templateId];
     const outputDir = this.workspace.getGeneratedProjectDir(input.projectId);
     const distDir = this.workspace.getGeneratedProjectDistDir(input.projectId);

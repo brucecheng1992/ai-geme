@@ -433,9 +433,13 @@ function buildBlacklistedCandidate(pack: LocalAssetPack, blacklisted: ProjectLoc
   };
 }
 
-function assetPlanGenre(plan: AssetPlan): 'collector' | 'dodger' | 'shooter' {
+function assetPlanGenre(plan: AssetPlan): 'collector' | 'dodger' | 'shooter' | 'side_scrolling_run_and_gun' {
+  if (plan.style.visual_theme.startsWith('side_scrolling_run_and_gun_')) {
+    return 'side_scrolling_run_and_gun';
+  }
+
   const [genre] = plan.style.visual_theme.split('_');
-  if (genre === 'collector' || genre === 'dodger' || genre === 'shooter') {
+  if (genre === 'collector' || genre === 'dodger' || genre === 'shooter' || genre === 'side_scrolling_run_and_gun') {
     return genre;
   }
 

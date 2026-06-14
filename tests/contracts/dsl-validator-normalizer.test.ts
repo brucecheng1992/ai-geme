@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import collectorContract from '../../packages/game-dsl/src/contracts/collector.contract.json' with { type: 'json' };
 import shooterContract from '../../packages/game-dsl/src/contracts/shooter.contract.json' with { type: 'json' };
+import sideScrollingRunAndGunContract from '../../packages/game-dsl/src/contracts/side_scrolling_run_and_gun.contract.json' with { type: 'json' };
 import {
   DslValidationError,
   normalizeRawGameDsl,
   validateAndNormalizeRawGameDsl,
   validateRawGameDsl
 } from '../../packages/game-dsl/src/index.js';
-import { createCollectorRawDsl, createDodgerRawDsl, createShooterRawDsl } from './fixtures.js';
+import { createCollectorRawDsl, createDodgerRawDsl, createShooterRawDsl, createSideScrollingRunAndGunRawDsl } from './fixtures.js';
 
 function expectIssue(result: ReturnType<typeof validateRawGameDsl>, code: string, messagePart?: string) {
   expect(result.ok).toBe(false);
@@ -289,6 +290,55 @@ describe('DSL Validator and Normalizer', () => {
       ]);
       expect(JSON.stringify(result.ir.template_params.params)).not.toContain('enemy_waves');
     }
+  });
+
+  it('normalizes generic side-scrolling run-and-gun DSL without downgrading to top_down shooter', () => {
+    const result = validateAndNormalizeRawGameDsl(createSideScrollingRunAndGunRawDsl());
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.rawDsl.game.genre).toBe('side_scrolling_run_and_gun');
+      expect(result.rawDsl.world.coordinateSystem).toBe('side_view_2d');
+      expect(result.rawDsl.world.gravity).toBeGreaterThan(0);
+      expect(result.rawDsl.player.controller).toBe('run_jump_shoot');
+      expect(['multi_direction', 'eight_direction']).toContain(result.rawDsl.player.aiming?.mode);
+      expect(result.rawDsl.level?.terrain.some((terrain) => terrain.kind === 'platform' || terrain.kind === 'ground')).toBe(true);
+      expect(result.rawDsl.level?.spawns.length).toBeGreaterThan(0);
+      expect(JSON.stringify(result.rawDsl).toLowerCase()).not.toContain('contra');
+      expect(JSON.stringify(result.rawDsl)).not.toContain('魂斗罗');
+      expect(result.ir).toMatchObject({
+        game: { genre: 'side_scrolling_run_and_gun', camera: 'side_view' },
+        template_params: { template_id: 'side_scrolling_run_and_gun.v1' },
+        telemetry_contract: {
+          required_events_all: sideScrollingRunAndGunContract.required_telemetry_all,
+          required_events_any_groups: sideScrollingRunAndGunContract.required_telemetry_any_groups
+        },
+        runtime_requirements: {
+          camera: 'side_view',
+          capabilities: expect.arrayContaining([
+            'side_view_camera',
+            'gravity_platformer_physics',
+            'run_jump_controller',
+            'multi_direction_shooting',
+            'projectile_combat',
+            'enemy_spawn_triggers',
+            'terrain_collision',
+            'checkpoint_or_lives_system'
+          ])
+        }
+      });
+    }
+  });
+
+  it('rejects copyrighted source terms inside generic side-scrolling run-and-gun DSL', () => {
+    expectIssue(
+      validateRawGameDsl({
+        ...createSideScrollingRunAndGunRawDsl(),
+        metadata: { ...createSideScrollingRunAndGunRawDsl().metadata, title: '魂斗罗式 Mission' }
+      }),
+      'SCHEMA_VALIDATION_FAILED',
+      'copyrighted source term'
+    );
   });
 
   it('preserves optional dodger collectible scoring in template params', () => {
