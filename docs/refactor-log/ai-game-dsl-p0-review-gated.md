@@ -8,11 +8,11 @@
 
 ## 当前阶段
 
-Step 14C controlled rollout verification / closeout 已验证并关闭 controlled rollout lane：`ART_ASSET_SEMANTIC_ROLLOUT_ENABLED` 默认关闭，flag-off 保持当前/default behavior，flag-on 仅限 approved Pirate Kit 20-asset runtime-safe input，rollback 为关闭 flag。本步不接 production asset packs、不改变 runtime/default integration、resolver、QA verdict、Workbench、Phaser、asset pack loading 或 repair behavior。AI Game Art Asset Metadata v0.1 已完成 Step 0 需求拆分、Step 1 schema / controlled vocabulary / examples / contract tests、Step 2 validation command、Step 3A runtime-safe export review gate、Step 3B runtime-safe export implementation、Metadata Step 4A docs-only gate、Metadata Step 4B report-only helper implementation、Step 10A docs-only gate、Step 10B implementation、Step 11A-11C non-default runtime canary lane、Step 12A preview gate、Step 12B preview implementation、Step 12C preview signoff、Step 13A large-library intake gate、Step 13B read-only inventory dry-run、Step 13C-A docs-only gate、Step 13C-B fixture import、Step 13D-A docs-only gate、Step 13D-B implementation、Step 13E-A docs-only gate、Step 13E-B controlled expansion、Step 14A docs-only gate、Step 14B rollout decision 和 Step 14C controlled rollout closeout。
+当前处于 2D pipeline stabilization / asset artifact observability lane。Step 20 已完成 compiler 侧 `asset_pipeline_report.json`：为 `AssetPlan -> AssetManifest -> Phaser preview manifest -> asset files -> compile files` 增加 deterministic、可追溯的 report，并通过 compiler / asset-pipeline / full test 验证与 Oracle 门禁。本步不接 production asset packs、不改变 runtime/default integration、resolver、QA verdict、Workbench、Phaser gameplay、asset pack loading 或 repair behavior。历史 Step 14C controlled rollout verification / closeout 已关闭 controlled rollout lane：`ART_ASSET_SEMANTIC_ROLLOUT_ENABLED` 默认关闭，flag-off 保持当前/default behavior，flag-on 仅限 approved Pirate Kit 20-asset runtime-safe input，rollback 为关闭 flag。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：提交 Step 14C verification / closeout docs commit，然后关闭分支边界。当前分支为 `docs/asset-semantic-step-14c-rollout-verification-closeout`。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：继续 2D pipeline stabilization Step 2，补 DSL schema v1 validation report artifact，并把 `game_dsl.json` / `dsl_validation_report.json` 写成稳定 pipeline contract。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
 
 ### 2.50 Step 14C: Controlled Rollout Verification / Closeout
 
@@ -4212,3 +4212,69 @@ fixture size check：
 当前下一步：
 
 - 2D pipeline stabilization Step 2：补 DSL schema v1 validation report artifact，并把 `game_dsl.json` / `dsl_validation_report.json` 写成稳定 pipeline contract。
+
+### 20. Asset Pipeline Step 6：Verifiable Asset Manifest Pipeline Report
+
+完成时间：2026-06-14
+
+已完成内容：
+
+- 新增 `apps/maker-api/src/compiler/asset-pipeline-report.ts`，在 compiler 产物中写入 `asset_pipeline_report.json`：
+  - 记录 `asset_plan.json`、`public/asset_manifest.json`、模板内 `asset-manifest.generated.json` 和 `asset_resolution_report.json` 的相对 artifact 路径。
+  - 汇总 manifest version、summary、asset ids、required asset ids、load keys 和 asset files。
+  - 不写时间戳、随机值或机器相关绝对路径，保持 report deterministic。
+- `TemplateCompilerService` 在写完 public manifest 和 Phaser preview manifest 后生成 report，并将 `asset_pipeline_report.json` 纳入最终 `RuntimeCompileSuccess.files`。
+- report writer 在写入前做真实校验：
+  - public manifest 与 Phaser preview manifest 必须一致。
+  - manifest `projectId` 必须匹配当前 project。
+  - 最终 compile files 必须列出 `asset_plan.json`、`public/asset_manifest.json`、`asset_resolution_report.json` 和所有 manifest asset files。
+  - Phaser template entry 必须 import `asset-manifest.generated.json`，并将 `generatedAssetManifest` 传入对应 `create*ArtRuntime(...)`，且该 art runtime 被 `preload(this)` 消费。
+  - manifest asset files 必须存在且为普通文件。
+- 新增 `tests/workspace/asset-pipeline-report.test.ts`，覆盖 happy path、projectId mismatch、preview 未把 manifest 传给 art runtime、最终 compile files 漏列 asset 的失败路径。
+- 扩展 `tests/workspace/compiler-service.test.ts`，覆盖 collector report 内容，以及 collector -> shooter 重新 compile 后 report 不保留 stale `collectible` asset。
+
+阶段结果：
+
+- `AssetPlan -> AssetManifest -> Phaser preview manifest -> asset files -> compile files` 形成可追溯 report。
+- 本步不改变 resolver ranking、fallback 策略、provider abstraction、Phaser gameplay / visual polish、QA verdict 或 Workbench 展示语义。
+- Step 5 live edit registry / bridge / runtime protocol 未修改。
+
+本步未做：
+
+- 未新增 AI image provider 或 asset provider abstraction。
+- 未扩大 asset pack 覆盖面。
+- 未把 report 接入 Workbench UI。
+- 未改 DSL schema v1、runtime capability report、build report 或 QA report 结构。
+
+已通过验证：
+
+    npx vitest run tests/workspace/asset-pipeline-report.test.ts tests/workspace/compiler-service.test.ts
+    # 2 个测试文件，15 个测试通过
+
+    npx vitest run tests/contracts/asset-pipeline.test.ts
+    # 1 个测试文件，23 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+    npm test
+    # contracts：24 个测试文件，224 个测试通过
+    # workspace：15 个测试文件，199 个测试通过
+
+审查记录：
+
+- Oracle 首轮：P0/P1 无；发现 2 个 P2：
+  - `previewManifestConsumedByTemplate` 只验证入口文件包含字符串，不能证明 preview 实际消费 manifest。
+  - `assetFilesListedInCompileResult` 实际校验中间 `assetArtifacts.files`，不是最终 `RuntimeCompileSuccess.files`。
+- 已修复：
+  - preview 消费校验改为检查 manifest import、对应 `create*ArtRuntime(generatedAssetManifest)` 调用，以及 art runtime `preload(this)`。
+  - `TemplateCompilerService` 先构造最终 `compileFiles`，report writer 校验同一份列表，返回结果也使用同一份列表。
+  - 补 `projectId` 一致性断言和 report writer 负向测试。
+- Oracle 复审：P0/P1/P2 无；P3 仅提示当前 preview 消费校验仍为正则 / 字符串级别而非 AST，针对固定模板可接受；提交前需确认新增文件纳入 commit。
+
+当前下一步：
+
+- 继续 2D pipeline stabilization Step 2：补 DSL schema v1 validation report artifact，并把 `game_dsl.json` / `dsl_validation_report.json` 写成稳定 pipeline contract。

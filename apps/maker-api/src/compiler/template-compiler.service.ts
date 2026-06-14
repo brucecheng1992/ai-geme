@@ -6,6 +6,7 @@ import { Injectable } from '@nestjs/common';
 import { writeAssetArtifacts } from '../../../../packages/asset-pipeline/src/index.js';
 import { checkPhaserRuntimeCapabilities, NormalizedGameIrSchema } from '../../../../packages/game-dsl/src/index.js';
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
+import { writeAssetPipelineReport } from './asset-pipeline-report.js';
 import type { RuntimeCompileInput, RuntimeCompileResult } from './compiler.types.js';
 
 const templateGenreById = {
@@ -108,6 +109,8 @@ export class TemplateCompilerService {
         JSON.stringify({ ...readShooterLiveEditRegistry(ir.template_params.params), runId: input.runId }, null, 2)
       );
     }
+    const compileFiles = [...files, 'game.ir.json', ...assetArtifacts.files, 'asset_pipeline_report.json'];
+    await writeAssetPipelineReport({ projectId: input.projectId, templateId, genre, outputDir, compileFiles });
     await writeFile(join(outputDir, 'package.json'), this.renderPackageJson(input.projectId));
     await writeFile(join(outputDir, 'index.html'), this.renderIndexHtml());
     await writeFile(join(outputDir, 'src', 'main.ts'), this.renderMainEntry(genre));
@@ -119,7 +122,7 @@ export class TemplateCompilerService {
       outputDir,
       distDir,
       templateId,
-      files: [...files, 'game.ir.json', ...assetArtifacts.files]
+      files: compileFiles
     };
   }
 

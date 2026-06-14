@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { TemplateCompilerService } from '../../apps/maker-api/src/compiler/template-compiler.service.js';
+import { AssetPipelineReportSchema } from '../../apps/maker-api/src/compiler/asset-pipeline-report.js';
 import type { RuntimeCompileResult, RuntimeCompileSuccess } from '../../apps/maker-api/src/compiler/compiler.types.js';
 import { ViteBuildRunnerService } from '../../apps/maker-api/src/compiler/vite-build-runner.service.js';
 import { LocalWorkspaceService } from '../../apps/maker-api/src/workspace/local-workspace.service.js';
@@ -64,6 +65,30 @@ describe('Compiler + Build + Preview services', () => {
     await expect(readFile(join(result.outputDir, 'public/assets/player.svg'), 'utf8')).resolves.toContain('<svg');
     await expect(readFile(join(result.outputDir, 'public/assets/background_main.svg'), 'utf8')).resolves.toContain('<svg');
     await expect(readFile(join(result.outputDir, 'public/assets/background_main.svg'), 'utf8')).resolves.toContain('Arcade field background');
+
+    const report = AssetPipelineReportSchema.parse(JSON.parse(await readFile(join(result.outputDir, 'asset_pipeline_report.json'), 'utf8')));
+    expect(result.files).toContain('asset_pipeline_report.json');
+    expect(report).toMatchObject({
+      projectId,
+      templateId: 'collector_v1',
+      artifacts: {
+        assetPlan: 'asset_plan.json',
+        publicManifest: 'public/asset_manifest.json',
+        previewManifest: 'collector/src/asset-manifest.generated.json',
+        resolutionReport: 'asset_resolution_report.json'
+      },
+      checks: {
+        publicManifestMatchesPreviewManifest: true,
+        previewManifestConsumedByTemplate: true,
+        assetFilesListedInCompileResult: true
+      },
+      manifest: {
+        assetIds: ['background_main', 'player', 'collectible'],
+        requiredAssetIds: ['background_main', 'player', 'collectible'],
+        loadKeys: ['agm.background_main', 'agm.player', 'agm.collectible'],
+        assetFiles: ['public/assets/background_main.svg', 'public/assets/player.svg', 'public/assets/collectible.svg']
+      }
+    });
   });
 
   it('resolves the default template root from the workspace root when started in the API package', async () => {
@@ -118,6 +143,11 @@ describe('Compiler + Build + Preview services', () => {
     await expect(readFile(join(second.outputDir, 'public/assets/projectile.svg'), 'utf8')).resolves.toContain('data:image/png;base64');
     await expect(readFile(join(second.outputDir, 'public/assets/collectible.svg'), 'utf8')).rejects.toThrow();
     await expect(readFile(join(second.outputDir, 'collector/src/GameScene.ts'), 'utf8')).rejects.toThrow();
+    const report = AssetPipelineReportSchema.parse(JSON.parse(await readFile(join(second.outputDir, 'asset_pipeline_report.json'), 'utf8')));
+    expect(report.templateId).toBe('shooter_v1');
+    expect(report.artifacts.previewManifest).toBe('shooter/src/asset-manifest.generated.json');
+    expect(report.manifest.assetIds).toEqual(['background_main', 'player', 'enemy', 'projectile']);
+    expect(report.manifest.assetFiles).not.toContain('public/assets/collectible.svg');
   });
 
   it('compiles 小猫大战坦克 with mixed local runtime assets and Phaser-loadable textures', async () => {
