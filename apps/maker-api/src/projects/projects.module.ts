@@ -12,6 +12,7 @@ import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
 import { DslLiveEditService } from './dsl-live-edit.service.js';
 import { GenerationPipelineService } from './generation-pipeline.service.js';
 import { ProjectStoreService } from './project-store.service.js';
+import { PromptCoachService } from './prompt-coach.service.js';
 import { ProjectsController } from './projects.controller.js';
 import { ProjectsService } from './projects.service.js';
 import { RunStoreService } from './run-store.service.js';
@@ -36,15 +37,21 @@ import { RunStoreService } from './run-store.service.js';
       inject: [LocalWorkspaceService]
     },
     {
+      provide: PromptCoachService,
+      useFactory: (workspace: LocalWorkspaceService) => new PromptCoachService(workspace),
+      inject: [LocalWorkspaceService]
+    },
+    {
       provide: ProjectsService,
       useFactory: (
         projectStore: ProjectStoreService,
         runStore: RunStoreService,
         workspace: LocalWorkspaceService,
         liveEdit: DslLiveEditService,
-        pipeline: GenerationPipelineService
-      ) => new ProjectsService(projectStore, runStore, workspace, liveEdit, pipeline),
-      inject: [ProjectStoreService, RunStoreService, LocalWorkspaceService, DslLiveEditService, GenerationPipelineService]
+        pipeline: GenerationPipelineService,
+        promptCoach: PromptCoachService
+      ) => new ProjectsService(projectStore, runStore, workspace, liveEdit, pipeline, promptCoach),
+      inject: [ProjectStoreService, RunStoreService, LocalWorkspaceService, DslLiveEditService, GenerationPipelineService, PromptCoachService]
     },
     {
       provide: GenerationPipelineService,
@@ -68,6 +75,6 @@ import { RunStoreService } from './run-store.service.js';
       ]
     }
   ],
-  exports: [ProjectStoreService, RunStoreService, ProjectsService, GenerationPipelineService, DslLiveEditService]
+  exports: [ProjectStoreService, RunStoreService, ProjectsService, GenerationPipelineService, DslLiveEditService, PromptCoachService]
 })
 export class ProjectsModule {}

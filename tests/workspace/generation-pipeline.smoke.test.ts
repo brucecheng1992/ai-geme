@@ -13,6 +13,7 @@ import { ViteBuildRunnerService } from '../../apps/maker-api/src/compiler/vite-b
 import { DslLiveEditService } from '../../apps/maker-api/src/projects/dsl-live-edit.service.js';
 import { GenerationPipelineService } from '../../apps/maker-api/src/projects/generation-pipeline.service.js';
 import { ProjectStoreService } from '../../apps/maker-api/src/projects/project-store.service.js';
+import { PromptCoachService } from '../../apps/maker-api/src/projects/prompt-coach.service.js';
 import { ProjectsService } from '../../apps/maker-api/src/projects/projects.service.js';
 import { RunStoreService } from '../../apps/maker-api/src/projects/run-store.service.js';
 import { PlayableQaGateService } from '../../apps/maker-api/src/qa/playable-qa-gate.service.js';
@@ -119,7 +120,7 @@ function createProjectsService(): ProjectsService {
     new PlaywrightQaRunnerService(workspace, qaGate)
   );
 
-  return new ProjectsService(projectStore, runStore, workspace, new DslLiveEditService(workspace), pipeline, () => ({ projectId, runId }));
+  return new ProjectsService(projectStore, runStore, workspace, new DslLiveEditService(workspace), pipeline, new PromptCoachService(workspace), () => ({ projectId, runId }));
 }
 
 async function cleanSmokeArtifacts(): Promise<void> {

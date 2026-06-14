@@ -14,6 +14,8 @@ import type {
   LiveCurrentResponse,
   PipelineArtifactsResponse,
   PrepareLiveEditRequest,
+  PreparePromptOptimizationRequest,
+  PreparePromptOptimizationResponse,
   PrepareDeterministicPatchResponse,
   ProjectStatusResponse,
   QaReportResponse,
@@ -22,6 +24,7 @@ import type {
   RunEventsResponse
 } from './project-api.types.js';
 import { PipelineArtifactIndexSchema } from './pipeline-artifact-index.js';
+import { PromptCoachService } from './prompt-coach.service.js';
 import { ProjectRequestError } from './project-request.error.js';
 import { ProjectStoreService } from './project-store.service.js';
 import { RunStoreService } from './run-store.service.js';
@@ -55,6 +58,7 @@ export class ProjectsService {
     private readonly workspace: LocalWorkspaceService,
     private readonly liveEdit: DslLiveEditService,
     private readonly pipeline: GenerationPipeline,
+    private readonly promptCoach: PromptCoachService,
     private readonly idFactory: IdFactory = createProjectRunIds
   ) {}
 
@@ -163,6 +167,26 @@ export class ProjectsService {
     return {
       ok: true,
       pipeline_artifact_index: index
+    };
+  }
+
+  async preparePromptOptimization(projectId: string, body: unknown): Promise<PreparePromptOptimizationResponse> {
+    await this.projectStore.readProject(projectId);
+    const request = this.parsePreparePromptOptimizationRequest(body);
+    if (request.runId !== undefined) {
+      await this.assertRunBelongsToProject(projectId, request.runId);
+    }
+    const prepared = await this.promptCoach.prepare({
+      projectId,
+      originalPrompt: request.originalPrompt,
+      supportedDslVersion: 'v1',
+      runId: request.runId
+    });
+
+    return {
+      ok: true,
+      report: prepared.report,
+      artifacts: prepared.artifacts
     };
   }
 
@@ -314,6 +338,23 @@ export class ProjectsService {
       path: body.path.trim(),
       value: body.value,
       intent: typeof body.intent === 'string' && body.intent.trim().length > 0 ? body.intent.trim() : undefined
+    };
+  }
+
+  private parsePreparePromptOptimizationRequest(body: unknown): Required<Pick<PreparePromptOptimizationRequest, 'originalPrompt'>> & Pick<PreparePromptOptimizationRequest, 'runId'> {
+    if (!isRecord(body)) {
+      throw new ProjectRequestError('Request body must be an object.');
+    }
+    if (typeof body.originalPrompt !== 'string' || body.originalPrompt.trim().length === 0) {
+      throw new ProjectRequestError('originalPrompt is required.');
+    }
+    if (body.runId !== undefined && (typeof body.runId !== 'string' || body.runId.trim().length === 0)) {
+      throw new ProjectRequestError('runId must be a string when provided.');
+    }
+
+    return {
+      originalPrompt: body.originalPrompt.trim(),
+      runId: typeof body.runId === 'string' ? body.runId.trim() : undefined
     };
   }
 }

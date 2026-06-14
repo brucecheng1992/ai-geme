@@ -15,6 +15,7 @@ import type { CommandRunner } from '../apps/maker-api/src/compiler/compiler.type
 import { DslLiveEditService } from '../apps/maker-api/src/projects/dsl-live-edit.service.js';
 import { GenerationPipelineService, type AssetSemanticRepairConfig } from '../apps/maker-api/src/projects/generation-pipeline.service.js';
 import { ProjectStoreService } from '../apps/maker-api/src/projects/project-store.service.js';
+import { PromptCoachService } from '../apps/maker-api/src/projects/prompt-coach.service.js';
 import { ProjectsService } from '../apps/maker-api/src/projects/projects.service.js';
 import { RunStoreService } from '../apps/maker-api/src/projects/run-store.service.js';
 import { PlayableQaGateService } from '../apps/maker-api/src/qa/playable-qa-gate.service.js';
@@ -154,6 +155,7 @@ async function runCanaryCase(
       new PlaywrightQaRunnerService(workspace, new PlayableQaGateService()),
       assetSemanticRepairConfig
     ),
+    new PromptCoachService(workspace),
     () => ({ projectId, runId })
   );
 

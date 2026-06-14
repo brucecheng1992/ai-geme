@@ -5,6 +5,7 @@ import type {
   GenerateProjectResponse,
   LiveCurrentResponse,
   PipelineArtifactsResponse,
+  PreparePromptOptimizationResponse,
   PrepareDeterministicPatchResponse,
   ProjectStatusResponse,
   QaReportResponse,
@@ -51,6 +52,11 @@ export class ProjectsController {
   @Get(':projectId/runs/:runId/artifacts')
   async getPipelineArtifacts(@Param('projectId') projectId: string, @Param('runId') runId: string): Promise<PipelineArtifactsResponse> {
     return await this.projectsService.getPipelineArtifacts(projectId, runId);
+  }
+
+  @Post(':projectId/prompt-optimizations/prepare')
+  async preparePromptOptimization(@Param('projectId') projectId: string, @Body() body: unknown): Promise<PreparePromptOptimizationResponse> {
+    return await this.projectsService.preparePromptOptimization(projectId, body);
   }
 
   @Get(':projectId/runs/:runId/live/current')

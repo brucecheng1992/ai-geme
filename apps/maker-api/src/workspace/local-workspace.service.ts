@@ -93,6 +93,17 @@ export class LocalWorkspaceService {
     );
   }
 
+  getProjectPromptOptimizationArtifactPath(projectId: string, optimizationId: string, name: string): string {
+    return this.resolveInsideWorkspace(
+      LOCAL_DATA_DIR,
+      LOCAL_DATA_SUBDIRS.modelOutputs,
+      this.assertSafeSegment(projectId, 'projectId'),
+      'prompt-optimizations',
+      this.assertSafeSegment(optimizationId, 'optimizationId'),
+      this.assertSafeFileName(name, 'name')
+    );
+  }
+
   getLiveDir(projectId: string, runId: string): string {
     return this.resolveInsideWorkspace(
       LOCAL_DATA_DIR,

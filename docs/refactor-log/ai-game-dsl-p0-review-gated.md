@@ -8,11 +8,59 @@
 
 ## 当前阶段
 
-当前处于 2D pipeline stabilization / DSL artifact contract lane。Step 21 已完成 `dsl_validation_report.json` 稳定 contract：为 `game_dsl.json` / `game_dsl.candidate.json` 增加 deterministic validation report 字段、stable id summary、object counts、checked paths、source artifact 归属和 schema-level report invariant 校验；invalid DSL 仍明确阻断 compile / build / QA。本步不扩 DSL 能力、不改变 prompt、Phaser gameplay、resolver / fallback、QA verdict、Workbench UI、asset pack、provider abstraction 或 live edit 能力。历史 Step 20 已完成 compiler 侧 `asset_pipeline_report.json`，历史 Step 14C controlled rollout verification / closeout 已关闭 controlled rollout lane。
+当前处于 Step 9 Prompt Coach artifact contract lane。Step 9 已新增 deterministic/mock prompt optimization prepare 闭环：输出 `prompt_optimization_report.json` 和 `optimized_prompt.txt`，并通过 prepare-only / non-apply API 暴露 artifact refs；Prompt Coach prepare path 不读取 API key、不调用 provider，本步不接真实 LLM / provider abstraction、不改变现有 DSL generation prompt、不覆盖玩家原始 prompt、不写 `game_dsl.json`、不触发 generation pipeline、不改 Phaser gameplay / visual polish、不改 `asset_pipeline_report` / `dsl_validation_report` / QA verdict / DSL schema / live edit / Chrome MCP。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：继续 2D pipeline stabilization Step 3，选择最小 pipeline artifact index / API visibility 挂接点，让 Workbench 或项目 API 能稳定看到 `game_dsl.json`、`dsl_validation_report.json`、`runtime_capability_report.json`、`asset_pipeline_report.json` 等 artifact refs；不得改变 QA verdict 总结构或重复 Step 20 asset report。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：等待 Step 9 提交确认；后续如继续 Prompt Coach，应保持 prepare-only / deterministic contract 先行，另开 gate 再讨论手动 apply、Workbench 展示或真实 LLM provider。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.51 Step 9: Prompt Coach Artifact Contract / Prepare API
+
+完成时间：2026-06-15
+
+已完成内容：
+
+- 新增 `PromptCoachService`，用 deterministic `mock-v1` 策略生成 `prompt_optimization_report.json` contract 和 `optimized_prompt.txt`。
+- 新增 `POST /api/projects/:projectId/prompt-optimizations/prepare`，只做 prepare，不 apply，不触发 `GenerationPipelineService.run`。
+- `PromptOptimizationReport` 记录 `reportVersion`、`projectId`、可选 `runId`、稳定 `optimizationId`、`originalPrompt`、`optimizedPrompt`、`intentSummary`、deterministic warnings / unsupported requests / suggested questions、`supportedDslVersion: "v1"`、`capabilitiesUsed`、`status: "prepared"`、`applied: false`、`strategy: "mock-v1"`。
+- artifact 写入 project-level model-output：`prompt-optimizations/<optimizationId>/prompt_optimization_report.json` 和 `prompt-optimizations/<optimizationId>/optimized_prompt.txt`。
+- `optimizationId` hash scope 包含 `projectId`、`runId ?? "project-level"`、normalized original prompt、DSL version 和 strategy，避免同 project/prompt 不同 run 的 artifact path 互相覆盖。
+- API 边界校验 project 存在、optional `runId` ownership、`originalPrompt` 非空；空白 `runId` 不降级为 project-level scope。
+- 更新 `ProjectsModule` 注入 `PromptCoachService`，并同步已有 `ProjectsService` 构造点。
+- 新增 `tests/workspace/prompt-coach.test.ts`，扩展 `tests/workspace/projects-service.test.ts`。
+
+阶段结果：
+
+- Prompt Coach 本阶段仅优化“意图表达”，不生成 Phaser 代码，不写或修改 `game_dsl.json`，不修改 project `idea` / original prompt。
+- prompt optimization artifacts 通过 response artifacts refs 暴露；本步未修改 Step 8 `pipeline_artifact_index` schema 或既有 contract。
+- 本步未改 `asset_pipeline_report` / `dsl_validation_report` 语义，未改 QA verdict、DSL schema、Phaser、live edit、Chrome MCP 或 provider abstraction。
+- 同一 exact scope 重复 prepare 会 deterministic 幂等重写相同内容；未来若 report 引入时间、人工编辑或非 deterministic 字段，应升级为 no-clobber / versioned write。
+
+已通过验证：
+
+    npx vitest run tests/workspace/prompt-coach.test.ts tests/workspace/projects-service.test.ts
+    # 2 个测试文件，20 个测试通过
+
+    npx vitest run tests/workspace/pipeline-artifact-index.test.ts
+    # 1 个测试文件，4 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+    npm test
+    # contracts：24 个测试文件，224 个测试通过
+    # workspace：18 个测试文件，218 个测试通过
+
+审查门禁结论：
+
+- Oracle 首轮：P0/P1/P2 无；确认未接真实 LLM / provider、未改 generation prompt、未覆盖 project idea / originalPrompt、未写 `game_dsl.json`、未触发 generation pipeline、artifact refs 为相对路径，未破坏 pipeline artifact index、QA verdict、DSL schema、Phaser、live edit 或 asset pipeline。
+- Oracle P3：空白 `runId` 会降级为 project-level scope；已修复为显式 reject 并补 RED/GREEN 测试。
+- Oracle P3：同一 exact scope 重复 prepare deterministic 幂等重写相同 artifact；本阶段接受，记录为未来非 deterministic 字段引入前的设计约束。
+- Oracle 复审：P0/P1/P2 均无，确认空白 `runId` 修复未引入新问题。
+- 审查模式：Oracle 新建 + 复审。
 
 ### 2.50 Step 14C: Controlled Rollout Verification / Closeout
 

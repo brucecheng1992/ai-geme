@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { ProjectRequestError } from '../../apps/maker-api/src/projects/project-request.error.js';
+import { PromptCoachService } from '../../apps/maker-api/src/projects/prompt-coach.service.js';
 import { ProjectStoreService } from '../../apps/maker-api/src/projects/project-store.service.js';
 import { createProjectRunIds, ProjectsService } from '../../apps/maker-api/src/projects/projects.service.js';
 import { RunStoreService } from '../../apps/maker-api/src/projects/run-store.service.js';
@@ -19,6 +20,7 @@ describe('ProjectsService', () => {
   let workspace: LocalWorkspaceService;
   let service: ProjectsService;
   let liveEdit: DslLiveEditService;
+  let pipelineRuns: number;
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'ai-game-maker-api-'));
@@ -26,6 +28,7 @@ describe('ProjectsService', () => {
     projectStore = new ProjectStoreService(workspace);
     runStore = new RunStoreService(workspace);
     liveEdit = new DslLiveEditService(workspace);
+    pipelineRuns = 0;
     service = new ProjectsService(
       projectStore,
       runStore,
@@ -33,9 +36,11 @@ describe('ProjectsService', () => {
       liveEdit,
       {
         async run() {
+          pipelineRuns += 1;
           return 'CREATED';
         }
       },
+      new PromptCoachService(workspace),
       () => ({
         projectId: 'proj_20260609_153000_abcd',
         runId: 'run_20260609_153000_0001'
@@ -89,6 +94,43 @@ describe('ProjectsService', () => {
     await expect(service.generateProject({ idea: '', language: 'zh' })).rejects.toMatchObject({
       status: 400
     });
+  });
+
+  it('prepares prompt optimization artifacts without mutating project prompt or running generation', async () => {
+    const created = await service.generateProject({ idea: 'cat shooter', language: 'en' });
+    expect(pipelineRuns).toBe(1);
+
+    const prepared = await service.preparePromptOptimization(created.project_id, {
+      originalPrompt: 'make a multiplayer 3D cat shooter with online leaderboard'
+    });
+
+    expect(prepared).toMatchObject({
+      ok: true,
+      report: {
+        projectId: created.project_id,
+        originalPrompt: 'make a multiplayer 3D cat shooter with online leaderboard',
+        status: 'prepared',
+        applied: false
+      },
+      artifacts: [
+        expect.objectContaining({ id: 'promptOptimizationReport', path: expect.stringContaining('prompt_optimization_report.json') }),
+        expect.objectContaining({ id: 'optimizedPrompt', path: expect.stringContaining('optimized_prompt.txt') })
+      ]
+    });
+    expect(pipelineRuns).toBe(1);
+    await expect(service.getProject(created.project_id)).resolves.toMatchObject({
+      project: { idea: 'cat shooter' }
+    });
+    await expect(readFile(workspace.getModelOutputPath(created.project_id, created.run_id, 'game_dsl.json'), 'utf8')).rejects.toThrow();
+    expect(JSON.stringify(prepared)).not.toContain(root);
+  });
+
+  it('rejects prompt optimization prepare for missing projects and empty prompts', async () => {
+    await expect(service.preparePromptOptimization('proj_missing', { originalPrompt: 'cat shooter' })).rejects.toThrow();
+    const created = await service.generateProject({ idea: 'cat shooter', language: 'en' });
+
+    await expect(service.preparePromptOptimization(created.project_id, { originalPrompt: '  ' })).rejects.toThrow(ProjectRequestError);
+    await expect(service.preparePromptOptimization(created.project_id, { originalPrompt: 'cat shooter', runId: '   ' })).rejects.toThrow(ProjectRequestError);
   });
 
   it('rejects event lookup when the run does not belong to the project', async () => {
