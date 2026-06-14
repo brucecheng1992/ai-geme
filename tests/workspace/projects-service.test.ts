@@ -40,7 +40,24 @@ describe('ProjectsService', () => {
           return 'CREATED';
         }
       },
-      new PromptCoachService(workspace),
+      new PromptCoachService(workspace, {
+        llm: {
+          enabled: true,
+          async optimize() {
+            return {
+              ok: true,
+              json: {
+                optimizedPrompt: 'Use a 2D cat shooter.',
+                intentSummary: 'cat shooter',
+                dslFitWarnings: [],
+                unsupportedRequests: [],
+                suggestedQuestions: ['What is the win condition?'],
+                capabilitiesUsed: ['llm-json-prompt-coaching']
+              }
+            };
+          }
+        }
+      }),
       () => ({
         projectId: 'proj_20260609_153000_abcd',
         runId: 'run_20260609_153000_0001'
@@ -125,12 +142,42 @@ describe('ProjectsService', () => {
     expect(JSON.stringify(prepared)).not.toContain(root);
   });
 
+  it('requires explicit llm mode and still does not mutate project prompt or run generation', async () => {
+    const created = await service.generateProject({ idea: 'cat shooter', language: 'en' });
+    expect(pipelineRuns).toBe(1);
+
+    const defaultPrepared = await service.preparePromptOptimization(created.project_id, {
+      originalPrompt: 'cat shooter'
+    });
+    const llmPrepared = await service.preparePromptOptimization(created.project_id, {
+      originalPrompt: 'cat shooter',
+      runId: created.run_id,
+      mode: 'llm'
+    });
+
+    expect(defaultPrepared.report.mode).toBe('mock');
+    expect(llmPrepared.report).toMatchObject({
+      mode: 'llm',
+      strategy: 'llm-v1',
+      optimizedPrompt: 'Use a 2D cat shooter.',
+      applied: false
+    });
+    expect(llmPrepared.report.optimizationId).not.toBe(defaultPrepared.report.optimizationId);
+    expect(llmPrepared.artifacts[0].path).not.toBe(defaultPrepared.artifacts[0].path);
+    expect(pipelineRuns).toBe(1);
+    await expect(service.getProject(created.project_id)).resolves.toMatchObject({
+      project: { idea: 'cat shooter' }
+    });
+    await expect(readFile(workspace.getModelOutputPath(created.project_id, created.run_id, 'game_dsl.json'), 'utf8')).rejects.toThrow();
+  });
+
   it('rejects prompt optimization prepare for missing projects and empty prompts', async () => {
     await expect(service.preparePromptOptimization('proj_missing', { originalPrompt: 'cat shooter' })).rejects.toThrow();
     const created = await service.generateProject({ idea: 'cat shooter', language: 'en' });
 
     await expect(service.preparePromptOptimization(created.project_id, { originalPrompt: '  ' })).rejects.toThrow(ProjectRequestError);
     await expect(service.preparePromptOptimization(created.project_id, { originalPrompt: 'cat shooter', runId: '   ' })).rejects.toThrow(ProjectRequestError);
+    await expect(service.preparePromptOptimization(created.project_id, { originalPrompt: 'cat shooter', mode: 'surprise' })).rejects.toThrow(ProjectRequestError);
   });
 
   it('rejects event lookup when the run does not belong to the project', async () => {

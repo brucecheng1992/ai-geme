@@ -180,7 +180,8 @@ export class ProjectsService {
       projectId,
       originalPrompt: request.originalPrompt,
       supportedDslVersion: 'v1',
-      runId: request.runId
+      runId: request.runId,
+      mode: request.mode
     });
 
     return {
@@ -341,7 +342,7 @@ export class ProjectsService {
     };
   }
 
-  private parsePreparePromptOptimizationRequest(body: unknown): Required<Pick<PreparePromptOptimizationRequest, 'originalPrompt'>> & Pick<PreparePromptOptimizationRequest, 'runId'> {
+  private parsePreparePromptOptimizationRequest(body: unknown): Required<Pick<PreparePromptOptimizationRequest, 'originalPrompt' | 'mode'>> & Pick<PreparePromptOptimizationRequest, 'runId'> {
     if (!isRecord(body)) {
       throw new ProjectRequestError('Request body must be an object.');
     }
@@ -351,10 +352,14 @@ export class ProjectsService {
     if (body.runId !== undefined && (typeof body.runId !== 'string' || body.runId.trim().length === 0)) {
       throw new ProjectRequestError('runId must be a string when provided.');
     }
+    if (body.mode !== undefined && body.mode !== 'mock' && body.mode !== 'llm') {
+      throw new ProjectRequestError('mode must be "mock" or "llm" when provided.');
+    }
 
     return {
       originalPrompt: body.originalPrompt.trim(),
-      runId: typeof body.runId === 'string' ? body.runId.trim() : undefined
+      runId: typeof body.runId === 'string' ? body.runId.trim() : undefined,
+      mode: body.mode ?? 'mock'
     };
   }
 }

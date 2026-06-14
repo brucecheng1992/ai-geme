@@ -8,11 +8,60 @@
 
 ## 当前阶段
 
-当前处于 Step 9 Prompt Coach artifact contract lane。Step 9 已新增 deterministic/mock prompt optimization prepare 闭环：输出 `prompt_optimization_report.json` 和 `optimized_prompt.txt`，并通过 prepare-only / non-apply API 暴露 artifact refs；Prompt Coach prepare path 不读取 API key、不调用 provider，本步不接真实 LLM / provider abstraction、不改变现有 DSL generation prompt、不覆盖玩家原始 prompt、不写 `game_dsl.json`、不触发 generation pipeline、不改 Phaser gameplay / visual polish、不改 `asset_pipeline_report` / `dsl_validation_report` / QA verdict / DSL schema / live edit / Chrome MCP。
+当前处于 Step 10 Prompt Coach gated LLM mode lane。Step 10 已在 Step 9 Prompt Coach artifact contract 上增加显式 `mode: "mock" | "llm"`：mock 仍为默认且 deterministic；LLM mode 只有 `mode="llm"` 且 `PROMPT_COACH_LLM_ENABLED=true` 时才启用；启用且显式请求时，会通过 Prompt Coach 专用 DeepSeek adapter 获取 JSON，经过 schema validation / deterministic normalization 后才写 `prompt_optimization_report.json` 和 `optimized_prompt.txt`。本步不改变现有 DSL generation prompt、不覆盖玩家原始 prompt、不写 `game_dsl.json`、不触发 generation pipeline、不改 Phaser gameplay / visual polish、不改 `asset_pipeline_report` / `dsl_validation_report` / `pipeline_artifact_index` / QA verdict / DSL schema / live edit / Chrome MCP。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：等待 Step 9 提交确认；后续如继续 Prompt Coach，应保持 prepare-only / deterministic contract 先行，另开 gate 再讨论手动 apply、Workbench 展示或真实 LLM provider。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：等待 Step 10 提交确认；后续如继续 Prompt Coach，应另开 gate 再讨论手动 apply、Workbench 展示、failure artifact contract 或 provider 平台化。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.52 Step 10: Prompt Coach Gated LLM Mode
+
+完成时间：2026-06-15
+
+已完成内容：
+
+- 扩展 Prompt Coach prepare request，支持 `mode: "mock" | "llm"`；缺省仍为 `mock`。
+- 拆出 `prompt-coach.contract.ts`，让 `prompt_optimization_report.json` contract 显式记录 `mode`、`strategy` 和可选 `modelProfile`，并约束 mode / strategy 一致。
+- 拆出 `prompt-coach-mock.ts`，保持 Step 9 mock strategy / hash 输入兼容，mock 继续 deterministic。
+- 新增 `PromptCoachDeepSeekClient` 专用窄 adapter；只有 `PROMPT_COACH_LLM_ENABLED=true` 时 `ProjectsModule` 才启用 LLM mode。
+- Prompt Coach LLM adapter 使用 JSON-only system/user prompt，禁止输出 Phaser / JS / TS code、`game_dsl.json`、asset manifest、runtime patch、provider call、file system path、secret / env / API key / headers / raw provider data。
+- LLM adapter 不复用会写 raw provider response 的 `DeepSeekClient`，不写 raw provider output artifact。
+- 新增 `prompt-coach-llm-output.ts`，对 LLM JSON 做 strict schema validation、长度限制、数组长度限制、危险文本过滤、trim / 去空 / 去重 / deterministic 排序。
+- LLM success report 使用 `strategy: "llm-v1"`、`mode: "llm"` 和安全 `modelProfile`；不记录 API key、headers、raw provider response、provider response id、token cost 或 timestamp。
+- LLM mode 失败时抛明确 API error，不写 `prompt_optimization_report.json` success、不写 `optimized_prompt.txt`、不写 `game_dsl.json`、不改 project prompt、不触发 generation pipeline。
+- LLM `optimizationId` hash scope 包含 normalized payload hash，避免同 run / prompt / mode 的不同 LLM 输出互相覆盖；mock 路径不纳入 payload hash，保持 deterministic。
+
+阶段结果：
+
+- Prompt Coach 仍为 prepare-only / non-apply；没有新增 apply 行为。
+- 未修改现有 DSL generation prompt、`GenerationPipelineService`、`GameDslProviderService`、DSL schema、QA verdict、Phaser、live edit、asset reports 或 `pipeline_artifact_index`。
+- 未接入 provider abstraction / registry；本步只新增 Prompt Coach 专用 DeepSeek adapter。
+- 文件职责已拆分：`prompt-coach.service.ts` 184 行，contract / mock / llm output / llm client 均为小文件。
+
+已通过验证：
+
+    npx vitest run tests/workspace/prompt-coach-llm-client.test.ts tests/workspace/prompt-coach.test.ts tests/workspace/projects-service.test.ts
+    # 3 个测试文件，29 个测试通过
+
+    npx vitest run tests/workspace/pipeline-artifact-index.test.ts
+    # 1 个测试文件，4 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+    npm test
+    # contracts：24 个测试文件，224 个测试通过
+    # workspace：19 个测试文件，227 个测试通过
+
+审查门禁结论：
+
+- Oracle 首轮：P0 无；P1 指出 LLM 危险文本过滤未覆盖 `dslFitWarnings` / `unsupportedRequests` / `capabilitiesUsed`；P2 指出同 run / prompt / mode 不同 LLM 输出可能覆盖同一 artifact path；P3 指出注释、mode/strategy schema 和重复读取 config 可收紧。
+- 已修复：危险文本过滤覆盖所有进入 report 的 LLM 字符串字段；LLM `optimizationId` 纳入 normalized payload hash；更新 service 注释；report schema 约束 mode/strategy；`ProjectsModule` 只读取一次 DeepSeek config。
+- Oracle 复审：P0/P1/P2 均无，确认未引入新的阻塞问题。
+- 审查模式：Oracle 新建 + 复审。
 
 ### 2.51 Step 9: Prompt Coach Artifact Contract / Prepare API
 

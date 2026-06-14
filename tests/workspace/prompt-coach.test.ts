@@ -41,7 +41,8 @@ describe('PromptCoachService', () => {
       capabilitiesUsed: ['deterministic-whitespace-normalization', 'dsl-friendly-brief-structure', 'unsupported-request-detection'],
       status: 'prepared',
       applied: false,
-      strategy: 'mock-v1'
+      strategy: 'mock-v1',
+      mode: 'mock'
     });
     expect(first.report.optimizedPrompt).not.toBe(first.report.originalPrompt);
     expect(first.report.optimizedPrompt).toContain(first.report.originalPrompt);
@@ -114,5 +115,216 @@ describe('PromptCoachService', () => {
     expect(first.artifacts[0].path).not.toBe(second.artifacts[0].path);
     expect(first.report.runId).toBe('run_20260615_prompt_a');
     expect(second.report.runId).toBe('run_20260615_prompt_b');
+  });
+
+  it('rejects llm mode when no explicit LLM client is configured', async () => {
+    await expect(
+      coach.prepare({
+        projectId: 'proj_20260615_prompt',
+        originalPrompt: 'cat shooter',
+        supportedDslVersion: 'v1',
+        mode: 'llm'
+      })
+    ).rejects.toThrow('Prompt Coach LLM mode is not configured.');
+  });
+
+  it('normalizes successful llm output before writing artifacts', async () => {
+    const llmCoach = new PromptCoachService(workspace, {
+      llm: {
+        enabled: true,
+        modelProfile: 'test-profile',
+        async optimize() {
+          return {
+            ok: true,
+            json: {
+              optimizedPrompt: '  Use a 2D cat shooter with clear waves.  ',
+              intentSummary: '  cat shooter brief  ',
+              dslFitWarnings: ['z_warning', '', 'a_warning', 'z_warning'],
+              unsupportedRequests: ['multiplayer', '', 'complex_3d', 'multiplayer'],
+              suggestedQuestions: ['  Which enemy appears first?  ', '', 'What is the win condition?'],
+              capabilitiesUsed: ['llm-json-prompt-coaching', 'llm-json-prompt-coaching', 'dsl-friendly-brief-structure']
+            }
+          };
+        }
+      }
+    });
+
+    const prepared = await llmCoach.prepare({
+      projectId: 'proj_20260615_prompt',
+      runId: 'run_20260615_prompt_a',
+      originalPrompt: 'cat shooter',
+      supportedDslVersion: 'v1',
+      mode: 'llm'
+    });
+
+    expect(prepared.report).toMatchObject({
+      projectId: 'proj_20260615_prompt',
+      runId: 'run_20260615_prompt_a',
+      originalPrompt: 'cat shooter',
+      optimizedPrompt: 'Use a 2D cat shooter with clear waves.',
+      intentSummary: 'cat shooter brief',
+      dslFitWarnings: ['a_warning', 'z_warning'],
+      unsupportedRequests: ['complex_3d', 'multiplayer'],
+      suggestedQuestions: ['What is the win condition?', 'Which enemy appears first?'],
+      capabilitiesUsed: ['dsl-friendly-brief-structure', 'llm-json-prompt-coaching'],
+      mode: 'llm',
+      strategy: 'llm-v1',
+      modelProfile: 'test-profile',
+      status: 'prepared',
+      applied: false
+    });
+    expect(JSON.stringify(prepared.report)).not.toContain('secret');
+    expect(JSON.stringify(prepared.report)).not.toContain(root);
+
+    const reportRaw = await readFile(
+      workspace.getProjectPromptOptimizationArtifactPath(prepared.report.projectId, prepared.report.optimizationId, 'prompt_optimization_report.json'),
+      'utf8'
+    );
+    const optimizedRaw = await readFile(
+      workspace.getProjectPromptOptimizationArtifactPath(prepared.report.projectId, prepared.report.optimizationId, 'optimized_prompt.txt'),
+      'utf8'
+    );
+    expect(JSON.parse(reportRaw)).toEqual(prepared.report);
+    expect(optimizedRaw).toBe('Use a 2D cat shooter with clear waves.\n');
+    await expect(readFile(workspace.getModelOutputPath(prepared.report.projectId, prepared.report.runId ?? 'run_missing', 'game_dsl.json'), 'utf8')).rejects.toThrow();
+  });
+
+  it('rejects invalid llm JSON without writing success artifacts', async () => {
+    const llmCoach = new PromptCoachService(workspace, {
+      llm: {
+        enabled: true,
+        async optimize() {
+          return { ok: false, code: 'MODEL_JSON_PARSE_FAILED', message: 'invalid json from fake model' };
+        }
+      }
+    });
+
+    await expect(
+      llmCoach.prepare({
+        projectId: 'proj_20260615_prompt',
+        runId: 'run_20260615_prompt_a',
+        originalPrompt: 'cat shooter',
+        supportedDslVersion: 'v1',
+        mode: 'llm'
+      })
+    ).rejects.toThrow('Prompt Coach LLM failed: invalid json from fake model');
+
+    await expect(
+      readFile(
+        workspace.getProjectPromptOptimizationArtifactPath('proj_20260615_prompt', 'opt_proj_20260615_prompt_3e8038c56587', 'prompt_optimization_report.json'),
+        'utf8'
+      )
+    ).rejects.toThrow();
+  });
+
+  it('rejects schema-invalid or dangerous llm payloads before writing success artifacts', async () => {
+    const llmCoach = new PromptCoachService(workspace, {
+      llm: {
+        enabled: true,
+        async optimize() {
+          return {
+            ok: true,
+            json: {
+              optimizedPrompt: '```ts\nconsole.log("game")\n```',
+              intentSummary: 'cat shooter',
+              dslFitWarnings: [],
+              unsupportedRequests: [],
+              suggestedQuestions: [],
+              capabilitiesUsed: [],
+              game_dsl: { genre: 'top_down_shooter' }
+            }
+          };
+        }
+      }
+    });
+
+    await expect(
+      llmCoach.prepare({
+        projectId: 'proj_20260615_prompt',
+        runId: 'run_20260615_prompt_a',
+        originalPrompt: 'cat shooter',
+        supportedDslVersion: 'v1',
+        mode: 'llm'
+      })
+    ).rejects.toThrow('Prompt Coach LLM output failed validation.');
+
+    await expect(
+      readFile(
+        workspace.getProjectPromptOptimizationArtifactPath('proj_20260615_prompt', 'opt_proj_20260615_prompt_3e8038c56587', 'optimized_prompt.txt'),
+        'utf8'
+      )
+    ).rejects.toThrow();
+  });
+
+  it('rejects dangerous llm array values before writing success artifacts', async () => {
+    const llmCoach = new PromptCoachService(workspace, {
+      llm: {
+        enabled: true,
+        async optimize() {
+          return {
+            ok: true,
+            json: {
+              optimizedPrompt: 'Use a 2D cat shooter.',
+              intentSummary: 'cat shooter',
+              dslFitWarnings: ['api key should go here'],
+              unsupportedRequests: ['/Users/local/path'],
+              suggestedQuestions: ['What is the win condition?'],
+              capabilitiesUsed: ['authorization: Bearer secret']
+            }
+          };
+        }
+      }
+    });
+
+    await expect(
+      llmCoach.prepare({
+        projectId: 'proj_20260615_prompt',
+        runId: 'run_20260615_prompt_a',
+        originalPrompt: 'cat shooter',
+        supportedDslVersion: 'v1',
+        mode: 'llm'
+      })
+    ).rejects.toThrow('Prompt Coach LLM output failed validation.');
+  });
+
+  it('uses normalized llm payload to keep repeated same-prompt artifacts auditable', async () => {
+    let callCount = 0;
+    const llmCoach = new PromptCoachService(workspace, {
+      llm: {
+        enabled: true,
+        async optimize() {
+          callCount += 1;
+          return {
+            ok: true,
+            json: {
+              optimizedPrompt: callCount === 1 ? 'Use a 2D cat shooter.' : 'Use a 2D cat shooter with three waves.',
+              intentSummary: 'cat shooter',
+              dslFitWarnings: [],
+              unsupportedRequests: [],
+              suggestedQuestions: ['What is the win condition?'],
+              capabilitiesUsed: ['llm-json-prompt-coaching']
+            }
+          };
+        }
+      }
+    });
+
+    const first = await llmCoach.prepare({
+      projectId: 'proj_20260615_prompt',
+      runId: 'run_20260615_prompt_a',
+      originalPrompt: 'cat shooter',
+      supportedDslVersion: 'v1',
+      mode: 'llm'
+    });
+    const second = await llmCoach.prepare({
+      projectId: 'proj_20260615_prompt',
+      runId: 'run_20260615_prompt_a',
+      originalPrompt: 'cat shooter',
+      supportedDslVersion: 'v1',
+      mode: 'llm'
+    });
+
+    expect(second.report.optimizationId).not.toBe(first.report.optimizationId);
+    expect(second.artifacts[0].path).not.toBe(first.artifacts[0].path);
   });
 });

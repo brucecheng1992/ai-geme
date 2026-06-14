@@ -4,7 +4,7 @@ import type { DslRepairReport } from '../repair/dsl-repair.types.js';
 import type { GameDslArtifact, LiveEditCapabilities, LiveUpdatePlan, PatchValidationReport, RuntimeApplyReport, RuntimeCapabilityReport } from '../../../../packages/game-dsl/src/index.js';
 import type { EditAuditRecord, LiveVersionRecord, PatchHistoryRecord } from './dsl-live-edit.service.js';
 import type { PipelineArtifactIndex } from './pipeline-artifact-index.js';
-import type { PromptOptimizationArtifactRef, PromptOptimizationReport } from './prompt-coach.service.js';
+import type { PromptOptimizationArtifactRef, PromptOptimizationReport } from './prompt-coach.contract.js';
 
 export type GenerateProjectRequest = {
   idea: string;
@@ -52,6 +52,7 @@ export type PipelineArtifactsResponse = {
 export type PreparePromptOptimizationRequest = {
   originalPrompt?: string;
   runId?: string;
+  mode?: 'mock' | 'llm';
 };
 
 export type PreparePromptOptimizationResponse = {
