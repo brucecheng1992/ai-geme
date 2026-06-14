@@ -4,6 +4,7 @@ import { AssetStatusPanel } from './AssetStatusPanel.js';
 import { PromptCoachPanel } from './PromptCoachPanel.js';
 import { QaStatusPanel } from './QaStatusPanel.js';
 import { buildEditableFields, buildLiveObjectTree, buildReplacePrepareBody, buildRuntimeApplyReportFromPatchResult, type LiveEditableField } from './live-edit-client.js';
+import { buildGenerateProjectRequest, type PromptCoachProvenanceSelection } from './prompt-coach-client.js';
 import './styles.css';
 import {
   API_BASE,
@@ -74,6 +75,7 @@ function stepStatusClass(status: string) {
 export function App() {
   const [idea, setIdea] = useState(defaultIdea);
   const [language, setLanguage] = useState('zh');
+  const [promptOptimizationSelection, setPromptOptimizationSelection] = useState<PromptCoachProvenanceSelection | null>(null);
   const [projectId, setProjectId] = useState('');
   const [runId, setRunId] = useState('');
   const [data, setData] = useState<DashboardData>({ events: [] });
@@ -225,7 +227,7 @@ export function App() {
       const created = await requestJson<{ ok: true; project_id: string; run_id: string }>(`${API_BASE}/api/projects/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idea, language })
+        body: JSON.stringify(buildGenerateProjectRequest({ idea, language, promptOptimizationSelection }))
       });
       setProjectId(created.project_id);
       setRunId(created.run_id);
@@ -370,7 +372,16 @@ export function App() {
             </div>
             <label className="mb-3 grid gap-2 text-sm font-bold text-[#69645d]">
               Idea
-              <textarea className={`${fieldClass} min-h-24 resize-y`} value={idea} onChange={(event) => setIdea(event.target.value)} rows={4} />
+              <textarea
+                className={`${fieldClass} min-h-24 resize-y`}
+                value={idea}
+                onChange={(event) => {
+                  const nextIdea = event.target.value;
+                  setIdea(nextIdea);
+                  setPromptOptimizationSelection((selection) => (selection !== null && nextIdea !== selection.candidatePrompt ? null : selection));
+                }}
+                rows={4}
+              />
             </label>
             <div className="grid grid-cols-[1fr_auto] items-end gap-3 max-sm:grid-cols-1">
               <label className="mb-0 grid gap-2 text-sm font-bold text-[#69645d]">
@@ -464,7 +475,15 @@ export function App() {
           <section className="grid grid-cols-[minmax(260px,0.95fr)_minmax(320px,1.05fr)] gap-4 max-lg:grid-cols-1">
             <QaStatusPanel report={data.qaReport} />
 
-            <PromptCoachPanel projectId={projectId} runId={runId} currentPrompt={idea} onUseOptimizedPrompt={setIdea} />
+            <PromptCoachPanel
+              projectId={projectId}
+              runId={runId}
+              currentPrompt={idea}
+              onUseOptimizedPrompt={(selection) => {
+                setIdea(selection.candidatePrompt);
+                setPromptOptimizationSelection(selection);
+              }}
+            />
 
             <article className={`${panelClass} min-h-40`}>
               <div className={panelHeadingClass}>

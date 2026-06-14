@@ -55,6 +55,7 @@ describe('Pipeline artifact index contract', () => {
       runId
     });
     expect(index.artifacts.map((artifact) => artifact.id)).toEqual([
+      'generationInputReport',
       'gameDsl',
       'gameDslCandidate',
       'dslValidationReport',
@@ -70,6 +71,7 @@ describe('Pipeline artifact index contract', () => {
     ]);
     expect(index.artifacts).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({ id: 'generationInputReport', status: 'present', artifactRoot: 'model-output', path: 'generation_input_report.json' }),
         expect.objectContaining({ id: 'gameDsl', status: 'present', artifactRoot: 'model-output', path: 'game_dsl.json' }),
         expect.objectContaining({ id: 'gameDslCandidate', status: 'skipped', reason: 'valid_dsl_path_uses_game_dsl_json' }),
         expect.objectContaining({ id: 'publicAssetManifest', status: 'present', artifactRoot: 'generated-project', path: 'public/asset_manifest.json' }),
@@ -93,6 +95,7 @@ describe('Pipeline artifact index contract', () => {
     expect(index.artifacts).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: 'gameDsl', status: 'skipped', reason: 'invalid_dsl_path_uses_game_dsl_candidate_json' }),
+        expect.objectContaining({ id: 'generationInputReport', status: 'present', path: 'generation_input_report.json' }),
         expect.objectContaining({ id: 'gameDslCandidate', status: 'present', path: 'game_dsl.candidate.json' }),
         expect.objectContaining({ id: 'dslValidationReport', status: 'present', path: 'dsl_validation_report.json' }),
         expect.objectContaining({ id: 'assetPipelineReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),

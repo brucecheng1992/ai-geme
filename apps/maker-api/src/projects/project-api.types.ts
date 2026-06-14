@@ -9,6 +9,8 @@ import type { PromptOptimizationArtifactRef, PromptOptimizationReport } from './
 export type GenerateProjectRequest = {
   idea: string;
   language: string;
+  promptOptimizationProjectId?: string;
+  promptOptimizationId?: string;
 };
 
 export type GenerateProjectResponse = {

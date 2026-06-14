@@ -44,7 +44,7 @@ export function buildLiveObjectTree(dsl: GameDslArtifact): LiveObjectTreeNode[] 
       kind: 'projectile' as const,
       path: `/projectiles/${projectile.id}`
     })),
-    ...(dsl.level.waves ?? []).map((wave) => ({ id: wave.id, label: wave.id, kind: 'wave' as const, path: `/level/waves/${wave.id}` }))
+    ...getLevelWaves(dsl.level.waves).map((wave) => ({ id: wave.id, label: wave.id, kind: 'wave' as const, path: `/level/waves/${wave.id}` }))
   ];
 }
 
@@ -97,6 +97,14 @@ export function buildReplacePrepareBody(path: string, value: number) {
 
 function field(path: string, label: string, value: number | undefined, capabilities: LiveEditCapabilities): LiveEditableField {
   return { path, label, value, enabled: isHotEditablePath(path, capabilities) };
+}
+
+function getLevelWaves(waves: GameDslArtifact['level']['waves']): Array<{ id: string }> {
+  if (waves === undefined) {
+    return [];
+  }
+
+  return Array.isArray(waves) ? waves : Object.values(waves);
 }
 
 function matchesWildcardPath(pattern: string, path: string): boolean {

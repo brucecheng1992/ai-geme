@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildPromptCoachResultView,
+  buildGenerateProjectRequest,
+  createPromptCoachProvenanceSelection,
   buildPromptCoachPrepareRequest,
   extractPromptCoachErrorMessage,
   getPromptCoachCandidate,
@@ -100,6 +102,31 @@ describe('Workbench Prompt Coach client helpers', () => {
 
   it('keeps candidate adoption client-side and returns only the optimized prompt', () => {
     expect(getPromptCoachCandidate(makeReport({ optimizedPrompt: 'Use a 2D cat shooter.' }))).toBe('Use a 2D cat shooter.');
+  });
+
+  it('carries Prompt Coach provenance into generation only while the idea still matches the selected candidate', () => {
+    const report = makeReport({ optimizedPrompt: 'Use a 2D cat shooter.' });
+    const selection = createPromptCoachProvenanceSelection({ report });
+
+    expect(selection).toEqual({
+      promptOptimizationProjectId: 'proj_20260615_prompt',
+      promptOptimizationId: 'opt_proj_20260615_prompt_abcdef123456',
+      candidatePrompt: 'Use a 2D cat shooter.'
+    });
+    expect(buildGenerateProjectRequest({ idea: 'Use a 2D cat shooter.', language: 'en', promptOptimizationSelection: selection })).toEqual({
+      idea: 'Use a 2D cat shooter.',
+      language: 'en',
+      promptOptimizationProjectId: 'proj_20260615_prompt',
+      promptOptimizationId: 'opt_proj_20260615_prompt_abcdef123456'
+    });
+    expect(buildGenerateProjectRequest({ idea: 'Use a 2D cat shooter. edited', language: 'en', promptOptimizationSelection: selection })).toEqual({
+      idea: 'Use a 2D cat shooter. edited',
+      language: 'en'
+    });
+    expect(buildGenerateProjectRequest({ idea: '  manual prompt  ', language: ' zh ', promptOptimizationSelection: null })).toEqual({
+      idea: 'manual prompt',
+      language: 'zh'
+    });
   });
 
   it('syncs the draft from the current game brief only while the panel is clean', () => {

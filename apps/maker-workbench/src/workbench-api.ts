@@ -254,7 +254,7 @@ export type GameDslArtifact = {
   };
   enemyTypes: Record<string, { id: string; label?: string; physics?: { speed?: number }; health?: { max?: number } }>;
   projectiles: Record<string, { id: string; label?: string; speed?: number; damage?: number }>;
-  level: { id: string; waves?: Array<{ id: string }> };
+  level: { id: string; waves?: Array<{ id: string }> | Record<string, { id: string }> };
 };
 
 export type LiveUpdatePlanStatus = 'hot_patchable' | 'warm_restart_required' | 'rebuild_required' | 'unsupported' | 'failed_validation';

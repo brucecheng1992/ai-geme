@@ -9,6 +9,7 @@ const PipelineArtifactRootSchema = z.enum(['model-output', 'generated-project', 
 export const PipelineArtifactRefSchema = z.strictObject({
   id: z.enum([
     'gameDsl',
+    'generationInputReport',
     'gameDslCandidate',
     'dslValidationReport',
     'runtimeCapabilityReport',
@@ -21,7 +22,7 @@ export const PipelineArtifactRefSchema = z.strictObject({
     'qaReport',
     'pipelineArtifactIndex'
   ]),
-  role: z.enum(['dsl', 'validation', 'runtime', 'asset', 'preview', 'qa', 'build', 'index']),
+  role: z.enum(['dsl', 'prompt', 'validation', 'runtime', 'asset', 'preview', 'qa', 'build', 'index']),
   artifactRoot: PipelineArtifactRootSchema,
   path: z.string().min(1).refine(isSafeRelativeArtifactPath, 'artifact path must be relative and stay inside its artifact root'),
   status: PipelineArtifactStatusSchema,
@@ -75,6 +76,7 @@ export function buildValidPipelineArtifactIndex(input: {
     .sort((left, right) => left.localeCompare(right))[0];
 
   return parseIndex(input.projectId, input.runId, [
+    artifact('generationInputReport', 'prompt', 'model-output', 'generation_input_report.json', 'present', true, 'generation', 'json'),
     artifact('gameDsl', 'dsl', 'model-output', 'game_dsl.json', 'present', true, 'generation', 'json'),
     artifact('gameDslCandidate', 'dsl', 'model-output', 'game_dsl.candidate.json', 'skipped', false, 'generation', 'json', 'valid_dsl_path_uses_game_dsl_json'),
     artifact('dslValidationReport', 'validation', 'model-output', 'dsl_validation_report.json', 'present', true, 'generation', 'json'),
@@ -102,6 +104,7 @@ export function buildValidPipelineArtifactIndex(input: {
 
 export function buildInvalidDslPipelineArtifactIndex(input: { projectId: string; runId: string }): PipelineArtifactIndex {
   return parseIndex(input.projectId, input.runId, [
+    artifact('generationInputReport', 'prompt', 'model-output', 'generation_input_report.json', 'present', true, 'generation', 'json'),
     artifact('gameDsl', 'dsl', 'model-output', 'game_dsl.json', 'skipped', true, 'generation', 'json', 'invalid_dsl_path_uses_game_dsl_candidate_json'),
     artifact('gameDslCandidate', 'dsl', 'model-output', 'game_dsl.candidate.json', 'present', true, 'generation', 'json'),
     artifact('dslValidationReport', 'validation', 'model-output', 'dsl_validation_report.json', 'present', true, 'generation', 'json'),

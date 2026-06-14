@@ -1,13 +1,20 @@
 import { useEffect, useState } from 'react';
 
 import { API_BASE, type PreparePromptOptimizationResponse, type PromptOptimizationMode, type PromptOptimizationReport } from './workbench-api.js';
-import { buildPromptCoachResultView, getPromptCoachCandidate, preparePromptOptimization, resolvePromptCoachDraftAfterCurrentPromptChange } from './prompt-coach-client.js';
+import {
+  buildPromptCoachResultView,
+  createPromptCoachProvenanceSelection,
+  getPromptCoachCandidate,
+  preparePromptOptimization,
+  resolvePromptCoachDraftAfterCurrentPromptChange,
+  type PromptCoachProvenanceSelection
+} from './prompt-coach-client.js';
 
 type PromptCoachPanelProps = {
   projectId: string;
   runId: string;
   currentPrompt: string;
-  onUseOptimizedPrompt: (prompt: string) => void;
+  onUseOptimizedPrompt: (selection: PromptCoachProvenanceSelection) => void;
 };
 
 const panelClass = 'rounded-lg border border-[#d8c7a6] bg-[#fffef9] p-4 shadow-[0_1px_0_rgba(49,43,34,0.08)]';
@@ -97,7 +104,7 @@ export function PromptCoachPanel({ projectId, runId, currentPrompt, onUseOptimiz
           artifacts={prepared.artifacts}
           report={prepared.report}
           onCopy={() => void copyCandidate()}
-          onUse={() => onUseOptimizedPrompt(getPromptCoachCandidate(prepared.report))}
+          onUse={() => onUseOptimizedPrompt(createPromptCoachProvenanceSelection({ report: prepared.report }))}
         />
       ) : null}
       {status === 'idle' ? <p className="m-0 text-sm leading-snug text-[#69645d]">Prepare a candidate before generating. Nothing is applied automatically.</p> : null}

@@ -33,6 +33,7 @@ import { PlaywrightQaRunnerService } from '../qa/playwright-qa-runner.service.js
 import type { QaAssetSemanticRepairReport, QaAssetSemanticRepairSkippedReason, QaGenre, QaReport } from '../qa/qa.types.js';
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
 import { createDeterministicRawGameDsl } from './deterministic-game-dsl.js';
+import { GenerationInputReportSchema, buildGenerationInputReport, type GenerationInputReport } from './generation-input-report.js';
 import { buildInvalidDslPipelineArtifactIndex, buildValidPipelineArtifactIndex, writePipelineArtifactIndex } from './pipeline-artifact-index.js';
 import { ProjectStoreService } from './project-store.service.js';
 import type { JobEventRecord, ProjectStatus } from './project-state.types.js';
@@ -43,6 +44,7 @@ type GenerationPipelineInput = {
   runId: string;
   idea: string;
   language: string;
+  generationInputReport?: GenerationInputReport;
 };
 type DslLanguage = 'zh' | 'en';
 
@@ -84,6 +86,7 @@ export class GenerationPipelineService {
   ) {}
 
   async run(input: GenerationPipelineInput): Promise<ProjectStatus> {
+    await this.writeGenerationInputReport(input);
     const generated = await this.generateRawDsl(input);
 
     if (!generated.ok) {
@@ -552,6 +555,25 @@ export class GenerationPipelineService {
   private async writeRuntimeCapabilityReport(input: GenerationPipelineInput, report: RuntimeCapabilityReport): Promise<void> {
     const outputPath = this.workspace.getModelOutputPath(input.projectId, input.runId, 'runtime_capability_report.json');
 
+    await mkdir(dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  }
+
+  private async writeGenerationInputReport(input: GenerationPipelineInput): Promise<void> {
+    const report = GenerationInputReportSchema.parse(
+      input.generationInputReport ??
+        buildGenerationInputReport({
+          projectId: input.projectId,
+          runId: input.runId,
+          effectivePrompt: input.idea
+        })
+    );
+
+    if (report.projectId !== input.projectId || report.runId !== input.runId || report.effectivePrompt !== input.idea) {
+      throw new Error('generation input report does not match current pipeline input.');
+    }
+
+    const outputPath = this.workspace.getModelOutputPath(input.projectId, input.runId, 'generation_input_report.json');
     await mkdir(dirname(outputPath), { recursive: true });
     await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   }

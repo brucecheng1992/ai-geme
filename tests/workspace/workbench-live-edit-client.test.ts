@@ -18,6 +18,15 @@ describe('Workbench live edit client helpers', () => {
     ]);
   });
 
+  it('builds wave nodes from record-shaped Game DSL artifacts', () => {
+    expect(buildLiveObjectTree(makeDsl({ waves: { wave_1: { id: 'wave_1' } } })).map((node) => `${node.kind}:${node.id}`)).toEqual([
+      'player:player_main',
+      'enemyType:tank_basic',
+      'projectile:fishbone',
+      'wave:wave_1'
+    ]);
+  });
+
   it('hides unsupported property inspector fields', () => {
     expect(buildEditableFields(makeDsl(), { ...capabilities, hot: ['/player/render/scale'] }, '/player')).toEqual([
       { path: '/player/render/scale', label: 'Scale', value: 1, enabled: true },
@@ -109,7 +118,7 @@ const capabilities: LiveEditCapabilities = {
   rebuildRequired: []
 };
 
-function makeDsl(): GameDslArtifact {
+function makeDsl(overrides: { waves?: GameDslArtifact['level']['waves'] } = {}): GameDslArtifact {
   return {
     dslId: 'dsl_test',
     runId: 'run_20260614_120000_live',
@@ -117,6 +126,6 @@ function makeDsl(): GameDslArtifact {
     player: { id: 'player_main', label: '小猫', render: { scale: 1 }, physics: { maxSpeed: 220 }, health: { max: 3 } },
     enemyTypes: { tank_basic: { id: 'tank_basic', label: '坦克', physics: { speed: 100 }, health: { max: 2 } } },
     projectiles: { fishbone: { id: 'fishbone', label: '鱼骨头', speed: 520, damage: 1 } },
-    level: { id: 'level_1', waves: [{ id: 'wave_1' }] }
+    level: { id: 'level_1', waves: overrides.waves ?? [{ id: 'wave_1' }] }
   };
 }

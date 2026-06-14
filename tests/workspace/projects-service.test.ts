@@ -21,6 +21,7 @@ describe('ProjectsService', () => {
   let service: ProjectsService;
   let liveEdit: DslLiveEditService;
   let pipelineRuns: number;
+  let lastPipelineInput: unknown;
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'ai-game-maker-api-'));
@@ -29,14 +30,16 @@ describe('ProjectsService', () => {
     runStore = new RunStoreService(workspace);
     liveEdit = new DslLiveEditService(workspace);
     pipelineRuns = 0;
+    lastPipelineInput = undefined;
     service = new ProjectsService(
       projectStore,
       runStore,
       workspace,
       liveEdit,
       {
-        async run() {
+        async run(input: unknown) {
           pipelineRuns += 1;
+          lastPipelineInput = input;
           return 'CREATED';
         }
       },
@@ -169,6 +172,105 @@ describe('ProjectsService', () => {
       project: { idea: 'cat shooter' }
     });
     await expect(readFile(workspace.getModelOutputPath(created.project_id, created.run_id, 'game_dsl.json'), 'utf8')).rejects.toThrow();
+  });
+
+  it('passes verified prompt optimization provenance into generation without trusting artifact paths from the request', async () => {
+    const source = await service.generateProject({ idea: 'cat shooter', language: 'en' });
+    const prepared = await service.preparePromptOptimization(source.project_id, {
+      originalPrompt: 'cat shooter'
+    });
+
+    const generated = await service.generateProject({
+      idea: prepared.report.optimizedPrompt,
+      language: 'en',
+      promptOptimizationProjectId: source.project_id,
+      promptOptimizationId: prepared.report.optimizationId
+    });
+
+    expect(generated.project_id).toBe('proj_20260609_153000_abcd');
+    expect(pipelineRuns).toBe(2);
+    expect(lastPipelineInput).toMatchObject({
+      projectId: generated.project_id,
+      runId: generated.run_id,
+      idea: prepared.report.optimizedPrompt,
+      generationInputReport: {
+        reportVersion: 'generation_input_report.v1',
+        projectId: generated.project_id,
+        runId: generated.run_id,
+        source: 'prompt-coach-candidate',
+        effectivePrompt: prepared.report.optimizedPrompt,
+        promptOptimizationRef: {
+          projectId: source.project_id,
+          optimizationId: prepared.report.optimizationId,
+          reportPath: `prompt-optimizations/${prepared.report.optimizationId}/prompt_optimization_report.json`,
+          optimizedPromptPath: `prompt-optimizations/${prepared.report.optimizationId}/optimized_prompt.txt`
+        },
+        candidatePromptMatchesEffectivePrompt: true
+      }
+    });
+    expect(JSON.stringify(lastPipelineInput)).not.toContain('intentSummary');
+    expect(JSON.stringify(lastPipelineInput)).not.toContain(root);
+  });
+
+  it('rejects prompt optimization provenance when the effective prompt or request shape is invalid', async () => {
+    const source = await service.generateProject({ idea: 'cat shooter', language: 'en' });
+    const prepared = await service.preparePromptOptimization(source.project_id, {
+      originalPrompt: 'cat shooter'
+    });
+    const runsBeforeRejectedGenerate = pipelineRuns;
+
+    await expect(
+      service.generateProject({
+        idea: `${prepared.report.optimizedPrompt} edited`,
+        language: 'en',
+        promptOptimizationProjectId: source.project_id,
+        promptOptimizationId: prepared.report.optimizationId
+      })
+    ).rejects.toThrow(ProjectRequestError);
+    await expect(
+      service.generateProject({
+        idea: prepared.report.optimizedPrompt,
+        language: 'en',
+        promptOptimizationId: prepared.report.optimizationId
+      })
+    ).rejects.toThrow(ProjectRequestError);
+    await expect(
+      service.generateProject({
+        idea: prepared.report.optimizedPrompt,
+        language: 'en',
+        promptOptimizationProjectId: '../proj_escape',
+        promptOptimizationId: prepared.report.optimizationId
+      })
+    ).rejects.toThrow(ProjectRequestError);
+    await expect(
+      service.generateProject({
+        idea: prepared.report.optimizedPrompt,
+        language: 'en',
+        promptOptimizationProjectId: source.project_id,
+        promptOptimizationId: '../opt_escape'
+      })
+    ).rejects.toThrow(ProjectRequestError);
+    expect(pipelineRuns).toBe(runsBeforeRejectedGenerate);
+  });
+
+  it('rejects unreadable prompt optimization artifacts without leaking workspace paths', async () => {
+    const source = await service.generateProject({ idea: 'cat shooter', language: 'en' });
+    const runsBeforeRejectedGenerate = pipelineRuns;
+
+    try {
+      await service.generateProject({
+        idea: 'Use a 2D cat shooter.',
+        language: 'en',
+        promptOptimizationProjectId: source.project_id,
+        promptOptimizationId: `opt_${source.project_id}_000000000000`
+      });
+      throw new Error('Expected generateProject to reject unreadable prompt optimization artifacts.');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ProjectRequestError);
+      expect(JSON.stringify(error)).toContain('Prompt optimization artifact is not readable.');
+      expect(JSON.stringify(error)).not.toContain(root);
+    }
+    expect(pipelineRuns).toBe(runsBeforeRejectedGenerate);
   });
 
   it('rejects prompt optimization prepare for missing projects and empty prompts', async () => {

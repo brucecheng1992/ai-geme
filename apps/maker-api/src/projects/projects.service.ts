@@ -6,6 +6,7 @@ import { NotFoundException } from '@nestjs/common';
 import { normalizePersistedQaReport } from '../qa/qa-report-normalizer.js';
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
 import { DslLiveEditService } from './dsl-live-edit.service.js';
+import { resolvePromptOptimizationGenerationInput, type GenerationInputReport } from './generation-input-report.js';
 import { GenerationPipelineService } from './generation-pipeline.service.js';
 import type {
   BuildLogResponse,
@@ -24,6 +25,7 @@ import type {
   RunEventsResponse
 } from './project-api.types.js';
 import { PipelineArtifactIndexSchema } from './pipeline-artifact-index.js';
+import { PromptOptimizationReportSchema } from './prompt-coach.contract.js';
 import { PromptCoachService } from './prompt-coach.service.js';
 import { ProjectRequestError } from './project-request.error.js';
 import { ProjectStoreService } from './project-store.service.js';
@@ -33,6 +35,10 @@ import { DslPatchV1Schema, GameDslArtifactSchema, RuntimeCapabilityReportSchema,
 type IdFactory = (date: Date) => { projectId: string; runId: string };
 type SuffixFactory = () => string;
 type GenerationPipeline = Pick<GenerationPipelineService, 'run'>;
+type ParsedGenerateProjectRequest = Required<Pick<GenerateProjectRequest, 'idea' | 'language'>> &
+  Pick<GenerateProjectRequest, 'promptOptimizationProjectId' | 'promptOptimizationId'>;
+const PROJECT_ID_PATTERN = /^proj_[A-Za-z0-9_-]+$/;
+const PROMPT_OPTIMIZATION_ID_PATTERN = /^opt_proj_[A-Za-z0-9_-]+_[a-f0-9]{12}$/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -66,6 +72,11 @@ export class ProjectsService {
     const request = this.parseGenerateRequest(body);
     const createdAt = new Date();
     const { projectId, runId } = this.idFactory(createdAt);
+    const generationInputReport = await this.resolveGenerationInputReport({
+      projectId,
+      runId,
+      request
+    });
 
     await this.projectStore.createProject({
       projectId,
@@ -85,7 +96,8 @@ export class ProjectsService {
       projectId,
       runId,
       idea: request.idea,
-      language: request.language
+      language: request.language,
+      generationInputReport
     });
 
     return {
@@ -304,7 +316,7 @@ export class ProjectsService {
     }
   }
 
-  private parseGenerateRequest(body: unknown): GenerateProjectRequest {
+  private parseGenerateRequest(body: unknown): ParsedGenerateProjectRequest {
     if (!isRecord(body)) {
       throw new ProjectRequestError('Request body must be an object.');
     }
@@ -317,10 +329,91 @@ export class ProjectsService {
       throw new ProjectRequestError('language is required.');
     }
 
+    if (
+      body.promptOptimizationProjectId !== undefined &&
+      (typeof body.promptOptimizationProjectId !== 'string' || body.promptOptimizationProjectId.trim().length === 0)
+    ) {
+      throw new ProjectRequestError('promptOptimizationProjectId must be a non-empty string when provided.');
+    }
+    if (body.promptOptimizationId !== undefined && (typeof body.promptOptimizationId !== 'string' || body.promptOptimizationId.trim().length === 0)) {
+      throw new ProjectRequestError('promptOptimizationId must be a non-empty string when provided.');
+    }
+
+    const promptOptimizationProjectId = typeof body.promptOptimizationProjectId === 'string' ? body.promptOptimizationProjectId.trim() : undefined;
+    const promptOptimizationId = typeof body.promptOptimizationId === 'string' ? body.promptOptimizationId.trim() : undefined;
+
+    if ((promptOptimizationProjectId === undefined) !== (promptOptimizationId === undefined)) {
+      throw new ProjectRequestError('promptOptimizationProjectId and promptOptimizationId must be provided together.');
+    }
+    if (promptOptimizationProjectId !== undefined && !PROJECT_ID_PATTERN.test(promptOptimizationProjectId)) {
+      throw new ProjectRequestError('promptOptimizationProjectId is invalid.');
+    }
+    if (promptOptimizationId !== undefined && !PROMPT_OPTIMIZATION_ID_PATTERN.test(promptOptimizationId)) {
+      throw new ProjectRequestError('promptOptimizationId is invalid.');
+    }
+
     return {
       idea: body.idea.trim(),
-      language: body.language.trim()
+      language: body.language.trim(),
+      promptOptimizationProjectId,
+      promptOptimizationId
     };
+  }
+
+  private async resolveGenerationInputReport(input: {
+    projectId: string;
+    runId: string;
+    request: ParsedGenerateProjectRequest;
+  }): Promise<GenerationInputReport | undefined> {
+    const { promptOptimizationProjectId, promptOptimizationId } = input.request;
+    if (promptOptimizationProjectId === undefined || promptOptimizationId === undefined) {
+      return undefined;
+    }
+
+    await this.projectStore.readProject(promptOptimizationProjectId);
+    const reportPath = this.workspace.getProjectPromptOptimizationArtifactPath(
+      promptOptimizationProjectId,
+      promptOptimizationId,
+      'prompt_optimization_report.json'
+    );
+    const optimizedPromptPath = this.workspace.getProjectPromptOptimizationArtifactPath(
+      promptOptimizationProjectId,
+      promptOptimizationId,
+      'optimized_prompt.txt'
+    );
+    let report: unknown;
+    let optimizedPromptArtifact: string;
+
+    try {
+      report = JSON.parse(await readFile(reportPath, 'utf8'));
+      optimizedPromptArtifact = await readFile(optimizedPromptPath, 'utf8');
+    } catch {
+      throw new ProjectRequestError('Prompt optimization artifact is not readable.');
+    }
+
+    let parsedReport;
+    try {
+      parsedReport = PromptOptimizationReportSchema.parse(report);
+    } catch (error) {
+      throw new ProjectRequestError(`Prompt optimization report is invalid: ${errorMessage(error)}`);
+    }
+    const optimizedPrompt = stripSingleTrailingNewline(optimizedPromptArtifact);
+    if (optimizedPrompt !== parsedReport.optimizedPrompt) {
+      throw new ProjectRequestError('optimized_prompt.txt does not match prompt_optimization_report.json.');
+    }
+
+    try {
+      return resolvePromptOptimizationGenerationInput({
+        projectId: input.projectId,
+        runId: input.runId,
+        promptOptimizationProjectId,
+        optimizationId: promptOptimizationId,
+        effectivePrompt: input.request.idea,
+        report: parsedReport
+      });
+    } catch (error) {
+      throw new ProjectRequestError(errorMessage(error));
+    }
   }
 
   private parsePrepareLiveEditRequest(body: unknown): Required<Pick<PrepareLiveEditRequest, 'op' | 'path'>> & Pick<PrepareLiveEditRequest, 'value' | 'intent'> {
@@ -393,4 +486,12 @@ function selectDeterministicEnemyTypeId(baseDsl: GameDslArtifact): string {
 
 function isNodeErrorCode(error: unknown, code: string): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === code;
+}
+
+function stripSingleTrailingNewline(value: string): string {
+  return value.endsWith('\n') ? value.slice(0, -1) : value;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

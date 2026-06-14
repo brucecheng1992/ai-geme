@@ -254,9 +254,24 @@ describe('GenerationPipelineService failure states', () => {
     await expect(runPipeline(pipeline, { idea: '小猫大战坦克', language: 'zh' })).resolves.toBe('PLAYABLE');
 
     const intentPlan = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'intent_plan.json'), 'utf8'));
+    const generationInputReport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_input_report.json'), 'utf8'));
     const gameDsl = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'game_dsl.json'), 'utf8'));
     const validationReport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'dsl_validation_report.json'), 'utf8'));
     const runtimeCapabilityReport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'runtime_capability_report.json'), 'utf8'));
+    expect(generationInputReport).toEqual({
+      reportVersion: 'generation_input_report.v1',
+      projectId,
+      runId,
+      source: 'manual',
+      effectivePrompt: '小猫大战坦克',
+      promptOptimizationRef: null,
+      candidatePromptMatchesEffectivePrompt: false,
+      checkedPaths: ['effectivePrompt', 'source'],
+      status: 'accepted',
+      warnings: [],
+      errors: []
+    });
+    expect(JSON.stringify(generationInputReport)).not.toContain('raw-game-dsl');
     expect(intentPlan).toMatchObject({
       schemaVersion: 'intent-plan-v0.1',
       sourcePrompt: '小猫大战坦克',
@@ -337,6 +352,7 @@ describe('GenerationPipelineService failure states', () => {
       runId,
       artifacts: expect.arrayContaining([
         expect.objectContaining({ id: 'gameDsl', status: 'present', path: 'game_dsl.json' }),
+        expect.objectContaining({ id: 'generationInputReport', status: 'present', path: 'generation_input_report.json' }),
         expect.objectContaining({ id: 'dslValidationReport', status: 'present', path: 'dsl_validation_report.json' }),
         expect.objectContaining({ id: 'runtimeCapabilityReport', status: 'present', path: 'runtime_capability_report.json' }),
         expect.objectContaining({ id: 'assetPlan', status: 'present', path: 'asset_plan.json' }),
@@ -385,8 +401,16 @@ describe('GenerationPipelineService failure states', () => {
     await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'game_dsl.json'), 'utf8')).rejects.toThrow();
     await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'runtime_capability_report.json'), 'utf8')).rejects.toThrow();
     const candidate = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'game_dsl.candidate.json'), 'utf8'));
+    const generationInputReport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_input_report.json'), 'utf8'));
     const validationReport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'dsl_validation_report.json'), 'utf8'));
     const index = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_artifact_index.json'), 'utf8'));
+    expect(generationInputReport).toMatchObject({
+      reportVersion: 'generation_input_report.v1',
+      projectId,
+      runId,
+      source: 'manual',
+      effectivePrompt: '小猫大战坦克'
+    });
     expect(candidate).toMatchObject({
       artifactKind: 'game_dsl',
       schemaVersion: 'game_dsl.v1',
@@ -407,6 +431,7 @@ describe('GenerationPipelineService failure states', () => {
       runId,
       artifacts: expect.arrayContaining([
         expect.objectContaining({ id: 'gameDslCandidate', status: 'present', path: 'game_dsl.candidate.json' }),
+        expect.objectContaining({ id: 'generationInputReport', status: 'present', path: 'generation_input_report.json' }),
         expect.objectContaining({ id: 'dslValidationReport', status: 'present', path: 'dsl_validation_report.json' }),
         expect.objectContaining({ id: 'runtimeCapabilityReport', status: 'skipped', reason: 'dsl_validation_failed_before_runtime_capability' }),
         expect.objectContaining({ id: 'assetPipelineReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),

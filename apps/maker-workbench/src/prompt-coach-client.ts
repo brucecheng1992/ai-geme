@@ -17,6 +17,19 @@ export type PromptCoachPrepareBody = {
   mode: PromptOptimizationMode;
 };
 
+export type PromptCoachProvenanceSelection = {
+  promptOptimizationProjectId: string;
+  promptOptimizationId: string;
+  candidatePrompt: string;
+};
+
+export type GenerateProjectRequestBody = {
+  idea: string;
+  language: string;
+  promptOptimizationProjectId?: string;
+  promptOptimizationId?: string;
+};
+
 export function buildPromptCoachPrepareRequest(input: { originalPrompt: string; runId?: string; mode?: PromptOptimizationMode }): PromptCoachPrepareBody {
   const originalPrompt = input.originalPrompt.trim();
   if (originalPrompt.length === 0) {
@@ -80,6 +93,32 @@ export function getSafePromptCoachArtifactRefs(artifacts: PromptOptimizationArti
 
 export function getPromptCoachCandidate(report: PromptOptimizationReport): string {
   return report.optimizedPrompt;
+}
+
+export function createPromptCoachProvenanceSelection(input: { report: PromptOptimizationReport }): PromptCoachProvenanceSelection {
+  return {
+    promptOptimizationProjectId: input.report.projectId,
+    promptOptimizationId: input.report.optimizationId,
+    candidatePrompt: input.report.optimizedPrompt
+  };
+}
+
+export function buildGenerateProjectRequest(input: {
+  idea: string;
+  language: string;
+  promptOptimizationSelection?: PromptCoachProvenanceSelection | null;
+}): GenerateProjectRequestBody {
+  const body: GenerateProjectRequestBody = {
+    idea: input.idea.trim(),
+    language: input.language.trim()
+  };
+
+  if (input.promptOptimizationSelection !== null && input.promptOptimizationSelection !== undefined && body.idea === input.promptOptimizationSelection.candidatePrompt) {
+    body.promptOptimizationProjectId = input.promptOptimizationSelection.promptOptimizationProjectId;
+    body.promptOptimizationId = input.promptOptimizationSelection.promptOptimizationId;
+  }
+
+  return body;
 }
 
 export function buildPromptCoachResultView(input: { report: PromptOptimizationReport; artifacts: PromptOptimizationArtifactRef[] }) {
