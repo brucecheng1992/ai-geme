@@ -34,6 +34,17 @@ const LiveVersionRecordSchema = z.strictObject({
   updatedAt: z.string().min(1)
 });
 
+const AppliedPatchHistoryRecordSchema = z
+  .strictObject({
+    patchId: z.string().min(1),
+    versionId: z.string().min(1),
+    baseVersionId: z.string().min(1),
+    status: z.literal('applied'),
+    ops: z.array(z.unknown()),
+    artifactRefs: z.record(z.string(), z.string())
+  })
+  .transform((record) => record as PatchHistoryRecord);
+
 /**
  * `patch_history.jsonl` is applied-version history only. It is the replay/undo/redo/export-folding log,
  * so failed, unsupported, and pending rebuild attempts live only in `edit_audit_log.jsonl`.
@@ -212,6 +223,18 @@ export class DslLiveEditService {
     const current = await this.readCurrentVersion(input.projectId, input.runId);
     const patch = await this.readPreparedPatch(input.projectId, input.runId, input.patchId);
     const liveUpdatePlan = await this.readLiveUpdatePlan(input.projectId, input.runId, input.patchId);
+    const appliedRecord = await this.readAppliedPatchHistoryRecord(input.projectId, input.runId, input.patchId);
+    if (appliedRecord !== undefined) {
+      const existingReport = RuntimeApplyReportSchema.parse(JSON.parse(await readFile(appliedRecord.artifactRefs.runtimeApplyReport, 'utf8')));
+      return {
+        patchId: input.patchId,
+        status: existingReport.status,
+        applyMode: existingReport.applyMode,
+        versionId: appliedRecord.versionId,
+        runtimeApplyReport: existingReport
+      };
+    }
+
     const patchRefs = this.patchArtifactRefs(input.projectId, input.runId, input.patchId);
     const runtimeApplyReportPath = this.workspace.getLiveArtifactPath(input.projectId, input.runId, `${input.patchId}.runtime_apply_report.json`);
     const reportFailure = runtimeReportFailure(report, liveUpdatePlan, patch, current);
@@ -321,6 +344,25 @@ export class DslLiveEditService {
   private async readLiveUpdatePlan(projectId: string, runId: string, patchId: string): Promise<LiveUpdatePlan> {
     const planPath = this.workspace.getLiveArtifactPath(projectId, runId, `${patchId}.live_update_plan.json`);
     return LiveUpdatePlanSchema.parse(JSON.parse(await readFile(planPath, 'utf8')));
+  }
+
+  private async readAppliedPatchHistoryRecord(projectId: string, runId: string, patchId: string): Promise<PatchHistoryRecord | undefined> {
+    let content: string;
+    try {
+      content = await readFile(this.workspace.getLivePatchHistoryPath(projectId, runId), 'utf8');
+    } catch (error) {
+      if (isNodeErrorCode(error, 'ENOENT')) {
+        return undefined;
+      }
+      throw error;
+    }
+
+    return content
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => AppliedPatchHistoryRecordSchema.parse(JSON.parse(line)))
+      .find((record) => record.patchId === patchId);
   }
 
   private async writePendingPatchArtifacts(

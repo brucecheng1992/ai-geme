@@ -226,6 +226,46 @@ describe('DSL live edit pipeline', () => {
     await expect(readFile(workspace.getLiveArtifactPath(projectId, runId, `${patch.patchId}.runtime_apply_report.json`), 'utf8')).resolves.toContain('"status": "applied_hot"');
   });
 
+  it('keeps repeated runtime results idempotent after a patch was applied', async () => {
+    const patch = makePatch([{ op: 'replace', path: '/player/render/scale', value: 1.3 }]);
+    await service.prepareLiveEditPatch({ projectId, runId, patch });
+    const successReport = {
+      artifactKind: 'runtime_apply_report',
+      schemaVersion: 'runtime_apply_report.v1',
+      runId,
+      patchId: patch.patchId,
+      liveUpdatePlanRef: { artifact: `${patch.patchId}.live_update_plan.json`, patchId: patch.patchId },
+      status: 'applied_hot',
+      applyMode: 'hot',
+      runtimeTarget: 'mock-runtime',
+      appliedPaths: ['/player/render/scale'],
+      warnings: [],
+      errors: []
+    };
+    const first = await service.recordRuntimeApplyResult({ projectId, runId, patchId: patch.patchId, report: successReport });
+    const reportPath = workspace.getLiveArtifactPath(projectId, runId, `${patch.patchId}.runtime_apply_report.json`);
+    const reportAfterSuccess = await readFile(reportPath, 'utf8');
+    const historyAfterSuccess = await readPatchHistory();
+    const auditAfterSuccess = await readAuditLog();
+
+    const replay = await service.recordRuntimeApplyResult({
+      projectId,
+      runId,
+      patchId: patch.patchId,
+      report: {
+        ...successReport,
+        status: 'failed_runtime_apply',
+        appliedPaths: [],
+        errors: [{ code: 'LATE_RUNTIME_FAILURE', path: '/player/render/scale', message: 'late failure should not overwrite applied evidence' }]
+      }
+    });
+
+    expect(replay).toMatchObject({ status: 'applied_hot', versionId: first.versionId });
+    await expect(readFile(reportPath, 'utf8')).resolves.toBe(reportAfterSuccess);
+    await expect(readPatchHistory()).resolves.toEqual(historyAfterSuccess);
+    await expect(readAuditLog()).resolves.toEqual(auditAfterSuccess);
+  });
+
   it('records runtime apply failure without advancing current_version or patch_history', async () => {
     const before = await readCurrentVersion();
     const patch = makePatch([{ op: 'replace', path: '/player/physics/maxSpeed', value: 320 }]);
