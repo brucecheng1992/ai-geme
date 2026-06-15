@@ -8,11 +8,11 @@
 
 ## 当前阶段
 
-当前处于 Step 14 Pipeline Acceptance Report closeout lane。Step 14 新增 deterministic `pipeline_acceptance_report.json`，把当前 run 的关键 pipeline evidence 汇总为只读验收摘要；valid / invalid DSL 路径均生成 report，并在 `pipeline_artifact_index.json` 中只新增 `pipelineAcceptanceReport` ref。Workbench 仅通过 Evidence panel 展示该 ref；后端只新增固定只读 `GET /api/projects/:projectId/runs/:runId/acceptance`，不提供 artifact content / download / arbitrary path API。本步不改变 QA verdict 总结构、DSL schema、generation prompt、Prompt Coach adapter、Phaser runtime、asset report 语义、live edit、provider abstraction、asset pack、resolver ranking / fallback。
+当前处于 Step 15 Workbench Acceptance Summary closeout lane。Step 15 在 Workbench 增加只读 Acceptance Summary，调用既有固定 `GET /api/projects/:projectId/runs/:runId/acceptance`，展示当前 run 的 `overallStatus`、`previewable`、required checks 统计，以及 failed / warn / skipped checks 的最小 reason。Workbench 不展示 full JSON payload，不提供 artifact content / download / arbitrary path API，不触发 generation、Prompt Coach、live edit、QA/DSL/prompt/Phaser/provider/asset pack/resolver 行为变化。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Step 14 代码、验证与 Oracle 门禁已完成；准备提交 `feat: add pipeline acceptance report`，不 push。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Step 15 代码、验证、浏览器验收与 Oracle 门禁完成后，提交 `feat: add workbench acceptance summary`，不 push。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
 
 ### 2.53 Step 11: Prompt Coach Workbench Opt-in Panel
 
@@ -52,6 +52,10 @@
 
     git diff --check
     # 无输出
+
+    npm test
+    # contracts：24 个测试文件，224 个测试通过
+    # workspace：24 个测试文件，268 个测试通过
 
     npm test
     # contracts：24 个测试文件，224 个测试通过
@@ -4874,3 +4878,89 @@ fixture size check：
 当前下一步：
 
 - Step 14 代码、验证与 Oracle 门禁已完成；准备提交 `feat: add pipeline acceptance report`。未 push。
+
+### 26. Step 15：Workbench Acceptance Summary
+
+完成时间：2026-06-15
+
+已完成内容：
+
+- 新增 Workbench 侧 `pipeline-acceptance-client.ts`：
+  - 只读取 `GET /api/projects/:projectId/runs/:runId/acceptance`。
+  - `projectId` / `runId` 为空时不发请求。
+  - 请求 URL 对 `projectId` / `runId` 做 `encodeURIComponent`。
+  - 404 显示明确空态：`No pipeline acceptance report is available for this run.`。
+- 新增 `PipelineAcceptanceSummary`：
+  - 展示 `overallStatus`、`previewable`、required checks pass/fail 统计。
+  - 展示 failed required checks、warn checks、skipped checks 的 check id / category / status / required / reason。
+  - 不展示完整 JSON payload，不提供 artifact content link、download link 或任意 path 打开能力。
+  - 面板 refresh 只刷新 acceptance API，不触发全局 reload。
+- Workbench 前端防御过滤：
+  - 拒绝展示空 path、绝对路径、Windows drive path、protocol URL、反斜杠和 `..`。
+  - reason / status / id / category / artifactId 命中 `authorization`、`api key`、generic API key、`process.env.*`、Bearer token、`secret`、`token`、`raw provider`、`/Users/`、`/tmp/`、`/home/` 或 Windows absolute path 时不展示敏感文本。
+  - 事件、Build Log、HTTP statusText 和 thrown error 展示层隐藏本机绝对路径与 sensitive token 文本，避免页面整体暴露 workspace path。
+- `App.tsx` 挂接 Acceptance Summary：
+  - 加载 project/run 时并行读取 read-only acceptance summary。
+  - 手动修改 Project ID / Run ID 为空时回到 idle 状态。
+  - Acceptance 面板的 `Refresh` 只调用 acceptance client。
+- `workbench-api.ts` 增加 Workbench-only `PipelineAcceptanceReport` / `PipelineAcceptanceCheck` / `PipelineAcceptanceResponse` 类型。
+
+阶段结果：
+
+- 本步只增加 Workbench 对既有 acceptance API 的只读摘要展示。
+- 未修改后端 `pipeline_acceptance_report.json`、`pipeline_artifact_index.json`、acceptance API、QA verdict、DSL schema、generation prompt、Prompt Coach adapter、Phaser runtime、live edit、provider abstraction、asset pack、resolver ranking / fallback。
+- 未读取 `pipeline_acceptance_report.json` artifact content path，也未新增 artifact content / download / arbitrary path API。
+- 未触发 generation、Prompt Coach prepare、live edit、QA rerun、provider 或 Phaser runtime 改动。
+
+已通过验证：
+
+    npx vitest run tests/workspace/workbench-pipeline-acceptance-client.test.ts tests/workspace/projects-service.test.ts
+    # 2 个测试文件，32 个测试通过
+
+    npx vitest run tests/workspace/pipeline-acceptance-report.test.ts tests/workspace/pipeline-artifact-index.test.ts tests/workspace/workbench-pipeline-evidence-client.test.ts
+    # 3 个测试文件，14 个测试通过
+
+    npx vitest run tests/workspace/workbench-prompt-coach-client.test.ts tests/workspace/generation-input-report.test.ts
+    # 2 个测试文件，15 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+浏览器验收：
+
+    npm run maker:start
+    # API: http://localhost:3000
+    # Workbench: http://localhost:5173
+
+    Playwright browser flow
+    # 验收 run: proj_20260615_043855_32f2 / run_20260615_043855_32f2
+    # Acceptance Summary 展示 PASS、Previewable: Yes、Required checks: 7 passed / 0 failed、Warnings: 0、Skipped: 0。
+    # Acceptance 面板 Refresh 只请求 /api/projects/:projectId/runs/:runId/acceptance。
+    # 未观察到 /generate、/prompt-optimizations、/live-edits、pipeline_acceptance_report.json、artifact content/path 请求。
+    # 页面正文未出现 OPENAI_API_KEY、DEEPSEEK_API_KEY、process.env、Bearer token、raw provider、/Users/、/tmp/、/home/ 或 Windows absolute path；未展示 full JSON payload。
+    # Acceptance Summary 不展示 Report ref、Ref 或 pipeline_acceptance_report.json。
+
+审查记录：
+
+- Oracle 首轮：P0/P1 无；发现 1 个 P2、2 个 P3：
+  - P2：Workbench 脱敏边界漏掉 generic env/token、`process.env.X`、Bearer token、`/tmp`、`/home`，且 thrown error path 可绕过 acceptance HTTP statusText 脱敏。
+  - P3：副作用边界缺 App 集成级自动化测试；当前由 client 单测和 Playwright browser flow 覆盖。
+  - P3：Acceptance Summary 展示 `Report ref` / `Ref:`，超出最小 reason 摘要面。
+- 已修复：
+  - 新增共享 `workbench-display-safety.ts`，覆盖 generic API key、`process.env.*`、Bearer token、token、raw provider、`/Users`、`/tmp`、`/home`、Windows absolute path。
+  - `fetchPipelineAcceptance` 捕获 thrown fetch error 并返回脱敏 error view；`App.tsx` 的 acceptance refresh、global `runAction` 和 runtime apply error 展示使用同一脱敏 helper。
+  - Acceptance Summary 移除 `Report ref` 和 per-check `Ref:` 展示，只保留 status / previewable / counts / check id / category / status / required / reason。
+  - 测试补充 generic env/token/thrown error 脱敏覆盖；浏览器复验确认 summary 无 ref/path，Refresh 只请求 `/acceptance`。
+- Oracle 二轮：P0/P1 无；P2 仍未完全关闭：
+  - `sanitizeWorkbenchErrorMessage` 对敏感 thrown error 复用首个 token，可能把 `OPENAI_API_KEY`、`process.env.OPENAI_API_KEY`、`/tmp/...` 或 `Bearer` 暴露为 `OPENAI_API_KEY Error`。
+- 已修复二轮问题：
+  - `sanitizeWorkbenchErrorMessage` 命中敏感内容时只保留安全数字 HTTP status，例如 `500 Error`；其他敏感 thrown error 统一返回 fallback。
+  - 测试改为断言 thrown `OPENAI_API_KEY ... process.env ... Bearer ... /tmp/...` 只显示 `Pipeline acceptance request failed.`。
+- Oracle 最终复审：P0/P1/P2 均 clear；P3 副作用边界由 client 单测和浏览器复验覆盖，按当前 Step 15 范围可接受，不阻塞。
+
+当前下一步：
+
+- Step 15 代码、验证、浏览器验收与 Oracle 门禁已完成；准备提交 `feat: add workbench acceptance summary`。未 push。

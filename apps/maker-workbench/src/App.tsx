@@ -4,9 +4,11 @@ import { AssetStatusPanel } from './AssetStatusPanel.js';
 import { PromptCoachPanel } from './PromptCoachPanel.js';
 import { QaStatusPanel } from './QaStatusPanel.js';
 import { buildEditableFields, buildLiveObjectTree, buildReplacePrepareBody, buildRuntimeApplyReportFromPatchResult, type LiveEditableField } from './live-edit-client.js';
+import { PipelineAcceptanceSummary, fetchPipelineAcceptance, type PipelineAcceptanceView } from './pipeline-acceptance-client.js';
 import { PipelineEvidencePanel, fetchPipelineEvidence, type PipelineEvidenceView } from './pipeline-evidence-client.js';
 import { buildGenerateProjectRequest, type PromptCoachProvenanceSelection } from './prompt-coach-client.js';
 import './styles.css';
+import { sanitizeWorkbenchDisplayText, sanitizeWorkbenchErrorMessage } from './workbench-display-safety.js';
 import {
   API_BASE,
   countEvents,
@@ -85,7 +87,12 @@ export function App() {
     message: 'Select a project and run to view pipeline evidence.',
     groups: []
   });
+  const [pipelineAcceptance, setPipelineAcceptance] = useState<PipelineAcceptanceView>({
+    status: 'idle',
+    message: 'Select a project and run to view pipeline acceptance.'
+  });
   const [pipelineEvidenceLoading, setPipelineEvidenceLoading] = useState(false);
+  const [pipelineAcceptanceLoading, setPipelineAcceptanceLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [liveEditStatus, setLiveEditStatus] = useState('Runtime not connected');
   const [liveCurrent, setLiveCurrent] = useState<LiveCurrentResponse | undefined>(undefined);
@@ -247,7 +254,7 @@ export function App() {
       const project = await requestJson<ProjectStatus>(`${API_BASE}/api/projects/${selectedProjectId}`);
       const events = await requestJson<RunEvents>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/events`);
       const status = project.latest_run.status;
-      const [qaReport, repairReport, buildLog, artAssetPreview, live, evidence] = await Promise.all([
+      const [qaReport, repairReport, buildLog, artAssetPreview, live, evidence, acceptance] = await Promise.all([
         shouldLoadQaReport(status) ? optionalJson<{ qa_report: QaReport }>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/qa-report`) : undefined,
         shouldLoadRepairReport(status)
           ? optionalJson<{ repair_report: RepairReport }>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/repair-report`)
@@ -255,7 +262,8 @@ export function App() {
         shouldLoadBuildLog(status) ? optionalJson<{ build_log: string }>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/build-log`) : undefined,
         optionalJson<{ preview: ArtAssetWorkbenchPreview }>(`${API_BASE}/api/art-assets/preview/small-library`),
         optionalJson<LiveCurrentResponse>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/live/current`),
-        fetchPipelineEvidence({ apiBase: API_BASE, projectId: selectedProjectId, runId: selectedRunId })
+        fetchPipelineEvidence({ apiBase: API_BASE, projectId: selectedProjectId, runId: selectedRunId }),
+        fetchPipelineAcceptance({ apiBase: API_BASE, projectId: selectedProjectId, runId: selectedRunId })
       ]);
 
       setData({
@@ -268,6 +276,7 @@ export function App() {
       });
       setLiveCurrent(live);
       setPipelineEvidence(evidence);
+      setPipelineAcceptance(acceptance);
     }, options);
   }
 
@@ -280,6 +289,19 @@ export function App() {
       setPipelineEvidence({ status: 'error', message: evidenceError instanceof Error ? evidenceError.message : 'Pipeline evidence request failed.', groups: [] });
     } finally {
       setPipelineEvidenceLoading(false);
+    }
+  }
+
+  async function refreshPipelineAcceptance() {
+    setPipelineAcceptanceLoading(true);
+    setError(null);
+    try {
+      setPipelineAcceptance(await fetchPipelineAcceptance({ apiBase: API_BASE, projectId, runId }));
+    } catch (acceptanceError) {
+      const message = acceptanceError instanceof Error ? acceptanceError.message : 'Pipeline acceptance request failed.';
+      setPipelineAcceptance({ status: 'error', message: sanitizeWorkbenchErrorMessage(message, 'Pipeline acceptance request failed.') });
+    } finally {
+      setPipelineAcceptanceLoading(false);
     }
   }
 
@@ -334,7 +356,8 @@ export function App() {
       setLiveEditStatus(`${recorded.status}${recorded.version_id ? ` -> ${recorded.version_id}` : ''}`);
       await loadProject(projectId, runId, { silent: true });
     } catch (applyError) {
-      setError(applyError instanceof Error ? applyError.message : 'Runtime apply recording failed.');
+      const message = applyError instanceof Error ? applyError.message : 'Runtime apply recording failed.';
+      setError(sanitizeWorkbenchErrorMessage(message, 'Runtime apply recording failed.'));
     } finally {
       pendingPatchRef.current = null;
       setPendingPatchId(null);
@@ -349,7 +372,8 @@ export function App() {
     try {
       await action();
     } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : 'Request failed.');
+      const message = actionError instanceof Error ? actionError.message : 'Request failed.';
+      setError(sanitizeWorkbenchErrorMessage(message));
     } finally {
       if (!options.silent) {
         setLoading(false);
@@ -361,6 +385,7 @@ export function App() {
     setProjectId(nextProjectId);
     if (nextProjectId.trim().length === 0 || runId.trim().length === 0) {
       setPipelineEvidence({ status: 'idle', message: 'Select a project and run to view pipeline evidence.', groups: [] });
+      setPipelineAcceptance({ status: 'idle', message: 'Select a project and run to view pipeline acceptance.' });
     }
   }
 
@@ -368,6 +393,7 @@ export function App() {
     setRunId(nextRunId);
     if (projectId.trim().length === 0 || nextRunId.trim().length === 0) {
       setPipelineEvidence({ status: 'idle', message: 'Select a project and run to view pipeline evidence.', groups: [] });
+      setPipelineAcceptance({ status: 'idle', message: 'Select a project and run to view pipeline acceptance.' });
     }
   }
 
@@ -607,6 +633,13 @@ export function App() {
 
             <AssetStatusPanel report={data.qaReport?.asset_report} preview={data.artAssetPreview} />
 
+            <PipelineAcceptanceSummary
+              view={pipelineAcceptance}
+              loading={pipelineAcceptanceLoading}
+              canRefresh={projectId.trim().length > 0 && runId.trim().length > 0}
+              onRefresh={() => void refreshPipelineAcceptance()}
+            />
+
             <PipelineEvidencePanel
               view={pipelineEvidence}
               loading={pipelineEvidenceLoading}
@@ -635,7 +668,7 @@ export function App() {
               <ul className="m-0 grid max-h-48 list-none gap-2 overflow-auto p-0 pr-1">
                 {data.events.map((event) => (
                   <li className="border-l-[3px] border-[#ffb13b] pl-2.5 text-sm leading-snug text-[#69645d]" key={`${event.timestamp}-${event.type}`}>
-                    {`${event.type}: ${event.message}`}
+                    {`${event.type}: ${sanitizeWorkbenchDisplayText(event.message)}`}
                   </li>
                 ))}
                 {data.events.length === 0 ? <li className="text-sm leading-snug text-[#69645d]">No events yet</li> : null}
@@ -651,7 +684,7 @@ export function App() {
               </div>
             </div>
             <pre className="m-0 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-[#15130f] p-4 font-mono text-xs leading-relaxed text-[#f7e6c5]">
-              {data.buildLog ?? 'No build log'}
+              {sanitizeWorkbenchDisplayText(data.buildLog ?? 'No build log')}
             </pre>
           </section>
         </section>

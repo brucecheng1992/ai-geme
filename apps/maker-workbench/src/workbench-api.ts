@@ -220,6 +220,44 @@ export type PipelineArtifactsResponse = {
   pipeline_artifact_index: PipelineArtifactIndex;
 };
 
+export type PipelineAcceptanceStatus = 'pass' | 'warn' | 'fail';
+export type PipelineAcceptanceCheckStatus = 'pass' | 'warn' | 'fail' | 'skipped';
+
+export type PipelineAcceptanceCheckedArtifact = {
+  artifactId: string;
+  artifactPath: string | null;
+  status: string;
+  required: boolean;
+};
+
+export type PipelineAcceptanceCheck = {
+  id: string;
+  category: 'prompt' | 'dsl' | 'runtime' | 'assets' | 'preview' | 'qa' | 'artifacts' | string;
+  status: PipelineAcceptanceCheckStatus | string;
+  required: boolean;
+  artifactId: string;
+  artifactPath: string | null;
+  reason: string;
+  evidenceRefs: string[];
+};
+
+export type PipelineAcceptanceReport = {
+  reportVersion: 'pipeline_acceptance_report.v1' | string;
+  projectId: string;
+  runId: string;
+  overallStatus: PipelineAcceptanceStatus | string;
+  previewable: boolean;
+  checkedArtifacts: PipelineAcceptanceCheckedArtifact[];
+  checks: PipelineAcceptanceCheck[];
+  errors: string[];
+  warnings: string[];
+};
+
+export type PipelineAcceptanceResponse = {
+  ok: true;
+  pipeline_acceptance_report: PipelineAcceptanceReport;
+};
+
 export type PromptOptimizationMode = 'mock' | 'llm';
 export type PromptOptimizationStrategy = 'mock-v1' | 'llm-v1';
 
