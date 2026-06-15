@@ -91,6 +91,8 @@ export async function writeAssetLibraryUsageReport(input: WriteAssetLibraryUsage
   );
   const unresolvedAssets = sortedUnique(usedAssets.filter((asset) => asset.status === 'unmatched').map((asset) => asset.manifestAssetId));
   const warnings = sortedUnique(usedAssets.filter((asset) => asset.status === 'fallback').map((asset) => asset.reason));
+  const semanticWarnings = sortedUnique(publicManifest.assets.map(buildSemanticFitWarning).filter((warning): warning is string => warning !== undefined));
+  const allWarnings = sortedUnique([...warnings, ...semanticWarnings]);
   const errors = sortedUnique(usedAssets.filter((asset) => asset.status === 'unmatched').map((asset) => asset.reason));
   const report = AssetLibraryUsageReportSchema.parse({
     reportVersion: 'asset-library-usage-report.v1',
@@ -105,13 +107,22 @@ export async function writeAssetLibraryUsageReport(input: WriteAssetLibraryUsage
     usedAssets: usedAssets.sort((left, right) => left.manifestAssetId.localeCompare(right.manifestAssetId)),
     missingCatalogEntries,
     unresolvedAssets,
-    warnings,
+    warnings: allWarnings,
     errors,
-    status: errors.length > 0 ? 'fail' : warnings.length > 0 ? 'warn' : 'pass'
+    status: errors.length > 0 ? 'fail' : allWarnings.length > 0 ? 'warn' : 'pass'
   });
 
   await writeFile(join(input.outputDir, 'asset_library_usage_report.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   return report;
+}
+
+function buildSemanticFitWarning(asset: AssetManifestAsset): string | undefined {
+  if (asset.semanticFit?.status !== 'mismatch') {
+    return undefined;
+  }
+
+  const expected = asset.semanticFit.expectedConcept ?? 'requested semantics';
+  return `${asset.id} semanticFit mismatch for expected ${expected}.`;
 }
 
 function buildUsedAsset(

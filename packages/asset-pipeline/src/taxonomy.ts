@@ -19,6 +19,11 @@ const CORE_ENTITY_RULES: SemanticRule[] = [
     forbiddenTags: ['tank', 'vehicle', 'soldier', 'turret']
   },
   {
+    concept: 'human_character',
+    tags: ['hero', 'human', 'person'],
+    forbiddenTags: ['tank', 'vehicle', 'spaceship', 'robot', 'turret']
+  },
+  {
     concept: 'tank',
     tags: ['tank', 'vehicle'],
     forbiddenTags: ['cat', 'kitten', 'feline', 'alien', 'extraterrestrial']
@@ -65,6 +70,7 @@ const SYNONYMS: Record<string, string> = {
   'ufo creature': 'alien',
   space_creature: 'alien',
   'space creature': 'alien',
+  英雄: 'human_character',
   坦克: 'tank',
   战车: 'tank',
   装甲车: 'tank',

@@ -39,7 +39,10 @@ export async function writeAssetBindingTraceReport(input: WriteAssetBindingTrace
       usageAsset: usageByManifestId.get(assetId)
     })
   );
-  const warnings = sortedUnique(traces.filter((trace) => trace.status === 'warning' || trace.status === 'skipped').map((trace) => trace.reason));
+  const warnings = sortedUnique([
+    ...usageReport.warnings,
+    ...traces.filter((trace) => trace.status === 'warning' || trace.status === 'skipped').map((trace) => trace.reason)
+  ]);
   const errors = sortedUnique([...buildSourceArtifactErrors(usageReport, previewManifestPath), ...traces.filter((trace) => trace.status === 'missing' || trace.status === 'mismatch').map((trace) => trace.reason)]);
   const report = AssetBindingTraceReportSchema.parse({
     reportVersion: 'asset-binding-trace-report.v1',

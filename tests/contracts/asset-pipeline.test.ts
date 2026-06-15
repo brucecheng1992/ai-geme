@@ -136,6 +136,13 @@ describe('Asset pipeline contracts', () => {
       });
     }
 
+    expect(inferAssetSemanticConstraint({ role: 'player_character', subject: '英雄' })).toMatchObject({
+      expectedConcept: 'human_character',
+      expectedAnyTags: ['hero', 'human', 'person'],
+      forbiddenTags: expect.arrayContaining(['tank', 'vehicle', 'turret']),
+      strictness: 'hard'
+    });
+
     for (const styleTheme of ['星空', '银河', '星海', 'stars', 'starfield', 'star_field', 'star field', 'galaxy', 'cosmic']) {
       expect(inferAssetSemanticConstraint({ role: 'background', subject: 'background', styleTheme })).toMatchObject({
         expectedConcept: 'space',
@@ -390,6 +397,60 @@ describe('Asset pipeline contracts', () => {
           packId: 'kenney-tiny-shooter-tanks',
           status: 'selected',
           reason: 'selected'
+        })
+      ])
+    );
+    await expect(validateGeneratedProjectAssets({ projectId, projectDir: root })).resolves.toMatchObject({ ok: true });
+  });
+
+  it('does not select tank-like player art for an explicit hero shooter', async () => {
+    const normalized = validateAndNormalizeRawGameDsl(createShooterRawDsl());
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const params = normalized.ir.template_params.params as {
+      player: { label: string };
+      enemy: { label: string };
+      projectile: { label: string };
+    };
+    params.player.label = '英雄';
+    params.enemy.label = 'Enemy';
+    params.projectile.label = 'Bullet';
+
+    const result = await writeAssetArtifacts({ projectId, projectDir: root, ir: normalized.ir });
+    const player = result.manifest.assets.find((asset) => asset.id === 'player');
+
+    expect(player).toMatchObject({
+      id: 'player',
+      source: 'template_svg',
+      semanticFit: {
+        status: 'fallback_generated',
+        strictness: 'hard',
+        expectedConcept: 'human_character',
+        expectedAnyTags: ['hero', 'human', 'person']
+      }
+    });
+    expect(player?.sourcePack).toBeUndefined();
+    await expect(readFile(join(root, 'public/assets/player.svg'), 'utf8')).resolves.toContain('<svg');
+
+    const report = await readAssetResolutionReport(root);
+    expect(report.candidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          packId: 'kenney-tiny-shooter-tanks',
+          status: 'rejected',
+          reason: 'hard_semantic_mismatch',
+          assetRejections: expect.arrayContaining([
+            expect.objectContaining({
+              assetId: 'player',
+              expectedConcept: 'human_character',
+              actualTags: expect.arrayContaining(['tank', 'vehicle', 'turret']),
+              missingTags: ['hero', 'human', 'person'],
+              conflictingTags: expect.arrayContaining(['tank', 'vehicle', 'turret'])
+            })
+          ])
         })
       ])
     );

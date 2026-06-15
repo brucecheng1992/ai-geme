@@ -126,6 +126,30 @@ describe('Asset binding trace report', () => {
     );
   });
 
+  it('preserves asset library semantic mismatch warnings in the binding trace summary', async () => {
+    const manifest = createManifest();
+    const usageReport = createUsageReport(manifest);
+    usageReport.warnings = [
+      ...usageReport.warnings,
+      'player semanticFit mismatch for expected player.'
+    ];
+    await writeTraceFixture(root, { manifest, usageReport: AssetLibraryUsageReportSchema.parse(usageReport) });
+
+    const report = await writeAssetBindingTraceReport({ projectId, runId, genre: 'shooter', outputDir: root });
+
+    expect(report.status).toBe('warn');
+    expect(report.errors).toEqual([]);
+    expect(report.warnings).toEqual(
+      expect.arrayContaining([
+        'player semanticFit mismatch for expected player.'
+      ])
+    );
+    expect(report.traces.find((trace) => trace.traceId === 'trace:player')).toMatchObject({
+      status: 'matched',
+      reason: 'player binding trace matches AssetPlan, manifests, and catalog usage.'
+    });
+  });
+
   it('fails preview/public catalog mismatches and usage report catalog mismatches', async () => {
     const manifest = createManifest();
     const previewManifest = AssetManifestSchema.parse({

@@ -91,6 +91,33 @@ describe('Asset library usage report', () => {
     });
   });
 
+  it('warns when a catalog-backed asset has a semantic fit mismatch', async () => {
+    const manifest = createManifest({ playerSemanticMismatch: true });
+    await writeUsageFixture(root, manifest);
+
+    const report = await writeAssetLibraryUsageReport({
+      projectId,
+      runId,
+      genre: 'shooter',
+      outputDir: root,
+      workspaceRoot: root,
+      catalog: createCatalog()
+    });
+
+    expect(report.status).toBe('warn');
+    expect(report.errors).toEqual([]);
+    expect(report.usedAssets.find((asset) => asset.manifestAssetId === 'player')).toMatchObject({
+      status: 'matched',
+      source: 'local_asset_pack',
+      catalogAssetId: 'local-pack:agm-mini:player'
+    });
+    expect(report.warnings).toEqual(
+      expect.arrayContaining([
+        'player semanticFit mismatch for expected player.'
+      ])
+    );
+  });
+
   it('fails local/template assets that omit manifest catalog identity', async () => {
     const manifest = createManifest({ omitPlayerCatalogRef: true });
     await writeUsageFixture(root, manifest);
@@ -274,7 +301,14 @@ async function writeUsageFixture(rootDir: string, manifest: AssetManifest): Prom
 }
 
 function createManifest(
-  input: { playerSourcePack?: string; projectId?: string; omitPlayerCatalogRef?: boolean; playerCatalogAssetId?: string; omitRuntimeSourcePath?: boolean } = {}
+  input: {
+    playerSourcePack?: string;
+    projectId?: string;
+    omitPlayerCatalogRef?: boolean;
+    playerCatalogAssetId?: string;
+    omitRuntimeSourcePath?: boolean;
+    playerSemanticMismatch?: boolean;
+  } = {}
 ): AssetManifest {
   const playerSourcePack = input.playerSourcePack ?? 'agm-mini';
   const playerCatalogRef = input.omitPlayerCatalogRef
@@ -339,7 +373,20 @@ function createManifest(
         catalogRef: playerCatalogRef,
         required: true,
         status: 'ready',
-        size: { w: 64, h: 64 }
+        size: { w: 64, h: 64 },
+        semanticFit: input.playerSemanticMismatch
+          ? {
+              status: 'mismatch',
+              confidence: 0,
+              strictness: 'soft',
+              expectedConcept: 'player',
+              expectedAnyTags: ['player'],
+              actualTags: ['tank', 'vehicle', 'turret'],
+              missingTags: ['player'],
+              conflictingTags: [],
+              reason: 'Local asset semantic tags do not satisfy expected player.'
+            }
+          : undefined
       }
     ],
     summary: { required: 3, ready: 3, fallback_used: 0, missing: 0, placeholder_used: 0 }
