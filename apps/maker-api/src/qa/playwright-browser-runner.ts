@@ -349,6 +349,19 @@ function requiredTelemetryObserved(observedEvents: string[], requiredEvents: QaR
 
 async function runDeterministicInteraction(page: Page, genre: QaGenre, timeoutMs: number): Promise<{ ok: boolean; message?: string }> {
   if (genre !== 'shooter') {
+    if (genre === 'collector') {
+      await page.keyboard.press('Enter');
+      const movementAssertion = await verifyCollectorMovement(page);
+      if (!movementAssertion.ok) {
+        await page.keyboard.press('r');
+        return movementAssertion;
+      }
+
+      const progressed = await collectUntilCollectorProgress(page, timeoutMs);
+      await page.keyboard.press('r');
+      return progressed ? { ok: true } : { ok: false, message: 'Collector QA expected directional movement to collect an item and change score.' };
+    }
+
     if (genre === 'dodger') {
       const autoProgress = await verifyDodgerAutoProgress(page);
       if (!autoProgress.ok) {
@@ -638,6 +651,18 @@ async function verifyShooterMovement(page: Page): Promise<{ ok: boolean; message
   return { ok: false, message: 'Shooter QA expected player.x to change after holding ArrowRight or ArrowLeft.' };
 }
 
+async function verifyCollectorMovement(page: Page): Promise<{ ok: boolean; message?: string }> {
+  if (await tryHorizontalMove(page, 'ArrowRight', 12)) {
+    return { ok: true };
+  }
+
+  if (await tryHorizontalMove(page, 'ArrowLeft', 12)) {
+    return { ok: true };
+  }
+
+  return { ok: false, message: 'Collector QA expected player.x to change after holding ArrowRight or ArrowLeft.' };
+}
+
 async function tryHorizontalMove(page: Page, key: 'ArrowLeft' | 'ArrowRight', minDelta: number): Promise<boolean> {
   const beforeMove = await readQaSnapshot(page);
   await page.keyboard.down(key);
@@ -645,6 +670,41 @@ async function tryHorizontalMove(page: Page, key: 'ArrowLeft' | 'ArrowRight', mi
   await page.keyboard.up(key);
   const afterMove = await readQaSnapshot(page);
   return movedHorizontally(beforeMove, afterMove, minDelta);
+}
+
+async function collectUntilCollectorProgress(page: Page, timeoutMs: number): Promise<boolean> {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    await page.keyboard.down('ArrowRight');
+    await page.waitForTimeout(250);
+    await page.keyboard.up('ArrowRight');
+    const observed = await page
+      .waitForFunction(
+        () => {
+          const qa = (globalThis as BrowserQaGlobal).__GAME_QA__;
+          return (
+            qa?.telemetry().some((event) => {
+              if (typeof event !== 'object' || event === null || !('type' in event)) {
+                return false;
+              }
+
+              return event.type === 'item.collected' || event.type === 'score.changed';
+            }) === true
+          );
+        },
+        undefined,
+        { timeout: Math.min(600, Math.max(100, timeoutMs - (Date.now() - startedAt))) }
+      )
+      .then(() => true)
+      .catch(() => false);
+
+    if (observed) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 async function fireUntilShooterProgress(page: Page, timeoutMs: number): Promise<boolean> {

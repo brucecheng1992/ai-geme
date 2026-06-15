@@ -23,6 +23,10 @@ if (typeof window !== 'undefined') {
     create(): void {
       scene.create(this);
     }
+
+    update(_time: number, delta: number): void {
+      scene.update(delta);
+    }
   }
 
   new Phaser.Game({
@@ -39,12 +43,21 @@ if (typeof window !== 'undefined') {
       scene.start();
     }
 
-    if (event.key === 'ArrowRight') {
-      scene.collectItem();
+    const direction = directionFromKey(event.key);
+    if (direction !== undefined) {
+      event.preventDefault();
+      scene.setMoveInput(direction, true);
     }
 
     if (event.key.toLowerCase() === 'r') {
       scene.restart();
+    }
+  });
+
+  window.addEventListener('keyup', (event) => {
+    const direction = directionFromKey(event.key);
+    if (direction !== undefined) {
+      scene.setMoveInput(direction, false);
     }
   });
 } else {
@@ -67,4 +80,21 @@ function mergeCollectorParams(params: Partial<CollectorTemplateParams>): Collect
       screens: { ...defaultCollectorParams.ui.screens, ...params.ui?.screens }
     }
   };
+}
+
+function directionFromKey(key: string): 'left' | 'right' | 'up' | 'down' | undefined {
+  const normalized = key.toLowerCase();
+  if (key === 'ArrowLeft' || normalized === 'a') {
+    return 'left';
+  }
+  if (key === 'ArrowRight' || normalized === 'd') {
+    return 'right';
+  }
+  if (key === 'ArrowUp' || normalized === 'w') {
+    return 'up';
+  }
+  if (key === 'ArrowDown' || normalized === 's') {
+    return 'down';
+  }
+  return undefined;
 }

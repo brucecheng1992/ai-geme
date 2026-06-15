@@ -641,6 +641,31 @@ describe('Playable QA gate and runner', () => {
   );
 
   it(
+    'passes collector QA only after directional movement collects an item',
+    async () => {
+      const server = await startHtmlPreviewServer(collectorMovementHtml());
+      const port = (server.address() as AddressInfo).port;
+      const runner = new PlaywrightQaRunnerService(workspace, gate);
+
+      try {
+        const report = await runner.run({ projectId, runId, genre: 'collector', previewUrl: `http://127.0.0.1:${port}/index.html`, timeoutMs: 10_000 });
+
+        expect(report).toMatchObject({
+          status: 'PASSED',
+          runtime_status: 'PASSED',
+          visual_status: 'PASSED',
+          missing_events: [],
+          missing_any_groups: []
+        });
+        expect(report.observed_events).toEqual(expect.arrayContaining(['player.moved', 'item.collected', 'score.changed', 'game.restarted']));
+      } finally {
+        await closeServer(server);
+      }
+    },
+    30_000
+  );
+
+  it(
     'fails dodger QA when required manifest roles are absent from runtime assets',
     async () => {
       const server = await startStaticDodgerPreviewServer(dodgerRuntimeAssetsJson({ required: ['background_main', 'hazard'], loaded: ['background_main', 'hazard'], missingRequiredRoles: ['player_character'] }));
@@ -1690,6 +1715,79 @@ function shooterRuntimePlanHtml(params: { enemiesActive: number; hitPayload: Rec
 </html>`;
 }
 
+function collectorMovementHtml(): string {
+  return `<!doctype html>
+<html>
+  <body style="margin:0;background:#07111f">
+    <canvas id="game" width="640" height="360" style="width:640px;height:360px;background:linear-gradient(135deg,#07111f 0%,#123323 45%,#ffd95a 100%)"></canvas>
+    <script>
+      const canvas = document.getElementById('game');
+      const context = canvas.getContext('2d');
+      context.fillStyle = '#07111f';
+      context.fillRect(0, 0, 640, 360);
+      context.fillStyle = '#ffd28a';
+      context.beginPath();
+      context.arc(250, 180, 40, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = '#ffd95a';
+      context.beginPath();
+      context.arc(470, 180, 36, 0, Math.PI * 2);
+      context.fill();
+      const telemetry = [
+        { type: 'game.ready', timestamp_ms: 0, frame: 0 },
+        { type: 'item.spawned', timestamp_ms: 1, frame: 0 }
+      ];
+      const state = { gameStatus: 'READY', score: 0, health: 1, frame: 0, player: { x: 250, y: 180 }, collectible: { x: 470, y: 180 } };
+      let movingRight = false;
+      function emit(type, payload) {
+        telemetry.push({ type, timestamp_ms: telemetry.length, frame: state.frame, payload });
+      }
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          state.gameStatus = 'PLAYING';
+          emit('input.received', { input: 'start' });
+          emit('game.started');
+        }
+        if (event.key === 'ArrowRight') {
+          movingRight = true;
+          emit('input.received', { input: 'move' });
+        }
+        if (event.key.toLowerCase() === 'r') {
+          state.gameStatus = 'READY';
+          emit('input.received', { input: 'restart' });
+          emit('game.restarted');
+        }
+      });
+      document.addEventListener('keyup', (event) => {
+        if (event.key === 'ArrowRight') {
+          movingRight = false;
+        }
+      });
+      setInterval(() => {
+        if (state.gameStatus !== 'PLAYING' || !movingRight) {
+          return;
+        }
+        const fromX = state.player.x;
+        state.frame += 1;
+        state.player.x += 28;
+        emit('player.moved', { fromX, fromY: state.player.y, toX: state.player.x, toY: state.player.y });
+        if (state.score === 0 && Math.abs(state.player.x - state.collectible.x) <= 84) {
+          emit('collision.detected', { source: 'player', target: 'collectible' });
+          emit('item.collected');
+          state.score = 1;
+          emit('score.changed', { score: state.score });
+        }
+      }, 80);
+      window.__GAME_TELEMETRY__ = { events: telemetry, state, assets: ${collectorRuntimeAssetsJson()} };
+      window.__GAME_QA__ = {
+        snapshot() { return state; },
+        telemetry() { return telemetry; }
+      };
+    </script>
+  </body>
+</html>`;
+}
+
 async function startHtmlPreviewServer(html: string): Promise<Server> {
   const server = createServer((_request, response) => {
     response.writeHead(200, { 'content-type': 'text/html' });
@@ -1733,6 +1831,20 @@ function dodgerRuntimeAssetsJson(
 
 function shooterRuntimeAssetsJson(): string {
   const required = ['background_main', 'player', 'enemy', 'projectile'];
+  return JSON.stringify({
+    manifestLoaded: true,
+    required,
+    loaded: required,
+    failed: [],
+    fallbackUsed: [],
+    placeholderUsed: [],
+    missing: [],
+    missingRequiredRoles: []
+  });
+}
+
+function collectorRuntimeAssetsJson(): string {
+  const required = ['background_main', 'player', 'collectible'];
   return JSON.stringify({
     manifestLoaded: true,
     required,

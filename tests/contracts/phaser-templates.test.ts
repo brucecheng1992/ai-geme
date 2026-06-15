@@ -40,6 +40,11 @@ type TemplateSnapshot = {
   frame: number;
 };
 
+type CollectorTemplateSnapshot = TemplateSnapshot & {
+  player: { x: number; y: number };
+  collectible: { x: number; y: number };
+};
+
 type TemplateAssetTelemetry = {
   manifestLoaded: boolean;
   required: string[];
@@ -89,8 +94,12 @@ describe('Phaser templates', () => {
     const dodgerMain = await readFile('templates/phaser/dodger/src/main.ts', 'utf8');
     const shooterMain = await readFile('templates/phaser/shooter/src/main.ts', 'utf8');
 
-    expect(collectorMain).toContain("event.key === 'ArrowRight'");
-    expect(collectorMain).toContain('scene.collectItem()');
+    expect(collectorMain).toContain('scene.update(delta)');
+    expect(collectorMain).toContain('scene.setMoveInput(direction, true)');
+    expect(collectorMain).toContain('scene.setMoveInput(direction, false)');
+    expect(collectorMain).toContain('directionFromKey');
+    expect(collectorMain).toContain("normalized === 'w'");
+    expect(collectorMain).not.toContain('ArrowRight collect');
     expect(collectorMain).toContain('asset-manifest.generated.json');
     expect(collectorMain).toContain('collectorArt.preload(this)');
     expect(dodgerMain).toContain('scene.dodgeFrame()');
@@ -179,6 +188,10 @@ describe('Phaser templates', () => {
       expect(source).toContain(event);
     }
     expect(scene).toContain('collectItem()');
+    expect(scene).toContain('setMoveInput(direction: CollectorDirection, pressed: boolean)');
+    expect(scene).toContain('update(deltaMs: number)');
+    expect(scene).toContain('this.movement.move({ fromX: previous.x, fromY: previous.y, toX: this.playerPosition.x, toY: this.playerPosition.y })');
+    expect(scene).toContain('playerOverlapsCollectible()');
     expect(scene).toContain("this.spawn.spawn('item')");
     expect(scene).toContain("this.telemetry.emit('item.collected')");
   });
@@ -911,6 +924,33 @@ describe('Phaser templates', () => {
     expect(qa?.snapshot().gameStatus).not.toBe('LOST');
   });
 
+  it('collector runtime moves the player with directional input and collects by overlap', async () => {
+    const { CollectorGameScene } = await import('../../templates/phaser/collector/src/GameScene.js');
+    const { defaultCollectorParams } = await import('../../templates/phaser/collector/src/template-params.js');
+    const scene = new CollectorGameScene(defaultCollectorParams);
+
+    scene.create(createPhaserSceneMock() as unknown as Parameters<typeof scene.create>[0]);
+    scene.start();
+    const before = (globalThis.__GAME_QA__?.snapshot() as CollectorTemplateSnapshot).player;
+
+    scene.setMoveInput('right', true);
+    scene.update(250);
+    scene.setMoveInput('right', false);
+
+    const afterMove = (globalThis.__GAME_QA__?.snapshot() as CollectorTemplateSnapshot).player;
+    expect(afterMove.x).toBeGreaterThan(before.x);
+    expect(globalThis.__GAME_QA__?.telemetry().some((event) => event.type === 'player.moved')).toBe(true);
+
+    for (let frame = 0; frame < 80 && (globalThis.__GAME_QA__?.snapshot().score ?? 0) === 0; frame += 1) {
+      scene.setMoveInput('right', true);
+      scene.update(16);
+    }
+    scene.setMoveInput('right', false);
+
+    expect(globalThis.__GAME_QA__?.snapshot().score).toBeGreaterThan(0);
+    expect(globalThis.__GAME_QA__?.telemetry().some((event) => event.type === 'item.collected')).toBe(true);
+  });
+
   it('exposes shooter asset telemetry through the runtime bridge', async () => {
     const { ShooterGameScene } = await import('../../templates/phaser/shooter/src/GameScene.js');
     const { defaultShooterParams } = await import('../../templates/phaser/shooter/src/template-params.js');
@@ -1074,6 +1114,7 @@ function createPhaserSceneMock() {
   type TextMock = {
     text: string;
     setText(value: unknown): TextMock;
+    setPosition(...args: unknown[]): TextMock;
     setX(...args: unknown[]): TextMock;
     setY(...args: unknown[]): TextMock;
     setOrigin(...args: unknown[]): TextMock;
@@ -1098,6 +1139,7 @@ function createPhaserSceneMock() {
         }
         return text;
       },
+      setPosition: () => text,
       setX: () => text,
       setY: () => text,
       setOrigin: () => text,
