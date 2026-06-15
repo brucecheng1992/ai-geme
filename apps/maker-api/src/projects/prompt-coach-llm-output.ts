@@ -54,7 +54,7 @@ function normalizeLlmArray(values: string[]): string[] {
 }
 
 function containsDangerousText(value: string): boolean {
-  return /```|game_dsl|asset manifest|runtime patch|api key|authorization|secret|\/Users\/|[A-Za-z]:\//i.test(value);
+  return /```|game_dsl|asset manifest|runtime patch|api key|authorization|secret|[A-Z][A-Z0-9_]*API_KEY|process\.env\.|Bearer\s+|(?:access|refresh|api|bearer)\s+token|token\s*[:=]|raw provider|\/(?:Users|home|tmp|var\/folders)\/|[A-Za-z]:[\\/]/i.test(value);
 }
 
 function collectLlmTextFields(value: z.infer<typeof PromptCoachLlmPayloadSchema>): Array<[string, string]> {

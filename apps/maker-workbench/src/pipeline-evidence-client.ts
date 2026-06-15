@@ -1,5 +1,6 @@
 import { createElement, type ReactNode } from 'react';
 
+import { isSafeWorkbenchRelativePath, sanitizeWorkbenchText } from './workbench-display-safety.js';
 import type { PipelineArtifactIndex, PipelineArtifactRef, PipelineArtifactsResponse } from './workbench-api.js';
 
 export type PipelineArtifactsFetch = (input: string | URL, init?: RequestInit) => Promise<Pick<Response, 'ok' | 'status' | 'statusText' | 'json'>>;
@@ -161,34 +162,14 @@ function renderArtifact(artifact: PipelineEvidenceArtifact): ReactNode {
 }
 
 function toSafeArtifact(artifact: PipelineArtifactRef): PipelineEvidenceArtifact | undefined {
-  if (!isSafeRelativeArtifactPath(artifact.path)) {
+  if (!isSafeWorkbenchRelativePath(artifact.path)) {
     return undefined;
   }
 
   return {
     ...artifact,
-    reason: artifact.reason === undefined ? undefined : sanitizeReason(artifact.reason)
+    reason: artifact.reason === undefined ? undefined : sanitizeWorkbenchText(artifact.reason)
   };
-}
-
-function isSafeRelativeArtifactPath(path: string): boolean {
-  return (
-    path.length > 0 &&
-    !path.startsWith('/') &&
-    !/^[A-Za-z]:\//.test(path) &&
-    !/^[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(path) &&
-    !path.includes('\\') &&
-    !path.split('/').includes('..') &&
-    !containsBlockedWorkbenchText(path)
-  );
-}
-
-function sanitizeReason(reason: string): string {
-  return containsBlockedWorkbenchText(reason) ? 'Reason hidden by Workbench.' : reason;
-}
-
-function containsBlockedWorkbenchText(value: string): boolean {
-  return /authorization|api key|secret|DEEPSEEK_API_KEY|raw provider|\/Users\/|[A-Za-z]:\\/i.test(value);
 }
 
 function statusClass(status: string): string {

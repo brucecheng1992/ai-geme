@@ -8,11 +8,60 @@
 
 ## 当前阶段
 
-当前处于 Step 16 Pipeline Golden Trace Regression closeout lane。Step 16 新增端到端 golden trace 回归测试，把 Prompt Coach -> Generation -> DSL validation -> Asset pipeline -> Artifact index -> Acceptance -> Workbench view-model 的主链路固定到 contract-level 断言；本步只新增测试、test-only helper 和 review-gated 文档记录，不新增产品功能、UI、API 或 report contract。
+当前处于 Step 17 Pre-push Stack Audit lane。Step 17 对 `origin/main..HEAD` 做只读 push 前审计；本步发现并修复 Prompt Coach LLM / Workbench 安全展示边界的 P2 脱敏 gap，未新增 artifact content/download/path API，未 push。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Step 16 测试、验证与 Oracle 门禁完成后，提交 `test: add pipeline golden trace coverage`，不 push。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Step 17 修复完成后复跑验证并进行 Oracle 复审；若 P0/P1/P2 clear，则提交本次最小安全边界修复，不 push。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.54 Step 17: Pre-push Stack Audit / Prompt Coach Safety Gap
+
+完成时间：2026-06-15
+
+已完成内容：
+
+- 对 `origin/main..HEAD` 的 17 个本地提交执行 push 前审计，确认工作区原始状态为 `main...origin/main [ahead 17]`。
+- 修复 Oracle 发现的 P2：Prompt Coach LLM output validator 与 Workbench Prompt Coach client 对泛 API key、`process.env.*`、Bearer 凭证、本地临时/家目录路径、Windows 反斜杠路径、raw provider 文本识别不足。
+- 修复 Prompt Coach API-facing error 边界：provider failure message 不再拼接进 `ProjectRequestError` 对外响应，统一映射为稳定错误文案。
+- `pipeline-evidence-client.ts` 复用既有 `workbench-display-safety.ts` 的 path / reason 安全 helper，避免 evidence panel 与 acceptance summary 的安全展示规则继续分叉。
+- 新增回归测试覆盖：
+  - Prompt Coach 后端 LLM 输出包含 `OPENAI_API_KEY`、`process.env.OPENAI_API_KEY`、Bearer、raw provider 和 `C:\Users\...` 时拒绝写成功 artifacts。
+  - Prompt Coach provider failure message 包含 env / Bearer / 本地路径时，服务层错误不透传敏感文本。
+  - Workbench Prompt Coach 错误、报告字段和 artifact refs 不展示泛 env / Bearer / 本地路径。
+  - 保留玩家 prompt 中 `Collect tokens` 这类正常游戏语义，不把普通 gameplay token 误判为 secret。
+
+阶段结果：
+
+- Artifact refs API 仍只有固定 `/artifacts` 和 `/acceptance` 读取面；没有新增 artifact content、download 或 arbitrary path API。
+- Prompt Coach 仍是 prepare-only candidate：mock 默认 deterministic，LLM 仅在 `PROMPT_COACH_LLM_ENABLED=true` 时启用。
+- 本次修复不修改 DSL schema、generation prompt、QA verdict、Phaser runtime、live edit、provider abstraction、asset pack 或 report contract。
+
+已通过验证：
+
+    git diff --check origin/main..HEAD
+    # 无输出
+
+    rg -n "<<<<<<<|=======|>>>>>>>" . -g '!node_modules' -g '!dist' -g '!build'
+    # 无冲突标记命中
+
+    npx vitest run tests/workspace/prompt-coach.test.ts tests/workspace/workbench-prompt-coach-client.test.ts tests/workspace/workbench-pipeline-evidence-client.test.ts
+    # 3 个测试文件，30 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    npm test
+    # contracts 24 个测试文件 / 224 个测试通过；workspace 25 个测试文件 / 273 个测试通过
+
+审查记录：
+
+- Oracle 首轮：
+  - P2：Prompt Coach LLM output validator / Workbench Prompt Coach client 脱敏边界漏掉泛 API key、`process.env.*`、Bearer、本地临时/家目录路径和 raw provider 文本。
+  - P1：按 `origin/main..HEAD` 字面审查时，早期已批准 step 中的 DSL schema / generation prompt / Phaser / live edit / asset pack 变更被判为与当前 Step 17 非目标冲突；这些变更对应历史已完成步骤，不是 Step 17 新增变更。
+- Oracle 第二轮：P0/P1 非阻塞；发现 2 个残留 P2：
+  - 后端 Prompt Coach LLM output validator 未覆盖 Windows 反斜杠路径。
+  - Prompt Coach provider failure message 仍可能作为 API-facing error 原样暴露 provider 文本。
+- Oracle 最终复审：P0/P1/P2 clear；确认 Windows 反斜杠路径、provider failure message 透传、Workbench Prompt Coach 展示边界和 Pipeline Evidence shared safety helper 均已覆盖；允许提交本次最小 Step 17 safety fix，不 push。
 
 ### 2.53 Step 11: Prompt Coach Workbench Opt-in Panel
 

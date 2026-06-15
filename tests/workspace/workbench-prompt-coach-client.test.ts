@@ -84,6 +84,9 @@ describe('Workbench Prompt Coach client helpers', () => {
       'Prompt Coach LLM mode is unavailable.'
     );
     expect(sanitizePromptCoachErrorMessage('provider returned raw provider response with authorization header')).toBe('Prompt Coach LLM mode is unavailable.');
+    expect(sanitizePromptCoachErrorMessage('OPENAI_API_KEY leaked through process.env.OPENAI_API_KEY with Bearer abc.def token at /tmp/provider.json')).toBe(
+      'Prompt Coach LLM mode is unavailable.'
+    );
   });
 
   it('shows only safe relative artifact refs', () => {
@@ -95,6 +98,8 @@ describe('Workbench Prompt Coach client helpers', () => {
         { id: 'optimizedPrompt', artifactRoot: 'model-output', path: 'prompt-optimizations/opt_proj_abc/optimized_prompt.html', format: 'html' as 'txt' },
         { id: 'optimizedPrompt', artifactRoot: 'model-output', path: '/Users/dahufa/private/optimized_prompt.txt', format: 'txt' },
         { id: 'optimizedPrompt', artifactRoot: 'model-output', path: '../optimized_prompt.txt', format: 'txt' },
+        { id: 'optimizedPrompt', artifactRoot: 'model-output', path: 'https://example.test/optimized_prompt.txt', format: 'txt' },
+        { id: 'optimizedPrompt', artifactRoot: 'model-output', path: '/tmp/optimized_prompt.txt', format: 'txt' },
         { id: 'optimizedPrompt', artifactRoot: 'model-output', path: 'prompt-optimizations\\opt\\optimized_prompt.txt', format: 'txt' }
       ])
     ).toEqual([{ id: 'promptOptimizationReport', path: 'prompt-optimizations/opt_proj_abc/prompt_optimization_report.json', format: 'json' }]);
@@ -149,6 +154,21 @@ describe('Workbench Prompt Coach client helpers', () => {
         })
       )
     ).toBe(true);
+    expect(
+      promptCoachReportContainsBlockedText(
+        makeReport({
+          optimizedPrompt: 'Use a 2D cat shooter.',
+          dslFitWarnings: ['OPENAI_API_KEY leaked through process.env.OPENAI_API_KEY with Bearer abc.def token at /home/provider.json']
+        })
+      )
+    ).toBe(true);
+    expect(
+      promptCoachReportContainsBlockedText(
+        makeReport({
+          optimizedPrompt: 'Collect tokens in a 2D arena.'
+        })
+      )
+    ).toBe(false);
     expect(promptCoachReportContainsBlockedText(makeReport({ optimizedPrompt: 'Use a 2D cat shooter.' }))).toBe(false);
   });
 

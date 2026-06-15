@@ -108,7 +108,7 @@ export class PromptCoachService {
     });
 
     if (!result.ok) {
-      throw new ProjectRequestError(`Prompt Coach LLM failed: ${result.message}`);
+      throw new ProjectRequestError(promptCoachLlmFailureMessage(result));
     }
 
     const payload = parsePromptCoachLlmPayload(result.json);
@@ -145,6 +145,16 @@ export class PromptCoachService {
 
     return client;
   }
+}
+
+function promptCoachLlmFailureMessage(result: PromptCoachLlmResult): string {
+  if (result.ok) {
+    return 'Prompt Coach LLM mode is unavailable.';
+  }
+  if (result.code === 'MODEL_RATE_LIMITED') {
+    return 'Prompt Coach LLM is rate limited.';
+  }
+  return 'Prompt Coach LLM mode is unavailable.';
 }
 
 function normalizePrompt(prompt: string): string {

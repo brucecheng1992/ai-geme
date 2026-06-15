@@ -182,7 +182,15 @@ function findErrorMessage(value: unknown): string | undefined {
 }
 
 function isSafeRelativeArtifactPath(path: string): boolean {
-  return path.length > 0 && !path.startsWith('/') && !/^[A-Za-z]:\//.test(path) && !path.includes('\\') && !path.split('/').includes('..');
+  return (
+    path.length > 0 &&
+    !path.startsWith('/') &&
+    !/^[A-Za-z]:\//.test(path) &&
+    !/^[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(path) &&
+    !path.includes('\\') &&
+    !path.split('/').includes('..') &&
+    !containsBlockedWorkbenchText(path)
+  );
 }
 
 function isKnownPromptCoachArtifactRef(artifact: PromptOptimizationArtifactRef): boolean {
@@ -193,5 +201,5 @@ function isKnownPromptCoachArtifactRef(artifact: PromptOptimizationArtifactRef):
 }
 
 function containsBlockedWorkbenchText(value: string): boolean {
-  return /authorization|api key|secret|DEEPSEEK_API_KEY|raw provider|\/Users\/|[A-Za-z]:\\/i.test(value);
+  return /authorization|api key|secret|[A-Z][A-Z0-9_]*API_KEY|process\.env\.|Bearer\s+|(?:access|refresh|api|bearer)\s+token|token\s*[:=]|raw provider|\/(?:Users|home|tmp|var\/folders)\/|[A-Za-z]:[\\/]/i.test(value);
 }

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { beforeEach, afterEach, describe, expect, it } from 'vitest';
 
+import { ProjectRequestError } from '../../apps/maker-api/src/projects/project-request.error.js';
 import { PromptCoachService } from '../../apps/maker-api/src/projects/prompt-coach.service.js';
 import { LocalWorkspaceService } from '../../apps/maker-api/src/workspace/local-workspace.service.js';
 
@@ -207,7 +208,7 @@ describe('PromptCoachService', () => {
         supportedDslVersion: 'v1',
         mode: 'llm'
       })
-    ).rejects.toThrow('Prompt Coach LLM failed: invalid json from fake model');
+    ).rejects.toThrow('Prompt Coach LLM mode is unavailable.');
 
     await expect(
       readFile(
@@ -285,6 +286,71 @@ describe('PromptCoachService', () => {
         mode: 'llm'
       })
     ).rejects.toThrow('Prompt Coach LLM output failed validation.');
+  });
+
+  it('rejects generic env, bearer, raw provider, and local path text from llm output', async () => {
+    const llmCoach = new PromptCoachService(workspace, {
+      llm: {
+        enabled: true,
+        async optimize() {
+          return {
+            ok: true,
+            json: {
+              optimizedPrompt: 'Use a 2D cat shooter.',
+              intentSummary: 'cat shooter',
+              dslFitWarnings: ['OPENAI_API_KEY leaked through process.env.OPENAI_API_KEY'],
+              unsupportedRequests: ['raw provider output at C:\\Users\\provider-output.json'],
+              suggestedQuestions: ['Bearer abc.def token'],
+              capabilitiesUsed: []
+            }
+          };
+        }
+      }
+    });
+
+    await expect(
+      llmCoach.prepare({
+        projectId: 'proj_20260615_prompt',
+        runId: 'run_20260615_prompt_a',
+        originalPrompt: 'cat shooter',
+        supportedDslVersion: 'v1',
+        mode: 'llm'
+      })
+    ).rejects.toThrow('Prompt Coach LLM output failed validation.');
+  });
+
+  it('does not expose provider failure messages through api-facing errors', async () => {
+    const llmCoach = new PromptCoachService(workspace, {
+      llm: {
+        enabled: true,
+        async optimize() {
+          return {
+            ok: false,
+            code: 'MODEL_PROVIDER_FAILED',
+            message: 'OPENAI_API_KEY leaked through process.env.OPENAI_API_KEY with Bearer abc.def token at C:\\Users\\provider.json'
+          };
+        }
+      }
+    });
+
+    try {
+      await llmCoach.prepare({
+        projectId: 'proj_20260615_prompt',
+        runId: 'run_20260615_prompt_a',
+        originalPrompt: 'cat shooter',
+        supportedDslVersion: 'v1',
+        mode: 'llm'
+      });
+      throw new Error('Expected Prompt Coach LLM provider failure to reject.');
+    } catch (error) {
+      const serialized = JSON.stringify(error);
+      expect(error).toBeInstanceOf(ProjectRequestError);
+      expect(serialized).toContain('Prompt Coach LLM mode is unavailable.');
+      expect(serialized).not.toContain('OPENAI_API_KEY');
+      expect(serialized).not.toContain('process.env');
+      expect(serialized).not.toContain('Bearer');
+      expect(serialized).not.toContain('C:\\Users');
+    }
   });
 
   it('uses normalized llm payload to keep repeated same-prompt artifacts auditable', async () => {
