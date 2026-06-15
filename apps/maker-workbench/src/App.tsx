@@ -4,6 +4,7 @@ import { AssetStatusPanel } from './AssetStatusPanel.js';
 import { PromptCoachPanel } from './PromptCoachPanel.js';
 import { QaStatusPanel } from './QaStatusPanel.js';
 import { buildEditableFields, buildLiveObjectTree, buildReplacePrepareBody, buildRuntimeApplyReportFromPatchResult, type LiveEditableField } from './live-edit-client.js';
+import { PipelineEvidencePanel, fetchPipelineEvidence, type PipelineEvidenceView } from './pipeline-evidence-client.js';
 import { buildGenerateProjectRequest, type PromptCoachProvenanceSelection } from './prompt-coach-client.js';
 import './styles.css';
 import {
@@ -79,6 +80,12 @@ export function App() {
   const [projectId, setProjectId] = useState('');
   const [runId, setRunId] = useState('');
   const [data, setData] = useState<DashboardData>({ events: [] });
+  const [pipelineEvidence, setPipelineEvidence] = useState<PipelineEvidenceView>({
+    status: 'idle',
+    message: 'Select a project and run to view pipeline evidence.',
+    groups: []
+  });
+  const [pipelineEvidenceLoading, setPipelineEvidenceLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [liveEditStatus, setLiveEditStatus] = useState('Runtime not connected');
   const [liveCurrent, setLiveCurrent] = useState<LiveCurrentResponse | undefined>(undefined);
@@ -240,14 +247,15 @@ export function App() {
       const project = await requestJson<ProjectStatus>(`${API_BASE}/api/projects/${selectedProjectId}`);
       const events = await requestJson<RunEvents>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/events`);
       const status = project.latest_run.status;
-      const [qaReport, repairReport, buildLog, artAssetPreview, live] = await Promise.all([
+      const [qaReport, repairReport, buildLog, artAssetPreview, live, evidence] = await Promise.all([
         shouldLoadQaReport(status) ? optionalJson<{ qa_report: QaReport }>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/qa-report`) : undefined,
         shouldLoadRepairReport(status)
           ? optionalJson<{ repair_report: RepairReport }>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/repair-report`)
           : undefined,
         shouldLoadBuildLog(status) ? optionalJson<{ build_log: string }>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/build-log`) : undefined,
         optionalJson<{ preview: ArtAssetWorkbenchPreview }>(`${API_BASE}/api/art-assets/preview/small-library`),
-        optionalJson<LiveCurrentResponse>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/live/current`)
+        optionalJson<LiveCurrentResponse>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/live/current`),
+        fetchPipelineEvidence({ apiBase: API_BASE, projectId: selectedProjectId, runId: selectedRunId })
       ]);
 
       setData({
@@ -259,7 +267,20 @@ export function App() {
         artAssetPreview: artAssetPreview?.preview
       });
       setLiveCurrent(live);
+      setPipelineEvidence(evidence);
     }, options);
+  }
+
+  async function refreshPipelineEvidence() {
+    setPipelineEvidenceLoading(true);
+    setError(null);
+    try {
+      setPipelineEvidence(await fetchPipelineEvidence({ apiBase: API_BASE, projectId, runId }));
+    } catch (evidenceError) {
+      setPipelineEvidence({ status: 'error', message: evidenceError instanceof Error ? evidenceError.message : 'Pipeline evidence request failed.', groups: [] });
+    } finally {
+      setPipelineEvidenceLoading(false);
+    }
   }
 
   async function applyLiveField(field: LiveEditableField, nextValue: number) {
@@ -336,6 +357,20 @@ export function App() {
     }
   }
 
+  function updateProjectId(nextProjectId: string) {
+    setProjectId(nextProjectId);
+    if (nextProjectId.trim().length === 0 || runId.trim().length === 0) {
+      setPipelineEvidence({ status: 'idle', message: 'Select a project and run to view pipeline evidence.', groups: [] });
+    }
+  }
+
+  function updateRunId(nextRunId: string) {
+    setRunId(nextRunId);
+    if (projectId.trim().length === 0 || nextRunId.trim().length === 0) {
+      setPipelineEvidence({ status: 'idle', message: 'Select a project and run to view pipeline evidence.', groups: [] });
+    }
+  }
+
   function focusPreviewFrame() {
     previewHostRef.current?.focus();
   }
@@ -406,11 +441,11 @@ export function App() {
             </div>
             <label className="mb-3 grid gap-2 text-sm font-bold text-[#69645d]">
               Project ID
-              <input className={fieldClass} value={projectId} onChange={(event) => setProjectId(event.target.value)} />
+              <input className={fieldClass} value={projectId} onChange={(event) => updateProjectId(event.target.value)} />
             </label>
             <label className="mb-0 grid gap-2 text-sm font-bold text-[#69645d]">
               Run ID
-              <input className={fieldClass} value={runId} onChange={(event) => setRunId(event.target.value)} />
+              <input className={fieldClass} value={runId} onChange={(event) => updateRunId(event.target.value)} />
             </label>
           </section>
 
@@ -571,6 +606,13 @@ export function App() {
             </article>
 
             <AssetStatusPanel report={data.qaReport?.asset_report} preview={data.artAssetPreview} />
+
+            <PipelineEvidencePanel
+              view={pipelineEvidence}
+              loading={pipelineEvidenceLoading}
+              canRefresh={projectId.trim().length > 0 && runId.trim().length > 0}
+              onRefresh={() => void refreshPipelineEvidence()}
+            />
 
             <article className={panelClass}>
               <div className={panelHeadingClass}>

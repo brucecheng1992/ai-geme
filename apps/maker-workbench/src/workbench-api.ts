@@ -196,6 +196,30 @@ export type DashboardData = {
   artAssetPreview?: ArtAssetWorkbenchPreview;
 };
 
+export type PipelineArtifactRef = {
+  id: string;
+  role: string;
+  artifactRoot: string;
+  path: string;
+  status: 'present' | 'missing' | 'skipped' | string;
+  required: boolean;
+  producedBy: string;
+  format: 'json' | 'log' | string;
+  reason?: string;
+};
+
+export type PipelineArtifactIndex = {
+  indexVersion: 'pipeline-artifact-index-v0.1' | string;
+  projectId: string;
+  runId: string;
+  artifacts: PipelineArtifactRef[];
+};
+
+export type PipelineArtifactsResponse = {
+  ok: true;
+  pipeline_artifact_index: PipelineArtifactIndex;
+};
+
 export type PromptOptimizationMode = 'mock' | 'llm';
 export type PromptOptimizationStrategy = 'mock-v1' | 'llm-v1';
 

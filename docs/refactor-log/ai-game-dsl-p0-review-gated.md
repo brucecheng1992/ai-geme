@@ -8,11 +8,11 @@
 
 ## 当前阶段
 
-当前处于 Step 12 Generation Input Provenance Report lane。Step 12 已新增 `generation_input_report.json`，用于记录 generation 使用 manual prompt 还是 Prompt Coach candidate、引用哪个 `prompt_optimization_report.json`、effective prompt 是否等于 optimized candidate，并把 `generationInputReport` ref 加入 `pipeline_artifact_index.json`。后端只根据 source project id 与 optimization id 推导 Prompt Coach artifact path，不信任前端 path；Workbench 只有用户点击 `Use optimized prompt` 且 `Idea` 仍等于候选文本时才携带 provenance id。Prompt Coach 仍不自动 apply、不自动触发 generation、不覆盖 persisted project prompt；本步不改变现有 DSL generation prompt、不改 Step 10 LLM adapter / schema normalizer、不做 provider abstraction、不改 Phaser gameplay / visual polish、不改 asset reports / QA verdict / DSL schema / runtime / provider / Chrome MCP。
+当前处于 Step 13 Workbench Pipeline Evidence Panel lane。Step 13 只在 Workbench 增加只读 Pipeline Evidence 面板，读取既有 `GET /api/projects/:projectId/runs/:runId/artifacts` 返回的 `pipeline_artifact_index.json` refs，并按 Prompt / Provenance、DSL、Runtime、Assets、Build / QA / Preview、Other 分组展示安全相对 artifact path 与 ref metadata。Workbench 不读取 artifact 内容、不下载文件、不暴露绝对路径 / env / secret / raw provider 文本、不触发 generation、Prompt Coach prepare、live edit 或 provider 调用。本步不改变 `pipeline_artifact_index.json` contract、不改变 generation prompt、DSL schema、QA verdict、Phaser runtime、asset reports、Prompt Coach LLM adapter、provider / Chrome MCP。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：完成 Step 12 Oracle P1/P2/P3 修复后的复审门禁；若 P0/P1/P2 清零，则提交 `feat: add generation prompt provenance report`。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：完成 Step 13 Oracle 审查门禁；若 P0/P1/P2 清零，则提交 `feat: add workbench pipeline evidence panel`。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
 
 ### 2.53 Step 11: Prompt Coach Workbench Opt-in Panel
 
@@ -4684,3 +4684,88 @@ fixture size check：
 当前下一步：
 
 - Step 12 代码、验证、浏览器验收与 Oracle 门禁已完成；准备提交 `feat: add generation prompt provenance report`。未 push。
+
+### 24. Step 13：Workbench Pipeline Evidence Panel
+
+完成时间：2026-06-15
+
+已完成内容：
+
+- 新增 Workbench 侧 `pipeline-evidence-client.ts`：
+  - 只读取 `GET /api/projects/:projectId/runs/:runId/artifacts`。
+  - `projectId` / `runId` 为空时不发请求。
+  - 请求 URL 对 `projectId` / `runId` 做 `encodeURIComponent`。
+  - 404 显示明确空态：`No pipeline artifact index is available for this run.`。
+- 新增 `PipelineEvidencePanel`：
+  - 分组展示 `pipeline_artifact_index.json` refs：Prompt / Provenance、DSL、Runtime、Assets、Build / QA / Preview、Other。
+  - 每个 ref 展示 `id`、`role`、`artifactRoot`、`path`、`status`、`required`、`producedBy`、`format` 和 missing / skipped `reason`。
+  - 未知但安全的 artifact id 进入 Other。
+  - 面板 refresh 只刷新 artifacts API，不触发全局 reload。
+- Workbench 前端防御过滤：
+  - 拒绝空 path、绝对路径、Windows drive path、protocol URL、反斜杠和 `..`。
+  - path / reason 命中 `authorization`、`api key`、`secret`、`DEEPSEEK_API_KEY`、`raw provider`、`/Users/` 或 Windows absolute path 时不展示敏感文本。
+  - 面板不渲染 artifact content link 或 download link。
+- `App.tsx` 挂接 Pipeline Evidence 面板：
+  - 加载 project/run 时同时读取 read-only artifact refs。
+  - 手动修改 Project ID / Run ID 为空时回到 idle 状态。
+  - 保持现有 generation、Prompt Coach、live edit、QA、asset status 和 preview 行为不变。
+- `workbench-api.ts` 增加 Workbench-only `PipelineArtifactRef` / `PipelineArtifactIndex` / `PipelineArtifactsResponse` 类型。
+
+阶段结果：
+
+- 本步只增加 Workbench 对既有 artifact refs API 的只读展示。
+- 未修改 `pipeline_artifact_index.json` 生成逻辑、schema、artifact ordering 或 API response contract。
+- 未读取 `generation_input_report.json`、`prompt_optimization_report.json`、`dsl_validation_report.json`、`asset_pipeline_report.json` 或任何 artifact 内容。
+- 未新增 artifact 内容 API、下载能力、目录枚举或任意 path 读取能力。
+- 未触发 generation、Prompt Coach prepare、live edit、provider、Chrome MCP 或 Phaser runtime 改动。
+
+已通过验证：
+
+    npx vitest run tests/workspace/workbench-pipeline-evidence-client.test.ts
+    # 1 个测试文件，7 个测试通过
+
+    npx vitest run tests/workspace/workbench-pipeline-evidence-client.test.ts tests/workspace/projects-service.test.ts
+    # 2 个测试文件，28 个测试通过
+
+    npx vitest run tests/workspace/pipeline-artifact-index.test.ts tests/workspace/generation-input-report.test.ts tests/workspace/workbench-prompt-coach-client.test.ts tests/workspace/prompt-coach.test.ts
+    # 4 个测试文件，28 个测试通过
+
+    npx vitest run tests/workspace/workbench-pipeline-evidence-client.test.ts tests/workspace/projects-service.test.ts tests/workspace/pipeline-artifact-index.test.ts tests/workspace/generation-input-report.test.ts tests/workspace/workbench-prompt-coach-client.test.ts tests/workspace/prompt-coach.test.ts
+    # 6 个测试文件，56 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+    npm test
+    # contracts：24 个测试文件，224 个测试通过
+    # workspace：22 个测试文件，253 个测试通过
+
+浏览器验收：
+
+    npm run maker:start
+    # API: http://localhost:3000
+    # Workbench: http://localhost:5173
+
+    Playwright browser flow
+    # Browser plugin `iab` 不可用，使用 Playwright fallback。
+    # 既有 run: proj_20260615_032806_46e6 / run_20260615_032806_46e6
+    # 面板展示 generationInputReport、gameDsl、dslValidationReport、assetPipelineReport。
+    # 面板展示 status、required / optional、missing / skipped reason。
+    # 面板 Refresh 只请求 /api/projects/:projectId/runs/:runId/artifacts。
+    # 未观察到 /generate、/prompt-optimizations、/live-edits、generation_input_report.json 或 pipeline_artifact_index.json 内容请求。
+    # screenshot: /tmp/ai-game-maker-step13-pipeline-evidence.png
+
+审查记录：
+
+- Oracle 审查：P0/P1/P2/P3 clear。
+  - 确认 Workbench 只调用既有 `/artifacts` refs API，空 project/run 不请求且 URL segment 已编码。
+  - 确认面板只渲染 ref metadata 纯文本，无 `href` / download / artifact content 读取能力。
+  - 确认前端过滤绝对路径、URL、反斜杠、`..`、secret/env/raw provider 文本，敏感 reason 会隐藏。
+  - 确认 Step 13 未改后端 `pipeline_artifact_index.json` contract、generation、Prompt Coach prepare、live edit、provider、Chrome 或 Phaser runtime。
+
+当前下一步：
+
+- Step 13 代码、验证、浏览器验收与 Oracle 门禁已完成；准备提交 `feat: add workbench pipeline evidence panel`。未 push。
