@@ -18,8 +18,8 @@ Metadata v0.1 不是替代 `AssetPlan` / `AssetManifest`，而是补足“资产
 
 | 来源 | 作用 | 当前处理方式 |
 | --- | --- | --- |
-| `/Users/dahufa/Documents/workspace/ai_game_art_asset_metadata_spec.md` | 产品规格源，包含 metadata 分层、P0/P1/P2 字段、manifest 示例、JSON Schema 示例、runtime export 建议 | 不整篇复制进现有大计划；提炼成本文档和 step 文档 |
-| `/Users/dahufa/.codex/attachments/797846a1-ad22-468a-ade8-132f8152adeb/pasted-text.txt` | 对话型需求来源，明确建议 Codex 先做 v0.1 工程骨架 | 用于拆分 required deliverables 和非目标 |
+| `<LOCAL_ARTIFACT_SOURCE_SPEC>` | 产品规格源，包含 metadata 分层、P0/P1/P2 字段、manifest 示例、JSON Schema 示例、runtime export 建议 | 不整篇复制进现有大计划；提炼成本文档和 step 文档 |
+| `<LOCAL_CODEX_ATTACHMENT_SOURCE>` | 对话型需求来源，明确建议 Codex 先做 v0.1 工程骨架 | 用于拆分 required deliverables 和非目标 |
 | `docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md` | 当前 Asset Semantic Fidelity 主线，已完成 Step 1-8a | 作为边界约束：不改 resolver / QA / Workbench / Phaser 行为 |
 | `docs/refactor-log/ai-game-dsl-p0-step-index.md` | 当前工程阶段入口 | 增加 metadata v0.1 的独立入口 |
 

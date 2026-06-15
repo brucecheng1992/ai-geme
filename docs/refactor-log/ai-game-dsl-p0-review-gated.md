@@ -126,7 +126,7 @@
 - 修复 Prompt Coach API-facing error 边界：provider failure message 不再拼接进 `ProjectRequestError` 对外响应，统一映射为稳定错误文案。
 - `pipeline-evidence-client.ts` 复用既有 `workbench-display-safety.ts` 的 path / reason 安全 helper，避免 evidence panel 与 acceptance summary 的安全展示规则继续分叉。
 - 新增回归测试覆盖：
-  - Prompt Coach 后端 LLM 输出包含 `OPENAI_API_KEY`、`process.env.OPENAI_API_KEY`、Bearer、raw provider 和 `C:\Users\...` 时拒绝写成功 artifacts。
+  - Prompt Coach 后端 LLM 输出包含 `OPENAI_API_KEY`、`process.env.OPENAI_API_KEY`、Bearer、raw provider 和 `<WINDOWS_ABSOLUTE_PATH_FIXTURE>` 时拒绝写成功 artifacts。
   - Prompt Coach provider failure message 包含 env / Bearer / 本地路径时，服务层错误不透传敏感文本。
   - Workbench Prompt Coach 错误、报告字段和 artifact refs 不展示泛 env / Bearer / 本地路径。
   - 保留玩家 prompt 中 `Collect tokens` 这类正常游戏语义，不把普通 gameplay token 误判为 secret。
@@ -982,7 +982,7 @@ Approved candidate archive paths:
 
 - 以 clean `main` 为边界新建 `test/asset-semantic-step-13b-large-library-inventory` 分支。
 - 使用用户明确提供并完成 preflight 的 Kenney Pirate Kit direct archive URL。
-- 将 archive 仅下载到 ignored local artifacts：`artifacts/asset-semantic-large-library-inventory/tmp/kenney_pirate-kit.zip`。
+- 将 archive 仅下载到 ignored local artifacts：`<LOCAL_ARTIFACT_SOURCE_ZIP>`。
 - 使用 archive listing metadata 生成 ignored dry-run outputs：`raw-entries.json` 与 `inventory-summary.json`。
 - 新增 `docs/refactor-log/asset-semantic-large-library-step-13b-inventory.md`，只沉淀 deterministic inventory summary、边界和 Step 13C recommendation。
 - 更新 rollout README、semantic fidelity plan 和 step index 的当前阶段状态。
@@ -1350,7 +1350,7 @@ Gate 决策：
 
 已完成内容：
 
-- 从 `/Users/dahufa/Documents/workspace/art_asset_pipeline_production_rollout_plan.zip` 萃取剩余 rollout 计划。
+- 从 `<LOCAL_ARTIFACT_SOURCE_ZIP>` 萃取剩余 rollout 计划。
 - 新增 `docs/refactor-log/art-asset-pipeline-production-rollout/README.md`，记录当前状态、硬边界、分步索引和 branch boundary。
 - 新增 Step 11A 到 Step 14D 的逐步 docs，按步骤类型记录 allowed/not allowed、required output 或 required decisions，并统一记录 validation 和 P0/P1/P2/P3 review gate。
 - 新增 supporting docs：validation matrix、review gates、artifact storage policy、decision points。
@@ -2477,8 +2477,8 @@ Gate 摘要：
 
 已通过验证：
 
-    unzip -l /Users/dahufa/Documents/workspace/AGM_Asset_Semantic_Fidelity_Markdown_Folder.zip
-    rg -n "Asset Semantic|semantic|asset|DSL|QA|Workbench|P0|Step" /Users/dahufa/.codex/memories/MEMORY.md
+    unzip -l <LOCAL_ARTIFACT_SOURCE_ZIP>
+    rg -n "Asset Semantic|semantic|asset|DSL|QA|Workbench|P0|Step" <LOCAL_CODEX_MEMORY>/MEMORY.md
     rg -n "AssetPlan|AssetManifest|semantic|fallback|priority|selectCompletePackAssets|asset_report" packages/asset-pipeline/src apps/maker-api/src/qa apps/maker-workbench/src docs/refactor-log -g "*.ts" -g "*.tsx" -g "*.md"
     git diff --check -- docs/refactor-log/ai-game-asset-semantic-fidelity-plan.md docs/refactor-log/ai-game-dsl-p0-step-index.md docs/refactor-log/ai-game-dsl-p0-review-gated.md
 
@@ -2522,7 +2522,7 @@ Gate 摘要：
     Real Maker stack:
     # POST /api/projects/generate -> proj_20260611_064732_c31d / run_20260611_064732_c31d / PLAYABLE
     # QA visual_status=PASSED, asset_report.runtime.loaded=[background_main, player, collectible]
-    # Workbench screenshots: /tmp/agm-tiny-pack-workbench/workbench-desktop.png, /tmp/agm-tiny-pack-workbench/workbench-mobile.png
+    # Workbench screenshots: <TMP_PATH_FIXTURE>/agm-tiny-pack-workbench/workbench-desktop.png, <TMP_PATH_FIXTURE>/agm-tiny-pack-workbench/workbench-mobile.png
 
 审查门禁结论：
 
@@ -4366,10 +4366,10 @@ Step 9 阶段结果：
     npm run metadata:export-runtime -- --json assets/metadata/examples
     # ok=true，artifact.asset_count=5
 
-    npm run metadata:export-runtime -- assets/metadata/examples --out /tmp/.../runtime-art-assets.json
+    npm run metadata:export-runtime -- assets/metadata/examples --out <TMP_PATH_FIXTURE>/runtime-art-assets.json
     # OK 5 runtime metadata assets，并写入临时 artifact
 
-    npm run metadata:export-runtime -- --json assets/metadata/examples --out /tmp/.../runtime-art-assets.json
+    npm run metadata:export-runtime -- --json assets/metadata/examples --out <TMP_PATH_FIXTURE>/runtime-art-assets.json
     # ok=true，JSON envelope 包含 outputPath 和 artifact
 
 审查门禁结论：
@@ -4812,7 +4812,7 @@ fixture size check：
     # promptOptimizationRef.projectId = proj_20260614_191916_06a5
     # candidatePromptMatchesEffectivePrompt = true
     # pipeline_artifact_index.json contains generationInputReport
-    # screenshots: /tmp/ai-game-maker-step12-prompt-coach-adopted.png, /tmp/ai-game-maker-step12-generated.png
+    # screenshots: <TMP_PATH_FIXTURE>/ai-game-maker-step12-prompt-coach-adopted.png, <TMP_PATH_FIXTURE>/ai-game-maker-step12-generated.png
 
     git diff --check
     # 无输出
@@ -4910,7 +4910,7 @@ fixture size check：
     # 面板展示 status、required / optional、missing / skipped reason。
     # 面板 Refresh 只请求 /api/projects/:projectId/runs/:runId/artifacts。
     # 未观察到 /generate、/prompt-optimizations、/live-edits、generation_input_report.json 或 pipeline_artifact_index.json 内容请求。
-    # screenshot: /tmp/ai-game-maker-step13-pipeline-evidence.png
+    # screenshot: <TMP_PATH_FIXTURE>/ai-game-maker-step13-pipeline-evidence.png
 
 审查记录：
 

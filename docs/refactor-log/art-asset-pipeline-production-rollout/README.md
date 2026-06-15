@@ -1,6 +1,6 @@
 # Art Asset Pipeline Production Rollout Index
 
-来源：`/Users/dahufa/Documents/workspace/art_asset_pipeline_production_rollout_plan.zip`
+来源：`<LOCAL_ARTIFACT_SOURCE_ZIP>`
 
 当前状态：Step 14C controlled rollout verification / closeout 已验证并关闭 controlled rollout lane。`ART_ASSET_SEMANTIC_ROLLOUT_ENABLED` 默认关闭，flag-off 保持当前/default behavior，flag-on 仅限 approved Pirate Kit 20-asset runtime-safe input。Production asset packs、runtime/default behavior、large-library scan、repair-enabled default 和 metadata repair/writeback 仍未改变。Broad/default production rollout 仍未批准。本目录把 zip 中的大 rollout 计划拆成可逐步执行、逐步审查、逐步验证的小文档。
 

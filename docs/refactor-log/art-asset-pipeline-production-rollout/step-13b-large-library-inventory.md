@@ -72,7 +72,7 @@ Committed reports must not include absolute local machine paths.
 
 Ignored local artifacts:
 
-- `artifacts/asset-semantic-large-library-inventory/tmp/kenney_pirate-kit.zip`
+- `<LOCAL_ARTIFACT_SOURCE_ZIP>`
 - `artifacts/asset-semantic-large-library-inventory/step-13b-pirate-kit-v0.1/raw-entries.json`
 - `artifacts/asset-semantic-large-library-inventory/step-13b-pirate-kit-v0.1/inventory-summary.json`
 

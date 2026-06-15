@@ -33,13 +33,13 @@ Step 13C-B must not use any other source URL, mirror, search result or asset pag
 Step 13C-B may download the exact approved archive again, but only to an ignored temp path under:
 
 ```text
-artifacts/asset-semantic-large-library-batch-zero/tmp/
+<LOCAL_ARTIFACT_WORKDIR>/batch-zero/tmp/
 ```
 
 Step 13C-B may extract only the selected approved archive-relative files to an ignored temp path under:
 
 ```text
-artifacts/asset-semantic-large-library-batch-zero/extracted-selected/
+<LOCAL_ARTIFACT_WORKDIR>/batch-zero/extracted-selected/
 ```
 
 Step 13C-B must not extract the entire archive into the repo.

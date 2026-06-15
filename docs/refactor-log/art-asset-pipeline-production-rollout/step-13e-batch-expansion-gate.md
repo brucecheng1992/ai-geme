@@ -212,7 +212,7 @@ It does not create a new fixture path and does not wire the expanded fixture int
 
 - Source page: `https://kenney.nl/assets/pirate-kit`
 - Archive URL: `https://kenney.nl/media/pages/assets/pirate-kit/e6d4bb1525-1771333093/kenney_pirate-kit.zip`
-- Local archive input: `artifacts/asset-semantic-large-library-inventory/tmp/kenney_pirate-kit.zip`
+- Local archive input: `<LOCAL_ARTIFACT_SOURCE_ZIP>`
 - Extraction mode: selected files only; no full archive extraction committed.
 
 ### Added Assets
