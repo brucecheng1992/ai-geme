@@ -6,6 +6,7 @@ import { Injectable } from '@nestjs/common';
 import { writeAssetArtifacts } from '../../../../packages/asset-pipeline/src/index.js';
 import { checkPhaserRuntimeCapabilities, NormalizedGameIrSchema } from '../../../../packages/game-dsl/src/index.js';
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
+import { writeAssetBindingTraceReport } from './asset-binding-trace-report.js';
 import { writeAssetLibraryUsageReport } from './asset-library-usage-report.js';
 import { writeAssetPipelineReport } from './asset-pipeline-report.js';
 import type { RuntimeCompileInput, RuntimeCompileResult } from './compiler.types.js';
@@ -121,7 +122,8 @@ export class TemplateCompilerService {
       workspaceRoot: templateAssetRoot,
       assetPacksDir: join(templateAssetRoot, 'assets', 'asset-packs')
     });
-    const compileFiles = [...compileFilesWithoutUsageReport, 'asset_library_usage_report.json'];
+    await writeAssetBindingTraceReport({ projectId: input.projectId, runId: input.runId, genre, outputDir });
+    const compileFiles = [...compileFilesWithoutUsageReport, 'asset_library_usage_report.json', 'asset_binding_trace_report.json'];
     await writeFile(join(outputDir, 'package.json'), this.renderPackageJson(input.projectId));
     await writeFile(join(outputDir, 'index.html'), this.renderIndexHtml());
     await writeFile(join(outputDir, 'src', 'main.ts'), this.renderMainEntry(genre));

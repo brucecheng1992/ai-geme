@@ -1246,6 +1246,7 @@ describe('GenerationPipelineService failure states', () => {
     await mkdir(distDir, { recursive: true });
     await writeFile(join(distDir, 'index.html'), '<html></html>', 'utf8');
     await writeAssetLibraryUsageReportFixture();
+    await writeAssetBindingTraceReportFixture();
     return compileResult([
       'asset_plan.json',
       'public/asset_manifest.json',
@@ -1253,6 +1254,7 @@ describe('GenerationPipelineService failure states', () => {
       'shooter/src/asset-manifest.generated.json',
       'asset_pipeline_report.json',
       'asset_library_usage_report.json',
+      'asset_binding_trace_report.json',
       'pipeline_artifact_index.json'
     ]);
   }
@@ -1326,6 +1328,54 @@ describe('GenerationPipelineService failure states', () => {
           warnings: [],
           errors: [],
           status: 'pass'
+        },
+        null,
+        2
+      )}\n`,
+      'utf8'
+    );
+  }
+
+  async function writeAssetBindingTraceReportFixture(): Promise<void> {
+    const outputDir = workspace.getGeneratedProjectDir(projectId);
+    await mkdir(outputDir, { recursive: true });
+    await writeFile(
+      join(outputDir, 'asset_binding_trace_report.json'),
+      `${JSON.stringify(
+        {
+          reportVersion: 'asset-binding-trace-report.v1',
+          projectId,
+          runId,
+          status: 'pass',
+          sourceArtifacts: {
+            gameDslPath: 'game_dsl.json',
+            assetPlanPath: 'asset_plan.json',
+            publicAssetManifestPath: 'public/asset_manifest.json',
+            previewManifestPath: 'shooter/src/asset-manifest.generated.json',
+            assetLibraryUsageReportPath: 'asset_library_usage_report.json'
+          },
+          traces: [
+            {
+              traceId: 'trace:player',
+              category: 'dsl-bound',
+              status: 'matched',
+              dslStableId: 'player',
+              dslObjectPath: 'asset_plan.json#items.0',
+              assetPlanId: 'player',
+              assetPlanPath: 'asset_plan.json#items.0',
+              manifestAssetId: 'player',
+              previewAssetId: 'player',
+              catalogAssetId: 'local-pack:kenney-tiny-shooter-tanks:player',
+              catalogVersion: 'template_asset_catalog.v1',
+              source: 'local-template',
+              reason: 'player binding trace matches AssetPlan, manifests, and catalog usage.'
+            }
+          ],
+          orphanManifestAssets: [],
+          missingManifestAssets: [],
+          warnings: [],
+          errors: [],
+          checkedPaths: ['asset_plan.json', 'public/asset_manifest.json', 'shooter/src/asset-manifest.generated.json', 'asset_library_usage_report.json']
         },
         null,
         2

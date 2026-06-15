@@ -27,6 +27,7 @@ import {
 } from '../../../../packages/game-dsl/src/index.js';
 import type { RuntimeCompileResult, RuntimeCompileSuccess } from '../compiler/compiler.types.js';
 import { AssetLibraryUsageReportSchema } from '../compiler/asset-library-usage-report.js';
+import { AssetBindingTraceReportSchema } from '../compiler/asset-binding-trace-report.js';
 import { TemplateCompilerService } from '../compiler/template-compiler.service.js';
 import { ViteBuildRunnerService } from '../compiler/vite-build-runner.service.js';
 import { GameDslProviderService, type GameDslProviderResult } from '../model-provider/game-dsl-provider.service.js';
@@ -651,7 +652,8 @@ export class GenerationPipelineService {
         valid: dslValidation.valid === true,
         sourceArtifact: typeof dslValidation.sourceArtifact === 'string' ? dslValidation.sourceArtifact : undefined
       },
-      assetLibraryUsage: await this.readAssetLibraryUsageStatus(input.projectId, input.runId, artifactIndex)
+      assetLibraryUsage: await this.readAssetLibraryUsageStatus(input.projectId, input.runId, artifactIndex),
+      assetBindingTrace: await this.readAssetBindingTraceStatus(input.projectId, input.runId, artifactIndex)
     });
 
     await writePipelineAcceptanceReport(
@@ -675,6 +677,21 @@ export class GenerationPipelineService {
     );
     if (report.projectId !== projectId || report.runId !== runId) {
       throw new Error('asset_library_usage_report identity does not match the current project and run.');
+    }
+    return { status: report.status };
+  }
+
+  private async readAssetBindingTraceStatus(projectId: string, runId: string, artifactIndex: ReturnType<typeof buildValidPipelineArtifactIndex>): Promise<{ status?: 'pass' | 'warn' | 'fail' } | undefined> {
+    const artifact = artifactIndex.artifacts.find((candidate) => candidate.id === 'assetBindingTraceReport');
+    if (artifact?.status !== 'present') {
+      return undefined;
+    }
+
+    const report = AssetBindingTraceReportSchema.parse(
+      JSON.parse(await readFile(join(this.workspace.getGeneratedProjectDir(projectId), 'asset_binding_trace_report.json'), 'utf8'))
+    );
+    if (report.projectId !== projectId || report.runId !== runId) {
+      throw new Error('asset_binding_trace_report identity does not match the current project and run.');
     }
     return { status: report.status };
   }

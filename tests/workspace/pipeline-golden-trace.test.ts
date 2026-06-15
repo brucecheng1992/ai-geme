@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { AssetPipelineReportSchema, writeAssetPipelineReport, type AssetPipelineReport } from '../../apps/maker-api/src/compiler/asset-pipeline-report.js';
 import { AssetLibraryUsageReportSchema, writeAssetLibraryUsageReport, type AssetLibraryUsageReport } from '../../apps/maker-api/src/compiler/asset-library-usage-report.js';
+import { AssetBindingTraceReportSchema, writeAssetBindingTraceReport, type AssetBindingTraceReport } from '../../apps/maker-api/src/compiler/asset-binding-trace-report.js';
 import type { RuntimeCompileResult } from '../../apps/maker-api/src/compiler/compiler.types.js';
 import { GenerationPipelineService } from '../../apps/maker-api/src/projects/generation-pipeline.service.js';
 import { ProjectStoreService } from '../../apps/maker-api/src/projects/project-store.service.js';
@@ -99,9 +100,20 @@ describe('Pipeline golden trace', () => {
     });
     expect(trace.assetManifest.assets.every((asset) => asset.catalogRef?.source === 'local-template')).toBe(true);
     expect(trace.assetLibraryUsageReport.usedAssets.every((asset) => asset.catalogAssetId !== null && asset.status === 'matched')).toBe(true);
+    expect(trace.assetBindingTraceReport).toMatchObject({
+      reportVersion: 'asset-binding-trace-report.v1',
+      projectId: trace.generated.project_id,
+      runId: trace.generated.run_id,
+      status: 'pass',
+      errors: []
+    });
+    expect(trace.assetBindingTraceReport.traces.length).toBeGreaterThanOrEqual(trace.assetManifest.assets.length);
+    expect(trace.assetBindingTraceReport.traces.every((row) => row.source === 'local-template' && row.catalogAssetId !== null && row.catalogVersion === 'template_asset_catalog.v1')).toBe(true);
+    expectNoSensitiveTraceText(trace.assetBindingTraceReport);
     await expect(readFile(join(trace.workspace.getGeneratedProjectDir(trace.generated.project_id), 'asset_plan.json'), 'utf8')).resolves.toContain('"asset-plan-v0.1"');
     await expect(readFile(join(trace.workspace.getGeneratedProjectDir(trace.generated.project_id), 'public', 'asset_manifest.json'), 'utf8')).resolves.toContain('"asset-manifest-v0.1"');
     await expect(readFile(join(trace.workspace.getGeneratedProjectDir(trace.generated.project_id), 'asset_resolution_report.json'), 'utf8')).resolves.toContain('"asset-resolution-report-v0.1"');
+    await expect(readFile(join(trace.workspace.getGeneratedProjectDir(trace.generated.project_id), 'asset_binding_trace_report.json'), 'utf8')).resolves.toContain('"asset-binding-trace-report.v1"');
 
     expect(trace.index.artifacts).toEqual(
       expect.arrayContaining([
@@ -115,6 +127,7 @@ describe('Pipeline golden trace', () => {
         expect.objectContaining({ id: 'assetResolutionReport', status: 'present', path: 'asset_resolution_report.json' }),
         expect.objectContaining({ id: 'assetPipelineReport', status: 'present', path: 'asset_pipeline_report.json' }),
         expect.objectContaining({ id: 'assetLibraryUsageReport', status: 'present', path: 'asset_library_usage_report.json' }),
+        expect.objectContaining({ id: 'assetBindingTraceReport', status: 'present', path: 'asset_binding_trace_report.json' }),
         expect.objectContaining({ id: 'pipelineAcceptanceReport', status: 'present', path: 'pipeline_acceptance_report.json' }),
         expect.objectContaining({ id: 'pipelineArtifactIndex', status: 'present', path: 'pipeline_artifact_index.json' })
       ])
@@ -139,6 +152,7 @@ describe('Pipeline golden trace', () => {
       'runtime_capability',
       'asset_pipeline',
       'asset_library_usage',
+      'asset_binding_trace',
       'preview_manifest',
       'artifact_index_consistency',
       'build_log',
@@ -161,7 +175,7 @@ describe('Pipeline golden trace', () => {
     );
     expect(group(trace.evidenceView, 'Runtime')?.artifacts.map((artifact) => artifact.id)).toContain('runtimeCapabilityReport');
     expect(group(trace.evidenceView, 'Assets')?.artifacts.map((artifact) => artifact.id)).toEqual(
-      expect.arrayContaining(['assetPlan', 'publicAssetManifest', 'phaserPreviewManifest', 'assetResolutionReport', 'assetPipelineReport', 'assetLibraryUsageReport'])
+      expect.arrayContaining(['assetPlan', 'publicAssetManifest', 'phaserPreviewManifest', 'assetResolutionReport', 'assetPipelineReport', 'assetLibraryUsageReport', 'assetBindingTraceReport'])
     );
     expect(group(trace.evidenceView, 'Build / QA / Preview')?.artifacts.map((artifact) => artifact.id)).toEqual(
       expect.arrayContaining(['pipelineAcceptanceReport', 'pipelineArtifactIndex'])
@@ -209,6 +223,7 @@ describe('Pipeline golden trace', () => {
         expect.objectContaining({ id: 'runtimeCapabilityReport', status: 'skipped' }),
         expect.objectContaining({ id: 'assetPipelineReport', status: 'skipped' }),
         expect.objectContaining({ id: 'assetLibraryUsageReport', status: 'skipped' }),
+        expect.objectContaining({ id: 'assetBindingTraceReport', status: 'skipped' }),
         expect.objectContaining({ id: 'pipelineAcceptanceReport', status: 'present', path: 'pipeline_acceptance_report.json' }),
         expect.objectContaining({ id: 'pipelineArtifactIndex', status: 'present', path: 'pipeline_artifact_index.json' })
       ])
@@ -219,13 +234,16 @@ describe('Pipeline golden trace', () => {
       checks: expect.arrayContaining([
         expect.objectContaining({ id: 'dsl_validation', status: 'fail' }),
         expect.objectContaining({ id: 'asset_pipeline', status: 'skipped' }),
-        expect.objectContaining({ id: 'asset_library_usage', status: 'skipped' })
+        expect.objectContaining({ id: 'asset_library_usage', status: 'skipped' }),
+        expect.objectContaining({ id: 'asset_binding_trace', status: 'skipped' })
       ])
     });
     expect(JSON.stringify(trace.index)).not.toContain('stale_asset_pipeline_report');
     expect(JSON.stringify(trace.acceptance)).not.toContain('stale_asset_pipeline_report');
     expect(JSON.stringify(trace.index)).not.toContain('stale_asset_library_usage_report');
     expect(JSON.stringify(trace.acceptance)).not.toContain('stale_asset_library_usage_report');
+    expect(JSON.stringify(trace.index)).not.toContain('stale_asset_binding_trace_report');
+    expect(JSON.stringify(trace.acceptance)).not.toContain('stale_asset_binding_trace_report');
     expectNoSensitiveTraceText(trace.index, trace.acceptance);
   });
 
@@ -280,6 +298,9 @@ describe('Pipeline golden trace', () => {
     const assetLibraryUsageReport = AssetLibraryUsageReportSchema.parse(
       JSON.parse(await readFile(join(workspace.getGeneratedProjectDir(generated.project_id), 'asset_library_usage_report.json'), 'utf8'))
     );
+    const assetBindingTraceReport = AssetBindingTraceReportSchema.parse(
+      JSON.parse(await readFile(join(workspace.getGeneratedProjectDir(generated.project_id), 'asset_binding_trace_report.json'), 'utf8'))
+    );
     const evidenceView = buildPipelineEvidenceView(index);
     const acceptanceView = buildPipelineAcceptanceView(acceptance);
 
@@ -299,6 +320,7 @@ describe('Pipeline golden trace', () => {
       assetPipelineReport,
       assetManifest,
       assetLibraryUsageReport,
+      assetBindingTraceReport,
       index,
       acceptance,
       evidenceView,
@@ -317,6 +339,7 @@ describe('Pipeline golden trace', () => {
     await mkdir(workspace.getGeneratedProjectDir(projectId), { recursive: true });
     await writeFile(join(workspace.getGeneratedProjectDir(projectId), 'asset_pipeline_report.json'), 'stale_asset_pipeline_report', 'utf8');
     await writeFile(join(workspace.getGeneratedProjectDir(projectId), 'asset_library_usage_report.json'), 'stale_asset_library_usage_report', 'utf8');
+    await writeFile(join(workspace.getGeneratedProjectDir(projectId), 'asset_binding_trace_report.json'), 'stale_asset_binding_trace_report', 'utf8');
 
     const rawDsl = {
       ...RawGameDslSchema.parse(createShooterRawDsl()),
@@ -528,7 +551,8 @@ async function writeAssetPipelineArtifacts(workspace: LocalWorkspaceService, pro
       }))
     }
   });
-  return [...compileFiles, 'asset_library_usage_report.json', 'pipeline_artifact_index.json'];
+  await writeAssetBindingTraceReport({ projectId, runId, genre: 'shooter', outputDir });
+  return [...compileFiles, 'asset_library_usage_report.json', 'asset_binding_trace_report.json', 'pipeline_artifact_index.json'];
 }
 
 function createQaReport(input: { projectId: string; runId: string; genre: QaGenre }): QaReport {

@@ -24,6 +24,7 @@ export const PipelineAcceptanceCheckSchema = z.strictObject({
     'runtime_capability',
     'asset_pipeline',
     'asset_library_usage',
+    'asset_binding_trace',
     'preview_manifest',
     'artifact_index_consistency',
     'build_log',
@@ -89,6 +90,9 @@ type BuildPipelineAcceptanceReportInput = {
   assetLibraryUsage?: {
     status?: 'pass' | 'warn' | 'fail';
   };
+  assetBindingTrace?: {
+    status?: 'pass' | 'warn' | 'fail';
+  };
 };
 
 const ARTIFACT_ORDER = [
@@ -103,6 +107,7 @@ const ARTIFACT_ORDER = [
   'assetResolutionReport',
   'assetPipelineReport',
   'assetLibraryUsageReport',
+  'assetBindingTraceReport',
   'buildLog',
   'qaReport',
   'pipelineAcceptanceReport',
@@ -118,6 +123,7 @@ export function buildPipelineAcceptanceReport(input: BuildPipelineAcceptanceRepo
     buildArtifactCheck('runtime_capability', 'runtime', true, artifacts.get('runtimeCapabilityReport')),
     buildArtifactCheck('asset_pipeline', 'assets', true, artifacts.get('assetPipelineReport')),
     buildAssetLibraryUsageCheck(input, artifacts.get('assetLibraryUsageReport')),
+    buildAssetBindingTraceCheck(input, artifacts.get('assetBindingTraceReport')),
     buildPreviewManifestCheck(artifacts),
     buildArtifactIndexConsistencyCheck(input, artifacts.get('pipelineArtifactIndex'), artifacts.get('pipelineAcceptanceReport')),
     buildArtifactCheck('build_log', 'artifacts', false, artifacts.get('buildLog')),
@@ -138,6 +144,42 @@ export function buildPipelineAcceptanceReport(input: BuildPipelineAcceptanceRepo
   };
 
   return PipelineAcceptanceReportSchema.parse(report);
+}
+
+function buildAssetBindingTraceCheck(input: BuildPipelineAcceptanceReportInput, artifact: PipelineArtifactRef | undefined): PipelineAcceptanceCheck {
+  const artifactCheck = buildArtifactCheck('asset_binding_trace', 'assets', true, artifact);
+  if (artifactCheck.status !== 'pass') {
+    return artifactCheck;
+  }
+
+  if (input.assetBindingTrace?.status === undefined) {
+    return {
+      ...artifactCheck,
+      status: 'fail',
+      reason: 'asset_binding_trace_report.json status is unavailable.'
+    };
+  }
+
+  if (input.assetBindingTrace.status === 'fail') {
+    return {
+      ...artifactCheck,
+      status: 'fail',
+      reason: 'asset_binding_trace_report.json status is fail.'
+    };
+  }
+
+  if (input.assetBindingTrace.status === 'warn') {
+    return {
+      ...artifactCheck,
+      status: 'warn',
+      reason: 'asset_binding_trace_report.json status is warn.'
+    };
+  }
+
+  return {
+    ...artifactCheck,
+    reason: 'asset_binding_trace_report.json status is pass.'
+  };
 }
 
 function buildAssetLibraryUsageCheck(input: BuildPipelineAcceptanceReportInput, artifact: PipelineArtifactRef | undefined): PipelineAcceptanceCheck {

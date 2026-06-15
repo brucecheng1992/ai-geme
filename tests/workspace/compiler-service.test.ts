@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { TemplateCompilerService } from '../../apps/maker-api/src/compiler/template-compiler.service.js';
+import { AssetBindingTraceReportSchema } from '../../apps/maker-api/src/compiler/asset-binding-trace-report.js';
 import { AssetPipelineReportSchema } from '../../apps/maker-api/src/compiler/asset-pipeline-report.js';
 import type { RuntimeCompileResult, RuntimeCompileSuccess } from '../../apps/maker-api/src/compiler/compiler.types.js';
 import { ViteBuildRunnerService } from '../../apps/maker-api/src/compiler/vite-build-runner.service.js';
@@ -84,8 +85,23 @@ describe('Compiler + Build + Preview services', () => {
     const report = AssetPipelineReportSchema.parse(JSON.parse(await readFile(join(result.outputDir, 'asset_pipeline_report.json'), 'utf8')));
     expect(result.files).toContain('asset_pipeline_report.json');
     expect(result.files).toContain('asset_library_usage_report.json');
+    expect(result.files).toContain('asset_binding_trace_report.json');
     await expect(readFile(join(result.outputDir, 'asset_library_usage_report.json'), 'utf8')).resolves.toContain('"asset-library-usage-report.v1"');
     await expect(readFile(join(result.outputDir, 'asset_library_usage_report.json'), 'utf8')).resolves.toContain('"catalogAssetId": "local-pack:agm-tiny-collector:player"');
+    const traceReport = AssetBindingTraceReportSchema.parse(JSON.parse(await readFile(join(result.outputDir, 'asset_binding_trace_report.json'), 'utf8')));
+    expect(traceReport).toMatchObject({
+      reportVersion: 'asset-binding-trace-report.v1',
+      projectId,
+      runId,
+      status: 'pass',
+      sourceArtifacts: {
+        assetPlanPath: 'asset_plan.json',
+        publicAssetManifestPath: 'public/asset_manifest.json',
+        previewManifestPath: 'collector/src/asset-manifest.generated.json',
+        assetLibraryUsageReportPath: 'asset_library_usage_report.json'
+      },
+      errors: []
+    });
     expect(report).toMatchObject({
       projectId,
       templateId: 'collector_v1',

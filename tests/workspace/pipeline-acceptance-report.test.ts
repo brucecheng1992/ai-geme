@@ -24,7 +24,8 @@ describe('Pipeline acceptance report contract', () => {
         'asset_resolution_report.json',
         'shooter/src/asset-manifest.generated.json',
         'asset_pipeline_report.json',
-        'asset_library_usage_report.json'
+        'asset_library_usage_report.json',
+        'asset_binding_trace_report.json'
       ],
       buildLogPresent: true,
       qaReportPresent: true
@@ -35,7 +36,8 @@ describe('Pipeline acceptance report contract', () => {
       artifactIndex: index,
       dslValidation: { valid: true, sourceArtifact: 'game_dsl.json' },
       generationInput: { projectId, runId, source: 'manual' },
-      assetLibraryUsage: { status: 'pass' }
+      assetLibraryUsage: { status: 'pass' },
+      assetBindingTrace: { status: 'pass' }
     });
     const second = buildPipelineAcceptanceReport({
       projectId,
@@ -43,7 +45,8 @@ describe('Pipeline acceptance report contract', () => {
       artifactIndex: { ...index, artifacts: [...index.artifacts].reverse() },
       dslValidation: { valid: true, sourceArtifact: 'game_dsl.json' },
       generationInput: { projectId, runId, source: 'manual' },
-      assetLibraryUsage: { status: 'pass' }
+      assetLibraryUsage: { status: 'pass' },
+      assetBindingTrace: { status: 'pass' }
     });
 
     expect(first).toEqual(second);
@@ -61,6 +64,7 @@ describe('Pipeline acceptance report contract', () => {
       'runtime_capability',
       'asset_pipeline',
       'asset_library_usage',
+      'asset_binding_trace',
       'preview_manifest',
       'artifact_index_consistency',
       'build_log',
@@ -116,6 +120,12 @@ describe('Pipeline acceptance report contract', () => {
           status: 'skipped',
           artifactId: 'assetLibraryUsageReport',
           reason: 'dsl_validation_failed_before_compile'
+        }),
+        expect.objectContaining({
+          id: 'asset_binding_trace',
+          status: 'skipped',
+          artifactId: 'assetBindingTraceReport',
+          reason: 'dsl_validation_failed_before_compile'
         })
       ])
     });
@@ -130,13 +140,14 @@ describe('Pipeline acceptance report contract', () => {
       artifactIndex: buildValidPipelineArtifactIndex({
         projectId,
         runId,
-        compileFiles: ['asset_plan.json', 'asset_resolution_report.json', 'asset_pipeline_report.json', 'asset_library_usage_report.json'],
+        compileFiles: ['asset_plan.json', 'asset_resolution_report.json', 'asset_pipeline_report.json', 'asset_library_usage_report.json', 'asset_binding_trace_report.json'],
         buildLogPresent: false,
         qaReportPresent: false
       }),
       dslValidation: { valid: true, sourceArtifact: 'game_dsl.json' },
       generationInput: { projectId, runId, source: 'manual' },
-      assetLibraryUsage: { status: 'fail' }
+      assetLibraryUsage: { status: 'fail' },
+      assetBindingTrace: { status: 'pass' }
     });
 
     expect(report.overallStatus).toBe('fail');
@@ -159,7 +170,8 @@ describe('Pipeline acceptance report contract', () => {
           'asset_resolution_report.json',
           'shooter/src/asset-manifest.generated.json',
           'asset_pipeline_report.json',
-          'asset_library_usage_report.json'
+          'asset_library_usage_report.json',
+          'asset_binding_trace_report.json'
         ],
         buildLogPresent: true,
         qaReportPresent: true
@@ -176,6 +188,62 @@ describe('Pipeline acceptance report contract', () => {
           id: 'asset_library_usage',
           status: 'fail',
           reason: 'asset_library_usage_report.json status is unavailable.'
+        })
+      ])
+    });
+  });
+
+  it('fails a present asset binding trace ref when report status is fail or unavailable', () => {
+    const index = buildValidPipelineArtifactIndex({
+      projectId,
+      runId,
+      compileFiles: [
+        'asset_plan.json',
+        'public/asset_manifest.json',
+        'asset_resolution_report.json',
+        'shooter/src/asset-manifest.generated.json',
+        'asset_pipeline_report.json',
+        'asset_library_usage_report.json',
+        'asset_binding_trace_report.json'
+      ],
+      buildLogPresent: true,
+      qaReportPresent: true
+    });
+    const unavailable = buildPipelineAcceptanceReport({
+      projectId,
+      runId,
+      artifactIndex: index,
+      dslValidation: { valid: true, sourceArtifact: 'game_dsl.json' },
+      generationInput: { projectId, runId, source: 'manual' },
+      assetLibraryUsage: { status: 'pass' }
+    });
+    const failed = buildPipelineAcceptanceReport({
+      projectId,
+      runId,
+      artifactIndex: index,
+      dslValidation: { valid: true, sourceArtifact: 'game_dsl.json' },
+      generationInput: { projectId, runId, source: 'manual' },
+      assetLibraryUsage: { status: 'pass' },
+      assetBindingTrace: { status: 'fail' }
+    });
+
+    expect(unavailable.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'asset_binding_trace',
+          status: 'fail',
+          reason: 'asset_binding_trace_report.json status is unavailable.'
+        })
+      ])
+    );
+    expect(failed).toMatchObject({
+      overallStatus: 'fail',
+      previewable: false,
+      checks: expect.arrayContaining([
+        expect.objectContaining({
+          id: 'asset_binding_trace',
+          status: 'fail',
+          reason: 'asset_binding_trace_report.json status is fail.'
         })
       ])
     });

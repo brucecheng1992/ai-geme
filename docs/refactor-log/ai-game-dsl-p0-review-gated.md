@@ -8,11 +8,58 @@
 
 ## 当前阶段
 
-当前处于 Step 19 Catalog-backed AssetManifest Identity lane。Step 19 已让 local/template catalog identity 从 `AssetManifest` / Phaser preview manifest 显式流入 `asset_library_usage_report.json`，并通过 usage report 与 asset pipeline report 校验一致性；未新增 artifact content/download/path API，未提交，未 push。
+当前处于 Step 20 DSL-to-Asset Binding Trace Report lane。Step 20 已新增 deterministic `asset_binding_trace_report.json`，把 `AssetPlan` / public `AssetManifest` / Phaser preview manifest / `asset_library_usage_report.json` 的绑定链路做成可验证 artifact，并接入 `pipeline_artifact_index.json`、`pipeline_acceptance_report.json` 与 Workbench Evidence refs；未新增 artifact content/download/path API，未提交，未 push。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Step 19 代码、验证、文档与 Oracle 门禁已完成；准备提交 `feat: add catalog identity to asset manifests`，不 push。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Step 20 代码、验证、文档与 Oracle 门禁已完成；准备提交 `feat: add asset binding trace report`，不 push。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.55 Step 20: DSL-to-Asset Binding Trace Report
+
+完成时间：2026-06-15
+
+已完成内容：
+
+- 新增 `asset_binding_trace_report.json` contract：`reportVersion`、`projectId`、`runId`、derived `status`、`sourceArtifacts`、deterministic `traces`、`orphanManifestAssets`、`missingManifestAssets`、`warnings`、`errors` 和 `checkedPaths`。
+- 新增 `asset-binding-trace-report.ts` / `asset-binding-trace-report.schema.ts`，只读取既有 `asset_plan.json`、public `asset_manifest.json`、Phaser preview manifest 和 `asset_library_usage_report.json`，不改变 `AssetPlan`、asset selection、resolver ranking 或 manifest ordering。
+- trace row 覆盖 `dsl-bound`、`runtime-system`、`fallback`、`unresolved` 分类，并记录 stable plan/manifest/preview/catalog 摘要；不复制完整 DSL、manifest、usage report、asset pipeline report 或 raw provider payload。
+- 校验 `asset_library_usage_report.json` 与当前 source refs 对齐；usage-only stale row、manifest row missing usage、source/catalog/boundDslStableId/boundObjectPath drift、duplicate usage rows 都进入 deterministic errors。
+- optional `AssetPlan` item 缺 manifest 时标 `warning`，但如果存在 stale usage row 则升级为 `fail`。
+- `TemplateCompilerService` 在 `asset_library_usage_report.json` 写出后生成 `asset_binding_trace_report.json`，并把它加入 compile files。
+- `pipeline_artifact_index.json` 新增 `assetBindingTraceReport`：valid path 为 present，invalid DSL path 为 skipped，不读取 stale generated-project report。
+- `pipeline_acceptance_report.json` 新增 required assets check `asset_binding_trace`：valid path 读取 trace status，`fail` / unavailable 会让 acceptance fail，invalid DSL path skipped。
+- Workbench Evidence 仅把 `assetBindingTraceReport` ref 归入 Assets 分组；未新增 content fetch、download、open file 或任意 path API。
+- 新增/扩展测试覆盖 report builder、usage drift、runtime/system 分类、fallback catalogRef 边界、安全文本/路径、compiler files、artifact index、acceptance、generation pipeline、golden trace 和 Workbench Evidence。
+
+阶段结果：
+
+- `asset_binding_trace_report.json` 是 deterministic artifact，无 timestamp、绝对路径、env、secret、raw provider response 或完整 payload 复制。
+- invalid DSL path 只在 index / acceptance 中标 skipped，不混入旧 generated-project `asset_binding_trace_report.json`。
+- 未接 provider abstraction、外部 asset 生成服务、AI image provider；未扩大 asset pack；未修改 DSL schema、LLM prompt、Prompt Coach adapter、live edit、QA verdict 总结构、Phaser gameplay / visual polish、resolver ranking / fallback 策略或 production asset packs。
+- 新增 builder 文件约 310 行，超过 220 行触发职责检查；已把 schema 拆出为独立 contract 文件，builder 保持单一 artifact 构建职责，没有继续拆出空泛 helper。
+
+已通过验证：
+
+    npm exec vitest run tests/workspace/asset-binding-trace-report.test.ts tests/workspace/generation-pipeline.service.test.ts tests/workspace/pipeline-golden-trace.test.ts tests/workspace/compiler-service.test.ts tests/workspace/pipeline-artifact-index.test.ts tests/workspace/pipeline-acceptance-report.test.ts tests/workspace/workbench-pipeline-evidence-client.test.ts
+    # 7 个测试文件，70 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+    npm run test:workspace
+    # 28 个测试文件，298 个测试通过
+
+审查门禁结论：
+
+- Oracle 首轮：P0 无；P1 指出 usage report 行集合 / source / catalog / bound 字段未完整对齐，且 optional `AssetPlan` item 缺 manifest 会误判 matched；P2 指出 trace schema path/text 安全校验不够严。
+- 已修复：trace key 纳入 usage rows；补 source refs、usage row 双向缺失、source/catalog/bound field drift、duplicate usage rows 校验；optional missing 改 warning；unsafe text/path 拒绝扩展到多 fragment、scheme、Windows path、`/home`、`/tmp` 等。
+- Oracle 复审：P1 指出 optional missing 分支仍会盖过 stale usage row；P2 指出 `file:` / `data:` 这类 scheme 仍可能通过。
+- 已修复并补测试：usage mismatch 判断和 reason 先于 optional warning；trace path 拒绝任意 `scheme:` 前缀。
+- Oracle 最终复审：P0/P1/P2/P3 均无。
+- 审查模式：Oracle 新建 + 复用复审。
 
 ### 2.54 Step 17: Pre-push Stack Audit / Prompt Coach Safety Gap
 
