@@ -8,11 +8,11 @@
 
 ## 当前阶段
 
-当前处于 Step 13 Workbench Pipeline Evidence Panel lane。Step 13 只在 Workbench 增加只读 Pipeline Evidence 面板，读取既有 `GET /api/projects/:projectId/runs/:runId/artifacts` 返回的 `pipeline_artifact_index.json` refs，并按 Prompt / Provenance、DSL、Runtime、Assets、Build / QA / Preview、Other 分组展示安全相对 artifact path 与 ref metadata。Workbench 不读取 artifact 内容、不下载文件、不暴露绝对路径 / env / secret / raw provider 文本、不触发 generation、Prompt Coach prepare、live edit 或 provider 调用。本步不改变 `pipeline_artifact_index.json` contract、不改变 generation prompt、DSL schema、QA verdict、Phaser runtime、asset reports、Prompt Coach LLM adapter、provider / Chrome MCP。
+当前处于 Step 14 Pipeline Acceptance Report closeout lane。Step 14 新增 deterministic `pipeline_acceptance_report.json`，把当前 run 的关键 pipeline evidence 汇总为只读验收摘要；valid / invalid DSL 路径均生成 report，并在 `pipeline_artifact_index.json` 中只新增 `pipelineAcceptanceReport` ref。Workbench 仅通过 Evidence panel 展示该 ref；后端只新增固定只读 `GET /api/projects/:projectId/runs/:runId/acceptance`，不提供 artifact content / download / arbitrary path API。本步不改变 QA verdict 总结构、DSL schema、generation prompt、Prompt Coach adapter、Phaser runtime、asset report 语义、live edit、provider abstraction、asset pack、resolver ranking / fallback。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：完成 Step 13 Oracle 审查门禁；若 P0/P1/P2 清零，则提交 `feat: add workbench pipeline evidence panel`。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Step 14 代码、验证与 Oracle 门禁已完成；准备提交 `feat: add pipeline acceptance report`，不 push。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
 
 ### 2.53 Step 11: Prompt Coach Workbench Opt-in Panel
 
@@ -4769,3 +4769,108 @@ fixture size check：
 当前下一步：
 
 - Step 13 代码、验证、浏览器验收与 Oracle 门禁已完成；准备提交 `feat: add workbench pipeline evidence panel`。未 push。
+
+### 25. Step 14：Pipeline Acceptance Report
+
+完成时间：2026-06-15
+
+已完成内容：
+
+- 新增 `pipeline_acceptance_report.json` contract：
+  - `reportVersion: "pipeline_acceptance_report.v1"`。
+  - 记录 `projectId` / `runId` / `overallStatus` / `previewable`。
+  - `checkedArtifacts` 只记录 artifact id、相对 path、status、required。
+  - `checks` 固定顺序覆盖 generation input、DSL validation、DSL artifact、runtime capability、asset pipeline、preview manifest、artifact index consistency、build log、QA report。
+  - `errors` / `warnings` 由 checks 推导。
+  - 不记录 timestamp、绝对路径、provider raw response、env、secret 或已有 report payload。
+- `overallStatus` 与 `previewable` 改为 schema 级不变量：
+  - 任一 required check `fail` / `skipped` => `overallStatus: "fail"`。
+  - 无 required failure 且存在 warn => `overallStatus: "warn"`。
+  - required checks 全部 pass 且无 warn => `overallStatus: "pass"`。
+  - `previewable` 由 required checks 是否全部 pass 推导，schema 拒绝矛盾值。
+- `pipeline_artifact_index.json` 增加 `pipelineAcceptanceReport` ref：
+  - role 为 `index`。
+  - artifact root 为 `model-output`。
+  - path 为 `pipeline_acceptance_report.json`。
+  - valid / invalid DSL index 均列出该 ref。
+- valid path 写入 acceptance report：
+  - compile / build / QA 阶段刷新 index 前写入 `pipeline_acceptance_report.json`。
+  - build log / QA report 仍按既有 optional ref 语义进入 acceptance summary。
+- invalid DSL path 写入 acceptance report：
+  - `game_dsl.candidate.json` validation 失败路径写入 invalid acceptance/index，downstream generated-project/build/QA refs skipped。
+  - raw DSL normalization failure 路径写入 `dsl_validation_report.json`、`runtime_capability_report.json`、invalid acceptance/index。
+  - invalid source 为 `game_dsl.json` 时，index/acceptance 标记 `gameDsl` 与 `runtimeCapabilityReport` present，`gameDslCandidate` skipped。
+  - invalid source 为 `game_dsl.candidate.json` 时，index/acceptance 标记 `gameDslCandidate` present，`gameDsl` skipped。
+- 新增只读 API：
+  - `GET /api/projects/:projectId/runs/:runId/acceptance`。
+  - 只读取固定 `pipeline_acceptance_report.json`。
+  - 先校验 run ownership，再校验 report 内部 `projectId` / `runId` 与请求一致。
+  - 不接受客户端 path，不提供 artifact content / download / arbitrary path API。
+  - schema 拒绝 unsafe artifactPath、evidenceRefs、reason、errors、warnings 和 status 文本。
+- Workbench 最小挂接：
+  - Evidence panel 的 Build / QA / Preview 分组展示 `pipelineAcceptanceReport` ref。
+  - 未新增 JSON viewer、download/open file、report diff、自动修复或 artifact 内容请求。
+
+阶段结果：
+
+- 本步新增 deterministic acceptance summary artifact、artifact index ref、最小 API 和 Workbench ref 可见性。
+- 未改变 QA verdict 总结构。
+- 未改变 `dsl_validation_report`、`asset_pipeline_report`、`generation_input_report`、`prompt_optimization_report` 既有语义。
+- 未改 DSL schema、LLM prompt 行为、Prompt Coach adapter、Phaser gameplay / visual polish、live edit、provider abstraction、asset pack、resolver ranking / fallback。
+- invalid DSL acceptance 不读取 stale generated-project artifacts；只根据固定 model-output reports 与 deterministic artifact refs 汇总。
+
+已通过验证：
+
+    npx vitest run tests/workspace/pipeline-acceptance-report.test.ts tests/workspace/generation-pipeline.service.test.ts tests/workspace/pipeline-artifact-index.test.ts tests/workspace/projects-service.test.ts tests/workspace/workbench-pipeline-evidence-client.test.ts
+    # 5 个测试文件，68 个测试通过
+
+    npx vitest run tests/workspace/pipeline-artifact-index.test.ts tests/workspace/generation-input-report.test.ts tests/workspace/asset-pipeline-report.test.ts tests/workspace/dsl-validation-report.test.ts
+    # 4 个测试文件，16 个测试通过
+
+    npx vitest run tests/workspace/projects-service.test.ts tests/workspace/workbench-pipeline-evidence-client.test.ts
+    # 2 个测试文件，30 个测试通过
+
+    npx vitest run tests/workspace/pipeline-acceptance-report.test.ts tests/workspace/generation-pipeline.service.test.ts tests/workspace/pipeline-artifact-index.test.ts tests/workspace/projects-service.test.ts
+    # 4 个测试文件，61 个测试通过
+
+    npx vitest run tests/workspace/pipeline-acceptance-report.test.ts tests/workspace/generation-pipeline.service.test.ts tests/workspace/pipeline-artifact-index.test.ts tests/workspace/generation-input-report.test.ts tests/workspace/asset-pipeline-report.test.ts tests/workspace/dsl-validation-report.test.ts tests/workspace/projects-service.test.ts tests/workspace/workbench-pipeline-evidence-client.test.ts
+    # 8 个测试文件，80 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+    npm test
+    # contracts：24 个测试文件，224 个测试通过
+    # workspace：23 个测试文件，259 个测试通过
+
+审查记录：
+
+- Oracle 首轮：P0 无；发现 1 个 P1、1 个 P2、1 个 P3：
+  - P1：raw DSL normalization failure 分支没有写 `pipeline_acceptance_report.json` / `pipeline_artifact_index.json`。
+  - P2：acceptance report schema / API 边界没有限制 `artifactPath`、`evidenceRefs`、`reason`、`errors`、`warnings` 的安全内容。
+  - P3：API 正向 fixture 过瘦，建议增加 unsafe API 边界测试。
+- 已修复首轮问题：
+  - raw normalization failure 分支写出 invalid `dsl_validation_report.json`、acceptance report 和 artifact index。
+  - schema 拒绝 unsafe relative path、protocol/absolute path、secret/env/raw provider 文本。
+  - API 测试覆盖 report identity mismatch 与 unsafe content rejection。
+- Oracle 二轮：P0/P2 无；发现 1 个 P1、1 个 P3：
+  - P1：raw normalization failure 实际有 `game_dsl.json`，但 index/acceptance 错标 `game_dsl.candidate.json` present。
+  - P3：测试没有断言真实 `game_dsl.candidate.json` 文件不存在。
+- 已修复二轮问题：
+  - invalid index 按 `dsl_validation_report.sourceArtifact` 区分 `game_dsl.json` 与 `game_dsl.candidate.json`。
+  - acceptance DSL artifact check 指向真实 source artifact。
+  - 测试断言 `gameDsl` present、`gameDslCandidate` skipped 且 candidate 文件不存在。
+- Oracle 三轮：P0/P2 无；发现 1 个 P1：
+  - P1：raw normalization failure 实际有 `runtime_capability_report.json`，但 index/acceptance 仍标 skipped。
+- 已修复三轮问题：
+  - `sourceArtifact="game_dsl.json"` 的 invalid index 标记 `runtimeCapabilityReport` present。
+  - raw normalization failure helper 显式写出 `runtime_capability_report.json`。
+  - 测试断言 runtime report ref 与真实文件存在性一致。
+- Oracle 最终复审：P0/P1/P2/P3 均无。
+
+当前下一步：
+
+- Step 14 代码、验证与 Oracle 门禁已完成；准备提交 `feat: add pipeline acceptance report`。未 push。

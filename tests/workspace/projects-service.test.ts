@@ -314,7 +314,7 @@ describe('ProjectsService', () => {
     await expect(service.getQaReport('proj_other', created.run_id)).rejects.toThrow('run does not belong to project');
   });
 
-  it('reads the pipeline artifact index after validating run ownership', async () => {
+  it('reads pipeline artifact refs and acceptance report after validating run ownership', async () => {
     const created = await service.generateProject({ idea: 'cat shooter', language: 'en' });
     await writeJsonFile(workspace.getModelOutputPath(created.project_id, created.run_id, 'pipeline_artifact_index.json'), {
       indexVersion: 'pipeline-artifact-index-v0.1',
@@ -340,8 +340,42 @@ describe('ProjectsService', () => {
           required: true,
           producedBy: 'asset-pipeline',
           format: 'json'
+        },
+        {
+          id: 'pipelineAcceptanceReport',
+          role: 'index',
+          artifactRoot: 'model-output',
+          path: 'pipeline_acceptance_report.json',
+          status: 'present',
+          required: true,
+          producedBy: 'pipeline-acceptance',
+          format: 'json'
         }
       ]
+    });
+    await writeJsonFile(workspace.getModelOutputPath(created.project_id, created.run_id, 'pipeline_acceptance_report.json'), {
+      reportVersion: 'pipeline_acceptance_report.v1',
+      projectId: created.project_id,
+      runId: created.run_id,
+      overallStatus: 'pass',
+      previewable: true,
+      checkedArtifacts: [
+        { artifactId: 'pipelineAcceptanceReport', artifactPath: 'pipeline_acceptance_report.json', status: 'present', required: true }
+      ],
+      checks: [
+        {
+          id: 'artifact_index_consistency',
+          category: 'artifacts',
+          status: 'pass',
+          required: true,
+          artifactId: 'pipelineArtifactIndex',
+          artifactPath: 'pipeline_artifact_index.json',
+          reason: 'Pipeline artifact index matches the current project and run.',
+          evidenceRefs: ['pipelineArtifactIndex:pipeline_artifact_index.json']
+        }
+      ],
+      errors: [],
+      warnings: []
     });
 
     await expect(service.getPipelineArtifacts(created.project_id, created.run_id)).resolves.toMatchObject({
@@ -349,15 +383,25 @@ describe('ProjectsService', () => {
       pipeline_artifact_index: {
         projectId: created.project_id,
         runId: created.run_id,
-        artifacts: [
+        artifacts: expect.arrayContaining([
           expect.objectContaining({ id: 'gameDsl', path: 'game_dsl.json' }),
           expect.objectContaining({ id: 'assetPipelineReport', path: 'asset_pipeline_report.json' })
-        ]
+        ])
       }
     });
     const response = await service.getPipelineArtifacts(created.project_id, created.run_id);
     expect(JSON.stringify(response)).not.toContain(root);
+    await expect(service.getPipelineAcceptance(created.project_id, created.run_id)).resolves.toMatchObject({
+      ok: true,
+      pipeline_acceptance_report: {
+        projectId: created.project_id,
+        runId: created.run_id,
+        overallStatus: 'pass',
+        previewable: true
+      }
+    });
     await expect(service.getPipelineArtifacts('proj_other', created.run_id)).rejects.toThrow('run does not belong to project');
+    await expect(service.getPipelineAcceptance('proj_other', created.run_id)).rejects.toThrow('run does not belong to project');
   });
 
   it('returns a clear missing artifact index error', async () => {
@@ -366,6 +410,10 @@ describe('ProjectsService', () => {
     await expect(service.getPipelineArtifacts(created.project_id, created.run_id)).rejects.toMatchObject({
       status: 404,
       message: 'Pipeline artifact index not found.'
+    });
+    await expect(service.getPipelineAcceptance(created.project_id, created.run_id)).rejects.toMatchObject({
+      status: 404,
+      message: 'Pipeline acceptance report not found.'
     });
   });
 
@@ -392,6 +440,66 @@ describe('ProjectsService', () => {
     await expect(service.getPipelineArtifacts(created.project_id, created.run_id)).rejects.toThrow(
       `pipeline artifact index identity does not match run: ${created.project_id}/${created.run_id}`
     );
+  });
+
+  it('rejects a pipeline acceptance report whose identity does not match the requested run', async () => {
+    const created = await service.generateProject({ idea: 'cat shooter', language: 'en' });
+    await writeJsonFile(workspace.getModelOutputPath(created.project_id, created.run_id, 'pipeline_acceptance_report.json'), {
+      reportVersion: 'pipeline_acceptance_report.v1',
+      projectId: 'proj_20260609_153000_other',
+      runId: 'run_20260609_153000_other',
+      overallStatus: 'pass',
+      previewable: true,
+      checkedArtifacts: [],
+      checks: [
+        {
+          id: 'artifact_index_consistency',
+          category: 'artifacts',
+          status: 'pass',
+          required: true,
+          artifactId: 'pipelineArtifactIndex',
+          artifactPath: 'pipeline_artifact_index.json',
+          reason: 'Pipeline artifact index matches the current project and run.',
+          evidenceRefs: ['pipelineArtifactIndex:pipeline_artifact_index.json']
+        }
+      ],
+      errors: [],
+      warnings: []
+    });
+
+    await expect(service.getPipelineAcceptance(created.project_id, created.run_id)).rejects.toThrow(
+      `pipeline acceptance report identity does not match run: ${created.project_id}/${created.run_id}`
+    );
+  });
+
+  it('rejects unsafe pipeline acceptance report content at the API boundary', async () => {
+    const created = await service.generateProject({ idea: 'cat shooter', language: 'en' });
+    await writeJsonFile(workspace.getModelOutputPath(created.project_id, created.run_id, 'pipeline_acceptance_report.json'), {
+      reportVersion: 'pipeline_acceptance_report.v1',
+      projectId: created.project_id,
+      runId: created.run_id,
+      overallStatus: 'pass',
+      previewable: true,
+      checkedArtifacts: [
+        { artifactId: 'pipelineAcceptanceReport', artifactPath: '/Users/dahufa/private.json', status: 'present', required: true }
+      ],
+      checks: [
+        {
+          id: 'artifact_index_consistency',
+          category: 'artifacts',
+          status: 'pass',
+          required: true,
+          artifactId: 'pipelineArtifactIndex',
+          artifactPath: 'pipeline_artifact_index.json',
+          reason: 'DEEPSEEK_API_KEY leaked from raw provider response',
+          evidenceRefs: ['pipelineArtifactIndex:pipeline_artifact_index.json']
+        }
+      ],
+      errors: [],
+      warnings: []
+    });
+
+    await expect(service.getPipelineAcceptance(created.project_id, created.run_id)).rejects.toThrow();
   });
 
   it('uses the same random suffix for project and run ids to avoid cross-project run collisions', () => {

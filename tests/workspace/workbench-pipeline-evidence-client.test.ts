@@ -30,7 +30,7 @@ describe('Workbench pipeline evidence client', () => {
       'assetResolutionReport',
       'assetPipelineReport'
     ]);
-    expect(group(view, 'Build / QA / Preview')?.artifacts.map((artifact) => artifact.id)).toEqual(['buildLog', 'qaReport', 'pipelineArtifactIndex']);
+    expect(group(view, 'Build / QA / Preview')?.artifacts.map((artifact) => artifact.id)).toEqual(['buildLog', 'qaReport', 'pipelineAcceptanceReport', 'pipelineArtifactIndex']);
     expect(group(view, 'DSL')?.artifacts).toContainEqual(
       expect.objectContaining({
         id: 'gameDslCandidate',
@@ -210,6 +210,7 @@ function makeIndex(): PipelineArtifactIndex {
       artifact('assetPipelineReport', 'asset', 'generated-project', 'asset_pipeline_report.json', 'present', true, 'asset-pipeline', 'json'),
       artifact('buildLog', 'build', 'build-log', 'run_20260615_evidence.log', 'present', false, 'build', 'log'),
       artifact('qaReport', 'qa', 'qa-report', 'run_20260615_evidence.json', 'missing', false, 'qa', 'json', 'qa_report_not_available_yet'),
+      artifact('pipelineAcceptanceReport', 'index', 'model-output', 'pipeline_acceptance_report.json', 'present', true, 'pipeline-acceptance', 'json'),
       artifact('pipelineArtifactIndex', 'index', 'model-output', 'pipeline_artifact_index.json', 'present', true, 'pipeline-artifact-index', 'json')
     ]
   };

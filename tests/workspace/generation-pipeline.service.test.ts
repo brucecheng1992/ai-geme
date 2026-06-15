@@ -22,7 +22,7 @@ import {
   type AssetPlan,
   type AssetResolutionReport
 } from '../../packages/asset-pipeline/src/index.js';
-import { GameBriefSchema, RawGameDslSchema, type NormalizedGameIr, type RawGameDsl } from '../../packages/game-dsl/src/index.js';
+import { GameBriefSchema, RawGameDslSchema, buildGameDslArtifact, type GameDslArtifact, type NormalizedGameIr, type RawGameDsl } from '../../packages/game-dsl/src/index.js';
 
 const projectId = 'proj_20260610_050000_pipe';
 const runId = 'run_20260610_050000_pipe';
@@ -404,6 +404,7 @@ describe('GenerationPipelineService failure states', () => {
     const generationInputReport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_input_report.json'), 'utf8'));
     const validationReport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'dsl_validation_report.json'), 'utf8'));
     const index = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_artifact_index.json'), 'utf8'));
+    const acceptance = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_acceptance_report.json'), 'utf8'));
     expect(generationInputReport).toMatchObject({
       reportVersion: 'generation_input_report.v1',
       projectId,
@@ -435,11 +436,84 @@ describe('GenerationPipelineService failure states', () => {
         expect.objectContaining({ id: 'dslValidationReport', status: 'present', path: 'dsl_validation_report.json' }),
         expect.objectContaining({ id: 'runtimeCapabilityReport', status: 'skipped', reason: 'dsl_validation_failed_before_runtime_capability' }),
         expect.objectContaining({ id: 'assetPipelineReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),
+        expect.objectContaining({ id: 'pipelineAcceptanceReport', status: 'present', path: 'pipeline_acceptance_report.json' }),
         expect.objectContaining({ id: 'pipelineArtifactIndex', status: 'present', path: 'pipeline_artifact_index.json' })
       ])
     });
+    expect(acceptance).toMatchObject({
+      projectId,
+      runId,
+      overallStatus: 'fail',
+      previewable: false,
+      checks: expect.arrayContaining([
+        expect.objectContaining({ id: 'dsl_validation', status: 'fail', reason: 'DSL validation report is invalid.' }),
+        expect.objectContaining({ id: 'asset_pipeline', status: 'skipped', reason: 'dsl_validation_failed_before_compile' })
+      ])
+    });
     expect(JSON.stringify(index)).not.toContain('stale_asset_pipeline_report');
+    expect(JSON.stringify(acceptance)).not.toContain('stale_asset_pipeline_report');
     await expect(projectStore.readProject(projectId)).resolves.toMatchObject({ status: 'DSL_VALIDATION_FAILED' });
+  });
+
+  it('writes acceptance evidence when raw DSL normalization fails after artifact generation', async () => {
+    const rawDsl = {
+      ...RawGameDslSchema.parse(createShooterRawDsl()),
+      player: {
+        ...createShooterRawDsl().player,
+        actions: [{ id: 'fire', type: 'shoot_projectile', cooldown_ms: 300, spawns: 'ghost_projectile' }]
+      }
+    } as RawGameDsl;
+    const artifact = buildGameDslArtifact({
+      rawDsl,
+      runId,
+      intentPlan: { normalizedGenre: 'top_down_shooter' }
+    });
+    let compileRuns = 0;
+    const pipeline = createPipeline({
+      compiler: {
+        async compile() {
+          compileRuns += 1;
+          return compileResult();
+        }
+      }
+    });
+    Object.defineProperty(pipeline, 'generateRawDsl', {
+      value: async () => ({ ok: true, artifact }),
+      configurable: true
+    });
+
+    await expect(runPipeline(pipeline)).resolves.toBe('DSL_VALIDATION_FAILED');
+    expect(compileRuns).toBe(0);
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_acceptance_report.json'), 'utf8')).resolves.toContain('"overallStatus": "fail"');
+
+    const validationReport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'dsl_validation_report.json'), 'utf8'));
+    const index = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_artifact_index.json'), 'utf8'));
+    const acceptance = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_acceptance_report.json'), 'utf8'));
+    expect(validationReport).toMatchObject({
+      sourceArtifact: 'game_dsl.json',
+      status: 'invalid',
+      valid: false,
+      errors: expect.arrayContaining([expect.objectContaining({ code: 'UNRESOLVED_REFERENCE', path: 'sourceDsl.player.actions.0.spawns' })])
+    });
+    expect(index.artifacts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'gameDsl', status: 'present', path: 'game_dsl.json' }),
+        expect.objectContaining({ id: 'gameDslCandidate', status: 'skipped', reason: 'invalid_dsl_path_uses_game_dsl_json' }),
+        expect.objectContaining({ id: 'runtimeCapabilityReport', status: 'present', path: 'runtime_capability_report.json' }),
+        expect.objectContaining({ id: 'pipelineAcceptanceReport', status: 'present', path: 'pipeline_acceptance_report.json' }),
+        expect.objectContaining({ id: 'assetPipelineReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' })
+      ])
+    );
+    expect(acceptance).toMatchObject({
+      overallStatus: 'fail',
+      previewable: false,
+      checks: expect.arrayContaining([
+        expect.objectContaining({ id: 'dsl_validation', status: 'fail' }),
+        expect.objectContaining({ id: 'dsl_artifact', status: 'fail', artifactId: 'gameDsl', artifactPath: 'game_dsl.json' })
+      ])
+    });
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'game_dsl.candidate.json'), 'utf8')).rejects.toThrow();
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'runtime_capability_report.json'), 'utf8')).resolves.toContain('"status": "supported"');
   });
 
   it.each([
@@ -554,12 +628,24 @@ describe('GenerationPipelineService failure states', () => {
     await expect(runPipeline(pipeline)).resolves.toBe('BUILD_FAILED');
 
     const index = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_artifact_index.json'), 'utf8'));
+    const acceptance = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_acceptance_report.json'), 'utf8'));
     expect(index.artifacts).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: 'buildLog', status: 'present', artifactRoot: 'build-log', path: `${runId}.log` }),
-        expect.objectContaining({ id: 'qaReport', status: 'missing', reason: 'qa_report_not_available_yet' })
+        expect.objectContaining({ id: 'qaReport', status: 'missing', reason: 'qa_report_not_available_yet' }),
+        expect.objectContaining({ id: 'pipelineAcceptanceReport', status: 'present', path: 'pipeline_acceptance_report.json' })
       ])
     );
+    expect(acceptance).toMatchObject({
+      projectId,
+      runId,
+      overallStatus: 'pass',
+      previewable: true,
+      checks: expect.arrayContaining([
+        expect.objectContaining({ id: 'build_log', status: 'pass' }),
+        expect.objectContaining({ id: 'qa_report', status: 'skipped' })
+      ])
+    });
   });
 
   it('maps QA runner exceptions to QA_FAILED and writes a QA report', async () => {

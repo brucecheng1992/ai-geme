@@ -13,6 +13,7 @@ import type {
   GenerateProjectRequest,
   GenerateProjectResponse,
   LiveCurrentResponse,
+  PipelineAcceptanceResponse,
   PipelineArtifactsResponse,
   PrepareLiveEditRequest,
   PreparePromptOptimizationRequest,
@@ -25,6 +26,7 @@ import type {
   RunEventsResponse
 } from './project-api.types.js';
 import { PipelineArtifactIndexSchema } from './pipeline-artifact-index.js';
+import { PipelineAcceptanceReportSchema } from './pipeline-acceptance-report.js';
 import { PromptOptimizationReportSchema } from './prompt-coach.contract.js';
 import { PromptCoachService } from './prompt-coach.service.js';
 import { ProjectRequestError } from './project-request.error.js';
@@ -179,6 +181,27 @@ export class ProjectsService {
     return {
       ok: true,
       pipeline_artifact_index: index
+    };
+  }
+
+  async getPipelineAcceptance(projectId: string, runId: string): Promise<PipelineAcceptanceResponse> {
+    await this.assertRunBelongsToProject(projectId, runId);
+    const report = PipelineAcceptanceReportSchema.parse(
+      JSON.parse(
+        await this.readRequiredFile(
+          this.workspace.getModelOutputPath(projectId, runId, 'pipeline_acceptance_report.json'),
+          'Pipeline acceptance report not found.'
+        )
+      )
+    );
+
+    if (report.projectId !== projectId || report.runId !== runId) {
+      throw new ProjectRequestError(`pipeline acceptance report identity does not match run: ${projectId}/${runId}`);
+    }
+
+    return {
+      ok: true,
+      pipeline_acceptance_report: report
     };
   }
 

@@ -15,6 +15,7 @@ import {
 import type { NormalizedGameIr, RawGameDsl } from '../../../../packages/game-dsl/src/index.js';
 import {
   buildRuntimeCapabilityReport,
+  buildDslValidationReport,
   buildGameDslArtifact,
   checkPhaserRuntimeCapabilities,
   validateAndNormalizeRawGameDsl,
@@ -34,6 +35,7 @@ import type { QaAssetSemanticRepairReport, QaAssetSemanticRepairSkippedReason, Q
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
 import { createDeterministicRawGameDsl } from './deterministic-game-dsl.js';
 import { GenerationInputReportSchema, buildGenerationInputReport, type GenerationInputReport } from './generation-input-report.js';
+import { buildPipelineAcceptanceReport, writePipelineAcceptanceReport } from './pipeline-acceptance-report.js';
 import { buildInvalidDslPipelineArtifactIndex, buildValidPipelineArtifactIndex, writePipelineArtifactIndex } from './pipeline-artifact-index.js';
 import { ProjectStoreService } from './project-store.service.js';
 import type { JobEventRecord, ProjectStatus } from './project-state.types.js';
@@ -100,6 +102,7 @@ export class GenerationPipelineService {
     const normalized = validateAndNormalizeRawGameDsl(rawDsl);
 
     if (!normalized.ok) {
+      await this.writeRawDslNormalizationFailureArtifacts(input, generated.artifact, normalized.issues);
       await this.setStatus(input.projectId, input.runId, 'DSL_VALIDATION_FAILED', 'dsl-validation', 'FAILED');
       await this.appendEvent(input.runId, 'dsl.validation.failed', normalized.issues.map((issue) => issue.message).join('; '));
       return 'DSL_VALIDATION_FAILED';
@@ -559,6 +562,33 @@ export class GenerationPipelineService {
     await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   }
 
+  private async writeRawDslNormalizationFailureArtifacts(
+    input: GenerationPipelineInput,
+    artifact: GameDslArtifact,
+    issues: Array<{ code: string; path: string; message: string }>
+  ): Promise<void> {
+    await this.writeRuntimeCapabilityReport(input, buildRuntimeCapabilityReport({ runId: input.runId, validatedDsl: artifact }));
+    await this.writeDslValidationReport(
+      input,
+      buildDslValidationReport({
+        runId: input.runId,
+        dslId: artifact.dslId,
+        sourceArtifact: 'game_dsl.json',
+        artifact,
+        errors: issues.map((issue) => ({
+          code: issue.code,
+          path: `sourceDsl.${issue.path}`,
+          message: issue.message
+        })),
+        warnings: [],
+        normalizedDefaults: [],
+        semanticChecks: [{ name: 'raw_dsl_normalization', status: 'failed', message: 'Raw DSL failed normalization.' }],
+        requiredCapabilities: artifact.requiredCapabilities
+      })
+    );
+    await this.writeInvalidDslPipelineArtifactIndex(input);
+  }
+
   private async writeGenerationInputReport(input: GenerationPipelineInput): Promise<void> {
     const report = GenerationInputReportSchema.parse(
       input.generationInputReport ??
@@ -583,23 +613,53 @@ export class GenerationPipelineService {
     compiled: RuntimeCompileSuccess,
     options: { buildLogPresent?: boolean; qaReportPresent?: boolean } = {}
   ): Promise<void> {
-    await writePipelineArtifactIndex(
-      this.workspace.getModelOutputPath(input.projectId, input.runId, 'pipeline_artifact_index.json'),
-      buildValidPipelineArtifactIndex({
-        projectId: input.projectId,
-        runId: input.runId,
-        compileFiles: compiled.files,
-        buildLogPresent: options.buildLogPresent,
-        qaReportPresent: options.qaReportPresent
-      })
-    );
+    const index = buildValidPipelineArtifactIndex({
+      projectId: input.projectId,
+      runId: input.runId,
+      compileFiles: compiled.files,
+      buildLogPresent: options.buildLogPresent,
+      qaReportPresent: options.qaReportPresent
+    });
+    await this.writePipelineAcceptanceReport(input, index);
+    await writePipelineArtifactIndex(this.workspace.getModelOutputPath(input.projectId, input.runId, 'pipeline_artifact_index.json'), index);
   }
 
   private async writeInvalidDslPipelineArtifactIndex(input: GenerationPipelineInput): Promise<void> {
-    await writePipelineArtifactIndex(
-      this.workspace.getModelOutputPath(input.projectId, input.runId, 'pipeline_artifact_index.json'),
-      buildInvalidDslPipelineArtifactIndex({ projectId: input.projectId, runId: input.runId })
+    const dslValidation = (await this.readModelOutputJson(input.projectId, input.runId, 'dsl_validation_report.json')) as { sourceArtifact?: unknown };
+    const sourceArtifact = dslValidation.sourceArtifact === 'game_dsl.json' ? 'game_dsl.json' : 'game_dsl.candidate.json';
+    const index = buildInvalidDslPipelineArtifactIndex({ projectId: input.projectId, runId: input.runId, sourceArtifact });
+    await this.writePipelineAcceptanceReport(input, index);
+    await writePipelineArtifactIndex(this.workspace.getModelOutputPath(input.projectId, input.runId, 'pipeline_artifact_index.json'), index);
+  }
+
+  private async writePipelineAcceptanceReport(input: GenerationPipelineInput, artifactIndex: ReturnType<typeof buildValidPipelineArtifactIndex>): Promise<void> {
+    const generationInput = GenerationInputReportSchema.parse(
+      await this.readModelOutputJson(input.projectId, input.runId, 'generation_input_report.json')
     );
+    const dslValidation = (await this.readModelOutputJson(input.projectId, input.runId, 'dsl_validation_report.json')) as { valid?: unknown; sourceArtifact?: unknown };
+    const report = buildPipelineAcceptanceReport({
+      projectId: input.projectId,
+      runId: input.runId,
+      artifactIndex,
+      generationInput: {
+        projectId: generationInput.projectId,
+        runId: generationInput.runId,
+        source: generationInput.source
+      },
+      dslValidation: {
+        valid: dslValidation.valid === true,
+        sourceArtifact: typeof dslValidation.sourceArtifact === 'string' ? dslValidation.sourceArtifact : undefined
+      }
+    });
+
+    await writePipelineAcceptanceReport(
+      this.workspace.getModelOutputPath(input.projectId, input.runId, 'pipeline_acceptance_report.json'),
+      report
+    );
+  }
+
+  private async readModelOutputJson(projectId: string, runId: string, fileName: string): Promise<unknown> {
+    return JSON.parse(await readFile(this.workspace.getModelOutputPath(projectId, runId, fileName), 'utf8')) as unknown;
   }
 
   private async writeIntentPlan(input: GenerationPipelineInput, intentPlan: IntentPlan): Promise<void> {

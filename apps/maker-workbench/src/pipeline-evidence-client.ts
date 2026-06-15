@@ -34,7 +34,7 @@ const GROUPS: Array<{ id: string; title: string; artifactIds: string[] }> = [
   { id: 'dsl', title: 'DSL', artifactIds: ['gameDsl', 'gameDslCandidate', 'dslValidationReport'] },
   { id: 'runtime', title: 'Runtime', artifactIds: ['runtimeCapabilityReport'] },
   { id: 'assets', title: 'Assets', artifactIds: ['assetPlan', 'publicAssetManifest', 'phaserPreviewManifest', 'assetResolutionReport', 'assetPipelineReport'] },
-  { id: 'build-qa', title: 'Build / QA / Preview', artifactIds: ['buildLog', 'qaReport', 'pipelineArtifactIndex'] }
+  { id: 'build-qa', title: 'Build / QA / Preview', artifactIds: ['buildLog', 'qaReport', 'pipelineAcceptanceReport', 'pipelineArtifactIndex'] }
 ];
 
 const panelClass = 'rounded-lg border border-[#d8c7a6] bg-[#fffef9] p-4 shadow-[0_1px_0_rgba(49,43,34,0.08)]';
