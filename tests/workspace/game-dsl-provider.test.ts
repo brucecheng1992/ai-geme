@@ -264,6 +264,25 @@ describe('GameDslProviderService', () => {
     });
   });
 
+  it('normalizes stable dodger-collector brief genre into an executable collector genre', async () => {
+    const service = new GameDslProviderService(
+      createModelClient(
+        success({
+          ...brief,
+          genre: 'dodger_collector'
+        })
+      )
+    );
+
+    await expect(service.generateGameBrief({ ...requestBase, idea: '做一个 2D 收集游戏，避开敌人', language: 'zh' })).resolves.toMatchObject({
+      ok: true,
+      value: {
+        genre: 'collector',
+        camera: 'top_down'
+      }
+    });
+  });
+
   it.each([
     '做一个魂斗罗式横版射击游戏',
     '魂斗罗一样的跑枪游戏',

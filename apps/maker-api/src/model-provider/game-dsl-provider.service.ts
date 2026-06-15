@@ -42,6 +42,10 @@ export type GameDslProviderResult<T> = GameDslProviderSuccess<T> | GameDslProvid
 
 type JsonModelClient = Pick<DeepSeekClient, 'generateJson'>;
 
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 @Injectable()
 export class GameDslProviderService {
   constructor(private readonly modelClient: JsonModelClient) {}
@@ -91,7 +95,11 @@ export class GameDslProviderService {
       maxTokens: 1000
     });
 
-    const parsed = this.parseSchemaResult(result, GameBriefSchema, 'Game Brief schema validation failed.');
+    const parsed = this.parseSchemaResult(
+      this.normalizeGameBriefCandidateWithIntentPlan(result, intentPlan),
+      GameBriefSchema,
+      'Game Brief schema validation failed.'
+    );
     return parsed.ok ? { ...parsed, value: normalizeBriefWithIntentPlan(parsed.value, intentPlan) } : parsed;
   }
 
@@ -151,6 +159,20 @@ export class GameDslProviderService {
       value: parsed.data,
       rawText: result.rawText,
       rawOutputPath: result.rawOutputPath
+    };
+  }
+
+  private normalizeGameBriefCandidateWithIntentPlan(result: GenerateJsonResult, intentPlan: ReturnType<typeof buildIntentPlan>): GenerateJsonResult {
+    if (!result.ok || intentPlan.normalizedGenre !== 'dodger_collector' || !isJsonObject(result.json) || result.json.genre !== 'dodger_collector') {
+      return result;
+    }
+
+    return {
+      ...result,
+      json: {
+        ...result.json,
+        genre: 'collector'
+      }
     };
   }
 
