@@ -1318,7 +1318,7 @@ describe('GenerationPipelineService failure states', () => {
               status: 'matched',
               boundDslStableId: 'player',
               boundObjectPath: 'asset_plan.json#items.0',
-              reason: 'player is backed by template asset catalog entry local-pack:kenney-tiny-shooter-tanks:player.'
+              reason: 'player is backed by manifest catalogRef local-pack:kenney-tiny-shooter-tanks:player.'
             }
           ],
           missingCatalogEntries: [],

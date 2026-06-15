@@ -8,6 +8,7 @@ import { buildHardSemanticRejection, buildLocalAssetSemanticFit, type AssetResol
 
 const SMALL_LIBRARY_METADATA_DIR = 'tests/fixtures/art-library-small-v0.1/metadata';
 const RUNTIME_CONTEXT = 'production_default_runtime';
+const TEMPLATE_ASSET_CATALOG_VERSION = 'template_asset_catalog.v1';
 
 export type LocalAssetSelection = {
   manifestAssets: AssetManifestAsset[];
@@ -95,6 +96,7 @@ export async function resolveLocalAssetPack(input: ResolveLocalAssetPackInput): 
             licenseName: license.name,
             attribution: license.attribution,
             sourceUrl: license.sourceUrl,
+            catalogRef: localPackCatalogRef(pack.id, planItem.id),
             required: planItem.required,
             status: 'ready',
             size: planItem.size,
@@ -330,6 +332,7 @@ function buildMixedLocalPackManifestAsset(
     licenseName: license.name,
     attribution: license.attribution,
     sourceUrl: license.sourceUrl,
+    catalogRef: localPackCatalogRef(pack.id, planItem.id),
     required: planItem.required,
     status: 'ready',
     size: planItem.size,
@@ -352,6 +355,7 @@ function buildRuntimeManifestAsset(planItem: AssetPlan['items'][number], runtime
     sourceUrl: 'https://kenney.nl/assets/cube-pets',
     runtimeAssetId: runtimeAsset.asset_id,
     runtimeContext: RUNTIME_CONTEXT,
+    catalogRef: runtimeCatalogRef(runtimeAsset.asset_id),
     conversion: {
       status: 'thumbnail_copied',
       sourcePath: runtimeAsset.technical.thumbnail_path,
@@ -362,6 +366,22 @@ function buildRuntimeManifestAsset(planItem: AssetPlan['items'][number], runtime
     size: planItem.size,
     renderTransform: runtimeAsset.asset_id === 'creature_kenney_cube_pet_cat_001' ? { rotationDegrees: 180 } : undefined,
     semanticFit: buildRuntimeAssetSemanticFit(planItem, runtimeAsset)
+  };
+}
+
+function localPackCatalogRef(packId: string, assetId: string): AssetManifestAsset['catalogRef'] {
+  return {
+    catalogVersion: TEMPLATE_ASSET_CATALOG_VERSION,
+    catalogAssetId: `local-pack:${packId}:${assetId}`,
+    source: 'local-template'
+  };
+}
+
+function runtimeCatalogRef(runtimeAssetId: string): AssetManifestAsset['catalogRef'] {
+  return {
+    catalogVersion: TEMPLATE_ASSET_CATALOG_VERSION,
+    catalogAssetId: `runtime-small-library:${runtimeAssetId}`,
+    source: 'local-template'
   };
 }
 

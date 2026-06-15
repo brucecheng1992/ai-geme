@@ -17,6 +17,7 @@ export const AssetPipelineReportSchema = z.strictObject({
   }),
   checks: z.strictObject({
     publicManifestMatchesPreviewManifest: z.literal(true),
+    catalogIdentityMatchesPreviewManifest: z.literal(true),
     previewManifestConsumedByTemplate: z.literal(true),
     assetFilesListedInCompileResult: z.literal(true)
   }),
@@ -45,6 +46,7 @@ export async function writeAssetPipelineReport(input: {
   const assetFiles = publicManifest.assets.map((asset) => `public/${asset.path}`);
 
   assertManifestProjectId(input.projectId, publicManifest);
+  assertCatalogIdentityMatches(publicManifest, templateManifest);
   assertManifestIdentity(publicManifest, templateManifest);
   assertListedFiles(input.compileFiles, ['asset_plan.json', 'public/asset_manifest.json', 'asset_resolution_report.json', ...assetFiles]);
   await assertPreviewManifestConsumed(input.outputDir, input.genre);
@@ -62,6 +64,7 @@ export async function writeAssetPipelineReport(input: {
     },
     checks: {
       publicManifestMatchesPreviewManifest: true,
+      catalogIdentityMatchesPreviewManifest: true,
       previewManifestConsumedByTemplate: true,
       assetFilesListedInCompileResult: true
     },
@@ -92,6 +95,16 @@ function assertManifestProjectId(projectId: string, manifest: AssetManifest): vo
 function assertManifestIdentity(publicManifest: AssetManifest, templateManifest: AssetManifest): void {
   if (JSON.stringify(publicManifest) !== JSON.stringify(templateManifest)) {
     throw new Error('Generated public asset manifest does not match the Phaser preview manifest.');
+  }
+}
+
+function assertCatalogIdentityMatches(publicManifest: AssetManifest, templateManifest: AssetManifest): void {
+  const templateAssetsById = new Map(templateManifest.assets.map((asset) => [asset.id, asset]));
+  for (const publicAsset of publicManifest.assets) {
+    const templateAsset = templateAssetsById.get(publicAsset.id);
+    if (JSON.stringify(publicAsset.catalogRef ?? null) !== JSON.stringify(templateAsset?.catalogRef ?? null)) {
+      throw new Error(`Generated asset manifest catalog identity for ${publicAsset.id} does not match the Phaser preview manifest.`);
+    }
   }
 }
 

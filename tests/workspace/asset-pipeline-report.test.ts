@@ -43,6 +43,7 @@ describe('Asset pipeline report writer', () => {
       templateId: 'collector_v1',
       checks: {
         publicManifestMatchesPreviewManifest: true,
+        catalogIdentityMatchesPreviewManifest: true,
         previewManifestConsumedByTemplate: true,
         assetFilesListedInCompileResult: true
       },
@@ -84,6 +85,25 @@ describe('Asset pipeline report writer', () => {
     ).rejects.toThrow('Generated collector preview entry does not pass asset-manifest.generated.json into createCollectorArtRuntime.');
   });
 
+  it('rejects preview manifests that drop public manifest catalog identity', async () => {
+    const manifest = createManifest(projectId);
+    const previewManifest = {
+      ...manifest,
+      assets: manifest.assets.map((asset) => ({ ...asset, catalogRef: undefined }))
+    };
+    await writeFile(join(root, 'collector', 'src', 'asset-manifest.generated.json'), `${JSON.stringify(previewManifest, null, 2)}\n`, 'utf8');
+
+    await expect(
+      writeAssetPipelineReport({
+        projectId,
+        templateId: 'collector_v1',
+        genre: 'collector',
+        outputDir: root,
+        compileFiles
+      })
+    ).rejects.toThrow('Generated asset manifest catalog identity for player does not match the Phaser preview manifest.');
+  });
+
   it('rejects when the final compile file list omits a generated asset', async () => {
     await expect(
       writeAssetPipelineReport({
@@ -119,7 +139,17 @@ function createManifest(id: string): AssetManifest {
         type: 'image',
         format: 'svg',
         path: 'assets/player.svg',
-        source: 'template_svg',
+        source: 'local_asset_pack',
+        sourcePack: 'agm-mini',
+        licenseId: 'CC0-1.0',
+        licenseName: 'Creative Commons CC0 1.0 Universal',
+        attribution: 'test',
+        sourceUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',
+        catalogRef: {
+          catalogVersion: 'template_asset_catalog.v1',
+          catalogAssetId: 'local-pack:agm-mini:player',
+          source: 'local-template'
+        },
         required: true,
         status: 'ready',
         size: { w: 64, h: 64 }

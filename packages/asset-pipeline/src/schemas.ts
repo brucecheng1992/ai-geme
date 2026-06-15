@@ -22,6 +22,11 @@ const AssetSizeSchema = z.strictObject({ w: z.number().int().min(1).max(1920), h
 const AssetRenderTransformSchema = z.strictObject({
   rotationDegrees: z.number().int().min(0).max(359)
 });
+export const AssetCatalogRefSchema = z.strictObject({
+  catalogVersion: z.literal('template_asset_catalog.v1'),
+  catalogAssetId: z.string().regex(/^[a-z][a-z0-9-]*(?::[A-Za-z0-9_.-]+)+$/),
+  source: z.literal('local-template')
+});
 const SafeAssetPathSchema = z.string().min(1).refine(isSafeRelativeAssetPath, {
   message: 'asset path must be relative and must not contain .., URL schemes, or absolute path segments'
 });
@@ -97,6 +102,7 @@ export const AssetManifestAssetSchema = z.strictObject({
   sourceUrl: z.string().url().optional(),
   runtimeAssetId: z.string().min(1).max(120).optional(),
   runtimeContext: z.string().min(1).max(80).optional(),
+  catalogRef: AssetCatalogRefSchema.optional(),
   conversion: z
     .strictObject({
       status: z.enum(['not_required', 'thumbnail_copied', 'template_generated']),
@@ -159,6 +165,7 @@ export type AssetPlanItem = z.infer<typeof AssetPlanItemSchema>;
 export type AssetSemanticConstraint = z.infer<typeof AssetSemanticConstraintSchema>;
 export type AssetManifest = z.infer<typeof AssetManifestSchema>;
 export type AssetManifestAsset = z.infer<typeof AssetManifestAssetSchema>;
+export type AssetCatalogRef = z.infer<typeof AssetCatalogRefSchema>;
 export type AssetSemanticFitStatus = z.infer<typeof AssetSemanticFitStatusSchema>; export type AssetSemanticFit = z.infer<typeof AssetSemanticFitSchema>;
 export function summarizeManifestAssets(assets: AssetManifestAsset[]): AssetManifest['summary'] {
   return {

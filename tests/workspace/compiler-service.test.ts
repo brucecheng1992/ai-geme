@@ -66,10 +66,26 @@ describe('Compiler + Build + Preview services', () => {
     await expect(readFile(join(result.outputDir, 'public/assets/background_main.svg'), 'utf8')).resolves.toContain('<svg');
     await expect(readFile(join(result.outputDir, 'public/assets/background_main.svg'), 'utf8')).resolves.toContain('Arcade field background');
 
+    const manifest = AssetManifestSchema.parse(JSON.parse(await readFile(join(result.outputDir, 'public/asset_manifest.json'), 'utf8')));
+    const previewManifest = AssetManifestSchema.parse(JSON.parse(await readFile(join(result.outputDir, 'collector/src/asset-manifest.generated.json'), 'utf8')));
+    expect(previewManifest.assets.map((asset) => asset.catalogRef)).toEqual(manifest.assets.map((asset) => asset.catalogRef));
+    expect(manifest.assets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'player',
+          catalogRef: {
+            catalogVersion: 'template_asset_catalog.v1',
+            catalogAssetId: 'local-pack:agm-tiny-collector:player',
+            source: 'local-template'
+          }
+        })
+      ])
+    );
     const report = AssetPipelineReportSchema.parse(JSON.parse(await readFile(join(result.outputDir, 'asset_pipeline_report.json'), 'utf8')));
     expect(result.files).toContain('asset_pipeline_report.json');
     expect(result.files).toContain('asset_library_usage_report.json');
     await expect(readFile(join(result.outputDir, 'asset_library_usage_report.json'), 'utf8')).resolves.toContain('"asset-library-usage-report.v1"');
+    await expect(readFile(join(result.outputDir, 'asset_library_usage_report.json'), 'utf8')).resolves.toContain('"catalogAssetId": "local-pack:agm-tiny-collector:player"');
     expect(report).toMatchObject({
       projectId,
       templateId: 'collector_v1',
@@ -81,6 +97,7 @@ describe('Compiler + Build + Preview services', () => {
       },
       checks: {
         publicManifestMatchesPreviewManifest: true,
+        catalogIdentityMatchesPreviewManifest: true,
         previewManifestConsumedByTemplate: true,
         assetFilesListedInCompileResult: true
       },
@@ -176,6 +193,11 @@ describe('Compiler + Build + Preview services', () => {
       source: 'runtime_asset',
       format: 'png',
       path: 'assets/player.png',
+      catalogRef: {
+        catalogVersion: 'template_asset_catalog.v1',
+        catalogAssetId: 'runtime-small-library:creature_kenney_cube_pet_cat_001',
+        source: 'local-template'
+      },
       renderTransform: {
         rotationDegrees: 180
       },
@@ -188,6 +210,11 @@ describe('Compiler + Build + Preview services', () => {
       source: 'local_asset_pack',
       sourcePack: 'kenney-tiny-shooter-tanks',
       path: 'assets/enemy.svg',
+      catalogRef: {
+        catalogVersion: 'template_asset_catalog.v1',
+        catalogAssetId: 'local-pack:kenney-tiny-shooter-tanks:enemy',
+        source: 'local-template'
+      },
       semanticFit: {
         expectedConcept: 'tank',
         actualTags: expect.arrayContaining(['tank', 'vehicle'])

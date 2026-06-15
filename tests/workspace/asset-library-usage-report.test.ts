@@ -61,10 +61,12 @@ describe('Asset library usage report', () => {
       expect.objectContaining({ manifestAssetId: 'enemy', status: 'matched', source: 'runtime_asset', catalogAssetId: 'runtime-small-library:creature_kenney_cube_pet_cat_001' }),
       expect.objectContaining({ manifestAssetId: 'player', status: 'matched', source: 'local_asset_pack', catalogAssetId: 'local-pack:agm-mini:player' })
     ]);
+    expect(first.usedAssets.find((asset) => asset.manifestAssetId === 'player')?.reason).toBe('player is backed by manifest catalogRef local-pack:agm-mini:player.');
     expect(first.warnings).toEqual(['background_main uses explicit deterministic fallback source template_svg.']);
     expect(first.errors).toEqual([]);
     const raw = await readFile(join(root, 'asset_library_usage_report.json'), 'utf8');
     expect(raw.endsWith('\n')).toBe(true);
+    expect(raw).not.toContain('"relativePath"');
     assertUsageReportIsSafe(first);
   });
 
@@ -86,6 +88,111 @@ describe('Asset library usage report', () => {
       missingCatalogEntries: ['local-pack:missing-pack:player'],
       unresolvedAssets: ['player'],
       errors: ['player references missing template asset catalog entry local-pack:missing-pack:player.']
+    });
+  });
+
+  it('fails local/template assets that omit manifest catalog identity', async () => {
+    const manifest = createManifest({ omitPlayerCatalogRef: true });
+    await writeUsageFixture(root, manifest);
+
+    const report = await writeAssetLibraryUsageReport({
+      projectId,
+      runId,
+      genre: 'shooter',
+      outputDir: root,
+      workspaceRoot: root,
+      catalog: createCatalog()
+    });
+
+    expect(report).toMatchObject({
+      status: 'fail',
+      missingCatalogEntries: [],
+      unresolvedAssets: ['player'],
+      errors: ['player is missing manifest catalogRef local-pack:agm-mini:player.']
+    });
+  });
+
+  it('fails catalog identity that contradicts the manifest source', async () => {
+    const manifest = createManifest({ playerCatalogAssetId: 'local-pack:agm-mini:enemy' });
+    await writeUsageFixture(root, manifest);
+
+    const report = await writeAssetLibraryUsageReport({
+      projectId,
+      runId,
+      genre: 'shooter',
+      outputDir: root,
+      workspaceRoot: root,
+      catalog: createCatalog()
+    });
+
+    expect(report).toMatchObject({
+      status: 'fail',
+      missingCatalogEntries: [],
+      unresolvedAssets: ['player'],
+      errors: ['player catalogRef local-pack:agm-mini:enemy does not match manifest source local-pack:agm-mini:player.']
+    });
+  });
+
+  it('fails catalog entries whose source path no longer matches manifest identity', async () => {
+    const catalog = createCatalog();
+    catalog.entries[0] = { ...catalog.entries[0], relativePath: 'assets/asset-packs/agm-mini/enemy.svg' };
+
+    const report = await writeAssetLibraryUsageReport({
+      projectId,
+      runId,
+      genre: 'shooter',
+      outputDir: root,
+      workspaceRoot: root,
+      catalog
+    });
+
+    expect(report).toMatchObject({
+      status: 'fail',
+      missingCatalogEntries: [],
+      unresolvedAssets: ['player'],
+      errors: ['player catalog entry path does not match manifest source identity.']
+    });
+  });
+
+  it('fails runtime assets that cannot prove catalog source path identity', async () => {
+    const manifest = createManifest({ omitRuntimeSourcePath: true });
+    await writeUsageFixture(root, manifest);
+
+    const report = await writeAssetLibraryUsageReport({
+      projectId,
+      runId,
+      genre: 'shooter',
+      outputDir: root,
+      workspaceRoot: root,
+      catalog: createCatalog()
+    });
+
+    expect(report).toMatchObject({
+      status: 'fail',
+      missingCatalogEntries: [],
+      unresolvedAssets: ['enemy'],
+      errors: ['enemy is missing manifest source path for catalog identity validation.']
+    });
+  });
+
+  it('fails runtime catalog entries whose source path no longer matches manifest identity', async () => {
+    const catalog = createCatalog();
+    catalog.entries[1] = { ...catalog.entries[1], relativePath: 'tests/fixtures/art-library-small-v0.1/thumbnails/animal-dog.png' };
+
+    const report = await writeAssetLibraryUsageReport({
+      projectId,
+      runId,
+      genre: 'shooter',
+      outputDir: root,
+      workspaceRoot: root,
+      catalog
+    });
+
+    expect(report).toMatchObject({
+      status: 'fail',
+      missingCatalogEntries: [],
+      unresolvedAssets: ['enemy'],
+      errors: ['enemy catalog entry path does not match manifest source identity.']
     });
   });
 
@@ -166,7 +273,17 @@ async function writeUsageFixture(rootDir: string, manifest: AssetManifest): Prom
   await writeFile(join(rootDir, 'shooter', 'src', 'asset-manifest.generated.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
 }
 
-function createManifest(input: { playerSourcePack?: string; projectId?: string } = {}): AssetManifest {
+function createManifest(
+  input: { playerSourcePack?: string; projectId?: string; omitPlayerCatalogRef?: boolean; playerCatalogAssetId?: string; omitRuntimeSourcePath?: boolean } = {}
+): AssetManifest {
+  const playerSourcePack = input.playerSourcePack ?? 'agm-mini';
+  const playerCatalogRef = input.omitPlayerCatalogRef
+    ? undefined
+    : {
+        catalogVersion: 'template_asset_catalog.v1' as const,
+        catalogAssetId: input.playerCatalogAssetId ?? `local-pack:${playerSourcePack}:player`,
+        source: 'local-template' as const
+      };
   return AssetManifestSchema.parse({
     version: 'asset-manifest-v0.1',
     projectId: input.projectId ?? projectId,
@@ -194,7 +311,14 @@ function createManifest(input: { playerSourcePack?: string; projectId?: string }
         source: 'runtime_asset',
         runtimeAssetId: 'creature_kenney_cube_pet_cat_001',
         runtimeContext: 'production_default_runtime',
-        conversion: { status: 'thumbnail_copied', sourcePath: 'tests/fixtures/art-library-small-v0.1/thumbnails/animal-cat.png', outputPath: 'assets/enemy.png' },
+        catalogRef: {
+          catalogVersion: 'template_asset_catalog.v1',
+          catalogAssetId: 'runtime-small-library:creature_kenney_cube_pet_cat_001',
+          source: 'local-template'
+        },
+        conversion: input.omitRuntimeSourcePath
+          ? { status: 'thumbnail_copied', outputPath: 'assets/enemy.png' }
+          : { status: 'thumbnail_copied', sourcePath: 'tests/fixtures/art-library-small-v0.1/thumbnails/animal-cat.png', outputPath: 'assets/enemy.png' },
         required: true,
         status: 'ready',
         size: { w: 64, h: 64 }
@@ -207,11 +331,12 @@ function createManifest(input: { playerSourcePack?: string; projectId?: string }
         format: 'svg',
         path: 'assets/player.svg',
         source: 'local_asset_pack',
-        sourcePack: input.playerSourcePack ?? 'agm-mini',
+        sourcePack: playerSourcePack,
         licenseId: 'CC0-1.0',
         licenseName: 'Creative Commons CC0 1.0 Universal',
         attribution: 'test',
         sourceUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',
+        catalogRef: playerCatalogRef,
         required: true,
         status: 'ready',
         size: { w: 64, h: 64 }

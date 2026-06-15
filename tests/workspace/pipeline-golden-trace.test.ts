@@ -86,6 +86,7 @@ describe('Pipeline golden trace', () => {
       templateId: 'shooter_v1',
       checks: {
         publicManifestMatchesPreviewManifest: true,
+        catalogIdentityMatchesPreviewManifest: true,
         previewManifestConsumedByTemplate: true,
         assetFilesListedInCompileResult: true
       },
@@ -96,6 +97,8 @@ describe('Pipeline golden trace', () => {
         resolutionReport: 'asset_resolution_report.json'
       }
     });
+    expect(trace.assetManifest.assets.every((asset) => asset.catalogRef?.source === 'local-template')).toBe(true);
+    expect(trace.assetLibraryUsageReport.usedAssets.every((asset) => asset.catalogAssetId !== null && asset.status === 'matched')).toBe(true);
     await expect(readFile(join(trace.workspace.getGeneratedProjectDir(trace.generated.project_id), 'asset_plan.json'), 'utf8')).resolves.toContain('"asset-plan-v0.1"');
     await expect(readFile(join(trace.workspace.getGeneratedProjectDir(trace.generated.project_id), 'public', 'asset_manifest.json'), 'utf8')).resolves.toContain('"asset-manifest-v0.1"');
     await expect(readFile(join(trace.workspace.getGeneratedProjectDir(trace.generated.project_id), 'asset_resolution_report.json'), 'utf8')).resolves.toContain('"asset-resolution-report-v0.1"');
@@ -124,7 +127,7 @@ describe('Pipeline golden trace', () => {
       reportVersion: 'pipeline_acceptance_report.v1',
       projectId: trace.generated.project_id,
       runId: trace.generated.run_id,
-      overallStatus: 'warn',
+      overallStatus: 'pass',
       previewable: true
     });
     expect(trace.acceptance.checks.filter((check) => check.required && check.status === 'fail')).toEqual([]);
@@ -165,7 +168,7 @@ describe('Pipeline golden trace', () => {
     );
     expect(trace.acceptanceView).toMatchObject({
       status: 'ready',
-      overallStatus: 'warn',
+      overallStatus: 'pass',
       previewable: true,
       requiredFailCount: 0
     });
@@ -271,6 +274,9 @@ describe('Pipeline golden trace', () => {
     const assetPipelineReport = AssetPipelineReportSchema.parse(
       JSON.parse(await readFile(join(workspace.getGeneratedProjectDir(generated.project_id), 'asset_pipeline_report.json'), 'utf8'))
     );
+    const assetManifest = AssetManifestSchema.parse(
+      JSON.parse(await readFile(join(workspace.getGeneratedProjectDir(generated.project_id), 'public', 'asset_manifest.json'), 'utf8'))
+    );
     const assetLibraryUsageReport = AssetLibraryUsageReportSchema.parse(
       JSON.parse(await readFile(join(workspace.getGeneratedProjectDir(generated.project_id), 'asset_library_usage_report.json'), 'utf8'))
     );
@@ -291,6 +297,7 @@ describe('Pipeline golden trace', () => {
       gameDsl,
       dslValidation,
       assetPipelineReport,
+      assetManifest,
       assetLibraryUsageReport,
       index,
       acceptance,
@@ -440,6 +447,7 @@ async function writeAssetPipelineArtifacts(workspace: LocalWorkspaceService, pro
   await mkdir(join(outputDir, 'shooter', 'src'), { recursive: true });
   await writeFile(join(outputDir, 'asset_plan.json'), `${JSON.stringify(plan, null, 2)}\n`, 'utf8');
 
+  const sourcePack = 'kenney-tiny-shooter-tanks';
   const assets = plan.items.map((item) => ({
     id: item.id,
     loadKey: `agm.${item.id}`,
@@ -447,7 +455,17 @@ async function writeAssetPipelineArtifacts(workspace: LocalWorkspaceService, pro
     type: 'image' as const,
     format: 'svg' as const,
     path: `assets/${item.id}.svg`,
-    source: 'template_svg' as const,
+    source: 'local_asset_pack' as const,
+    sourcePack,
+    licenseId: 'CC0-1.0',
+    licenseName: 'Creative Commons CC0 1.0 Universal',
+    attribution: 'test golden trace',
+    sourceUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',
+    catalogRef: {
+      catalogVersion: 'template_asset_catalog.v1' as const,
+      catalogAssetId: `local-pack:${sourcePack}:${item.id}`,
+      source: 'local-template' as const
+    },
     required: item.required,
     status: 'ready' as const,
     size: item.size
@@ -490,7 +508,26 @@ async function writeAssetPipelineArtifacts(workspace: LocalWorkspaceService, pro
 
   const compileFiles = ['asset_plan.json', 'public/asset_manifest.json', 'asset_resolution_report.json', 'shooter/src/asset-manifest.generated.json', ...assetFiles, 'asset_pipeline_report.json'];
   await writeAssetPipelineReport({ projectId, templateId: 'shooter_v1', genre: 'shooter', outputDir, compileFiles });
-  await writeAssetLibraryUsageReport({ projectId, runId, genre: 'shooter', outputDir, workspaceRoot: workspace.getRootDir(), catalog: { catalogVersion: 'template_asset_catalog.v1', entries: [] } });
+  await writeAssetLibraryUsageReport({
+    projectId,
+    runId,
+    genre: 'shooter',
+    outputDir,
+    workspaceRoot: workspace.getRootDir(),
+    catalog: {
+      catalogVersion: 'template_asset_catalog.v1',
+      entries: assets.map((asset) => ({
+        id: asset.catalogRef.catalogAssetId,
+        kind: asset.role === 'background' ? ('background' as const) : ('sprite' as const),
+        source: 'local-template' as const,
+        relativePath: `assets/asset-packs/${sourcePack}/${asset.id}.svg`,
+        tags: [asset.role],
+        supportedGenres: ['shooter'],
+        purpose: asset.role,
+        required: asset.required
+      }))
+    }
+  });
   return [...compileFiles, 'asset_library_usage_report.json', 'pipeline_artifact_index.json'];
 }
 

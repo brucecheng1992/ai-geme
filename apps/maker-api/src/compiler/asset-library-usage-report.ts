@@ -81,12 +81,12 @@ export async function writeAssetLibraryUsageReport(input: WriteAssetLibraryUsage
     throw new Error('asset library usage report requires matching public and preview manifests.');
   }
 
-  const catalogIds = new Set(catalog.entries.map((entry) => entry.id));
+  const catalogEntries = new Map(catalog.entries.map((entry) => [entry.id, entry]));
   const planItems = new Map(assetPlan.items.map((item, index) => [item.id, { item, index }]));
-  const usedAssets = publicManifest.assets.map((asset) => buildUsedAsset(asset, planItems.get(asset.id), catalogIds));
+  const usedAssets = publicManifest.assets.map((asset) => buildUsedAsset(asset, planItems.get(asset.id), catalogEntries, catalog.catalogVersion));
   const missingCatalogEntries = sortedUnique(
     usedAssets
-      .filter((asset) => asset.status === 'unmatched' && asset.catalogAssetId !== null)
+      .filter((asset) => asset.status === 'unmatched' && asset.catalogAssetId !== null && asset.reason.includes('references missing template asset catalog entry'))
       .map((asset) => asset.catalogAssetId as string)
   );
   const unresolvedAssets = sortedUnique(usedAssets.filter((asset) => asset.status === 'unmatched').map((asset) => asset.manifestAssetId));
@@ -117,16 +117,17 @@ export async function writeAssetLibraryUsageReport(input: WriteAssetLibraryUsage
 function buildUsedAsset(
   asset: AssetManifestAsset,
   planItem: { item: AssetPlan['items'][number]; index: number } | undefined,
-  catalogIds: Set<string>
+  catalogEntries: Map<string, TemplateAssetCatalog['entries'][number]>,
+  catalogVersion: TemplateAssetCatalog['catalogVersion']
 ): AssetLibraryUsageReport['usedAssets'][number] {
   const bound = planItem === undefined ? { boundObjectPath: `public/asset_manifest.json#assets.${asset.id}` } : { boundDslStableId: planItem.item.id, boundObjectPath: `asset_plan.json#items.${planItem.index}` };
-  const catalogAssetId = expectedCatalogAssetId(asset);
-  if (catalogAssetId === null) {
+  const expectedId = expectedCatalogAssetId(asset);
+  if (expectedId === null) {
     return AssetLibraryUsedAssetSchema.parse({
       manifestAssetId: asset.id,
       kind: kindForAsset(asset),
       resolvedPath: asset.path,
-      catalogAssetId,
+      catalogAssetId: null,
       source: asset.source,
       status: 'fallback',
       ...bound,
@@ -134,7 +135,9 @@ function buildUsedAsset(
     });
   }
 
-  if (catalogIds.has(catalogAssetId)) {
+  const catalogAssetId = asset.catalogRef?.catalogAssetId ?? expectedId;
+  const validationError = validateCatalogBackedAsset(asset, expectedId, catalogEntries, catalogVersion);
+  if (validationError === undefined) {
     return AssetLibraryUsedAssetSchema.parse({
       manifestAssetId: asset.id,
       kind: kindForAsset(asset),
@@ -143,7 +146,7 @@ function buildUsedAsset(
       source: asset.source,
       status: 'matched',
       ...bound,
-      reason: `${asset.id} is backed by template asset catalog entry ${catalogAssetId}.`
+      reason: `${asset.id} is backed by manifest catalogRef ${catalogAssetId}.`
     });
   }
 
@@ -155,8 +158,56 @@ function buildUsedAsset(
     source: asset.source,
     status: 'unmatched',
     ...bound,
-    reason: `${asset.id} references missing template asset catalog entry ${catalogAssetId}.`
+    reason: validationError
   });
+}
+
+function validateCatalogBackedAsset(
+  asset: AssetManifestAsset,
+  expectedId: string,
+  catalogEntries: Map<string, TemplateAssetCatalog['entries'][number]>,
+  catalogVersion: TemplateAssetCatalog['catalogVersion']
+): string | undefined {
+  const catalogRef = asset.catalogRef;
+  if (catalogRef === undefined) {
+    return `${asset.id} is missing manifest catalogRef ${expectedId}.`;
+  }
+  if (catalogRef.catalogVersion !== catalogVersion) {
+    return `${asset.id} catalogRef version ${catalogRef.catalogVersion} does not match ${catalogVersion}.`;
+  }
+  if (catalogRef.source !== 'local-template') {
+    return `${asset.id} catalogRef source ${catalogRef.source} is not local-template.`;
+  }
+  if (catalogRef.catalogAssetId !== expectedId) {
+    return `${asset.id} catalogRef ${catalogRef.catalogAssetId} does not match manifest source ${expectedId}.`;
+  }
+
+  const entry = catalogEntries.get(catalogRef.catalogAssetId);
+  if (entry === undefined) {
+    return `${asset.id} references missing template asset catalog entry ${catalogRef.catalogAssetId}.`;
+  }
+  if (entry.source !== catalogRef.source) {
+    return `${asset.id} catalog entry source ${entry.source} does not match manifest catalogRef.`;
+  }
+
+  const expectedSourcePath = expectedCatalogRelativePath(asset);
+  if (expectedSourcePath === undefined) {
+    return `${asset.id} is missing manifest source path for catalog identity validation.`;
+  }
+  if (entry.relativePath !== expectedSourcePath) {
+    return `${asset.id} catalog entry path does not match manifest source identity.`;
+  }
+  return undefined;
+}
+
+function expectedCatalogRelativePath(asset: AssetManifestAsset): string | undefined {
+  if (asset.source === 'local_asset_pack' && asset.sourcePack !== undefined) {
+    return `assets/asset-packs/${asset.sourcePack}/${asset.id}.${asset.format}`;
+  }
+  if (asset.source === 'runtime_asset') {
+    return asset.conversion?.sourcePath;
+  }
+  return undefined;
 }
 
 function expectedCatalogAssetId(asset: AssetManifestAsset): string | null {

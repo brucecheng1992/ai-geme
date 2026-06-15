@@ -1,6 +1,6 @@
 # AI Game DSL P0 Step Index
 
-最新维护时间：2026-06-14
+最新维护时间：2026-06-15
 
 ## 1. 扫描结论
 
@@ -9,8 +9,8 @@
 - 新增 AI Game Art Asset Metadata v0.1 入口，用于把外部美术资源 metadata 规范拆成可执行 infrastructure 步骤；执行索引见 `docs/refactor-log/ai-game-art-asset-metadata-v0.1-index.md`。
 - 仓库非依赖文件中当前最大文件是 `docs/ai_game_dsl_p0_local_implementation.md`，约 2880 行，属于实施规格文档。
 - 现有阶段记录位于 `docs/refactor-log/ai-game-dsl-p0-review-gated.md`。
-- 当前已完成阶段：P0 主链路修复 + 模型 DSL 视觉执行复核修复 + DSL-first P1 Step 6 shooter enemy_wave runtime_plan + Asset Pipeline P0 Step 1-5（含 Step 5.1 tiny local asset pack slice）+ Asset Semantic Fidelity Step 1-10B + Art Asset Pipeline Production Rollout split + Step 11A non-default runtime integration gate + Step 11B non-default runtime canary implementation + Step 11C runtime canary closure + Step 12A Workbench / QA preview gate + Step 12B Workbench / QA preview implementation + Step 12C QA preview signoff + Step 13A large library intake gate + 2D Generation Pipeline Stabilization Step 1 intent plan / genre taxonomy gate。
-- 当前下一步：进入 2D Generation Pipeline Stabilization Step 2，补 DSL schema v1 validation report artifact，稳定 `game_dsl.json` / `dsl_validation_report.json` 后再继续 runtime capability report、asset plan/report、runtime manifest 和 build report。Art Asset Pipeline Production Rollout 暂停扩展；large asset library import、runtime/default integration、QA verdict / Phaser / asset pack loading 仍 parked。
+- 当前已完成阶段：P0 主链路修复 + 模型 DSL 视觉执行复核修复 + DSL-first P1 Step 6 shooter enemy_wave runtime_plan + Asset Pipeline P0 Step 1-5（含 Step 5.1 tiny local asset pack slice）+ Asset Semantic Fidelity Step 1-10B + Art Asset Pipeline Production Rollout split + Step 11A non-default runtime integration gate + Step 11B non-default runtime canary implementation + Step 11C runtime canary closure + Step 12A Workbench / QA preview gate + Step 12B Workbench / QA preview implementation + Step 12C QA preview signoff + Step 13A large library intake gate + 2D Generation Pipeline Stabilization Step 19 Catalog-backed AssetManifest Identity。
+- 当前下一步：Step 19 已完成代码、验证、Oracle 复审和文档记录；停在提交前，建议提交 `feat: add catalog identity to asset manifests`，不 push。Art Asset Pipeline Production Rollout 暂停扩展；large asset library import、runtime/default integration、QA verdict / Phaser / asset pack loading 仍 parked。
 
 ## 2. 大文档拆分索引
 
@@ -136,3 +136,12 @@ Asset Pipeline P0 v0.2 已开始，当前完成 Step 1、Step 2、Step 3、Step 
 - CORS middleware 单元测试。
 - repair runner 与完整 job pipeline 深度集成。
 - P1 扩展能力、生产部署、多用户、权限、数据库或云端能力。
+
+## 7. 2D Generation Pipeline Stabilization 当前 Step
+
+当前完成到 Step 19：Catalog-backed AssetManifest Identity。
+
+- Step 18 已 synced：`4a65a92 feat: add local asset library usage report`。
+- Step 19 已完成代码、验证、Oracle 复审和文档记录；未提交，未 push。
+- Step 19 只强化 local/template catalog identity：`AssetManifest` / Phaser preview manifest 写入 `catalogRef`，`asset_library_usage_report.json` 优先读取并校验 catalog identity，`asset_pipeline_report.json` 证明 public / preview identity 一致。
+- 未改变 asset selection strategy、resolver ranking / fallback、asset packs、provider abstraction、external asset generation、DSL schema、LLM prompt、Prompt Coach adapter、live edit、Phaser gameplay / visual polish、QA verdict 或 artifact content/download/path API。

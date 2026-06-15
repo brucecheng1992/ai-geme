@@ -8,11 +8,11 @@
 
 ## 当前阶段
 
-当前处于 Step 18 Local Template Asset Library Usage Evidence lane。Step 18 已新增 deterministic local/template asset catalog 与 per-run `asset_library_usage_report.json`，并将 usage evidence 接入 artifact index、acceptance report 与 Workbench Evidence refs；未新增 artifact content/download/path API，未提交，未 push。
+当前处于 Step 19 Catalog-backed AssetManifest Identity lane。Step 19 已让 local/template catalog identity 从 `AssetManifest` / Phaser preview manifest 显式流入 `asset_library_usage_report.json`，并通过 usage report 与 asset pipeline report 校验一致性；未新增 artifact content/download/path API，未提交，未 push。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Step 18 代码、验证、文档与 Oracle 门禁已完成；准备提交 `feat: add local asset library usage report`，不 push。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Step 19 代码、验证、文档与 Oracle 门禁已完成；准备提交 `feat: add catalog identity to asset manifests`，不 push。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
 
 ### 2.54 Step 17: Pre-push Stack Audit / Prompt Coach Safety Gap
 
@@ -5165,3 +5165,79 @@ fixture size check：
 当前下一步：
 
 - Step 18 代码、验证、文档与 Oracle 门禁已完成；未提交，未 push。
+
+### 29. Step 19：Catalog-backed AssetManifest Identity
+
+完成时间：2026-06-15
+
+已完成内容：
+
+- 扩展 `AssetManifestAsset` contract，新增可选 `catalogRef`：
+  - `catalogVersion: "template_asset_catalog.v1"`。
+  - `catalogAssetId`。
+  - `source: "local-template"`。
+- 在 local/template 资产生成路径写入 catalog identity：
+  - complete local asset pack selection 写入 `local-pack:<packId>:<assetId>`。
+  - mixed local pack selection 写入同一 local pack catalog id。
+  - runtime small-library asset 写入 `runtime-small-library:<runtimeAssetId>`。
+  - `template_svg` deterministic fallback 不伪造 `catalogRef`。
+- 更新 `asset_library_usage_report.json`：
+  - 优先读取 manifest `catalogRef.catalogAssetId`。
+  - 继续用 manifest source 派生的 expected id 做一致性校验，避免错误 catalogRef 被接受。
+  - 校验 catalog entry `source` / `relativePath` 与 manifest source identity 一致。
+  - local pack 校验 `assets/asset-packs/<sourcePack>/<assetId>.<format>`。
+  - runtime asset 校验 `conversion.sourcePath`；缺失时 deterministic fail。
+  - `missingCatalogEntries` 只记录真正缺失的 catalog entry，不把 manifest 缺字段或 path mismatch 混为 missing entry。
+- 更新 `asset_pipeline_report.json`：
+  - 新增 `catalogIdentityMatchesPreviewManifest` check。
+  - public manifest 与 Phaser preview manifest 的 `catalogRef` 不一致时 fail。
+- 更新 golden trace：
+  - golden manifest 改为 catalog-backed local asset pack fixture。
+  - `asset_library_usage_report.json` used assets 全部 matched。
+  - acceptance 从 `warn` 变为 `pass`，仍保持 `previewable=true`。
+- 新增/更新回归测试：
+  - manifest local/template assets 写入 identity。
+  - preview manifest 携带同一 identity。
+  - usage report 覆盖 missing catalogRef、bad catalog id、missing catalog entry、local path mismatch、runtime missing `conversion.sourcePath`、runtime path mismatch。
+  - report payload 不复制 catalog `relativePath` 或完整 manifest/report。
+  - artifact index / acceptance / Workbench Evidence 仍只暴露 refs。
+
+阶段结果：
+
+- 本步只强化 catalog identity 和 report 校验，不改变 asset selection strategy、resolver ranking / fallback、asset packs、provider abstraction、external asset generation、DSL schema、LLM prompt、Prompt Coach adapter、live edit、Phaser gameplay / visual polish、QA verdict 或 artifact API。
+- `AssetManifest.path` 仍保持 generated runtime path，例如 `assets/player.svg`；catalog `relativePath` 仍表示 source asset path，因此 path consistency 校验发生在 source identity 层。
+- `asset_library_usage_report.json` 仍通过既有 `asset_library_usage` acceptance check 反映 pass/warn/fail；没有新增 report artifact 或 content/download/path API。
+
+已通过验证：
+
+    npx vitest run tests/workspace/asset-library-usage-report.test.ts tests/workspace/asset-pipeline-report.test.ts tests/workspace/compiler-service.test.ts
+    # 3 个测试文件，25 个测试通过
+
+    npx vitest run tests/workspace/generation-pipeline.service.test.ts tests/workspace/pipeline-artifact-index.test.ts tests/workspace/pipeline-acceptance-report.test.ts tests/workspace/pipeline-golden-trace.test.ts
+    # 4 个测试文件，42 个测试通过
+
+    npx vitest run tests/workspace/workbench-pipeline-evidence-client.test.ts
+    # 1 个测试文件，7 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+    npm test
+    # contracts：24 个测试文件，224 个测试通过
+    # workspace：27 个测试文件，286 个测试通过
+
+审查记录：
+
+- Oracle 首轮：P0 无；发现 1 个 P1：
+  - P1：`runtime_asset` 缺少 `conversion.sourcePath` 时会跳过 catalog path consistency 校验并错误 matched。
+- 已修复：
+  - `expectedCatalogRelativePath(asset)` 返回 `undefined` 时 usage report 直接 fail，reason 为 `is missing manifest source path for catalog identity validation`。
+  - 新增 runtime 缺 `conversion.sourcePath` 和 runtime catalog path mismatch 两条回归测试。
+- Oracle 复审：P0/P1/P2 clear；确认上一轮 P1 已清除，未发现 resolver/fallback/provider/DSL/Phaser/QA/API 边界漂移。
+
+当前下一步：
+
+- Step 19 代码、验证、文档与 Oracle 门禁已完成；未提交，未 push。
