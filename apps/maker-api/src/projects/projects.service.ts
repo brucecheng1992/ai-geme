@@ -1,14 +1,18 @@
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 import { NotFoundException } from '@nestjs/common';
 
+import { AssetBindingTraceReportSchema } from '../compiler/asset-binding-trace-report.js';
 import { normalizePersistedQaReport } from '../qa/qa-report-normalizer.js';
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
+import { buildAssetBindingTraceSummary, buildUnavailableAssetBindingTraceSummary } from './asset-binding-trace-summary.js';
 import { DslLiveEditService } from './dsl-live-edit.service.js';
 import { resolvePromptOptimizationGenerationInput, type GenerationInputReport } from './generation-input-report.js';
 import { GenerationPipelineService } from './generation-pipeline.service.js';
 import type {
+  AssetBindingTraceSummaryResponse,
   BuildLogResponse,
   GenerateProjectRequest,
   GenerateProjectResponse,
@@ -202,6 +206,55 @@ export class ProjectsService {
     return {
       ok: true,
       pipeline_acceptance_report: report
+    };
+  }
+
+  async getAssetBindingTraceSummary(projectId: string, runId: string): Promise<AssetBindingTraceSummaryResponse> {
+    await this.assertRunBelongsToProject(projectId, runId);
+    const index = PipelineArtifactIndexSchema.parse(
+      JSON.parse(
+        await this.readRequiredFile(
+          this.workspace.getModelOutputPath(projectId, runId, 'pipeline_artifact_index.json'),
+          'Pipeline artifact index not found.'
+        )
+      )
+    );
+
+    if (index.projectId !== projectId || index.runId !== runId) {
+      throw new ProjectRequestError(`pipeline artifact index identity does not match run: ${projectId}/${runId}`);
+    }
+
+    const artifact = index.artifacts.find((candidate) => candidate.id === 'assetBindingTraceReport');
+    if (artifact === undefined) {
+      throw new NotFoundException('Asset binding trace report ref not found.');
+    }
+    if (artifact.artifactRoot !== 'generated-project' || artifact.path !== 'asset_binding_trace_report.json') {
+      throw new ProjectRequestError(`asset binding trace report ref does not match the fixed generated artifact path: ${projectId}/${runId}`);
+    }
+
+    if (artifact.status !== 'present') {
+      return {
+        ok: true,
+        asset_binding_trace_summary: buildUnavailableAssetBindingTraceSummary({ projectId, runId, artifact })
+      };
+    }
+
+    const report = AssetBindingTraceReportSchema.parse(
+      JSON.parse(
+        await this.readRequiredFile(
+          join(this.workspace.getGeneratedProjectDir(projectId), 'asset_binding_trace_report.json'),
+          'Asset binding trace report not found.'
+        )
+      )
+    );
+
+    if (report.projectId !== projectId || report.runId !== runId) {
+      throw new ProjectRequestError(`asset binding trace report identity does not match run: ${projectId}/${runId}`);
+    }
+
+    return {
+      ok: true,
+      asset_binding_trace_summary: buildAssetBindingTraceSummary({ projectId, runId, report, artifact })
     };
   }
 

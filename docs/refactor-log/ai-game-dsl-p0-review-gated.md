@@ -8,11 +8,65 @@
 
 ## 当前阶段
 
-当前处于 Step 20 DSL-to-Asset Binding Trace Report lane。Step 20 已新增 deterministic `asset_binding_trace_report.json`，把 `AssetPlan` / public `AssetManifest` / Phaser preview manifest / `asset_library_usage_report.json` 的绑定链路做成可验证 artifact，并接入 `pipeline_artifact_index.json`、`pipeline_acceptance_report.json` 与 Workbench Evidence refs；未新增 artifact content/download/path API，未提交，未 push。
+当前处于 Step 21 Workbench Asset Binding Trace Summary lane。Step 21 已新增固定只读 API `GET /api/projects/:projectId/runs/:runId/asset-binding-trace` 和 Workbench `Asset Binding Trace` summary panel，只展示当前 run 的 `asset_binding_trace_report.json` 摘要；未改变 Step 20 report contract，未新增 artifact content/download/path API，未触发 generation / Prompt Coach / live edit，未 push。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Step 20 代码、验证、文档与 Oracle 门禁已完成；准备提交 `feat: add asset binding trace report`，不 push。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Step 21 代码、验证、浏览器验收、文档与 Oracle 门禁已完成；准备提交 `feat: add workbench asset binding trace summary`，不 push。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+
+### 2.56 Step 21: Workbench Asset Binding Trace Summary
+
+完成时间：2026-06-15
+
+已完成内容：
+
+- 新增 `GET /api/projects/:projectId/runs/:runId/asset-binding-trace`，只读读取当前 run 的 asset binding trace summary。
+- 后端读取顺序固定为：校验 run ownership -> 读取并校验 `pipeline_artifact_index.json` identity -> 查找 `assetBindingTraceReport` ref -> 要求 `artifactRoot=generated-project` 且 `path=asset_binding_trace_report.json` -> 只有 `status=present` 才读取固定 generated-project report。
+- `missing` / `skipped` ref 返回 structured unavailable summary，不读取 stale `asset_binding_trace_report.json`。
+- API 校验 report `projectId/runId` identity；只返回 `status`、trace counts、category counts、blocking errors、warnings、最多 20 条 deterministic sample traces 和安全 `reportRef`。
+- API summary 不返回完整 report、`sourceArtifacts`、`checkedPaths`、完整 traces payload、绝对路径、env、secret、raw provider response、artifact content，且不暴露任意可控 path API；仅保留固定安全 `reportRef.path`。
+- API summary builder 对 errors / warnings / sample trace id fields / reasons / unavailable reason 做输出脱敏，覆盖反斜杠、路径段 `..`、URL/protocol、本机绝对路径、env/secret/API key/Bearer/raw provider/process.env。
+- Workbench 新增 `asset-binding-trace-client.ts` 和 `AssetBindingTraceSummaryPanel`，展示 status badge、trace counts、category counts、blocking errors、warnings 和 sample traces table。
+- Workbench `Refresh` 只调用 `/asset-binding-trace`；不调用 `/generate`、Prompt Coach prepare、live edit、artifact content/download/path endpoint。
+- 新增/扩展测试覆盖 success summary、no full payload、sample trace 上限、run ownership、index/report identity mismatch、missing/skipped stale 防读、fixed path guard、unsafe text redaction、no side-effect request 和安全渲染。
+
+阶段结果：
+
+- 本步只新增 summary visibility；未改变 `asset_binding_trace_report.json` contract、`asset_library_usage_report`、`asset_pipeline_report`、`pipeline_acceptance_report`、`pipeline_artifact_index` 语义或 QA verdict 总结构。
+- 未改 DSL schema、LLM prompt、Prompt Coach adapter、resolver ranking / fallback、Phaser gameplay / visual polish、live edit、provider abstraction、外部 asset 服务或 asset pack。
+- `ProjectsService` 是既有大入口，本步只加薄 fixed-read method；summary 逻辑和 Workbench view-model/panel 已拆到独立文件，避免继续堆叠核心逻辑。
+
+已通过验证：
+
+    npm exec vitest run tests/workspace/workbench-asset-binding-trace-client.test.ts tests/workspace/projects-service.test.ts
+    # 2 个测试文件，35 个测试通过
+
+    npm exec vitest run tests/workspace/asset-binding-trace-report.test.ts tests/workspace/pipeline-artifact-index.test.ts tests/workspace/pipeline-acceptance-report.test.ts tests/workspace/pipeline-golden-trace.test.ts tests/workspace/workbench-pipeline-evidence-client.test.ts
+    # 5 个测试文件，28 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+    npm run test:workspace
+    # 29 个测试文件，310 个测试通过
+
+浏览器验收：
+
+- 启动 `npm run maker:start`，用 ignored fixture `proj_20260615_trace_browser` / `run_20260615_trace_browser` 打开 `http://127.0.0.1:5173/`。
+- `Asset Binding Trace` panel 显示 `WARN`、trace counts、category counts、warnings 和 sample traces。
+- 点击该 panel `Refresh` 后只请求 `/api/projects/proj_20260615_trace_browser/runs/run_20260615_trace_browser/asset-binding-trace`。
+- 未观察到 `/generate`、`/prompt-optimizations/prepare`、`/live-edits`、`/live-edit`、artifact content/download/path 或 `asset_binding_trace_report.json` 直接请求。
+- 页面正文未出现 `/Users/`、Windows path、`process.env`、API key、Bearer 或 raw provider。
+
+审查门禁结论：
+
+- Oracle 首轮：P0/P1 无；P2 指出 sample trace 的 id 字段和 unavailable reason 可能展示 URL、`..`、反斜杠等 unsafe text；P3 指出对应测试缺口。
+- 已修复：API summary builder 和 Workbench display layer 对 sample trace 字段与 unavailable reason 增加 strict sanitizer，并补后端/前端回归测试。
+- Oracle 复审：P0/P1/P2/P3 均无；确认上一轮 P2/P3 已清。
+- 审查模式：Oracle 新建 + 复用复审。
 
 ### 2.55 Step 20: DSL-to-Asset Binding Trace Report
 

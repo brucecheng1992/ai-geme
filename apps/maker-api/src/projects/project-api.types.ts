@@ -6,6 +6,7 @@ import type { EditAuditRecord, LiveVersionRecord, PatchHistoryRecord } from './d
 import type { PipelineArtifactIndex } from './pipeline-artifact-index.js';
 import type { PipelineAcceptanceReport } from './pipeline-acceptance-report.js';
 import type { PromptOptimizationArtifactRef, PromptOptimizationReport } from './prompt-coach.contract.js';
+import type { AssetBindingTraceSummaryResult } from './asset-binding-trace-summary.js';
 
 export type GenerateProjectRequest = {
   idea: string;
@@ -55,6 +56,11 @@ export type PipelineArtifactsResponse = {
 export type PipelineAcceptanceResponse = {
   ok: true;
   pipeline_acceptance_report: PipelineAcceptanceReport;
+};
+
+export type AssetBindingTraceSummaryResponse = {
+  ok: true;
+  asset_binding_trace_summary: AssetBindingTraceSummaryResult;
 };
 
 export type PreparePromptOptimizationRequest = {

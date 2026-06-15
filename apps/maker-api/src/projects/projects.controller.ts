@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Inject, Param, Post } from '@nestjs/common';
 
 import type {
+  AssetBindingTraceSummaryResponse,
   BuildLogResponse,
   GenerateProjectResponse,
   LiveCurrentResponse,
@@ -58,6 +59,11 @@ export class ProjectsController {
   @Get(':projectId/runs/:runId/acceptance')
   async getPipelineAcceptance(@Param('projectId') projectId: string, @Param('runId') runId: string): Promise<PipelineAcceptanceResponse> {
     return await this.projectsService.getPipelineAcceptance(projectId, runId);
+  }
+
+  @Get(':projectId/runs/:runId/asset-binding-trace')
+  async getAssetBindingTraceSummary(@Param('projectId') projectId: string, @Param('runId') runId: string): Promise<AssetBindingTraceSummaryResponse> {
+    return await this.projectsService.getAssetBindingTraceSummary(projectId, runId);
   }
 
   @Post(':projectId/prompt-optimizations/prepare')

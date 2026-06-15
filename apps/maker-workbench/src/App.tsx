@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { AssetStatusPanel } from './AssetStatusPanel.js';
+import { AssetBindingTraceSummaryPanel, fetchAssetBindingTrace, type AssetBindingTraceView } from './asset-binding-trace-client.js';
 import { PromptCoachPanel } from './PromptCoachPanel.js';
 import { QaStatusPanel } from './QaStatusPanel.js';
 import { buildEditableFields, buildLiveObjectTree, buildReplacePrepareBody, buildRuntimeApplyReportFromPatchResult, type LiveEditableField } from './live-edit-client.js';
@@ -91,8 +92,13 @@ export function App() {
     status: 'idle',
     message: 'Select a project and run to view pipeline acceptance.'
   });
+  const [assetBindingTrace, setAssetBindingTrace] = useState<AssetBindingTraceView>({
+    status: 'idle',
+    message: 'Select a project and run to view asset binding trace.'
+  });
   const [pipelineEvidenceLoading, setPipelineEvidenceLoading] = useState(false);
   const [pipelineAcceptanceLoading, setPipelineAcceptanceLoading] = useState(false);
+  const [assetBindingTraceLoading, setAssetBindingTraceLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [liveEditStatus, setLiveEditStatus] = useState('Runtime not connected');
   const [liveCurrent, setLiveCurrent] = useState<LiveCurrentResponse | undefined>(undefined);
@@ -254,7 +260,7 @@ export function App() {
       const project = await requestJson<ProjectStatus>(`${API_BASE}/api/projects/${selectedProjectId}`);
       const events = await requestJson<RunEvents>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/events`);
       const status = project.latest_run.status;
-      const [qaReport, repairReport, buildLog, artAssetPreview, live, evidence, acceptance] = await Promise.all([
+      const [qaReport, repairReport, buildLog, artAssetPreview, live, evidence, acceptance, bindingTrace] = await Promise.all([
         shouldLoadQaReport(status) ? optionalJson<{ qa_report: QaReport }>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/qa-report`) : undefined,
         shouldLoadRepairReport(status)
           ? optionalJson<{ repair_report: RepairReport }>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/repair-report`)
@@ -263,7 +269,8 @@ export function App() {
         optionalJson<{ preview: ArtAssetWorkbenchPreview }>(`${API_BASE}/api/art-assets/preview/small-library`),
         optionalJson<LiveCurrentResponse>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/live/current`),
         fetchPipelineEvidence({ apiBase: API_BASE, projectId: selectedProjectId, runId: selectedRunId }),
-        fetchPipelineAcceptance({ apiBase: API_BASE, projectId: selectedProjectId, runId: selectedRunId })
+        fetchPipelineAcceptance({ apiBase: API_BASE, projectId: selectedProjectId, runId: selectedRunId }),
+        fetchAssetBindingTrace({ apiBase: API_BASE, projectId: selectedProjectId, runId: selectedRunId })
       ]);
 
       setData({
@@ -277,6 +284,7 @@ export function App() {
       setLiveCurrent(live);
       setPipelineEvidence(evidence);
       setPipelineAcceptance(acceptance);
+      setAssetBindingTrace(bindingTrace);
     }, options);
   }
 
@@ -302,6 +310,19 @@ export function App() {
       setPipelineAcceptance({ status: 'error', message: sanitizeWorkbenchErrorMessage(message, 'Pipeline acceptance request failed.') });
     } finally {
       setPipelineAcceptanceLoading(false);
+    }
+  }
+
+  async function refreshAssetBindingTrace() {
+    setAssetBindingTraceLoading(true);
+    setError(null);
+    try {
+      setAssetBindingTrace(await fetchAssetBindingTrace({ apiBase: API_BASE, projectId, runId }));
+    } catch (traceError) {
+      const message = traceError instanceof Error ? traceError.message : 'Asset binding trace request failed.';
+      setAssetBindingTrace({ status: 'error', message: sanitizeWorkbenchErrorMessage(message, 'Asset binding trace request failed.') });
+    } finally {
+      setAssetBindingTraceLoading(false);
     }
   }
 
@@ -386,6 +407,7 @@ export function App() {
     if (nextProjectId.trim().length === 0 || runId.trim().length === 0) {
       setPipelineEvidence({ status: 'idle', message: 'Select a project and run to view pipeline evidence.', groups: [] });
       setPipelineAcceptance({ status: 'idle', message: 'Select a project and run to view pipeline acceptance.' });
+      setAssetBindingTrace({ status: 'idle', message: 'Select a project and run to view asset binding trace.' });
     }
   }
 
@@ -394,6 +416,7 @@ export function App() {
     if (projectId.trim().length === 0 || nextRunId.trim().length === 0) {
       setPipelineEvidence({ status: 'idle', message: 'Select a project and run to view pipeline evidence.', groups: [] });
       setPipelineAcceptance({ status: 'idle', message: 'Select a project and run to view pipeline acceptance.' });
+      setAssetBindingTrace({ status: 'idle', message: 'Select a project and run to view asset binding trace.' });
     }
   }
 
@@ -638,6 +661,13 @@ export function App() {
               loading={pipelineAcceptanceLoading}
               canRefresh={projectId.trim().length > 0 && runId.trim().length > 0}
               onRefresh={() => void refreshPipelineAcceptance()}
+            />
+
+            <AssetBindingTraceSummaryPanel
+              view={assetBindingTrace}
+              loading={assetBindingTraceLoading}
+              canRefresh={projectId.trim().length > 0 && runId.trim().length > 0}
+              onRefresh={() => void refreshAssetBindingTrace()}
             />
 
             <PipelineEvidencePanel

@@ -258,6 +258,61 @@ export type PipelineAcceptanceResponse = {
   pipeline_acceptance_report: PipelineAcceptanceReport;
 };
 
+export type AssetBindingTraceStatus = 'pass' | 'warn' | 'fail';
+export type AssetBindingTraceAvailability = 'ready' | 'missing' | 'skipped';
+export type AssetBindingTraceRowStatus = 'matched' | 'warning' | 'missing' | 'mismatch' | 'skipped';
+export type AssetBindingTraceCategory = 'dsl-bound' | 'runtime-system' | 'fallback' | 'unresolved';
+
+export type AssetBindingTraceSampleTrace = {
+  traceId: string;
+  category: AssetBindingTraceCategory | string;
+  status: AssetBindingTraceRowStatus | string;
+  dslStableId: string | null;
+  manifestAssetId: string | null;
+  previewAssetId: string | null;
+  catalogAssetId: string | null;
+  reason: string;
+};
+
+export type AssetBindingTraceSummary = {
+  availability: 'ready';
+  projectId: string;
+  runId: string;
+  status: AssetBindingTraceStatus | string;
+  counts: Record<AssetBindingTraceRowStatus, number>;
+  categoryCounts: {
+    dslBound: number;
+    runtimeSystem: number;
+    fallback: number;
+    unresolved: number;
+  };
+  blockingErrors: string[];
+  warnings: string[];
+  sampleTraces: AssetBindingTraceSampleTrace[];
+  reportRef: {
+    artifactId: 'assetBindingTraceReport';
+    path: string;
+  };
+};
+
+export type AssetBindingTraceUnavailableSummary = {
+  availability: Exclude<AssetBindingTraceAvailability, 'ready'>;
+  projectId: string;
+  runId: string;
+  message: string;
+  reportRef: {
+    artifactId: 'assetBindingTraceReport';
+    path: string;
+    status: string;
+    reason?: string;
+  };
+};
+
+export type AssetBindingTraceSummaryResponse = {
+  ok: true;
+  asset_binding_trace_summary: AssetBindingTraceSummary | AssetBindingTraceUnavailableSummary;
+};
+
 export type PromptOptimizationMode = 'mock' | 'llm';
 export type PromptOptimizationStrategy = 'mock-v1' | 'llm-v1';
 

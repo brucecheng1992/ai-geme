@@ -404,6 +404,180 @@ describe('ProjectsService', () => {
     await expect(service.getPipelineAcceptance('proj_other', created.run_id)).rejects.toThrow('run does not belong to project');
   });
 
+  it('reads a fixed asset binding trace summary through the artifact index present ref', async () => {
+    const created = await service.generateProject({ idea: 'cat shooter', language: 'en' });
+    await writeJsonFile(workspace.getModelOutputPath(created.project_id, created.run_id, 'pipeline_artifact_index.json'), makeAssetBindingTraceIndex(created.project_id, created.run_id, 'present'));
+    await writeJsonFile(workspace.getGeneratedProjectDir(created.project_id) + '/asset_binding_trace_report.json', makeAssetBindingTraceReport(created.project_id, created.run_id, 22));
+
+    const response = await service.getAssetBindingTraceSummary(created.project_id, created.run_id);
+
+    expect(response).toMatchObject({
+      ok: true,
+      asset_binding_trace_summary: {
+        availability: 'ready',
+        projectId: created.project_id,
+        runId: created.run_id,
+        status: 'warn',
+        counts: {
+          matched: 22,
+          warning: 0,
+          missing: 0,
+          mismatch: 0,
+          skipped: 0
+        },
+        categoryCounts: {
+          dslBound: 22,
+          runtimeSystem: 0,
+          fallback: 0,
+          unresolved: 0
+        },
+        warnings: ['fallback trace is informational.'],
+        reportRef: {
+          artifactId: 'assetBindingTraceReport',
+          path: 'asset_binding_trace_report.json'
+        }
+      }
+    });
+    expect(response.asset_binding_trace_summary.availability).toBe('ready');
+    if (response.asset_binding_trace_summary.availability === 'ready') {
+      expect(response.asset_binding_trace_summary.sampleTraces).toHaveLength(20);
+      expect(response.asset_binding_trace_summary.sampleTraces[0]).toEqual({
+        traceId: 'trace:asset_00',
+        category: 'dsl-bound',
+        status: 'matched',
+        dslStableId: 'asset_00',
+        manifestAssetId: 'asset_00',
+        previewAssetId: 'asset_00',
+        catalogAssetId: 'asset_00',
+        reason: 'asset_00 binding trace matches AssetPlan, manifests, and catalog usage.'
+      });
+    }
+    const serialized = JSON.stringify(response);
+    expect(serialized).not.toContain('sourceArtifacts');
+    expect(serialized).not.toContain('checkedPaths');
+    expect(serialized).not.toContain('orphanManifestAssets');
+    expect(serialized).not.toContain(root);
+    await expect(service.getAssetBindingTraceSummary('proj_other', created.run_id)).rejects.toThrow('run does not belong to project');
+  });
+
+  it('does not read a stale asset binding trace report when the artifact index marks the ref skipped or missing', async () => {
+    const created = await service.generateProject({ idea: 'cat shooter', language: 'en' });
+    await writeJsonFile(workspace.getGeneratedProjectDir(created.project_id) + '/asset_binding_trace_report.json', makeAssetBindingTraceReport(created.project_id, created.run_id, 1));
+
+    await writeJsonFile(workspace.getModelOutputPath(created.project_id, created.run_id, 'pipeline_artifact_index.json'), makeAssetBindingTraceIndex(created.project_id, created.run_id, 'skipped'));
+    await expect(service.getAssetBindingTraceSummary(created.project_id, created.run_id)).resolves.toMatchObject({
+      asset_binding_trace_summary: {
+        availability: 'skipped',
+        message: 'Asset binding trace report was skipped for this run.',
+        reportRef: {
+          status: 'skipped',
+          reason: 'dsl_validation_failed_before_compile'
+        }
+      }
+    });
+
+    await writeJsonFile(workspace.getModelOutputPath(created.project_id, created.run_id, 'pipeline_artifact_index.json'), makeAssetBindingTraceIndex(created.project_id, created.run_id, 'missing'));
+    await expect(service.getAssetBindingTraceSummary(created.project_id, created.run_id)).resolves.toMatchObject({
+      asset_binding_trace_summary: {
+        availability: 'missing',
+        message: 'Asset binding trace report is not available for this run.',
+        reportRef: {
+          status: 'missing',
+          reason: 'compile_files_missing_assetBindingTraceReport'
+        }
+      }
+    });
+  });
+
+  it('redacts unsafe asset binding summary sample ids and unavailable reasons', async () => {
+    const created = await service.generateProject({ idea: 'cat shooter', language: 'en' });
+    await writeJsonFile(workspace.getModelOutputPath(created.project_id, created.run_id, 'pipeline_artifact_index.json'), makeAssetBindingTraceIndex(created.project_id, created.run_id, 'present'));
+    await writeJsonFile(workspace.getGeneratedProjectDir(created.project_id) + '/asset_binding_trace_report.json', {
+      ...makeAssetBindingTraceReport(created.project_id, created.run_id, 1),
+      traces: [
+        {
+          ...makeAssetBindingTraceReport(created.project_id, created.run_id, 1).traces[0],
+          dslStableId: '../secret',
+          manifestAssetId: 'https://example.test/asset',
+          previewAssetId: 'preview\\asset',
+          catalogAssetId: '/Users/dahufa/private'
+        }
+      ]
+    });
+
+    const response = await service.getAssetBindingTraceSummary(created.project_id, created.run_id);
+    expect(response.asset_binding_trace_summary.availability).toBe('ready');
+    if (response.asset_binding_trace_summary.availability === 'ready') {
+      expect(response.asset_binding_trace_summary.sampleTraces[0]).toMatchObject({
+        dslStableId: 'Trace detail hidden by API.',
+        manifestAssetId: 'Trace detail hidden by API.',
+        previewAssetId: 'Trace detail hidden by API.',
+        catalogAssetId: 'Trace detail hidden by API.'
+      });
+    }
+    expect(JSON.stringify(response)).not.toContain('../secret');
+    expect(JSON.stringify(response)).not.toContain('https://example');
+    expect(JSON.stringify(response)).not.toContain('preview\\asset');
+    expect(JSON.stringify(response)).not.toContain('/Users/');
+
+    await writeJsonFile(workspace.getModelOutputPath(created.project_id, created.run_id, 'pipeline_artifact_index.json'), {
+      ...makeAssetBindingTraceIndex(created.project_id, created.run_id, 'skipped'),
+      artifacts: [
+        {
+          ...makeAssetBindingTraceIndex(created.project_id, created.run_id, 'skipped').artifacts[0],
+          reason: '../secret\\raw provider'
+        }
+      ]
+    });
+    await expect(service.getAssetBindingTraceSummary(created.project_id, created.run_id)).resolves.toMatchObject({
+      asset_binding_trace_summary: {
+        availability: 'skipped',
+        reportRef: {
+          reason: 'Trace detail hidden by API.'
+        }
+      }
+    });
+  });
+
+  it('rejects asset binding trace refs that do not point at the fixed generated report path', async () => {
+    const created = await service.generateProject({ idea: 'cat shooter', language: 'en' });
+    await writeJsonFile(workspace.getModelOutputPath(created.project_id, created.run_id, 'pipeline_artifact_index.json'), {
+      ...makeAssetBindingTraceIndex(created.project_id, created.run_id, 'present'),
+      artifacts: [
+        {
+          ...makeAssetBindingTraceIndex(created.project_id, created.run_id, 'present').artifacts[0],
+          path: 'nested/asset_binding_trace_report.json'
+        }
+      ]
+    });
+    await writeJsonFile(workspace.getGeneratedProjectDir(created.project_id) + '/asset_binding_trace_report.json', makeAssetBindingTraceReport(created.project_id, created.run_id, 1));
+
+    await expect(service.getAssetBindingTraceSummary(created.project_id, created.run_id)).rejects.toThrow(
+      `asset binding trace report ref does not match the fixed generated artifact path: ${created.project_id}/${created.run_id}`
+    );
+  });
+
+  it('rejects asset binding trace identity mismatches and unsafe report content at the API boundary', async () => {
+    const created = await service.generateProject({ idea: 'cat shooter', language: 'en' });
+    await writeJsonFile(workspace.getModelOutputPath(created.project_id, created.run_id, 'pipeline_artifact_index.json'), makeAssetBindingTraceIndex(created.project_id, created.run_id, 'present'));
+    await writeJsonFile(workspace.getGeneratedProjectDir(created.project_id) + '/asset_binding_trace_report.json', {
+      ...makeAssetBindingTraceReport(created.project_id, created.run_id, 1),
+      projectId: 'proj_20260609_153000_other',
+      runId: 'run_20260609_153000_other'
+    });
+
+    await expect(service.getAssetBindingTraceSummary(created.project_id, created.run_id)).rejects.toThrow(
+      `asset binding trace report identity does not match run: ${created.project_id}/${created.run_id}`
+    );
+
+    await writeJsonFile(workspace.getGeneratedProjectDir(created.project_id) + '/asset_binding_trace_report.json', {
+      ...makeAssetBindingTraceReport(created.project_id, created.run_id, 1),
+      status: 'warn',
+      warnings: ['DEEPSEEK_API_KEY leaked from raw provider response']
+    });
+    await expect(service.getAssetBindingTraceSummary(created.project_id, created.run_id)).rejects.toThrow();
+  });
+
   it('returns a clear missing artifact index error', async () => {
     const created = await service.generateProject({ idea: 'cat shooter', language: 'en' });
 
@@ -712,6 +886,71 @@ async function writeJsonFile(path: string, value: unknown): Promise<void> {
 async function writeTextFile(path: string, value: string): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, value, 'utf8');
+}
+
+function makeAssetBindingTraceIndex(projectId: string, runId: string, status: 'present' | 'missing' | 'skipped') {
+  return {
+    indexVersion: 'pipeline-artifact-index-v0.1',
+    projectId,
+    runId,
+    artifacts: [
+      {
+        id: 'assetBindingTraceReport',
+        role: 'asset',
+        artifactRoot: 'generated-project',
+        path: 'asset_binding_trace_report.json',
+        status,
+        required: true,
+        producedBy: 'asset-binding-trace',
+        format: 'json',
+        reason:
+          status === 'present'
+            ? undefined
+            : status === 'skipped'
+              ? 'dsl_validation_failed_before_compile'
+              : 'compile_files_missing_assetBindingTraceReport'
+      }
+    ]
+  };
+}
+
+function makeAssetBindingTraceReport(projectId: string, runId: string, traceCount: number) {
+  return {
+    reportVersion: 'asset-binding-trace-report.v1',
+    projectId,
+    runId,
+    status: 'warn',
+    sourceArtifacts: {
+      gameDslPath: 'game_dsl.json',
+      assetPlanPath: 'asset_plan.json',
+      publicAssetManifestPath: 'public/asset_manifest.json',
+      previewManifestPath: 'shooter/src/asset-manifest.generated.json',
+      assetLibraryUsageReportPath: 'asset_library_usage_report.json'
+    },
+    traces: Array.from({ length: traceCount }, (_, index) => {
+      const assetId = `asset_${index.toString().padStart(2, '0')}`;
+      return {
+        traceId: `trace:${assetId}`,
+        category: 'dsl-bound',
+        status: 'matched',
+        dslStableId: assetId,
+        dslObjectPath: `game_dsl.json#${assetId}`,
+        assetPlanId: assetId,
+        assetPlanPath: `asset_plan.json#${assetId}`,
+        manifestAssetId: assetId,
+        previewAssetId: assetId,
+        catalogAssetId: assetId,
+        catalogVersion: 'template_asset_catalog.v1',
+        source: 'local-template',
+        reason: `${assetId} binding trace matches AssetPlan, manifests, and catalog usage.`
+      };
+    }),
+    orphanManifestAssets: [],
+    missingManifestAssets: [],
+    warnings: ['fallback trace is informational.'],
+    errors: [],
+    checkedPaths: ['asset_binding_trace_report.json']
+  };
 }
 
 async function writeCatVsTankArtifacts(workspace: LocalWorkspaceService, liveEdit: DslLiveEditService, projectId: string, runId: string): Promise<GameDslArtifact> {
