@@ -6,6 +6,7 @@ import { Injectable } from '@nestjs/common';
 import { writeAssetArtifacts } from '../../../../packages/asset-pipeline/src/index.js';
 import { checkPhaserRuntimeCapabilities, NormalizedGameIrSchema } from '../../../../packages/game-dsl/src/index.js';
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
+import { writeAssetLibraryUsageReport } from './asset-library-usage-report.js';
 import { writeAssetPipelineReport } from './asset-pipeline-report.js';
 import type { RuntimeCompileInput, RuntimeCompileResult } from './compiler.types.js';
 
@@ -95,6 +96,7 @@ export class TemplateCompilerService {
       ir,
       assetPacksDir: join(this.templateRoot, '..', '..', 'assets', 'asset-packs')
     });
+    const templateAssetRoot = join(this.templateRoot, '..', '..');
     await writeFile(join(outputDir, 'game.ir.json'), `${JSON.stringify(ir, null, 2)}\n`, 'utf8');
     await writeFile(join(outputDir, `${genre}`, 'src', 'template-params.generated.json'), JSON.stringify(ir.template_params.params, null, 2));
     if (genre === 'collector' || genre === 'dodger' || genre === 'shooter') {
@@ -109,8 +111,17 @@ export class TemplateCompilerService {
         JSON.stringify({ ...readShooterLiveEditRegistry(ir.template_params.params), runId: input.runId }, null, 2)
       );
     }
-    const compileFiles = [...files, 'game.ir.json', ...assetArtifacts.files, 'asset_pipeline_report.json'];
-    await writeAssetPipelineReport({ projectId: input.projectId, templateId, genre, outputDir, compileFiles });
+    const compileFilesWithoutUsageReport = [...files, 'game.ir.json', ...assetArtifacts.files, 'asset_pipeline_report.json'];
+    await writeAssetPipelineReport({ projectId: input.projectId, templateId, genre, outputDir, compileFiles: compileFilesWithoutUsageReport });
+    await writeAssetLibraryUsageReport({
+      projectId: input.projectId,
+      runId: input.runId,
+      genre,
+      outputDir,
+      workspaceRoot: templateAssetRoot,
+      assetPacksDir: join(templateAssetRoot, 'assets', 'asset-packs')
+    });
+    const compileFiles = [...compileFilesWithoutUsageReport, 'asset_library_usage_report.json'];
     await writeFile(join(outputDir, 'package.json'), this.renderPackageJson(input.projectId));
     await writeFile(join(outputDir, 'index.html'), this.renderIndexHtml());
     await writeFile(join(outputDir, 'src', 'main.ts'), this.renderMainEntry(genre));

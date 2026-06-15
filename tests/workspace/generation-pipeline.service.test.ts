@@ -360,6 +360,7 @@ describe('GenerationPipelineService failure states', () => {
         expect.objectContaining({ id: 'phaserPreviewManifest', status: 'present', path: 'shooter/src/asset-manifest.generated.json' }),
         expect.objectContaining({ id: 'assetResolutionReport', status: 'present', path: 'asset_resolution_report.json' }),
         expect.objectContaining({ id: 'assetPipelineReport', status: 'present', path: 'asset_pipeline_report.json' }),
+        expect.objectContaining({ id: 'assetLibraryUsageReport', status: 'present', path: 'asset_library_usage_report.json' }),
         expect.objectContaining({ id: 'buildLog', status: 'present', artifactRoot: 'build-log' }),
         expect.objectContaining({ id: 'qaReport', status: 'present', artifactRoot: 'qa-report' }),
         expect.objectContaining({ id: 'pipelineArtifactIndex', status: 'present', path: 'pipeline_artifact_index.json' })
@@ -380,6 +381,7 @@ describe('GenerationPipelineService failure states', () => {
     let compileRuns = 0;
     await mkdir(workspace.getGeneratedProjectDir(projectId), { recursive: true });
     await writeFile(join(workspace.getGeneratedProjectDir(projectId), 'asset_pipeline_report.json'), 'stale_asset_pipeline_report', 'utf8');
+    await writeFile(join(workspace.getGeneratedProjectDir(projectId), 'asset_library_usage_report.json'), 'stale_asset_library_usage_report', 'utf8');
     const pipeline = createPipeline({
       modelProvider: createModelProviderForRawDsl(rawDsl),
       compiler: {
@@ -436,6 +438,7 @@ describe('GenerationPipelineService failure states', () => {
         expect.objectContaining({ id: 'dslValidationReport', status: 'present', path: 'dsl_validation_report.json' }),
         expect.objectContaining({ id: 'runtimeCapabilityReport', status: 'skipped', reason: 'dsl_validation_failed_before_runtime_capability' }),
         expect.objectContaining({ id: 'assetPipelineReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),
+        expect.objectContaining({ id: 'assetLibraryUsageReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),
         expect.objectContaining({ id: 'pipelineAcceptanceReport', status: 'present', path: 'pipeline_acceptance_report.json' }),
         expect.objectContaining({ id: 'pipelineArtifactIndex', status: 'present', path: 'pipeline_artifact_index.json' })
       ])
@@ -452,6 +455,8 @@ describe('GenerationPipelineService failure states', () => {
     });
     expect(JSON.stringify(index)).not.toContain('stale_asset_pipeline_report');
     expect(JSON.stringify(acceptance)).not.toContain('stale_asset_pipeline_report');
+    expect(JSON.stringify(index)).not.toContain('stale_asset_library_usage_report');
+    expect(JSON.stringify(acceptance)).not.toContain('stale_asset_library_usage_report');
     await expect(projectStore.readProject(projectId)).resolves.toMatchObject({ status: 'DSL_VALIDATION_FAILED' });
   });
 
@@ -501,7 +506,8 @@ describe('GenerationPipelineService failure states', () => {
         expect.objectContaining({ id: 'gameDslCandidate', status: 'skipped', reason: 'invalid_dsl_path_uses_game_dsl_json' }),
         expect.objectContaining({ id: 'runtimeCapabilityReport', status: 'present', path: 'runtime_capability_report.json' }),
         expect.objectContaining({ id: 'pipelineAcceptanceReport', status: 'present', path: 'pipeline_acceptance_report.json' }),
-        expect.objectContaining({ id: 'assetPipelineReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' })
+        expect.objectContaining({ id: 'assetPipelineReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),
+        expect.objectContaining({ id: 'assetLibraryUsageReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' })
       ])
     );
     expect(acceptance).toMatchObject({
@@ -509,7 +515,8 @@ describe('GenerationPipelineService failure states', () => {
       previewable: false,
       checks: expect.arrayContaining([
         expect.objectContaining({ id: 'dsl_validation', status: 'fail' }),
-        expect.objectContaining({ id: 'dsl_artifact', status: 'fail', artifactId: 'gameDsl', artifactPath: 'game_dsl.json' })
+        expect.objectContaining({ id: 'dsl_artifact', status: 'fail', artifactId: 'gameDsl', artifactPath: 'game_dsl.json' }),
+        expect.objectContaining({ id: 'asset_library_usage', status: 'skipped', reason: 'dsl_validation_failed_before_compile' })
       ])
     });
     await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'game_dsl.candidate.json'), 'utf8')).rejects.toThrow();
@@ -1238,12 +1245,14 @@ describe('GenerationPipelineService failure states', () => {
     const distDir = workspace.getGeneratedProjectDistDir(projectId);
     await mkdir(distDir, { recursive: true });
     await writeFile(join(distDir, 'index.html'), '<html></html>', 'utf8');
+    await writeAssetLibraryUsageReportFixture();
     return compileResult([
       'asset_plan.json',
       'public/asset_manifest.json',
       'asset_resolution_report.json',
       'shooter/src/asset-manifest.generated.json',
       'asset_pipeline_report.json',
+      'asset_library_usage_report.json',
       'pipeline_artifact_index.json'
     ]);
   }
@@ -1281,6 +1290,48 @@ describe('GenerationPipelineService failure states', () => {
       templateId: 'shooter_v1',
       files
     };
+  }
+
+  async function writeAssetLibraryUsageReportFixture(): Promise<void> {
+    const outputDir = workspace.getGeneratedProjectDir(projectId);
+    await mkdir(outputDir, { recursive: true });
+    await writeFile(
+      join(outputDir, 'asset_library_usage_report.json'),
+      `${JSON.stringify(
+        {
+          reportVersion: 'asset-library-usage-report.v1',
+          projectId,
+          runId,
+          catalogVersion: 'template_asset_catalog.v1',
+          manifestRefs: {
+            assetPlanPath: 'asset_plan.json',
+            publicAssetManifestPath: 'public/asset_manifest.json',
+            previewManifestPath: 'shooter/src/asset-manifest.generated.json'
+          },
+          usedAssets: [
+            {
+              manifestAssetId: 'player',
+              kind: 'sprite',
+              resolvedPath: 'assets/player.svg',
+              catalogAssetId: 'local-pack:kenney-tiny-shooter-tanks:player',
+              source: 'local_asset_pack',
+              status: 'matched',
+              boundDslStableId: 'player',
+              boundObjectPath: 'asset_plan.json#items.0',
+              reason: 'player is backed by template asset catalog entry local-pack:kenney-tiny-shooter-tanks:player.'
+            }
+          ],
+          missingCatalogEntries: [],
+          unresolvedAssets: [],
+          warnings: [],
+          errors: [],
+          status: 'pass'
+        },
+        null,
+        2
+      )}\n`,
+      'utf8'
+    );
   }
 
   function createModelProviderForRawDsl(rawDsl: RawGameDsl): NonNullable<PipelineOverrides['modelProvider']> {

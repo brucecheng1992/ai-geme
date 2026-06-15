@@ -26,6 +26,7 @@ import {
   type RuntimeCapabilityReport
 } from '../../../../packages/game-dsl/src/index.js';
 import type { RuntimeCompileResult, RuntimeCompileSuccess } from '../compiler/compiler.types.js';
+import { AssetLibraryUsageReportSchema } from '../compiler/asset-library-usage-report.js';
 import { TemplateCompilerService } from '../compiler/template-compiler.service.js';
 import { ViteBuildRunnerService } from '../compiler/vite-build-runner.service.js';
 import { GameDslProviderService, type GameDslProviderResult } from '../model-provider/game-dsl-provider.service.js';
@@ -649,7 +650,8 @@ export class GenerationPipelineService {
       dslValidation: {
         valid: dslValidation.valid === true,
         sourceArtifact: typeof dslValidation.sourceArtifact === 'string' ? dslValidation.sourceArtifact : undefined
-      }
+      },
+      assetLibraryUsage: await this.readAssetLibraryUsageStatus(input.projectId, input.runId, artifactIndex)
     });
 
     await writePipelineAcceptanceReport(
@@ -660,6 +662,21 @@ export class GenerationPipelineService {
 
   private async readModelOutputJson(projectId: string, runId: string, fileName: string): Promise<unknown> {
     return JSON.parse(await readFile(this.workspace.getModelOutputPath(projectId, runId, fileName), 'utf8')) as unknown;
+  }
+
+  private async readAssetLibraryUsageStatus(projectId: string, runId: string, artifactIndex: ReturnType<typeof buildValidPipelineArtifactIndex>): Promise<{ status?: 'pass' | 'warn' | 'fail' } | undefined> {
+    const artifact = artifactIndex.artifacts.find((candidate) => candidate.id === 'assetLibraryUsageReport');
+    if (artifact?.status !== 'present') {
+      return undefined;
+    }
+
+    const report = AssetLibraryUsageReportSchema.parse(
+      JSON.parse(await readFile(join(this.workspace.getGeneratedProjectDir(projectId), 'asset_library_usage_report.json'), 'utf8'))
+    );
+    if (report.projectId !== projectId || report.runId !== runId) {
+      throw new Error('asset_library_usage_report identity does not match the current project and run.');
+    }
+    return { status: report.status };
   }
 
   private async writeIntentPlan(input: GenerationPipelineInput, intentPlan: IntentPlan): Promise<void> {

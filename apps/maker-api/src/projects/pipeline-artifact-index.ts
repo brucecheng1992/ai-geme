@@ -18,6 +18,7 @@ export const PipelineArtifactRefSchema = z.strictObject({
     'phaserPreviewManifest',
     'assetResolutionReport',
     'assetPipelineReport',
+    'assetLibraryUsageReport',
     'buildLog',
     'qaReport',
     'pipelineAcceptanceReport',
@@ -61,7 +62,8 @@ const GENERATED_ARTIFACTS = {
   assetPlan: 'asset_plan.json',
   publicAssetManifest: 'public/asset_manifest.json',
   assetResolutionReport: 'asset_resolution_report.json',
-  assetPipelineReport: 'asset_pipeline_report.json'
+  assetPipelineReport: 'asset_pipeline_report.json',
+  assetLibraryUsageReport: 'asset_library_usage_report.json'
 } as const;
 
 export function buildValidPipelineArtifactIndex(input: {
@@ -97,6 +99,7 @@ export function buildValidPipelineArtifactIndex(input: {
     ),
     generatedArtifact('assetResolutionReport', GENERATED_ARTIFACTS.assetResolutionReport, compileFiles.has(GENERATED_ARTIFACTS.assetResolutionReport)),
     generatedArtifact('assetPipelineReport', GENERATED_ARTIFACTS.assetPipelineReport, compileFiles.has(GENERATED_ARTIFACTS.assetPipelineReport)),
+    generatedArtifact('assetLibraryUsageReport', GENERATED_ARTIFACTS.assetLibraryUsageReport, compileFiles.has(GENERATED_ARTIFACTS.assetLibraryUsageReport)),
     artifact('buildLog', 'build', 'build-log', `${input.runId}.log`, input.buildLogPresent === true ? 'present' : 'missing', false, 'build', 'log', input.buildLogPresent === true ? undefined : 'build_log_not_available_yet'),
     artifact('qaReport', 'qa', 'qa-report', `${input.runId}.json`, input.qaReportPresent === true ? 'present' : 'missing', false, 'qa', 'json', input.qaReportPresent === true ? undefined : 'qa_report_not_available_yet'),
     artifact('pipelineAcceptanceReport', 'index', 'model-output', 'pipeline_acceptance_report.json', 'present', true, 'pipeline-acceptance', 'json'),
@@ -147,6 +150,7 @@ export function buildInvalidDslPipelineArtifactIndex(input: { projectId: string;
     artifact('phaserPreviewManifest', 'preview', 'generated-project', 'shooter/src/asset-manifest.generated.json', 'skipped', true, 'compiler', 'json', 'dsl_validation_failed_before_compile'),
     skippedGeneratedArtifact('assetResolutionReport'),
     skippedGeneratedArtifact('assetPipelineReport'),
+    skippedGeneratedArtifact('assetLibraryUsageReport'),
     artifact('buildLog', 'build', 'build-log', `${input.runId}.log`, 'skipped', false, 'build', 'log', 'dsl_validation_failed_before_build'),
     artifact('qaReport', 'qa', 'qa-report', `${input.runId}.json`, 'skipped', false, 'qa', 'json', 'dsl_validation_failed_before_qa'),
     artifact('pipelineAcceptanceReport', 'index', 'model-output', 'pipeline_acceptance_report.json', 'present', true, 'pipeline-acceptance', 'json'),
@@ -176,14 +180,24 @@ function generatedArtifact(id: keyof typeof GENERATED_ARTIFACTS, path: string, p
     path,
     present ? 'present' : 'missing',
     true,
-    id === 'assetPipelineReport' ? 'asset-pipeline' : 'compiler',
+    id === 'assetPipelineReport' || id === 'assetLibraryUsageReport' ? 'asset-pipeline' : 'compiler',
     'json',
     present ? undefined : `compile_files_missing_${id}`
   );
 }
 
 function skippedGeneratedArtifact(id: keyof typeof GENERATED_ARTIFACTS): ArtifactInput {
-  return artifact(id, 'asset', 'generated-project', GENERATED_ARTIFACTS[id], 'skipped', true, id === 'assetPipelineReport' ? 'asset-pipeline' : 'compiler', 'json', 'dsl_validation_failed_before_compile');
+  return artifact(
+    id,
+    'asset',
+    'generated-project',
+    GENERATED_ARTIFACTS[id],
+    'skipped',
+    true,
+    id === 'assetPipelineReport' || id === 'assetLibraryUsageReport' ? 'asset-pipeline' : 'compiler',
+    'json',
+    'dsl_validation_failed_before_compile'
+  );
 }
 
 function artifact(

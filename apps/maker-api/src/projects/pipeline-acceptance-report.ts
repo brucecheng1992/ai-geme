@@ -23,6 +23,7 @@ export const PipelineAcceptanceCheckSchema = z.strictObject({
     'dsl_artifact',
     'runtime_capability',
     'asset_pipeline',
+    'asset_library_usage',
     'preview_manifest',
     'artifact_index_consistency',
     'build_log',
@@ -85,6 +86,9 @@ type BuildPipelineAcceptanceReportInput = {
     runId: string;
     source?: string;
   };
+  assetLibraryUsage?: {
+    status?: 'pass' | 'warn' | 'fail';
+  };
 };
 
 const ARTIFACT_ORDER = [
@@ -98,6 +102,7 @@ const ARTIFACT_ORDER = [
   'phaserPreviewManifest',
   'assetResolutionReport',
   'assetPipelineReport',
+  'assetLibraryUsageReport',
   'buildLog',
   'qaReport',
   'pipelineAcceptanceReport',
@@ -112,6 +117,7 @@ export function buildPipelineAcceptanceReport(input: BuildPipelineAcceptanceRepo
     buildDslArtifactCheck(input, artifacts),
     buildArtifactCheck('runtime_capability', 'runtime', true, artifacts.get('runtimeCapabilityReport')),
     buildArtifactCheck('asset_pipeline', 'assets', true, artifacts.get('assetPipelineReport')),
+    buildAssetLibraryUsageCheck(input, artifacts.get('assetLibraryUsageReport')),
     buildPreviewManifestCheck(artifacts),
     buildArtifactIndexConsistencyCheck(input, artifacts.get('pipelineArtifactIndex'), artifacts.get('pipelineAcceptanceReport')),
     buildArtifactCheck('build_log', 'artifacts', false, artifacts.get('buildLog')),
@@ -132,6 +138,42 @@ export function buildPipelineAcceptanceReport(input: BuildPipelineAcceptanceRepo
   };
 
   return PipelineAcceptanceReportSchema.parse(report);
+}
+
+function buildAssetLibraryUsageCheck(input: BuildPipelineAcceptanceReportInput, artifact: PipelineArtifactRef | undefined): PipelineAcceptanceCheck {
+  const artifactCheck = buildArtifactCheck('asset_library_usage', 'assets', true, artifact);
+  if (artifactCheck.status !== 'pass') {
+    return artifactCheck;
+  }
+
+  if (input.assetLibraryUsage?.status === undefined) {
+    return {
+      ...artifactCheck,
+      status: 'fail',
+      reason: 'asset_library_usage_report.json status is unavailable.'
+    };
+  }
+
+  if (input.assetLibraryUsage?.status === 'fail') {
+    return {
+      ...artifactCheck,
+      status: 'fail',
+      reason: 'asset_library_usage_report.json status is fail.'
+    };
+  }
+
+  if (input.assetLibraryUsage?.status === 'warn') {
+    return {
+      ...artifactCheck,
+      status: 'warn',
+      reason: 'asset_library_usage_report.json status is warn.'
+    };
+  }
+
+  return {
+    ...artifactCheck,
+    reason: 'asset_library_usage_report.json status is pass.'
+  };
 }
 
 export async function writePipelineAcceptanceReport(path: string, report: PipelineAcceptanceReport): Promise<void> {
@@ -344,7 +386,7 @@ function deriveOverallStatus(checks: PipelineAcceptanceCheck[]): PipelineAccepta
 }
 
 function derivePreviewable(checks: PipelineAcceptanceCheck[]): boolean {
-  return checks.filter((check) => check.required).every((check) => check.status === 'pass');
+  return checks.filter((check) => check.required).every((check) => check.status === 'pass' || check.status === 'warn');
 }
 
 function toEvidenceRef(artifact: PipelineArtifactRef): string {

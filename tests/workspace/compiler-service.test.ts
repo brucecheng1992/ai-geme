@@ -68,6 +68,8 @@ describe('Compiler + Build + Preview services', () => {
 
     const report = AssetPipelineReportSchema.parse(JSON.parse(await readFile(join(result.outputDir, 'asset_pipeline_report.json'), 'utf8')));
     expect(result.files).toContain('asset_pipeline_report.json');
+    expect(result.files).toContain('asset_library_usage_report.json');
+    await expect(readFile(join(result.outputDir, 'asset_library_usage_report.json'), 'utf8')).resolves.toContain('"asset-library-usage-report.v1"');
     expect(report).toMatchObject({
       projectId,
       templateId: 'collector_v1',
@@ -135,6 +137,7 @@ describe('Compiler + Build + Preview services', () => {
     await expect(readFile(join(second.outputDir, 'shooter/src/asset-manifest.generated.json'), 'utf8')).resolves.toContain('"attribution": "Kenney Tanks by Kenney Vleugels"');
     await expect(readFile(join(second.outputDir, 'asset_resolution_report.json'), 'utf8')).resolves.toContain('"asset-resolution-report-v0.1"');
     expect(second.files).toContain('asset_resolution_report.json');
+    expect(second.files).toContain('asset_library_usage_report.json');
     await expect(readFile(join(second.outputDir, 'shooter/src/template-visuals.ts'), 'utf8')).resolves.toContain('drawShooterPlayer');
     await expect(readFile(join(second.outputDir, 'shooter/src/runtime-plan.generated.json'), 'utf8')).resolves.toContain('"enemy_waves"');
     await expect(readFile(join(second.outputDir, 'shooter/src/main.ts'), 'utf8')).resolves.toContain('runtime-plan.generated.json');

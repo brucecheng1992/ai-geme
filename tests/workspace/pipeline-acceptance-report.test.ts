@@ -23,7 +23,8 @@ describe('Pipeline acceptance report contract', () => {
         'public/asset_manifest.json',
         'asset_resolution_report.json',
         'shooter/src/asset-manifest.generated.json',
-        'asset_pipeline_report.json'
+        'asset_pipeline_report.json',
+        'asset_library_usage_report.json'
       ],
       buildLogPresent: true,
       qaReportPresent: true
@@ -33,14 +34,16 @@ describe('Pipeline acceptance report contract', () => {
       runId,
       artifactIndex: index,
       dslValidation: { valid: true, sourceArtifact: 'game_dsl.json' },
-      generationInput: { projectId, runId, source: 'manual' }
+      generationInput: { projectId, runId, source: 'manual' },
+      assetLibraryUsage: { status: 'pass' }
     });
     const second = buildPipelineAcceptanceReport({
       projectId,
       runId,
       artifactIndex: { ...index, artifacts: [...index.artifacts].reverse() },
       dslValidation: { valid: true, sourceArtifact: 'game_dsl.json' },
-      generationInput: { projectId, runId, source: 'manual' }
+      generationInput: { projectId, runId, source: 'manual' },
+      assetLibraryUsage: { status: 'pass' }
     });
 
     expect(first).toEqual(second);
@@ -57,6 +60,7 @@ describe('Pipeline acceptance report contract', () => {
       'dsl_artifact',
       'runtime_capability',
       'asset_pipeline',
+      'asset_library_usage',
       'preview_manifest',
       'artifact_index_consistency',
       'build_log',
@@ -106,6 +110,12 @@ describe('Pipeline acceptance report contract', () => {
           status: 'skipped',
           artifactId: 'assetPipelineReport',
           reason: 'dsl_validation_failed_before_compile'
+        }),
+        expect.objectContaining({
+          id: 'asset_library_usage',
+          status: 'skipped',
+          artifactId: 'assetLibraryUsageReport',
+          reason: 'dsl_validation_failed_before_compile'
         })
       ])
     });
@@ -120,19 +130,55 @@ describe('Pipeline acceptance report contract', () => {
       artifactIndex: buildValidPipelineArtifactIndex({
         projectId,
         runId,
-        compileFiles: ['asset_plan.json', 'asset_resolution_report.json', 'asset_pipeline_report.json'],
+        compileFiles: ['asset_plan.json', 'asset_resolution_report.json', 'asset_pipeline_report.json', 'asset_library_usage_report.json'],
         buildLogPresent: false,
         qaReportPresent: false
+      }),
+      dslValidation: { valid: true, sourceArtifact: 'game_dsl.json' },
+      generationInput: { projectId, runId, source: 'manual' },
+      assetLibraryUsage: { status: 'fail' }
+    });
+
+    expect(report.overallStatus).toBe('fail');
+    expect(report.previewable).toBe(false);
+    expect(report.errors).toEqual(expect.arrayContaining([expect.stringContaining('preview_manifest'), expect.stringContaining('asset_library_usage')]));
+    expect(() => PipelineAcceptanceReportSchema.parse({ ...report, overallStatus: 'pass' })).toThrow();
+    expect(() => PipelineAcceptanceReportSchema.parse({ ...report, previewable: true })).toThrow();
+  });
+
+  it('fails a present asset library usage ref when report status was not read', () => {
+    const report = buildPipelineAcceptanceReport({
+      projectId,
+      runId,
+      artifactIndex: buildValidPipelineArtifactIndex({
+        projectId,
+        runId,
+        compileFiles: [
+          'asset_plan.json',
+          'public/asset_manifest.json',
+          'asset_resolution_report.json',
+          'shooter/src/asset-manifest.generated.json',
+          'asset_pipeline_report.json',
+          'asset_library_usage_report.json'
+        ],
+        buildLogPresent: true,
+        qaReportPresent: true
       }),
       dslValidation: { valid: true, sourceArtifact: 'game_dsl.json' },
       generationInput: { projectId, runId, source: 'manual' }
     });
 
-    expect(report.overallStatus).toBe('fail');
-    expect(report.previewable).toBe(false);
-    expect(report.errors).toEqual(expect.arrayContaining([expect.stringContaining('preview_manifest')]));
-    expect(() => PipelineAcceptanceReportSchema.parse({ ...report, overallStatus: 'pass' })).toThrow();
-    expect(() => PipelineAcceptanceReportSchema.parse({ ...report, previewable: true })).toThrow();
+    expect(report).toMatchObject({
+      overallStatus: 'fail',
+      previewable: false,
+      checks: expect.arrayContaining([
+        expect.objectContaining({
+          id: 'asset_library_usage',
+          status: 'fail',
+          reason: 'asset_library_usage_report.json status is unavailable.'
+        })
+      ])
+    });
   });
 });
 

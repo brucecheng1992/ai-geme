@@ -28,7 +28,8 @@ describe('Workbench pipeline evidence client', () => {
       'publicAssetManifest',
       'phaserPreviewManifest',
       'assetResolutionReport',
-      'assetPipelineReport'
+      'assetPipelineReport',
+      'assetLibraryUsageReport'
     ]);
     expect(group(view, 'Build / QA / Preview')?.artifacts.map((artifact) => artifact.id)).toEqual(['buildLog', 'qaReport', 'pipelineAcceptanceReport', 'pipelineArtifactIndex']);
     expect(group(view, 'DSL')?.artifacts).toContainEqual(
@@ -208,6 +209,7 @@ function makeIndex(): PipelineArtifactIndex {
       artifact('phaserPreviewManifest', 'preview', 'generated-project', 'shooter/src/asset-manifest.generated.json', 'present', true, 'compiler', 'json'),
       artifact('assetResolutionReport', 'asset', 'generated-project', 'asset_resolution_report.json', 'present', true, 'compiler', 'json'),
       artifact('assetPipelineReport', 'asset', 'generated-project', 'asset_pipeline_report.json', 'present', true, 'asset-pipeline', 'json'),
+      artifact('assetLibraryUsageReport', 'asset', 'generated-project', 'asset_library_usage_report.json', 'present', true, 'asset-pipeline', 'json'),
       artifact('buildLog', 'build', 'build-log', 'run_20260615_evidence.log', 'present', false, 'build', 'log'),
       artifact('qaReport', 'qa', 'qa-report', 'run_20260615_evidence.json', 'missing', false, 'qa', 'json', 'qa_report_not_available_yet'),
       artifact('pipelineAcceptanceReport', 'index', 'model-output', 'pipeline_acceptance_report.json', 'present', true, 'pipeline-acceptance', 'json'),

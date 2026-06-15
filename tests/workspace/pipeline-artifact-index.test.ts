@@ -35,6 +35,7 @@ describe('Pipeline artifact index contract', () => {
         'asset_resolution_report.json',
         'shooter/src/asset-manifest.generated.json',
         'asset_pipeline_report.json',
+        'asset_library_usage_report.json',
         'pipeline_artifact_index.json'
       ],
       buildLogPresent: true,
@@ -65,6 +66,7 @@ describe('Pipeline artifact index contract', () => {
       'phaserPreviewManifest',
       'assetResolutionReport',
       'assetPipelineReport',
+      'assetLibraryUsageReport',
       'buildLog',
       'qaReport',
       'pipelineAcceptanceReport',
@@ -78,6 +80,7 @@ describe('Pipeline artifact index contract', () => {
         expect.objectContaining({ id: 'publicAssetManifest', status: 'present', artifactRoot: 'generated-project', path: 'public/asset_manifest.json' }),
         expect.objectContaining({ id: 'phaserPreviewManifest', status: 'present', path: 'shooter/src/asset-manifest.generated.json' }),
         expect.objectContaining({ id: 'assetPipelineReport', status: 'present', path: 'asset_pipeline_report.json' }),
+        expect.objectContaining({ id: 'assetLibraryUsageReport', status: 'present', path: 'asset_library_usage_report.json' }),
         expect.objectContaining({ id: 'buildLog', status: 'present', artifactRoot: 'build-log', path: `${runId}.log` }),
         expect.objectContaining({ id: 'qaReport', status: 'present', artifactRoot: 'qa-report', path: `${runId}.json` }),
         expect.objectContaining({ id: 'pipelineAcceptanceReport', status: 'present', artifactRoot: 'model-output', path: 'pipeline_acceptance_report.json' }),
@@ -101,6 +104,7 @@ describe('Pipeline artifact index contract', () => {
         expect.objectContaining({ id: 'gameDslCandidate', status: 'present', path: 'game_dsl.candidate.json' }),
         expect.objectContaining({ id: 'dslValidationReport', status: 'present', path: 'dsl_validation_report.json' }),
         expect.objectContaining({ id: 'assetPipelineReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),
+        expect.objectContaining({ id: 'assetLibraryUsageReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),
         expect.objectContaining({ id: 'pipelineAcceptanceReport', status: 'present', path: 'pipeline_acceptance_report.json' }),
         expect.objectContaining({ id: 'qaReport', status: 'skipped', reason: 'dsl_validation_failed_before_qa' })
       ])

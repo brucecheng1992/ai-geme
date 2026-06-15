@@ -8,11 +8,11 @@
 
 ## 当前阶段
 
-当前处于 Step 17 Pre-push Stack Audit lane。Step 17 对 `origin/main..HEAD` 做只读 push 前审计；本步发现并修复 Prompt Coach LLM / Workbench 安全展示边界的 P2 脱敏 gap，未新增 artifact content/download/path API，未 push。
+当前处于 Step 18 Local Template Asset Library Usage Evidence lane。Step 18 已新增 deterministic local/template asset catalog 与 per-run `asset_library_usage_report.json`，并将 usage evidence 接入 artifact index、acceptance report 与 Workbench Evidence refs；未新增 artifact content/download/path API，未提交，未 push。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Step 17 修复完成后复跑验证并进行 Oracle 复审；若 P0/P1/P2 clear，则提交本次最小安全边界修复，不 push。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Step 18 代码、验证、文档与 Oracle 门禁已完成；准备提交 `feat: add local asset library usage report`，不 push。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
 
 ### 2.54 Step 17: Pre-push Stack Audit / Prompt Coach Safety Gap
 
@@ -5087,3 +5087,81 @@ fixture size check：
 当前下一步：
 
 - Step 16 测试、验证与 Oracle 门禁已完成；准备提交 `test: add pipeline golden trace coverage`。未 push。
+
+### 28. Step 18：Local Template Asset Library Usage Evidence
+
+完成时间：2026-06-15
+
+已完成内容：
+
+- 新增 `apps/maker-api/src/compiler/template-asset-catalog.ts`：
+  - 生成 `template_asset_catalog.v1`。
+  - 盘点本地 `assets/asset-packs` 与 small runtime fixture metadata。
+  - catalog entry 只保留 `id`、`kind`、`source=local-template`、安全相对 `relativePath`、`tags`、`supportedGenres`、`purpose`、`required`。
+  - 对最终写入 entry 的文件路径做 regular file 校验；local pack 目录名必须与 `pack.id` 一致。
+- 新增 `apps/maker-api/src/compiler/asset-library-usage-report.ts`：
+  - 生成 per-run `asset_library_usage_report.json`。
+  - 读取 `asset_plan.json`、`public/asset_manifest.json` 与 Phaser preview manifest。
+  - 校验 manifest asset 使用是否匹配 catalog，或记录 `template_svg` / `placeholder` deterministic fallback。
+  - report 只记录 usage/ref/status/reason，不复制 `AssetManifest` 或 `asset_pipeline_report` payload。
+- 更新 compiler valid path：
+  - 写出 `asset_library_usage_report.json`。
+  - 将 `asset_library_usage_report.json` 加入 `RuntimeCompileSuccess.files`。
+- 更新 artifact / acceptance / Workbench refs：
+  - `pipeline_artifact_index.json` 新增 `assetLibraryUsageReport` ref。
+  - invalid DSL path 将 `assetLibraryUsageReport` 标记为 skipped，不读取 generated-project stale artifact。
+  - `pipeline_acceptance_report.json` 新增 required assets check `asset_library_usage`；usage status 为 `fail` 或 present ref 缺 status 时 fail，`warn` 保持 `previewable=true`。
+  - Workbench Evidence panel 仅把 `assetLibraryUsageReport` 归入 Assets 分组，不新增 content/download/path API。
+- 新增/更新测试：
+  - catalog deterministic、安全相对路径、文件存在、duplicate id、unsafe path、pack id mismatch。
+  - usage report matched / fallback / unmatched / status 推导 / 安全文本 / public-preview mismatch / identity mismatch。
+  - valid / invalid artifact index 与 acceptance。
+  - invalid DSL stale `asset_library_usage_report.json` 不混入 index/acceptance。
+  - golden trace 与 Workbench Evidence 分组。
+
+阶段结果：
+
+- 本步保持 local/template asset library first，只新增可验证证据。
+- 未接 provider abstraction、外部 asset 生成服务、artifact content/download/path API。
+- 未修改 resolver ranking / fallback 策略、DSL schema、LLM prompt、Prompt Coach adapter、live edit、Phaser gameplay / visual polish、QA verdict 总结构。
+- `asset_library_usage_report.json` 不包含 timestamp、绝对路径、env、secret、raw provider response 或完整 manifest/report payload。
+
+已通过验证：
+
+    npx vitest run tests/workspace/template-asset-catalog.test.ts tests/workspace/asset-library-usage-report.test.ts
+    # 2 个测试文件，8 个测试通过
+
+    npx vitest run tests/workspace/generation-pipeline.service.test.ts tests/workspace/asset-pipeline-report.test.ts tests/workspace/pipeline-artifact-index.test.ts tests/workspace/pipeline-acceptance-report.test.ts tests/workspace/pipeline-golden-trace.test.ts
+    # 5 个测试文件，46 个测试通过
+
+    npx vitest run tests/workspace/workbench-pipeline-evidence-client.test.ts
+    # 1 个测试文件，7 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+    npm test
+    # contracts：24 个测试文件，224 个测试通过
+    # workspace：27 个测试文件，282 个测试通过
+
+审查记录：
+
+- Oracle 首轮：P0/P1 无；发现 2 个 P2、2 个 P3：
+  - P2：catalog 文件存在校验未完全对齐最终输出 path；runtime thumbnail 未 stat。
+  - P2：`assetLibraryUsageReport` ref present 但未传入 usage status 时 acceptance 会默认 pass。
+  - P3：invalid DSL stale artifact 测试未同时覆盖 stale `asset_library_usage_report.json`。
+  - P3：usage report 测试缺 public/preview manifest mismatch 和 identity mismatch。
+- 已修复：
+  - catalog 校验 `pack.id === directory entry`，并对最终 entry exact path 做 regular file stat。
+  - runtime fixture entry 对最终 thumbnail exact path 做 regular file stat。
+  - acceptance 在 present ref 缺 usage status 时 fail，reason 为 `asset_library_usage_report.json status is unavailable.`。
+  - invalid DSL 测试写入并断言不混入 stale `asset_library_usage_report.json`。
+  - usage report 测试补 public/preview mismatch 与 identity mismatch。
+- Oracle 最终复审：P0/P1/P2/P3 均无；首轮 P2/P3 已关闭。
+
+当前下一步：
+
+- Step 18 代码、验证、文档与 Oracle 门禁已完成；未提交，未 push。
