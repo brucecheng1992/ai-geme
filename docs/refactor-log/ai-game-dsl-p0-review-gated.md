@@ -8,11 +8,11 @@
 
 ## 当前阶段
 
-当前处于 Step 15 Workbench Acceptance Summary closeout lane。Step 15 在 Workbench 增加只读 Acceptance Summary，调用既有固定 `GET /api/projects/:projectId/runs/:runId/acceptance`，展示当前 run 的 `overallStatus`、`previewable`、required checks 统计，以及 failed / warn / skipped checks 的最小 reason。Workbench 不展示 full JSON payload，不提供 artifact content / download / arbitrary path API，不触发 generation、Prompt Coach、live edit、QA/DSL/prompt/Phaser/provider/asset pack/resolver 行为变化。
+当前处于 Step 16 Pipeline Golden Trace Regression closeout lane。Step 16 新增端到端 golden trace 回归测试，把 Prompt Coach -> Generation -> DSL validation -> Asset pipeline -> Artifact index -> Acceptance -> Workbench view-model 的主链路固定到 contract-level 断言；本步只新增测试、test-only helper 和 review-gated 文档记录，不新增产品功能、UI、API 或 report contract。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Step 15 代码、验证、浏览器验收与 Oracle 门禁完成后，提交 `feat: add workbench acceptance summary`，不 push。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：Step 16 测试、验证与 Oracle 门禁完成后，提交 `test: add pipeline golden trace coverage`，不 push。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
 
 ### 2.53 Step 11: Prompt Coach Workbench Opt-in Panel
 
@@ -4964,3 +4964,77 @@ fixture size check：
 当前下一步：
 
 - Step 15 代码、验证、浏览器验收与 Oracle 门禁已完成；准备提交 `feat: add workbench acceptance summary`。未 push。
+
+### 27. Step 16：Pipeline Golden Trace Regression
+
+完成时间：2026-06-15
+
+已完成内容：
+
+- 新增 `tests/workspace/pipeline-golden-trace.test.ts`。
+- 新增 valid golden trace 覆盖：
+  - 在 test harness 中创建 source project/run。
+  - 调用 Prompt Coach mock prepare，断言 `prompt_optimization_report.json` 与 `optimized_prompt.txt` artifact 存在。
+  - 用 `optimizedPrompt` 和 verified provenance 调用 `ProjectsService.generateProject`。
+  - 读取并断言 `generation_input_report.json` 的 `source=prompt-coach-candidate`、`effectivePrompt`、`promptOptimizationRef` 和不复制完整 Prompt Coach payload。
+  - 读取并断言 `game_dsl.json`、`dsl_validation_report.json` 的 valid 状态、`stableIdSummary` 和 `objectCounts`。
+  - test-only fake compiler 写出最小合法 asset plan、public manifest、preview manifest、实际 `public/assets/*.svg`、preview `main.ts`、asset resolution report，并调用生产 `writeAssetPipelineReport` 生成 `asset_pipeline_report.json`。
+  - 读取并解析 `asset_pipeline_report.json`，断言 asset pipeline report schema、checks 和 artifacts refs。
+  - 读取并断言 `pipeline_artifact_index.json` 包含 generation input、DSL validation、runtime capability、asset plan、public manifest、preview manifest、asset resolution、asset pipeline、acceptance 和 artifact index refs。
+  - 读取并断言 `pipeline_acceptance_report.json` 为 `overallStatus=pass`、`previewable=true`，required checks 无 fail，check ordering deterministic。
+  - 调用既有 `getPipelineArtifacts` / `getPipelineAcceptance` 验证当前 run API，且 project/run mismatch 仍 rejected。
+  - 将 index / acceptance 转成 Workbench Evidence / Acceptance view-model，断言 Prompt、DSL、Runtime、Assets、Build / QA / Preview 分组和 acceptance summary 关键字段。
+- 新增 invalid DSL trace 覆盖：
+  - service-level 构造 unresolved projectile DSL。
+  - 断言 `generation_input_report.json`、`game_dsl.candidate.json`、invalid `dsl_validation_report.json`、fail `pipeline_acceptance_report.json` 均存在。
+  - 断言 downstream runtime / asset pipeline refs skipped，且不混入 stale generated-project artifact。
+- 新增 determinism 覆盖：
+  - 同输入跑两次 golden trace。
+  - 只比较 normalized contract summary：artifact ids/statuses、acceptance check ids/statuses、generation input source、DSL valid、previewable。
+  - 不比较 timestamp、随机 run id、绝对目录或完整 JSON snapshot。
+
+阶段结果：
+
+- 本步只新增 workspace 测试文件、test-only helper 和 review-gated 文档记录。
+- 未修改 production code。
+- 未新增 Workbench panel、API endpoint、report contract、LLM mode、provider、artifact content/download/path API、generation behavior 或 QA verdict 字段。
+- 未修改 Prompt Coach、generation input、DSL validation、asset pipeline、artifact index、acceptance、Phaser、live edit、asset pack 或 resolver 行为。
+
+已通过验证：
+
+    npx vitest run tests/workspace/pipeline-golden-trace.test.ts
+    # 1 个测试文件，3 个测试通过
+
+    npx vitest run tests/workspace/prompt-coach.test.ts tests/workspace/generation-input-report.test.ts tests/workspace/dsl-validation-report.test.ts tests/workspace/asset-pipeline-report.test.ts tests/workspace/pipeline-artifact-index.test.ts tests/workspace/pipeline-acceptance-report.test.ts
+    # 6 个测试文件，28 个测试通过
+
+    npx vitest run tests/workspace/workbench-pipeline-evidence-client.test.ts tests/workspace/workbench-pipeline-acceptance-client.test.ts tests/workspace/workbench-prompt-coach-client.test.ts
+    # 3 个测试文件，28 个测试通过
+
+    npx vitest run tests/workspace/projects-service.test.ts
+    # 1 个测试文件，23 个测试通过
+
+    npm run typecheck
+    # root、maker-api、maker-workbench 三段类型检查通过
+
+    git diff --check
+    # 无输出
+
+浏览器验收：
+
+- 本步未修改 Workbench / API / generation production code，按 Step 16 要求不跑浏览器验收。
+
+审查记录：
+
+- Oracle 首轮：P0/P1 无；发现 1 个 P2、1 个 P3：
+  - P2：golden trace 对 Asset pipeline 的覆盖仍是声明式 ref 覆盖，fake compiler 只返回 `asset_plan.json`、manifest 和 `asset_pipeline_report.json` 等 `files` 条目，没有写出真实 asset pipeline artifacts 或解析 report。
+  - P3：审查请求称“仅新增测试文件”，但实际还包含 review-gated 文档 diff；范围说明需要纳入 docs diff。
+- 已修复：
+  - test-only fake compiler 写出最小合法 asset pipeline artifacts，并通过生产 `writeAssetPipelineReport` 生成 `asset_pipeline_report.json`。
+  - valid golden trace 使用 `AssetPipelineReportSchema.parse` 读取/解析 `asset_pipeline_report.json`，并断言 asset plan、public manifest、asset resolution 文件存在。
+  - 文档记录明确纳入 Step 16 review-gated 记录。
+- Oracle 最终复审：P0/P1/P2 无，P3 无阻塞；确认上一轮 P2 已关闭，文档 diff 范围卫生可接受。
+
+当前下一步：
+
+- Step 16 测试、验证与 Oracle 门禁已完成；准备提交 `test: add pipeline golden trace coverage`。未 push。
