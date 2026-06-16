@@ -6,7 +6,7 @@
 
 建立 Semantic Editing 的第一层稳定地址底座，让后续 intent、patch、guard、trace 和 Workbench 都使用语义对象定位 SSOT，而不是使用生成后的 Phaser 文件路径、代码行号或派生产物路径。
 
-当前已完成 Step 27.1、Step 27.2、Step 27.3、Step 27.4、Step 27.5、Step 27.6 与 Step 27.7：稳定语义地址、Raw DSL 语义索引、`SemanticEditIntent` 类型与 schema、`SemanticPatch` 类型与 schema、Patch Planner 最小骨架、Patch Validator / Guards 最小骨架、Patch Applier / Rollback 最小骨架，以及 `fix_blank_preview` repair pack。不实现真实 SSOT persistence、Workbench 面板、QA false-playable 自动闭环、trace event、runtime / pipeline gate 或重新生成闭环。
+当前已完成 Step 27.1、Step 27.2、Step 27.3、Step 27.4、Step 27.5、Step 27.6、Step 27.7、Step 27.8、Step 27.9 与 Step 27.10：稳定语义地址、Raw DSL 语义索引、`SemanticEditIntent` 类型与 schema、`SemanticPatch` 类型与 schema、Patch Planner 最小骨架、Patch Validator / Guards 最小骨架、Patch Applier / Rollback 最小骨架、`fix_blank_preview` repair pack、Semantic Editing trace event contract / wrappers、Workbench Patch Diff 只读展示层，以及 QA FALSE_PLAYABLE 纯内存修复闭环。不实现真实 SSOT persistence、真实 approve / reject persistence、真实 QA runner、真实 Preview runtime、真实 Trace persistence、runtime / pipeline gate 或重新生成闭环。
 
 ## 已完成内容
 
@@ -650,28 +650,446 @@ git diff --check -- .
 - 已补 `scenes/main`、`/scenes//main`、`/scenes/main/` handler exception 契约测试。
 - 第二轮复审 P0/P1/P2 无，上轮 P2 已关闭。
 
+### Step 27.8 Trace Events
+
+完成时间：2026-06-16
+
+已完成内容：
+
+- 新增 `packages/game-dsl/src/semantic-editing/trace-events.ts`。
+- 新增 `packages/game-dsl/src/semantic-editing/trace-summaries.ts`。
+- 新增 `packages/game-dsl/src/semantic-editing/trace-recorder.ts`。
+- 新增 `packages/game-dsl/src/semantic-editing/traced-semantic-editing.ts`。
+- 新增 Semantic Editing trace event contract：
+  - `SemanticEditingTraceEventType`
+  - `SemanticEditingTraceSeverity`
+  - `SemanticEditingTraceEvent`
+  - `SemanticEditingTraceEventTypeSchema`
+  - `SemanticEditingTraceSeveritySchema`
+  - `SemanticEditingTraceEventSchema`
+- 新增 deterministic in-memory trace recorder：
+  - deterministic `id` / `at` injection
+  - optional `correlationId`
+  - optional sink forwarding
+  - sink exception capture through `getSinkErrors()`
+  - `getEvents()` 返回 clone，避免外部 mutation 内部 event state
+- 新增 redacted summary contract：
+  - `SemanticEditingIntentTraceSummary`
+  - `SemanticEditingPatchTraceSummary`
+  - `SemanticEditingValidationTraceSummary`
+  - `SemanticEditingApplyTraceSummary`
+- 新增 lifecycle trace wrappers：
+  - `traceSemanticPatchPlan`
+  - `traceSemanticPatchValidation`
+  - `traceSemanticPatchApply`
+  - `traceSemanticPatchRollback`
+- wrappers 只观察 planner / validator / applier / rollback 的输入和结果，不让原模块直接依赖 trace。
+- event payload 只记录摘要字段：
+  - intent 只记录 id / kind / target / reasonSource / payloadKeys / constraintKeys
+  - patch 只记录 id / intentId / target / status / hash / operation op+path
+  - validation 只记录 issue code / guardId / path / operationIndex / target
+  - apply / rollback 只记录 hash、patch id 和 stable error metadata
+- event payload 不记录完整 document，不记录 `operation.value`，不记录 generated Phaser code。
+- 新增 `tests/contracts/semantic-editing-trace-events.test.ts` 覆盖 recorder、sink error、planner/validator/applier/rollback wrappers、full `fix_blank_preview` in-memory lifecycle、schema validation、redaction 和 mutation guard。
+
+阶段边界：
+
+- Trace Events only observe semantic editing lifecycle through wrappers.
+- Planner, validator, applier, and repair packs remain trace-agnostic and pure.
+- No document body or operation.value is emitted into trace payloads.
+- Regeneration and QA trace events are intentionally deferred to later runtime / QA pipeline steps.
+- 本轮不接真实 Trace persistence，不接 Workbench trace timeline，不接 QA FALSE_PLAYABLE 自动闭环，不接 runtime / pipeline gate，不修改 generated Phaser code。
+
+修改范围：
+
+- `packages/game-dsl/src/semantic-editing/trace-events.ts`
+- `packages/game-dsl/src/semantic-editing/trace-summaries.ts`
+- `packages/game-dsl/src/semantic-editing/trace-recorder.ts`
+- `packages/game-dsl/src/semantic-editing/traced-semantic-editing.ts`
+- `packages/game-dsl/src/semantic-editing/index.ts`
+- `packages/game-dsl/src/index.ts`
+- `tests/contracts/semantic-editing-trace-events.test.ts`
+- `docs/refactor-log/semantic-editing-step-27.md`
+
+阶段结果：
+
+- `trace-events.ts` 当前 41 行，只保留 event type / severity / event schema。
+- `trace-summaries.ts` 当前 185 行，集中 redaction summary types 和 helper。
+- `trace-recorder.ts` 当前 74 行，集中 deterministic recorder 与 sink handling。
+- `traced-semantic-editing.ts` 当前 214 行，集中 planner / validator / applier / rollback wrapper orchestration。
+- `semantic-editing-trace-events.test.ts` 当前 580 行，覆盖 15 个 trace event contract tests。
+
+已通过验证：
+
+```bash
+npx vitest run tests/contracts/semantic-editing-trace-events.test.ts
+npx vitest run tests/contracts/semantic-editing-index.test.ts tests/contracts/semantic-editing-intent.test.ts tests/contracts/semantic-editing-patch.test.ts tests/contracts/semantic-editing-planner.test.ts tests/contracts/semantic-editing-validator.test.ts tests/contracts/semantic-editing-applier.test.ts tests/contracts/semantic-editing-fix-blank-preview.test.ts tests/contracts/semantic-editing-trace-events.test.ts
+npm run typecheck:root
+git diff --check -- .
+```
+
+结果：
+
+- `tests/contracts/semantic-editing-trace-events.test.ts`: 15 tests passed
+- semantic-editing contract tests: 8 test files passed, 98 tests passed
+- root TypeScript typecheck passed
+- diff check passed
+
+审查模式：Oracle 只读审查。
+
+代码审查结论：
+
+- 第一轮复审发现 P0/P1：
+  - P0: wrapper 捕获 wrapped implementation throw 后改写为 `{ ok: false }`，破坏 observer-only 边界。
+  - P1: trace failure summary 记录通用 `error.message`，可能泄漏 document / `operation.value` / provider payload。
+- 已修复：
+  - wrapper catch 后只发 redacted failure event，并重新抛出原异常。
+  - failure summary 移除 `message` / `errorMessage`，只保留 stable code / target / kind / path / operationIndex / validation summary。
+  - 新增 wrapped throw rethrow + redacted event 回归测试。
+  - 新增 failure result message redaction 回归测试。
+- 第二轮复审 P0/P1/P2/P3 无，上轮 P0/P1 已关闭。
+
+文档复审结论：
+
+- Oracle 文档复审 P0/P1/P2/P3 无。
+- 顶部状态、Step 27.8 小节、未实现范围、未改范围和下一步建议均准确。
+- 下一步明确保持在 Step 27.9 Workbench Patch Diff，未提前进入 27.9。
+
 未实现范围：
 
 - 未实现真实 SSOT persistence。
 - 未实现 patch registry。
-- 未实现 trace events。
+- 未实现真实 Trace persistence。
+- 未实现 Workbench trace timeline。
 - 未实现 Workbench patch diff。
 - 未实现 QA FALSE_PLAYABLE 闭环。
+- 未实现 regeneration / QA trace events。
 - 未接 runtime / pipeline gate。
+
+### Step 27.9 Workbench Patch Diff
+
+完成时间：2026-06-16
+
+已完成内容：
+
+- 新增 semantic patch diff view model，提供 Workbench 可直接渲染的只读数据模型。
+- 新增 operation before / after preview：
+  - 支持 `set` / `add` / `remove` / `replace` operation rows。
+  - 支持 `create` / `update` / `delete` / `replace` / `unknown` effect。
+  - 支持缺少 `beforeDocument` / `afterDocument` 时从 operation metadata 生成安全预览。
+- 新增 value preview redaction / truncation：
+  - 默认脱敏 `password`、`secret`、`token`、`apiKey`、`authorization`、`privateKey`。
+  - 默认截断大对象和长字符串。
+  - 支持 circular value、function、symbol、bigint，不向 Workbench 抛出异常。
+  - object key 顺序稳定，避免 nondeterministic preview。
+- 新增 validation summary：
+  - 汇总 `ok`、error count、warning count。
+  - errors / warnings 只保留 code、guardId、path、operationIndex、target。
+  - operation row 可显示 `validationCodes` 和不含 message / cause 的 issue metadata。
+  - 不把 `cause` 放入 diff view model。
+- 新增 apply / rollback summary：
+  - 只保留 ok、hash、applied patch id、rollback patch id、error code、error path 和 operationIndex。
+  - 不把 apply / rollback result document 放入 view model。
+- 新增 trace event summary：
+  - 只保留 id、type、at、severity、intentId、patchId、target、kind。
+  - 不把完整 event payload 放入 Workbench diff model。
+- 新增 Workbench read-only patch diff component：
+  - `SemanticPatchDiffPanel`
+  - `SemanticPatchDiffOperationList`
+  - 组件只渲染 `SemanticPatchDiffViewModel`。
+  - 不调用 planner、validator、applier、rollback、runtime、QA、pipeline 或 persistence。
+  - 不 mutation props，不使用 `dangerouslySetInnerHTML`。
+- 新增 `fix_blank_preview` patch diff contract test，覆盖 pure in-memory plan / validation / apply / trace 到 diff view model 的路径。
+
+阶段边界：
+
+- Workbench Patch Diff is read-only.
+- It renders a safe view model and does not plan, validate, apply, rollback, persist, regenerate, run QA, or emit trace events.
+- The diff view model stores previews, summaries, and metadata only; it does not retain full document bodies or raw `operation.value` references.
+- 本轮不实现真实 approve / reject persistence。
+- 本轮不实现 Workbench trace timeline。
+- 本轮不实现 QA FALSE_PLAYABLE 自动闭环。
+- 本轮不接 Preview runtime / pipeline gate。
+- 本轮不修改 generated Phaser code。
+
+修改范围：
+
+- `packages/game-dsl/src/semantic-editing/patch-diff.ts`
+- `packages/game-dsl/src/semantic-editing/patch-diff-patch.ts`
+- `packages/game-dsl/src/semantic-editing/patch-diff-path.ts`
+- `packages/game-dsl/src/semantic-editing/patch-diff-preview.ts`
+- `packages/game-dsl/src/semantic-editing/patch-diff-summaries.ts`
+- `packages/game-dsl/src/semantic-editing/patch-diff-types.ts`
+- `packages/game-dsl/src/semantic-editing/index.ts`
+- `packages/game-dsl/src/index.ts`
+- `apps/maker-workbench/src/features/semantic-editing/SemanticPatchDiffPanel.tsx`
+- `apps/maker-workbench/src/features/semantic-editing/SemanticPatchDiffOperationList.tsx`
+- `apps/maker-workbench/src/features/semantic-editing/index.ts`
+- `tests/contracts/semantic-editing-patch-diff.test.ts`
+- `docs/refactor-log/semantic-editing-step-27.md`
+
+阶段结果：
+
+- `patch-diff.ts` 当前 144 行，集中 view model orchestration。
+- `patch-diff-patch.ts` 当前 156 行，集中 strict / loose patch metadata parsing。
+- `patch-diff-path.ts` 当前 100 行，集中只读 semantic path 读取、safe path 判断和 sensitive path 判断。
+- `patch-diff-preview.ts` 当前 278 行，集中 preview rendering、path/key/scalar redaction、truncation 和 circular value handling；略高于 220 行阈值但职责集中，暂不机械拆分。
+- `patch-diff-summaries.ts` 当前 224 行，集中 validation / apply / rollback / trace summary；略高于 220 行阈值但职责集中，暂不机械拆分。
+- `SemanticPatchDiffPanel.tsx` 当前 202 行，集中 patch metadata、validation、apply、rollback、trace 和 warnings 展示。
+- `SemanticPatchDiffOperationList.tsx` 当前 84 行，集中 operation table 和 preview cell 展示。
+- `semantic-editing-patch-diff.test.ts` 当前 618 行，覆盖 15 个 Workbench Patch Diff contract tests，包含 path/key/scalar secret redaction、validation message exclusion 和 stable fallback warning 回归。
+
+已通过验证：
+
+```bash
+npx vitest run tests/contracts/semantic-editing-patch-diff.test.ts
+npx vitest run tests/contracts/semantic-editing-*.test.ts
+npm run typecheck:root
+npm run typecheck --workspace @ai-game-maker/maker-workbench
+```
+
+结果：
+
+- `tests/contracts/semantic-editing-patch-diff.test.ts`: 15 tests passed
+- semantic-editing contract tests: 9 test files passed, 113 tests passed
+- root TypeScript typecheck passed
+- Workbench TypeScript typecheck passed
+- diff check passed
+
+### Step 27.10 QA FALSE_PLAYABLE Loop
+
+完成时间：2026-06-16
+
+已完成内容：
+
+- 新增 `packages/game-dsl/src/semantic-editing/qa-false-playable/false-playable-types.ts`。
+- 新增 `packages/game-dsl/src/semantic-editing/qa-false-playable/false-playable-detector.ts`。
+- 新增 `packages/game-dsl/src/semantic-editing/qa-false-playable/false-playable-loop.ts`。
+- 新增 `packages/game-dsl/src/semantic-editing/qa-false-playable/index.ts`。
+- 新增并导出：
+  - `detectSemanticFalsePlayableFindings`
+  - `createFalsePlayableRepairIntent`
+  - `runSemanticFalsePlayableRepairLoop`
+  - `SemanticFalsePlayableFinding`
+  - `SemanticFalsePlayableDetectionResult`
+  - `SemanticFalsePlayableRepairLoopResult`
+- 新增 QA false-playable trace event types：
+  - `semantic_edit.qa.false_playable.detected`
+  - `semantic_edit.qa.false_playable.not_detected`
+  - `semantic_edit.qa.false_playable.repair_completed`
+  - `semantic_edit.qa.false_playable.repair_failed`
+- detector 支持从 report-like unknown input 中识别 false-playable blank preview：
+  - explicit `code` / `kind` / `type` 使用 token sequence match 识别 `FALSE_PLAYABLE`、`BLANK_PREVIEW`、`PREVIEW_BLANK`、`BLANK_CANVAS` 或 `NO_VISIBLE_OUTPUT`，并过滤负向 / 已解决 token。
+  - `PLAYABLE` 状态叠加 blank evidence，例如 `visual.blank`、`preview.blank`、`canvas.blank`、`observable.blank`、`renderableCount === 0` 或 `visibleRenderableCount === 0`。
+  - message fallback 仅接受 `blank preview`、`blank canvas`、`no visible output`、`false playable` 这类明确短语。
+  - 非 playable 状态下仅有 generic blank evidence 不触发 false-playable repair。
+- detector 输出只保留 finding summary：
+  - 不保留完整 QA report。
+  - 不保留 screenshot / canvas / base64 / full payload。
+  - 仅保留 `hasScreenshot` / `hasCanvasSnapshot` 布尔摘要。
+- unsafe scene target 只返回 warning，不生成 repair finding：
+  - 非 `SemanticId`
+  - 非 `scene:*`
+  - path-like / generated / source-code-like target
+- repair loop 完整串起现有 semantic editing primitive：
+  - QA finding detection
+  - `fix_blank_preview` intent creation
+  - `traceSemanticPatchPlan`
+  - `traceSemanticPatchValidation`
+  - `traceSemanticPatchApply`
+  - `createSemanticPatchDiffViewModel`
+  - QA lifecycle trace events
+- repair loop 返回显式 union：
+  - `not_detected`
+  - `plan_failed`
+  - `validation_failed`
+  - `apply_failed`
+  - `repaired`
+- repair loop 只消费第一个 false-playable finding，保持 deterministic scope。
+- repair loop 支持 deterministic 注入：
+  - `now`
+  - `createIntentId`
+  - `createPatchId`
+  - `createRollbackPatchId`
+  - `correlationId`
+  - `createTraceEventId`
+- failure path 会返回 redacted diff summary（在 validation / apply failure 可用时），不抛出 full document 或 raw operation value。
+- 新增 `tests/contracts/semantic-editing-qa-false-playable-loop.test.ts` 覆盖 24 个 QA false-playable loop contract tests。
+- 更新 `tests/contracts/semantic-editing-trace-events.test.ts`，补充 QA false-playable lifecycle event type schema contract。
+
+阶段边界：
+
+- QA FALSE_PLAYABLE Loop is pure in-memory orchestration.
+- It does not run real QA, Playwright, Preview runtime, browser smoke, or generated project checks.
+- It does not persist SSOT, patch registry, trace timeline, approve / reject state, or pipeline gate state.
+- It does not regenerate IR / Phaser code and does not edit generated Phaser files.
+- It does not bypass planner / validator / applier / patch diff / trace wrappers.
+- It does not mutate input QA report, document, patch, intent, `SemanticIndex`, trace events, or diff view model payloads.
+
+修改范围：
+
+- `packages/game-dsl/src/semantic-editing/qa-false-playable/false-playable-types.ts`
+- `packages/game-dsl/src/semantic-editing/qa-false-playable/false-playable-detector.ts`
+- `packages/game-dsl/src/semantic-editing/qa-false-playable/false-playable-loop.ts`
+- `packages/game-dsl/src/semantic-editing/qa-false-playable/index.ts`
+- `packages/game-dsl/src/semantic-editing/trace-events.ts`
+- `packages/game-dsl/src/semantic-editing/index.ts`
+- `packages/game-dsl/src/index.ts`
+- `tests/contracts/semantic-editing-qa-false-playable-loop.test.ts`
+- `tests/contracts/semantic-editing-trace-events.test.ts`
+- `docs/refactor-log/semantic-editing-step-27.md`
+
+阶段结果：
+
+- `false-playable-detector.ts` 当前 351 行，集中 report-like unknown input 读取、explicit code / playable blank evidence 判断、scene target 安全收敛和 finding summary 输出；超过 220 行阈值但仍是单一 detector 职责，暂不机械拆分。
+- `false-playable-loop.ts` 当前 343 行，集中 false-playable repair orchestration、stage failure union 和 QA lifecycle event 输出；超过 220 行阈值但没有混入真实 QA runner、runtime、persistence 或 pipeline gate。
+- `false-playable-types.ts` 当前 127 行，集中 public result union 和 request 类型。
+- `semantic-editing-qa-false-playable-loop.test.ts` 当前 591 行，覆盖 detection、no-op、success、validation failure、apply failure、rollback composition、mutation guard、redaction、unsafe target、first finding only、negative explicit code 和 deterministic trace。
+- `semantic-editing-trace-events.test.ts` 当前 601 行，新增 QA false-playable lifecycle schema contract 后共 16 个 trace event tests。
+
+已通过验证：
+
+```bash
+npx vitest run tests/contracts/semantic-editing-qa-false-playable-loop.test.ts
+npx vitest run tests/contracts/semantic-editing-*.test.ts
+npm run typecheck:root
+npm run typecheck --workspace @ai-game-maker/maker-workbench
+```
+
+结果：
+
+- `tests/contracts/semantic-editing-qa-false-playable-loop.test.ts`: 24 tests passed
+- semantic-editing contract tests: 10 test files passed, 138 tests passed
+- root TypeScript typecheck passed
+- Workbench TypeScript typecheck passed
+
+审查模式：Oracle 只读审查。
+
+第一轮结论：
+
+- P0: 无
+- P1:
+  - raw QA `id` / `reportId` 会进入 trace-visible finding / intent / patch id，并可能导致默认 planner 因 id 超长失败。
+  - explicit false-playable code 使用 substring 匹配，会把 `NOT_FALSE_PLAYABLE`、`PREVIEW_NOT_BLANK_CANVAS`、`FALSE_PLAYABLE_RESOLVED` 误判为 positive false-playable。
+- P2: 无
+- P3: 无
+
+修正：
+
+- detector 生成 bounded deterministic finding id：`false_playable:{candidateIndex}`，不再把 raw QA id 拼进 internal ids。
+- finding source 不再暴露 raw `reportId` / `findingId`，只保留 `hasReportId` / `hasFindingId` 布尔摘要。
+- explicit code 检测改为 token sequence match，并过滤 `NOT`、`NO`、`NON`、`WITHOUT`、`RESOLVED`、`FIXED`、`CLEARED`、`SUPPRESSED` 等负向 / 已解决 token。
+- 新增 raw secret / long QA ids 回归测试，验证 loop 使用默认 intent / patch id 仍可 repair，且 result / trace / diff 不包含 raw ids。
+- 新增 negative explicit code 回归测试，验证 `NOT_FALSE_PLAYABLE`、`PREVIEW_NOT_BLANK_CANVAS`、`FALSE_PLAYABLE_RESOLVED` 不触发 false-playable repair。
+
+第二轮复审结论：
+
+- P0: 无
+- P1: 无，上一轮两个 P1 已关闭
+- P2: 无
+- P3: 无
+- Oracle 结论：raw QA id 泄漏风险已关闭，explicit code false positive 已关闭，docs 已记录第一轮 P1 与修复内容。
+
+## Step 27 Final Consolidation / Checkpoint
+
+完成时间：2026-06-16
+
+最终状态：
+
+- Step 27 Semantic Editing ✅
+- Step 28 Resolver V2 ⬜ 未开始
+
+能力清单：
+
+- 27.1 SemanticId / SemanticIndex：已完成稳定 `kind:name` semantic address、Raw DSL semantic index、generated/source path 拒绝；未实现真实 SSOT persistence。对应测试：`semantic-editing-index.test.ts`。
+- 27.2 SemanticEditIntentSchema：已完成 intent kind / target / reason / payload schema；未实现 resolver 或 runtime action。对应测试：`semantic-editing-intent.test.ts`。
+- 27.3 SemanticPatchSchema：已完成 semantic patch lifecycle schema、SSOT path guard、operation value contract；未允许 generated/source code path。对应测试：`semantic-editing-patch.test.ts`。
+- 27.4 SemanticPatchPlanner：已完成 intent -> proposed patch skeleton、handler dispatch、deterministic `now` / `createPatchId`；未自动 validate / apply。对应测试：`semantic-editing-planner.test.ts`。
+- 27.5 SemanticPatchValidator / Guards：已完成 schema validation、default guards、custom guards、guard input isolation；未 apply patch 或 mutate SSOT。对应测试：`semantic-editing-validator.test.ts`。
+- 27.6 SemanticPatchApplier / Rollback：已完成 pure in-memory apply / rollback、stable document hash、rollback postcondition；未持久化 patch registry。对应测试：`semantic-editing-applier.test.ts`。
+- 27.7 `fix_blank_preview` Repair Pack：已完成 planner handler contract 和 deterministic SSOT operations；未修真实 preview runtime 或 generated Phaser code。对应测试：`semantic-editing-fix-blank-preview.test.ts`。
+- 27.8 Semantic Editing Trace Events：已完成 trace event schemas、in-memory recorder、planner / validator / applier / rollback wrappers 和 redacted summaries；未接真实 trace persistence 或 Workbench trace timeline。对应测试：`semantic-editing-trace-events.test.ts`。
+- 27.9 Semantic Patch Diff View Model + Workbench Read-only Component：已完成 safe diff view model 和 `apps/maker-workbench` read-only UI；未实现 approve / reject persistence。对应测试：`semantic-editing-patch-diff.test.ts`。
+- 27.10 QA FALSE_PLAYABLE Loop：已完成 report-like QA finding -> repair intent -> planner -> validator -> applier -> diff -> trace 的 pure in-memory loop；未接真实 QA runner、Preview runtime、Playwright 或 pipeline gate。对应测试：`semantic-editing-qa-false-playable-loop.test.ts`。
+
+本轮收口检查：
+
+- Export surface audit：`packages/game-dsl/src/semantic-editing/index.ts` 与 `packages/game-dsl/src/index.ts` 均包含 Step 27 required names。
+- Boundary audit：未发现真实 Playwright / Preview runtime / FS persistence / generated Phaser edit / pipeline gate 接入；命中项仅为 guard/test fixture、redaction fixture 和文档边界说明。
+- Redaction / safety audit：trace summary 不含 full document / `operation.value` / full cause；patch diff 不保留 raw document body、raw apply document 或 raw trace payload；QA loop 不保留 raw QA report / raw QA ids / screenshot / canvas / base64。
+- Determinism audit：planner、applier、trace recorder、QA loop 均支持 clock / id factory 注入；document hash 与 diff preview 使用 stable key order。
+- Contract test audit：10 个 `tests/contracts/semantic-editing-*.test.ts` 均存在。
+- Workbench audit：`apps/maker-workbench/src/features/semantic-editing` 只渲染 `SemanticPatchDiffViewModel`，未调用 planner / validator / applier / rollback / QA / runtime / persistence，未使用 `dangerouslySetInnerHTML`，状态文本不只依赖颜色。
+
+当前验证：
+
+```bash
+npx vitest run tests/contracts/semantic-editing-*.test.ts
+npm run typecheck:root
+npm run typecheck --workspace @ai-game-maker/maker-workbench
+git diff --check -- .
+```
+
+结果：
+
+- semantic-editing contract tests: 10 test files passed, 138 tests passed
+- root TypeScript typecheck passed
+- Workbench TypeScript typecheck passed
+- diff check passed
+
+最终文件规模扫描：
+
+- Step 27 semantic-editing 源码最大文件：`packages/game-dsl/src/semantic-editing/qa-false-playable/false-playable-detector.ts`，351 行。
+- Workbench semantic-editing 最大文件：`apps/maker-workbench/src/features/semantic-editing/SemanticPatchDiffPanel.tsx`，202 行。
+- Step 27 contract test 最大文件：`tests/contracts/semantic-editing-patch-diff.test.ts`，618 行。
+- 超过 220 行的源码文件已复查职责边界；本轮未做低收益机械拆分。
+
+当前工作区：
+
+- `main...origin/main [ahead 3]`
+- Step 27 系列改动仍未 commit / push。
+- 本轮未执行 `git add`、`git commit` 或 `git push`。
+
+Oracle review：
+
+- P0: 无
+- P1: 无
+- P2: Final Checkpoint 小节曾保留 `Oracle review：待执行` 占位；已修正为本轮只读审查完成记录。
+- P3: 无
+- Oracle 结论：未发现 Step 28 提前开始，未发现 real QA / Preview runtime / Playwright / persistence / pipeline gate 被写成已完成，未发现 runtime / generated-code / Workbench persistence 越界。
+
+未实现范围：
+
+- real SSOT persistence
+- real Playwright QA runner
+- Preview runtime integration
+- IR / Phaser regeneration pipeline
+- pipeline gate
+- Workbench approve / reject persistence
+- Workbench trace timeline
+- Step 28 Resolver V2
+- Phaser Upgrade
+- generated Phaser code changes
+
+下一步建议：
+
+- 人工 review 后做 Step 27 checkpoint commit。
+- 然后进入 Step 28 Resolver V2。
 
 ## 未改范围
 
-- 未接入 trace events。
-- 未接入 Workbench UI。
-- 未改变 generated project、Phaser runtime、QA 或 pipeline acceptance gate。
+- 未接入真实 Trace persistence。
+- 未接入真实 approve / reject persistence。
+- 未接入真实 QA runner / Preview runtime / Playwright。
+- 未改变 generated project、Phaser runtime、真实 QA 或 pipeline acceptance gate。
 
 ## 下一步建议
 
-Step 27.8: Semantic patch trace / Workbench / QA integration（以新 prompt 为准）。
+Step 27 收口检查或 Step 28 Resolver V2（以新 prompt 为准）。
 
 建议边界：
 
-- 基于 Step 27.7 repair pack 已验证的 pure semantic patch proposal 边界推进。
-- 继续不触碰 generated Phaser code；后续接线应消费 semantic patch / SSOT，而不是直接改 runtime。
-- trace、QA、Workbench 或 runtime / pipeline gate 需要按后续 prompt 单独开边界。
+- 基于 Step 27.10 已验证的 in-memory QA repair loop 推进。
+- 后续真实 QA runner / Preview runtime / pipeline gate 接线仍需单独开边界，并继续消费 semantic patch / SSOT。
+- 继续不触碰 generated Phaser code；后续接线不应绕过 planner / validator / applier / diff / trace wrappers。
 - 继续使用 Oracle review gate。

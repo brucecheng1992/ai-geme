@@ -54,6 +54,70 @@ export {
   type FixBlankPreviewRepairPayload
 } from './repair-packs/index.js';
 export {
+  SemanticEditingTraceEventSchema,
+  SemanticEditingTraceEventTypeSchema,
+  SemanticEditingTraceSeveritySchema,
+  type SemanticEditingTraceEvent,
+  type SemanticEditingTraceEventType,
+  type SemanticEditingTraceSeverity
+} from './trace-events.js';
+export {
+  type SemanticEditingApplyTraceSummary,
+  type SemanticEditingIntentTraceSummary,
+  type SemanticEditingPatchTraceSummary,
+  type SemanticEditingValidationTraceSummary
+} from './trace-summaries.js';
+export {
+  createSemanticEditingTraceRecorder,
+  type SemanticEditingTraceRecorder,
+  type SemanticEditingTraceRecorderOptions,
+  type SemanticEditingTraceSink
+} from './trace-recorder.js';
+export {
+  traceSemanticPatchApply,
+  traceSemanticPatchPlan,
+  traceSemanticPatchRollback,
+  traceSemanticPatchValidation,
+  type TraceSemanticPatchApplyRequest,
+  type TraceSemanticPatchPlanRequest,
+  type TraceSemanticPatchRollbackRequest,
+  type TraceSemanticPatchValidationRequest
+} from './traced-semantic-editing.js';
+export {
+  createSemanticPatchDiffValuePreview,
+  createSemanticPatchDiffViewModel,
+  type CreateSemanticPatchDiffViewModelInput,
+  type CreateSemanticPatchDiffViewModelOptions,
+  type SemanticPatchDiffApplySummary,
+  type SemanticPatchDiffOperationEffect,
+  type SemanticPatchDiffOperationIssue,
+  type SemanticPatchDiffOperationRow,
+  type SemanticPatchDiffPatchSummary,
+  type SemanticPatchDiffTraceSummary,
+  type SemanticPatchDiffValidationIssue,
+  type SemanticPatchDiffValidationSummary,
+  type SemanticPatchDiffValueKind,
+  type SemanticPatchDiffValuePreview,
+  type SemanticPatchDiffViewModel
+} from './patch-diff.js';
+export {
+  createFalsePlayableRepairIntent,
+  detectSemanticFalsePlayableFindings,
+  runSemanticFalsePlayableRepairLoop,
+  type CreateFalsePlayableRepairIntentOptions,
+  type DetectSemanticFalsePlayableOptions,
+  type RunSemanticFalsePlayableRepairLoopRequest,
+  type SemanticFalsePlayableDetectionResult,
+  type SemanticFalsePlayableFinding,
+  type SemanticFalsePlayableRepairLoopError,
+  type SemanticFalsePlayableRepairLoopFailure,
+  type SemanticFalsePlayableRepairLoopNoop,
+  type SemanticFalsePlayableRepairLoopResult,
+  type SemanticFalsePlayableRepairLoopStage,
+  type SemanticFalsePlayableRepairLoopSuccess,
+  type SemanticFalsePlayableSeverity
+} from './qa-false-playable/index.js';
+export {
   SEMANTIC_EDIT_INTENT_KINDS,
   SEMANTIC_EDIT_REASON_SOURCES,
   SEMANTIC_PATCH_STATUSES,
