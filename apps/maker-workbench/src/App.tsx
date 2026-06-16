@@ -5,6 +5,7 @@ import { AssetStatusPanel } from './AssetStatusPanel.js';
 import { AssetBindingTraceSummaryPanel, fetchAssetBindingTrace, type AssetBindingTraceView } from './asset-binding-trace-client.js';
 import { BriefTextboxPanel, type BriefTextboxMode } from './features/brief/index.js';
 import { PreviewFrame, PreviewStatusBadge, usePreviewRuntimeRefresh } from './features/preview/index.js';
+import { SemanticPatchReviewPanel, useSemanticPatchActions, type SemanticPatchReviewInput } from './features/semantic-editing/index.js';
 import { PromptCoachPanel } from './PromptCoachPanel.js';
 import { QaStatusPanel } from './QaStatusPanel.js';
 import { buildEditableFields, buildLiveObjectTree, buildReplacePrepareBody, buildRuntimeApplyReportFromPatchResult, type LiveEditableField } from './live-edit-client.js';
@@ -131,6 +132,17 @@ export function App() {
   const activePreviewUrl = previewRefreshResult === undefined ? previewUrl : (previewRefreshResult.iframeUrl ?? '');
   const displayStatus = resolveWorkbenchDisplayStatus(data.project?.project.status, data.qaReport);
   const latestRun = data.project?.latest_run;
+  const semanticPatchActions = useSemanticPatchActions({
+    onPreviewRefreshRequest: (request) => {
+      previewRefresh.requestRefresh(request, {
+        apiBase: API_BASE,
+        projectPreviewUrl: previewUrl,
+        artifactIndex: data.pipelineArtifactIndex,
+        runStatus: latestRun?.status,
+        workbenchOrigin: window.location.origin
+      });
+    }
+  });
   const timelineSteps = latestRun?.steps.length ? latestRun.steps : fallbackSteps(latestRun?.status);
   const repairMessage = data.repairReport?.message ?? data.repairReport?.attempts?.[0]?.reason ?? 'none';
   const isTerminal = useMemo(() => {
@@ -476,6 +488,11 @@ export function App() {
     setSemanticEditText(nextText);
   }
 
+  function openSemanticPatchReview(handoff: SemanticPatchReviewInput) {
+    setLiveEditStatus(`Semantic patch preview: ${handoff.patchId}`);
+    semanticPatchActions.openReview(handoff);
+  }
+
   function focusPreviewFrame() {
     previewHostRef.current?.focus();
   }
@@ -517,7 +534,7 @@ export function App() {
             mode={briefMode}
             onLanguageChange={setLanguage}
             onModeChange={setBriefMode}
-            onPreviewHandoff={(handoff) => setLiveEditStatus(`Semantic patch preview: ${handoff.patchId}`)}
+            onPreviewHandoff={openSemanticPatchReview}
             onTextChange={updateBriefText}
             projectId={projectId}
             runId={runId}
@@ -712,6 +729,20 @@ export function App() {
                 <span>{`Audit: ${liveCurrent?.edit_audit_log.map((item) => `${item.patchId}:${item.status}:${item.applyMode}${item.errors?.length ? `:${item.errors.map((issue) => issue.code).join('|')}` : ''}`).join(', ') || 'none'}`}</span>
               </div>
             </article>
+
+            <SemanticPatchReviewPanel
+              canAccept={semanticPatchActions.canAccept}
+              canReject={semanticPatchActions.canReject}
+              canUndo={semanticPatchActions.canUndo}
+              loading={loading}
+              onAccept={() => void semanticPatchActions.acceptCurrent({ currentProjectId: projectId, currentRunId: runId })}
+              onReject={() => {
+                semanticPatchActions.rejectCurrent();
+              }}
+              onUndo={() => void semanticPatchActions.undoCurrent({ currentProjectId: projectId, currentRunId: runId })}
+              qaStatus={data.qaReport?.overall_status ?? data.qaReport?.status}
+              state={semanticPatchActions.state}
+            />
 
             <AssetStatusPanel report={data.qaReport?.asset_report} preview={data.artAssetPreview} />
 

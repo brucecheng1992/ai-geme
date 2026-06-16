@@ -6,7 +6,7 @@
   - 29.1 MVP Chain ✅
   - 29.2 Brief Textbox Deep Integration ✅
   - 29.3 Preview Runtime Refresh Adapter ✅
-  - 29.4 Undo / Accept / Reject UX ⬜
+  - 29.4 Undo / Accept / Reject UX ✅
   - 29.5 Final Consolidation ⬜
 
 ## Step 29.1 MVP Chain
@@ -376,4 +376,134 @@ git diff --check -- .
 - 未实现 29.5 Final Consolidation。
 - 未写 SSOT persistence。
 - 未新增 QA runner。
+- 未修改 generated Phaser code。
+
+## Step 29.4 Undo / Accept / Reject UX
+
+完成时间：2026-06-17
+
+已完成内容：
+
+- 新增 `apps/maker-workbench/src/features/semantic-editing/semanticPatchActionState.ts`。
+  - 定义 semantic patch review / action / history / backend adapter contract。
+  - 管理 `validated`、`accepting`、`accepted`、`applied`、`rejected`、`rolling_back`、`rolled_back`、`stale_patch`、`hash_conflict`、`rollback_failed` 等状态。
+  - `Accept` 必须经过注入的 `SemanticPatchActionBackend.acceptPatch`；无 backend 时返回 `SEMANTIC_PATCH_BACKEND_UNAVAILABLE`。
+  - `Undo` 只允许已 `applied` 的 patch，并且必须经过注入的 `undoPatch`；无 backend 时返回 `SEMANTIC_ROLLBACK_BACKEND_UNAVAILABLE`。
+  - `Reject` 只记录本地 action history，不写 SSOT，不触发 preview refresh。
+  - `Accept` 的 backend result 只有 `applied` 会触发 `semantic_patch_applied` preview refresh；仅 `accepted` 不刷新 runtime。
+  - `Undo` 的 backend result 只有 `rolled_back` 会触发 `semantic_patch_rolled_back` preview refresh。
+  - stale project/run、hash conflict、backend invalid status 都不会调用 preview refresh。
+- 新增 `apps/maker-workbench/src/features/semantic-editing/useSemanticPatchActions.ts`。
+  - 将 action state 接入 React hook。
+  - 使用 action token 和 review identity guard，避免旧异步 accept / undo 结果覆盖新 review。
+  - pending `accepting` / `rolling_back` 时关闭 Accept / Reject / Undo capability，避免重复 backend 调用或 pending action 被本地 reject 覆盖。
+- 新增 `SemanticPatchReviewPanel`、`SemanticPatchActionBar`、`SemanticPatchStatusBadge`、`SemanticPatchHistoryList`。
+  - Workbench 展示当前 previewed patch、validation / QA 摘要、action status、error / warning、history。
+  - Accept / Reject / Undo 按 action capability 和 dashboard loading state 禁用。
+- 更新 `apps/maker-workbench/src/App.tsx`。
+  - `BriefTextboxPanel` 的 preview handoff 进入 `semanticPatchActions.openReview(handoff)`。
+  - 仅当 action state 产出 preview refresh request 时，调用 Step 29.3 `previewRefresh.requestRefresh(...)`。
+  - App 不直接调用 `createSemanticPatchApplier`，不计算或写入 SSOT hash。
+- 新增 `apps/maker-workbench/src/features/semantic-editing/__tests__/semanticPatchActions.test.ts`。
+  - 覆盖 validated review、backend accept applied、backend accept only、pending capability gate、invalid backend status。
+  - 覆盖 stale project/run、hash conflict、backend unavailable。
+  - 覆盖 backend accept / undo exception 会收敛为 failed / rollback_failed state。
+  - 覆盖 reject 不写 SSOT、不刷新 preview。
+  - 覆盖 undo before applied、backend undo rolled_back、pending undo gate、stale undo、rollback backend unavailable。
+  - 覆盖 App 只接 preview handoff / preview refresh，不直接写 SSOT。
+  - 覆盖 hook 对旧异步 action completion 的 identity guard。
+
+安全边界：
+
+- 29.4 不新增 backend accept / rollback endpoint。
+- 29.4 不写 SSOT persistence。
+- 29.4 不调用 low-level semantic patch applier。
+- 29.4 不做 UI-only rollback。
+- 29.4 不接 backend QA runner。
+- 29.4 不接 backend pipeline。
+- 29.4 不接 IR generator。
+- 29.4 不接 Phaser generator。
+- 29.4 不修改 Resolver V2 能力。
+- 29.4 不修改 generated Phaser code。
+- 29.4 只在 backend adapter 明确返回 `applied` / `rolled_back` 后请求 preview refresh。
+
+本轮验证：
+
+```bash
+npx vitest run apps/maker-workbench/src/features/semantic-editing/__tests__/semanticPatchActions.test.ts
+npx vitest run apps/maker-workbench/src/features/semantic-editing/__tests__/semanticPatchActions.test.ts apps/maker-workbench/src/features/preview/__tests__/previewRuntimeRefreshAdapter.test.ts apps/maker-workbench/src/features/brief/__tests__/briefTextboxIntentBridge.test.ts
+npx vitest run tests/contracts/semantic-editing-*.test.ts
+npx vitest run tests/contracts/resolver-v2.test.ts
+npm run typecheck:root
+npm run typecheck --workspace @ai-game-maker/maker-workbench
+git diff --check -- .
+```
+
+结果：
+
+- `apps/maker-workbench/src/features/semantic-editing/__tests__/semanticPatchActions.test.ts`: 1 test file passed, 19 tests passed
+- Workbench 29.2 / 29.3 / 29.4 regression tests: 3 test files passed, 44 tests passed
+- semantic-editing contract tests: 10 test files passed, 138 tests passed
+- `tests/contracts/resolver-v2.test.ts`: 1 test file passed, 65 tests passed
+- root TypeScript typecheck passed
+- Workbench TypeScript typecheck passed
+- diff check passed
+
+审查门禁：
+
+- Oracle 首审：
+  - P1:
+    - backend `accepted` result 不应触发 preview refresh；只有真实 `applied` 后才能刷新 runtime。
+    - undo 缺少 project/run stale preflight。
+  - P2:
+    - hook 中旧异步 action result 可能覆盖较新的 review。
+- 本轮处理：
+  - `shouldRequestPreviewRefresh` 收敛为 accept `applied` / undo `rolled_back`。
+  - undo 增加 project/run stale preflight。
+  - hook 增加 action token、review identity guard 与 source regression test。
+- Oracle 二审：
+  - P1:
+    - pending accept / undo 状态下 capability gate 仍可能允许重复调用或本地 reject 覆盖 pending action。
+  - P2:
+    - backend result status type 过宽，类型层未阻止 illegal action/status combination。
+- 本轮处理：
+  - `canAcceptSemanticPatch` / `canRejectSemanticPatch` / `canUndoSemanticPatch` 只允许稳定可操作状态。
+  - hook 在调用 backend 前再次检查 capability。
+  - `SemanticPatchAcceptBackendResult` / `SemanticPatchUndoBackendResult` / `SemanticPatchRejectBackendResult` 收窄状态集合。
+  - 增加 invalid backend status runtime guard 与 regression test。
+- Oracle 三审：
+  - blocker: 无
+  - P3:
+    - undo stale / failure history action 不应被默认推断为 accept。
+- 本轮处理：
+  - `actionFailure` 增加显式 `action` 参数。
+  - accept / undo preflight 与 backend unavailable failure 均写入正确 history action。
+  - 补 stale undo history action regression assertion。
+- Oracle 收口审查：
+  - P0: 无
+  - P1: 无
+  - P2:
+    - backend adapter throw 会让 action panel 停在 `accepting` / `rolling_back`。
+  - P3:
+    - 裸 `rejectSemanticPatchAction` 可绕过 hook gate reject pending action。
+    - hook stale async guard 当前是 source assertion，后续可补行为级 hook test。
+- 本轮处理：
+  - accept / undo backend call 增加 exception boundary。
+  - accept throw 收敛为 `SEMANTIC_PATCH_BACKEND_FAILED`，undo throw 收敛为 `SEMANTIC_ROLLBACK_BACKEND_FAILED`。
+  - exception path 清理 `pendingAction`，不触发 preview refresh。
+  - `rejectSemanticPatchAction` 对不可 reject 状态直接保持原 state。
+  - 补 accept throw、undo throw、direct reject pending regression tests。
+- Oracle 收口复审：
+  - P0: 无
+  - P1: 无
+  - P2: 无，上轮 backend throw pending 卡死已关闭
+  - P3: 仍保留 hook stale async guard 行为级测试后续项；当前已记录为未处理范围
+
+未处理范围：
+
+- 未实现 29.5 Final Consolidation。
+- 未新增 semantic patch backend accept / rollback endpoint。
+- 未写 SSOT persistence。
+- 未新增 QA runner。
+- 未补 hook stale async behavior-level component test；当前已有 source guard regression test。
 - 未修改 generated Phaser code。
