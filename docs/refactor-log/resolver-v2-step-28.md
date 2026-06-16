@@ -632,3 +632,122 @@ git diff --check -- .
 下一步建议：
 
 - Step 28 Final Consolidation / Checkpoint，之后再进入 Phaser Upgrade 或下一阶段。
+
+## Step 28 Final Consolidation / Checkpoint
+
+完成时间：2026-06-16
+
+已完成内容：
+
+- 前置 Step 28.5 checkpoint commit 已创建：`e5ce5b2 feat(game-dsl): add resolver v2 trace diagnostics`。
+- 复核 Step 28.1 到 28.5 文档记录、Resolver V2 public exports、trace / diagnostics view model、Workbench read-only panel 和 trace diagnostics contract tests。
+- 复核 Step 28 最终边界：本轮未进入 Phaser Upgrade，未接 IR generator、Phaser generator、Preview runtime、QA runner、pipeline，也未修改 generated Phaser code。
+- 复核 Workbench 闭环边界：28.5 只新增 read-only diagnostics panel export；panel 接收 view model props，不调用 resolver / IR gate，不写 persistence，不发 trace。
+- 执行 export surface、boundary、redaction / safety、determinism、contract test、Workbench typecheck 和文件规模审计。
+- 记录 Resolver V2 后续可治理的大文件，但本轮不做额外拆分或重构。
+
+Checkpoint 状态：
+
+- branch：`main`
+- local commit：`e5ce5b2 feat(game-dsl): add resolver v2 trace diagnostics`
+- remote：未 push，`main...origin/main [ahead 8]`
+- Step 28.5 checkpoint 后 working tree clean；本节为 docs-only final record，不新增代码行为。
+- 本轮未新增 commit，未 push；当前仅保留本节文档更新作为未提交变更。
+
+最终边界确认：
+
+- Step 28 Resolver V2 已完成 28.1 到 28.5。
+- Workbench diagnostics 闭环已完成 read-only surface。
+- Phaser Upgrade 仍未开始。
+- actual IR generation 未实现。
+- existing resolver replacement 未执行。
+- IR generator / Phaser generator / Preview runtime / Playwright QA runner / pipeline gate integration 均未接入。
+- Workbench persistence / approve / reject 未实现。
+- generated Phaser code 未修改。
+
+Capability inventory：
+
+- 28.1 Contract / SemanticIndex Adapter Skeleton：完成 Resolver V2 public contract、reference extraction skeleton、SemanticIndex adapter 和 baseline diagnostics；未替换 existing resolver，未接 IR / Phaser / runtime / pipeline。
+- 28.2 Asset Resolver Expansion：完成 in-memory asset catalog、asset reference checks、source safety diagnostics 和 asset type compatibility；未做 asset pack discovery、真实 asset file 读取或 asset pipeline。
+- 28.3 Scene Graph Resolver：完成 in-memory scene graph nodes / edges、relationship validation、deterministic ordering 和 scene graph diagnostics；未接 runtime、QA、Phaser generator 或 generated code。
+- 28.4 IR Integration Gate：完成 resolver result 到 safe IR handoff summary 的 ready / blocked gate；不生成 IR，不调用真实 IR generator，不调用 Phaser generator、runtime、QA 或 pipeline。
+- 28.5 Resolver Trace / Diagnostics UI：完成 trace recorder、traced resolver / gate wrappers、diagnostics view model 和 Workbench read-only diagnostics panel；未实现 persistence、approve / reject、backend API 或 runtime integration。
+
+审计结果：
+
+- Export surface：`packages/game-dsl/src/resolver-v2/index.ts` 当前解析到 67 个 named exports，并覆盖附件审计清单列出的 60 个 Resolver V2 symbols；`packages/game-dsl/src/index.ts` 通过 `export * from './resolver-v2/index.js';` 暴露；Workbench barrel 导出 `ResolverV2DiagnosticsPanel` 和 `ResolverV2DiagnosticsPanelProps`。
+- Boundary audit：未发现真实 Playwright / browser / filesystem persistence / runtime / QA / pipeline / generator 调用；`generated/phaser` 命中仅为 unsafe fixture / diagnostic，`Phaser generator` / `pipeline gate` 命中为文档边界说明。
+- Redaction / safety audit：trace、view model 和 IR handoff summary contract tests 覆盖 full document、raw asset source、diagnostic cause / stack 不外泄；custom resolver / gate / sink throw 不向调用方泄漏或中断。
+- Determinism audit：reference extraction、asset catalog、scene graph、IR gate blockers / warnings / summary、diagnostics view model 和 trace recorder 均有 deterministic ordering 或 injected clock / id factory 覆盖。
+- Workbench audit：resolver-v2 feature 只渲染 `viewModel`，未使用 `dangerouslySetInnerHTML`，未使用 hook/state/effect，未调用 resolver / gate / persistence / runtime / QA / pipeline。
+
+最终扫描：
+
+```bash
+find packages/game-dsl/src/resolver-v2 apps/maker-workbench/src/features/resolver-v2 -type f \( -name '*.ts' -o -name '*.tsx' \) -exec wc -l {} + | sort -nr | head -20
+```
+
+结果：
+
+- total: 4118 lines
+- `packages/game-dsl/src/resolver-v2/scene-graph.ts`: 722 lines
+- `packages/game-dsl/src/resolver-v2/scene-graph-rules.ts`: 373 lines
+- `packages/game-dsl/src/resolver-v2/resolver-v2.ts`: 349 lines
+- `packages/game-dsl/src/resolver-v2/types.ts`: 329 lines
+- `packages/game-dsl/src/resolver-v2/asset-catalog.ts`: 308 lines
+- `packages/game-dsl/src/resolver-v2/reference-extractor.ts`: 221 lines
+- `packages/game-dsl/src/resolver-v2/diagnostics-view-model-mappers.ts`: 219 lines
+- `packages/game-dsl/src/resolver-v2/traced-resolver-v2.ts`: 168 lines
+- `apps/maker-workbench/src/features/resolver-v2/ResolverV2DiagnosticsPanel.tsx`: 166 lines
+- `packages/game-dsl/src/resolver-v2/ir-gate-summaries.ts`: 153 lines
+- `packages/game-dsl/src/resolver-v2/ir-gate-blockers.ts`: 150 lines
+- `packages/game-dsl/src/resolver-v2/ir-integration-gate.ts`: 125 lines
+- `packages/game-dsl/src/resolver-v2/diagnostics-view-model-scene-graph.ts`: 116 lines
+- `packages/game-dsl/src/resolver-v2/trace-summaries.ts`: 97 lines
+- `apps/maker-workbench/src/features/resolver-v2/ResolverV2DiagnosticsPanelParts.tsx`: 80 lines
+- `packages/game-dsl/src/resolver-v2/trace-recorder.ts`: 74 lines
+- `packages/game-dsl/src/resolver-v2/diagnostics-view-model-types.ts`: 72 lines
+- `packages/game-dsl/src/resolver-v2/reference-extractor-shared.ts`: 70 lines
+- `packages/game-dsl/src/resolver-v2/ir-gate-policy.ts`: 69 lines
+
+分组扫描：
+
+- resolver-v2 源码最大文件：`packages/game-dsl/src/resolver-v2/scene-graph.ts`，722 lines
+- Workbench resolver-v2 最大文件：`apps/maker-workbench/src/features/resolver-v2/ResolverV2DiagnosticsPanel.tsx`，166 lines
+- resolver-v2 contract test 最大文件：`tests/contracts/resolver-v2.test.ts`，2271 lines
+
+已通过验证：
+
+```bash
+npx vitest run tests/contracts/resolver-v2.test.ts
+npx vitest run tests/contracts/resolver-v2-trace-diagnostics.test.ts
+npx vitest run tests/contracts/semantic-editing-*.test.ts
+npm run typecheck:root
+npm run typecheck --workspace @ai-game-maker/maker-workbench
+git diff --check -- .
+git diff --cached --check -- .
+```
+
+结果：
+
+- `tests/contracts/resolver-v2.test.ts`: 1 test file passed, 65 tests passed
+- `tests/contracts/resolver-v2-trace-diagnostics.test.ts`: 1 test file passed, 16 tests passed
+- semantic-editing contract tests: 10 test files passed, 138 tests passed
+- root TypeScript typecheck passed
+- Workbench TypeScript typecheck passed
+- diff check passed
+- staged diff check passed before checkpoint commit
+
+审查门禁：
+
+- Oracle 只读审查：P0 / P1 / P2 均无。
+- Oracle 核对 checkpoint commit `e5ce5b2` 存在且标题一致；checkpoint 范围限于 Resolver V2、Workbench resolver-v2 panel、tests 和文档，未发现 runtime / QA / pipeline / generated Phaser code 文件。
+- Oracle 核对最终扫描结果与文档一致，`git diff --check -- .` 和 `git diff --cached --check -- .` 均通过。
+- Oracle 结论：验证记录关系清楚，边界表述未进入 Phaser Upgrade 或 runtime / pipeline 接线。
+- Oracle P3：export count wording / documentation precision；已修正为 “67 named exports，覆盖审计清单 60 个 symbols”。
+- 最终复审结论：P0 / P1 / P2 无，P3 已关闭，无遗留 blocking finding。
+
+下一步建议：
+
+- 人工 review 后做 Step 28 final checkpoint commit。
+- 然后进入 Phaser Upgrade planning；启动前继续保持 Resolver V2 / Workbench diagnostics 边界，不把 generator/runtime/pipeline 接线混入 Step 28 收口。
