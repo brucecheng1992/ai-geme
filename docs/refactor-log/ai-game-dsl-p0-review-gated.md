@@ -8,11 +8,57 @@
 
 ## 当前阶段
 
-当前处于 Step 21 Workbench Asset Binding Trace Summary lane。Step 21 已新增固定只读 API `GET /api/projects/:projectId/runs/:runId/asset-binding-trace` 和 Workbench `Asset Binding Trace` summary panel，只展示当前 run 的 `asset_binding_trace_report.json` 摘要；未改变 Step 20 report contract，未新增 artifact content/download/path API，未触发 generation / Prompt Coach / live edit，未 push。
+当前处于 Step 29 Workbench Semantic UX closure。Step 29.1 到 29.5 已完成 Workbench-facing semantic UX 与 backend-adapter-gated action lifecycle：Brief Textbox 可以创建 non-mutating patch preview，Preview Runtime Refresh Adapter 只使用 generated artifact entry URL，SemanticPatch review UI 支持 accept / reject / undo 状态流；Workbench 仍不直接写 SSOT、不直接调用 semantic patch applier、不修改 generated Phaser code。
 
 执行索引：`docs/refactor-log/ai-game-dsl-p0-step-index.md`。
 
-当前下一步：Step 21 代码、验证、浏览器验收、文档与 Oracle 门禁已完成；准备提交 `feat: add workbench asset binding trace summary`，不 push。Runtime/default broad rollout 仍 parked，未来 broad/default rollout 只有在单独 approval gate 明确批准后才可开始。shooter HUD stash 仍作为独立任务处理；不要混入 AI image provider、runtime/default integration、resolver / QA verdict / Phaser / repair 改动或 provider survive_duration 修复。
+当前下一步：先提交 Step 29.5 final consolidation checkpoint，不 push。后续若继续 live semantic editing，应单独新增 semantic patch accept / rollback backend endpoint，再接真实 SSOT persistence、regeneration 和 QA；若回到大阶段路线，应在独立 prompt 中选择 Phaser Upgrade 或后续 Resolver / pipeline 工作，不要混入 Step 29 closure。
+
+### 2.57 Step 29: Workbench Semantic UX Closure
+
+完成时间：2026-06-17
+
+已完成内容：
+
+- Step 29.1 MVP Chain：deterministic live semantic edit parser / intent / patch / diff / diagnostics。
+- Step 29.2 Brief Textbox Deep Integration：Workbench brief draft、validation、intent bridge 和 non-mutating patch preview handoff。
+- Step 29.3 Preview Runtime Refresh Adapter：generated artifact entry URL refresh、stale request guard、runtime / QA status gate、false playable failure path。
+- Step 29.4 Undo / Accept / Reject UX：SemanticPatch review panel、action state machine、backend adapter gate、history、preview refresh request handoff。
+- Step 29.5 Final Consolidation：新增 `docs/refactor-log/step29-workbench-semantic-ux.md`，更新 Step 29 状态、验证、Oracle 结论和后续边界。
+
+阶段结果：
+
+- Workbench 不直接写 SSOT，不直接调用 `createSemanticPatchApplier`，不计算或写入 SSOT hash。
+- Accept / Undo 仅通过注入 backend adapter contract；没有 adapter 时 fail safe，不做 UI-only rollback。
+- Reject 只记录本地 action history，不修改 SSOT，不触发 preview refresh。
+- Preview refresh 不 fallback 到 Workbench shell；iframe loaded / HTTP 200 不等于 QA passed 或 PLAYABLE。
+- 当前仓库尚未新增 semantic patch accept / rollback backend endpoint；真实 SSOT persistence、regeneration 和 backend QA runner 保持为后续独立边界。
+
+已通过验证：
+
+    npx vitest run apps/maker-workbench/src/features/semantic-editing/__tests__/semanticPatchActions.test.ts apps/maker-workbench/src/features/preview/__tests__/previewRuntimeRefreshAdapter.test.ts apps/maker-workbench/src/features/brief/__tests__/briefTextboxIntentBridge.test.ts
+    # 3 个测试文件，44 个测试通过
+
+    npx vitest run tests/contracts/semantic-editing-*.test.ts
+    # 10 个测试文件，138 个测试通过
+
+    npx vitest run tests/contracts/resolver-v2.test.ts
+    # 1 个测试文件，65 个测试通过
+
+    npm run typecheck:root
+    # 通过
+
+    npm run typecheck --workspace @ai-game-maker/maker-workbench
+    # 通过
+
+    git diff --check -- .
+    # 无输出
+
+审查门禁结论：
+
+- Step 29.4 收口复审：P0/P1/P2 无；P3 保留 hook stale async behavior-level component test 后续项。
+- Step 29.5 文档收口 Oracle：P0/P1/P2/P3 均无；确认文档未把 backend adapter gate 夸大成已实现 persistence。
+- 审查模式：Oracle 复用复审。
 
 ### 2.56 Step 21: Workbench Asset Binding Trace Summary
 

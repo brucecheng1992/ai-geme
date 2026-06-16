@@ -2,12 +2,18 @@
 
 当前状态：
 
-- Step 29 Natural-language Live Semantic Editing Chain 🚧
+- Step 29 Natural-language Live Semantic Editing Chain ✅
   - 29.1 MVP Chain ✅
   - 29.2 Brief Textbox Deep Integration ✅
   - 29.3 Preview Runtime Refresh Adapter ✅
   - 29.4 Undo / Accept / Reject UX ✅
-  - 29.5 Final Consolidation ⬜
+  - 29.5 Final Consolidation ✅
+
+完成口径：
+
+- 29.2 到 29.4 已完成 Workbench-facing semantic UX 与 backend-adapter-gated action lifecycle。
+- Workbench 仍不直接写 SSOT，不直接调用 semantic patch applier，不修改 generated Phaser code。
+- 当前仓库尚未新增 semantic patch accept / rollback backend endpoint；真实 SSOT persistence、regeneration 和 QA runner 仍是后续独立边界。
 
 ## Step 29.1 MVP Chain
 
@@ -507,3 +513,66 @@ git diff --check -- .
 - 未新增 QA runner。
 - 未补 hook stale async behavior-level component test；当前已有 source guard regression test。
 - 未修改 generated Phaser code。
+
+## Step 29.5 Final Consolidation
+
+完成时间：2026-06-17
+
+已完成内容：
+
+- 新增 `docs/refactor-log/step29-workbench-semantic-ux.md`，记录 Step 29.2 到 29.5 的最终收口状态、验证、Oracle 结论、边界和后续建议。
+- 更新本文件顶部状态，将 Step 29.5 标记为完成，并明确完成口径是 Workbench-facing / backend-adapter-gated closure。
+- 更新 `docs/refactor-log/ai-game-dsl-p0-review-gated.md` 当前阶段记录，避免总日志继续停留在旧 Step 21。
+- 复核 Workbench Brief Textbox、Preview Runtime Refresh Adapter、SemanticPatch Accept / Reject / Undo UX 的边界。
+- 复核不存在 `apps/maker-workbench/README.md`，本轮不强行创建 Workbench README。
+- 复核可用脚本：当前没有 `test` script in `@ai-game-maker/maker-workbench`，也没有 root `test:workbench` / `test:workbench-semantic-editing` / `test:preview-refresh` / `test:playwright`。
+
+最终闭环状态：
+
+- Brief Textbox 可以创建 non-mutating patch preview。
+- Patch diff 在 Workbench 可见。
+- Accept / Undo action lifecycle 通过注入 backend adapter gate；Workbench 不直接写 SSOT。
+- Reject 只记录本地 history，不修改 SSOT，不触发 preview refresh。
+- Preview refresh 使用 generated artifact entry URL guard，不 fallback 到 Workbench shell。
+- iframe loaded / HTTP 200 不被视为 QA passed 或 PLAYABLE。
+- false playable / blank preview 会进入 failed verdict。
+- Patch history 与 trace event ids 在 Workbench action state 中保留到审阅面板。
+
+未完成但已明确边界：
+
+- 尚未新增 semantic patch accept / rollback backend endpoint。
+- 尚未实现真实 SSOT persistence / regeneration / backend QA runner。
+- 尚未补 hook stale async behavior-level component test；当前已有 source guard regression test 与 Oracle P3 记录。
+- 未进入 Step 28.3 / 28.4 / 28.5。
+- 未进入 Phaser Upgrade。
+- 未修改 generated Phaser code。
+
+最终验证：
+
+```bash
+npx vitest run apps/maker-workbench/src/features/semantic-editing/__tests__/semanticPatchActions.test.ts apps/maker-workbench/src/features/preview/__tests__/previewRuntimeRefreshAdapter.test.ts apps/maker-workbench/src/features/brief/__tests__/briefTextboxIntentBridge.test.ts
+npx vitest run tests/contracts/semantic-editing-*.test.ts
+npx vitest run tests/contracts/resolver-v2.test.ts
+npm run typecheck:root
+npm run typecheck --workspace @ai-game-maker/maker-workbench
+git diff --check -- .
+```
+
+结果：
+
+- Workbench 29.2 / 29.3 / 29.4 regression tests: 3 test files passed, 44 tests passed
+- semantic-editing contract tests: 10 test files passed, 138 tests passed
+- `tests/contracts/resolver-v2.test.ts`: 1 test file passed, 65 tests passed
+- root TypeScript typecheck passed
+- Workbench TypeScript typecheck passed
+- diff check passed
+
+审查门禁：
+
+- Step 29.4 收口复审：P0 / P1 / P2 无；P3 保留 hook stale async behavior-level component test 后续项。
+- Step 29.5 文档收口 Oracle：P0 / P1 / P2 / P3 均无；确认文档未把 backend adapter gate 夸大成已实现 persistence。
+
+下一步建议：
+
+- 若继续增强 live semantic editing，应优先新增 semantic patch accept / rollback backend endpoint，再接真实 SSOT persistence / regeneration / QA。
+- 若回到大阶段路线，应在独立 prompt 中选择 Phaser Upgrade 或后续 Resolver / pipeline 工作，不要混入 Step 29 closure。
