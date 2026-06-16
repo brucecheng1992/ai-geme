@@ -25,6 +25,7 @@ export {
   type BuildSemanticExtractionTraceInput
 } from './semantic/semantic-extraction-trace.js';
 export * from './resolver-v2/index.js';
+export * from './live-editing/index.js';
 export {
   buildSemanticIndex,
   createFixBlankPreviewRepairHandler,
