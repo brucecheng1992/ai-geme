@@ -26,10 +26,13 @@ export {
 } from './semantic/semantic-extraction-trace.js';
 export {
   buildSemanticIndex,
+  createFixBlankPreviewRepairHandler,
+  createFixBlankPreviewRepairHandlers,
   createSemanticPatchApplier,
   createSemanticPatchPlanner,
   createSemanticPatchValidator,
   defaultSemanticPatchGuards,
+  FIX_BLANK_PREVIEW_REPAIR_KIND,
   hashSemanticPatchDocument,
   isSemanticId,
   makeSemanticId,
@@ -40,6 +43,8 @@ export {
   SEMANTIC_EDIT_REASON_SOURCES,
   SEMANTIC_PATCH_STATUSES,
   SEMANTIC_ID_KINDS,
+  type FixBlankPreviewRepairHandlerOptions,
+  type FixBlankPreviewRepairPayload,
   type ParsedSemanticId,
   type SemanticEditConstraints,
   type SemanticEditIntent,

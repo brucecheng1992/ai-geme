@@ -47,6 +47,13 @@ export {
   type SemanticPatchValidatorOptions
 } from './patch-validator.js';
 export {
+  createFixBlankPreviewRepairHandler,
+  createFixBlankPreviewRepairHandlers,
+  FIX_BLANK_PREVIEW_REPAIR_KIND,
+  type FixBlankPreviewRepairHandlerOptions,
+  type FixBlankPreviewRepairPayload
+} from './repair-packs/index.js';
+export {
   SEMANTIC_EDIT_INTENT_KINDS,
   SEMANTIC_EDIT_REASON_SOURCES,
   SEMANTIC_PATCH_STATUSES,

@@ -6,7 +6,7 @@
 
 建立 Semantic Editing 的第一层稳定地址底座，让后续 intent、patch、guard、trace 和 Workbench 都使用语义对象定位 SSOT，而不是使用生成后的 Phaser 文件路径、代码行号或派生产物路径。
 
-当前已完成 Step 27.1、Step 27.2、Step 27.3、Step 27.4、Step 27.5 与 Step 27.6：稳定语义地址、Raw DSL 语义索引、`SemanticEditIntent` 类型与 schema、`SemanticPatch` 类型与 schema、Patch Planner 最小骨架、Patch Validator / Guards 最小骨架、Patch Applier / Rollback 最小骨架。不实现真实 SSOT persistence、Workbench 面板、QA false-playable repair、trace event、runtime / pipeline gate 或重新生成闭环。
+当前已完成 Step 27.1、Step 27.2、Step 27.3、Step 27.4、Step 27.5、Step 27.6 与 Step 27.7：稳定语义地址、Raw DSL 语义索引、`SemanticEditIntent` 类型与 schema、`SemanticPatch` 类型与 schema、Patch Planner 最小骨架、Patch Validator / Guards 最小骨架、Patch Applier / Rollback 最小骨架，以及 `fix_blank_preview` repair pack。不实现真实 SSOT persistence、Workbench 面板、QA false-playable 自动闭环、trace event、runtime / pipeline gate 或重新生成闭环。
 
 ## 已完成内容
 
@@ -565,30 +565,113 @@ git diff --check -- .
 - P3: 无
 - Oracle 结论：P0/P1/P2/P3 均无新问题，blocking findings closed。
 
+### Step 27.7 `fix_blank_preview` Repair Pack
+
+完成时间：2026-06-16
+
+已完成内容：
+
+- 新增 `packages/game-dsl/src/semantic-editing/repair-packs/fix-blank-preview.ts`。
+- 新增 `packages/game-dsl/src/semantic-editing/repair-packs/fix-blank-preview-config.ts`。
+- 新增 `packages/game-dsl/src/semantic-editing/repair-packs/fix-blank-preview-operations.ts`。
+- 新增 `packages/game-dsl/src/semantic-editing/repair-packs/index.ts`。
+- 新增并导出：
+  - `FIX_BLANK_PREVIEW_REPAIR_KIND`
+  - `FixBlankPreviewRepairPayload`
+  - `FixBlankPreviewRepairHandlerOptions`
+  - `createFixBlankPreviewRepairHandler`
+  - `createFixBlankPreviewRepairHandlers`
+- `fix_blank_preview` repair handler 只接入 `SemanticPatchPlanner` handler contract，输出 deterministic `SemanticPatchOperation[]`。
+- repair operations 只面向 SSOT object paths：
+  - `/scenes/{sceneKey}/background`
+  - `/scenes/{sceneKey}/camera`
+  - `/scenes/{sceneKey}/spawn/player`
+  - `/scenes/{sceneKey}/entities/{markerKey}`
+  - `/assets/fallbacks/{fallbackAssetKey}`
+- repair payload 支持按 section 关闭：
+  - `ensureBackgroundVisible`
+  - `ensureCameraSeesSpawn`
+  - `ensureRenderableEntity`
+  - `ensureAssetBindings`
+- all sections disabled 时 handler 返回空 operations，由 planner 统一收敛为 `EMPTY_SEMANTIC_PATCH_OPERATIONS`。
+- `scenePath` 必须是严格 `/scenes/{sceneKey}` 形态；真实 `SemanticIndex` 的 `scene:main -> /` 这类 Raw DSL 根路径不会被自动改写到 detached `/scenes/main`。
+- known payload fields schema invalid 时不吞错，统一转 planner `SEMANTIC_PATCH_HANDLER_EXCEPTION`。
+- marker key 不允许与 primary entity 名称碰撞；已有 entity key 若不是同一个 repair marker id，也会拒绝覆盖。
+- 新增 `tests/contracts/semantic-editing-fix-blank-preview.test.ts` 覆盖 planner -> validator -> applier -> rollback 的纯内存闭环。
+- explicit `scenePath` 契约只接受 canonical `/scenes/{sceneKey}`，拒绝 missing leading slash、double slash、trailing slash 和 nested scene child path。
+
+阶段边界：
+
+- Repair pack only proposes semantic patch operations.
+- It does not validate, apply, persist, rollback, regenerate IR/Phaser, run QA, emit trace events, update Workbench, or touch runtime / pipeline state.
+- Contract tests 使用 in-memory document 验证 planner / validator / applier / rollback composition；真实 SSOT persistence 仍未接入。
+- 本轮不修改 generated Phaser code，不修改 generated project，不修复真实 preview runtime。
+
+修改范围：
+
+- `packages/game-dsl/src/semantic-editing/repair-packs/fix-blank-preview.ts`
+- `packages/game-dsl/src/semantic-editing/repair-packs/fix-blank-preview-config.ts`
+- `packages/game-dsl/src/semantic-editing/repair-packs/fix-blank-preview-operations.ts`
+- `packages/game-dsl/src/semantic-editing/repair-packs/index.ts`
+- `packages/game-dsl/src/semantic-editing/index.ts`
+- `packages/game-dsl/src/index.ts`
+- `tests/contracts/semantic-editing-fix-blank-preview.test.ts`
+- `docs/refactor-log/semantic-editing-step-27.md`
+
+阶段结果：
+
+- `fix-blank-preview.ts` 当前 117 行，保持 planner handler orchestration 职责。
+- `fix-blank-preview-config.ts` 当前 200 行，集中 payload schema、defaults、merge 与 config validation。
+- `fix-blank-preview-operations.ts` 当前 232 行，集中 document operation planner、repair value builders 与 path/entity collision guards；略高于 220 行阈值但职责仍集中，暂不机械拆分。
+- `semantic-editing-fix-blank-preview.test.ts` 当前 583 行，覆盖主路径、payload overrides、section disable、real semantic index path guard、invalid payload、marker collision、canonical strict scenePath、mutation guard 和 repeated apply。
+
+已通过验证：
+
+```bash
+npx vitest run tests/contracts/semantic-editing-fix-blank-preview.test.ts
+npx vitest run tests/contracts/semantic-editing-index.test.ts tests/contracts/semantic-editing-intent.test.ts tests/contracts/semantic-editing-patch.test.ts tests/contracts/semantic-editing-planner.test.ts tests/contracts/semantic-editing-validator.test.ts tests/contracts/semantic-editing-applier.test.ts tests/contracts/semantic-editing-fix-blank-preview.test.ts
+npm run typecheck:root
+git diff --check -- .
+```
+
+结果：
+
+- `tests/contracts/semantic-editing-fix-blank-preview.test.ts`: 21 tests passed
+- semantic-editing contract tests: 7 test files passed, 83 tests passed
+- root TypeScript typecheck passed
+- diff check passed
+
+审查模式：Oracle 复用，只读审查。
+
+代码审查结论：
+
+- 第一轮复审 P0/P1 无，P2 指出 `validateScenePath` 仍会接受非 canonical scenePath。
+- 已修正 raw string scenePath 校验，要求 strict `/scenes/{sceneKey}`。
+- 已补 `scenes/main`、`/scenes//main`、`/scenes/main/` handler exception 契约测试。
+- 第二轮复审 P0/P1/P2 无，上轮 P2 已关闭。
+
 未实现范围：
 
 - 未实现真实 SSOT persistence。
 - 未实现 patch registry。
 - 未实现 trace events。
-- 未实现 `fix_blank_preview` repair pack。
 - 未实现 Workbench patch diff。
 - 未实现 QA FALSE_PLAYABLE 闭环。
 - 未接 runtime / pipeline gate。
 
 ## 未改范围
 
-- 未实现 false-playable `fix_blank_preview` repair pack。
 - 未接入 trace events。
 - 未接入 Workbench UI。
 - 未改变 generated project、Phaser runtime、QA 或 pipeline acceptance gate。
 
 ## 下一步建议
 
-Step 27.7: `fix_blank_preview` Repair Pack。
+Step 27.8: Semantic patch trace / Workbench / QA integration（以新 prompt 为准）。
 
 建议边界：
 
-- 基于 Step 27.6 applier / rollback 已验证的纯内存 patch apply 边界推进。
-- 仍不触碰 generated Phaser code，repair pack 应输出 semantic patch，不直接改 runtime。
-- 不接 trace、QA、Workbench 或 runtime / pipeline gate，除非 Step 27.7 prompt 明确要求。
+- 基于 Step 27.7 repair pack 已验证的 pure semantic patch proposal 边界推进。
+- 继续不触碰 generated Phaser code；后续接线应消费 semantic patch / SSOT，而不是直接改 runtime。
+- trace、QA、Workbench 或 runtime / pipeline gate 需要按后续 prompt 单独开边界。
 - 继续使用 Oracle review gate。
