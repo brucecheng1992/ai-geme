@@ -194,6 +194,7 @@ export type DashboardData = {
   repairReport?: RepairReport;
   buildLog?: string;
   artAssetPreview?: ArtAssetWorkbenchPreview;
+  pipelineArtifactIndex?: PipelineArtifactIndex;
 };
 
 export type PipelineArtifactRef = {

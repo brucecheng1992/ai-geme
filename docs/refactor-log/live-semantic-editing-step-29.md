@@ -5,7 +5,7 @@
 - Step 29 Natural-language Live Semantic Editing Chain 🚧
   - 29.1 MVP Chain ✅
   - 29.2 Brief Textbox Deep Integration ✅
-  - 29.3 Preview Runtime Refresh Adapter ⬜
+  - 29.3 Preview Runtime Refresh Adapter ✅
   - 29.4 Undo / Accept / Reject UX ⬜
   - 29.5 Final Consolidation ⬜
 
@@ -262,4 +262,118 @@ git diff --check -- .
 - 未实现 29.5 Final Consolidation。
 - 未写 SSOT persistence。
 - 未接 runtime / QA / pipeline。
+- 未修改 generated Phaser code。
+
+## Step 29.3 Preview Runtime Refresh Adapter
+
+完成时间：2026-06-17
+
+已完成内容：
+
+- 新增 `apps/maker-workbench/src/features/preview/PreviewRuntimeRefreshAdapter.ts`。
+  - 定义 preview refresh request / result / status / reason contract。
+  - 通过 `pipeline_artifact_index` 中的 `phaserPreviewManifest` 判定 generated preview artifact readiness。
+  - 缺失 artifact index、缺失 preview manifest、manifest 非 `present` 或非 `generated-project` root 时返回 `PREVIEW_ARTIFACT_ENTRY_NOT_FOUND`。
+  - 拒绝 Workbench shell origin 的 preview URL，返回 `PREVIEW_ARTIFACT_POINTS_TO_WORKBENCH_SHELL`。
+  - 生成 cache-busted iframe URL，cache key 使用 patch id / run id / refresh id。
+  - 新 refresh 会使旧 refresh 进入 `stale`。
+  - `iframe loaded` 只记录 load signal，不等于 runtime ready 或 QA passed。
+  - `runtime loaded + QA passed + telemetry observed` 后才进入 `ready`。
+  - `PREVIEW_BLANK_SCREEN` 降级为 `FALSE_PLAYABLE` failed verdict。
+  - `ready` / `failed` terminal verdict 不会被后续 iframe / runtime / QA event 覆盖。
+- 新增 `usePreviewRuntimeRefresh` hook。
+  - 在 React 内保持 adapter 生命周期稳定。
+  - 提供 request / iframe loaded / runtime loaded / QA complete 的 state bridge。
+- 新增 `PreviewFrame` 与 `PreviewStatusBadge`。
+  - `PreviewFrame` 承载 cache-busted iframe URL。
+  - `PreviewStatusBadge` 暴露 refresh 状态，不把 shell load 误标为 playable。
+- 新增 `semanticEditPreviewRefreshBridge.ts`。
+  - 将 semantic patch applied / rollback event 映射为 preview refresh request。
+  - 只做 request handoff，不实现 Accept / Undo / Rollback。
+- 更新 `App.tsx`。
+  - `loadProject` 读取现有 `/api/projects/:projectId/runs/:runId/artifacts`，把 `pipeline_artifact_index` 放入 Workbench dashboard state。
+  - preview refresh request 传入 `artifactIndex`、backend preview URL、run status 和 Workbench origin。
+  - 有 refresh result 时只使用 adapter 产出的 `iframeUrl`；没有 `iframeUrl` 时不 fallback 到旧 `previewUrl`。
+  - iframe `onLoad` 只标记 iframe loaded。
+  - `AIGAME_RUNTIME_READY` 标记 runtime loaded。
+  - 现有 QA report 只作为 QA verdict 输入；未新增 QA runner 或 backend pipeline。
+- 更新 `workbench-api.ts`。
+  - `DashboardData` 增加 Workbench-only `pipelineArtifactIndex`。
+- 新增 `apps/maker-workbench/src/features/preview/__tests__/previewRuntimeRefreshAdapter.test.ts`。
+  - 覆盖 artifact URL、missing artifact、Workbench shell URL、cache bust、stale request。
+  - 覆盖 iframe loaded 不等于 QA passed。
+  - 覆盖 QA before runtime 不 ready，runtime + QA passed 后才 ready。
+  - 覆盖 false playable / blank screen failure。
+  - 覆盖 terminal verdict 不被后续 event 覆盖。
+  - 覆盖 semantic patch applied / rollback 到 refresh request 的 bridge。
+  - 覆盖 App refresh path 使用 `pipeline_artifact_index` 且不 fallback 到 Workbench shell。
+
+安全边界：
+
+- 29.3 不实现 Accept / Undo / Reject。
+- 29.3 不写 SSOT persistence。
+- 29.3 不调用 semantic patch applier。
+- 29.3 不实现 rollback。
+- 29.3 不接 backend QA runner。
+- 29.3 不接 backend pipeline。
+- 29.3 不接 IR generator。
+- 29.3 不接 Phaser generator。
+- 29.3 不修改 Resolver V2 能力。
+- 29.3 不修改 generated Phaser code。
+- 29.3 只消费现有 artifact index、runtime message 与 QA report，不把 iframe loaded 或 HTTP 200 视为 PLAYABLE。
+
+本轮验证：
+
+```bash
+npx vitest run apps/maker-workbench/src/features/preview/__tests__/previewRuntimeRefreshAdapter.test.ts
+npx vitest run apps/maker-workbench/src/features/brief/__tests__/briefTextboxIntentBridge.test.ts
+npx vitest run tests/contracts/semantic-editing-*.test.ts
+npx vitest run tests/contracts/resolver-v2.test.ts
+npm run typecheck:root
+npm run typecheck --workspace @ai-game-maker/maker-workbench
+git diff --check -- .
+```
+
+结果：
+
+- `apps/maker-workbench/src/features/preview/__tests__/previewRuntimeRefreshAdapter.test.ts`: 1 test file passed, 17 tests passed
+- `apps/maker-workbench/src/features/brief/__tests__/briefTextboxIntentBridge.test.ts`: 1 test file passed, 8 tests passed
+- semantic-editing contract tests: 10 test files passed, 138 tests passed
+- `tests/contracts/resolver-v2.test.ts`: 1 test file passed, 65 tests passed
+- root TypeScript typecheck passed
+- Workbench TypeScript typecheck passed
+- diff check passed
+
+审查门禁：
+
+- Oracle 首审：
+  - P1:
+    - App 未实际消费 backend artifact index，missing / skipped preview artifact 仍可能加载 fallback preview URL。
+    - Runtime / QA gating order-dependent，QA 可能在 iframe/runtime ready 前标记 ready，后续 iframe/runtime event 又可能覆盖状态。
+  - P2:
+    - 测试未覆盖 App 未传 artifact index、QA before runtime、QA verdict 被后续 event 覆盖等路径。
+- 本轮处理：
+  - `loadProject` 读取 `pipeline_artifact_index` 并传给 preview refresh adapter。
+  - adapter 在没有 artifact index evidence 时返回 `PREVIEW_ARTIFACT_ENTRY_NOT_FOUND`。
+  - adapter 引入 runtime / iframe / QA 单调状态规则，QA passed 需等待 runtime loaded 才 ready。
+  - 补 artifact index、QA-first、terminal verdict regression tests。
+- Oracle 复审：
+  - P1:
+    - `completeQa` 仍可能覆盖 artifact-missing `failed` 或 `ready` terminal verdict。
+    - App 在已有 refresh 但无 `iframeUrl` 时仍可能 fallback 到 `previewUrl`。
+- 本轮处理：
+  - `completeQa` 增加 terminal guard。
+  - `activePreviewUrl` 改为：没有 refresh result 时才使用旧 `previewUrl`；已有 refresh result 时只使用 `iframeUrl` 或空字符串。
+  - 补 `completeQa` after artifact missing failed、`completeQa` after ready、App no-fallback source guard tests。
+- Oracle 三审：
+  - blocker: 无
+  - 上轮 P1 已关闭
+  - 确认未越界到 backend pipeline、QA runner、IR / Phaser generator、Resolver V2 新能力、SSOT apply / rollback 或 generated Phaser code
+
+未处理范围：
+
+- 未实现 29.4 Undo / Accept / Reject UX。
+- 未实现 29.5 Final Consolidation。
+- 未写 SSOT persistence。
+- 未新增 QA runner。
 - 未修改 generated Phaser code。

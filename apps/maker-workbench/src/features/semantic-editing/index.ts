@@ -3,3 +3,7 @@ export {
   SemanticPatchDiffOperationList,
   type SemanticPatchDiffOperationListProps
 } from './SemanticPatchDiffOperationList.js';
+export {
+  buildPreviewRefreshRequestFromSemanticPatchEvent,
+  type SemanticEditPreviewRefreshEvent
+} from './semanticEditPreviewRefreshBridge.js';

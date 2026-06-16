@@ -4,6 +4,7 @@ import { buildSemanticIndex } from '@ai-game-maker/game-dsl';
 import { AssetStatusPanel } from './AssetStatusPanel.js';
 import { AssetBindingTraceSummaryPanel, fetchAssetBindingTrace, type AssetBindingTraceView } from './asset-binding-trace-client.js';
 import { BriefTextboxPanel, type BriefTextboxMode } from './features/brief/index.js';
+import { PreviewFrame, PreviewStatusBadge, usePreviewRuntimeRefresh } from './features/preview/index.js';
 import { PromptCoachPanel } from './PromptCoachPanel.js';
 import { QaStatusPanel } from './QaStatusPanel.js';
 import { buildEditableFields, buildLiveObjectTree, buildReplacePrepareBody, buildRuntimeApplyReportFromPatchResult, type LiveEditableField } from './live-edit-client.js';
@@ -26,6 +27,7 @@ import {
   type ArtAssetWorkbenchPreview,
   type DashboardData,
   type LiveCurrentResponse,
+  type PipelineArtifactsResponse,
   type PreparedDeterministicPatch,
   type ProjectStatus,
   type QaReport,
@@ -114,6 +116,9 @@ export function App() {
   const previewHostRef = useRef<HTMLDivElement | null>(null);
   const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
   const pendingPatchRef = useRef<PreparedDeterministicPatch | null>(null);
+  const previewRefresh = usePreviewRuntimeRefresh();
+  const previewRefreshResult = previewRefresh.current;
+  const previewRefreshId = previewRefreshResult?.refreshId;
 
   const previewUrl = useMemo(() => {
     if (data.project?.project.preview_url) {
@@ -123,6 +128,7 @@ export function App() {
   }, [data.project?.project.preview_url, projectId]);
   const observedCounts = useMemo(() => countEvents(data.qaReport?.observed_events ?? []), [data.qaReport?.observed_events]);
   const previewBlankScreen = data.qaReport?.code === 'PREVIEW_BLANK_SCREEN';
+  const activePreviewUrl = previewRefreshResult === undefined ? previewUrl : (previewRefreshResult.iframeUrl ?? '');
   const displayStatus = resolveWorkbenchDisplayStatus(data.project?.project.status, data.qaReport);
   const latestRun = data.project?.latest_run;
   const timelineSteps = latestRun?.steps.length ? latestRun.steps : fallbackSteps(latestRun?.status);
@@ -152,7 +158,32 @@ export function App() {
   }, [projectId, runId, isTerminal]);
 
   useEffect(() => {
-    if (!previewUrl || previewBlankScreen) {
+    if (!projectId || !runId || !previewUrl || previewBlankScreen) {
+      return;
+    }
+
+    previewRefresh.requestRefresh(
+      { projectId, runId, reason: 'generation_completed', forceQa: true },
+      {
+        apiBase: API_BASE,
+        projectPreviewUrl: previewUrl,
+        artifactIndex: data.pipelineArtifactIndex,
+        runStatus: latestRun?.status,
+        workbenchOrigin: window.location.origin
+      }
+    );
+  }, [data.pipelineArtifactIndex, latestRun?.status, previewBlankScreen, previewRefresh.requestRefresh, previewUrl, projectId, runId]);
+
+  useEffect(() => {
+    if (previewRefreshId === undefined || data.qaReport === undefined) {
+      return;
+    }
+
+    previewRefresh.completeQa(previewRefreshId, { qaReport: data.qaReport });
+  }, [data.qaReport, previewRefresh.completeQa, previewRefreshId]);
+
+  useEffect(() => {
+    if (!activePreviewUrl || previewBlankScreen) {
       return undefined;
     }
 
@@ -179,15 +210,15 @@ export function App() {
       window.removeEventListener('keydown', forwardKey);
       window.removeEventListener('keyup', forwardKey);
     };
-  }, [previewUrl, previewBlankScreen]);
+  }, [activePreviewUrl, previewBlankScreen]);
 
   useEffect(() => {
     setRuntimeReady(false);
     setPendingPatchId(null);
     setPreviewInstanceId(null);
     pendingPatchRef.current = null;
-    setLiveEditStatus(previewUrl && !previewBlankScreen ? 'Waiting for runtime' : 'Runtime not connected');
-  }, [previewUrl, previewBlankScreen]);
+    setLiveEditStatus(activePreviewUrl && !previewBlankScreen ? 'Waiting for runtime' : 'Runtime not connected');
+  }, [activePreviewUrl, previewBlankScreen]);
 
   useEffect(() => {
     const handleRuntimeMessage = (event: MessageEvent) => {
@@ -209,6 +240,9 @@ export function App() {
         setPreviewInstanceId(data.previewInstanceId);
         setRuntimeReady(true);
         setLiveEditStatus(`Runtime ready: ${typeof data.runtimeTarget === 'string' ? data.runtimeTarget : 'preview'}`);
+        if (previewRefreshId !== undefined) {
+          previewRefresh.markRuntimeLoaded(previewRefreshId);
+        }
         previewFrameRef.current?.contentWindow?.postMessage({ type: 'AIGAME_GET_CAPABILITIES', runId, previewInstanceId: data.previewInstanceId }, '*');
         return;
       }
@@ -246,7 +280,7 @@ export function App() {
 
     window.addEventListener('message', handleRuntimeMessage);
     return () => window.removeEventListener('message', handleRuntimeMessage);
-  }, [projectId, runId, previewInstanceId]);
+  }, [projectId, runId, previewInstanceId, previewRefresh.markRuntimeLoaded, previewRefreshId]);
 
   async function generateProject() {
     await runAction(async () => {
@@ -266,13 +300,14 @@ export function App() {
       const project = await requestJson<ProjectStatus>(`${API_BASE}/api/projects/${selectedProjectId}`);
       const events = await requestJson<RunEvents>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/events`);
       const status = project.latest_run.status;
-      const [qaReport, repairReport, buildLog, artAssetPreview, live, evidence, acceptance, bindingTrace] = await Promise.all([
+      const [qaReport, repairReport, buildLog, artAssetPreview, artifacts, live, evidence, acceptance, bindingTrace] = await Promise.all([
         shouldLoadQaReport(status) ? optionalJson<{ qa_report: QaReport }>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/qa-report`) : undefined,
         shouldLoadRepairReport(status)
           ? optionalJson<{ repair_report: RepairReport }>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/repair-report`)
           : undefined,
         shouldLoadBuildLog(status) ? optionalJson<{ build_log: string }>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/build-log`) : undefined,
         optionalJson<{ preview: ArtAssetWorkbenchPreview }>(`${API_BASE}/api/art-assets/preview/small-library`),
+        optionalJson<PipelineArtifactsResponse>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/artifacts`),
         optionalJson<LiveCurrentResponse>(`${API_BASE}/api/projects/${selectedProjectId}/runs/${selectedRunId}/live/current`),
         fetchPipelineEvidence({ apiBase: API_BASE, projectId: selectedProjectId, runId: selectedRunId }),
         fetchPipelineAcceptance({ apiBase: API_BASE, projectId: selectedProjectId, runId: selectedRunId }),
@@ -285,7 +320,8 @@ export function App() {
         qaReport: qaReport?.qa_report,
         repairReport: repairReport?.repair_report,
         buildLog: buildLog?.build_log,
-        artAssetPreview: artAssetPreview?.preview
+        artAssetPreview: artAssetPreview?.preview,
+        pipelineArtifactIndex: artifacts?.pipeline_artifact_index
       });
       setLiveCurrent(live);
       setPipelineEvidence(evidence);
@@ -444,6 +480,13 @@ export function App() {
     previewHostRef.current?.focus();
   }
 
+  function handlePreviewFrameLoad() {
+    focusPreviewFrame();
+    if (previewRefreshId !== undefined) {
+      previewRefresh.markIframeLoaded(previewRefreshId);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[#fffaf0] bg-[linear-gradient(90deg,rgba(21,19,15,0.045)_1px,transparent_1px),linear-gradient(0deg,rgba(21,19,15,0.035)_1px,transparent_1px)] bg-[length:28px_28px] text-[#15130f]">
       <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b-2 border-[#312b22] bg-[#fffaf0]/95 px-5 py-4 max-sm:flex-col max-sm:items-stretch max-sm:gap-3 max-sm:px-3 max-sm:py-3">
@@ -543,6 +586,7 @@ export function App() {
                 <h2 className="m-0 text-[23px] font-black leading-tight text-[#fdf3df] [overflow-wrap:anywhere]">{projectId || 'Waiting for a generated project'}</h2>
               </div>
               <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                <PreviewStatusBadge result={previewRefreshResult} />
                 <span className="rounded-full border border-[#314e66] px-3 py-1.5 text-xs font-extrabold text-[#c6d7e6]">
                   {observedCounts.length} telemetry signals
                 </span>
@@ -556,16 +600,18 @@ export function App() {
                 <strong>PREVIEW_BLANK_SCREEN</strong>
                 <span className="max-w-xl text-[#ffc1b5]">Visual QA failed: the preview returned a blank rendered frame, so this run is not PLAYABLE.</span>
               </div>
-            ) : previewUrl ? (
+            ) : activePreviewUrl ? (
               <div
                 className="h-[clamp(360px,50vh,560px)] w-full outline-none focus-visible:ring-4 focus-visible:ring-[#ffb13b]"
                 ref={previewHostRef}
                 tabIndex={0}
               >
-                <iframe className="h-full w-full border-0" title="Game preview" src={previewUrl} sandbox="allow-scripts" ref={previewFrameRef} onLoad={focusPreviewFrame} />
+                <PreviewFrame ref={previewFrameRef} src={activePreviewUrl} onLoad={handlePreviewFrameLoad} />
               </div>
             ) : (
-              <div className="flex h-[clamp(360px,50vh,560px)] items-center justify-center text-[#b8cadd]">No preview</div>
+              <div className="flex h-[clamp(360px,50vh,560px)] items-center justify-center text-[#b8cadd]">
+                {previewRefreshResult?.status === 'waiting_for_build' ? 'Waiting for generated artifact' : 'No preview'}
+              </div>
             )}
           </section>
 
