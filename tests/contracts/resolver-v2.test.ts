@@ -4,6 +4,9 @@ import {
   resolveSemanticDocumentV2,
   createResolverV2,
   extractResolverV2AssetCatalog,
+  extractResolverV2SceneGraph,
+  type ResolverV2SceneGraphEdge,
+  type ResolverV2SceneGraphNode,
   type SemanticIndex,
   type SemanticIndexEntry
 } from '../../packages/game-dsl/src/index.js';
@@ -276,16 +279,18 @@ describe('Resolver V2 contract', () => {
 
     expect(result.ok).toBe(false);
     expect(result.references[0]).toMatchObject({ targetId: 'entity:missing', status: 'unresolved' });
-    expect(result.diagnostics).toEqual([
-      expect.objectContaining({
-        severity: 'error',
-        code: 'RESOLVER_REFERENCE_TARGET_NOT_FOUND',
-        targetId: 'entity:missing',
-        expectedTargetKind: 'entity',
-        fieldPath: '/scenes/main/camera/follow'
-      })
-    ]);
-    expect(result.summary).toMatchObject({ errorCount: 1, unresolvedCount: 1 });
+    expect(result.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: 'error',
+          code: 'RESOLVER_REFERENCE_TARGET_NOT_FOUND',
+          targetId: 'entity:missing',
+          expectedTargetKind: 'entity',
+          fieldPath: '/scenes/main/camera/follow'
+        })
+      ])
+    );
+    expect(result.summary).toMatchObject({ unresolvedCount: 1 });
   });
 
   it('reports kind mismatch diagnostics', () => {
@@ -300,15 +305,17 @@ describe('Resolver V2 contract', () => {
 
     expect(result.ok).toBe(false);
     expect(result.references[0]).toMatchObject({ targetId: 'asset:player_sprite', status: 'unresolved' });
-    expect(result.diagnostics).toEqual([
-      expect.objectContaining({
-        severity: 'error',
-        code: 'RESOLVER_REFERENCE_KIND_MISMATCH',
-        expectedTargetKind: 'entity',
-        actualTargetKind: 'asset',
-        targetId: 'asset:player_sprite'
-      })
-    ]);
+    expect(result.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: 'error',
+          code: 'RESOLVER_REFERENCE_KIND_MISMATCH',
+          expectedTargetKind: 'entity',
+          actualTargetKind: 'asset',
+          targetId: 'asset:player_sprite'
+        })
+      ])
+    );
   });
 
   it('rejects unsafe generated code references', () => {
@@ -962,6 +969,638 @@ describe('Resolver V2 contract', () => {
     expect(semanticIndex.resolve('asset:player_sprite')).toMatchObject({ id: 'asset:player_sprite' });
   });
 });
+
+describe('Resolver V2 scene graph resolver', () => {
+  it('extracts scene and entity graph nodes', () => {
+    const result = resolveSceneGraphTestResult({
+      document: {
+        scenes: {
+          main: {
+            entities: {
+              player: {
+                id: 'entity:player',
+                components: {
+                  transform: { x: 120, y: 300 }
+                }
+              }
+            }
+          }
+        }
+      },
+      semanticIndex: createSemanticIndex([{ id: 'entity:player', kind: 'entity', path: '/scenes/main/entities/player', value: {} }])
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.sceneGraph?.nodes).toEqual([
+      expect.objectContaining({
+        id: 'scene_node:scene:main',
+        kind: 'scene',
+        semanticId: 'scene:main',
+        path: '/scenes/main'
+      }),
+      expect.objectContaining({
+        id: 'entity_node:main:entity:player',
+        kind: 'entity',
+        semanticId: 'entity:player',
+        path: '/scenes/main/entities/player',
+        transform: { x: 120, y: 300 }
+      })
+    ]);
+    expect(result.sceneGraph?.edges).toEqual([
+      expect.objectContaining({
+        kind: 'scene_contains_entity',
+        from: 'scene_node:scene:main',
+        to: 'entity_node:main:entity:player',
+        path: '/scenes/main/entities/player'
+      })
+    ]);
+    expect(result.summary).toMatchObject({
+      sceneCount: 1,
+      entityCount: 1
+    });
+  });
+
+  it('creates camera follow graph edges', () => {
+    const result = resolveSceneGraphTestResult({
+      document: {
+        scenes: {
+          main: {
+            camera: {
+              id: 'camera:main',
+              follow: 'entity:player'
+            },
+            entities: {
+              player: {
+                id: 'entity:player'
+              }
+            }
+          }
+        }
+      },
+      semanticIndex: createSemanticIndex([
+        { id: 'scene:main', kind: 'scene', path: '/scenes/main', value: {} },
+        { id: 'entity:player', kind: 'entity', path: '/scenes/main/entities/player', value: {} }
+      ])
+    });
+
+    expect(result.sceneGraph?.nodes).toContainEqual(
+      expect.objectContaining({
+        id: 'camera_node:main:camera:main',
+        kind: 'camera',
+        semanticId: 'camera:main',
+        path: '/scenes/main/camera'
+      })
+    );
+    expect(result.sceneGraph?.edges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'scene_has_camera',
+          from: 'scene_node:scene:main',
+          to: 'camera_node:main:camera:main'
+        }),
+        expect.objectContaining({
+          kind: 'camera_follows_entity',
+          from: 'camera_node:main:camera:main',
+          to: 'entity_node:main:entity:player',
+          path: '/scenes/main/camera/follow'
+        })
+      ])
+    );
+    expect(diagnosticCodes(result)).not.toContain('RESOLVER_CAMERA_TARGET_NOT_FOUND');
+  });
+
+  it('reports missing camera follow targets', () => {
+    const result = resolveSceneGraphTestResult({
+      document: {
+        scenes: {
+          main: {
+            camera: {
+              follow: 'entity:missing'
+            },
+            entities: {}
+          }
+        }
+      },
+      semanticIndex: createSemanticIndex([{ id: 'scene:main', kind: 'scene', path: '/scenes/main', value: {} }])
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: 'error',
+          code: 'RESOLVER_CAMERA_TARGET_NOT_FOUND',
+          targetId: 'entity:missing',
+          fieldPath: '/scenes/main/camera/follow'
+        })
+      ])
+    );
+  });
+
+  it('extracts spawn graph nodes and edges', () => {
+    const result = resolveSceneGraphTestResult({
+      document: {
+        scenes: {
+          main: {
+            world: { width: 800, height: 600 },
+            entities: {
+              player: { id: 'entity:player' }
+            },
+            spawn: {
+              player: { x: 160, y: 320 }
+            }
+          }
+        }
+      },
+      semanticIndex: createSemanticIndex([{ id: 'entity:player', kind: 'entity', path: '/scenes/main/entities/player', value: {} }])
+    });
+
+    expect(result.sceneGraph?.nodes).toContainEqual(
+      expect.objectContaining({
+        id: 'spawn_node:main:player',
+        kind: 'spawn',
+        sceneId: 'scene:main',
+        path: '/scenes/main/spawn/player',
+        transform: { x: 160, y: 320 }
+      })
+    );
+    expect(result.sceneGraph?.edges).toContainEqual(
+      expect.objectContaining({
+        kind: 'scene_has_spawn',
+        from: 'scene_node:scene:main',
+        to: 'spawn_node:main:player',
+        path: '/scenes/main/spawn/player'
+      })
+    );
+    expect(diagnosticCodes(result)).not.toContain('RESOLVER_SPAWN_OUT_OF_BOUNDS');
+  });
+
+  it('reports spawn points outside valid scene bounds', () => {
+    const result = resolveSceneGraphTestResult({
+      document: {
+        scenes: {
+          main: {
+            world: { width: 800, height: 600 },
+            entities: {
+              player: { id: 'entity:player' }
+            },
+            spawn: {
+              player: { x: 9999, y: 320 }
+            }
+          }
+        }
+      },
+      semanticIndex: createSemanticIndex([{ id: 'entity:player', kind: 'entity', path: '/scenes/main/entities/player', value: {} }])
+    });
+
+    expect(result.ok).toBe(false);
+    expect(diagnosticCodes(result)).toContain('RESOLVER_SPAWN_OUT_OF_BOUNDS');
+  });
+
+  it('reports invalid scene bounds', () => {
+    const result = resolveSceneGraphTestResult({
+      document: {
+        scenes: {
+          main: {
+            world: { width: -1, height: 600 }
+          }
+        }
+      },
+      semanticIndex: createSemanticIndex()
+    });
+
+    expect(result.ok).toBe(false);
+    expect(diagnosticCodes(result)).toContain('RESOLVER_SCENE_BOUNDS_INVALID');
+  });
+
+  it('reports duplicate entity ids', () => {
+    const result = resolveSceneGraphTestResult({
+      document: {
+        scenes: {
+          main: {
+            entities: {
+              player: { id: 'entity:hero' },
+              hero: { id: 'entity:hero' }
+            }
+          }
+        }
+      },
+      semanticIndex: createSemanticIndex([{ id: 'entity:hero', kind: 'entity', path: '/scenes/main/entities/player', value: {} }])
+    });
+
+    expect(result.ok).toBe(false);
+    expect(diagnosticCodes(result)).toContain('RESOLVER_DUPLICATE_ENTITY_ID');
+  });
+
+  it('resolves entity parent graph edges', () => {
+    const result = resolveSceneGraphTestResult({
+      document: {
+        scenes: {
+          main: {
+            entities: {
+              child: { id: 'entity:child', parent: 'entity:parent' },
+              parent: { id: 'entity:parent' }
+            }
+          }
+        }
+      },
+      semanticIndex: createSemanticIndex([
+        { id: 'entity:child', kind: 'entity', path: '/scenes/main/entities/child', value: {} },
+        { id: 'entity:parent', kind: 'entity', path: '/scenes/main/entities/parent', value: {} }
+      ])
+    });
+
+    expect(result.sceneGraph?.edges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'entity_parent',
+          from: 'entity_node:main:entity:child',
+          to: 'entity_node:main:entity:parent',
+          path: '/scenes/main/entities/child/parent'
+        }),
+        expect.objectContaining({
+          kind: 'entity_child',
+          from: 'entity_node:main:entity:parent',
+          to: 'entity_node:main:entity:child',
+          path: '/scenes/main/entities/child/parent'
+        })
+      ])
+    );
+    expect(diagnosticCodes(result)).not.toContain('RESOLVER_ENTITY_PARENT_NOT_FOUND');
+  });
+
+  it('reports missing entity parents', () => {
+    const result = resolveSceneGraphTestResult({
+      document: {
+        scenes: {
+          main: {
+            entities: {
+              child: { id: 'entity:child', parent: 'entity:missing' }
+            }
+          }
+        }
+      },
+      semanticIndex: createSemanticIndex([{ id: 'entity:child', kind: 'entity', path: '/scenes/main/entities/child', value: {} }])
+    });
+
+    expect(result.ok).toBe(false);
+    expect(diagnosticCodes(result)).toContain('RESOLVER_ENTITY_PARENT_NOT_FOUND');
+  });
+
+  it('reports entity parent cycles without throwing', () => {
+    expect(() =>
+      resolveSceneGraphTestResult({
+        document: {
+          scenes: {
+            main: {
+              entities: {
+                a: { id: 'entity:a', parent: 'entity:b' },
+                b: { id: 'entity:b', parent: 'entity:a' }
+              }
+            }
+          }
+        },
+        semanticIndex: createSemanticIndex([
+          { id: 'entity:a', kind: 'entity', path: '/scenes/main/entities/a', value: {} },
+          { id: 'entity:b', kind: 'entity', path: '/scenes/main/entities/b', value: {} }
+        ])
+      })
+    ).not.toThrow();
+
+    const result = resolveSceneGraphTestResult({
+      document: {
+        scenes: {
+          main: {
+            entities: {
+              a: { id: 'entity:a', parent: 'entity:b' },
+              b: { id: 'entity:b', parent: 'entity:a' }
+            }
+          }
+        }
+      },
+      semanticIndex: createSemanticIndex([
+        { id: 'entity:a', kind: 'entity', path: '/scenes/main/entities/a', value: {} },
+        { id: 'entity:b', kind: 'entity', path: '/scenes/main/entities/b', value: {} }
+      ])
+    });
+
+    expect(result.ok).toBe(false);
+    expect(diagnosticCodes(result)).toContain('RESOLVER_ENTITY_PARENT_CYCLE');
+  });
+
+  it('reports invalid entity transforms', () => {
+    const result = resolveSceneGraphTestResult({
+      document: {
+        scenes: {
+          main: {
+            entities: {
+              player: {
+                id: 'entity:player',
+                components: {
+                  transform: { x: 'bad' }
+                }
+              }
+            }
+          }
+        }
+      },
+      semanticIndex: createSemanticIndex([{ id: 'entity:player', kind: 'entity', path: '/scenes/main/entities/player', value: {} }])
+    });
+
+    expect(result.ok).toBe(false);
+    expect(diagnosticCodes(result)).toContain('RESOLVER_INVALID_TRANSFORM');
+  });
+
+  it('reports invalid fallback semantic ids from malformed scene graph keys', () => {
+    const result = resolveSceneGraphTestResult({
+      document: {
+        scenes: {
+          'bad-key': {
+            camera: {},
+            entities: {
+              'bad-key': {}
+            }
+          }
+        }
+      },
+      semanticIndex: createSemanticIndex()
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'INVALID_RESOLVER_SEMANTIC_ID',
+          targetId: 'scene:bad-key',
+          fieldPath: '/scenes/bad-key/id'
+        }),
+        expect.objectContaining({
+          code: 'INVALID_RESOLVER_SEMANTIC_ID',
+          targetId: 'camera:bad-key',
+          fieldPath: '/scenes/bad-key/camera/id'
+        }),
+        expect.objectContaining({
+          code: 'INVALID_RESOLVER_SEMANTIC_ID',
+          targetId: 'entity:bad-key',
+          fieldPath: '/scenes/bad-key/entities/bad-key/id'
+        })
+      ])
+    );
+  });
+
+  it('reports wrong-kind camera follow targets when extracting scene graph directly', () => {
+    const extraction = extractResolverV2SceneGraph({
+      scenes: {
+        main: {
+          camera: {
+            follow: 'asset:player_sprite'
+          }
+        }
+      }
+    });
+
+    expect(extraction.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: 'error',
+          code: 'INVALID_RESOLVER_SEMANTIC_ID',
+          targetId: 'asset:player_sprite',
+          expectedTargetKind: 'entity',
+          actualTargetKind: 'asset',
+          fieldPath: '/scenes/main/camera/follow'
+        })
+      ])
+    );
+  });
+
+  it('does not resolve invalid inferred spawn targets through malformed entity fallback ids', () => {
+    const result = resolveSceneGraphTestResult({
+      document: {
+        scenes: {
+          main: {
+            entities: {
+              'bad-key': {}
+            },
+            spawn: {
+              'bad-key': { x: 1, y: 2 }
+            }
+          }
+        }
+      },
+      semanticIndex: createSemanticIndex()
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'INVALID_RESOLVER_SEMANTIC_ID',
+          targetId: 'entity:bad-key',
+          sourcePath: '/scenes/main/spawn/bad-key'
+        }),
+        expect.objectContaining({
+          severity: 'warning',
+          code: 'RESOLVER_SPAWN_TARGET_NOT_FOUND',
+          targetId: 'entity:bad-key',
+          sourcePath: '/scenes/main/spawn/bad-key'
+        })
+      ])
+    );
+  });
+
+  it('orders scene graph nodes and edges deterministically', () => {
+    const document = {
+      scenes: {
+        z: {
+          spawn: {
+            player: { x: 8, y: 9 }
+          },
+          entities: {
+            b: { id: 'entity:z_b' },
+            a: { id: 'entity:z_a', parent: 'entity:z_b' }
+          }
+        },
+        a: {
+          spawns: {
+            hero: { entityId: 'entity:a_hero', x: 1, y: 2 }
+          },
+          camera: {
+            follow: 'entity:a_hero'
+          },
+          entities: {
+            hero: { id: 'entity:a_hero' }
+          }
+        }
+      }
+    };
+    const semanticIndex = createSemanticIndex([
+      { id: 'entity:a_hero', kind: 'entity', path: '/scenes/a/entities/hero', value: {} },
+      { id: 'entity:z_a', kind: 'entity', path: '/scenes/z/entities/a', value: {} },
+      { id: 'entity:z_b', kind: 'entity', path: '/scenes/z/entities/b', value: {} }
+    ]);
+
+    const first = resolveSceneGraphTestResult({ document, semanticIndex });
+    const second = resolveSceneGraphTestResult({ document, semanticIndex });
+    const nodePaths = first.sceneGraph?.nodes.map((node) => node.path) ?? [];
+    const edgeOrderKeys =
+      first.sceneGraph?.edges.map((edge) => `${edge.kind}\0${edge.path}\0${edge.from}\0${edge.to}`) ?? [];
+
+    expect(first).toEqual(second);
+    expect(nodePaths).toEqual([...nodePaths].sort());
+    expect(edgeOrderKeys).toEqual([...edgeOrderKeys].sort());
+    expect(first.sceneGraph?.edges.map((edge) => edge.id)).toEqual(
+      first.sceneGraph?.edges.map((edge, index) => `scene_edge:${edge.kind}:${index}`)
+    );
+  });
+
+  it('does not mutate scene graph documents or SemanticIndex entries', () => {
+    const document = {
+      scenes: {
+        main: {
+          world: { width: 800, height: 600 },
+          camera: { follow: 'entity:player' },
+          entities: {
+            player: {
+              id: 'entity:player',
+              components: {
+                transform: { x: 10, y: 20 }
+              }
+            }
+          },
+          spawn: {
+            player: { x: 10, y: 20 }
+          }
+        }
+      }
+    };
+    const semanticIndex = createSemanticIndex([{ id: 'entity:player', kind: 'entity', path: '/scenes/main/entities/player', value: { marker: 'entry' } }]);
+    const before = {
+      document: structuredClone(document),
+      entry: structuredClone(semanticIndex.resolve('entity:player'))
+    };
+
+    resolveSceneGraphTestResult({ document, semanticIndex });
+
+    expect(document).toEqual(before.document);
+    expect(semanticIndex.resolve('entity:player')).toEqual(before.entry);
+  });
+
+  it('returns scene graph nodes as snapshots', () => {
+    const document = {
+      scenes: {
+        main: {
+          entities: {
+            player: { id: 'entity:player' }
+          }
+        }
+      }
+    };
+    const semanticIndex = createSemanticIndex([{ id: 'entity:player', kind: 'entity', path: '/scenes/main/entities/player', value: {} }]);
+    const first = resolveSceneGraphTestResult({ document, semanticIndex });
+
+    if (first.sceneGraph?.nodes[0] !== undefined) {
+      first.sceneGraph.nodes[0].semanticId = 'mutated';
+    }
+
+    const second = resolveSceneGraphTestResult({ document, semanticIndex });
+    expect(document.scenes.main.entities.player.id).toBe('entity:player');
+    expect(second.sceneGraph?.nodes.find((node) => node.kind === 'entity')).toMatchObject({
+      semanticId: 'entity:player'
+    });
+  });
+
+  it('extracts a visible scene graph from a static fix_blank_preview repaired document fixture', () => {
+    const result = resolveSceneGraphTestResult({
+      document: {
+        scenes: {
+          main: {
+            world: { width: 1024, height: 768 },
+            background: { visible: true },
+            camera: {
+              id: 'camera:main',
+              follow: 'entity:player'
+            },
+            spawn: {
+              player: { x: 256, y: 384 }
+            },
+            entities: {
+              player: {
+                id: 'entity:player',
+                components: {
+                  transform: { x: 256, y: 384 },
+                  sprite: { asset: 'asset:missing_sprite' }
+                }
+              },
+              debug_visible_marker: {
+                id: 'entity:debug_visible_marker',
+                components: {
+                  transform: { x: 10, y: 20 },
+                  renderable: { visible: true },
+                  sprite: { asset: 'asset:missing_sprite' }
+                }
+              }
+            }
+          }
+        },
+        assets: {
+          fallbacks: {
+            missing_sprite: {
+              id: 'asset:missing_sprite',
+              type: 'generated_shape',
+              shape: 'rectangle',
+              width: 32,
+              height: 32
+            }
+          }
+        }
+      },
+      semanticIndex: createSemanticIndex([
+        { id: 'scene:main', kind: 'scene', path: '/scenes/main', value: {} },
+        { id: 'camera:main', kind: 'camera', path: '/scenes/main/camera', value: {} },
+        { id: 'entity:player', kind: 'entity', path: '/scenes/main/entities/player', value: {} },
+        { id: 'entity:debug_visible_marker', kind: 'entity', path: '/scenes/main/entities/debug_visible_marker', value: {} },
+        { id: 'asset:missing_sprite', kind: 'asset', path: '/assets/fallbacks/missing_sprite', value: {} }
+      ])
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.sceneGraph?.nodes.map((node) => node.kind)).toEqual(
+      expect.arrayContaining(['scene', 'entity', 'camera', 'spawn'])
+    );
+    expect(result.sceneGraph?.edges).toContainEqual(
+      expect.objectContaining({
+        kind: 'camera_follows_entity',
+        to: 'entity_node:main:entity:player'
+      })
+    );
+    expect(result.sceneGraph?.nodes.find((node) => node.semanticId === 'entity:debug_visible_marker')).toMatchObject({
+      visible: true
+    });
+    expect(diagnosticCodes(result)).not.toContain('UNSAFE_RESOLVER_REFERENCE');
+    expect(diagnosticCodes(result)).not.toContain('RESOLVER_ASSET_SOURCE_UNSAFE');
+  });
+});
+
+type SceneGraphTestResult = ReturnType<typeof resolveSemanticDocumentV2> & {
+  sceneGraph?: {
+    nodes: ResolverV2SceneGraphNode[];
+    edges: ResolverV2SceneGraphEdge[];
+  };
+  summary: ReturnType<typeof resolveSemanticDocumentV2>['summary'] & {
+    sceneCount?: number;
+    entityCount?: number;
+    sceneGraphNodeCount?: number;
+    sceneGraphEdgeCount?: number;
+  };
+};
+
+function resolveSceneGraphTestResult(input: Parameters<typeof resolveSemanticDocumentV2>[0]): SceneGraphTestResult {
+  return resolveSemanticDocumentV2(input) as SceneGraphTestResult;
+}
+
+function diagnosticCodes(result: SceneGraphTestResult): string[] {
+  return result.diagnostics.map((diagnostic) => diagnostic.code);
+}
 
 function createDocument(options: { cameraFollow?: unknown; spriteAsset?: unknown } = {}) {
   return {

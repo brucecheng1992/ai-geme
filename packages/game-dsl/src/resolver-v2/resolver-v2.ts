@@ -4,6 +4,7 @@ import { extractResolverV2AssetCatalog } from './asset-catalog.js';
 import { classifyResolverV2ReferenceTarget } from './asset-reference-rules.js';
 import { createResolverV2Diagnostic } from './diagnostics.js';
 import { extractResolverV2References } from './reference-extractor.js';
+import { extractResolverV2SceneGraph } from './scene-graph.js';
 import type {
   ExtractedResolverV2Reference,
   ResolverV2AssetDefinition,
@@ -12,6 +13,7 @@ import type {
   ResolverV2Reference,
   ResolverV2Request,
   ResolverV2Result,
+  ResolverV2SceneGraph,
   ResolverV2Summary
 } from './types.js';
 
@@ -30,9 +32,15 @@ export function createResolverV2(): ResolverV2 {
 export function resolveSemanticDocumentV2(request: ResolverV2Request): ResolverV2Result {
   const extraction = extractResolverV2References(request.document);
   const assetCatalog = extractResolverV2AssetCatalog(request.document);
+  const sceneGraphResult = extractResolverV2SceneGraph(request.document);
+  const sceneGraph = hasSceneGraphContent(sceneGraphResult.graph) ? sceneGraphResult.graph : undefined;
   const assetLookup = createAssetCatalogLookup(assetCatalog.assets, assetCatalog.diagnostics);
   const extractedReferences = [...extraction.references].sort((left, right) => compareCodeUnits(left.fieldPath, right.fieldPath));
-  const diagnostics: ResolverV2Diagnostic[] = [...extraction.diagnostics, ...filterCatalogDiagnostics(extraction.diagnostics, assetCatalog.diagnostics)];
+  const diagnostics: ResolverV2Diagnostic[] = [
+    ...extraction.diagnostics,
+    ...filterDuplicateInvalidDocumentDiagnostics(extraction.diagnostics, assetCatalog.diagnostics),
+    ...filterDuplicateInvalidDocumentDiagnostics(extraction.diagnostics, sceneGraphResult.diagnostics)
+  ];
   const references = extractedReferences.map((reference, index) =>
     resolveReference({
       reference,
@@ -42,13 +50,14 @@ export function resolveSemanticDocumentV2(request: ResolverV2Request): ResolverV
       diagnostics
     })
   );
-  const summary = summarizeResolverV2Result(references, diagnostics);
+  const summary = summarizeResolverV2Result(references, diagnostics, sceneGraph);
 
   return {
     ok: summary.errorCount === 0,
     references,
     diagnostics,
-    summary
+    summary,
+    ...(sceneGraph === undefined ? {} : { sceneGraph })
   };
 }
 
@@ -273,18 +282,29 @@ function resolveAssetReference(input: {
 
 function summarizeResolverV2Result(
   references: ResolverV2Reference[],
-  diagnostics: ResolverV2Diagnostic[]
+  diagnostics: ResolverV2Diagnostic[],
+  sceneGraph: ResolverV2SceneGraph | undefined
 ): ResolverV2Summary {
   const errorCount = diagnostics.filter((diagnostic) => diagnostic.severity === 'error').length;
   const warningCount = diagnostics.filter((diagnostic) => diagnostic.severity === 'warning').length;
   const resolvedCount = references.filter((reference) => reference.status === 'resolved').length;
+  const sceneGraphSummary =
+    sceneGraph === undefined
+      ? {}
+      : {
+          sceneCount: sceneGraph.nodes.filter((node) => node.kind === 'scene').length,
+          entityCount: sceneGraph.nodes.filter((node) => node.kind === 'entity').length,
+          sceneGraphNodeCount: sceneGraph.nodes.length,
+          sceneGraphEdgeCount: sceneGraph.edges.length
+        };
 
   return {
     referenceCount: references.length,
     resolvedCount,
     unresolvedCount: references.length - resolvedCount,
     errorCount,
-    warningCount
+    warningCount,
+    ...sceneGraphSummary
   };
 }
 
@@ -308,16 +328,20 @@ function createAssetCatalogLookup(
   };
 }
 
-function filterCatalogDiagnostics(
+function filterDuplicateInvalidDocumentDiagnostics(
   extractionDiagnostics: ResolverV2Diagnostic[],
-  catalogDiagnostics: ResolverV2Diagnostic[]
+  diagnostics: ResolverV2Diagnostic[]
 ): ResolverV2Diagnostic[] {
   const extractionHasInvalidDocument = extractionDiagnostics.some((diagnostic) => diagnostic.code === 'INVALID_RESOLVER_DOCUMENT');
   if (!extractionHasInvalidDocument) {
-    return catalogDiagnostics;
+    return diagnostics;
   }
 
-  return catalogDiagnostics.filter((diagnostic) => diagnostic.code !== 'INVALID_RESOLVER_DOCUMENT');
+  return diagnostics.filter((diagnostic) => diagnostic.code !== 'INVALID_RESOLVER_DOCUMENT');
+}
+
+function hasSceneGraphContent(sceneGraph: ResolverV2SceneGraph): boolean {
+  return sceneGraph.nodes.length > 0 || sceneGraph.edges.length > 0;
 }
 
 function isString(value: unknown): value is string {

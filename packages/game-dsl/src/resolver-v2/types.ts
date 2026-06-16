@@ -40,6 +40,59 @@ export type ResolverV2AssetCatalogResult = {
   diagnostics: ResolverV2Diagnostic[];
 };
 
+export type ResolverV2SceneGraphNodeKind = 'scene' | 'entity' | 'camera' | 'spawn';
+
+export type ResolverV2SceneGraphEdgeKind =
+  | 'scene_contains_entity'
+  | 'scene_has_camera'
+  | 'scene_has_spawn'
+  | 'camera_follows_entity'
+  | 'entity_parent'
+  | 'entity_child';
+
+export type ResolverV2TransformSummary = {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  rotation?: number;
+  scaleX?: number;
+  scaleY?: number;
+};
+
+export type ResolverV2SceneGraphNode = {
+  id: string;
+  kind: ResolverV2SceneGraphNodeKind;
+  semanticId?: string;
+  path: string;
+  sceneId?: string;
+  transform?: ResolverV2TransformSummary;
+  visible?: boolean;
+  metadata?: {
+    entityKey?: string;
+    sceneKey?: string;
+    componentKeys?: string[];
+  };
+};
+
+export type ResolverV2SceneGraphEdge = {
+  id: string;
+  kind: ResolverV2SceneGraphEdgeKind;
+  from: string;
+  to: string;
+  path: string;
+};
+
+export type ResolverV2SceneGraph = {
+  nodes: ResolverV2SceneGraphNode[];
+  edges: ResolverV2SceneGraphEdge[];
+};
+
+export type ResolverV2SceneGraphResult = {
+  graph: ResolverV2SceneGraph;
+  diagnostics: ResolverV2Diagnostic[];
+};
+
 export type ResolverV2Reference = {
   id: string;
   kind: ResolverV2ReferenceKind;
@@ -75,6 +128,14 @@ export type ResolverV2DiagnosticCode =
   | 'RESOLVER_ASSET_TYPE_MISMATCH'
   | 'RESOLVER_ASSET_SOURCE_UNSAFE'
   | 'RESOLVER_DUPLICATE_ASSET_ID'
+  | 'RESOLVER_DUPLICATE_ENTITY_ID'
+  | 'RESOLVER_ENTITY_PARENT_NOT_FOUND'
+  | 'RESOLVER_ENTITY_PARENT_CYCLE'
+  | 'RESOLVER_INVALID_TRANSFORM'
+  | 'RESOLVER_CAMERA_TARGET_NOT_FOUND'
+  | 'RESOLVER_SPAWN_TARGET_NOT_FOUND'
+  | 'RESOLVER_SPAWN_OUT_OF_BOUNDS'
+  | 'RESOLVER_SCENE_BOUNDS_INVALID'
   | 'RESOLVER_REFERENCE_EXTRACTION_FAILED'
   | 'RESOLVER_UNSUPPORTED_REFERENCE_SHAPE'
   | string;
@@ -101,6 +162,10 @@ export type ResolverV2Summary = {
   unresolvedCount: number;
   errorCount: number;
   warningCount: number;
+  sceneCount?: number;
+  entityCount?: number;
+  sceneGraphNodeCount?: number;
+  sceneGraphEdgeCount?: number;
 };
 
 export type ResolverV2Result = {
@@ -108,6 +173,7 @@ export type ResolverV2Result = {
   references: ResolverV2Reference[];
   diagnostics: ResolverV2Diagnostic[];
   summary: ResolverV2Summary;
+  sceneGraph?: ResolverV2SceneGraph;
 };
 
 export type ResolverV2Request = {

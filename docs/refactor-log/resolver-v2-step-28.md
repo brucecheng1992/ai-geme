@@ -5,7 +5,7 @@
 - Step 28 Resolver V2 🚧
   - 28.1 Contract / SemanticIndex Adapter Skeleton ✅
   - 28.2 Asset Resolver Expansion ✅
-  - 28.3 Scene Graph Resolver ⬜
+  - 28.3 Scene Graph Resolver ✅
   - 28.4 IR Integration Gate ⬜
   - 28.5 Resolver Trace / Diagnostics UI ⬜
 
@@ -238,3 +238,138 @@ git diff --check -- .
 下一步建议：
 
 - Step 28.3 Scene Graph Resolver
+
+## Step 28.3 Scene Graph Resolver
+
+完成时间：2026-06-16
+
+已完成内容：
+
+- 新增 `packages/game-dsl/src/resolver-v2/scene-graph.ts`，从 in-memory SSOT-like `/scenes` 提取 deterministic scene graph。
+- 新增 `packages/game-dsl/src/resolver-v2/scene-graph-rules.ts`，集中 scene bounds、transform、visibility、parent、camera follow、spawn target 的边界读取和 validation。
+- 更新 `packages/game-dsl/src/resolver-v2/types.ts`，新增 scene graph node / edge / transform / result 类型，并扩展 diagnostics code 与 summary counts。
+- 更新 `packages/game-dsl/src/resolver-v2/resolver-v2.ts`，在 Resolver V2 主流程中合并 scene graph diagnostics，并在有 graph content 时返回 `sceneGraph` summary snapshot。
+- 更新 `packages/game-dsl/src/resolver-v2/index.ts`，导出新增 scene graph API 和类型。
+- 更新 `tests/contracts/resolver-v2.test.ts`，新增 Resolver V2 scene graph resolver contract tests。
+
+新增 scene graph extraction 支持：
+
+- scene node：`scene_node:<sceneSemanticId>`。
+- entity node：`entity_node:<sceneKey>:<entitySemanticId>`。
+- camera node：`camera_node:<sceneKey>:<cameraSemanticId>`。
+- spawn node：`spawn_node:<sceneKey>:<spawnKey>`。
+- scene / entity / camera / spawn node 都只返回 path、semanticId、transform、visible 和 metadata summary，不返回原 scene/entity/camera/spawn object 引用。
+- nodes 按 `path` / `id` deterministic 排序。
+- edges 按 `kind` / `path` / `from` / `to` deterministic 排序，edge id 使用 `scene_edge:<kind>:<index>`。
+
+新增 scene graph edges：
+
+- `scene_contains_entity`
+- `scene_has_camera`
+- `camera_follows_entity`
+- `scene_has_spawn`
+- `entity_parent`
+- `entity_child`
+
+新增 validation / diagnostics：
+
+- duplicate entity id：`RESOLVER_DUPLICATE_ENTITY_ID`
+- missing parent：`RESOLVER_ENTITY_PARENT_NOT_FOUND`
+- parent cycle：`RESOLVER_ENTITY_PARENT_CYCLE`
+- invalid transform：`RESOLVER_INVALID_TRANSFORM`
+- camera follow missing target：`RESOLVER_CAMERA_TARGET_NOT_FOUND`
+- spawn target missing：`RESOLVER_SPAWN_TARGET_NOT_FOUND`
+- spawn out-of-bounds：`RESOLVER_SPAWN_OUT_OF_BOUNDS`
+- invalid scene bounds：`RESOLVER_SCENE_BOUNDS_INVALID`
+- invalid fallback scene/entity/camera semantic id：`INVALID_RESOLVER_SEMANTIC_ID`
+- malformed shapes continue to produce bounded warning/error diagnostics and do not throw.
+
+Scene graph behavior:
+
+- `document.scenes` absent returns empty graph with no diagnostics.
+- malformed `document.scenes` produces `RESOLVER_REFERENCE_EXTRACTION_FAILED` warning.
+- scene bounds support `scene.world.width/height`、`scene.bounds.width/height`、`scene.width/height`。
+- entity transform supports `entity.components.transform` first, then `entity.transform`。
+- entity visible supports `components.renderable.visible` first, then `renderable.visible`, then `visible`。
+- parent reference supports `entity.parent`、`entity.parentId`、`entity.components.hierarchy.parent`。
+- camera follow supports `scene.camera.follow` and produces graph edge only when target entity exists in the same scene lookup。
+- spawn supports `scene.spawn.<key>` and `scene.spawns.<key>`，including explicit `entityId` and inferred `entity:<spawnKey>` / `entity:player` lookup。
+- invalid fallback entity ids are retained as graph audit nodes but are not registered into the resolvable entity lookup, so parent/camera/spawn resolution cannot silently target invalid semantic ids。
+
+Safety / boundary：
+
+- Resolver V2 scene graph extraction does not mutate input document, scene objects, entity objects, camera objects or spawn objects。
+- Resolver V2 scene graph extraction does not mutate `SemanticIndex` or `SemanticIndexEntry`。
+- Returned scene graph nodes / edges are snapshots and do not expose original object references。
+- No file system reads/writes are introduced。
+- No IR generation is introduced。
+- No Phaser generator integration is introduced。
+- No Preview runtime integration is introduced。
+- No QA / Playwright / pipeline gate integration is introduced。
+- No Workbench UI integration is introduced。
+- No generated Phaser code is modified。
+- Step 27 planner / validator / applier semantics are not modified。
+
+TDD 记录：
+
+- 初始 RED：`npx vitest run tests/contracts/resolver-v2.test.ts` 失败 13 tests，原因是 `sceneGraph`、summary counts、scene graph diagnostics 尚未实现；既有 32 tests passed。
+- 初始 GREEN：新增 scene graph extractor、types、exports 和 resolver integration 后，`tests/contracts/resolver-v2.test.ts` 45 tests passed。
+- Oracle P2 RED：新增 malformed fallback id 与 direct extractor wrong-kind camera target tests，失败 2 tests。
+- Oracle P2 GREEN：fallback semantic id validation 和 camera follow wrong-kind diagnostics 修复后，`tests/contracts/resolver-v2.test.ts` 47 tests passed。
+- Oracle P0 RED：新增 invalid fallback entity id + inferred spawn target test，失败 1 test。
+- Oracle P0 GREEN：invalid entity ids 排除出 resolvable lookup，inferred spawn target 也走 semantic target validation 后，`tests/contracts/resolver-v2.test.ts` 48 tests passed。
+
+已通过验证：
+
+```bash
+npx vitest run tests/contracts/resolver-v2.test.ts
+npx vitest run tests/contracts/semantic-editing-*.test.ts
+npm run typecheck:root
+npm run typecheck --workspace @ai-game-maker/maker-workbench
+git diff --check -- .
+```
+
+结果：
+
+- `tests/contracts/resolver-v2.test.ts`: 1 test file passed, 48 tests passed
+- semantic-editing contract tests: 10 test files passed, 138 tests passed
+- root TypeScript typecheck passed
+- Workbench TypeScript typecheck passed
+- diff check passed
+
+阶段结果：
+
+- `scene-graph.ts` 当前 722 行，集中 scene graph traversal、node/edge assembly、relationship connection、cycle detection 和 deterministic ordering。
+- `scene-graph-rules.ts` 当前 373 行，集中 scene graph boundary reads and validation rules。
+- `resolver-v2.ts` 当前 349 行，主流程只接入 scene graph extraction result、diagnostics merge 和 summary counts。
+- `resolver-v2.test.ts` 当前 1665 行，覆盖 48 个 Resolver V2 contract tests。
+- 未新增 runtime / QA / Phaser generator / generated-code / pipeline 文件。
+
+审查门禁：
+
+- Oracle 首审：
+  - P0: 无。
+  - P1: 无确认问题。
+  - P2: fallback `scene:${key}` / `entity:${key}` / `camera:${key}` 未校验 key 是否符合 semantic id 规则。
+  - P3: scene graph test helper 使用手写镜像类型，存在 public type drift 风险。
+- 已修复：
+  - `readSemanticIdForKind()` 对 explicit id 和 fallback id 都做 semantic id validation。
+  - direct `extractResolverV2SceneGraph()` 对 camera follow wrong-kind target 产生 scene graph diagnostic。
+  - tests 改用 public `ResolverV2SceneGraphNode` / `ResolverV2SceneGraphEdge` 类型。
+- Oracle 复审：
+  - P0: 发现 invalid fallback entity id 仍可能进入 `sceneEntities` lookup，并让 inferred spawn target 静默命中。
+  - P1/P2/P3: 无新增确认问题。
+- 已修复：
+  - invalid entity semantic ids 不再注册进 resolvable entity lookup。
+  - inferred spawn target 也先经过 semantic target validation。
+  - 新增 regression test 覆盖 malformed entity fallback + inferred spawn target。
+- Oracle 终审：
+  - P0: 无，上一轮 P0 已关闭。
+  - P1: 无。
+  - P2: 无。
+  - P3: 无。
+  - 结论：blocking findings closed。
+
+下一步建议：
+
+- Step 28.4 IR Integration Gate
