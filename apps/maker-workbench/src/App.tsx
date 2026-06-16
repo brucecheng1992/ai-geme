@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { buildSemanticIndex } from '@ai-game-maker/game-dsl';
 
 import { AssetStatusPanel } from './AssetStatusPanel.js';
 import { AssetBindingTraceSummaryPanel, fetchAssetBindingTrace, type AssetBindingTraceView } from './asset-binding-trace-client.js';
+import { BriefTextboxPanel, type BriefTextboxMode } from './features/brief/index.js';
 import { PromptCoachPanel } from './PromptCoachPanel.js';
 import { QaStatusPanel } from './QaStatusPanel.js';
 import { buildEditableFields, buildLiveObjectTree, buildReplacePrepareBody, buildRuntimeApplyReportFromPatchResult, type LiveEditableField } from './live-edit-client.js';
@@ -78,6 +80,8 @@ function stepStatusClass(status: string) {
 
 export function App() {
   const [idea, setIdea] = useState(defaultIdea);
+  const [semanticEditText, setSemanticEditText] = useState('');
+  const [briefMode, setBriefMode] = useState<BriefTextboxMode>('new_game');
   const [language, setLanguage] = useState('zh');
   const [promptOptimizationSelection, setPromptOptimizationSelection] = useState<PromptCoachProvenanceSelection | null>(null);
   const [projectId, setProjectId] = useState('');
@@ -132,6 +136,8 @@ export function App() {
     () => (liveCurrent ? buildEditableFields(liveCurrent.game_dsl, liveCurrent.live_edit_capabilities, selectedObjectPath) : []),
     [liveCurrent, selectedObjectPath]
   );
+  const semanticEditDocument = useMemo(() => liveCurrent?.game_dsl, [liveCurrent]);
+  const semanticEditIndex = useMemo(() => (liveCurrent ? buildSemanticIndex(liveCurrent.game_dsl) : undefined), [liveCurrent]);
 
   useEffect(() => {
     if (!projectId || !runId || isTerminal) {
@@ -420,6 +426,20 @@ export function App() {
     }
   }
 
+  function updateIdeaFromBrief(nextIdea: string) {
+    setIdea(nextIdea);
+    setPromptOptimizationSelection((selection) => (selection !== null && nextIdea !== selection.candidatePrompt ? null : selection));
+  }
+
+  function updateBriefText(nextText: string) {
+    if (briefMode === 'new_game') {
+      updateIdeaFromBrief(nextText);
+      return;
+    }
+
+    setSemanticEditText(nextText);
+  }
+
   function focusPreviewFrame() {
     previewHostRef.current?.focus();
   }
@@ -447,38 +467,31 @@ export function App() {
 
       <section className="grid grid-cols-[320px_minmax(0,1fr)] gap-5 p-5 max-lg:grid-cols-1 max-sm:p-3">
         <aside className="sticky top-24 flex flex-col gap-4 self-start max-lg:static">
-          <section className={`${panelClass} border-[#312b22] bg-gradient-to-b from-white to-[#fff1d6] shadow-[6px_6px_0_rgba(21,19,15,0.08)]`}>
+          <BriefTextboxPanel
+            document={semanticEditDocument}
+            language={language}
+            loading={loading}
+            mode={briefMode}
+            onLanguageChange={setLanguage}
+            onModeChange={setBriefMode}
+            onPreviewHandoff={(handoff) => setLiveEditStatus(`Semantic patch preview: ${handoff.patchId}`)}
+            onTextChange={updateBriefText}
+            projectId={projectId}
+            runId={runId}
+            semanticIndex={semanticEditIndex}
+            value={briefMode === 'new_game' ? idea : semanticEditText}
+          />
+
+          <section className={panelClass}>
             <div className={panelHeadingClass}>
               <div>
                 <p className={eyebrowClass}>Create</p>
-                <h2 className={headingClass}>Game brief</h2>
+                <h2 className={headingClass}>New game action</h2>
               </div>
             </div>
-            <label className="mb-3 grid gap-2 text-sm font-bold text-[#69645d]">
-              Idea
-              <textarea
-                className={`${fieldClass} min-h-24 resize-y`}
-                value={idea}
-                onChange={(event) => {
-                  const nextIdea = event.target.value;
-                  setIdea(nextIdea);
-                  setPromptOptimizationSelection((selection) => (selection !== null && nextIdea !== selection.candidatePrompt ? null : selection));
-                }}
-                rows={4}
-              />
-            </label>
-            <div className="grid grid-cols-[1fr_auto] items-end gap-3 max-sm:grid-cols-1">
-              <label className="mb-0 grid gap-2 text-sm font-bold text-[#69645d]">
-                Language
-                <select className={fieldClass} value={language} onChange={(event) => setLanguage(event.target.value)}>
-                  <option value="zh">zh</option>
-                  <option value="en">en</option>
-                </select>
-              </label>
-              <button className={primaryButtonClass} type="button" onClick={() => void generateProject()} disabled={loading}>
-                {loading ? 'Working' : 'Generate'}
-              </button>
-            </div>
+            <button className={primaryButtonClass} type="button" onClick={() => void generateProject()} disabled={loading || briefMode !== 'new_game'}>
+              {loading ? 'Working' : 'Generate'}
+            </button>
           </section>
 
           <section className={panelClass}>
