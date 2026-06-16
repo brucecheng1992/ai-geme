@@ -6,7 +6,7 @@
   - 28.1 Contract / SemanticIndex Adapter Skeleton ✅
   - 28.2 Asset Resolver Expansion ✅
   - 28.3 Scene Graph Resolver ✅
-  - 28.4 IR Integration Gate ⬜
+  - 28.4 IR Integration Gate ✅
   - 28.5 Resolver Trace / Diagnostics UI ⬜
 
 ## Step 28.1 Contract / SemanticIndex Adapter Skeleton
@@ -373,3 +373,113 @@ git diff --check -- .
 下一步建议：
 
 - Step 28.4 IR Integration Gate
+
+## Step 28.4 IR Integration Gate
+
+完成时间：2026-06-16
+
+已完成内容：
+
+- 新增 `packages/game-dsl/src/resolver-v2/ir-integration-gate.ts`，提供 `evaluateResolverV2IrIntegrationGate()` 和 `createResolverV2IrIntegrationGate()`。
+- 新增 `packages/game-dsl/src/resolver-v2/ir-gate-policy.ts`，集中默认 gate policy、policy merge 和 diagnostic blocker 分类。
+- 新增 `packages/game-dsl/src/resolver-v2/ir-gate-blockers.ts`，集中 blockers / warnings 生成和 deterministic ordering。
+- 新增 `packages/game-dsl/src/resolver-v2/ir-gate-summaries.ts`，集中 safe IR handoff summary 构建。
+- 更新 `packages/game-dsl/src/resolver-v2/types.ts`，新增 IR gate status、policy、blocker、warning、summary、request、result 和 factory contract 类型。
+- 更新 `packages/game-dsl/src/resolver-v2/index.ts`，导出新增 gate API 和类型。
+- 更新 `tests/contracts/resolver-v2.test.ts`，新增 Resolver V2 IR integration gate contract tests。
+
+新增 IR gate 行为：
+
+- 有 `resolverResult` 时直接使用预计算结果，不重新运行 resolver。
+- 无 `resolverResult` 时要求同时提供 `document` 和 `semanticIndex`，并默认使用 `createResolverV2()`。
+- 缺输入不抛出，返回 blocked gate result，并产生 `RESOLVER_V2_GATE_MISSING_INPUT` blocker。
+- resolver 执行异常不抛出到 gate 外层，返回 blocked gate result，并产生 `RESOLVER_V2_GATE_EXCEPTION` blocker。
+- diagnostic error 会阻断 IR handoff。
+- asset diagnostics 默认映射为 `RESOLVER_V2_ASSET_ERROR`。
+- scene graph diagnostics 默认映射为 `RESOLVER_V2_SCENE_GRAPH_ERROR`。
+- unresolved references 默认映射为 `RESOLVER_V2_UNRESOLVED_REFERENCE`。
+- warning 默认进入 `warnings`，`policy.blockOnWarnings: true` 时转为 blocker。
+- 默认要求 resolver result 带 scene graph。
+- 默认要求 scene graph 至少包含一个 scene。
+- 默认不要求 scene graph 至少包含一个 entity；`policy.requireAtLeastOneEntity: true` 时才阻断。
+- gate `ok` 只在 `status === "ready"` 且 blockers 为空时为 `true`。
+
+新增 safe handoff summary：
+
+- `references` 只包含 id、kind、status、sourcePath、fieldPath、targetId、resolvedTargetId、resolvedAssetId。
+- `diagnostics` 不包含 `cause`、stack 或原始错误对象。
+- `assets` 只包含 id、key、path、kind、sourceKind，不包含 raw source、sourcePreview 或原 asset definition object。
+- `sceneGraph` 只包含 node / edge summary，不包含原 scene/entity/camera/spawn object。
+- blockers、warnings、references、diagnostics、assets、sceneGraph nodes / edges 均 deterministic ordering。
+
+Safety / boundary：
+
+- IR gate 不生成 IR。
+- IR gate 不调用 Phaser generator。
+- IR gate 不调用 Preview runtime。
+- IR gate 不调用 QA / Playwright。
+- IR gate 不调用 pipeline gate。
+- IR gate 不读写文件系统。
+- IR gate 不 mutation input document、`SemanticIndex`、`resolverResult`、diagnostics、references、assets 或 sceneGraph。
+- IR gate 不修改 generated Phaser code。
+- IR gate 不修改 Workbench UI。
+- Step 27 planner / validator / applier semantics are not modified。
+
+TDD 记录：
+
+- RED：`npx vitest run tests/contracts/resolver-v2.test.ts` 失败 16 tests，原因是 IR gate API 尚未实现；既有 48 tests passed。
+- GREEN：新增 gate policy、blockers、summary、API exports 和 contract tests 后，`tests/contracts/resolver-v2.test.ts` 64 tests passed。
+- 拆分复核：`ir-integration-gate.ts` 从 269 行拆分到 125 行，blocker / summary / policy 分别独立成小文件；`tests/contracts/resolver-v2.test.ts` 仍 64 tests passed。
+- Oracle P2 GREEN：补充 resolver throw contract test，确认 gate 返回 `RESOLVER_V2_GATE_EXCEPTION` blocker，且 summary / blockers 不泄漏 exception marker、cause 或 stack；`tests/contracts/resolver-v2.test.ts` 65 tests passed。
+
+已通过验证：
+
+```bash
+npx vitest run tests/contracts/resolver-v2.test.ts
+npx vitest run tests/contracts/semantic-editing-*.test.ts
+npm run typecheck:root
+npm run typecheck --workspace @ai-game-maker/maker-workbench
+git diff --check -- .
+```
+
+结果：
+
+- `tests/contracts/resolver-v2.test.ts`: 1 test file passed, 65 tests passed
+- semantic-editing contract tests: 10 test files passed, 138 tests passed
+- root TypeScript typecheck passed
+- Workbench TypeScript typecheck passed
+- diff check passed
+
+阶段结果：
+
+- `ir-integration-gate.ts` 当前 125 行，集中 gate request resolution、policy merge 和 result assembly。
+- `ir-gate-blockers.ts` 当前 150 行，集中 blockers / warnings 和 ordering。
+- `ir-gate-policy.ts` 当前 69 行，集中默认策略和 diagnostic category classification。
+- `ir-gate-summaries.ts` 当前 153 行，集中 safe summary snapshot construction。
+- `types.ts` 当前 329 行，新增 IR gate public contract。
+- `resolver-v2.test.ts` 当前覆盖 65 个 Resolver V2 contract tests。
+- 未新增 runtime / QA / Phaser generator / generated-code / pipeline 文件。
+
+审查门禁：
+
+- Oracle 首审：
+  - P0: 无。
+  - P1: Oracle 认为 scene-only graph 默认放行不符合 “empty scene” blocker。
+  - P2: resolver throw 分支缺 contract test。
+  - P2: `RESOLVER_V2_EMPTY_SCENE_GRAPH` public literal 当前未 emit，empty graph 实现使用 `RESOLVER_V2_MISSING_SCENE`。
+  - P3: `blockOnAssetDiagnostics` / `blockOnSceneGraphDiagnostics` 命名可能让人误以为是放行开关。
+- 本轮处理：
+  - P1 不采纳为 blocking：Step 28.4 prompt 明确默认 `requireAtLeastOneEntity: false`，并要求 “scene but no entities: default not blocked solely, policy blocks”；因此 scene-only graph 默认 ready、显式 `requireAtLeastOneEntity: true` 才 blocked 是本轮契约。
+  - P2 已修复：新增 resolver throw contract test，确认异常不抛出、不泄漏 cause / stack。
+  - P2 保留为非阻塞记录：`RESOLVER_V2_EMPTY_SCENE_GRAPH` 是 prompt 指定 public blocker literal；本轮规则明确 empty sceneGraph 使用 `RESOLVER_V2_MISSING_SCENE` 阻断，暂不删除 public literal。
+  - P3 保留为后续命名澄清建议：字段名来自 prompt，本轮不改 public contract。
+- Oracle 复审：
+  - P0: 无。
+  - P1: 无；补充 prompt 背景后，scene-only graph 默认 ready 属于目标契约。
+  - P2: 无 blocking；resolver throw contract test 覆盖不抛出、blocked、`RESOLVER_V2_GATE_EXCEPTION` 和异常 marker / cause / stack 不泄漏。
+  - P3: 无必须处理项。
+  - 结论：当前未发现 P0 / P1 / P2 blocking issue。
+
+下一步建议：
+
+- Step 28.5 Resolver Trace / Diagnostics UI

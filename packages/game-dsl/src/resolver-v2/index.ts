@@ -1,6 +1,7 @@
 export { createResolverV2, resolveSemanticDocumentV2 } from './resolver-v2.js';
 export { extractResolverV2AssetCatalog } from './asset-catalog.js';
 export { extractResolverV2SceneGraph } from './scene-graph.js';
+export { evaluateResolverV2IrIntegrationGate, createResolverV2IrIntegrationGate } from './ir-integration-gate.js';
 export { extractResolverV2References, type ResolverV2ReferenceExtractionResult } from './reference-extractor.js';
 export { createResolverV2Diagnostic, type CreateResolverV2DiagnosticInput } from './diagnostics.js';
 export type {
@@ -13,6 +14,21 @@ export type {
   ResolverV2Diagnostic,
   ResolverV2DiagnosticCode,
   ResolverV2DiagnosticSeverity,
+  ResolverV2IrGateAssetSummary,
+  ResolverV2IrGateBlocker,
+  ResolverV2IrGateBlockerCode,
+  ResolverV2IrGateDiagnosticSummary,
+  ResolverV2IrGatePolicy,
+  ResolverV2IrGateReferenceSummary,
+  ResolverV2IrGateRequest,
+  ResolverV2IrGateResult,
+  ResolverV2IrGateSceneGraphEdgeSummary,
+  ResolverV2IrGateSceneGraphNodeSummary,
+  ResolverV2IrGateSceneGraphSummary,
+  ResolverV2IrGateStatus,
+  ResolverV2IrGateWarning,
+  ResolverV2IrHandoffSummary,
+  ResolverV2IrIntegrationGate,
   ResolverV2Reference,
   ResolverV2ReferenceKind,
   ResolverV2Request,

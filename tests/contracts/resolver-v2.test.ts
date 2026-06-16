@@ -2,9 +2,16 @@ import { describe, expect, it } from 'vitest';
 
 import {
   resolveSemanticDocumentV2,
+  evaluateResolverV2IrIntegrationGate,
+  createResolverV2IrIntegrationGate,
   createResolverV2,
   extractResolverV2AssetCatalog,
   extractResolverV2SceneGraph,
+  type ResolverV2,
+  type ResolverV2Diagnostic,
+  type ResolverV2Reference,
+  type ResolverV2Result,
+  type ResolverV2SceneGraph,
   type ResolverV2SceneGraphEdge,
   type ResolverV2SceneGraphNode,
   type SemanticIndex,
@@ -1581,6 +1588,464 @@ describe('Resolver V2 scene graph resolver', () => {
   });
 });
 
+describe('Resolver V2 IR integration gate', () => {
+  it('marks a fully resolved document ready with a safe handoff summary', () => {
+    const { document, semanticIndex } = createReadyIrGateInput();
+
+    const result = evaluateResolverV2IrIntegrationGate({ document, semanticIndex });
+
+    expect(result.ok).toBe(true);
+    expect(result.status).toBe('ready');
+    expect(result.blockers).toEqual([]);
+    expect(result.warnings).toEqual([]);
+    expect(result.summary).toMatchObject({
+      status: 'ready',
+      referenceCount: 2,
+      resolvedReferenceCount: 2,
+      unresolvedReferenceCount: 0,
+      errorCount: 0,
+      warningCount: 0,
+      sceneGraph: {
+        sceneCount: 1,
+        entityCount: 1,
+        nodeCount: 3,
+        edgeCount: 3
+      }
+    });
+    expect(result.summary.references.map((reference) => reference.targetId)).toEqual([
+      'entity:player',
+      'asset:player_sprite'
+    ]);
+    expect(result.summary.assets).toEqual([
+      {
+        id: 'asset:player_sprite',
+        key: 'player_sprite',
+        kind: 'image',
+        path: '/assets/sprites/player_sprite',
+        sourceKind: 'file'
+      }
+    ]);
+  });
+
+  it('blocks resolver diagnostic errors before IR handoff', () => {
+    const result = evaluateResolverV2IrIntegrationGate({
+      document: createDocument({ spriteAsset: 'asset:missing_sprite' }),
+      semanticIndex: createSemanticIndex([
+        { id: 'entity:player', kind: 'entity', path: '/scenes/main/entities/player', value: {} },
+        { id: 'asset:missing_sprite', kind: 'asset', path: '/assets/sprites/missing_sprite', value: {} }
+      ])
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe('blocked');
+    expect(result.blockers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'RESOLVER_V2_ASSET_ERROR',
+          diagnosticCode: 'RESOLVER_ASSET_DEFINITION_NOT_FOUND',
+          targetId: 'asset:missing_sprite'
+        })
+      ])
+    );
+  });
+
+  it('blocks unresolved references even when a precomputed resolver result has no diagnostics', () => {
+    const resolverResult = createIrGateResolverResult({
+      references: [
+        createIrGateReference({
+          id: 'resolver_ref:sprite_asset:0',
+          targetId: 'asset:missing_sprite',
+          status: 'unresolved'
+        })
+      ]
+    });
+
+    const result = evaluateResolverV2IrIntegrationGate({ resolverResult });
+
+    expect(result.ok).toBe(false);
+    expect(result.blockers).toEqual([
+      expect.objectContaining({
+        code: 'RESOLVER_V2_UNRESOLVED_REFERENCE',
+        referenceId: 'resolver_ref:sprite_asset:0',
+        targetId: 'asset:missing_sprite'
+      })
+    ]);
+  });
+
+  it('keeps warnings non-blocking by default and blocks them when policy requires it', () => {
+    const warning: ResolverV2Diagnostic = {
+      severity: 'warning',
+      code: 'RESOLVER_UNSUPPORTED_REFERENCE_SHAPE',
+      message: 'Resolver V2 ignored an unsupported optional reference shape.',
+      sourcePath: '/scenes/main/entities/player/components/optional'
+    };
+    const resolverResult = createIrGateResolverResult({
+      diagnostics: [warning],
+      summary: { warningCount: 1 }
+    });
+
+    const defaultResult = evaluateResolverV2IrIntegrationGate({ resolverResult });
+    const strictResult = evaluateResolverV2IrIntegrationGate({
+      resolverResult,
+      policy: { blockOnWarnings: true }
+    });
+
+    expect(defaultResult.ok).toBe(true);
+    expect(defaultResult.warnings).toEqual([
+      expect.objectContaining({
+        code: 'RESOLVER_UNSUPPORTED_REFERENCE_SHAPE',
+        message: warning.message
+      })
+    ]);
+    expect(strictResult.ok).toBe(false);
+    expect(strictResult.blockers).toEqual([
+      expect.objectContaining({
+        code: 'RESOLVER_V2_DIAGNOSTIC_ERROR',
+        diagnosticCode: 'RESOLVER_UNSUPPORTED_REFERENCE_SHAPE',
+        sourcePath: '/scenes/main/entities/player/components/optional'
+      })
+    ]);
+  });
+
+  it('blocks missing scene graphs by default', () => {
+    const resolverResult = createIrGateResolverResult({ sceneGraph: undefined });
+
+    const result = evaluateResolverV2IrIntegrationGate({ resolverResult });
+
+    expect(result.ok).toBe(false);
+    expect(result.blockers).toEqual([
+      expect.objectContaining({
+        code: 'RESOLVER_V2_MISSING_SCENE_GRAPH'
+      })
+    ]);
+  });
+
+  it('blocks empty scene graphs by default', () => {
+    const resolverResult = createIrGateResolverResult({ sceneGraph: { nodes: [], edges: [] } });
+
+    const result = evaluateResolverV2IrIntegrationGate({ resolverResult });
+
+    expect(result.ok).toBe(false);
+    expect(result.blockers).toEqual([
+      expect.objectContaining({
+        code: 'RESOLVER_V2_MISSING_SCENE'
+      })
+    ]);
+  });
+
+  it('allows scene-only graphs by default and blocks them when at least one entity is required', () => {
+    const resolverResult = createIrGateResolverResult({
+      sceneGraph: createIrGateSceneGraph({ includeEntity: false })
+    });
+
+    const defaultResult = evaluateResolverV2IrIntegrationGate({ resolverResult });
+    const strictResult = evaluateResolverV2IrIntegrationGate({
+      resolverResult,
+      policy: { requireAtLeastOneEntity: true }
+    });
+
+    expect(defaultResult.ok).toBe(true);
+    expect(strictResult.ok).toBe(false);
+    expect(strictResult.blockers).toEqual([
+      expect.objectContaining({
+        code: 'RESOLVER_V2_MISSING_ENTITY'
+      })
+    ]);
+  });
+
+  it('returns a blocked gate result instead of throwing for missing inputs', () => {
+    expect(() => evaluateResolverV2IrIntegrationGate({})).not.toThrow();
+
+    const result = evaluateResolverV2IrIntegrationGate({});
+
+    expect(result.ok).toBe(false);
+    expect(result.blockers).toEqual([
+      expect.objectContaining({
+        code: 'RESOLVER_V2_GATE_MISSING_INPUT'
+      })
+    ]);
+    expect(result.resolverResult.references).toEqual([]);
+  });
+
+  it('returns a blocked gate result instead of throwing when the resolver throws', () => {
+    const resolver: ResolverV2 = {
+      resolve() {
+        throw new Error('RESOLVER_THROW_SECRET_MARKER');
+      }
+    };
+
+    expect(() =>
+      evaluateResolverV2IrIntegrationGate({
+        document: {},
+        semanticIndex: createSemanticIndex(),
+        resolver
+      })
+    ).not.toThrow();
+
+    const result = evaluateResolverV2IrIntegrationGate({
+      document: {},
+      semanticIndex: createSemanticIndex(),
+      resolver
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe('blocked');
+    expect(result.blockers).toEqual([
+      expect.objectContaining({
+        code: 'RESOLVER_V2_GATE_EXCEPTION'
+      })
+    ]);
+    expect(JSON.stringify(result.summary)).not.toContain('RESOLVER_THROW_SECRET_MARKER');
+    expect(JSON.stringify(result.blockers)).not.toContain('RESOLVER_THROW_SECRET_MARKER');
+    expect(JSON.stringify(result.summary)).not.toContain('stack');
+    expect(JSON.stringify(result.summary)).not.toContain('cause');
+  });
+
+  it('uses precomputed resolver results without rerunning a supplied resolver', () => {
+    const resolverResult = createIrGateResolverResult();
+    const resolver: ResolverV2 = {
+      resolve() {
+        throw new Error('precomputed resolver result should be used');
+      }
+    };
+
+    const result = evaluateResolverV2IrIntegrationGate({
+      resolverResult,
+      resolver,
+      document: { unexpected: true },
+      semanticIndex: createSemanticIndex()
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.resolverResult).toBe(resolverResult);
+  });
+
+  it('runs the supplied resolver when no precomputed resolver result is present', () => {
+    const { document, semanticIndex } = createReadyIrGateInput();
+    let callCount = 0;
+    const resolver: ResolverV2 = {
+      resolve(request) {
+        callCount += 1;
+        expect(request.document).toBe(document);
+        expect(request.semanticIndex).toBe(semanticIndex);
+        return createIrGateResolverResult();
+      }
+    };
+    const gate = createResolverV2IrIntegrationGate();
+
+    const result = gate.evaluate({ document, semanticIndex, resolver });
+
+    expect(callCount).toBe(1);
+    expect(result.ok).toBe(true);
+  });
+
+  it('excludes raw documents and diagnostic causes from the handoff summary', () => {
+    const document = {
+      scenes: {
+        main: {
+          marker: 'RAW_DOCUMENT_SECRET_MARKER'
+        }
+      }
+    };
+    const resolverResult = createIrGateResolverResult({
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'INVALID_RESOLVER_DOCUMENT',
+          message: 'Resolver V2 document failed validation.',
+          sourcePath: '/scenes/main',
+          cause: new Error('CAUSE_SECRET_MARKER')
+        }
+      ],
+      summary: { errorCount: 1 }
+    });
+
+    const result = evaluateResolverV2IrIntegrationGate({
+      document,
+      resolverResult
+    });
+    const summaryJson = JSON.stringify(result.summary);
+
+    expect(summaryJson).not.toContain('RAW_DOCUMENT_SECRET_MARKER');
+    expect(summaryJson).not.toContain('CAUSE_SECRET_MARKER');
+    expect(summaryJson).not.toContain('cause');
+    expect(summaryJson).not.toContain('stack');
+  });
+
+  it('summarizes assets without exposing raw source strings', () => {
+    const document = {
+      scenes: {
+        main: {
+          entities: {
+            player: {
+              id: 'entity:player'
+            }
+          }
+        }
+      },
+      assets: {
+        sprites: {
+          player_sprite: {
+            id: 'asset:player_sprite',
+            type: 'image',
+            source: './assets/DO_NOT_EXPOSE_RAW_SOURCE.png'
+          }
+        }
+      }
+    };
+
+    const result = evaluateResolverV2IrIntegrationGate({
+      document,
+      resolverResult: createIrGateResolverResult()
+    });
+
+    expect(result.summary.assets).toEqual([
+      {
+        id: 'asset:player_sprite',
+        key: 'player_sprite',
+        kind: 'image',
+        path: '/assets/sprites/player_sprite',
+        sourceKind: 'file'
+      }
+    ]);
+    expect(JSON.stringify(result.summary.assets)).not.toContain('DO_NOT_EXPOSE_RAW_SOURCE');
+  });
+
+  it('does not mutate precomputed resolver results', () => {
+    const resolverResult = createIrGateResolverResult({
+      diagnostics: [
+        {
+          severity: 'warning',
+          code: 'RESOLVER_UNSUPPORTED_REFERENCE_SHAPE',
+          message: 'Resolver V2 ignored an unsupported optional reference shape.'
+        }
+      ],
+      references: [
+        createIrGateReference({
+          id: 'resolver_ref:sprite_asset:0',
+          targetId: 'asset:player_sprite',
+          status: 'resolved'
+        })
+      ],
+      summary: {
+        referenceCount: 1,
+        resolvedCount: 1,
+        warningCount: 1
+      }
+    });
+    const before = structuredClone(resolverResult);
+
+    evaluateResolverV2IrIntegrationGate({ resolverResult });
+
+    expect(resolverResult).toEqual(before);
+  });
+
+  it('orders blockers and handoff summary content deterministically', () => {
+    const resolverResult = createIrGateResolverResult({
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'RESOLVER_CAMERA_TARGET_NOT_FOUND',
+          message: 'Resolver V2 camera target was not found.',
+          targetId: 'entity:missing_camera_target',
+          sourcePath: '/scenes/main/camera'
+        },
+        {
+          severity: 'error',
+          code: 'RESOLVER_ASSET_SOURCE_UNSAFE',
+          message: 'Resolver V2 asset source is unsafe.',
+          targetId: 'asset:unsafe_sprite',
+          sourcePath: '/assets/sprites/unsafe_sprite'
+        }
+      ],
+      references: [
+        createIrGateReference({
+          id: 'resolver_ref:sprite_asset:1',
+          targetId: 'asset:unsafe_sprite',
+          status: 'unresolved',
+          fieldPath: '/scenes/main/entities/player/components/sprite/asset'
+        }),
+        createIrGateReference({
+          id: 'resolver_ref:camera_follow_entity:0',
+          kind: 'camera_follow_entity',
+          targetId: 'entity:missing_camera_target',
+          status: 'unresolved',
+          fieldPath: '/scenes/main/camera/follow'
+        })
+      ],
+      summary: {
+        referenceCount: 2,
+        unresolvedCount: 2,
+        errorCount: 2
+      }
+    });
+
+    const first = evaluateResolverV2IrIntegrationGate({ resolverResult });
+    const second = evaluateResolverV2IrIntegrationGate({ resolverResult });
+    const blockerKeys = first.blockers.map((blocker) =>
+      [blocker.code, blocker.diagnosticCode ?? '', blocker.referenceId ?? '', blocker.sourcePath ?? '', blocker.targetId ?? ''].join('\0')
+    );
+    const referenceKeys = first.summary.references.map((reference) =>
+      [reference.kind, reference.sourcePath, reference.fieldPath, reference.targetId].join('\0')
+    );
+
+    expect(first.blockers).toEqual(second.blockers);
+    expect(first.summary).toEqual(second.summary);
+    expect(blockerKeys).toEqual([...blockerKeys].sort());
+    expect(referenceKeys).toEqual([...referenceKeys].sort());
+  });
+
+  it('maps scene graph diagnostics to scene graph blockers', () => {
+    const resolverResult = createIrGateResolverResult({
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'RESOLVER_ENTITY_PARENT_CYCLE',
+          message: 'Resolver V2 entity parent graph contains a cycle.',
+          sourcePath: '/scenes/main/entities/player/parent',
+          targetId: 'entity:player'
+        }
+      ],
+      summary: { errorCount: 1 }
+    });
+
+    const result = evaluateResolverV2IrIntegrationGate({ resolverResult });
+
+    expect(result.blockers).toEqual([
+      expect.objectContaining({
+        code: 'RESOLVER_V2_SCENE_GRAPH_ERROR',
+        diagnosticCode: 'RESOLVER_ENTITY_PARENT_CYCLE',
+        targetId: 'entity:player'
+      })
+    ]);
+  });
+
+  it('maps asset diagnostics to asset blockers', () => {
+    const resolverResult = createIrGateResolverResult({
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'RESOLVER_ASSET_SOURCE_UNSAFE',
+          message: 'Resolver V2 asset source points at generated code.',
+          sourcePath: '/assets/sprites/player_sprite/source',
+          targetId: 'asset:player_sprite'
+        }
+      ],
+      summary: { errorCount: 1 }
+    });
+
+    const result = evaluateResolverV2IrIntegrationGate({ resolverResult });
+
+    expect(result.blockers).toEqual([
+      expect.objectContaining({
+        code: 'RESOLVER_V2_ASSET_ERROR',
+        diagnosticCode: 'RESOLVER_ASSET_SOURCE_UNSAFE',
+        targetId: 'asset:player_sprite'
+      })
+    ]);
+  });
+});
+
 type SceneGraphTestResult = ReturnType<typeof resolveSemanticDocumentV2> & {
   sceneGraph?: {
     nodes: ResolverV2SceneGraphNode[];
@@ -1645,6 +2110,147 @@ function createSpriteDocument(options: { assetSource: unknown; assetId?: string;
         }
       }
     }
+  };
+}
+
+function createReadyIrGateInput(): { document: unknown; semanticIndex: SemanticIndex } {
+  return {
+    document: {
+      scenes: {
+        main: {
+          camera: {
+            follow: 'entity:player'
+          },
+          entities: {
+            player: {
+              id: 'entity:player',
+              components: {
+                sprite: {
+                  asset: 'asset:player_sprite'
+                }
+              }
+            }
+          }
+        }
+      },
+      assets: {
+        sprites: {
+          player_sprite: {
+            id: 'asset:player_sprite',
+            type: 'image',
+            source: './assets/player.png'
+          }
+        }
+      }
+    },
+    semanticIndex: createSemanticIndex([
+      { id: 'scene:main', kind: 'scene', path: '/scenes/main', value: {} },
+      { id: 'entity:player', kind: 'entity', path: '/scenes/main/entities/player', value: {} },
+      { id: 'asset:player_sprite', kind: 'asset', path: '/assets/sprites/player_sprite', value: {} }
+    ])
+  };
+}
+
+function createIrGateResolverResult(
+  options: {
+    diagnostics?: ResolverV2Diagnostic[];
+    references?: ResolverV2Reference[];
+    sceneGraph?: ResolverV2SceneGraph;
+    summary?: Partial<ResolverV2Result['summary']>;
+  } = {}
+): ResolverV2Result {
+  const references = options.references ?? [];
+  const diagnostics = options.diagnostics ?? [];
+  const errorCount = diagnostics.filter((diagnostic) => diagnostic.severity === 'error').length;
+  const warningCount = diagnostics.filter((diagnostic) => diagnostic.severity === 'warning').length;
+  const sceneGraph = Object.prototype.hasOwnProperty.call(options, 'sceneGraph')
+    ? options.sceneGraph
+    : createIrGateSceneGraph();
+
+  return {
+    ok: errorCount === 0 && references.every((reference) => reference.status === 'resolved'),
+    references,
+    diagnostics,
+    summary: {
+      referenceCount: references.length,
+      resolvedCount: references.filter((reference) => reference.status === 'resolved').length,
+      unresolvedCount: references.filter((reference) => reference.status === 'unresolved').length,
+      errorCount,
+      warningCount,
+      sceneCount: sceneGraph?.nodes.filter((node) => node.kind === 'scene').length,
+      entityCount: sceneGraph?.nodes.filter((node) => node.kind === 'entity').length,
+      sceneGraphNodeCount: sceneGraph?.nodes.length,
+      sceneGraphEdgeCount: sceneGraph?.edges.length,
+      ...options.summary
+    },
+    ...(sceneGraph === undefined ? {} : { sceneGraph })
+  };
+}
+
+function createIrGateReference(options: {
+  id: string;
+  targetId: string;
+  status: 'resolved' | 'unresolved';
+  kind?: ResolverV2Reference['kind'];
+  sourcePath?: string;
+  fieldPath?: string;
+}): ResolverV2Reference {
+  return {
+    id: options.id,
+    kind: options.kind ?? 'sprite_asset',
+    sourcePath: options.sourcePath ?? '/scenes/main/entities/player',
+    fieldPath: options.fieldPath ?? '/scenes/main/entities/player/components/sprite/asset',
+    targetId: options.targetId,
+    expectedTargetKind: options.kind === 'camera_follow_entity' ? 'entity' : 'asset',
+    status: options.status,
+    ...(options.status === 'resolved'
+      ? {
+          resolvedTarget: {
+            id: options.targetId,
+            kind: options.kind === 'camera_follow_entity' ? 'entity' : 'asset',
+            path: options.kind === 'camera_follow_entity' ? '/scenes/main/entities/player' : '/assets/sprites/player_sprite'
+          }
+        }
+      : {})
+  };
+}
+
+function createIrGateSceneGraph(options: { includeEntity?: boolean } = {}): ResolverV2SceneGraph {
+  const includeEntity = options.includeEntity ?? true;
+  return {
+    nodes: [
+      {
+        id: 'scene_node:scene:main',
+        kind: 'scene',
+        semanticId: 'scene:main',
+        path: '/scenes/main',
+        sceneId: 'scene:main',
+        metadata: { sceneKey: 'main' }
+      },
+      ...(includeEntity
+        ? [
+            {
+              id: 'entity_node:main:entity:player',
+              kind: 'entity' as const,
+              semanticId: 'entity:player',
+              path: '/scenes/main/entities/player',
+              sceneId: 'scene:main',
+              visible: true
+            }
+          ]
+        : [])
+    ],
+    edges: includeEntity
+      ? [
+          {
+            id: 'scene_edge:scene_contains_entity:0',
+            kind: 'scene_contains_entity',
+            from: 'scene_node:scene:main',
+            to: 'entity_node:main:entity:player',
+            path: '/scenes/main/entities/player'
+          }
+        ]
+      : []
   };
 }
 

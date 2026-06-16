@@ -185,4 +185,145 @@ export type ResolverV2 = {
   resolve(request: ResolverV2Request): ResolverV2Result;
 };
 
+export type ResolverV2IrGateStatus = 'ready' | 'blocked';
+
+export type ResolverV2IrGateBlockerCode =
+  | 'RESOLVER_V2_DIAGNOSTIC_ERROR'
+  | 'RESOLVER_V2_UNRESOLVED_REFERENCE'
+  | 'RESOLVER_V2_MISSING_SCENE_GRAPH'
+  | 'RESOLVER_V2_EMPTY_SCENE_GRAPH'
+  | 'RESOLVER_V2_MISSING_SCENE'
+  | 'RESOLVER_V2_MISSING_ENTITY'
+  | 'RESOLVER_V2_ASSET_ERROR'
+  | 'RESOLVER_V2_SCENE_GRAPH_ERROR'
+  | 'RESOLVER_V2_GATE_MISSING_INPUT'
+  | 'RESOLVER_V2_GATE_EXCEPTION'
+  | string;
+
+export type ResolverV2IrGateBlocker = {
+  code: ResolverV2IrGateBlockerCode;
+  message: string;
+  severity: 'error';
+  diagnosticCode?: ResolverV2DiagnosticCode;
+  referenceId?: string;
+  sourcePath?: string;
+  fieldPath?: string;
+  targetId?: string;
+  nodeId?: string;
+};
+
+export type ResolverV2IrGateWarning = {
+  code: ResolverV2DiagnosticCode;
+  message: string;
+  diagnosticCode?: ResolverV2DiagnosticCode;
+  referenceId?: string;
+  sourcePath?: string;
+  fieldPath?: string;
+  targetId?: string;
+  nodeId?: string;
+};
+
+export type ResolverV2IrGatePolicy = {
+  blockOnWarnings?: boolean;
+  requireSceneGraph?: boolean;
+  requireAtLeastOneScene?: boolean;
+  requireAtLeastOneEntity?: boolean;
+  blockOnUnresolvedReferences?: boolean;
+  blockOnAssetDiagnostics?: boolean;
+  blockOnSceneGraphDiagnostics?: boolean;
+};
+
+export type ResolverV2IrGateReferenceSummary = {
+  id: string;
+  kind: ResolverV2ReferenceKind;
+  status: ResolverV2Reference['status'];
+  sourcePath: string;
+  fieldPath: string;
+  targetId: string;
+  resolvedTargetId?: string;
+  resolvedAssetId?: string;
+};
+
+export type ResolverV2IrGateAssetSummary = {
+  id: string;
+  key: string;
+  path: string;
+  kind: ResolverV2AssetKind;
+  sourceKind: ResolverV2AssetSourceKind;
+};
+
+export type ResolverV2IrGateSceneGraphNodeSummary = {
+  id: string;
+  kind: ResolverV2SceneGraphNodeKind;
+  semanticId?: string;
+  path: string;
+  sceneId?: string;
+  visible?: boolean;
+};
+
+export type ResolverV2IrGateSceneGraphEdgeSummary = {
+  id: string;
+  kind: ResolverV2SceneGraphEdgeKind;
+  from: string;
+  to: string;
+  path: string;
+};
+
+export type ResolverV2IrGateSceneGraphSummary = {
+  sceneCount: number;
+  entityCount: number;
+  cameraCount: number;
+  spawnCount: number;
+  nodeCount: number;
+  edgeCount: number;
+  nodes: ResolverV2IrGateSceneGraphNodeSummary[];
+  edges: ResolverV2IrGateSceneGraphEdgeSummary[];
+};
+
+export type ResolverV2IrGateDiagnosticSummary = {
+  severity: ResolverV2DiagnosticSeverity;
+  code: ResolverV2DiagnosticCode;
+  message: string;
+  referenceId?: string;
+  sourcePath?: string;
+  fieldPath?: string;
+  targetId?: string;
+  expectedTargetKind?: string;
+  actualTargetKind?: string;
+};
+
+export type ResolverV2IrHandoffSummary = {
+  status: ResolverV2IrGateStatus;
+  referenceCount: number;
+  resolvedReferenceCount: number;
+  unresolvedReferenceCount: number;
+  errorCount: number;
+  warningCount: number;
+  references: ResolverV2IrGateReferenceSummary[];
+  diagnostics: ResolverV2IrGateDiagnosticSummary[];
+  sceneGraph?: ResolverV2IrGateSceneGraphSummary;
+  assets?: ResolverV2IrGateAssetSummary[];
+};
+
+export type ResolverV2IrGateResult = {
+  ok: boolean;
+  status: ResolverV2IrGateStatus;
+  blockers: ResolverV2IrGateBlocker[];
+  warnings: ResolverV2IrGateWarning[];
+  summary: ResolverV2IrHandoffSummary;
+  resolverResult: ResolverV2Result;
+};
+
+export type ResolverV2IrGateRequest = {
+  document?: unknown;
+  semanticIndex?: SemanticIndex;
+  resolver?: ResolverV2;
+  resolverResult?: ResolverV2Result;
+  policy?: ResolverV2IrGatePolicy;
+};
+
+export type ResolverV2IrIntegrationGate = {
+  evaluate(request: ResolverV2IrGateRequest): ResolverV2IrGateResult;
+};
+
 export type ExtractedResolverV2Reference = Omit<ResolverV2Reference, 'id' | 'status' | 'resolvedTarget'>;
