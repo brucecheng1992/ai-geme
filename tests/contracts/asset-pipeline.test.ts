@@ -117,6 +117,84 @@ describe('Asset pipeline contracts', () => {
     });
   });
 
+  it('prefers IR semanticModel over template param label inference', () => {
+    const normalized = validateAndNormalizeRawGameDsl({
+      ...createShooterRawDsl(),
+      semanticModel: {
+        schemaVersion: 'game-semantic-model-v0.1',
+        entities: [
+          {
+            entityId: 'player',
+            role: 'player',
+            concept: 'generic_actor',
+            tags: ['generic_actor'],
+            strictness: 'soft',
+            source: 'model_explicit',
+            sourcePaths: ['semanticModel.entities.0']
+          }
+        ]
+      }
+    });
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const params = normalized.ir.template_params.params as { player: { label: string } };
+    params.player.label = 'Tank';
+    const plan = buildAssetPlanFromIr(projectId, normalized.ir);
+    const player = plan.items.find((item) => item.id === 'player');
+
+    expect(player?.semantic).toMatchObject({
+      expectedConcept: 'generic_actor',
+      expectedAnyTags: ['generic_actor'],
+      strictness: 'soft'
+    });
+    expect(player?.semantic?.expectedConcept).not.toBe('tank');
+  });
+
+  it('matches semanticModel profiles by source entity id when a role has multiple profiles', () => {
+    const normalized = validateAndNormalizeRawGameDsl(createShooterRawDsl());
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    normalized.ir.semanticModel = {
+      schemaVersion: 'game-semantic-model-v0.1',
+      entities: [
+        {
+          entityId: 'decoy_enemy',
+          role: 'enemy',
+          concept: 'tank',
+          tags: ['tank', 'vehicle'],
+          strictness: 'hard',
+          source: 'model_explicit',
+          sourcePaths: ['test.decoy']
+        },
+        {
+          entityId: 'alien',
+          role: 'enemy',
+          concept: 'alien',
+          tags: ['alien', 'extraterrestrial', 'ufo_creature'],
+          strictness: 'hard',
+          source: 'model_explicit',
+          sourcePaths: ['test.alien']
+        }
+      ]
+    };
+
+    const plan = buildAssetPlanFromIr(projectId, normalized.ir);
+    const enemy = plan.items.find((item) => item.id === 'enemy');
+
+    expect(enemy?.semantic).toMatchObject({
+      expectedConcept: 'alien',
+      expectedAnyTags: ['alien', 'extraterrestrial', 'ufo_creature'],
+      strictness: 'hard'
+    });
+    expect(enemy?.semantic?.expectedConcept).not.toBe('tank');
+  });
+
   it('normalizes canary taxonomy v0.2 synonyms without ASCII substring matches', () => {
     for (const subject of ['fishbone', 'fish_bone', 'fish bone', '鱼骨', '鱼骨头', '鱼骨头子弹', '鱼骨子弹']) {
       expect(inferAssetSemanticConstraint({ role: 'projectile', subject })).toMatchObject({
@@ -179,6 +257,7 @@ describe('Asset pipeline contracts', () => {
       projectile: { label: string };
       world: { visual_theme: string };
     };
+    normalized.ir.semanticModel = undefined;
     params.player.label = 'Caterpillar';
     params.enemy.label = 'Tankard';
     params.projectile.label = 'Tank Shell';
@@ -415,6 +494,7 @@ describe('Asset pipeline contracts', () => {
       enemy: { label: string };
       projectile: { label: string };
     };
+    normalized.ir.semanticModel = undefined;
     params.player.label = '英雄';
     params.enemy.label = 'Enemy';
     params.projectile.label = 'Bullet';
@@ -587,6 +667,7 @@ describe('Asset pipeline contracts', () => {
       projectile: { label: string };
       world: { visual_theme: string };
     };
+    normalized.ir.semanticModel = undefined;
     params.player.label = 'Caterpillar';
     params.enemy.label = 'Tankard';
     params.projectile.label = 'Tank Shell';

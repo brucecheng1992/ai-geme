@@ -1,6 +1,7 @@
 import type { z } from 'zod';
 
 import { RawGameDslSchema, type RawGameDsl } from './schemas/raw-game-dsl-v0.1.schema.js';
+import type { GameplayRole } from './semantic/semantic-model.schema.js';
 import { validateMechanicContract, validateObjectiveReachability } from './mechanic-contract.validator.js';
 import type { DslValidationIssue, DslValidationResult } from './validation.types.js';
 
@@ -51,11 +52,53 @@ export function validateRawGameDsl(input: unknown): DslValidationResult<RawGameD
   const issues = [
     ...validateUniqueIds(parsed.data),
     ...validateReferences(parsed.data),
+    ...validateSemanticModelReferences(parsed.data),
     ...validateMechanicContract(parsed.data),
     ...validateObjectiveReachability(parsed.data)
   ];
 
   return issues.length === 0 ? { ok: true, value: parsed.data } : { ok: false, issues };
+}
+
+function validateSemanticModelReferences(raw: RawGameDsl): DslValidationIssue[] {
+  const model = raw.semanticModel;
+  if (model === undefined) {
+    return [];
+  }
+
+  const rolesById = new Map<string, GameplayRole>([
+    [raw.player.id, 'player'],
+    ...raw.entities.map((entity) => [entity.id, roleForEntityKind(entity.kind)] as [string, GameplayRole])
+  ]);
+  const issues: DslValidationIssue[] = [];
+
+  for (const [index, profile] of model.entities.entries()) {
+    const expectedRole = rolesById.get(profile.entityId);
+    if (expectedRole === undefined) {
+      issues.push({
+        code: 'UNRESOLVED_REFERENCE',
+        path: `semanticModel.entities.${index}.entityId`,
+        message: `Unknown semantic profile entity id "${profile.entityId}"`
+      });
+      continue;
+    }
+    if (profile.role !== expectedRole) {
+      issues.push({
+        code: 'INVALID_GAME_SEMANTICS',
+        path: `semanticModel.entities.${index}.role`,
+        message: `Semantic profile role for "${profile.entityId}" must be "${expectedRole}".`
+      });
+    }
+  }
+
+  return issues;
+}
+
+function roleForEntityKind(kind: RawGameDsl['entities'][number]['kind']): GameplayRole {
+  if (kind === 'collectible') {
+    return 'collectible';
+  }
+  return kind;
 }
 
 function toSchemaIssue(issue: z.core.$ZodIssue): DslValidationIssue {

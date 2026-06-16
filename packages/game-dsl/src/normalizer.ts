@@ -4,6 +4,7 @@ import shooterContract from './contracts/shooter.contract.json' with { type: 'js
 import sideScrollingRunAndGunContract from './contracts/side_scrolling_run_and_gun.contract.json' with { type: 'json' };
 import { NormalizedGameIrSchema, type NormalizedGameIr } from './schemas/normalized-game-ir-v0.1.schema.js';
 import type { RawGameDsl } from './schemas/raw-game-dsl-v0.1.schema.js';
+import { buildGameSemanticModel } from './semantic/semantic-model-derivation.js';
 import { buildShooterVisualParams } from './template-visual-params.js';
 import { validateRawGameDsl } from './dsl-validator.js';
 import { DslValidationError, type ValidateAndNormalizeResult } from './validation.types.js';
@@ -93,6 +94,7 @@ function buildNormalizedGameIr(raw: RawGameDsl) {
       telemetry: true
     },
     runtime_plan: buildRuntimePlan(raw),
+    semanticModel: buildGameSemanticModel(raw),
     template_params: {
       template_id: templateIds[raw.game.genre],
       params: buildTemplateParams(raw)
@@ -208,6 +210,7 @@ function buildTemplateParams(raw: RawGameDsl): Record<string, unknown> {
   const base = {
     world: raw.world,
     player: {
+      sourceEntityId: raw.player.id,
       label: raw.player.label,
       health: raw.player.health ?? 3,
       speedPxPerSec: raw.player.movement.speed_px_per_sec ?? 240,
@@ -225,6 +228,7 @@ function buildTemplateParams(raw: RawGameDsl): Record<string, unknown> {
     return {
       ...base,
       collectible: {
+        ...(collectible === undefined ? {} : { sourceEntityId: collectible.id }),
         label: collectible?.label ?? 'Item',
         count: collectible?.count ?? 8,
         scorePerItem: scoreAddValue(collectCollision) || 1
@@ -245,6 +249,7 @@ function buildTemplateParams(raw: RawGameDsl): Record<string, unknown> {
     return {
       ...base,
       hazard: {
+        ...(hazard === undefined ? {} : { sourceEntityId: hazard.id }),
         label: hazard?.label ?? 'Hazard',
         speedPxPerSec: hazard?.movement.speed_px_per_sec ?? 180,
         spawnIntervalMs: 1000,
@@ -253,6 +258,7 @@ function buildTemplateParams(raw: RawGameDsl): Record<string, unknown> {
       ...(collectible && collectibleScore > 0
         ? {
             collectible: {
+              sourceEntityId: collectible.id,
               label: collectible.label,
               count: collectible.count ?? 1,
               scorePerItem: collectibleScore
@@ -285,12 +291,14 @@ function buildTemplateParams(raw: RawGameDsl): Record<string, unknown> {
   return {
     ...base,
     projectile: {
+      ...(projectile === undefined ? {} : { sourceEntityId: projectile.id }),
       label: projectile?.label ?? 'Projectile',
       damage: projectile?.damage ?? (damageValue(hitCollision) || 1),
       speedPxPerSec: projectile?.movement.speed_px_per_sec ?? 520,
       visual: visuals.projectile
     },
     enemy: {
+      ...(enemy === undefined ? {} : { sourceEntityId: enemy.id }),
       label: enemy?.label ?? 'Enemy',
       health: enemy?.health ?? 1,
       speedPxPerSec: enemy?.movement.speed_px_per_sec ?? 120,

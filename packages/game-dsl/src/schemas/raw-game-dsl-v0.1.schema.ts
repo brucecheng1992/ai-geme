@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { GameSemanticModelSchema } from '../semantic/semantic-model.schema.js';
+
 export const DslIdSchema = z.string().regex(/^[a-z][a-z0-9_]{1,39}$/);
 
 const forbiddenKeys = new Set([
@@ -242,6 +244,7 @@ export const RawGameDslSchema = z.strictObject({
   camera: CameraSchema.optional(),
   player: PlayerSchema,
   entities: z.array(EntitySchema).min(1).max(12),
+  semanticModel: GameSemanticModelSchema.optional(),
   projectiles: z.array(ProjectileSchema).min(1).max(8).optional(),
   enemyTypes: z.array(EnemyTypeSchema).min(1).max(12).optional(),
   level: LevelSchema.optional(),

@@ -3,6 +3,7 @@ import collectorContract from '../contracts/collector.contract.json' with { type
 import dodgerContract from '../contracts/dodger.contract.json' with { type: 'json' };
 import shooterContract from '../contracts/shooter.contract.json' with { type: 'json' };
 import sideScrollingRunAndGunContract from '../contracts/side_scrolling_run_and_gun.contract.json' with { type: 'json' };
+import { GameSemanticModelSchema } from '../semantic/semantic-model.schema.js';
 
 const TelemetryEventNameSchema = z.enum([
   'game.ready',
@@ -145,6 +146,7 @@ export const NormalizedGameIrSchema = z.strictObject({
   }),
   runtime_requirements: RuntimeRequirementsSchema,
   runtime_plan: RuntimePlanSchema,
+  semanticModel: GameSemanticModelSchema.optional(),
   template_params: TemplateParamsSchema,
   telemetry_contract: TelemetryContractSchema,
   qa_plan: QaPlanSchema

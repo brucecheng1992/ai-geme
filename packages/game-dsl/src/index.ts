@@ -1,6 +1,39 @@
 export { GameBriefSchema, type GameBrief } from './schemas/game-brief-v0.1.schema.js';
 export { RawGameDslSchema, type RawGameDsl } from './schemas/raw-game-dsl-v0.1.schema.js';
 export { NormalizedGameIrSchema, type NormalizedGameIr } from './schemas/normalized-game-ir-v0.1.schema.js';
+export {
+  EntitySemanticProfileSchema,
+  GameSemanticModelSchema,
+  GameplayRoleSchema,
+  SemanticStrictnessSchema,
+  VisualConceptSchema,
+  type EntitySemanticProfile,
+  type GameSemanticModel,
+  type GameplayRole,
+  type SemanticStrictness,
+  type VisualConcept
+} from './semantic/semantic-model.schema.js';
+export {
+  buildSemanticModelReport,
+  SemanticModelReportSchema,
+  SEMANTIC_MODEL_REPORT_VERSION,
+  type SemanticModelReport
+} from './semantic/semantic-model-report.js';
+export {
+  buildSemanticExtractionTrace,
+  buildSemanticExtractionTraceReport,
+  type BuildSemanticExtractionTraceInput
+} from './semantic/semantic-extraction-trace.js';
+export {
+  ExtractionSourceSchema,
+  SemanticExtractionTraceEntrySchema,
+  SemanticExtractionTraceReportSchema,
+  SemanticExtractionTraceSchema,
+  type ExtractionSource,
+  type SemanticExtractionTrace,
+  type SemanticExtractionTraceEntry,
+  type SemanticExtractionTraceReport
+} from './semantic/semantic-extraction-trace.schema.js';
 export { DslPatchSchema, type DslPatch, type DslPatchOperation } from './schemas/dsl-patch-v0.1.schema.js';
 export {
   buildGameDslArtifact,

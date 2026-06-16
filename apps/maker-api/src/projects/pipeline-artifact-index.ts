@@ -20,6 +20,8 @@ export const PipelineArtifactRefSchema = z.strictObject({
     'assetPipelineReport',
     'assetLibraryUsageReport',
     'assetBindingTraceReport',
+    'semanticExtractionTraceReport',
+    'semanticModelReport',
     'buildLog',
     'qaReport',
     'pipelineAcceptanceReport',
@@ -65,7 +67,9 @@ const GENERATED_ARTIFACTS = {
   assetResolutionReport: 'asset_resolution_report.json',
   assetPipelineReport: 'asset_pipeline_report.json',
   assetLibraryUsageReport: 'asset_library_usage_report.json',
-  assetBindingTraceReport: 'asset_binding_trace_report.json'
+  assetBindingTraceReport: 'asset_binding_trace_report.json',
+  semanticExtractionTraceReport: 'semantic_extraction_trace_report.json',
+  semanticModelReport: 'semantic_model_report.json'
 } as const;
 
 export function buildValidPipelineArtifactIndex(input: {
@@ -103,6 +107,8 @@ export function buildValidPipelineArtifactIndex(input: {
     generatedArtifact('assetPipelineReport', GENERATED_ARTIFACTS.assetPipelineReport, compileFiles.has(GENERATED_ARTIFACTS.assetPipelineReport)),
     generatedArtifact('assetLibraryUsageReport', GENERATED_ARTIFACTS.assetLibraryUsageReport, compileFiles.has(GENERATED_ARTIFACTS.assetLibraryUsageReport)),
     generatedArtifact('assetBindingTraceReport', GENERATED_ARTIFACTS.assetBindingTraceReport, compileFiles.has(GENERATED_ARTIFACTS.assetBindingTraceReport)),
+    generatedArtifact('semanticExtractionTraceReport', GENERATED_ARTIFACTS.semanticExtractionTraceReport, compileFiles.has(GENERATED_ARTIFACTS.semanticExtractionTraceReport)),
+    generatedArtifact('semanticModelReport', GENERATED_ARTIFACTS.semanticModelReport, compileFiles.has(GENERATED_ARTIFACTS.semanticModelReport)),
     artifact('buildLog', 'build', 'build-log', `${input.runId}.log`, input.buildLogPresent === true ? 'present' : 'missing', false, 'build', 'log', input.buildLogPresent === true ? undefined : 'build_log_not_available_yet'),
     artifact('qaReport', 'qa', 'qa-report', `${input.runId}.json`, input.qaReportPresent === true ? 'present' : 'missing', false, 'qa', 'json', input.qaReportPresent === true ? undefined : 'qa_report_not_available_yet'),
     artifact('pipelineAcceptanceReport', 'index', 'model-output', 'pipeline_acceptance_report.json', 'present', true, 'pipeline-acceptance', 'json'),
@@ -155,6 +161,8 @@ export function buildInvalidDslPipelineArtifactIndex(input: { projectId: string;
     skippedGeneratedArtifact('assetPipelineReport'),
     skippedGeneratedArtifact('assetLibraryUsageReport'),
     skippedGeneratedArtifact('assetBindingTraceReport'),
+    skippedGeneratedArtifact('semanticExtractionTraceReport'),
+    skippedGeneratedArtifact('semanticModelReport'),
     artifact('buildLog', 'build', 'build-log', `${input.runId}.log`, 'skipped', false, 'build', 'log', 'dsl_validation_failed_before_build'),
     artifact('qaReport', 'qa', 'qa-report', `${input.runId}.json`, 'skipped', false, 'qa', 'json', 'dsl_validation_failed_before_qa'),
     artifact('pipelineAcceptanceReport', 'index', 'model-output', 'pipeline_acceptance_report.json', 'present', true, 'pipeline-acceptance', 'json'),

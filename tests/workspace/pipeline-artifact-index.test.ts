@@ -37,6 +37,8 @@ describe('Pipeline artifact index contract', () => {
         'asset_pipeline_report.json',
         'asset_library_usage_report.json',
         'asset_binding_trace_report.json',
+        'semantic_extraction_trace_report.json',
+        'semantic_model_report.json',
         'pipeline_artifact_index.json'
       ],
       buildLogPresent: true,
@@ -69,6 +71,8 @@ describe('Pipeline artifact index contract', () => {
       'assetPipelineReport',
       'assetLibraryUsageReport',
       'assetBindingTraceReport',
+      'semanticExtractionTraceReport',
+      'semanticModelReport',
       'buildLog',
       'qaReport',
       'pipelineAcceptanceReport',
@@ -84,6 +88,8 @@ describe('Pipeline artifact index contract', () => {
         expect.objectContaining({ id: 'assetPipelineReport', status: 'present', path: 'asset_pipeline_report.json' }),
         expect.objectContaining({ id: 'assetLibraryUsageReport', status: 'present', path: 'asset_library_usage_report.json' }),
         expect.objectContaining({ id: 'assetBindingTraceReport', status: 'present', path: 'asset_binding_trace_report.json', producedBy: 'asset-binding-trace' }),
+        expect.objectContaining({ id: 'semanticExtractionTraceReport', status: 'present', path: 'semantic_extraction_trace_report.json', producedBy: 'compiler' }),
+        expect.objectContaining({ id: 'semanticModelReport', status: 'present', path: 'semantic_model_report.json', producedBy: 'compiler' }),
         expect.objectContaining({ id: 'buildLog', status: 'present', artifactRoot: 'build-log', path: `${runId}.log` }),
         expect.objectContaining({ id: 'qaReport', status: 'present', artifactRoot: 'qa-report', path: `${runId}.json` }),
         expect.objectContaining({ id: 'pipelineAcceptanceReport', status: 'present', artifactRoot: 'model-output', path: 'pipeline_acceptance_report.json' }),
@@ -109,6 +115,8 @@ describe('Pipeline artifact index contract', () => {
         expect.objectContaining({ id: 'assetPipelineReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),
         expect.objectContaining({ id: 'assetLibraryUsageReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),
         expect.objectContaining({ id: 'assetBindingTraceReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),
+        expect.objectContaining({ id: 'semanticExtractionTraceReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),
+        expect.objectContaining({ id: 'semanticModelReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),
         expect.objectContaining({ id: 'pipelineAcceptanceReport', status: 'present', path: 'pipeline_acceptance_report.json' }),
         expect.objectContaining({ id: 'qaReport', status: 'skipped', reason: 'dsl_validation_failed_before_qa' })
       ])

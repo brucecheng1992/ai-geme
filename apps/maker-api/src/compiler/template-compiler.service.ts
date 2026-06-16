@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { Injectable } from '@nestjs/common';
 
 import { writeAssetArtifacts } from '../../../../packages/asset-pipeline/src/index.js';
-import { checkPhaserRuntimeCapabilities, NormalizedGameIrSchema } from '../../../../packages/game-dsl/src/index.js';
+import { buildSemanticExtractionTraceReport, buildSemanticModelReport, checkPhaserRuntimeCapabilities, NormalizedGameIrSchema } from '../../../../packages/game-dsl/src/index.js';
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
 import { writeAssetBindingTraceReport } from './asset-binding-trace-report.js';
 import { writeAssetLibraryUsageReport } from './asset-library-usage-report.js';
@@ -113,6 +113,21 @@ export class TemplateCompilerService {
       );
     }
     const compileFilesWithoutUsageReport = [...files, 'game.ir.json', ...assetArtifacts.files, 'asset_pipeline_report.json'];
+    const semanticExtractionTraceReport = buildSemanticExtractionTraceReport({
+      originalPrompt: input.semanticTraceContext?.originalPrompt,
+      brief: input.semanticTraceContext?.brief,
+      semanticModel: ir.semanticModel
+    });
+    await writeFile(
+      join(outputDir, 'semantic_extraction_trace_report.json'),
+      `${JSON.stringify(semanticExtractionTraceReport, null, 2)}\n`,
+      'utf8'
+    );
+    await writeFile(
+      join(outputDir, 'semantic_model_report.json'),
+      `${JSON.stringify(buildSemanticModelReport({ projectId: input.projectId, runId: input.runId, semanticModel: ir.semanticModel, semanticTracePresent: true }), null, 2)}\n`,
+      'utf8'
+    );
     await writeAssetPipelineReport({ projectId: input.projectId, templateId, genre, outputDir, compileFiles: compileFilesWithoutUsageReport });
     await writeAssetLibraryUsageReport({
       projectId: input.projectId,
@@ -123,7 +138,13 @@ export class TemplateCompilerService {
       assetPacksDir: join(templateAssetRoot, 'assets', 'asset-packs')
     });
     await writeAssetBindingTraceReport({ projectId: input.projectId, runId: input.runId, genre, outputDir });
-    const compileFiles = [...compileFilesWithoutUsageReport, 'asset_library_usage_report.json', 'asset_binding_trace_report.json'];
+    const compileFiles = [
+      ...compileFilesWithoutUsageReport,
+      'semantic_extraction_trace_report.json',
+      'semantic_model_report.json',
+      'asset_library_usage_report.json',
+      'asset_binding_trace_report.json'
+    ];
     await writeFile(join(outputDir, 'package.json'), this.renderPackageJson(input.projectId));
     await writeFile(join(outputDir, 'index.html'), this.renderIndexHtml());
     await writeFile(join(outputDir, 'src', 'main.ts'), this.renderMainEntry(genre));

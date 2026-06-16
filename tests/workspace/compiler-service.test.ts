@@ -10,7 +10,7 @@ import type { RuntimeCompileResult, RuntimeCompileSuccess } from '../../apps/mak
 import { ViteBuildRunnerService } from '../../apps/maker-api/src/compiler/vite-build-runner.service.js';
 import { LocalWorkspaceService } from '../../apps/maker-api/src/workspace/local-workspace.service.js';
 import { AssetManifestSchema, AssetResolutionReportSchema } from '../../packages/asset-pipeline/src/index.js';
-import { validateAndNormalizeRawGameDsl } from '../../packages/game-dsl/src/index.js';
+import { SemanticExtractionTraceReportSchema, SemanticModelReportSchema, validateAndNormalizeRawGameDsl } from '../../packages/game-dsl/src/index.js';
 import { createCollectorRawDsl, createDodgerRawDsl, createShooterRawDsl, createSideScrollingRunAndGunRawDsl } from '../contracts/fixtures.js';
 
 const projectId = 'proj_20260610_020000_abcd';
@@ -60,6 +60,24 @@ describe('Compiler + Build + Preview services', () => {
     await expect(readFile(join(result.outputDir, 'src/main.ts'), 'utf8')).resolves.toContain("../collector/src/main.js");
     await expect(readFile(join(result.outputDir, 'package.json'), 'utf8')).resolves.toContain('vite build');
     await expect(readFile(join(result.outputDir, 'game.ir.json'), 'utf8')).resolves.toContain('"game-ir-v0.1"');
+    const semanticModelReport = SemanticModelReportSchema.parse(JSON.parse(await readFile(join(result.outputDir, 'semantic_model_report.json'), 'utf8')));
+    const semanticExtractionTraceReport = SemanticExtractionTraceReportSchema.parse(JSON.parse(await readFile(join(result.outputDir, 'semantic_extraction_trace_report.json'), 'utf8')));
+    expect(result.files).toContain('semantic_extraction_trace_report.json');
+    expect(result.files).toContain('semantic_model_report.json');
+    expect(semanticExtractionTraceReport).toMatchObject({
+      version: 'semantic_extraction_trace_report.v1',
+      entryCount: 2
+    });
+    expect(semanticModelReport).toMatchObject({
+      reportVersion: 'semantic-model-report-v0.1',
+      projectId,
+      runId,
+      source: 'ir.semanticModel',
+      status: 'present',
+      profileCount: 2,
+      semanticTracePresent: true,
+      semanticTraceRef: { artifact: 'semantic_extraction_trace_report.json' }
+    });
     await expect(readFile(join(result.outputDir, 'asset_plan.json'), 'utf8')).resolves.toContain('"asset-plan-v0.1"');
     await expect(readFile(join(result.outputDir, 'public/asset_manifest.json'), 'utf8')).resolves.toContain('"sourcePack": "agm-tiny-collector"');
     await expect(readFile(join(result.outputDir, 'public/asset_manifest.json'), 'utf8')).resolves.toContain('"licenseId": "CC0-1.0"');

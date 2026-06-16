@@ -292,6 +292,133 @@ describe('DSL Validator and Normalizer', () => {
     }
   });
 
+  it('derives conservative default semantic model for generic shooter actors', () => {
+    const shooterDsl = {
+      ...createShooterRawDsl(),
+      player: {
+        ...createShooterRawDsl().player,
+        label: 'Pilot',
+        actions: [{ id: 'fire', type: 'shoot_projectile', cooldown_ms: 300, spawns: 'round' }]
+      },
+      entities: [
+        { id: 'round', kind: 'projectile', label: 'Round', damage: 1, movement: { type: 'move_right', speed_px_per_sec: 520 } },
+        { id: 'raider', kind: 'enemy', label: 'Raider', count: 6, health: 1, movement: { type: 'chase_player', speed_px_per_sec: 120 } }
+      ],
+      rules: {
+        collisions: [
+          {
+            id: 'round_hits_raider',
+            source: 'round',
+            target: 'raider',
+            type: 'projectile_hit',
+            effects: [{ type: 'damage', value: 1 }, { type: 'destroy' }, { type: 'score_add', value: 1 }]
+          }
+        ]
+      }
+    };
+
+    const result = validateAndNormalizeRawGameDsl(shooterDsl);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.ir.semanticModel?.entities).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ entityId: 'player', role: 'player', concept: 'generic_actor', strictness: 'soft' }),
+          expect.objectContaining({ entityId: 'raider', role: 'enemy', concept: 'generic_actor', strictness: 'soft' }),
+          expect.objectContaining({ entityId: 'round', role: 'projectile', concept: 'bullet', strictness: 'medium' })
+        ])
+      );
+      expect(result.ir.semanticModel?.entities.find((entity) => entity.entityId === 'player')?.concept).not.toBe('tank');
+    }
+  });
+
+  it('derives known visual concepts without relying on broad themes', () => {
+    for (const [label, concept] of [
+      ['Human Hero', 'human_character'],
+      ['Tank', 'tank'],
+      ['Cat', 'cat']
+    ] as const) {
+      const result = validateAndNormalizeRawGameDsl({
+        ...createShooterRawDsl(),
+        player: { ...createShooterRawDsl().player, label }
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.ir.semanticModel?.entities.find((entity) => entity.entityId === 'player')?.concept).toBe(concept);
+        expect(result.ir.semanticModel?.entities.find((entity) => entity.entityId === 'alien')?.concept).toBe('alien');
+      }
+    }
+  });
+
+  it('preserves explicit DSL semanticModel into normalized IR', () => {
+    const semanticModel = {
+      schemaVersion: 'game-semantic-model-v0.1',
+      entities: [
+        {
+          entityId: 'player',
+          role: 'player',
+          concept: 'human_character',
+          tags: ['human', 'person', 'hero'],
+          strictness: 'hard',
+          source: 'model_explicit',
+          sourcePaths: ['semanticModel.entities.0']
+        }
+      ]
+    };
+
+    const result = validateAndNormalizeRawGameDsl({ ...createShooterRawDsl(), semanticModel });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.ir.semanticModel).toEqual(semanticModel);
+    }
+  });
+
+  it('rejects semanticModel profiles that do not reference a DSL entity', () => {
+    const result = validateRawGameDsl({
+      ...createShooterRawDsl(),
+      semanticModel: {
+        schemaVersion: 'game-semantic-model-v0.1',
+        entities: [
+          {
+            entityId: 'missing_actor',
+            role: 'player',
+            concept: 'generic_actor',
+            tags: ['generic_actor'],
+            strictness: 'soft',
+            source: 'model_explicit',
+            sourcePaths: ['semanticModel.entities.0']
+          }
+        ]
+      }
+    });
+
+    expectIssue(result, 'UNRESOLVED_REFERENCE', 'missing_actor');
+  });
+
+  it('rejects semanticModel roles that do not match the referenced DSL entity kind', () => {
+    const result = validateRawGameDsl({
+      ...createShooterRawDsl(),
+      semanticModel: {
+        schemaVersion: 'game-semantic-model-v0.1',
+        entities: [
+          {
+            entityId: 'bolt',
+            role: 'enemy',
+            concept: 'alien',
+            tags: ['alien'],
+            strictness: 'hard',
+            source: 'model_explicit',
+            sourcePaths: ['semanticModel.entities.0']
+          }
+        ]
+      }
+    });
+
+    expectIssue(result, 'INVALID_GAME_SEMANTICS', 'must be "projectile"');
+  });
+
   it('normalizes generic side-scrolling run-and-gun DSL without downgrading to top_down shooter', () => {
     const result = validateAndNormalizeRawGameDsl(createSideScrollingRunAndGunRawDsl());
 

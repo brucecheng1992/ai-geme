@@ -4,6 +4,10 @@ export type RuntimeCompileInput = {
   projectId: string;
   runId: string;
   ir: NormalizedGameIr;
+  semanticTraceContext?: {
+    originalPrompt?: string;
+    brief?: unknown;
+  };
 };
 
 export type RuntimeCompileSuccess = {

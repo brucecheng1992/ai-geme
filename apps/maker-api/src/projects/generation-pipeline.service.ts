@@ -56,7 +56,7 @@ type DslProvider = Pick<GameDslProviderService, 'generateGameBrief' | 'generateR
 type RuntimeCompiler = Pick<TemplateCompilerService, 'compile'>;
 type RuntimeBuilder = Pick<ViteBuildRunnerService, 'build'>;
 type RuntimeQaRunner = Pick<PlaywrightQaRunnerService, 'run'>;
-type RawDslGenerationResult = { ok: true; artifact: GameDslArtifact } | { ok: false; status: ProjectStatus };
+type RawDslGenerationResult = { ok: true; artifact: GameDslArtifact; brief?: unknown } | { ok: false; status: ProjectStatus };
 type QaPipelineResult =
   | { kind: 'report'; report: QaReport; assetSemanticRepair: QaAssetSemanticRepairReport }
   | { kind: 'status'; status: ProjectStatus; report: QaReport; assetSemanticRepair: QaAssetSemanticRepairReport };
@@ -116,7 +116,7 @@ export class GenerationPipelineService {
     });
     await this.appendEvent(input.runId, 'ir.generated', 'Normalized IR generated from validated DSL.');
 
-    const compiled = await this.compileProject(input, normalized.ir);
+    const compiled = await this.compileProject(input, normalized.ir, generated.brief);
     if (!compiled.ok) {
       return compiled.status;
     }
@@ -177,7 +177,7 @@ export class GenerationPipelineService {
           return { ok: false, status: 'DSL_VALIDATION_FAILED' };
         }
         await this.setStatus(input.projectId, input.runId, 'DSL_GENERATED', 'dsl-generation', 'DONE');
-        return { ok: true, artifact: artifact.value };
+        return { ok: true, artifact: artifact.value, brief: brief.value };
       }
 
       return await this.handleModelGenerationFailure(input, raw);
@@ -186,7 +186,7 @@ export class GenerationPipelineService {
     return await this.handleModelGenerationFailure(input, brief);
   }
 
-  private async compileProject(input: GenerationPipelineInput, ir: NormalizedGameIr): Promise<RuntimeCompileSuccess | { ok: false; status: ProjectStatus }> {
+  private async compileProject(input: GenerationPipelineInput, ir: NormalizedGameIr, brief?: unknown): Promise<RuntimeCompileSuccess | { ok: false; status: ProjectStatus }> {
     await this.setStatus(input.projectId, input.runId, 'RUNTIME_CHECKING', 'project-generation', 'RUNNING');
     const runtimeGate = checkPhaserRuntimeCapabilities(ir);
     if (!runtimeGate.ok) {
@@ -203,7 +203,12 @@ export class GenerationPipelineService {
     let compiled: RuntimeCompileResult;
 
     try {
-      compiled = await this.compiler.compile({ projectId: input.projectId, runId: input.runId, ir });
+      compiled = await this.compiler.compile({
+        projectId: input.projectId,
+        runId: input.runId,
+        ir,
+        semanticTraceContext: { originalPrompt: input.idea, brief }
+      });
     } catch (error) {
       await this.setStatus(input.projectId, input.runId, 'BUILD_FAILED', 'project-generation', 'FAILED');
       await this.appendEvent(input.runId, 'build.failed', errorMessage(error, 'Project generation failed before build.'));
