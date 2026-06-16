@@ -2,12 +2,12 @@
 
 当前状态：
 
-- Step 28 Resolver V2 🚧
+- Step 28 Resolver V2 ✅
   - 28.1 Contract / SemanticIndex Adapter Skeleton ✅
   - 28.2 Asset Resolver Expansion ✅
   - 28.3 Scene Graph Resolver ✅
   - 28.4 IR Integration Gate ✅
-  - 28.5 Resolver Trace / Diagnostics UI ⬜
+  - 28.5 Resolver Trace / Diagnostics UI ✅
 
 ## Step 28.1 Contract / SemanticIndex Adapter Skeleton
 
@@ -483,3 +483,152 @@ git diff --check -- .
 下一步建议：
 
 - Step 28.5 Resolver Trace / Diagnostics UI
+
+## Step 28.5 Resolver Trace / Diagnostics UI
+
+完成时间：2026-06-16
+
+已完成内容：
+
+- 新增 `packages/game-dsl/src/resolver-v2/trace-events.ts`，定义 Resolver V2 trace event type / severity / schema。
+- 新增 `packages/game-dsl/src/resolver-v2/trace-recorder.ts`，提供 deterministic in-memory trace recorder、sink forwarding 和 sink exception capture。
+- 新增 `packages/game-dsl/src/resolver-v2/trace-summaries.ts`，集中 resolver / IR gate / diagnostic / blocker trace-safe summary。
+- 新增 `packages/game-dsl/src/resolver-v2/traced-resolver-v2.ts`，提供 `traceResolverV2Resolve()` 和 `traceResolverV2IrGate()`。
+- 新增 `packages/game-dsl/src/resolver-v2/diagnostics-view-model.ts` 及 mapper/types/scene-graph helper，生成 safe diagnostics view model。
+- 新增 `apps/maker-workbench/src/features/resolver-v2/ResolverV2DiagnosticsPanel.tsx` 和 panel parts，只读渲染 diagnostics view model。
+- 新增 `apps/maker-workbench/src/features/resolver-v2/index.ts`，导出 Workbench resolver-v2 feature。
+- 更新 `packages/game-dsl/src/resolver-v2/index.ts`，导出新增 trace / diagnostics API 和类型。
+- 新增 `tests/contracts/resolver-v2-trace-diagnostics.test.ts`，覆盖 Step 28.5 trace / diagnostics 契约。
+
+新增 Resolver V2 trace event contract：
+
+- `resolver_v2.resolve.started`
+- `resolver_v2.resolve.completed`
+- `resolver_v2.resolve.failed`
+- `resolver_v2.ir_gate.started`
+- `resolver_v2.ir_gate.completed`
+- `resolver_v2.ir_gate.blocked`
+- `resolver_v2.diagnostics.reported`
+- Trace severity：`debug` / `info` / `warning` / `error`
+- `ResolverV2TraceEventSchema` 可 parse recorder 产出的事件。
+
+新增 trace recorder 行为：
+
+- `createResolverV2TraceRecorder()` 支持 deterministic `now()` 和 deterministic `createEventId()` 注入。
+- `getEvents()` 返回 cloned event snapshots，不暴露内部数组。
+- `clear()` 清空 events / sink errors / sequence。
+- sink throw 不影响 recorder emit、resolver resolve 或 IR gate evaluate 结果。
+- sink throw 被记录到 `getSinkErrors()`。
+
+新增 traced wrapper 行为：
+
+- `traceResolverV2Resolve()` 发出 resolve started / completed / failed 生命周期事件。
+- resolver 成功返回但 diagnostics 非空时，额外发出 `resolver_v2.diagnostics.reported`。
+- custom resolver throw 不抛出到调用方，返回 gate-safe failed `ResolverV2Result`，并发出 `resolver_v2.resolve.failed`。
+- `traceResolverV2IrGate()` 发出 IR gate started / completed 或 started / blocked 生命周期事件。
+- custom gate throw 不抛出到调用方，返回 blocked `ResolverV2IrGateResult`，并产生 `RESOLVER_V2_GATE_EXCEPTION` blocker。
+
+新增 diagnostics view model：
+
+- `createResolverV2DiagnosticsViewModel()` 输入为 `unknown`，invalid input 不抛出。
+- 输出 summary、diagnostics、blockers、references、assets、sceneGraph、traceEvents 和 warnings。
+- 输出只包含 safe fields，不保留原数组或原对象引用。
+- deterministic ordering 覆盖 diagnostics、blockers、references、assets 和 sceneGraph rows。
+
+新增 Workbench read-only diagnostics panel：
+
+- `ResolverV2DiagnosticsPanel` 只接收 `ResolverV2DiagnosticsViewModel` props。
+- 组件不调用 resolver。
+- 组件不调用 IR gate。
+- 组件不写 persistence。
+- 组件不发 trace。
+- 组件不接 runtime / QA / pipeline。
+- 组件不使用 `dangerouslySetInnerHTML`。
+- 组件无 state / reducer / effect / ref / custom hook。
+
+Safe redaction：
+
+- trace payload 不包含完整 document。
+- trace payload 不包含 raw asset source。
+- trace payload 不包含 diagnostic `cause` 或 stack。
+- diagnostics view model 不包含完整 document。
+- diagnostics view model 不包含 raw asset source。
+- diagnostics view model 不包含 diagnostic `cause` 或 stack。
+- Workbench panel 只渲染 view model，不接触 document 或 raw asset source。
+
+Safety / boundary：
+
+- 本轮未生成 IR。
+- 本轮未替换 existing resolver。
+- 本轮未接 Phaser generator。
+- 本轮未接 Preview runtime。
+- 本轮未接 QA / Playwright。
+- 本轮未接 pipeline gate。
+- 本轮未写 workspace 文件或持久化 SSOT。
+- 本轮未修改 generated Phaser code。
+- 本轮未进入 Phaser Upgrade。
+
+TDD 记录：
+
+- RED：`npx vitest run tests/contracts/resolver-v2-trace-diagnostics.test.ts` 失败 14 tests，原因是 trace recorder、traced wrappers 和 diagnostics view model API 尚未实现。
+- GREEN：新增 trace events / recorder / wrappers / diagnostics view model / exports 后，`tests/contracts/resolver-v2-trace-diagnostics.test.ts` 14 tests passed。
+- Oracle P1 RED：补充 partially malformed unknown input regression test，复现 `diagnostics: [null]` / `blockers: [null]` / invalid sceneGraph 会导致 view model throw。
+- Oracle P1 GREEN：diagnostics / blockers / references / sceneGraph 增加 row-level guards，坏行跳过且不抛出；`tests/contracts/resolver-v2-trace-diagnostics.test.ts` 15 tests passed。
+- Oracle 复审 P1 RED：补充 malformed scene graph node regression test，复现 `sceneGraph.nodes: [null]` 仍会在 scene graph grouping 时 throw。
+- Oracle 复审 P1 GREEN：scene graph view model helper 增加 node row guard，只复制 type-valid optional fields，resolver / gate graph grouping 统一基于 safe rows；`tests/contracts/resolver-v2-trace-diagnostics.test.ts` 16 tests passed。
+- React type GREEN：新增 Workbench read-only panel 后，`npm run typecheck --workspace @ai-game-maker/maker-workbench` passed。
+- 结构复核：`diagnostics-view-model.ts` 拆分为主工厂、types、mappers、scene-graph helper；Workbench panel 拆分为主 panel 和 parts helper。
+
+已通过验证：
+
+```bash
+npx vitest run tests/contracts/resolver-v2.test.ts
+npx vitest run tests/contracts/resolver-v2-trace-diagnostics.test.ts
+npx vitest run tests/contracts/semantic-editing-*.test.ts
+npm run typecheck:root
+npm run typecheck --workspace @ai-game-maker/maker-workbench
+git diff --check -- .
+```
+
+结果：
+
+- `tests/contracts/resolver-v2.test.ts`: 1 test file passed, 65 tests passed
+- `tests/contracts/resolver-v2-trace-diagnostics.test.ts`: 1 test file passed, 16 tests passed
+- semantic-editing contract tests: 10 test files passed, 138 tests passed
+- root TypeScript typecheck passed
+- Workbench TypeScript typecheck passed
+- diff check passed
+
+阶段结果：
+
+- `trace-events.ts` 当前 32 行，集中 trace event schema。
+- `trace-recorder.ts` 当前 74 行，集中 deterministic recorder。
+- `trace-summaries.ts` 当前 97 行，集中 trace-safe summary。
+- `traced-resolver-v2.ts` 当前 168 行，集中 trace wrappers。
+- `diagnostics-view-model.ts` 当前 61 行，集中 view model factory。
+- `diagnostics-view-model-mappers.ts` 当前 219 行，集中 safe rows / input guards。
+- `diagnostics-view-model-scene-graph.ts` 当前 116 行，集中 scene graph view grouping 和 scene graph node row guard。
+- `ResolverV2DiagnosticsPanel.tsx` 当前 166 行，集中 Workbench panel composition。
+- `ResolverV2DiagnosticsPanelParts.tsx` 当前 80 行，集中 read-only table/list/status UI parts。
+- `resolver-v2-trace-diagnostics.test.ts` 当前覆盖 16 个 trace / diagnostics contract tests。
+
+审查门禁：
+
+- Oracle 首审：
+  - P0: 无。
+  - P1: safe diagnostics view model 的 `unknown` 输入防护只做浅层检查，半合法但内部损坏的输入仍可能抛出。
+  - P2: `ResolverV2TraceEventSchema` 的 `payload` 仍是 `Record<string, unknown>`；wrapper 自身 payload safe，本轮保持 prompt 指定 contract。
+  - P3: Workbench panel 拆分后职责可接受。
+- 已修复：
+  - 新增 partially malformed input regression test，覆盖 `references: [null]`、`diagnostics: [null]`、`blockers: [null]` 和 invalid `sceneGraph`。
+  - diagnostics view model mapper 增加 row-level guard，对坏行跳过，不再 cast 后读取。
+  - scene graph view model mapper 对 invalid graph shape 返回 `undefined`，不抛出。
+- Oracle 复审：
+  - P0: 无。
+  - P1: 无，前述 scene graph node row guard 后 P1 已关闭。
+  - P2: 文档仍记录 `15 tests passed` 且保留 `Oracle 复审待执行`；本次已更新为 16 tests 与最终复审结果。
+  - 结论：代码层未发现 P0 / P1 / P2 blocking issue；文档 P2 已在本节修正。
+
+下一步建议：
+
+- Step 28 Final Consolidation / Checkpoint，之后再进入 Phaser Upgrade 或下一阶段。

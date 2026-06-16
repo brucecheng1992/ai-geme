@@ -2,8 +2,28 @@ export { createResolverV2, resolveSemanticDocumentV2 } from './resolver-v2.js';
 export { extractResolverV2AssetCatalog } from './asset-catalog.js';
 export { extractResolverV2SceneGraph } from './scene-graph.js';
 export { evaluateResolverV2IrIntegrationGate, createResolverV2IrIntegrationGate } from './ir-integration-gate.js';
+export { ResolverV2TraceEventSchema, ResolverV2TraceEventTypeSchema, ResolverV2TraceSeveritySchema } from './trace-events.js';
+export { createResolverV2TraceRecorder } from './trace-recorder.js';
+export { traceResolverV2Resolve, traceResolverV2IrGate } from './traced-resolver-v2.js';
+export { createResolverV2DiagnosticsViewModel } from './diagnostics-view-model.js';
 export { extractResolverV2References, type ResolverV2ReferenceExtractionResult } from './reference-extractor.js';
 export { createResolverV2Diagnostic, type CreateResolverV2DiagnosticInput } from './diagnostics.js';
+export type { ResolverV2TraceEvent, ResolverV2TraceEventType, ResolverV2TraceSeverity } from './trace-events.js';
+export type {
+  ResolverV2TraceRecorder,
+  ResolverV2TraceRecorderOptions,
+  ResolverV2TraceSink
+} from './trace-recorder.js';
+export type {
+  ResolverV2TraceSummary,
+  ResolverV2TraceDiagnosticSummary,
+  ResolverV2TraceBlockerSummary
+} from './trace-summaries.js';
+export type { TraceResolverV2ResolveRequest, TraceResolverV2IrGateRequest } from './traced-resolver-v2.js';
+export type {
+  CreateResolverV2DiagnosticsViewModelInput,
+  ResolverV2DiagnosticsViewModel
+} from './diagnostics-view-model.js';
 export type {
   ExtractedResolverV2Reference,
   ResolverV2AssetCatalogResult,
