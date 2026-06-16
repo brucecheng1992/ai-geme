@@ -1,4 +1,5 @@
 import type {
+  ResolverV2AssetKind,
   ResolverV2Diagnostic,
   ResolverV2DiagnosticCode,
   ResolverV2DiagnosticSeverity
@@ -15,6 +16,8 @@ export type CreateResolverV2DiagnosticInput = {
   targetId?: string;
   expectedTargetKind?: string;
   actualTargetKind?: string;
+  expectedAssetKinds?: ResolverV2AssetKind[];
+  actualAssetKind?: ResolverV2AssetKind;
   cause?: unknown;
 };
 
@@ -30,6 +33,8 @@ export function createResolverV2Diagnostic(input: CreateResolverV2DiagnosticInpu
     ...(input.targetId === undefined ? {} : { targetId: input.targetId }),
     ...(input.expectedTargetKind === undefined ? {} : { expectedTargetKind: input.expectedTargetKind }),
     ...(input.actualTargetKind === undefined ? {} : { actualTargetKind: input.actualTargetKind }),
+    ...(input.expectedAssetKinds === undefined ? {} : { expectedAssetKinds: [...input.expectedAssetKinds] }),
+    ...(input.actualAssetKind === undefined ? {} : { actualAssetKind: input.actualAssetKind }),
     ...(input.cause === undefined ? {} : { cause: input.cause })
   };
 }

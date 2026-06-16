@@ -1,8 +1,13 @@
 export { createResolverV2, resolveSemanticDocumentV2 } from './resolver-v2.js';
+export { extractResolverV2AssetCatalog } from './asset-catalog.js';
 export { extractResolverV2References, type ResolverV2ReferenceExtractionResult } from './reference-extractor.js';
 export { createResolverV2Diagnostic, type CreateResolverV2DiagnosticInput } from './diagnostics.js';
 export type {
   ExtractedResolverV2Reference,
+  ResolverV2AssetCatalogResult,
+  ResolverV2AssetDefinition,
+  ResolverV2AssetKind,
+  ResolverV2AssetSourceKind,
   ResolverV2,
   ResolverV2Diagnostic,
   ResolverV2DiagnosticCode,

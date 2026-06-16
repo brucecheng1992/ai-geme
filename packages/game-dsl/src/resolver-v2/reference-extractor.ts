@@ -1,15 +1,15 @@
 import { createResolverV2Diagnostic } from './diagnostics.js';
-import type { ExtractedResolverV2Reference, ResolverV2Diagnostic } from './types.js';
+import { AUDIO_ASSET_KINDS, FONT_ASSET_KINDS, SPRITE_ASSET_KINDS } from './asset-reference-rules.js';
+import {
+  collectStringReference,
+  hasOwn,
+  isPlainRecord,
+  readString,
+  sortedKeys,
+  type ResolverV2ReferenceExtractionResult
+} from './reference-extractor-shared.js';
 
-type CollectStringReferenceInput = Pick<ExtractedResolverV2Reference, 'kind' | 'sourceId' | 'sourcePath' | 'fieldPath' | 'expectedTargetKind'> & {
-  value: unknown;
-  result: ResolverV2ReferenceExtractionResult;
-};
-
-export type ResolverV2ReferenceExtractionResult = {
-  references: ExtractedResolverV2Reference[];
-  diagnostics: ResolverV2Diagnostic[];
-};
+export type { ResolverV2ReferenceExtractionResult } from './reference-extractor-shared.js';
 
 /**
  * Extracts Resolver V2 semantic references from an in-memory SSOT-like object.
@@ -29,45 +29,45 @@ export function extractResolverV2References(document: unknown): ResolverV2Refere
     };
   }
 
-  if (document.scenes === undefined) {
-    return { references: [], diagnostics: [] };
-  }
+  const result: ResolverV2ReferenceExtractionResult = { references: [], diagnostics: [] };
 
   const scenes = document.scenes;
-  if (!isPlainRecord(scenes)) {
-    return {
-      references: [],
-      diagnostics: [
+  if (scenes !== undefined && !isPlainRecord(scenes)) {
+    result.diagnostics.push(
+      createResolverV2Diagnostic({
+        severity: 'warning',
+        code: 'RESOLVER_UNSUPPORTED_REFERENCE_SHAPE',
+        message: 'Resolver V2 scenes must be an object.',
+        sourcePath: '/scenes'
+      })
+    );
+  } else if (scenes !== undefined) {
+    collectSceneContainerReferences(scenes, result);
+  }
+
+  return result;
+}
+
+function collectSceneContainerReferences(
+  scenes: Record<string, unknown>,
+  result: ResolverV2ReferenceExtractionResult
+): void {
+  for (const sceneKey of sortedKeys(scenes)) {
+    const scene = scenes[sceneKey];
+    if (!isPlainRecord(scene)) {
+      result.diagnostics.push(
         createResolverV2Diagnostic({
           severity: 'warning',
           code: 'RESOLVER_UNSUPPORTED_REFERENCE_SHAPE',
-          message: 'Resolver V2 scenes must be an object.',
-          sourcePath: '/scenes'
+          message: 'Resolver V2 scene must be an object.',
+          sourcePath: `/scenes/${sceneKey}`
         })
-      ]
-    };
+      );
+      continue;
+    }
+
+    collectSceneReferences(scene, sceneKey, result);
   }
-
-  return sortedKeys(scenes).reduce<ResolverV2ReferenceExtractionResult>(
-    (result, sceneKey) => {
-      const scene = scenes[sceneKey];
-      if (!isPlainRecord(scene)) {
-        result.diagnostics.push(
-          createResolverV2Diagnostic({
-            severity: 'warning',
-            code: 'RESOLVER_UNSUPPORTED_REFERENCE_SHAPE',
-            message: 'Resolver V2 scene must be an object.',
-            sourcePath: `/scenes/${sceneKey}`
-          })
-        );
-        return result;
-      }
-
-      collectSceneReferences(scene, sceneKey, result);
-      return result;
-    },
-    { references: [], diagnostics: [] }
-  );
 }
 
 function collectSceneReferences(
@@ -147,71 +147,75 @@ function collectEntityReferences(
   const spritePath = `${entityPath}/components/sprite`;
   const components = entity.components;
   const sprite = isPlainRecord(components) ? components.sprite : undefined;
-  if (!isPlainRecord(sprite)) {
-    return;
-  }
-
-  if (!hasOwn(sprite, 'asset')) {
-    return;
-  }
-
-  collectStringReference({
-    value: sprite.asset,
-    kind: 'sprite_asset',
-    sourceId: entityId,
-    sourcePath: entityPath,
-    fieldPath: `${spritePath}/asset`,
-    expectedTargetKind: 'asset',
-    result
-  });
-}
-
-function collectStringReference(input: CollectStringReferenceInput): void {
-  if (typeof input.value === 'string' && input.value.trim().length > 0) {
-    input.result.references.push({
-      kind: input.kind,
-      sourceId: input.sourceId,
-      sourcePath: input.sourcePath,
-      fieldPath: input.fieldPath,
-      targetId: input.value,
-      expectedTargetKind: input.expectedTargetKind
+  if (isPlainRecord(sprite) && hasOwn(sprite, 'asset')) {
+    collectStringReference({
+      value: sprite.asset,
+      kind: 'sprite_asset',
+      sourceId: entityId,
+      sourcePath: entityPath,
+      fieldPath: `${spritePath}/asset`,
+      expectedTargetKind: 'asset',
+      expectedAssetKinds: SPRITE_ASSET_KINDS,
+      result
     });
-    return;
   }
 
-  if (input.value !== undefined) {
-    input.result.diagnostics.push(
-      createResolverV2Diagnostic({
-        severity: 'warning',
-        code: 'RESOLVER_UNSUPPORTED_REFERENCE_SHAPE',
-        message: 'Resolver V2 reference value must be a non-empty string.',
-        sourceId: input.sourceId,
-        sourcePath: input.sourcePath,
-        fieldPath: input.fieldPath,
-        expectedTargetKind: input.expectedTargetKind
-      })
-    );
-  }
-}
-
-function readString(record: Record<string, unknown>, key: string): string | undefined {
-  const value = record[key];
-  return typeof value === 'string' ? value : undefined;
-}
-
-function hasOwn(record: Record<string, unknown>, key: string): boolean { return Object.prototype.hasOwnProperty.call(record, key); }
-
-function sortedKeys(record: Record<string, unknown>): string[] { return Object.keys(record).sort(compareCodeUnits); }
-
-function compareCodeUnits(left: string, right: string): number {
-  return left < right ? -1 : left > right ? 1 : 0;
-}
-
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-    return false;
+  const audioPath = `${entityPath}/components/audio`;
+  const audio = isPlainRecord(components) ? components.audio : undefined;
+  if (isPlainRecord(audio) && hasOwn(audio, 'asset')) {
+    collectStringReference({
+      value: audio.asset,
+      kind: 'audio_asset',
+      sourceId: entityId,
+      sourcePath: entityPath,
+      fieldPath: `${audioPath}/asset`,
+      expectedTargetKind: 'asset',
+      expectedAssetKinds: AUDIO_ASSET_KINDS,
+      result
+    });
   }
 
-  const prototype = Object.getPrototypeOf(value);
-  return prototype === Object.prototype || prototype === null;
+  const soundPath = `${entityPath}/components/sound`;
+  const sound = isPlainRecord(components) ? components.sound : undefined;
+  if (isPlainRecord(sound) && hasOwn(sound, 'asset')) {
+    collectStringReference({
+      value: sound.asset,
+      kind: 'audio_asset',
+      sourceId: entityId,
+      sourcePath: entityPath,
+      fieldPath: `${soundPath}/asset`,
+      expectedTargetKind: 'asset',
+      expectedAssetKinds: AUDIO_ASSET_KINDS,
+      result
+    });
+  }
+
+  const textPath = `${entityPath}/components/text`;
+  const text = isPlainRecord(components) ? components.text : undefined;
+  if (isPlainRecord(text) && hasOwn(text, 'fontAsset')) {
+    collectStringReference({
+      value: text.fontAsset,
+      kind: 'font_asset',
+      sourceId: entityId,
+      sourcePath: entityPath,
+      fieldPath: `${textPath}/fontAsset`,
+      expectedTargetKind: 'asset',
+      expectedAssetKinds: FONT_ASSET_KINDS,
+      result
+    });
+  }
+
+  const nestedFont = isPlainRecord(text) && isPlainRecord(text.font) ? text.font : undefined;
+  if (nestedFont !== undefined && hasOwn(nestedFont, 'asset')) {
+    collectStringReference({
+      value: nestedFont.asset,
+      kind: 'font_asset',
+      sourceId: entityId,
+      sourcePath: entityPath,
+      fieldPath: `${textPath}/font/asset`,
+      expectedTargetKind: 'asset',
+      expectedAssetKinds: FONT_ASSET_KINDS,
+      result
+    });
+  }
 }

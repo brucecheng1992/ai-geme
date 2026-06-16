@@ -12,6 +12,34 @@ export type ResolverV2ReferenceKind =
   | 'asset_reference'
   | 'unknown_reference';
 
+export type ResolverV2AssetKind =
+  | 'image'
+  | 'sprite'
+  | 'audio'
+  | 'font'
+  | 'atlas'
+  | 'tilemap'
+  | 'tileset'
+  | 'generated_shape'
+  | 'unknown';
+
+export type ResolverV2AssetSourceKind = 'file' | 'generated' | 'inline' | 'unknown';
+
+export type ResolverV2AssetDefinition = {
+  id: string;
+  key: string;
+  path: string;
+  kind: ResolverV2AssetKind;
+  sourceKind: ResolverV2AssetSourceKind;
+  sourcePreview?: string;
+  sourceRedacted?: boolean;
+};
+
+export type ResolverV2AssetCatalogResult = {
+  assets: ResolverV2AssetDefinition[];
+  diagnostics: ResolverV2Diagnostic[];
+};
+
 export type ResolverV2Reference = {
   id: string;
   kind: ResolverV2ReferenceKind;
@@ -20,11 +48,18 @@ export type ResolverV2Reference = {
   fieldPath: string;
   targetId: string;
   expectedTargetKind: ResolverV2SemanticKind;
+  expectedAssetKinds?: ResolverV2AssetKind[];
   status: 'resolved' | 'unresolved';
   resolvedTarget?: {
     id: string;
     kind?: string;
     path?: string;
+  };
+  resolvedAsset?: {
+    id: string;
+    kind: ResolverV2AssetKind;
+    path?: string;
+    sourceKind?: ResolverV2AssetSourceKind;
   };
 };
 
@@ -32,9 +67,14 @@ export type ResolverV2DiagnosticSeverity = 'error' | 'warning' | 'info';
 
 export type ResolverV2DiagnosticCode =
   | 'INVALID_RESOLVER_DOCUMENT'
+  | 'INVALID_RESOLVER_SEMANTIC_ID'
   | 'UNSAFE_RESOLVER_REFERENCE'
   | 'RESOLVER_REFERENCE_TARGET_NOT_FOUND'
   | 'RESOLVER_REFERENCE_KIND_MISMATCH'
+  | 'RESOLVER_ASSET_DEFINITION_NOT_FOUND'
+  | 'RESOLVER_ASSET_TYPE_MISMATCH'
+  | 'RESOLVER_ASSET_SOURCE_UNSAFE'
+  | 'RESOLVER_DUPLICATE_ASSET_ID'
   | 'RESOLVER_REFERENCE_EXTRACTION_FAILED'
   | 'RESOLVER_UNSUPPORTED_REFERENCE_SHAPE'
   | string;
@@ -50,6 +90,8 @@ export type ResolverV2Diagnostic = {
   targetId?: string;
   expectedTargetKind?: string;
   actualTargetKind?: string;
+  expectedAssetKinds?: ResolverV2AssetKind[];
+  actualAssetKind?: ResolverV2AssetKind;
   cause?: unknown;
 };
 
