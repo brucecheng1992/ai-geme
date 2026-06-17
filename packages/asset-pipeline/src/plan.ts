@@ -6,7 +6,8 @@ export function buildAssetPlanFromIr(projectId: string, input: NormalizedGameIr)
   const ir = NormalizedGameIrSchema.parse(input);
   const params = asRecord(ir.template_params.params) ?? {};
   const world = asRecord(params.world);
-  const styleTheme = readOptionalString(world, 'visual_theme');
+  const style = asRecord(params.style);
+  const styleTheme = readOptionalString(world, 'visual_theme') ?? readOptionalString(style, 'visualTheme');
   const player = asRecord(params.player);
   const itemView = ir.game.camera === 'side_view' ? 'side_view' : 'top_down';
   const items: AssetPlanItem[] = [
@@ -49,13 +50,14 @@ export function buildAssetPlanFromIr(projectId: string, input: NormalizedGameIr)
   }
 
   if (ir.game.genre === 'side_scrolling_run_and_gun') {
-    const enemy = firstRecord(params.enemyTypes) ?? asRecord(params.enemy);
-    const projectile = firstRecord(params.projectiles) ?? asRecord(params.projectile);
-    const pickup = firstRecord(params.pickups);
-    items.push(createItem('enemy', 'enemy', readLabel(enemy, 'Enemy'), { w: 64, h: 64 }, ir.semanticModel, undefined, undefined, itemView));
-    items.push(createItem('projectile', 'projectile', readLabel(projectile, 'Projectile'), { w: 32, h: 24 }, ir.semanticModel, undefined, undefined, itemView));
+    const assetLabels = asRecord(params.assetLabels);
+    const enemy = asRecord(assetLabels?.enemy);
+    const projectile = asRecord(assetLabels?.projectile);
+    const pickup = asRecord(assetLabels?.pickup);
+    items.push(createItem('enemy', 'enemy', readLabel(enemy, 'Enemy'), { w: 64, h: 64 }, ir.semanticModel, readSourceEntityId(enemy), undefined, itemView));
+    items.push(createItem('projectile', 'projectile', readLabel(projectile, 'Projectile'), { w: 32, h: 24 }, ir.semanticModel, readSourceEntityId(projectile), undefined, itemView));
     items.push(createItem('tileset', 'tileset', 'side view terrain tileset', { w: 256, h: 128 }, ir.semanticModel, undefined, styleTheme, itemView));
-    items.push(createItem('pickup', 'pickup', readLabel(pickup, 'Pickup'), { w: 40, h: 40 }, ir.semanticModel, undefined, undefined, itemView));
+    items.push(createItem('pickup', 'pickup', readLabel(pickup, 'Pickup'), { w: 40, h: 40 }, ir.semanticModel, readSourceEntityId(pickup), undefined, itemView));
   }
 
   return AssetPlanSchema.parse({
@@ -133,10 +135,6 @@ function profileRoleForAssetRole(role: AssetPlanItem['role']): NonNullable<Norma
     return role;
   }
   return undefined;
-}
-
-function firstRecord(value: unknown): Record<string, unknown> | undefined {
-  return Array.isArray(value) ? asRecord(value[0]) : undefined;
 }
 
 function readLabel(record: Record<string, unknown> | undefined, fallback: string): string {

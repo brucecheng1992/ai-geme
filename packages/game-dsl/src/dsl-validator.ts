@@ -130,12 +130,12 @@ function toSchemaIssue(issue: z.core.$ZodIssue): DslValidationIssue {
     return { code: 'ARBITRARY_CODE_NOT_ALLOWED', path, message: issue.message };
   }
 
-  if (path.endsWith('.id') || path.endsWith('.source') || path.endsWith('.target') || path.endsWith('.spawns')) {
-    return { code: 'INVALID_ID_FORMAT', path, message: issue.message };
-  }
-
   if (isNumericSchemaPath(path)) {
     return { code: 'NUMERIC_RANGE_INVALID', path, message: issue.message };
+  }
+
+  if (path.endsWith('.id') || path.endsWith('.source') || path.endsWith('.target') || path.endsWith('.spawns')) {
+    return { code: 'INVALID_ID_FORMAT', path, message: issue.message };
   }
 
   return { code: 'SCHEMA_VALIDATION_FAILED', path, message: issue.message };

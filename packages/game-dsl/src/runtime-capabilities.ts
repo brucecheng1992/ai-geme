@@ -51,11 +51,13 @@ export const RUNTIME_GENRE_CAPABILITIES: RuntimeGenreCapability[] = [
   {
     genre: 'side_scrolling_run_and_gun',
     version: 'v1',
-    status: 'planned',
+    status: 'supported',
     requiredCapabilities: [...sideScrollingRunAndGunCapabilities],
-    implementedCapabilities: [],
-    missingCapabilities: [...sideScrollingRunAndGunCapabilities],
-    notes: ['Semantic alias recognition exists, but the executable Phaser runtime template is not implemented yet.']
+    implementedCapabilities: [...sideScrollingRunAndGunCapabilities],
+    missingCapabilities: [],
+    templateId: 'phaser/side_scrolling_run_and_gun.v1',
+    qaProfile: 'side_scrolling_run_and_gun_smoke',
+    notes: ['Minimum Phaser side-scrolling run-and-gun runtime supports side-follow camera, run/jump/shoot, enemy waves, terrain collision, lives, and smoke QA.']
   },
   {
     genre: 'side_scrolling_platformer',

@@ -1,0 +1,40 @@
+{
+  "template_id": "side_scrolling_run_and_gun.v1",
+  "genre": "side_scrolling_run_and_gun",
+  "runtime": "phaser",
+  "deterministic_qa": true,
+  "required_systems": [
+    "InputSystem",
+    "MovementSystem",
+    "SpawnSystem",
+    "CollisionSystem",
+    "ScoreSystem",
+    "ObjectiveSystem",
+    "TelemetrySystem",
+    "GameStateSystem",
+    "QaBridge"
+  ],
+  "required_telemetry_all": [
+    "game.started",
+    "input.received",
+    "player.moved",
+    "player.jumped",
+    "player.fired",
+    "projectile.spawned",
+    "enemy.hit",
+    "checkpoint.reached",
+    "game.restarted"
+  ],
+  "required_telemetry_any_groups": [["enemy.cleared", "level.segment.completed", "game.won"]],
+  "source_files": [
+    "src/main.ts",
+    "src/GameScene.ts",
+    "src/side-scrolling-art-library.ts",
+    "src/side-scrolling-runtime-plan.ts",
+    "src/template-params.ts",
+    "src/template-params.generated.json",
+    "src/runtime-plan.generated.json",
+    "src/asset-manifest.generated.json"
+  ],
+  "shared_files": ["../shared/kernel.ts", "../shared/end-screen.ts"]
+}

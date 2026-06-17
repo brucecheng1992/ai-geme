@@ -23,7 +23,7 @@ export function checkPhaserRuntimeCapabilities(ir: NormalizedGameIr): RuntimeCap
     ...unsupportedValues('runtime_requirements.collision', ir.runtime_requirements.collision, supports.collision),
     ...unsupportedValues('runtime_requirements.actions', ir.runtime_requirements.actions, supports.actions),
     ...unsupportedValues('runtime_requirements.objectives', ir.runtime_requirements.objectives, supports.objectives),
-    ...unsupportedValues('runtime_requirements.capabilities', ir.runtime_requirements.capabilities, [])
+    ...unsupportedValues('runtime_requirements.capabilities', ir.runtime_requirements.capabilities, supports.capabilities ?? [])
   ];
 
   return unsupportedCapabilities.length === 0 ? { ok: true } : { ok: false, unsupportedCapabilities };

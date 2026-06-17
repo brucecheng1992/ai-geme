@@ -233,7 +233,7 @@ const validSideScrollingRunAndGunExample: RawGameDsl = {
     target_play_time_sec: 60
   },
   world: {
-    width: 960,
+    width: 1280,
     height: 540,
     visual_theme: 'generic sci fi frontier',
     coordinateSystem: 'side_view_2d',
@@ -257,11 +257,11 @@ const validSideScrollingRunAndGunExample: RawGameDsl = {
   enemyTypes: [{ id: 'drone_type', label: 'Drone', health: 1, movement: { type: 'patrol', speed_px_per_sec: 90 } }],
   level: {
     segments: [
-      { id: 'segment_intro', startX: 0, endX: 900 },
-      { id: 'segment_bridge', startX: 900, endX: 1800 }
+      { id: 'segment_intro', startX: 0, endX: 720 },
+      { id: 'segment_bridge', startX: 720, endX: 1280 }
     ],
     terrain: [
-      { id: 'ground_intro', kind: 'ground', x: 0, y: 500, width: 900, height: 40 },
+      { id: 'ground_intro', kind: 'ground', x: 0, y: 500, width: 1280, height: 40 },
       { id: 'platform_bridge', kind: 'platform', x: 980, y: 380, width: 280, height: 24 }
     ],
     spawns: [
@@ -270,7 +270,7 @@ const validSideScrollingRunAndGunExample: RawGameDsl = {
     ]
   },
   pickups: [{ id: 'field_medkit', label: 'Medkit', kind: 'health', x: 720, y: 450 }],
-  winLose: { win: 'reach_exit', lose: 'player_health_zero', lives: 3, checkpoints: [0, 900] },
+  winLose: { win: 'reach_exit', lose: 'player_health_zero', lives: 3, checkpoints: [0, 720] },
   rules: {
     collisions: [
       {
@@ -289,7 +289,7 @@ const validSideScrollingRunAndGunExample: RawGameDsl = {
       }
     ]
   },
-  objectives: { win: { type: 'reach_exit', target: 1800 }, lose: { type: 'player_health_zero' } },
+  objectives: { win: { type: 'reach_exit', target: 1240 }, lose: { type: 'player_health_zero' } },
   ui: {
     hud: ['score', 'health', 'objective'],
     restart: true,
@@ -380,10 +380,10 @@ export function buildRawDslPromptContext(params: BuildRawDslPromptContextParams)
     ],
     p0_scope: [
       'collector, dodger, shooter, and generic side_scrolling_run_and_gun DSL are supported.',
-      'Phaser runtime generation currently supports top_down templates; side_scrolling_run_and_gun must be rejected by the runtime capability gate until side-view platformer support exists.',
+      'Phaser runtime generation supports collector, dodger, shooter, and generic side_scrolling_run_and_gun templates; side-scrolling runtime facts are derived from DSL into runtime_plan, not emitted directly by the model.',
       'Only engine-agnostic gameplay semantics are allowed.',
       'Shooter template currently supports one player, one projectile type and one enemy type.',
-      'Runtime plan spawn execution is currently verified for dodger hazard right_edge_wave, dodger collectible fixed_positions, and shooter enemy right_edge_wave.',
+      'Runtime plan execution is currently verified for dodger hazard right_edge_wave, dodger collectible fixed_positions, shooter enemy right_edge_wave, and side_scrolling_run_and_gun level.spawns.',
       'Normalize 魂斗罗, 魂斗罗式, 横版跑枪, 横版射击, run and gun, and contra-like to side_scrolling_run_and_gun without emitting copyrighted names, characters, levels, or assets.'
     ],
     anti_shell_rules: [

@@ -3,15 +3,19 @@ import { describe, expect, it } from 'vitest';
 import collectorContract from '../../packages/game-dsl/src/contracts/collector.contract.json' with { type: 'json' };
 import dodgerContract from '../../packages/game-dsl/src/contracts/dodger.contract.json' with { type: 'json' };
 import shooterContract from '../../packages/game-dsl/src/contracts/shooter.contract.json' with { type: 'json' };
+import sideScrollingRunAndGunContract from '../../packages/game-dsl/src/contracts/side_scrolling_run_and_gun.contract.json' with { type: 'json' };
 import collectorManifest from '../../templates/phaser/collector/template-manifest.json' with { type: 'json' };
 import dodgerManifest from '../../templates/phaser/dodger/template-manifest.json' with { type: 'json' };
 import shooterManifest from '../../templates/phaser/shooter/template-manifest.json' with { type: 'json' };
+import sideScrollingManifest from '../../templates/phaser/side_scrolling_run_and_gun/template-manifest.json' with { type: 'json' };
+import type { SideScrollingRuntimeSlice } from '../../templates/phaser/side_scrolling_run_and_gun/src/side-scrolling-runtime-plan.js';
 
 const root = new URL('../../templates/phaser/', import.meta.url);
 const manifests = [
   { genre: 'collector', manifest: collectorManifest, contract: collectorContract },
   { genre: 'dodger', manifest: dodgerManifest, contract: dodgerContract },
-  { genre: 'shooter', manifest: shooterManifest, contract: shooterContract }
+  { genre: 'shooter', manifest: shooterManifest, contract: shooterContract },
+  { genre: 'side_scrolling_run_and_gun', manifest: sideScrollingManifest, contract: sideScrollingRunAndGunContract }
 ] as const;
 
 const requiredSystems = [
@@ -47,6 +51,23 @@ type CollectorTemplateSnapshot = TemplateSnapshot & {
 
 type ShooterTemplateSnapshot = TemplateSnapshot & {
   enemyWavePlan: { count: number };
+};
+
+type SideScrollingTemplateSnapshot = TemplateSnapshot & {
+  player: { x: number; y: number; onGround: boolean };
+  camera: {
+    mode: 'side_follow';
+    followTarget: 'player';
+    bounds: { x: number; y: number; width: number; height: number };
+    viewport: { width: 960; height: 540 };
+    playerX: number;
+    scrollX: number;
+    visibleLeft: number;
+    visibleRight: number;
+  };
+  enemies: Array<{ id: string; entityId: string; x: number; y: number; health: number; cleared: boolean }>;
+  projectiles: Array<{ id: string; x: number; y: number }>;
+  waves: Array<{ id: string; triggered: boolean }>;
 };
 
 type TemplateAssetTelemetry = {
@@ -97,6 +118,7 @@ describe('Phaser templates', () => {
     const collectorMain = await readFile('templates/phaser/collector/src/main.ts', 'utf8');
     const dodgerMain = await readFile('templates/phaser/dodger/src/main.ts', 'utf8');
     const shooterMain = await readFile('templates/phaser/shooter/src/main.ts', 'utf8');
+    const sideScrollingMain = await readFile('templates/phaser/side_scrolling_run_and_gun/src/main.ts', 'utf8');
 
     expect(collectorMain).toContain('scene.update(delta)');
     expect(collectorMain).toContain('scene.setMoveInput(direction, true)');
@@ -118,6 +140,11 @@ describe('Phaser templates', () => {
     expect(shooterMain).toContain('directionFromKey');
     expect(shooterMain).toContain('asset-manifest.generated.json');
     expect(shooterMain).toContain('shooterArt.preload(this)');
+    expect(sideScrollingMain).toContain('scene.jump()');
+    expect(sideScrollingMain).toContain('scene.fire()');
+    expect(sideScrollingMain).toContain('scene.setRunInput');
+    expect(sideScrollingMain).toContain('runtime-plan.generated.json');
+    expect(sideScrollingMain).toContain('sideScrollingArt.preload(this)');
   });
 
   it('lets shooter template render generated primitive visuals instead of fixed shells', async () => {
@@ -163,11 +190,19 @@ describe('Phaser templates', () => {
       } else if (genre === 'collector') {
         expect(main).toContain("from './asset-manifest.generated.json'");
         expect(main).toContain('new CollectorGameScene(collectorParams, collectorArt)');
+      } else if (genre === 'side_scrolling_run_and_gun') {
+        expect(main).toContain("from './runtime-plan.generated.json'");
+        expect(main).toContain("from './asset-manifest.generated.json'");
+        expect(main).toContain('new SideScrollingRunAndGunScene(sideScrollingParams, sideScrollingRuntimePlan, sideScrollingArt)');
+        expect(main).toContain('sideScrollingRuntimeSlice.scene.viewport.width');
+        expect(main).toContain('sideScrollingRuntimeSlice.scene.viewport.height');
       } else {
         expect(main).toContain(`new ${capitalizeGenre(genre)}GameScene(${genre}Params)`);
       }
-      expect(main).toContain(`${genre}Params.world.width`);
-      expect(main).toContain(`${genre}Params.world.height`);
+      if (genre !== 'side_scrolling_run_and_gun') {
+        expect(main).toContain(`${genre}Params.world.width`);
+        expect(main).toContain(`${genre}Params.world.height`);
+      }
       expect(main).not.toContain(`new ${capitalizeGenre(genre)}GameScene(default`);
     }
   });
@@ -811,6 +846,130 @@ describe('Phaser templates', () => {
     expect(scene).toContain("source: 'enemy_projectile'");
   });
 
+  it('side-scrolling template preserves run, jump, shoot, wave, and mission telemetry', async () => {
+    const scene = await readGenreScene('side_scrolling_run_and_gun');
+    const source = scene + (await readSharedKernel());
+
+    for (const event of sideScrollingRunAndGunContract.required_telemetry_all) {
+      expect(source).toContain(event);
+    }
+    expect(scene).toContain('setRunInput(direction: SideScrollingDirection, pressed: boolean)');
+    expect(scene).toContain('jump()');
+    expect(scene).toContain('fire(nowMs = Date.now())');
+    expect(scene).toContain('spawnTriggeredWaves');
+    expect(scene).toContain("this.telemetry.emit('player.jumped'");
+    expect(scene).toContain("this.telemetry.emit('player.fired'");
+    expect(scene).toContain("this.telemetry.emit('enemy.hit'");
+    expect(scene).toContain("this.telemetry.emit('enemy.cleared'");
+    expect(scene).toContain("this.telemetry.emit('checkpoint.reached'");
+    expect(scene).toContain("this.telemetry.emit('level.segment.completed'");
+  });
+
+  it('uses side-scrolling runtime_plan to drive camera follow and reach-exit wins', async () => {
+    const { SideScrollingRunAndGunScene } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/GameScene.js');
+    const { defaultSideScrollingRuntimeSlice } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/side-scrolling-runtime-plan.js');
+    const { defaultSideScrollingParams } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/template-params.js');
+    const plan: SideScrollingRuntimeSlice = {
+      ...defaultSideScrollingRuntimeSlice,
+      scene: { viewport: { width: 960, height: 540 }, world: { width: 1500, height: 540, gravityY: 1200 } },
+      camera: { mode: 'side_follow', followTarget: 'player', bounds: { x: 0, y: 0, width: 1500, height: 540 } },
+      player: { ...defaultSideScrollingRuntimeSlice.player, spawn: { x: 80, y: 448 }, speedPxPerSec: 600 },
+      platforms: [{ id: 'ground_test', kind: 'ground', x: 0, y: 500, width: 1500, height: 40 }],
+      waves: [],
+      winCondition: { kind: 'reach_exit', targetX: 1120 }
+    };
+    const scene = new SideScrollingRunAndGunScene(defaultSideScrollingParams, { side_scrolling: plan });
+
+    scene.create();
+    scene.start();
+    scene.setRunInput('right', true);
+    for (let frame = 0; frame < 30 && globalThis.__GAME_QA__?.snapshot().gameStatus !== 'WON'; frame += 1) {
+      scene.update(frame * 100, 100);
+    }
+
+    const snapshot = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
+    expect(snapshot).toMatchObject({
+      gameStatus: 'WON',
+      camera: {
+        mode: 'side_follow',
+        followTarget: 'player',
+        bounds: { width: 1500 },
+        viewport: { width: 960, height: 540 }
+      }
+    });
+    expect(snapshot?.player.x).toBeGreaterThanOrEqual(1120);
+    expect(snapshot?.camera.scrollX).toBeGreaterThan(0);
+    expect(snapshot?.camera.visibleRight).toBeGreaterThan(960);
+    expect(globalThis.__GAME_QA__?.telemetry().map((event) => event.type)).toEqual(
+      expect.arrayContaining(['player.moved', 'level.segment.completed', 'objective.completed', 'game.won'])
+    );
+  });
+
+  it('uses side-scrolling runtime_plan for jump, wave spawn, projectile hit, and enemy-cleared wins', async () => {
+    const { SideScrollingRunAndGunScene } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/GameScene.js');
+    const { defaultSideScrollingRuntimeSlice } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/side-scrolling-runtime-plan.js');
+    const { defaultSideScrollingParams } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/template-params.js');
+    const plan: SideScrollingRuntimeSlice = {
+      ...defaultSideScrollingRuntimeSlice,
+      player: {
+        ...defaultSideScrollingRuntimeSlice.player,
+        spawn: { x: 80, y: 448 },
+        fireCooldownMs: 0,
+        projectileSpeedPxPerSec: 620,
+        projectileDamage: 1
+      },
+      platforms: [{ id: 'ground_test', kind: 'ground', x: 0, y: 500, width: 960, height: 40 }],
+      enemyDefinitions: [{ id: 'grunt', label: 'Grunt', health: 1, movement: { type: 'static', speedPxPerSec: 0 } }],
+      waves: [{ id: 'close_wave', enemyTypeId: 'grunt', trigger: 'reach_x', triggerX: 240, spawnX: 260, count: 1 }],
+      winCondition: { kind: 'enemy_cleared', targetCount: 1 }
+    };
+    const scene = new SideScrollingRunAndGunScene(defaultSideScrollingParams, { side_scrolling: plan });
+
+    scene.create();
+    scene.start();
+    scene.jump();
+    expect(globalThis.__GAME_QA__?.telemetry().map((event) => event.type)).toContain('player.jumped');
+
+    scene.restart();
+    scene.start();
+    scene.update(0, 16);
+    expect((globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined)?.waves).toEqual([
+      expect.objectContaining({ id: 'close_wave', triggered: true })
+    ]);
+
+    scene.fire(1000);
+    for (let frame = 0; frame < 20 && globalThis.__GAME_QA__?.snapshot().score === 0; frame += 1) {
+      scene.update(1000 + frame * 50, 50);
+    }
+
+    const snapshot = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
+    expect(snapshot).toMatchObject({
+      gameStatus: 'WON',
+      score: 1,
+      enemies: [expect.objectContaining({ entityId: 'grunt', cleared: true })]
+    });
+    expect(globalThis.__GAME_QA__?.telemetry().map((event) => event.type)).toEqual(
+      expect.arrayContaining(['projectile.spawned', 'enemy.hit', 'enemy.cleared', 'score.changed', 'objective.completed', 'game.won'])
+    );
+  });
+
+  it('clears side-scrolling static render objects before restart re-renders the first frame', async () => {
+    const { SideScrollingRunAndGunScene } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/GameScene.js');
+    const { defaultSideScrollingParams } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/template-params.js');
+    const sceneMock = createPhaserSceneMock();
+    const scene = new SideScrollingRunAndGunScene(defaultSideScrollingParams);
+
+    scene.create(sceneMock as unknown as Parameters<typeof scene.create>[0]);
+    expect(sceneMock.destroyedObjects).toHaveLength(0);
+
+    scene.restart();
+    const firstRestartDestroyedCount = sceneMock.destroyedObjects.length;
+    expect(firstRestartDestroyedCount).toBeGreaterThan(0);
+
+    scene.restart();
+    expect(sceneMock.destroyedObjects.length).toBeGreaterThan(firstRestartDestroyedCount);
+  });
+
   it('resolves shooter enemy waves from runtime_plan before falling back to template defaults', async () => {
     const { resolveShooterEnemyWave } = await import('../../templates/phaser/shooter/src/shooter-runtime-plan.js');
     const { defaultShooterParams } = await import('../../templates/phaser/shooter/src/template-params.js');
@@ -1200,7 +1359,7 @@ describe('Phaser templates', () => {
   });
 });
 
-async function readGenreScene(genre: 'collector' | 'dodger' | 'shooter') {
+async function readGenreScene(genre: 'collector' | 'dodger' | 'shooter' | 'side_scrolling_run_and_gun') {
   return await readFile(new URL(`${genre}/src/GameScene.ts`, root), 'utf8');
 }
 
@@ -1208,7 +1367,7 @@ async function readSharedKernel() {
   return await readFile(new URL('shared/kernel.ts', root), 'utf8');
 }
 
-function capitalizeGenre(genre: 'collector' | 'dodger' | 'shooter') {
+function capitalizeGenre(genre: 'collector' | 'dodger' | 'shooter' | 'side_scrolling_run_and_gun') {
   return `${genre[0].toUpperCase()}${genre.slice(1)}`;
 }
 
@@ -1225,11 +1384,13 @@ function createPhaserSceneMock() {
     setX(...args: unknown[]): TextMock;
     setY(...args: unknown[]): TextMock;
     setOrigin(...args: unknown[]): TextMock;
+    setScrollFactor(...args: unknown[]): TextMock;
     setVisible(...args: unknown[]): TextMock;
     destroy(...args: unknown[]): undefined;
   };
   type RenderObjectMock = Record<string, (...args: unknown[]) => unknown>;
   const textValues: string[] = [];
+  const destroyedObjects: string[] = [];
   const recordText = (value: unknown) => {
     if (typeof value === 'string') {
       textValues.push(value);
@@ -1250,44 +1411,58 @@ function createPhaserSceneMock() {
       setX: () => text,
       setY: () => text,
       setOrigin: () => text,
+      setScrollFactor: () => text,
       setVisible: () => text,
-      destroy: () => undefined
+      destroy: () => {
+        destroyedObjects.push('text');
+        return undefined;
+      }
     };
     return text;
   };
-  const graphics: GraphicsMock = {
-    fillStyle: () => graphics,
-    fillRect: () => graphics,
-    fillRoundedRect: () => graphics,
-    fillCircle: () => graphics,
-    fillTriangle: () => graphics,
-    lineStyle: () => graphics,
-    lineBetween: () => graphics,
-    strokeCircle: () => graphics,
-    strokeRoundedRect: () => graphics,
-    clear: () => graphics,
-    fillEllipse: () => graphics,
-    setPosition: () => graphics,
-    setScale: () => graphics,
-    setFlipX: () => graphics,
-    setVisible: () => graphics,
-    setY: () => graphics,
-    destroy: () => undefined
+  const createGraphics = (): GraphicsMock => {
+    const graphics: GraphicsMock = {
+      fillStyle: () => graphics,
+      fillRect: () => graphics,
+      fillRoundedRect: () => graphics,
+      fillCircle: () => graphics,
+      fillTriangle: () => graphics,
+      lineStyle: () => graphics,
+      lineBetween: () => graphics,
+      strokeCircle: () => graphics,
+      strokeRoundedRect: () => graphics,
+      clear: () => graphics,
+      fillEllipse: () => graphics,
+      setPosition: () => graphics,
+      setScale: () => graphics,
+      setFlipX: () => graphics,
+      setVisible: () => graphics,
+      setY: () => graphics,
+      destroy: () => {
+        destroyedObjects.push('graphics');
+        return undefined;
+      }
+    };
+    return graphics;
   };
   const container: RenderObjectMock = {
     add: () => container,
     setPosition: () => container,
     setScale: () => container,
     setFlipX: () => container,
-    destroy: () => undefined
+    destroy: () => {
+      destroyedObjects.push('container');
+      return undefined;
+    }
   };
 
   return {
     textValues,
-    cameras: { main: { setBackgroundColor: () => undefined } },
+    destroyedObjects,
+    cameras: { main: { setBackgroundColor: () => undefined, setBounds: () => undefined, setScroll: () => undefined } },
     add: {
       container: () => container,
-      graphics: () => graphics,
+      graphics: () => createGraphics(),
       text: (_x: unknown, _y: unknown, value: unknown) => createText(value)
     }
   };

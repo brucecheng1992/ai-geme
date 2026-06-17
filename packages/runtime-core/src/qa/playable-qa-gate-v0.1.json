@@ -45,6 +45,22 @@
       "any_groups": [
         ["enemy.cleared", "score.changed"]
       ]
+    },
+    "side_scrolling_run_and_gun": {
+      "all": [
+        "game.started",
+        "input.received",
+        "player.moved",
+        "player.jumped",
+        "player.fired",
+        "projectile.spawned",
+        "enemy.hit",
+        "checkpoint.reached",
+        "game.restarted"
+      ],
+      "any_groups": [
+        ["enemy.cleared", "level.segment.completed", "game.won"]
+      ]
     }
   }
 }

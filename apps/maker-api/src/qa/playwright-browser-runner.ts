@@ -18,7 +18,8 @@ import type {
 const GENRE_KEYS: Record<QaGenre, string[]> = {
   collector: ['Enter', 'ArrowRight', 'r'],
   dodger: ['Enter', 'ArrowRight', 'h', 'r'],
-  shooter: ['Enter', ' ', 'ArrowRight', 'r']
+  shooter: ['Enter', ' ', 'ArrowRight', 'r'],
+  side_scrolling_run_and_gun: ['Enter', 'ArrowRight', ' ', 'j', 'r']
 };
 
 export const runPlaywrightQaBrowser: QaBrowserRunner = async (input, requiredEvents) => {
@@ -348,6 +349,26 @@ function requiredTelemetryObserved(observedEvents: string[], requiredEvents: QaR
 }
 
 async function runDeterministicInteraction(page: Page, genre: QaGenre, timeoutMs: number): Promise<{ ok: boolean; message?: string }> {
+  if (genre === 'side_scrolling_run_and_gun') {
+    await page.keyboard.press('Enter');
+    const movementAssertion = await verifySideScrollingMovement(page);
+    if (!movementAssertion.ok) {
+      await page.keyboard.press('r');
+      return movementAssertion;
+    }
+
+    await page.keyboard.press(' ');
+    const jumpAssertion = await verifyTelemetryEvent(page, 'player.jumped', 'Side-scrolling QA expected Space to emit player.jumped.');
+    if (!jumpAssertion.ok) {
+      await page.keyboard.press('r');
+      return jumpAssertion;
+    }
+
+    const progressed = await runSideScrollingCombat(page, timeoutMs);
+    await page.keyboard.press('r');
+    return progressed ? { ok: true } : { ok: false, message: 'Side-scrolling QA expected run-and-gun input to produce enemy.hit, enemy.cleared, or mission completion.' };
+  }
+
   if (genre !== 'shooter') {
     if (genre === 'collector') {
       await page.keyboard.press('Enter');
@@ -409,7 +430,7 @@ async function readQaSnapshot(page: Page): Promise<unknown> {
 }
 
 async function verifyRuntimeAssetsLoaded(page: Page, genre: QaGenre): Promise<{ ok: boolean; message?: string; telemetry?: QaAssetRuntimeTelemetry }> {
-  if (genre !== 'collector' && genre !== 'dodger' && genre !== 'shooter') {
+  if (genre !== 'collector' && genre !== 'dodger' && genre !== 'shooter' && genre !== 'side_scrolling_run_and_gun') {
     return { ok: true };
   }
   const genreLabel = qaGenreLabel(genre);
@@ -651,6 +672,21 @@ async function verifyShooterMovement(page: Page): Promise<{ ok: boolean; message
   return { ok: false, message: 'Shooter QA expected player.x to change after holding ArrowRight or ArrowLeft.' };
 }
 
+async function verifySideScrollingMovement(page: Page): Promise<{ ok: boolean; message?: string }> {
+  const moved = await tryHorizontalMove(page, 'ArrowRight', 12);
+  if (!moved) {
+    return { ok: false, message: 'Side-scrolling QA expected player.x to change after holding ArrowRight.' };
+  }
+
+  const snapshot = await readQaSnapshot(page);
+  const camera = readSnapshotCamera(snapshot);
+  if (camera !== undefined && camera.scrollX <= 0 && camera.playerX > camera.viewportWidth / 2) {
+    return { ok: false, message: 'Side-scrolling QA expected side_follow camera.scrollX to advance with the player.' };
+  }
+
+  return { ok: true };
+}
+
 async function verifyCollectorMovement(page: Page): Promise<{ ok: boolean; message?: string }> {
   if (await tryHorizontalMove(page, 'ArrowRight', 12)) {
     return { ok: true };
@@ -740,6 +776,62 @@ async function fireUntilShooterProgress(page: Page, timeoutMs: number): Promise<
   }
 
   return false;
+}
+
+async function runSideScrollingCombat(page: Page, timeoutMs: number): Promise<boolean> {
+  const startedAt = Date.now();
+  await page.keyboard.down('ArrowRight');
+
+  try {
+    while (Date.now() - startedAt < timeoutMs) {
+      await page.keyboard.press('j');
+      const observed = await page
+        .waitForFunction(
+          () => {
+            const qa = (globalThis as BrowserQaGlobal).__GAME_QA__;
+            return (
+              qa?.telemetry().some((event) => {
+                if (typeof event !== 'object' || event === null || !('type' in event)) {
+                  return false;
+                }
+
+                return event.type === 'enemy.hit' || event.type === 'enemy.cleared' || event.type === 'level.segment.completed' || event.type === 'game.won';
+              }) === true
+            );
+          },
+          undefined,
+          { timeout: Math.min(700, Math.max(100, timeoutMs - (Date.now() - startedAt))) }
+        )
+        .then(() => true)
+        .catch(() => false);
+
+      if (observed) {
+        return true;
+      }
+
+      await page.waitForTimeout(300);
+    }
+
+    return false;
+  } finally {
+    await page.keyboard.up('ArrowRight').catch(() => undefined);
+  }
+}
+
+async function verifyTelemetryEvent(page: Page, type: string, message: string): Promise<{ ok: boolean; message?: string }> {
+  const observed = await page
+    .waitForFunction(
+      (expectedType) => {
+        const qa = (globalThis as BrowserQaGlobal).__GAME_QA__;
+        return qa?.telemetry().some((event) => typeof event === 'object' && event !== null && 'type' in event && event.type === expectedType) === true;
+      },
+      type,
+      { timeout: 1000 }
+    )
+    .then(() => true)
+    .catch(() => false);
+
+  return observed ? { ok: true } : { ok: false, message };
 }
 
 async function verifyShooterRuntimePlanEnemyWave(page: Page): Promise<{ ok: boolean; message?: string }> {
@@ -872,6 +964,25 @@ function readSnapshotEnemiesActive(snapshot: unknown): number | undefined {
 
   const { enemiesActive } = snapshot as { enemiesActive?: unknown };
   return typeof enemiesActive === 'number' ? enemiesActive : undefined;
+}
+
+function readSnapshotCamera(snapshot: unknown): { scrollX: number; playerX: number; viewportWidth: number } | undefined {
+  if (typeof snapshot !== 'object' || snapshot === null || !('camera' in snapshot)) {
+    return undefined;
+  }
+
+  const camera = (snapshot as { camera?: unknown }).camera;
+  if (typeof camera !== 'object' || camera === null || !('scrollX' in camera) || !('playerX' in camera) || !('viewport' in camera)) {
+    return undefined;
+  }
+
+  const { scrollX, playerX, viewport } = camera as { scrollX?: unknown; playerX?: unknown; viewport?: unknown };
+  if (typeof viewport !== 'object' || viewport === null || !('width' in viewport)) {
+    return undefined;
+  }
+
+  const { width } = viewport as { width?: unknown };
+  return typeof scrollX === 'number' && typeof playerX === 'number' && typeof width === 'number' ? { scrollX, playerX, viewportWidth: width } : undefined;
 }
 
 type DodgerSpawnPlanRead =

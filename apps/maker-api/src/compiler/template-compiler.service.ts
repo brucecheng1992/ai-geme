@@ -42,22 +42,6 @@ export class TemplateCompilerService {
         unsupportedCapabilities: runtimeGate.unsupportedCapabilities
       };
     }
-    if (templateId === 'side_scrolling_run_and_gun.v1') {
-      return {
-        ok: false,
-        code: 'RUNTIME_UNSUPPORTED',
-        projectId: input.projectId,
-        templateId,
-        unsupportedCapabilities: [
-          {
-            capability: 'side_scrolling_run_and_gun.v1',
-            path: 'template_params.template_id',
-            reason: 'Phaser adapter does not provide a side-scrolling run-and-gun template.'
-          }
-        ]
-      };
-    }
-
     const genre = templateGenreById[templateId];
     const outputDir = this.workspace.getGeneratedProjectDir(input.projectId);
     const distDir = this.workspace.getGeneratedProjectDistDir(input.projectId);
@@ -77,11 +61,13 @@ export class TemplateCompilerService {
       ...(genre === 'shooter' ? [`${genre}/src/live-edit-bridge.ts`] : []),
       ...(genre === 'shooter' ? [`${genre}/src/shooter-art-library.ts`] : []),
       ...(genre === 'shooter' ? [`${genre}/src/template-visuals.ts`] : []),
+      ...(genre === 'side_scrolling_run_and_gun' ? [`${genre}/src/side-scrolling-art-library.ts`] : []),
+      ...(genre === 'side_scrolling_run_and_gun' ? [`${genre}/src/side-scrolling-runtime-plan.ts`] : []),
       `${genre}/src/template-params.ts`,
       'shared/kernel.ts',
       'shared/end-screen.ts',
-      ...(genre === 'collector' || genre === 'dodger' || genre === 'shooter' ? [`${genre}/src/asset-manifest.generated.json`] : []),
-      ...(genre === 'dodger' || genre === 'shooter' ? [`${genre}/src/runtime-plan.generated.json`] : []),
+      ...(genre === 'collector' || genre === 'dodger' || genre === 'shooter' || genre === 'side_scrolling_run_and_gun' ? [`${genre}/src/asset-manifest.generated.json`] : []),
+      ...(genre === 'dodger' || genre === 'shooter' || genre === 'side_scrolling_run_and_gun' ? [`${genre}/src/runtime-plan.generated.json`] : []),
       ...(genre === 'shooter' ? [`${genre}/src/live-edit-registry.generated.json`] : []),
       `${genre}/src/template-params.generated.json`
     ];
@@ -100,10 +86,10 @@ export class TemplateCompilerService {
     const templateAssetRoot = join(this.templateRoot, '..', '..');
     await writeFile(join(outputDir, 'game.ir.json'), `${JSON.stringify(ir, null, 2)}\n`, 'utf8');
     await writeFile(join(outputDir, `${genre}`, 'src', 'template-params.generated.json'), JSON.stringify(ir.template_params.params, null, 2));
-    if (genre === 'collector' || genre === 'dodger' || genre === 'shooter') {
+    if (genre === 'collector' || genre === 'dodger' || genre === 'shooter' || genre === 'side_scrolling_run_and_gun') {
       await writeFile(join(outputDir, `${genre}`, 'src', 'asset-manifest.generated.json'), JSON.stringify(assetArtifacts.manifest, null, 2));
     }
-    if (genre === 'dodger' || genre === 'shooter') {
+    if (genre === 'dodger' || genre === 'shooter' || genre === 'side_scrolling_run_and_gun') {
       await writeFile(join(outputDir, `${genre}`, 'src', 'runtime-plan.generated.json'), JSON.stringify(ir.runtime_plan, null, 2));
     }
     if (genre === 'shooter') {

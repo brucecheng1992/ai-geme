@@ -10,6 +10,7 @@ import phaserCapabilities from '../../packages/runtime-adapters/phaser/src/phase
 import collectorManifest from '../../templates/phaser/collector/template-manifest.json' with { type: 'json' };
 import dodgerManifest from '../../templates/phaser/dodger/template-manifest.json' with { type: 'json' };
 import shooterManifest from '../../templates/phaser/shooter/template-manifest.json' with { type: 'json' };
+import sideScrollingManifest from '../../templates/phaser/side_scrolling_run_and_gun/template-manifest.json' with { type: 'json' };
 import { createCollectorRawDsl, createIrForGenre, satisfiesGate } from './fixtures.js';
 
 const requiredSystems = [
@@ -241,6 +242,149 @@ describe('Contract Freeze', () => {
     ).toThrow();
   });
 
+  it('keeps side-scrolling runtime plan strict, genre-gated, and aligned with IR world bounds', () => {
+    const sideScrollingIr = createIrForGenre('side_scrolling_run_and_gun', sideScrollingRunAndGunContract);
+    const sideScrollingPlan = sideScrollingIr.runtime_plan.side_scrolling;
+
+    if (sideScrollingPlan === undefined) {
+      throw new Error('expected side-scrolling fixture IR to include runtime_plan.side_scrolling');
+    }
+
+    expect(() => NormalizedGameIrSchema.parse(sideScrollingIr)).not.toThrow();
+
+    expect(() =>
+      NormalizedGameIrSchema.parse({
+        ...sideScrollingIr,
+        runtime_plan: {
+          spawn_rules: [],
+          side_scrolling: {
+            ...sideScrollingPlan,
+            script: 'Math.random()'
+          }
+        }
+      })
+    ).toThrow();
+
+    expect(() =>
+      NormalizedGameIrSchema.parse({
+        ...sideScrollingIr,
+        runtime_plan: {
+          spawn_rules: []
+        }
+      })
+    ).toThrow();
+
+    expect(() =>
+      NormalizedGameIrSchema.parse({
+        ...createIrForGenre('collector', collectorContract),
+        runtime_plan: {
+          spawn_rules: [],
+          side_scrolling: sideScrollingPlan
+        }
+      })
+    ).toThrow();
+
+    expect(() =>
+      NormalizedGameIrSchema.parse({
+        ...sideScrollingIr,
+        runtime_plan: {
+          spawn_rules: [],
+          side_scrolling: {
+            ...sideScrollingPlan,
+            scene: {
+              ...sideScrollingPlan.scene,
+              world: { ...sideScrollingPlan.scene.world, width: 1200 }
+            }
+          }
+        }
+      })
+    ).toThrow();
+
+    const narrowedWorldIr = {
+      ...sideScrollingIr,
+      world: { width: 1200, height: 540 },
+      runtime_plan: {
+        spawn_rules: [],
+        side_scrolling: {
+          ...sideScrollingPlan,
+          scene: {
+            ...sideScrollingPlan.scene,
+            world: { ...sideScrollingPlan.scene.world, width: 1200 }
+          },
+          camera: {
+            ...sideScrollingPlan.camera,
+            bounds: { ...sideScrollingPlan.camera.bounds, width: 1200 }
+          },
+          platforms: [
+            { id: 'ground_intro', kind: 'ground', x: 0, y: 500, width: 1200, height: 40 },
+            { id: 'platform_bridge', kind: 'platform', x: 980, y: 380, width: 200, height: 24 }
+          ],
+          waves: [
+            { id: 'spawn_intro_drone', enemyTypeId: 'drone_type', trigger: 'enter_segment', triggerX: 640, spawnX: 640, count: 3 },
+            { id: 'spawn_bridge_drone', enemyTypeId: 'drone_type', trigger: 'reach_x', triggerX: 1080, spawnX: 1080, count: 5 }
+          ],
+          winCondition: { kind: 'reach_exit', targetX: 1180 }
+        }
+      }
+    };
+
+    expect(() => NormalizedGameIrSchema.parse(narrowedWorldIr)).not.toThrow();
+    expect(() =>
+      NormalizedGameIrSchema.parse({
+        ...narrowedWorldIr,
+        runtime_plan: {
+          ...narrowedWorldIr.runtime_plan,
+          side_scrolling: {
+            ...narrowedWorldIr.runtime_plan.side_scrolling,
+            platforms: [
+              ...narrowedWorldIr.runtime_plan.side_scrolling.platforms.slice(0, 1),
+              { id: 'platform_bridge', kind: 'platform', x: 1180, y: 380, width: 40, height: 24 }
+            ]
+          }
+        }
+      })
+    ).toThrow();
+    expect(() =>
+      NormalizedGameIrSchema.parse({
+        ...narrowedWorldIr,
+        runtime_plan: {
+          ...narrowedWorldIr.runtime_plan,
+          side_scrolling: {
+            ...narrowedWorldIr.runtime_plan.side_scrolling,
+            waves: [
+              { ...narrowedWorldIr.runtime_plan.side_scrolling.waves[0], triggerX: 1240 },
+              narrowedWorldIr.runtime_plan.side_scrolling.waves[1]
+            ]
+          }
+        }
+      })
+    ).toThrow();
+    expect(() =>
+      NormalizedGameIrSchema.parse({
+        ...narrowedWorldIr,
+        runtime_plan: {
+          ...narrowedWorldIr.runtime_plan,
+          side_scrolling: {
+            ...narrowedWorldIr.runtime_plan.side_scrolling,
+            pickups: [{ id: 'field_medkit', kind: 'health', x: 720, y: 560 }]
+          }
+        }
+      })
+    ).toThrow();
+    expect(() =>
+      NormalizedGameIrSchema.parse({
+        ...narrowedWorldIr,
+        runtime_plan: {
+          ...narrowedWorldIr.runtime_plan,
+          side_scrolling: {
+            ...narrowedWorldIr.runtime_plan.side_scrolling,
+            winCondition: { kind: 'reach_exit', targetX: 1240 }
+          }
+        }
+      })
+    ).toThrow();
+  });
+
   it('rejects non-dodger normalized IR with spawn rules in runtime plan v0', () => {
     const collectorIr = createIrForGenre('collector', collectorContract);
     const shooterIr = createIrForGenre('shooter', shooterContract);
@@ -311,6 +455,8 @@ describe('Contract Freeze', () => {
     expect(qaGate.genre_required_events.dodger.any_groups).toEqual(dodgerContract.required_telemetry_any_groups);
     expect(qaGate.genre_required_events.shooter.all).toEqual(shooterContract.required_telemetry_all);
     expect(qaGate.genre_required_events.shooter.any_groups).toEqual(shooterContract.required_telemetry_any_groups);
+    expect(qaGate.genre_required_events.side_scrolling_run_and_gun.all).toEqual(sideScrollingRunAndGunContract.required_telemetry_all);
+    expect(qaGate.genre_required_events.side_scrolling_run_and_gun.any_groups).toEqual(sideScrollingRunAndGunContract.required_telemetry_any_groups);
   });
 
   it('defines telemetry event schema for every contract event', () => {
@@ -358,7 +504,7 @@ describe('Contract Freeze', () => {
     expect(phaserCapabilities.supports.telemetry).toBe(true);
     expect(phaserCapabilities.unsupported).toContain('network_multiplayer');
 
-    for (const manifest of [collectorManifest, dodgerManifest, shooterManifest]) {
+    for (const manifest of [collectorManifest, dodgerManifest, shooterManifest, sideScrollingManifest]) {
       expect(manifest.runtime).toBe('phaser');
       expect(manifest.deterministic_qa).toBe(true);
       expect(manifest.required_systems).toEqual(requiredSystems);
@@ -387,19 +533,26 @@ describe('Contract Freeze', () => {
       ]),
       asset_roles: ['player', 'enemy', 'projectile', 'tileset', 'background', 'pickup']
     });
-    expect([collectorManifest.template_id, dodgerManifest.template_id, shooterManifest.template_id]).toEqual([
+    expect([collectorManifest.template_id, dodgerManifest.template_id, shooterManifest.template_id, sideScrollingManifest.template_id]).toEqual([
       'collector_v1',
       'dodger_v1',
-      'shooter_v1'
+      'shooter_v1',
+      'side_scrolling_run_and_gun.v1'
     ]);
-    expect([collectorManifest.genre, dodgerManifest.genre, shooterManifest.genre]).toEqual([
+    expect([collectorManifest.genre, dodgerManifest.genre, shooterManifest.genre, sideScrollingManifest.genre]).toEqual([
       'collector',
       'dodger',
-      'shooter'
+      'shooter',
+      'side_scrolling_run_and_gun'
     ]);
     expect(phaserCapabilities.supports.actions).toEqual(['shoot_projectile', 'collect', 'restart']);
     expect(phaserCapabilities.supports.collision).toEqual(['overlap', 'projectile_hit']);
     expect(phaserCapabilities.supports.objectives).toContain('none');
     expect(phaserCapabilities.supports.objectives).toContain('time_up');
+    expect(phaserCapabilities.supports.objectives).toContain('reach_exit');
+    expect(phaserCapabilities.supports.camera).toContain('side_view');
+    expect(phaserCapabilities.supports.capabilities).toEqual(
+      expect.arrayContaining(sideScrollingRunAndGunContract.required_runtime_capabilities)
+    );
   });
 });

@@ -68,7 +68,7 @@ export function buildMissingRuntimeAssetFailure(
   browserResult: { visual_ok: boolean; interaction_ok: boolean; asset_runtime?: QaAssetRuntimeTelemetry }
 ): QaAssetFailure | undefined {
   if (
-    (genre !== 'collector' && genre !== 'dodger' && genre !== 'shooter') ||
+    (genre !== 'collector' && genre !== 'dodger' && genre !== 'shooter' && genre !== 'side_scrolling_run_and_gun') ||
     !browserResult.visual_ok ||
     !browserResult.interaction_ok ||
     browserResult.asset_runtime !== undefined

@@ -791,7 +791,7 @@ function normalizeLanguage(language: string): DslLanguage {
 }
 
 function toQaGenre(genre: RawGameDsl['game']['genre']): QaGenre | undefined {
-  return genre === 'collector' || genre === 'dodger' || genre === 'shooter' ? genre : undefined;
+  return genre === 'collector' || genre === 'dodger' || genre === 'shooter' || genre === 'side_scrolling_run_and_gun' ? genre : undefined;
 }
 
 async function pathExists(path: string): Promise<boolean> {

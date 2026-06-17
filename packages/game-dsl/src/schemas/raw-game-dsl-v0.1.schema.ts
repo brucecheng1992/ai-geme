@@ -32,6 +32,7 @@ const forbiddenTerms = [
 ];
 
 const copyrightedRunAndGunTerms = ['contra', '魂斗罗'];
+const sideScrollingRunAndGunViewport = { width: 960, height: 540 } as const;
 
 function findForbiddenDslValue(value: unknown, path: Array<string | number> = []): string | null {
   if (typeof value === 'string') {
@@ -407,6 +408,20 @@ function addSideScrollingRunAndGunIssues(value: z.infer<typeof RawGameDslSchema>
   if (value.world.gravity === undefined || value.world.gravity <= 0) {
     ctx.addIssue({ code: 'custom', path: ['world', 'gravity'], message: 'side_scrolling_run_and_gun requires positive gravity' });
   }
+  if (value.world.width <= sideScrollingRunAndGunViewport.width) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['world', 'width'],
+      message: `side_scrolling_run_and_gun requires world.width greater than ${sideScrollingRunAndGunViewport.width} viewport width`
+    });
+  }
+  if (value.world.height < sideScrollingRunAndGunViewport.height) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['world', 'height'],
+      message: `side_scrolling_run_and_gun requires world.height at least ${sideScrollingRunAndGunViewport.height} viewport height`
+    });
+  }
   if (value.camera?.mode !== 'follow_player_x') {
     ctx.addIssue({ code: 'custom', path: ['camera', 'mode'], message: 'side_scrolling_run_and_gun requires follow_player_x camera mode' });
   }
@@ -415,6 +430,13 @@ function addSideScrollingRunAndGunIssues(value: z.infer<typeof RawGameDslSchema>
   }
   if (value.player.aiming?.mode !== 'multi_direction' && value.player.aiming?.mode !== 'eight_direction') {
     ctx.addIssue({ code: 'custom', path: ['player', 'aiming', 'mode'], message: 'side_scrolling_run_and_gun requires multi_direction or eight_direction aiming' });
+  }
+  if ((value.player.movement.speed_px_per_sec ?? 0) <= 0) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['player', 'movement', 'speed_px_per_sec'],
+      message: 'side_scrolling_run_and_gun requires positive player horizontal speed'
+    });
   }
   if (value.projectiles === undefined || value.projectiles.length === 0) {
     ctx.addIssue({ code: 'custom', path: ['projectiles'], message: 'side_scrolling_run_and_gun requires projectiles' });
@@ -429,6 +451,10 @@ function addSideScrollingRunAndGunIssues(value: z.infer<typeof RawGameDslSchema>
     ctx.addIssue({ code: 'custom', path: ['winLose'], message: 'side_scrolling_run_and_gun requires winLose with checkpoint or lives semantics' });
   }
 
+  addSideScrollingRunAndGunCombatIssues(value, ctx);
+  addSideScrollingRunAndGunLevelIssues(value, ctx);
+  addSideScrollingRunAndGunWinLoseIssues(value, ctx);
+
   const serialized = JSON.stringify(value).toLowerCase();
   for (const term of copyrightedRunAndGunTerms) {
     if (serialized.includes(term)) {
@@ -436,6 +462,150 @@ function addSideScrollingRunAndGunIssues(value: z.infer<typeof RawGameDslSchema>
         code: 'custom',
         path: ['metadata', 'title'],
         message: `side_scrolling_run_and_gun DSL must not contain copyrighted source term "${term}"`
+      });
+    }
+  }
+}
+
+function addSideScrollingRunAndGunCombatIssues(value: z.infer<typeof RawGameDslSchema>, ctx: z.RefinementCtx): void {
+  const fireAction = value.player.actions.find((action) => action.type === 'shoot_projectile');
+  const firedProjectile = value.entities.find((entity) => entity.kind === 'projectile' && entity.id === fireAction?.spawns);
+
+  if (fireAction !== undefined && (firedProjectile?.movement.speed_px_per_sec ?? 0) <= 0) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['player', 'actions'],
+      message: 'side_scrolling_run_and_gun requires fired projectile entity speed'
+    });
+  }
+
+  for (const [index, entity] of value.entities.entries()) {
+    if (entity.kind === 'enemy' && entity.health === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['entities', index, 'health'],
+        message: 'side_scrolling_run_and_gun enemy entities require health'
+      });
+    }
+  }
+}
+
+function addSideScrollingRunAndGunLevelIssues(value: z.infer<typeof RawGameDslSchema>, ctx: z.RefinementCtx): void {
+  const level = value.level;
+  if (level === undefined) {
+    return;
+  }
+
+  if (!level.terrain.some((terrain) => terrain.kind === 'platform' || terrain.kind === 'ground')) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['level', 'terrain'],
+      message: 'side_scrolling_run_and_gun requires at least one ground or platform terrain'
+    });
+  }
+
+  for (const [index, segment] of level.segments.entries()) {
+    if (segment.endX <= segment.startX) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['level', 'segments', index, 'endX'],
+        message: 'side_scrolling_run_and_gun level segment must end after start'
+      });
+    }
+    if (segment.startX > value.world.width || segment.endX > value.world.width) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['level', 'segments', index, 'endX'],
+        message: 'side_scrolling_run_and_gun level segment must stay within world width'
+      });
+    }
+  }
+
+  for (const [index, terrain] of level.terrain.entries()) {
+    if (terrain.x + terrain.width > value.world.width || terrain.y + terrain.height > value.world.height) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['level', 'terrain', index],
+        message: 'side_scrolling_run_and_gun terrain must stay inside world bounds'
+      });
+    }
+  }
+
+  for (const [index, spawn] of level.spawns.entries()) {
+    if (spawn.x > value.world.width) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['level', 'spawns', index, 'x'],
+        message: 'side_scrolling_run_and_gun spawn x must stay inside world width'
+      });
+    }
+  }
+
+  for (const [index, pickup] of (value.pickups ?? []).entries()) {
+    if (pickup.x > value.world.width || pickup.y > value.world.height) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['pickups', index],
+        message: 'side_scrolling_run_and_gun pickup must stay inside world bounds'
+      });
+    }
+  }
+}
+
+function addSideScrollingRunAndGunWinLoseIssues(value: z.infer<typeof RawGameDslSchema>, ctx: z.RefinementCtx): void {
+  const allowedWinTypes = new Set(['reach_exit', 'enemy_cleared']);
+
+  if (!allowedWinTypes.has(value.objectives.win.type)) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['objectives', 'win', 'type'],
+      message: 'side_scrolling_run_and_gun supports only reach_exit or enemy_cleared win objectives'
+    });
+  }
+
+  if (value.objectives.win.type === 'reach_exit') {
+    if (value.objectives.win.target === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['objectives', 'win', 'target'],
+        message: 'side_scrolling_run_and_gun reach_exit objective requires target'
+      });
+    } else if (value.objectives.win.target > value.world.width) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['objectives', 'win', 'target'],
+        message: 'side_scrolling_run_and_gun reach_exit target must stay inside world width'
+      });
+    }
+  }
+
+  const winLose = value.winLose;
+  if (winLose === undefined) {
+    return;
+  }
+
+  if (winLose.win !== value.objectives.win.type) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['winLose', 'win'],
+      message: 'side_scrolling_run_and_gun winLose.win must match objectives.win.type'
+    });
+  }
+
+  if (winLose.lives === undefined && winLose.checkpoints === undefined) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['winLose'],
+      message: 'side_scrolling_run_and_gun requires winLose.lives or checkpoints'
+    });
+  }
+
+  for (const [index, checkpoint] of (winLose.checkpoints ?? []).entries()) {
+    if (checkpoint > value.world.width) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['winLose', 'checkpoints', index],
+        message: 'side_scrolling_run_and_gun checkpoint must stay inside world width'
       });
     }
   }

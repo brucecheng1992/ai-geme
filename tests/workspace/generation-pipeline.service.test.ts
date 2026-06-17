@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { createCollectorRawDsl, createShooterRawDsl } from '../contracts/fixtures.js';
+import { createCollectorRawDsl, createShooterRawDsl, createSideScrollingRunAndGunRawDsl } from '../contracts/fixtures.js';
 import {
   GenerationPipelineService,
   readAssetSemanticRepairConfig,
@@ -330,6 +330,74 @@ describe('GenerationPipelineService failure states', () => {
     );
   });
 
+  it('routes supported side-scrolling run-and-gun prompts through compile, build, and QA', async () => {
+    const rawDsl = RawGameDslSchema.parse(createSideScrollingRunAndGunRawDsl());
+    let compiledTemplateId: string | undefined;
+    let qaGenre: QaGenre | undefined;
+    const pipeline = createPipeline({
+      modelProvider: createModelProviderForRawDsl(rawDsl),
+      compiler: {
+        async compile(input) {
+          compiledTemplateId = input.ir.template_params.template_id;
+          expect(input.ir.runtime_plan.side_scrolling).toBeDefined();
+          return {
+            ok: true,
+            projectId,
+            outputDir: workspace.getGeneratedProjectDir(projectId),
+            distDir: workspace.getGeneratedProjectDistDir(projectId),
+            templateId: 'side_scrolling_run_and_gun.v1',
+            files: [
+              'side_scrolling_run_and_gun/src/asset-manifest.generated.json',
+              'side_scrolling_run_and_gun/src/runtime-plan.generated.json'
+            ]
+          };
+        }
+      },
+      buildRunner: {
+        async build() {
+          const distDir = workspace.getGeneratedProjectDistDir(projectId);
+          await mkdir(distDir, { recursive: true });
+          await writeFile(join(distDir, 'index.html'), '<html></html>', 'utf8');
+          return { ok: true, projectId, distDir, logPath: workspace.getBuildLogPath(projectId, runId) };
+        }
+      },
+      qaRunner: {
+        async run(input: { genre: QaGenre }) {
+          qaGenre = input.genre;
+          return createQaReport(input.genre);
+        }
+      }
+    });
+
+    await expect(runPipeline(pipeline, { idea: '横版跑枪打外星人', language: 'zh' })).resolves.toBe('PLAYABLE');
+
+    const intentPlan = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'intent_plan.json'), 'utf8'));
+    const runtimeCapabilityReport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'runtime_capability_report.json'), 'utf8'));
+    const index = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_artifact_index.json'), 'utf8'));
+    expect(compiledTemplateId).toBe('side_scrolling_run_and_gun.v1');
+    expect(qaGenre).toBe('side_scrolling_run_and_gun');
+    expect(intentPlan).toMatchObject({
+      normalizedGenre: 'side_scrolling_run_and_gun',
+      runtimeDslSupport: 'supported',
+      runtimeTemplateId: 'phaser/side_scrolling_run_and_gun.v1',
+      qaProfile: 'side_scrolling_run_and_gun_smoke',
+      unsupportedCapabilities: []
+    });
+    expect(runtimeCapabilityReport).toMatchObject({
+      status: 'supported',
+      runtimeSupportStatus: 'supported',
+      runtimeTemplateId: 'phaser/side_scrolling_run_and_gun.v1',
+      qaProfile: 'side_scrolling_run_and_gun_smoke',
+      selectedAdapterId: 'side_scrolling_run_and_gun.phaser.v1',
+      liveEditCapabilities: { hot: [], assetSwap: [], warmRestart: [], rebuildRequired: [] }
+    });
+    expect(index.artifacts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'phaserPreviewManifest', path: 'side_scrolling_run_and_gun/src/asset-manifest.generated.json' })
+      ])
+    );
+  });
+
   it('writes a pipeline artifact index for the valid generation path without stale or absolute refs', async () => {
     const rawDsl = RawGameDslSchema.parse(createShooterRawDsl());
     const pipeline = createPipeline({
@@ -525,8 +593,6 @@ describe('GenerationPipelineService failure states', () => {
 
   it.each([
     ['飞机大战', 'vertical_shooter', 'vertical_scroll_camera'],
-    ['contra-like', 'side_scrolling_run_and_gun', 'side_view_camera'],
-    ['横版跑枪打外星人', 'side_scrolling_run_and_gun', 'side_view_camera'],
     ['马里奥式平台跳跃', 'side_scrolling_platformer', 'gravity_platformer_physics'],
     ['平台跳跃', 'side_scrolling_platformer', 'gravity_platformer_physics']
   ] as const)(
@@ -544,7 +610,7 @@ describe('GenerationPipelineService failure states', () => {
         }
       });
 
-      await expect(runPipeline(pipeline, { idea, language: idea === 'contra-like' ? 'en' : 'zh' })).resolves.toBe('RUNTIME_UNSUPPORTED');
+      await expect(runPipeline(pipeline, { idea, language: 'zh' })).resolves.toBe('RUNTIME_UNSUPPORTED');
 
       const intentPlan = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'intent_plan.json'), 'utf8'));
       expect(intentPlan).toMatchObject({
@@ -555,7 +621,7 @@ describe('GenerationPipelineService failure states', () => {
       await expectUnsupportedIntentArtifacts({
         normalizedGenre,
         expectedCapability,
-        expectedRuntimeSupportStatus: normalizedGenre === 'side_scrolling_run_and_gun' ? 'planned' : 'unsupported'
+        expectedRuntimeSupportStatus: 'unsupported'
       });
       await expect(runStore.readEvents(runId)).resolves.toEqual(
         expect.arrayContaining([

@@ -194,7 +194,7 @@ export function createSideScrollingRunAndGunRawDsl() {
     },
     game: { genre: 'side_scrolling_run_and_gun', camera: 'side_view', difficulty: 'normal', target_play_time_sec: 60 },
     world: {
-      width: 960,
+      width: 1280,
       height: 540,
       visual_theme: 'generic alien frontier',
       coordinateSystem: 'side_view_2d',
@@ -218,11 +218,11 @@ export function createSideScrollingRunAndGunRawDsl() {
     enemyTypes: [{ id: 'drone_type', label: 'Alien Drone', health: 1, movement: { type: 'patrol', speed_px_per_sec: 90 } }],
     level: {
       segments: [
-        { id: 'segment_intro', startX: 0, endX: 900 },
-        { id: 'segment_bridge', startX: 900, endX: 1800 }
+        { id: 'segment_intro', startX: 0, endX: 720 },
+        { id: 'segment_bridge', startX: 720, endX: 1280 }
       ],
       terrain: [
-        { id: 'ground_intro', kind: 'ground', x: 0, y: 500, width: 900, height: 40 },
+        { id: 'ground_intro', kind: 'ground', x: 0, y: 500, width: 1280, height: 40 },
         { id: 'platform_bridge', kind: 'platform', x: 980, y: 380, width: 280, height: 24 }
       ],
       spawns: [
@@ -231,7 +231,7 @@ export function createSideScrollingRunAndGunRawDsl() {
       ]
     },
     pickups: [{ id: 'field_medkit', label: 'Medkit', kind: 'health', x: 720, y: 450 }],
-    winLose: { win: 'reach_exit', lose: 'player_health_zero', lives: 3, checkpoints: [0, 900] },
+    winLose: { win: 'reach_exit', lose: 'player_health_zero', lives: 3, checkpoints: [0, 720] },
     rules: {
       collisions: [
         {
@@ -250,7 +250,7 @@ export function createSideScrollingRunAndGunRawDsl() {
         }
       ]
     },
-    objectives: { win: { type: 'reach_exit', target: 1800 }, lose: { type: 'player_health_zero' } },
+    objectives: { win: { type: 'reach_exit', target: 1240 }, lose: { type: 'player_health_zero' } },
     ui: {
       hud: ['score', 'health', 'objective'],
       restart: true,
@@ -289,24 +289,32 @@ export function createIrForGenre(genre: IrGenre, contract: ContractTelemetry) {
     side_scrolling_run_and_gun: 'side_view'
   } as const;
 
+  const worldByGenre = {
+    collector: { width: 960, height: 540 },
+    dodger: { width: 960, height: 540 },
+    shooter: { width: 960, height: 540 },
+    side_scrolling_run_and_gun: { width: 1280, height: 540 }
+  } as const;
+
   return {
     ir_version: 'game-ir-v0.1',
     source_dsl_version: 'game-dsl-v0.1',
     metadata: { title: 'Gem Run', language: 'en' },
     game: { genre, camera: cameraByGenre[genre], difficulty: 'easy' },
-    world: { width: 960, height: 540 },
+    world: worldByGenre[genre],
     runtime_requirements: {
       dimension: '2d',
       camera: cameraByGenre[genre],
-      movement: ['eight_direction', 'static'],
-      collision: ['overlap'],
-      actions: ['collect', 'restart'],
+      movement: genre === 'side_scrolling_run_and_gun' ? ['horizontal', 'run_jump_controller', 'multi_direction'] : ['eight_direction', 'static'],
+      collision: genre === 'side_scrolling_run_and_gun' ? ['overlap', 'projectile_hit'] : ['overlap'],
+      actions: genre === 'side_scrolling_run_and_gun' ? ['shoot_projectile', 'restart'] : ['collect', 'restart'],
       objectives: [...objectivesByGenre[genre]],
       capabilities: genre === 'side_scrolling_run_and_gun' ? ['side_view_camera'] : [],
       telemetry: true
     },
     runtime_plan: {
-      spawn_rules: []
+      spawn_rules: [],
+      ...(genre === 'side_scrolling_run_and_gun' ? { side_scrolling: createSideScrollingRunAndGunRuntimePlan() } : {})
     },
     template_params: {
       template_id: templateIdByGenre[genre],
@@ -322,6 +330,59 @@ export function createIrForGenre(genre: IrGenre, contract: ContractTelemetry) {
       required_events_all: contract.required_telemetry_all,
       required_events_any_groups: contract.required_telemetry_any_groups
     }
+  };
+}
+
+function createSideScrollingRunAndGunRuntimePlan() {
+  return {
+    scene: {
+      viewport: { width: 960, height: 540 },
+      world: { width: 1280, height: 540, gravityY: 1200 }
+    },
+    camera: {
+      mode: 'side_follow',
+      followTarget: 'player',
+      bounds: { x: 0, y: 0, width: 1280, height: 540 }
+    },
+    physics: {
+      mode: 'gravity_platformer',
+      colliders: [
+        ['player', 'platforms'],
+        ['enemies', 'platforms'],
+        ['projectiles', 'platforms']
+      ],
+      overlaps: [
+        ['playerProjectiles', 'enemies'],
+        ['player', 'enemies'],
+        ['player', 'pickups']
+      ]
+    },
+    player: {
+      entityId: 'player',
+      spawn: { x: 120, y: 452 },
+      speedPxPerSec: 260,
+      jumpVelocity: -540,
+      health: 3,
+      lives: 3,
+      fireCooldownMs: 260,
+      projectileEntityId: 'pulse_bolt',
+      projectileSpeedPxPerSec: 620,
+      projectileDamage: 1
+    },
+    platforms: [
+      { id: 'ground_intro', kind: 'ground', x: 0, y: 500, width: 1280, height: 40 },
+      { id: 'platform_bridge', kind: 'platform', x: 980, y: 380, width: 280, height: 24 }
+    ],
+    enemyDefinitions: [
+      { id: 'drone_type', label: 'Alien Drone', health: 1, movement: { type: 'patrol', speedPxPerSec: 90 } }
+    ],
+    waves: [
+      { id: 'spawn_intro_drone', enemyTypeId: 'drone_type', trigger: 'enter_segment', triggerX: 640, spawnX: 640, count: 3 },
+      { id: 'spawn_bridge_drone', enemyTypeId: 'drone_type', trigger: 'reach_x', triggerX: 1080, spawnX: 1080, count: 5 }
+    ],
+    pickups: [{ id: 'field_medkit', kind: 'health', x: 720, y: 450 }],
+    winCondition: { kind: 'reach_exit', targetX: 1240 },
+    telemetry: { profile: 'side_scrolling_run_and_gun_smoke' }
   };
 }
 

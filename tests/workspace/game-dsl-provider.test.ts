@@ -155,7 +155,7 @@ describe('buildRawDslPromptContext', () => {
     expect((context.valid_example as { entities: Array<{ kind: string }> }).entities.some((entity) => entity.kind === 'collectible')).toBe(true);
     expect(context.invalid_examples_summary.join('\n')).toContain('Only dodger hazard right_edge_wave and dodger collectible fixed_positions may use spawn');
     expect(context.p0_scope.join('\n')).toContain(
-      'Runtime plan spawn execution is currently verified for dodger hazard right_edge_wave, dodger collectible fixed_positions, and shooter enemy right_edge_wave.'
+      'Runtime plan execution is currently verified for dodger hazard right_edge_wave, dodger collectible fixed_positions, shooter enemy right_edge_wave, and side_scrolling_run_and_gun level.spawns.'
     );
     expect(context.spawn_generation_guidance.join('\n')).toContain('For dodger hazards, the only executable spawn strategy is right_edge_wave.');
     expect(context.spawn_generation_guidance.join('\n')).toContain('For dodger collectibles, the only executable spawn strategy is fixed_positions.');
@@ -213,7 +213,7 @@ describe('buildIntentPlan', () => {
     });
   });
 
-  it('marks currently unsupported normalized genres without downgrading them', () => {
+  it('marks unsupported normalized genres without downgrading them and exposes supported side-scrolling runtime metadata', () => {
     expect(buildIntentPlan({ idea: '飞机大战', language: 'zh' })).toMatchObject({
       normalizedGenre: 'vertical_shooter',
       runtimeDslSupport: 'unsupported',
@@ -222,10 +222,11 @@ describe('buildIntentPlan', () => {
     });
     expect(buildIntentPlan({ idea: '横版跑枪', language: 'zh' })).toMatchObject({
       normalizedGenre: 'side_scrolling_run_and_gun',
-      runtimeDslSupport: 'unsupported',
-      runtimeSupportStatus: 'planned',
-      runtimeSupportReason: expect.stringContaining('Semantic alias recognition exists'),
-      unsupportedCapabilities: expect.arrayContaining(['side_view_camera'])
+      runtimeDslSupport: 'supported',
+      runtimeSupportStatus: 'supported',
+      runtimeTemplateId: 'phaser/side_scrolling_run_and_gun.v1',
+      qaProfile: 'side_scrolling_run_and_gun_smoke',
+      unsupportedCapabilities: []
     });
     expect(buildIntentPlan({ idea: '小猫大战坦克', language: 'zh' })).toMatchObject({
       normalizedGenre: 'top_down_shooter',
@@ -915,7 +916,7 @@ describe('game_dsl.v1 artifact contract', () => {
     });
   });
 
-  it('validates 魂斗罗式横版射击 as side_scrolling_run_and_gun even when runtime is unsupported later', () => {
+  it('validates 魂斗罗式横版射击 as side_scrolling_run_and_gun with compiler-level runtime support', () => {
     const rawDsl = RawGameDslSchema.parse(createSideScrollingRunAndGunRawDsl());
     const artifact = buildGameDslArtifact({
       rawDsl,
@@ -935,8 +936,7 @@ describe('game_dsl.v1 artifact contract', () => {
     expect(normalized.ok).toBe(true);
     if (normalized.ok) {
       expect(checkPhaserRuntimeCapabilities(normalized.ir)).toMatchObject({
-        ok: false,
-        unsupportedCapabilities: expect.arrayContaining([expect.objectContaining({ capability: 'side_view_camera' })])
+        ok: true
       });
     }
   });

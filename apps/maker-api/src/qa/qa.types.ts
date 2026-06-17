@@ -1,7 +1,7 @@
 import type { TelemetryEvent } from '../../../../packages/runtime-core/src/index.js';
 import type { AssetManifest } from '../../../../packages/asset-pipeline/src/index.js';
 
-export type QaGenre = 'collector' | 'dodger' | 'shooter';
+export type QaGenre = 'collector' | 'dodger' | 'shooter' | 'side_scrolling_run_and_gun';
 export type QaStatus = 'PASSED' | 'QA_FAILED';
 export type RuntimeStatus = 'PASSED' | 'FAILED';
 export type AssetSemanticStatus = 'PASSED' | 'WARNING' | 'FAILED';

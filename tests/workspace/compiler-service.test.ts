@@ -261,7 +261,7 @@ describe('Compiler + Build + Preview services', () => {
     await expect(readFile(join(result.outputDir, 'shooter/src/shooter-art-library.ts'), 'utf8')).resolves.toContain('image.setAngle');
   });
 
-  it('returns structured unsupported capabilities for side-scrolling run-and-gun before runtime generation', async () => {
+  it('writes a side-scrolling run-and-gun project from runtime-oriented IR', async () => {
     const normalized = validateAndNormalizeRawGameDsl(createSideScrollingRunAndGunRawDsl());
     expect(normalized.ok).toBe(true);
     if (!normalized.ok) {
@@ -269,24 +269,22 @@ describe('Compiler + Build + Preview services', () => {
     }
 
     const result = await new TemplateCompilerService(workspace, templateRoot).compile({ projectId, runId, ir: normalized.ir });
+    expectCompileSuccess(result);
 
     expect(result).toMatchObject({
-      ok: false,
-      code: 'RUNTIME_UNSUPPORTED',
+      ok: true,
       projectId,
-      templateId: 'side_scrolling_run_and_gun.v1',
-      unsupportedCapabilities: expect.arrayContaining([
-        expect.objectContaining({ capability: 'side_view' }),
-        expect.objectContaining({ capability: 'side_view_camera' }),
-        expect.objectContaining({ capability: 'gravity_platformer_physics' }),
-        expect.objectContaining({ capability: 'run_jump_controller' }),
-        expect.objectContaining({ capability: 'multi_direction_shooting' }),
-        expect.objectContaining({ capability: 'enemy_spawn_triggers' }),
-        expect.objectContaining({ capability: 'terrain_collision' }),
-        expect.objectContaining({ capability: 'checkpoint_or_lives_system' })
-      ])
+      templateId: 'side_scrolling_run_and_gun.v1'
     });
-    await expect(readFile(join(workspace.getGeneratedProjectDir(projectId), 'src/main.ts'), 'utf8')).rejects.toThrow();
+    await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/GameScene.ts'), 'utf8')).resolves.toContain('SideScrollingRunAndGunScene');
+    await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/runtime-plan.generated.json'), 'utf8')).resolves.toContain('"side_scrolling"');
+    await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/template-params.generated.json'), 'utf8')).resolves.toContain('"assetLabels"');
+    await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/asset-manifest.generated.json'), 'utf8')).resolves.toContain('"loadKey": "agm.enemy"');
+    await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/main.ts'), 'utf8')).resolves.toContain('runtime-plan.generated.json');
+    await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/main.ts'), 'utf8')).resolves.toContain('new SideScrollingRunAndGunScene');
+    await expect(readFile(join(result.outputDir, 'src/main.ts'), 'utf8')).resolves.toContain("../side_scrolling_run_and_gun/src/main.js");
+    expect(result.files).toContain('side_scrolling_run_and_gun/src/runtime-plan.generated.json');
+    expect(result.files).toContain('side_scrolling_run_and_gun/src/asset-manifest.generated.json');
   });
 
   it('writes optional dodger collectible params when the DSL includes coins', async () => {

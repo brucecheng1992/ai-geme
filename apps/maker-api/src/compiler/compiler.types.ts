@@ -15,7 +15,7 @@ export type RuntimeCompileSuccess = {
   projectId: string;
   outputDir: string;
   distDir: string;
-  templateId: 'collector_v1' | 'dodger_v1' | 'shooter_v1';
+  templateId: 'collector_v1' | 'dodger_v1' | 'shooter_v1' | 'side_scrolling_run_and_gun.v1';
   files: string[];
 };
 

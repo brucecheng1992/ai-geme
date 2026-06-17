@@ -31,7 +31,7 @@ export const AssetBindingTraceReportSchema = z
       gameDslPath: z.literal('game_dsl.json'),
       assetPlanPath: z.literal('asset_plan.json'),
       publicAssetManifestPath: z.literal('public/asset_manifest.json'),
-      previewManifestPath: z.string().regex(/^(collector|dodger|shooter)\/src\/asset-manifest\.generated\.json$/),
+      previewManifestPath: z.string().regex(/^(collector|dodger|shooter|side_scrolling_run_and_gun)\/src\/asset-manifest\.generated\.json$/),
       assetLibraryUsageReportPath: z.literal('asset_library_usage_report.json')
     }),
     traces: z.array(AssetBindingTraceRowSchema),

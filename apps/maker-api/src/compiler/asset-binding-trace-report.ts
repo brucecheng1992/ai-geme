@@ -10,7 +10,7 @@ export { AssetBindingTraceReportSchema, AssetBindingTraceRowSchema, type AssetBi
 type WriteAssetBindingTraceReportInput = {
   projectId: string;
   runId: string;
-  genre: 'collector' | 'dodger' | 'shooter';
+  genre: 'collector' | 'dodger' | 'shooter' | 'side_scrolling_run_and_gun';
   outputDir: string;
 };
 

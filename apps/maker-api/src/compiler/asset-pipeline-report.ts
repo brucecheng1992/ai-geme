@@ -8,11 +8,11 @@ import { AssetManifestSchema, type AssetManifest } from '../../../../packages/as
 export const AssetPipelineReportSchema = z.strictObject({
   version: z.literal('asset-pipeline-report-v0.1'),
   projectId: z.string().regex(/^proj_[A-Za-z0-9_-]+$/),
-  templateId: z.enum(['collector_v1', 'dodger_v1', 'shooter_v1']),
+  templateId: z.enum(['collector_v1', 'dodger_v1', 'shooter_v1', 'side_scrolling_run_and_gun.v1']),
   artifacts: z.strictObject({
     assetPlan: z.literal('asset_plan.json'),
     publicManifest: z.literal('public/asset_manifest.json'),
-    previewManifest: z.string().regex(/^(collector|dodger|shooter)\/src\/asset-manifest\.generated\.json$/),
+    previewManifest: z.string().regex(/^(collector|dodger|shooter|side_scrolling_run_and_gun)\/src\/asset-manifest\.generated\.json$/),
     resolutionReport: z.literal('asset_resolution_report.json')
   }),
   checks: z.strictObject({
@@ -35,8 +35,8 @@ export type AssetPipelineReport = z.infer<typeof AssetPipelineReportSchema>;
 
 export async function writeAssetPipelineReport(input: {
   projectId: string;
-  templateId: 'collector_v1' | 'dodger_v1' | 'shooter_v1';
-  genre: 'collector' | 'dodger' | 'shooter';
+  templateId: 'collector_v1' | 'dodger_v1' | 'shooter_v1' | 'side_scrolling_run_and_gun.v1';
+  genre: 'collector' | 'dodger' | 'shooter' | 'side_scrolling_run_and_gun';
   outputDir: string;
   compileFiles: string[];
 }): Promise<AssetPipelineReport> {
@@ -116,7 +116,10 @@ function assertListedFiles(files: string[], expectedFiles: string[]): void {
   }
 }
 
-async function assertPreviewManifestConsumed(outputDir: string, genre: 'collector' | 'dodger' | 'shooter'): Promise<void> {
+async function assertPreviewManifestConsumed(
+  outputDir: string,
+  genre: 'collector' | 'dodger' | 'shooter' | 'side_scrolling_run_and_gun'
+): Promise<void> {
   const mainEntry = await readFile(join(outputDir, genre, 'src', 'main.ts'), 'utf8');
   const artRuntime = artRuntimeByGenre[genre];
 
@@ -155,5 +158,9 @@ const artRuntimeByGenre = {
   shooter: {
     factoryName: 'createShooterArtRuntime',
     variableName: 'shooterArt'
+  },
+  side_scrolling_run_and_gun: {
+    factoryName: 'createSideScrollingArtRuntime',
+    variableName: 'sideScrollingArt'
   }
 } as const;

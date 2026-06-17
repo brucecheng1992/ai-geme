@@ -674,10 +674,16 @@ describe('DSL Validator and Normalizer', () => {
       expect(result.rawDsl.game.genre).toBe('side_scrolling_run_and_gun');
       expect(result.rawDsl.world.coordinateSystem).toBe('side_view_2d');
       expect(result.rawDsl.world.gravity).toBeGreaterThan(0);
+      expect(result.rawDsl.world.width).toBeGreaterThan(960);
+      expect(result.rawDsl.world.height).toBeGreaterThanOrEqual(540);
       expect(result.rawDsl.player.controller).toBe('run_jump_shoot');
       expect(['multi_direction', 'eight_direction']).toContain(result.rawDsl.player.aiming?.mode);
       expect(result.rawDsl.level?.terrain.some((terrain) => terrain.kind === 'platform' || terrain.kind === 'ground')).toBe(true);
       expect(result.rawDsl.level?.spawns.length).toBeGreaterThan(0);
+      expect(result.rawDsl.objectives.win.target).toBeLessThanOrEqual(result.rawDsl.world.width);
+      expect((result.rawDsl.player as Record<string, unknown>).spawn).toBeUndefined();
+      expect((result.rawDsl.player as Record<string, unknown>).jumpVelocity).toBeUndefined();
+      expect((result.rawDsl.player as Record<string, unknown>).weapon).toBeUndefined();
       expect(JSON.stringify(result.rawDsl).toLowerCase()).not.toContain('contra');
       expect(JSON.stringify(result.rawDsl)).not.toContain('魂斗罗');
       expect(result.ir).toMatchObject({
@@ -701,7 +707,178 @@ describe('DSL Validator and Normalizer', () => {
           ])
         }
       });
+      expect(result.ir.runtime_plan.side_scrolling).toMatchObject({
+        scene: {
+          viewport: { width: 960, height: 540 },
+          world: { width: 1280, height: 540, gravityY: 1200 }
+        },
+        camera: {
+          mode: 'side_follow',
+          followTarget: 'player',
+          bounds: { x: 0, y: 0, width: 1280, height: 540 }
+        },
+        physics: {
+          mode: 'gravity_platformer',
+          colliders: [
+            ['player', 'platforms'],
+            ['enemies', 'platforms'],
+            ['projectiles', 'platforms']
+          ],
+          overlaps: [
+            ['playerProjectiles', 'enemies'],
+            ['player', 'enemies'],
+            ['player', 'pickups']
+          ]
+        },
+        player: {
+          entityId: 'player',
+          spawn: { x: 120, y: 452 },
+          speedPxPerSec: 260,
+          jumpVelocity: -540,
+          health: 3,
+          lives: 3,
+          fireCooldownMs: 260,
+          projectileEntityId: 'pulse_bolt',
+          projectileSpeedPxPerSec: 620,
+          projectileDamage: 1
+        },
+        platforms: expect.arrayContaining([
+          expect.objectContaining({ id: 'ground_intro', kind: 'ground', x: 0, y: 500, width: 1280, height: 40 }),
+          expect.objectContaining({ id: 'platform_bridge', kind: 'platform', x: 980, y: 380, width: 280, height: 24 })
+        ]),
+        enemyDefinitions: [
+          { id: 'drone_type', label: 'Alien Drone', health: 1, movement: { type: 'patrol', speedPxPerSec: 90 } }
+        ],
+        waves: [
+          { id: 'spawn_intro_drone', enemyTypeId: 'drone_type', trigger: 'enter_segment', triggerX: 640, spawnX: 640, count: 3 },
+          { id: 'spawn_bridge_drone', enemyTypeId: 'drone_type', trigger: 'reach_x', triggerX: 1080, spawnX: 1080, count: 5 }
+        ],
+        pickups: [{ id: 'field_medkit', kind: 'health', x: 720, y: 450 }],
+        winCondition: { kind: 'reach_exit', targetX: 1240 },
+        telemetry: { profile: 'side_scrolling_run_and_gun_smoke' }
+      });
+      expect(result.ir.template_params.params).toMatchObject({
+        style: { visualTheme: 'generic alien frontier' },
+        player: { sourceEntityId: 'player', label: 'Runner' },
+        assetLabels: {
+          enemy: { sourceEntityId: 'drone', label: 'Alien Drone' },
+          projectile: { sourceEntityId: 'pulse_bolt', label: 'Pulse Bolt' },
+          pickup: { sourceEntityId: 'field_medkit', label: 'Medkit' }
+        }
+      });
+      for (const runtimeOwnedKey of ['side_scrolling', 'camera', 'projectiles', 'enemyTypes', 'level', 'pickups', 'winLose']) {
+        expect(result.ir.template_params.params).not.toHaveProperty(runtimeOwnedKey);
+      }
     }
+  });
+
+  it('rejects side-scrolling worlds and level content outside playable bounds', () => {
+    const rawDsl = createSideScrollingRunAndGunRawDsl();
+
+    expectIssue(
+      validateRawGameDsl({
+        ...rawDsl,
+        world: { ...rawDsl.world, width: 960 }
+      }),
+      'NUMERIC_RANGE_INVALID',
+      'greater than 960'
+    );
+    expectIssue(
+      validateRawGameDsl({
+        ...rawDsl,
+        level: {
+          ...rawDsl.level,
+          segments: [rawDsl.level.segments[0], { ...rawDsl.level.segments[1], endX: 1400 }]
+        }
+      }),
+      'NUMERIC_RANGE_INVALID',
+      'level segment must stay within world width'
+    );
+    expectIssue(
+      validateRawGameDsl({
+        ...rawDsl,
+        objectives: { ...rawDsl.objectives, win: { type: 'reach_exit', target: 1400 } }
+      }),
+      'NUMERIC_RANGE_INVALID',
+      'reach_exit target must stay inside world width'
+    );
+  });
+
+  it('rejects side-scrolling DSL without minimum playable terrain, movement, and checkpoint facts', () => {
+    const rawDsl = createSideScrollingRunAndGunRawDsl();
+
+    expectIssue(
+      validateRawGameDsl({
+        ...rawDsl,
+        level: {
+          ...rawDsl.level,
+          terrain: rawDsl.level.terrain.map((terrain) => ({ ...terrain, kind: 'slope' as const }))
+        }
+      }),
+      'SCHEMA_VALIDATION_FAILED',
+      'ground or platform terrain'
+    );
+    expectIssue(
+      validateRawGameDsl({
+        ...rawDsl,
+        player: {
+          ...rawDsl.player,
+          movement: { ...rawDsl.player.movement, speed_px_per_sec: 0 }
+        }
+      }),
+      'NUMERIC_RANGE_INVALID',
+      'positive player horizontal speed'
+    );
+    expectIssue(
+      validateRawGameDsl({
+        ...rawDsl,
+        entities: rawDsl.entities.map((entity) =>
+          entity.kind === 'projectile' ? { ...entity, movement: { ...entity.movement, speed_px_per_sec: 0 } } : entity
+        )
+      }),
+      'SCHEMA_VALIDATION_FAILED',
+      'fired projectile entity speed'
+    );
+    expectIssue(
+      validateRawGameDsl({
+        ...rawDsl,
+        winLose: { win: 'reach_exit', lose: 'player_health_zero' }
+      }),
+      'SCHEMA_VALIDATION_FAILED',
+      'winLose.lives or checkpoints'
+    );
+  });
+
+  it('rejects side-scrolling invalid waves and unsupported win objectives', () => {
+    const rawDsl = createSideScrollingRunAndGunRawDsl();
+
+    expectIssue(
+      validateRawGameDsl({
+        ...rawDsl,
+        level: {
+          ...rawDsl.level,
+          spawns: [{ ...rawDsl.level.spawns[0], enemyType: 'missing_drone_type' }]
+        }
+      }),
+      'UNRESOLVED_REFERENCE',
+      'missing_drone_type'
+    );
+    expectIssue(
+      validateRawGameDsl({
+        ...rawDsl,
+        objectives: { ...rawDsl.objectives, win: { type: 'target_score', target: 8 } }
+      }),
+      'SCHEMA_VALIDATION_FAILED',
+      'supports only reach_exit or enemy_cleared'
+    );
+    expectIssue(
+      validateRawGameDsl({
+        ...rawDsl,
+        objectives: { ...rawDsl.objectives, win: { type: 'enemy_cleared', target: 8 } }
+      }),
+      'SCHEMA_VALIDATION_FAILED',
+      'winLose.win must match objectives.win.type'
+    );
   });
 
   it('rejects copyrighted source terms inside generic side-scrolling run-and-gun DSL', () => {

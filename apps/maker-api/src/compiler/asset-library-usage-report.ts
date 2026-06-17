@@ -38,7 +38,7 @@ export const AssetLibraryUsageReportSchema = z
     manifestRefs: z.strictObject({
       assetPlanPath: z.literal('asset_plan.json'),
       publicAssetManifestPath: z.literal('public/asset_manifest.json'),
-      previewManifestPath: z.string().regex(/^(collector|dodger|shooter)\/src\/asset-manifest\.generated\.json$/)
+      previewManifestPath: z.string().regex(/^(collector|dodger|shooter|side_scrolling_run_and_gun)\/src\/asset-manifest\.generated\.json$/)
     }),
     usedAssets: z.array(AssetLibraryUsedAssetSchema),
     missingCatalogEntries: z.array(z.string().min(1)),
@@ -59,7 +59,7 @@ export type AssetLibraryUsageReport = z.infer<typeof AssetLibraryUsageReportSche
 type WriteAssetLibraryUsageReportInput = {
   projectId: string;
   runId: string;
-  genre: 'collector' | 'dodger' | 'shooter';
+  genre: 'collector' | 'dodger' | 'shooter' | 'side_scrolling_run_and_gun';
   outputDir: string;
   workspaceRoot: string;
   catalog?: TemplateAssetCatalog;

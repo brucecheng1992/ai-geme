@@ -82,7 +82,7 @@ export function buildValidPipelineArtifactIndex(input: {
 }): PipelineArtifactIndex {
   const compileFiles = new Set(input.compileFiles);
   const previewManifest = input.compileFiles
-    .filter((file) => /^(collector|dodger|shooter)\/src\/asset-manifest\.generated\.json$/.test(file))
+    .filter((file) => /^(collector|dodger|shooter|side_scrolling_run_and_gun)\/src\/asset-manifest\.generated\.json$/.test(file))
     .sort((left, right) => left.localeCompare(right))[0];
 
   return parseIndex(input.projectId, input.runId, [

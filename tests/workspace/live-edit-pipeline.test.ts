@@ -58,7 +58,7 @@ describe('DSL live edit pipeline', () => {
     });
   });
 
-  it('keeps runtime unsupported separate from DSL validation', () => {
+  it('keeps side-scrolling live edit unsupported while runtime support is available', () => {
     const sideScrolling = buildGameDslArtifact({
       rawDsl: RawGameDslSchema.parse(createSideScrollingRunAndGunRawDsl()),
       runId,
@@ -66,8 +66,12 @@ describe('DSL live edit pipeline', () => {
     });
 
     expect(buildRuntimeCapabilityReport({ runId, validatedDsl: sideScrolling })).toMatchObject({
-      status: 'unsupported',
-      unsupportedCapabilities: expect.arrayContaining([expect.objectContaining({ capability: 'side_view_camera' })]),
+      status: 'supported',
+      runtimeSupportStatus: 'supported',
+      runtimeTemplateId: 'phaser/side_scrolling_run_and_gun.v1',
+      qaProfile: 'side_scrolling_run_and_gun_smoke',
+      selectedAdapterId: 'side_scrolling_run_and_gun.phaser.v1',
+      unsupportedCapabilities: [],
       liveEditCapabilities: { hot: [], assetSwap: [], warmRestart: [], rebuildRequired: [] }
     });
     const patch = DslPatchV1Schema.parse({
@@ -536,7 +540,7 @@ describe('DSL live edit pipeline', () => {
     expect(patchedDsl.sourceDsl.world.width).toBe(1120);
   });
 
-  it('validates a side-scrolling pickup kind patch while keeping unsupported runtime separate', async () => {
+  it('validates a side-scrolling pickup kind patch while keeping live edit unsupported', async () => {
     const pickupRunId = `${runId}_pickup`;
     const pickupDsl = buildPickupSideScrollingDsl(pickupRunId);
     await service.initializeLiveVersion({ projectId, runId: pickupRunId, artifact: pickupDsl });

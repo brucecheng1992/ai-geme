@@ -1,0 +1,17 @@
+{
+  "style": { "visualTheme": "generic alien frontier" },
+  "player": { "sourceEntityId": "player", "label": "Runner" },
+  "assetLabels": {
+    "enemy": { "sourceEntityId": "drone", "label": "Alien Drone" },
+    "projectile": { "sourceEntityId": "pulse_bolt", "label": "Pulse Bolt" },
+    "pickup": { "sourceEntityId": "field_medkit", "label": "Medkit" }
+  },
+  "ui": {
+    "hud": ["score", "health", "objective"],
+    "restart": true,
+    "screens": {
+      "win": { "title": "VICTORY", "subtitle": "Exit reached" },
+      "lose": { "title": "DEFEAT", "subtitle": "Lives depleted" }
+    }
+  }
+}

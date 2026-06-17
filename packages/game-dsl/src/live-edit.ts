@@ -304,6 +304,20 @@ const runtimeReportAdapterByGenre: Partial<
     selectedAdapterId: 'dodger_collector.phaser.v1',
     adapterCapabilities: ['top_down_camera', 'eight_direction_movement', 'collectibles', 'hazards'],
     liveEditCapabilities: emptyLiveEditCapabilities
+  },
+  side_scrolling_run_and_gun: {
+    selectedAdapterId: 'side_scrolling_run_and_gun.phaser.v1',
+    adapterCapabilities: [
+      'side_view_camera',
+      'gravity_platformer_physics',
+      'run_jump_controller',
+      'multi_direction_shooting',
+      'projectile_combat',
+      'enemy_spawn_triggers',
+      'platforms_terrain_collision',
+      'checkpoint_or_lives_system'
+    ],
+    liveEditCapabilities: emptyLiveEditCapabilities
   }
 };
 
@@ -436,6 +450,19 @@ export function validateAndPlanDslPatch(input: {
   }
 
   if (capabilityReport.status !== 'supported') {
+    const candidateDsl = applyCandidatePatch(input.baseDsl, patch);
+    const candidateDslValidation = validateGameDslArtifact(candidateDsl, { sourceArtifact: 'game_dsl.candidate.json' });
+    const report = buildPatchValidationReport(patch.patchId, [], checks);
+    return {
+      ok: true,
+      patch,
+      report,
+      candidateDsl,
+      candidateDslValidationReport: candidateDslValidation.report,
+      plan: buildUnsupportedPlan(patch.patchId, affectedPaths)
+    };
+  }
+  if (affectedPaths.some((path) => !isLiveEditPathSupported(path, capabilityReport.liveEditCapabilities))) {
     const candidateDsl = applyCandidatePatch(input.baseDsl, patch);
     const candidateDslValidation = validateGameDslArtifact(candidateDsl, { sourceArtifact: 'game_dsl.candidate.json' });
     const report = buildPatchValidationReport(patch.patchId, [], checks);
@@ -928,6 +955,10 @@ function pathMatchesPattern(path: string, pattern: string): boolean {
   const pathSegments = path.split('/').slice(1);
   const patternSegments = pattern.split('/').slice(1);
   return pathSegments.length === patternSegments.length && patternSegments.every((segment, index) => segment === '*' || segment === pathSegments[index]);
+}
+
+function isLiveEditPathSupported(path: string, capabilities: LiveEditCapabilities): boolean {
+  return [...capabilities.hot, ...capabilities.assetSwap, ...capabilities.warmRestart, ...capabilities.rebuildRequired].some((pattern) => pathMatchesPattern(path, pattern));
 }
 
 function valueMatchesRule(value: unknown, rule: PatchPathRule, baseDsl: GameDslArtifact, path: string): boolean {

@@ -124,7 +124,8 @@ function buildRuntimePlan(raw: RawGameDsl) {
       ...(entity.spawn?.lane_count !== undefined ? { lane_count: entity.spawn.lane_count } : {})
     })),
     ...(raw.game.genre === 'dodger' ? { difficulty_curve: buildDodgerDifficultyCurve(raw) } : {}),
-    ...(raw.game.genre === 'shooter' ? { enemy_waves: buildShooterEnemyWaves(raw) } : {})
+    ...(raw.game.genre === 'shooter' ? { enemy_waves: buildShooterEnemyWaves(raw) } : {}),
+    ...(raw.game.genre === 'side_scrolling_run_and_gun' ? { side_scrolling: buildSideScrollingRunAndGunPlan(raw) } : {})
   };
 }
 
@@ -196,6 +197,121 @@ function buildShooterEnemyWaves(raw: RawGameDsl) {
       speed_multiplier: tuning.speedMultiplier
     }
   ];
+}
+
+/** Side-scrolling IR turns validated Raw DSL facts into a deterministic runtime plan. */
+function buildSideScrollingRunAndGunPlan(raw: RawGameDsl) {
+  const level = raw.level;
+  const fireAction = raw.player.actions.find((action) => action.type === 'shoot_projectile');
+  const projectileEntity = raw.entities.find((entity) => entity.kind === 'projectile' && entity.id === fireAction?.spawns);
+  const projectileSpec = raw.projectiles?.find((projectile) => projectile.label === projectileEntity?.label) ?? raw.projectiles?.[0];
+  const platformForSpawn = selectPlayerSpawnPlatform(level?.terrain ?? [], raw.world.height);
+  const playerSpawn = {
+    x: Math.min(120, Math.max(0, raw.world.width - 64)),
+    y: Math.max(0, platformForSpawn.y - 48)
+  };
+  const projectileDamage = projectileEntity?.damage ?? projectileSpec?.damage ?? 1;
+  const projectileSpeed = projectileEntity?.movement.speed_px_per_sec ?? projectileSpec?.speed_px_per_sec ?? 1;
+
+  return {
+    scene: {
+      viewport: { width: 960, height: 540 },
+      world: {
+        width: raw.world.width,
+        height: raw.world.height,
+        gravityY: raw.world.gravity ?? 1
+      }
+    },
+    camera: {
+      mode: 'side_follow' as const,
+      followTarget: 'player' as const,
+      bounds: {
+        x: 0 as const,
+        y: 0 as const,
+        width: raw.world.width,
+        height: raw.world.height
+      }
+    },
+    physics: {
+      mode: 'gravity_platformer' as const,
+      colliders: [
+        ['player', 'platforms'],
+        ['enemies', 'platforms'],
+        ['projectiles', 'platforms']
+      ] as const,
+      overlaps: [
+        ['playerProjectiles', 'enemies'],
+        ['player', 'enemies'],
+        ['player', 'pickups']
+      ] as const
+    },
+    player: {
+      entityId: raw.player.id,
+      spawn: playerSpawn,
+      speedPxPerSec: raw.player.movement.speed_px_per_sec ?? 1,
+      jumpVelocity: -540,
+      health: raw.player.health ?? 3,
+      lives: raw.winLose?.lives ?? 1,
+      fireCooldownMs: fireAction?.cooldown_ms ?? 260,
+      projectileEntityId: projectileEntity?.id ?? fireAction?.spawns ?? 'projectile',
+      projectileSpeedPxPerSec: projectileSpeed,
+      projectileDamage
+    },
+    platforms: (level?.terrain ?? []).map((terrain) => ({
+      id: terrain.id,
+      kind: terrain.kind,
+      x: terrain.x,
+      y: terrain.y,
+      width: terrain.width,
+      height: terrain.height
+    })),
+    enemyDefinitions: (raw.enemyTypes ?? []).map((enemyType) => ({
+      id: enemyType.id,
+      label: enemyType.label,
+      health: enemyType.health,
+      movement: {
+        type: enemyType.movement.type,
+        speedPxPerSec: enemyType.movement.speed_px_per_sec ?? 0
+      }
+    })),
+    waves: (level?.spawns ?? []).map((spawn) => ({
+      id: spawn.id,
+      enemyTypeId: spawn.enemyType,
+      trigger: spawn.trigger,
+      triggerX: spawn.x,
+      spawnX: spawn.x,
+      count: spawn.count
+    })),
+    pickups: (raw.pickups ?? []).map((pickup) => ({
+      id: pickup.id,
+      kind: pickup.kind,
+      x: pickup.x,
+      y: pickup.y
+    })),
+    winCondition:
+      raw.objectives.win.type === 'reach_exit'
+        ? { kind: 'reach_exit' as const, targetX: raw.objectives.win.target ?? raw.world.width }
+        : { kind: 'enemy_cleared' as const, targetCount: raw.objectives.win.target ?? totalSideScrollingEnemyCount(raw) },
+    telemetry: {
+      profile: 'side_scrolling_run_and_gun_smoke' as const
+    }
+  };
+}
+
+function selectPlayerSpawnPlatform(
+  terrain: NonNullable<RawGameDsl['level']>['terrain'],
+  worldHeight: number
+): NonNullable<RawGameDsl['level']>['terrain'][number] {
+  const platforms = terrain
+    .filter((item) => item.kind === 'ground' || item.kind === 'platform')
+    .sort((a, b) => a.x - b.x || a.y - b.y);
+
+  return platforms[0] ?? { id: 'ground', kind: 'ground', x: 0, y: Math.max(48, worldHeight - 40), width: 960, height: 40 };
+}
+
+function totalSideScrollingEnemyCount(raw: RawGameDsl): number {
+  const spawnCount = raw.level?.spawns.reduce((sum, spawn) => sum + spawn.count, 0) ?? 0;
+  return Math.max(1, spawnCount);
 }
 
 function buildRequiredCapabilities(raw: RawGameDsl): string[] {
@@ -272,14 +388,22 @@ function buildTemplateParams(raw: RawGameDsl): Record<string, unknown> {
   }
 
   if (raw.game.genre === 'side_scrolling_run_and_gun') {
+    const projectile = raw.entities.find((entity) => entity.kind === 'projectile');
+    const enemy = raw.entities.find((entity) => entity.kind === 'enemy');
+    const pickup = raw.pickups?.[0];
+
     return {
-      ...base,
-      camera: raw.camera,
-      projectiles: raw.projectiles,
-      enemyTypes: raw.enemyTypes,
-      level: raw.level,
-      pickups: raw.pickups ?? [],
-      winLose: raw.winLose
+      style: { visualTheme: raw.world.visual_theme },
+      player: {
+        sourceEntityId: raw.player.id,
+        label: raw.player.label
+      },
+      assetLabels: {
+        ...(enemy ? { enemy: { sourceEntityId: enemy.id, label: enemy.label } } : {}),
+        ...(projectile ? { projectile: { sourceEntityId: projectile.id, label: projectile.label } } : {}),
+        ...(pickup ? { pickup: { sourceEntityId: pickup.id, label: pickup.label } } : {})
+      },
+      ui: raw.ui
     };
   }
 

@@ -61,6 +61,103 @@ const RuntimeRequirementsSchema = z.strictObject({
   telemetry: z.literal(true)
 });
 
+const SideScrollingRuntimePlanSchema = z.strictObject({
+  /** The first playable slice has a fixed viewport while world bounds come from validated DSL. */
+  scene: z.strictObject({
+    viewport: z.strictObject({
+      width: z.literal(960),
+      height: z.literal(540)
+    }),
+    world: z.strictObject({
+      width: z.number().int().min(961).max(1280),
+      height: z.number().int().min(540).max(720),
+      gravityY: z.number().int().min(1).max(4000)
+    })
+  }),
+  camera: z.strictObject({
+    mode: z.literal('side_follow'),
+    followTarget: z.literal('player'),
+    bounds: z.strictObject({
+      x: z.literal(0),
+      y: z.literal(0),
+      width: z.number().int().min(961).max(1280),
+      height: z.number().int().min(540).max(720)
+    })
+  }),
+  physics: z.strictObject({
+    mode: z.literal('gravity_platformer'),
+    colliders: z.array(z.tuple([z.enum(['player', 'enemies', 'projectiles']), z.literal('platforms')])).min(2),
+    overlaps: z.array(z.tuple([z.enum(['playerProjectiles', 'player']), z.enum(['enemies', 'pickups'])])).min(1)
+  }),
+  player: z.strictObject({
+    entityId: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/),
+    spawn: z.strictObject({
+      x: z.number().int().min(0).max(1280),
+      y: z.number().int().min(0).max(720)
+    }),
+    speedPxPerSec: z.number().int().min(1).max(1000),
+    jumpVelocity: z.number().int().max(-1).min(-1200),
+    health: z.number().int().min(1).max(20),
+    lives: z.number().int().min(1).max(9),
+    fireCooldownMs: z.number().int().min(0).max(5000),
+    projectileEntityId: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/),
+    projectileSpeedPxPerSec: z.number().int().min(1).max(1200),
+    projectileDamage: z.number().int().min(1).max(20)
+  }),
+  platforms: z.array(
+    z.strictObject({
+      id: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/),
+      kind: z.enum(['platform', 'ground', 'slope']),
+      x: z.number().int().min(0).max(20000),
+      y: z.number().int().min(0).max(20000),
+      width: z.number().int().min(16).max(2000),
+      height: z.number().int().min(8).max(400)
+    })
+  ).min(1),
+  enemyDefinitions: z.array(
+    z.strictObject({
+      id: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/),
+      label: z.string().min(1).max(40),
+      health: z.number().int().min(1).max(20),
+      movement: z.strictObject({
+        type: z.enum(['static', 'horizontal', 'patrol', 'chase_player', 'move_left', 'move_right']),
+        speedPxPerSec: z.number().int().min(0).max(1000)
+      })
+    })
+  ).min(1),
+  waves: z.array(
+    z.strictObject({
+      id: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/),
+      enemyTypeId: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/),
+      trigger: z.enum(['enter_segment', 'reach_x']),
+      triggerX: z.number().int().min(0).max(1280),
+      spawnX: z.number().int().min(0).max(1280),
+      count: z.number().int().min(1).max(20)
+    })
+  ).min(1),
+  pickups: z.array(
+    z.strictObject({
+      id: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/),
+      kind: z.enum(['health', 'score', 'weapon']),
+      x: z.number().int().min(0).max(1280),
+      y: z.number().int().min(0).max(720)
+    })
+  ).default([]),
+  winCondition: z.discriminatedUnion('kind', [
+    z.strictObject({
+      kind: z.literal('reach_exit'),
+      targetX: z.number().int().min(1).max(1280)
+    }),
+    z.strictObject({
+      kind: z.literal('enemy_cleared'),
+      targetCount: z.number().int().min(1).max(9999)
+    })
+  ]),
+  telemetry: z.strictObject({
+    profile: z.literal('side_scrolling_run_and_gun_smoke')
+  })
+});
+
 const RuntimePlanSchema = z.strictObject({
   /** Spawn rules are DSL-authored world entry semantics preserved for runtime interpreters. */
   spawn_rules: z.array(
@@ -107,7 +204,9 @@ const RuntimePlanSchema = z.strictObject({
       })
     )
     .max(1)
-    .default([])
+    .default([]),
+  /** Side-scrolling run-and-gun runtime plan is derived from validated DSL facts. */
+  side_scrolling: SideScrollingRuntimePlanSchema.optional()
 });
 
 const TemplateParamsSchema = z.strictObject({
@@ -187,6 +286,84 @@ export const NormalizedGameIrSchema = z.strictObject({
       path: ['runtime_plan', 'enemy_waves'],
       message: 'runtime_plan.enemy_waves is currently supported only for shooter runtime_plan v0'
     });
+  }
+
+  if (value.game.genre === 'side_scrolling_run_and_gun' && value.runtime_plan.side_scrolling === undefined) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['runtime_plan', 'side_scrolling'],
+      message: 'side_scrolling_run_and_gun IR requires runtime_plan.side_scrolling'
+    });
+  }
+
+  if (value.game.genre !== 'side_scrolling_run_and_gun' && value.runtime_plan.side_scrolling !== undefined) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['runtime_plan', 'side_scrolling'],
+      message: 'runtime_plan.side_scrolling is supported only for side_scrolling_run_and_gun'
+    });
+  }
+
+  const sideScrolling = value.runtime_plan.side_scrolling;
+  if (sideScrolling !== undefined) {
+    const worldWidth = value.world.width;
+    const worldHeight = value.world.height;
+
+    if (sideScrolling.scene.world.width !== value.world.width || sideScrolling.camera.bounds.width !== value.world.width) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['runtime_plan', 'side_scrolling', 'scene', 'world', 'width'],
+        message: 'side_scrolling runtime plan width must match IR world width'
+      });
+    }
+    if (sideScrolling.scene.world.height !== value.world.height || sideScrolling.camera.bounds.height !== value.world.height) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['runtime_plan', 'side_scrolling', 'scene', 'world', 'height'],
+        message: 'side_scrolling runtime plan height must match IR world height'
+      });
+    }
+    if (sideScrolling.player.spawn.x > worldWidth || sideScrolling.player.spawn.y > worldHeight) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['runtime_plan', 'side_scrolling', 'player', 'spawn'],
+        message: 'side_scrolling player spawn must stay inside IR world bounds'
+      });
+    }
+    for (const [index, platform] of sideScrolling.platforms.entries()) {
+      if (platform.x + platform.width > worldWidth || platform.y + platform.height > worldHeight) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['runtime_plan', 'side_scrolling', 'platforms', index],
+          message: 'side_scrolling platform must stay inside IR world bounds'
+        });
+      }
+    }
+    for (const [index, wave] of sideScrolling.waves.entries()) {
+      if (wave.triggerX > worldWidth || wave.spawnX > worldWidth) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['runtime_plan', 'side_scrolling', 'waves', index],
+          message: 'side_scrolling wave trigger and spawn x must stay inside IR world width'
+        });
+      }
+    }
+    for (const [index, pickup] of sideScrolling.pickups.entries()) {
+      if (pickup.x > worldWidth || pickup.y > worldHeight) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['runtime_plan', 'side_scrolling', 'pickups', index],
+          message: 'side_scrolling pickup must stay inside IR world bounds'
+        });
+      }
+    }
+    if (sideScrolling.winCondition.kind === 'reach_exit' && sideScrolling.winCondition.targetX > worldWidth) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['runtime_plan', 'side_scrolling', 'winCondition', 'targetX'],
+        message: 'side_scrolling reach_exit target must stay inside IR world width'
+      });
+    }
   }
 
   const telemetryAll = JSON.stringify(value.telemetry_contract.required_events_all);

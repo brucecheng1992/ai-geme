@@ -73,7 +73,7 @@ export class EndScreenRenderer {
       })
       .setOrigin(0.5);
 
-    this.objects = [overlay, title, subtitle, restart];
+    this.objects = [overlay, title, subtitle, restart].map(setFixedToCamera);
     this.visibleState = state;
   }
 
@@ -84,4 +84,10 @@ export class EndScreenRenderer {
     this.objects = [];
     this.visibleState = undefined;
   }
+}
+
+function setFixedToCamera<T extends EndScreenObject>(object: T): T {
+  const fixedObject = object as T & { setScrollFactor?: (x: number, y?: number) => T };
+  fixedObject.setScrollFactor?.(0);
+  return object;
 }
