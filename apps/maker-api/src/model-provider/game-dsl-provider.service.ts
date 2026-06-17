@@ -41,9 +41,15 @@ type GameDslProviderSuccess<T> = {
 export type GameDslProviderResult<T> = GameDslProviderSuccess<T> | GameDslProviderFailure;
 
 type JsonModelClient = Pick<DeepSeekClient, 'generateJson'>;
+const runAndGunSourceReferencePattern = /魂斗罗式?|contra-like|contra/gi;
 
 function isJsonObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function normalizeRunAndGunDescription(description: string, language: Language): string {
+  const replacement = language === 'zh' ? '原创横版跑枪' : 'generic side-scrolling run-and-gun';
+  return description.replace(runAndGunSourceReferencePattern, replacement);
 }
 
 @Injectable()
@@ -118,7 +124,7 @@ export class GameDslProviderService {
       maxTokens: 3500
     });
 
-    const parsed = this.parseSchemaResult(result, RawGameDslSchema, 'Raw Game DSL schema validation failed.');
+    const parsed = this.parseSchemaResult(this.normalizeRawDslMetadataDescription(result, params), RawGameDslSchema, 'Raw Game DSL schema validation failed.');
 
     if (!parsed.ok) {
       return parsed;
@@ -172,6 +178,27 @@ export class GameDslProviderService {
       json: {
         ...result.json,
         genre: 'collector'
+      }
+    };
+  }
+
+  private normalizeRawDslMetadataDescription(result: GenerateJsonResult, params: GenerateRawGameDslParams): GenerateJsonResult {
+    if (!result.ok || params.brief.genre !== 'side_scrolling_run_and_gun' || !isJsonObject(result.json) || !isJsonObject(result.json.metadata)) {
+      return result;
+    }
+    const description = result.json.metadata.description;
+    if (typeof description !== 'string') {
+      return result;
+    }
+
+    return {
+      ...result,
+      json: {
+        ...result.json,
+        metadata: {
+          ...result.json.metadata,
+          description: normalizeRunAndGunDescription(description, params.language)
+        }
       }
     };
   }

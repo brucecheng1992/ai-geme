@@ -373,7 +373,7 @@ export type GameDslArtifact = {
   };
   enemyTypes: Record<string, { id: string; label?: string; physics?: { speed?: number }; health?: { max?: number } }>;
   projectiles: Record<string, { id: string; label?: string; speed?: number; damage?: number }>;
-  level: { id: string; waves?: Array<{ id: string; enemyTypeRef?: string; count?: number }> | Record<string, { id: string; enemyTypeRef?: string; count?: number }> };
+  level: { id: string; waves?: Array<{ id: string; enemyTypeRef?: string; count?: number; x?: number }> | Record<string, { id: string; enemyTypeRef?: string; count?: number; x?: number }> };
 };
 
 export type LiveUpdatePlanStatus = 'hot_patchable' | 'warm_restart_required' | 'rebuild_required' | 'unsupported' | 'failed_validation';
@@ -403,7 +403,7 @@ export type RuntimePatch = {
     }
   >;
   projectiles?: Record<string, { speed?: number; damage?: number }>;
-  level?: { waves?: Record<string, { count?: number }> };
+  level?: { waves?: Record<string, { count?: number; x?: number }> };
   world?: { width?: number };
 };
 

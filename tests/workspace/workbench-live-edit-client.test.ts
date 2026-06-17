@@ -40,7 +40,7 @@ describe('Workbench live edit client helpers', () => {
     ]);
   });
 
-  it('builds conversation fields from the full live DSL including warm restart wave count', () => {
+  it('builds conversation fields from the full live DSL including warm restart wave count and spawn position', () => {
     expect(buildConversationEditableFields(makeDsl(), capabilities)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ path: '/player/label', value: '小猫', valueKind: 'label', applyMode: 'warm_restart', targetKind: 'player' }),
@@ -49,7 +49,8 @@ describe('Workbench live edit client helpers', () => {
         expect.objectContaining({ path: '/enemyTypes/tank_basic/label', value: '坦克', valueKind: 'label', applyMode: 'warm_restart', targetKind: 'enemyType' }),
         expect.objectContaining({ path: '/enemyTypes/tank_basic/health/max', applyMode: 'hot', targetKind: 'enemyType' }),
         expect.objectContaining({ path: '/projectiles/fishbone/damage', applyMode: 'hot', targetKind: 'projectile' }),
-        expect.objectContaining({ path: '/level/waves/wave_1/count', value: 8, valueKind: 'number', applyMode: 'warm_restart', targetKind: 'wave' })
+        expect.objectContaining({ path: '/level/waves/wave_1/count', value: 8, valueKind: 'number', applyMode: 'warm_restart', targetKind: 'wave' }),
+        expect.objectContaining({ path: '/level/waves/wave_1/x', value: 640, valueKind: 'number', applyMode: 'warm_restart', targetKind: 'wave' })
       ])
     );
   });
@@ -185,7 +186,7 @@ const capabilities: LiveEditCapabilities = {
     '/projectiles/*/damage'
   ],
   assetSwap: [],
-  warmRestart: ['/player/label', '/enemyTypes/*/label', '/level/waves', '/level/waves/*/count', '/world/width'],
+  warmRestart: ['/player/label', '/enemyTypes/*/label', '/level/waves', '/level/waves/*/count', '/level/waves/*/x', '/world/width'],
   rebuildRequired: []
 };
 
@@ -198,6 +199,6 @@ function makeDsl(overrides: { waves?: GameDslArtifact['level']['waves'] } = {}):
     player: { id: 'player_main', label: '小猫', render: { scale: 1 }, physics: { maxSpeed: 220 }, health: { max: 3 } },
     enemyTypes: { tank_basic: { id: 'tank_basic', label: '坦克', physics: { speed: 100 }, health: { max: 2 } } },
     projectiles: { fishbone: { id: 'fishbone', label: '鱼骨头', speed: 520, damage: 1 } },
-    level: { id: 'level_1', waves: overrides.waves ?? [{ id: 'wave_1', enemyTypeRef: 'tank_basic', count: 8 }] }
+    level: { id: 'level_1', waves: overrides.waves ?? [{ id: 'wave_1', enemyTypeRef: 'tank_basic', count: 8, x: 640 }] }
   };
 }

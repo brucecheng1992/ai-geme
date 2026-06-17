@@ -559,3 +559,86 @@ npx vitest run tests/workspace/playwright-qa-runner.test.ts
 - Side-scrolling 仍不支持 `/player/render/scale`、asset swap 或 arbitrary DSL path；这些必须继续由 capability gate 明确拒绝。
 - Enemy fire 当前是最小 projectile smoke，不包含复杂寻路、武器差异、弹幕模式或可配置 firing DSL 字段。
 - Pickup runtime behavior 与 full art asset pack rollout 仍是后续范围。
+
+## 31.11 Spawn Position Live-edit and Capability Truth Closure
+
+当前目标：修复真实 Workbench 中“敌人不要凭空刷新在玩家面前，是指地图的末端”被多字段歧义拦截，以及旧 generated runtime support gate 误报支持导致 runtime apply 失败的问题；保持 DSL-first，不把需求改成 hardcoded template special case。
+
+完成时间：2026-06-17
+
+已完成内容：
+
+- `side_scrolling_run_and_gun` live-edit capability 增加敌人刷新位置字段：
+  - Workbench 暴露 `Spawn x`。
+  - 自然语言解析将“敌人 / 生成 / 刷新 / 地图末端 / 关卡末端”映射到 `/level/waves/*/x`。
+  - patch pipeline 将 wave `x` 同步到 Versioned DSL 的 `level.waves` 与 `sourceDsl.level.spawns`。
+  - runtime patch bridge 支持 warm restart 更新 `triggerX` / `spawnX`。
+- `live-edit-registry.generated.json` 写入 runtime-side capability inventory；`getLiveCurrent` 读取 generated runtime registry 后再暴露 live-edit capability，防止旧 generated runtime 没有 `x` 支持时 Workbench false-positive。
+- 旧 `runtime_capability_report.json` 不再作为唯一真相源；它只在 generated runtime registry 文件存在、`runId` 匹配但缺旧格式 inventory 时作为兼容 fallback。registry 文件缺失或 `runId` 错配时返回空 live-edit capability，避免旧 runtime false-positive。
+- Raw DSL schema 的版权引用报错改为定位真实路径；provider 只归一化 side-scrolling `metadata.description` 中的“魂斗罗式 / Contra-like”参考描述，避免真实 prompt 因说明文字复制 source reference 而失败，同时仍保留 title / label / asset 等字段的版权拦截。
+
+真实运行证据摘录：
+
+```txt
+旧 generated run:
+  proj_20260617_120220_1025 / run_20260617_120220_1025
+  -> old runtime bridge only accepted wave count
+  -> after registry intersection, Workbench disables Spawn x instead of exposing a broken edit
+
+新真实 API run:
+  POST /api/projects/generate
+  prompt: 原创魂斗罗式2D横版卷轴跑枪游戏，必须是side_scrolling_run_and_gun，玩家奔跑跳跃射击，敌人在地图后段刷新
+  -> project_id: proj_20260617_132743_a4b0
+  -> run_id: run_20260617_132743_a4b0
+  -> status: PLAYABLE_WITH_FALLBACK_ASSETS
+
+Workbench edit:
+  input: 敌人不要凭空刷新在玩家面前，是指地图的末端
+  -> patch: patch_workbench_24a549a0
+  -> affectedPaths: /level/waves/spawn_intro_drone/x, /level/waves/spawn_bridge_drone/x
+  -> runtime status: applied_warm_restart
+  -> current version: v_patch_workbench_24a549a0
+  -> Spawn x: 1200
+```
+
+已通过验证：
+
+```txt
+npx vitest run tests/workspace/conversation-live-edit-parser.test.ts tests/workspace/workbench-live-edit-client.test.ts tests/workspace/live-edit-pipeline.test.ts tests/contracts/live-edit-capabilities.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/projects-service.test.ts tests/workspace/compiler-service.test.ts tests/workspace/game-dsl-provider.test.ts tests/contracts/dsl-validator-normalizer.test.ts
+  -> passed, 9 files, 238 tests
+
+npx vitest run tests/workspace/projects-service.test.ts tests/workspace/conversation-live-edit-parser.test.ts tests/workspace/game-dsl-provider.test.ts
+  -> passed, 3 files, 106 tests
+
+npx vitest run tests/workspace/projects-service.test.ts
+  -> passed, 1 file, 34 tests
+
+npm run typecheck:root
+  -> passed
+
+git diff --check
+  -> passed
+
+Chrome DevTools Workbench verification
+  -> Browser plugin unavailable, Chrome DevTools fallback used
+  -> new run generated and live edit applied as warm restart
+```
+
+审查门禁结论：
+
+- Oracle 初审：P0 无；P1 1 个；P2 1 个；P3 2 个。
+- P1 修复：`prepareWorkbenchLiveEdit()` 和 deterministic prepare 现在传入 registry-aware capability report；`DslLiveEditService.prepareLiveEditPatch()` 支持外部 capability report，避免旧 generated runtime 被 direct API / stale client 绕过 Workbench current-state gate。
+- P2 修复：generated runtime registry 必须 `runId` 匹配才可信；只有 registry 文件存在、`runId` 匹配但缺旧格式 inventory 时才优先使用 persisted report，registry 文件缺失或 `runId` 错配时使用空 live-edit capability，不再动态放开新字段。
+- P3 修复：补 `增加敌人` 仍落 wave count、`敌人不要刷新到地图末端` 不落 `Spawn x` 的 parser regression。
+- P3 修复：补 provider regression，确认只归一化 `metadata.description` 中的 source-reference 描述，`metadata.title` 仍因 copyrighted source term 失败。
+- Oracle 复审：P0 无；P1 1 个；P2 无；P3 1 个低优先级语义覆盖缺口。
+- 复审 P1 修复：generated registry `runId` 错配现在视为不可 target runtime，返回空 live-edit capabilities，不再 fallback persisted report；只有 registry 文件存在、`runId` 匹配但缺旧格式 inventory 时才 fallback persisted report。
+- 复审 P1 regression：补 top-down shooter stale registry runId 测试，确认 persisted report 中已有 `/player/physics/maxSpeed` 时仍不会 exposed / prepare。
+- Oracle 最终复审：P0/P1/P2 无；P3 文档 fallback 表述偏宽，已修正。
+- 审查模式：Oracle 新建 + Oracle 复用复审。
+
+新的剩余范围：
+
+- 当前只支持 wave spawn `x`，不支持复杂 spawn pattern、AI encounter director、随机刷怪权重或多段刷怪曲线。
+- `metadata.description` 的 source-reference normalization 只服务模型说明文字；真实 title / label / id / asset 引用仍必须失败，不能被静默清洗。
+- 旧 generated project 不回写升级 runtime bridge；它们通过 registry intersection 隐藏不支持字段，新生成 project 才获得新 live-edit capability。

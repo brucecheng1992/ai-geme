@@ -4,7 +4,13 @@ import { join } from 'node:path';
 import { Injectable } from '@nestjs/common';
 
 import { writeAssetArtifacts } from '../../../../packages/asset-pipeline/src/index.js';
-import { buildSemanticExtractionTraceReport, buildSemanticModelReport, checkPhaserRuntimeCapabilities, NormalizedGameIrSchema } from '../../../../packages/game-dsl/src/index.js';
+import {
+  buildSemanticExtractionTraceReport,
+  buildSemanticModelReport,
+  checkPhaserRuntimeCapabilities,
+  getRuntimeLiveEditCapabilitiesForGenre,
+  NormalizedGameIrSchema
+} from '../../../../packages/game-dsl/src/index.js';
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
 import { writeAssetBindingTraceReport } from './asset-binding-trace-report.js';
 import { writeAssetLibraryUsageReport } from './asset-library-usage-report.js';
@@ -15,6 +21,12 @@ const templateGenreById = {
   collector_v1: 'collector',
   dodger_v1: 'dodger',
   shooter_v1: 'shooter',
+  'side_scrolling_run_and_gun.v1': 'side_scrolling_run_and_gun'
+} as const;
+const runtimeCapabilityGenreByTemplateId = {
+  collector_v1: 'collector',
+  dodger_v1: 'dodger_collector',
+  shooter_v1: 'top_down_shooter',
   'side_scrolling_run_and_gun.v1': 'side_scrolling_run_and_gun'
 } as const;
 
@@ -43,6 +55,7 @@ export class TemplateCompilerService {
       };
     }
     const genre = templateGenreById[templateId];
+    const liveEditCapabilities = getRuntimeLiveEditCapabilitiesForGenre(runtimeCapabilityGenreByTemplateId[templateId]);
     const outputDir = this.workspace.getGeneratedProjectDir(input.projectId);
     const distDir = this.workspace.getGeneratedProjectDistDir(input.projectId);
     const files = [
@@ -97,11 +110,11 @@ export class TemplateCompilerService {
     if (genre === 'shooter') {
       await writeFile(
         join(outputDir, `${genre}`, 'src', 'live-edit-registry.generated.json'),
-        JSON.stringify({ ...readShooterLiveEditRegistry(ir.template_params.params), runId: input.runId }, null, 2)
+        JSON.stringify({ ...readShooterLiveEditRegistry(ir.template_params.params), runId: input.runId, liveEditCapabilities }, null, 2)
       );
     }
     if (genre === 'side_scrolling_run_and_gun') {
-      await writeFile(join(outputDir, `${genre}`, 'src', 'live-edit-registry.generated.json'), JSON.stringify({ runId: input.runId }, null, 2));
+      await writeFile(join(outputDir, `${genre}`, 'src', 'live-edit-registry.generated.json'), JSON.stringify({ runId: input.runId, liveEditCapabilities }, null, 2));
     }
     const compileFilesWithoutUsageReport = [...files, 'game.ir.json', ...assetArtifacts.files, 'asset_pipeline_report.json'];
     const semanticExtractionTraceReport = buildSemanticExtractionTraceReport({

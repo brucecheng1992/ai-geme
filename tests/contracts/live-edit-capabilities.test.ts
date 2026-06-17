@@ -17,6 +17,7 @@ describe('Live-edit capability exposure matrix', () => {
         'enemy.health',
         'enemy.label',
         'enemy.speed',
+        'enemy.spawnPosition',
         'player.health',
         'player.label',
         'player.scale',
@@ -30,6 +31,10 @@ describe('Live-edit capability exposure matrix', () => {
     expect(runtimeMode('player.speed')).toBe('hot');
     expect(runtimeMode('player.label')).toBe('warm-restart');
     expect(runtimeMode('enemy.count')).toBe('warm-restart');
+    expect(findLiveEditCapabilityExposure('enemy.spawnPosition')).toMatchObject({
+      status: 'supported-live-edit',
+      dslPaths: ['/level/waves/*/x']
+    });
     expect(runtimeMode('world.width')).toBe('warm-restart');
   });
 

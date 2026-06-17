@@ -180,6 +180,13 @@ export const liveEditCapabilityExposureRegistry = [
     diagnostic: 'Enemy count edits are supported through validated warm restart.'
   }),
   supported({
+    key: 'enemy.spawnPosition',
+    label: 'Enemy spawn position',
+    examples: ['敌人刷到地图末端', 'move enemy spawn to the end of the map'],
+    dslPaths: ['/level/waves/*/x'],
+    diagnostic: 'Enemy spawn position edits are supported through validated warm restart.'
+  }),
+  supported({
     key: 'projectile.speed',
     label: 'Projectile speed',
     examples: ['子弹速度提高', 'projectile speed increase'],

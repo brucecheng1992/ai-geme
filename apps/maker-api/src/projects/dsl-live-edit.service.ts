@@ -14,7 +14,8 @@ import {
   type GameDslArtifact,
   type LiveUpdatePlan,
   type PatchValidationReport,
-  type RuntimeApplyReport
+  type RuntimeApplyReport,
+  type RuntimeCapabilityReport
 } from '../../../../packages/game-dsl/src/index.js';
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
 
@@ -90,6 +91,7 @@ type ApplyDslPatchInput = {
   projectId: string;
   runId: string;
   patch: unknown;
+  capabilityReport?: RuntimeCapabilityReport;
 };
 
 type RecordRuntimeApplyResultInput = {
@@ -144,7 +146,7 @@ export class DslLiveEditService {
   async prepareLiveEditPatch(input: ApplyDslPatchInput): Promise<PrepareLiveEditPatchResult> {
     const current = await this.readCurrentVersion(input.projectId, input.runId);
     const baseDsl = GameDslArtifactSchema.parse(JSON.parse(await readFile(current.dslArtifactPath, 'utf8')));
-    const capabilityReport = buildRuntimeCapabilityReport({ runId: input.runId, validatedDsl: baseDsl });
+    const capabilityReport = input.capabilityReport ?? buildRuntimeCapabilityReport({ runId: input.runId, validatedDsl: baseDsl });
     const validation = validateAndPlanDslPatch({
       baseDsl,
       patch: input.patch,

@@ -573,6 +573,41 @@ describe('Phaser templates', () => {
     ]);
   });
 
+  it('side-scrolling runtime bridge applies wave spawn position as a warm restart patch', async () => {
+    const { createSideScrollingRuntimeBridge } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/side-scrolling-live-edit-bridge.js');
+    const { defaultSideScrollingRuntimeSlice } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/side-scrolling-runtime-plan.js');
+    const { defaultSideScrollingParams } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/template-params.js');
+    const plan: SideScrollingRuntimeSlice = structuredClone(defaultSideScrollingRuntimeSlice);
+    const bridge = createSideScrollingRuntimeBridge({
+      params: structuredClone(defaultSideScrollingParams),
+      plan,
+      getEnemies: () => [],
+      getProjectiles: () => [],
+      setPlayerMaxHealth: () => {},
+      setWorldWidth: () => {}
+    });
+
+    expect(bridge.getCapabilities().warmRestart).toEqual(expect.arrayContaining(['/level/waves/*/x']));
+    expect(
+      bridge.applyPatch({
+        level: {
+          waves: {
+            spawn_intro_drone: { x: 1200 },
+            spawn_bridge_drone: { x: 1200 }
+          }
+        }
+      })
+    ).toMatchObject({
+      status: 'applied_warm_restart',
+      applyMode: 'warm_restart',
+      appliedPaths: ['/level/waves/spawn_intro_drone/x', '/level/waves/spawn_bridge_drone/x']
+    });
+    expect(plan.waves).toEqual([
+      expect.objectContaining({ id: 'spawn_intro_drone', triggerX: 1200, spawnX: 1200 }),
+      expect.objectContaining({ id: 'spawn_bridge_drone', triggerX: 1200, spawnX: 1200 })
+    ]);
+  });
+
   it('exposes dodger runtime_plan spawn metadata through the QA snapshot', async () => {
     const { DodgerGameScene } = await import('../../templates/phaser/dodger/src/GameScene.js');
     const { defaultDodgerParams } = await import('../../templates/phaser/dodger/src/template-params.js');

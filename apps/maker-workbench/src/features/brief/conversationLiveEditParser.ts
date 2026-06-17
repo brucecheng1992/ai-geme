@@ -82,6 +82,12 @@ const FIELD_KEYWORDS: FieldKeywordGroup[] = [
     keywords: ['count', 'number', 'amount', 'wave', 'more enemies', '敌人数量', '敌人个数', '数量', '个数', '多一点', '波次'],
     defaultDelta: 1,
     clamp: (value) => clampInteger(value, 1, 100)
+  },
+  {
+    test: (field) => field.path.includes('/level/waves/') && field.path.endsWith('/x'),
+    keywords: ['spawn', 'position', 'x', 'enemy spawn', '刷新', '生成', '出生', '位置', '地图末端', '关卡末端', '末端'],
+    defaultDelta: 80,
+    clamp: (value) => clampInteger(value, 0, 20000)
   }
 ];
 const NON_COUNT_NUMERIC_KEYWORDS = [
@@ -170,6 +176,11 @@ export function parseConversationLiveEditCommand(input: { text: string; fields: 
   const unsupportedIntent = detectUnsupportedLiveEditIntent({ normalizedText: normalized, fields: enabledFields });
   if (unsupportedIntent !== undefined) {
     return unsupportedFailure(unsupportedIntent);
+  }
+
+  const spawnPositionEdit = parseSpawnPositionEdit(normalized, enabledFields);
+  if (spawnPositionEdit !== undefined) {
+    return spawnPositionEdit;
   }
 
   const semanticReplacement = parseSemanticReplacement(text, normalized, enabledFields);
@@ -281,6 +292,55 @@ function buildConversationEdit(field: LiveEditableField, value: number | string)
     value,
     summary: `${field.label}: ${field.value ?? 'unknown'} -> ${value}`
   };
+}
+
+function parseSpawnPositionEdit(normalized: string, enabledFields: LiveEditableField[]): ConversationLiveEditParseResult | undefined {
+  if (!isEnemySpawnEndIntent(normalized)) {
+    return undefined;
+  }
+
+  const wavePositionFields = enabledFields.filter((field) => field.valueKind === 'number' && isWavePositionField(field));
+  if (wavePositionFields.length === 0) {
+    return undefined;
+  }
+
+  const value = resolveMapEndX(enabledFields);
+  return success(wavePositionFields.map((field) => buildConversationEdit(field, value)));
+}
+
+function isWavePositionField(field: LiveEditableField): boolean {
+  return field.path.includes('/level/waves/') && field.path.endsWith('/x');
+}
+
+function isEnemySpawnEndIntent(normalized: string): boolean {
+  if (isNegatedMapEndSpawnIntent(normalized)) {
+    return false;
+  }
+
+  const hasEnemySubject = ['enemy', 'enemies', '敌人', '怪物', '外星人', 'alien'].some((keyword) => normalized.includes(keyword));
+  const hasSpawnIntent = ['spawn', 'refresh', '生成', '刷新', '出生', '刷怪', '位置', '刷在'].some((keyword) => normalized.includes(keyword));
+  const hasEndIntent = ['map end', 'end of the map', 'level end', '地图末端', '地图的末端', '地图尽头', '关卡末端', '关卡尽头', '末端', '尽头'].some((keyword) =>
+    normalized.includes(keyword)
+  );
+
+  return hasEnemySubject && hasSpawnIntent && hasEndIntent;
+}
+
+function isNegatedMapEndSpawnIntent(normalized: string): boolean {
+  const compact = normalized.replace(/\s+/gu, '');
+  const negatedSpawnPrefixes = ['不要刷新到', '不要刷新在', '不要刷在', '不要生成到', '不要生成在', '别刷新到', '别刷新在', '别刷在', '不能刷新到', '不能刷新在'];
+  const mapEndTerms = ['地图末端', '地图的末端', '地图尽头', '关卡末端', '关卡尽头'];
+  return negatedSpawnPrefixes.some((prefix) => mapEndTerms.some((term) => compact.includes(`${prefix}${term}`)));
+}
+
+function resolveMapEndX(fields: LiveEditableField[]): number {
+  const worldWidth = fields.find((field) => field.path === '/world/width' && typeof field.value === 'number')?.value;
+  if (typeof worldWidth === 'number') {
+    return clampInteger(worldWidth - 80, 0, 20000);
+  }
+
+  const wavePositions = fields.filter(isWavePositionField).map((field) => field.value).filter((value): value is number => typeof value === 'number');
+  return clampInteger(Math.max(0, ...wavePositions), 0, 20000);
 }
 
 function parseSemanticReplacement(text: string, normalizedText: string, fields: LiveEditableField[]): ConversationLiveEditParseResult | undefined {

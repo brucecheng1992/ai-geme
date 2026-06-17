@@ -205,6 +205,7 @@ export {
 export {
   buildUnsupportedRuntimeCapabilityReport,
   buildRuntimeCapabilityReport,
+  getRuntimeLiveEditCapabilitiesForGenre,
   validateAndPlanDslPatch,
   DslPatchV1Schema,
   PatchValidationReportSchema,

@@ -75,7 +75,7 @@ describe('DSL live edit pipeline', () => {
       liveEditCapabilities: {
         hot: expect.arrayContaining(['/player/physics/maxSpeed', '/enemyTypes/*/health/max', '/projectiles/*/damage']),
         assetSwap: [],
-        warmRestart: expect.arrayContaining(['/player/label', '/enemyTypes/*/label', '/level/waves/*/count', '/world/width']),
+        warmRestart: expect.arrayContaining(['/player/label', '/enemyTypes/*/label', '/level/waves/*/count', '/level/waves/*/x', '/world/width']),
         rebuildRequired: expect.arrayContaining(['/genre', '/world/coordinateSystem'])
       }
     });
@@ -211,6 +211,57 @@ describe('DSL live edit pipeline', () => {
       expect.arrayContaining([
         expect.objectContaining({ id: 'spawn_intro_drone', count: 4 }),
         expect.objectContaining({ id: 'spawn_bridge_drone', count: 6 })
+      ])
+    );
+    expect(validateGameDslArtifact(pendingCandidate).report).toMatchObject({ status: 'valid', errorCount: 0 });
+  });
+
+  it('prepares side-scrolling enemy spawn position patches with source DSL spawns kept in sync', async () => {
+    const sideRunId = `${runId}_side_wave_position`;
+    const sideScrolling = buildGameDslArtifact({
+      rawDsl: RawGameDslSchema.parse(createSideScrollingRunAndGunRawDsl()),
+      runId: sideRunId,
+      intentPlan: { normalizedGenre: 'side_scrolling_run_and_gun', matchedAlias: '横版跑枪' }
+    });
+    await service.initializeLiveVersion({ projectId, runId: sideRunId, artifact: sideScrolling });
+    const patch = DslPatchV1Schema.parse({
+      artifactKind: 'dsl_patch',
+      schemaVersion: 'dsl_patch.v1',
+      patchId: 'patch_side_wave_position',
+      runId: sideRunId,
+      baseDslId: sideScrolling.dslId,
+      baseVersionId: 'v_initial',
+      source: 'workbench',
+      intent: '敌人不要凭空刷新在玩家面前，是指啊地图的末端',
+      ops: [
+        { op: 'replace', path: '/level/waves/spawn_intro_drone/x', value: 1200 },
+        { op: 'replace', path: '/level/waves/spawn_bridge_drone/x', value: 1200 }
+      ]
+    });
+
+    const prepared = await service.prepareLiveEditPatch({ projectId, runId: sideRunId, patch });
+
+    expect(prepared).toMatchObject({
+      status: 'warm_restart_required',
+      applyMode: 'warm_restart',
+      validationReport: { status: 'valid', errorCount: 0 },
+      runtimePatch: {
+        level: {
+          waves: {
+            spawn_intro_drone: { x: 1200 },
+            spawn_bridge_drone: { x: 1200 }
+          }
+        }
+      }
+    });
+    const pendingCandidatePath = workspace.getLivePendingArtifactPath(projectId, sideRunId, patch.patchId, 'game_dsl.candidate.json');
+    const pendingCandidate = JSON.parse(await readFile(pendingCandidatePath, 'utf8')) as GameDslArtifact;
+    expect(pendingCandidate.level.waves.spawn_intro_drone.x).toBe(1200);
+    expect(pendingCandidate.level.waves.spawn_bridge_drone.x).toBe(1200);
+    expect(pendingCandidate.sourceDsl.level?.spawns).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'spawn_intro_drone', x: 1200 }),
+        expect.objectContaining({ id: 'spawn_bridge_drone', x: 1200 })
       ])
     );
     expect(validateGameDslArtifact(pendingCandidate).report).toMatchObject({ status: 'valid', errorCount: 0 });

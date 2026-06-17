@@ -39,10 +39,41 @@ describe('conversation live edit parser', () => {
       edits: [{ value: 2, field: { path: '/projectiles/enemy_bolt/damage' } }]
     });
   });
+
+  it('moves enemy wave spawns to the map end from a natural-language position request', () => {
+    const fields = multiWaveEnemyFields();
+
+    expect(parseConversationLiveEditCommand({ text: '敌人不要凭空刷新在玩家面前，是指啊地图的末端', fields })).toMatchObject({
+      ok: true,
+      edits: [
+        { value: 1200, field: { path: '/level/waves/spawn_jungle_infantry_1/x' } },
+        { value: 1200, field: { path: '/level/waves/spawn_jungle_infantry_2/x' } }
+      ]
+    });
+  });
+
+  it('keeps generic enemy add requests on wave counts instead of spawn positions', () => {
+    const fields = multiWaveEnemyFields();
+    const parsed = parseConversationLiveEditCommand({ text: '增加敌人', fields });
+
+    expect(parsed).toMatchObject({ ok: true });
+    expect(parsed.ok && parsed.edits.map((edit) => edit.field.path)).toEqual([
+      '/level/waves/spawn_jungle_infantry_1/count',
+      '/level/waves/spawn_jungle_infantry_2/count'
+    ]);
+  });
+
+  it('does not map negated map-end spawn requests to Spawn x', () => {
+    const fields = multiWaveEnemyFields();
+    const parsed = parseConversationLiveEditCommand({ text: '敌人不要刷新到地图末端', fields });
+
+    expect(parsed).toMatchObject({ ok: false, reason: 'ambiguous_field' });
+  });
 });
 
 function multiWaveEnemyFields(): LiveEditableField[] {
   return [
+    testField({ path: '/world/width', label: 'World width', value: 1280, targetKind: 'world', aliases: ['world', '地图', '世界', '宽度'] }),
     testField({ path: '/enemyTypes/infantry_type/physics/speed', label: 'Speed', value: 100, targetKind: 'enemyType', aliases: ['enemy', '敌人', 'infantry_type', '步兵'] }),
     testField({ path: '/enemyTypes/infantry_type/health/max', label: 'Max health', value: 1, targetKind: 'enemyType', aliases: ['enemy', '敌人', 'infantry_type', '步兵'] }),
     testField({
@@ -53,11 +84,25 @@ function multiWaveEnemyFields(): LiveEditableField[] {
       aliases: ['wave', 'enemy', 'enemies', '敌人', '敌人数量', '数量', 'spawn_jungle_infantry_1', 'infantry_type', '步兵']
     }),
     testField({
+      path: '/level/waves/spawn_jungle_infantry_1/x',
+      label: 'Spawn x',
+      value: 640,
+      targetKind: 'wave',
+      aliases: ['wave', 'spawn', 'enemy', 'enemies', '敌人', '刷新', '位置', '地图末端', 'spawn_jungle_infantry_1', 'infantry_type', '步兵']
+    }),
+    testField({
       path: '/level/waves/spawn_jungle_infantry_2/count',
       label: 'Enemy count',
       value: 5,
       targetKind: 'wave',
       aliases: ['wave', 'enemy', 'enemies', '敌人', '敌人数量', '数量', 'spawn_jungle_infantry_2', 'infantry_type', '步兵']
+    }),
+    testField({
+      path: '/level/waves/spawn_jungle_infantry_2/x',
+      label: 'Spawn x',
+      value: 1080,
+      targetKind: 'wave',
+      aliases: ['wave', 'spawn', 'enemy', 'enemies', '敌人', '刷新', '位置', '地图末端', 'spawn_jungle_infantry_2', 'infantry_type', '步兵']
     }),
     testField({
       path: '/projectiles/enemy_bolt/damage',

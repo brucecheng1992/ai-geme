@@ -36,7 +36,15 @@ import { PromptCoachService } from './prompt-coach.service.js';
 import { ProjectRequestError } from './project-request.error.js';
 import { ProjectStoreService } from './project-store.service.js';
 import { RunStoreService } from './run-store.service.js';
-import { DslPatchV1Schema, GameDslArtifactSchema, RuntimeCapabilityReportSchema, type GameDslArtifact } from '../../../../packages/game-dsl/src/index.js';
+import {
+  buildRuntimeCapabilityReport,
+  DslPatchV1Schema,
+  GameDslArtifactSchema,
+  RuntimeCapabilityReportSchema,
+  type GameDslArtifact,
+  type LiveEditCapabilities,
+  type RuntimeCapabilityReport
+} from '../../../../packages/game-dsl/src/index.js';
 
 type IdFactory = (date: Date) => { projectId: string; runId: string };
 type SuffixFactory = () => string;
@@ -45,6 +53,20 @@ type ParsedGenerateProjectRequest = Required<Pick<GenerateProjectRequest, 'idea'
   Pick<GenerateProjectRequest, 'promptOptimizationProjectId' | 'promptOptimizationId'>;
 const PROJECT_ID_PATTERN = /^proj_[A-Za-z0-9_-]+$/;
 const PROMPT_OPTIMIZATION_ID_PATTERN = /^opt_proj_[A-Za-z0-9_-]+_[a-f0-9]{12}$/;
+const liveEditRegistryGenreDirByDslGenre: Partial<Record<GameDslArtifact['genre'], string>> = {
+  top_down_shooter: 'shooter',
+  side_scrolling_run_and_gun: 'side_scrolling_run_and_gun'
+};
+const emptyLiveEditCapabilities: LiveEditCapabilities = {
+  hot: [],
+  assetSwap: [],
+  warmRestart: [],
+  rebuildRequired: []
+};
+
+type GeneratedRuntimeCapabilitiesResolution =
+  | { status: 'available'; capabilities: LiveEditCapabilities }
+  | { status: 'not-applicable' | 'file-missing' | 'inventory-missing' | 'run-mismatch' };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -283,9 +305,7 @@ export class ProjectsService {
     await this.assertRunBelongsToProject(projectId, runId);
     const current = await this.liveEdit.ensureLiveVersion({ projectId, runId });
     const gameDsl = GameDslArtifactSchema.parse(JSON.parse(await readFile(current.dslArtifactPath, 'utf8')));
-    const runtimeCapabilityReport = RuntimeCapabilityReportSchema.parse(
-      JSON.parse(await this.readRequiredFile(this.workspace.getModelOutputPath(projectId, runId, 'runtime_capability_report.json'), 'Runtime capability report not found.'))
-    );
+    const runtimeCapabilityReport = await this.resolveLiveCurrentCapabilityReport({ projectId, runId, gameDsl });
 
     return {
       ok: true,
@@ -315,7 +335,8 @@ export class ProjectsService {
       intent: request.intent ?? `Workbench edit ${request.ops.map((op) => op.path).join(', ')}`,
       ops: request.ops
     });
-    const prepared = await this.liveEdit.prepareLiveEditPatch({ projectId, runId, patch });
+    const capabilityReport = await this.resolveLiveCurrentCapabilityReport({ projectId, runId, gameDsl: baseDsl });
+    const prepared = await this.liveEdit.prepareLiveEditPatch({ projectId, runId, patch, capabilityReport });
 
     return toPrepareResponse(prepared);
   }
@@ -341,7 +362,8 @@ export class ProjectsService {
         { op: 'replace', path: `/enemyTypes/${enemyTypeId}/physics/speed`, value: 80 }
       ]
     });
-    const prepared = await this.liveEdit.prepareLiveEditPatch({ projectId, runId, patch });
+    const capabilityReport = await this.resolveLiveCurrentCapabilityReport({ projectId, runId, gameDsl: baseDsl });
+    const prepared = await this.liveEdit.prepareLiveEditPatch({ projectId, runId, patch, capabilityReport });
 
     return toPrepareResponse(prepared);
   }
@@ -379,6 +401,63 @@ export class ProjectsService {
     } catch (error) {
       if (isNodeErrorCode(error, 'ENOENT')) {
         return [];
+      }
+      throw error;
+    }
+  }
+
+  private async resolveLiveCurrentCapabilityReport(input: { projectId: string; runId: string; gameDsl: GameDslArtifact }): Promise<RuntimeCapabilityReport> {
+    const dynamicReport = buildRuntimeCapabilityReport({ runId: input.runId, validatedDsl: input.gameDsl });
+    const persistedReport = await this.readPersistedRuntimeCapabilityReport(input.projectId, input.runId);
+    const generatedRuntimeCapabilities = await this.readGeneratedRuntimeLiveEditCapabilities(input);
+    if (generatedRuntimeCapabilities.status === 'available') {
+      return withLiveEditCapabilities(dynamicReport, intersectLiveEditCapabilities(dynamicReport.liveEditCapabilities, generatedRuntimeCapabilities.capabilities));
+    }
+    if (generatedRuntimeCapabilities.status === 'not-applicable') {
+      return persistedReport ?? dynamicReport;
+    }
+    if (generatedRuntimeCapabilities.status === 'inventory-missing') {
+      return persistedReport ?? withLiveEditCapabilities(dynamicReport, emptyLiveEditCapabilities);
+    }
+
+    return withLiveEditCapabilities(dynamicReport, emptyLiveEditCapabilities);
+  }
+
+  private async readPersistedRuntimeCapabilityReport(projectId: string, runId: string): Promise<RuntimeCapabilityReport | undefined> {
+    try {
+      return RuntimeCapabilityReportSchema.parse(
+        JSON.parse(await readFile(this.workspace.getModelOutputPath(projectId, runId, 'runtime_capability_report.json'), 'utf8'))
+      );
+    } catch (error) {
+      if (isNodeErrorCode(error, 'ENOENT')) {
+        return undefined;
+      }
+      throw error;
+    }
+  }
+
+  private async readGeneratedRuntimeLiveEditCapabilities(input: {
+    projectId: string;
+    runId: string;
+    gameDsl: GameDslArtifact;
+  }): Promise<GeneratedRuntimeCapabilitiesResolution> {
+    const genreDir = liveEditRegistryGenreDirByDslGenre[input.gameDsl.genre];
+    if (genreDir === undefined) {
+      return { status: 'not-applicable' };
+    }
+
+    try {
+      const registry = JSON.parse(
+        await readFile(join(this.workspace.getGeneratedProjectDir(input.projectId), genreDir, 'src', 'live-edit-registry.generated.json'), 'utf8')
+      );
+      if (!isRecord(registry) || registry.runId !== input.runId) {
+        return { status: 'run-mismatch' };
+      }
+      const capabilities = parseLiveEditCapabilities(registry.liveEditCapabilities);
+      return capabilities === undefined ? { status: 'inventory-missing' } : { status: 'available', capabilities };
+    } catch (error) {
+      if (isNodeErrorCode(error, 'ENOENT')) {
+        return { status: 'file-missing' };
       }
       throw error;
     }
@@ -590,4 +669,41 @@ function stripSingleTrailingNewline(value: string): string {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function parseLiveEditCapabilities(value: unknown): LiveEditCapabilities | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const hot = parseStringArray(value.hot);
+  const assetSwap = parseStringArray(value.assetSwap);
+  const warmRestart = parseStringArray(value.warmRestart);
+  const rebuildRequired = parseStringArray(value.rebuildRequired);
+  if (hot === undefined || assetSwap === undefined || warmRestart === undefined || rebuildRequired === undefined) {
+    return undefined;
+  }
+
+  return { hot, assetSwap, warmRestart, rebuildRequired };
+}
+
+function parseStringArray(value: unknown): string[] | undefined {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string') ? value : undefined;
+}
+
+function intersectLiveEditCapabilities(left: LiveEditCapabilities, right: LiveEditCapabilities): LiveEditCapabilities {
+  return {
+    hot: intersectStrings(left.hot, right.hot),
+    assetSwap: intersectStrings(left.assetSwap, right.assetSwap),
+    warmRestart: intersectStrings(left.warmRestart, right.warmRestart),
+    rebuildRequired: intersectStrings(left.rebuildRequired, right.rebuildRequired)
+  };
+}
+
+function intersectStrings(left: string[], right: string[]): string[] {
+  const allowed = new Set(right);
+  return left.filter((item) => allowed.has(item));
+}
+
+function withLiveEditCapabilities(report: RuntimeCapabilityReport, liveEditCapabilities: LiveEditCapabilities): RuntimeCapabilityReport {
+  return RuntimeCapabilityReportSchema.parse({ ...report, liveEditCapabilities });
 }

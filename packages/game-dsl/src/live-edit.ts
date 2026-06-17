@@ -66,7 +66,7 @@ export const sideScrollingRunAndGunPhaserLiveEditCapabilities = {
     '/projectiles/*/damage'
   ],
   assetSwap: [],
-  warmRestart: ['/player/label', '/enemyTypes/*/label', '/level/waves/*/count', '/world/width'],
+  warmRestart: ['/player/label', '/enemyTypes/*/label', '/level/waves/*/count', '/level/waves/*/x', '/world/width'],
   rebuildRequired: ['/genre', '/world/coordinateSystem', '/world/physics/mode', '/player/controller']
 } as const;
 
@@ -196,7 +196,7 @@ const RuntimePatchSchema = z.strictObject({
     )
     .optional(),
   projectiles: z.record(z.string(), z.strictObject({ speed: z.number().optional(), damage: z.number().optional() })).optional(),
-  level: z.strictObject({ waves: z.record(z.string(), z.strictObject({ count: z.number().optional() })).optional() }).optional(),
+  level: z.strictObject({ waves: z.record(z.string(), z.strictObject({ count: z.number().optional(), x: z.number().optional() })).optional() }).optional(),
   world: z.strictObject({ width: z.number().optional() }).optional()
 });
 
@@ -244,6 +244,7 @@ type PatchPathRule = {
     | 'projectile-damage'
     | 'pickup-kind'
     | 'wave-count'
+    | 'wave-position'
     | 'world-width'
     | 'scale'
     | 'genre'
@@ -271,6 +272,7 @@ const patchPathRules: PatchPathRule[] = [
   { kind: 'assetSwap', pattern: '/assets/roles/projectile', value: 'asset-role' },
   { kind: 'assetSwap', pattern: '/assets/roles/background', value: 'asset-role' },
   { kind: 'warmRestart', pattern: '/level/waves/*/count', value: 'wave-count' },
+  { kind: 'warmRestart', pattern: '/level/waves/*/x', value: 'wave-position' },
   { kind: 'warmRestart', pattern: '/world/width', value: 'world-width' },
   { kind: 'warmRestart', pattern: '/level/waves', value: 'unknown' },
   { kind: 'warmRestart', pattern: '/level/spawnRules', value: 'unknown' },
@@ -284,6 +286,15 @@ const patchPathRules: PatchPathRule[] = [
 ];
 
 const emptyLiveEditCapabilities: LiveEditCapabilities = { hot: [], assetSwap: [], warmRestart: [], rebuildRequired: [] };
+
+function cloneLiveEditCapabilities(capabilities: LiveEditCapabilities): LiveEditCapabilities {
+  return {
+    hot: [...capabilities.hot],
+    assetSwap: [...capabilities.assetSwap],
+    warmRestart: [...capabilities.warmRestart],
+    rebuildRequired: [...capabilities.rebuildRequired]
+  };
+}
 
 const runtimeReportAdapterByGenre: Partial<
   Record<
@@ -344,6 +355,11 @@ const runtimeReportAdapterByGenre: Partial<
   }
 };
 
+export function getRuntimeLiveEditCapabilitiesForGenre(genre: string): LiveEditCapabilities | undefined {
+  const adapterConfig = runtimeReportAdapterByGenre[genre as GameDslArtifact['genre']];
+  return adapterConfig === undefined ? undefined : cloneLiveEditCapabilities(adapterConfig.liveEditCapabilities);
+}
+
 export function buildRuntimeCapabilityReport(input: { runId: string; validatedDsl: GameDslArtifact }): RuntimeCapabilityReport {
   const runtimeCapability = findRuntimeGenreCapability(input.validatedDsl.genre);
   const adapterConfig = runtimeReportAdapterByGenre[input.validatedDsl.genre];
@@ -379,7 +395,7 @@ export function buildRuntimeCapabilityReport(input: { runId: string; validatedDs
     adapterCapabilities,
     unsupportedCapabilities,
     unsupportedDslPaths: unsupportedCapabilities.map((item) => item.path),
-    liveEditCapabilities: supported ? adapterConfig.liveEditCapabilities : emptyLiveEditCapabilities
+    liveEditCapabilities: supported ? cloneLiveEditCapabilities(adapterConfig.liveEditCapabilities) : cloneLiveEditCapabilities(emptyLiveEditCapabilities)
   });
 }
 
@@ -626,6 +642,9 @@ function applyCandidatePatch(baseDsl: GameDslArtifact, patch: DslPatchV1): unkno
     if (applyWaveCountPatch(next, op.path, op.value)) {
       continue;
     }
+    if (applyWavePositionPatch(next, op.path, op.value)) {
+      continue;
+    }
     if (applyWorldWidthPatch(next, op.path, op.value)) {
       continue;
     }
@@ -809,6 +828,28 @@ function syncEnemyClearedTargetWithWaveCounts(artifact: GameDslArtifact): void {
   }
 }
 
+function applyWavePositionPatch(artifact: GameDslArtifact, path: string, value: unknown): boolean {
+  if (typeof value !== 'number') {
+    return false;
+  }
+  const segments = path.split('/').slice(1);
+  if (segments[0] !== 'level' || segments[1] !== 'waves' || segments[2] === undefined || segments[3] !== 'x') {
+    return false;
+  }
+
+  const wave = artifact.level.waves[segments[2]];
+  if (wave === undefined) {
+    return false;
+  }
+
+  wave.x = value;
+  const sourceSpawn = artifact.sourceDsl.level?.spawns.find((spawn) => spawn.id === wave.id);
+  if (sourceSpawn !== undefined) {
+    sourceSpawn.x = value;
+  }
+  return true;
+}
+
 function applyWorldWidthPatch(artifact: GameDslArtifact, path: string, value: unknown): boolean {
   if (path !== '/world/width' || typeof value !== 'number') {
     return false;
@@ -921,6 +962,15 @@ function buildRuntimePatch(patch: DslPatchV1, baseDsl: GameDslArtifact): NonNull
           [segments[2]]: { ...current, count: op.value }
         }
       };
+    } else if (segments[0] === 'level' && segments[1] === 'waves' && segments[2] !== undefined && segments[3] === 'x') {
+      const current = runtimePatch.level?.waves?.[segments[2]] ?? {};
+      runtimePatch.level = {
+        ...runtimePatch.level,
+        waves: {
+          ...runtimePatch.level?.waves,
+          [segments[2]]: { ...current, x: op.value }
+        }
+      };
     } else if (segments.join('/') === 'world/width') {
       runtimePatch.world = { ...runtimePatch.world, width: op.value };
     }
@@ -1017,6 +1067,9 @@ function valueMatchesRule(value: unknown, rule: PatchPathRule, baseDsl: GameDslA
   }
   if (rule.value === 'wave-count') {
     return isIntInRange(value, 1, 100) && referencedIdExists(baseDsl, path);
+  }
+  if (rule.value === 'wave-position') {
+    return isIntInRange(value, 0, baseDsl.world.width ?? 20000) && referencedIdExists(baseDsl, path);
   }
   if (rule.value === 'world-width') {
     return isIntInRange(value, 320, 24000);

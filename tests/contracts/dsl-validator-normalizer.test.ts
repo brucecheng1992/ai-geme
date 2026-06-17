@@ -888,14 +888,18 @@ describe('DSL Validator and Normalizer', () => {
   });
 
   it('rejects copyrighted source terms inside generic side-scrolling run-and-gun DSL', () => {
-    expectIssue(
-      validateRawGameDsl({
-        ...createSideScrollingRunAndGunRawDsl(),
-        metadata: { ...createSideScrollingRunAndGunRawDsl().metadata, title: '魂斗罗式 Mission' }
-      }),
-      'SCHEMA_VALIDATION_FAILED',
-      'copyrighted source term'
-    );
+    const result = validateRawGameDsl({
+      ...createSideScrollingRunAndGunRawDsl(),
+      metadata: { ...createSideScrollingRunAndGunRawDsl().metadata, description: '原创魂斗罗式横版跑枪' }
+    });
+
+    expectIssue(result, 'SCHEMA_VALIDATION_FAILED', 'copyrighted source term');
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.issues).toEqual(
+        expect.arrayContaining([expect.objectContaining({ path: 'metadata.description', message: expect.stringContaining('copyrighted source term') })])
+      );
+    }
   });
 
   it('preserves optional dodger collectible scoring in template params', () => {

@@ -420,6 +420,69 @@ describe('GameDslProviderService', () => {
     }
   );
 
+  it('normalizes source-reference terms out of side-scrolling Raw DSL metadata descriptions before schema validation', async () => {
+    const rawDsl = {
+      ...createSideScrollingRunAndGunRawDsl(),
+      metadata: {
+        ...createSideScrollingRunAndGunRawDsl().metadata,
+        description: '原创魂斗罗式2D横版卷轴跑枪游戏，玩家奔跑跳跃射击。'
+      }
+    };
+    const sideBrief: GameBrief = {
+      brief_version: 'game-brief-v0.1',
+      title: 'Generic Run And Gun',
+      genre: 'side_scrolling_run_and_gun',
+      camera: 'side_view',
+      core_loop: ['Run through side-view platform segments.', 'Shoot generic enemies and reach the exit.'],
+      difficulty: 'normal',
+      target_play_time_sec: rawDsl.game.target_play_time_sec
+    };
+    const service = new GameDslProviderService(createModelClient(success(rawDsl)));
+
+    const result = await service.generateRawGameDsl({ ...requestBase, idea: '做一个魂斗罗式横版射击游戏', language: 'zh', brief: sideBrief });
+
+    expect(result).toMatchObject({
+      ok: true,
+      value: {
+        metadata: { description: expect.stringContaining('原创横版跑枪') },
+        game: { genre: 'side_scrolling_run_and_gun' }
+      }
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.metadata.description).not.toContain('魂斗罗');
+    }
+  });
+
+  it('does not normalize source-reference terms out of side-scrolling Raw DSL titles', async () => {
+    const rawDsl = {
+      ...createSideScrollingRunAndGunRawDsl(),
+      metadata: {
+        ...createSideScrollingRunAndGunRawDsl().metadata,
+        title: '魂斗罗突击',
+        description: '原创横版跑枪游戏，玩家奔跑跳跃射击。'
+      }
+    };
+    const sideBrief: GameBrief = {
+      brief_version: 'game-brief-v0.1',
+      title: 'Generic Run And Gun',
+      genre: 'side_scrolling_run_and_gun',
+      camera: 'side_view',
+      core_loop: ['Run through side-view platform segments.', 'Shoot generic enemies and reach the exit.'],
+      difficulty: 'normal',
+      target_play_time_sec: rawDsl.game.target_play_time_sec
+    };
+    const service = new GameDslProviderService(createModelClient(success(rawDsl)));
+
+    const result = await service.generateRawGameDsl({ ...requestBase, idea: '做一个魂斗罗式横版射击游戏', language: 'zh', brief: sideBrief });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'MODEL_SCHEMA_VALIDATION_FAILED',
+      issues: expect.arrayContaining([expect.stringContaining('metadata.title')])
+    });
+  });
+
   it('accepts dodger Raw Game DSL with the verified right_edge_wave hazard spawn slice', async () => {
     const calls: JsonChatParams[] = [];
     const rawDsl = createDodgerRawDsl();

@@ -125,6 +125,24 @@ export function buildEditableFields(dsl: GameDslArtifact, capabilities: LiveEdit
             wave.id,
             enemy?.id,
             enemy?.label
+          ]),
+          field(`/level/waves/${wave.id}/x`, 'Spawn x', wave.x, capabilities, 'wave', [
+            'wave',
+            'spawn',
+            'enemy spawn',
+            'enemy',
+            'enemies',
+            '敌人',
+            '刷新',
+            '生成',
+            '出生',
+            '位置',
+            '地图末端',
+            '关卡末端',
+            '末端',
+            wave.id,
+            enemy?.id,
+            enemy?.label
           ])
         ];
   }
@@ -193,7 +211,7 @@ function field(
   };
 }
 
-function getLevelWaves(waves: GameDslArtifact['level']['waves']): Array<{ id: string; enemyTypeRef?: string; count?: number }> {
+function getLevelWaves(waves: GameDslArtifact['level']['waves']): Array<{ id: string; enemyTypeRef?: string; count?: number; x?: number }> {
   if (waves === undefined) {
     return [];
   }

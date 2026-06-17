@@ -11,7 +11,7 @@ import { RunStoreService } from '../../apps/maker-api/src/projects/run-store.ser
 import { LocalWorkspaceService } from '../../apps/maker-api/src/workspace/local-workspace.service.js';
 import { DslLiveEditService } from '../../apps/maker-api/src/projects/dsl-live-edit.service.js';
 import { buildGameDslArtifact, buildRuntimeCapabilityReport, RawGameDslSchema, type GameDslArtifact } from '../../packages/game-dsl/src/index.js';
-import { createShooterRawDsl } from '../contracts/fixtures.js';
+import { createShooterRawDsl, createSideScrollingRunAndGunRawDsl } from '../contracts/fixtures.js';
 
 describe('ProjectsService', () => {
   let root: string;
@@ -756,6 +756,127 @@ describe('ProjectsService', () => {
     });
   });
 
+  it('uses generated runtime registry capabilities for Workbench live current when persisted reports are stale', async () => {
+    const created = await service.generateProject({ idea: '横版跑枪', language: 'zh' });
+    const rawDsl = RawGameDslSchema.parse(createSideScrollingRunAndGunRawDsl());
+    const gameDsl = buildGameDslArtifact({
+      rawDsl,
+      runId: created.run_id,
+      intentPlan: { normalizedGenre: 'side_scrolling_run_and_gun', matchedAlias: '横版跑枪' }
+    });
+    await liveEdit.initializeLiveVersion({ projectId: created.project_id, runId: created.run_id, artifact: gameDsl });
+    const staleReport = buildRuntimeCapabilityReport({ runId: created.run_id, validatedDsl: gameDsl });
+    staleReport.liveEditCapabilities.warmRestart = staleReport.liveEditCapabilities.warmRestart.filter((path) => path !== '/level/waves/*/x');
+    await writeJsonFile(workspace.getModelOutputPath(created.project_id, created.run_id, 'runtime_capability_report.json'), staleReport);
+    await writeJsonFile(join(workspace.getGeneratedProjectDir(created.project_id), 'side_scrolling_run_and_gun', 'src', 'live-edit-registry.generated.json'), {
+      runId: created.run_id,
+      liveEditCapabilities: buildRuntimeCapabilityReport({ runId: created.run_id, validatedDsl: gameDsl }).liveEditCapabilities
+    });
+
+    const current = await service.getLiveCurrent(created.project_id, created.run_id);
+
+    expect(current.runtime_capability_report.liveEditCapabilities.warmRestart).toContain('/level/waves/*/x');
+    expect(current.live_edit_capabilities.warmRestart).toContain('/level/waves/*/x');
+  });
+
+  it('falls back to persisted runtime reports when generated runtime registry has no capability inventory', async () => {
+    const created = await service.generateProject({ idea: '横版跑枪', language: 'zh' });
+    const rawDsl = RawGameDslSchema.parse(createSideScrollingRunAndGunRawDsl());
+    const gameDsl = buildGameDslArtifact({
+      rawDsl,
+      runId: created.run_id,
+      intentPlan: { normalizedGenre: 'side_scrolling_run_and_gun', matchedAlias: '横版跑枪' }
+    });
+    await liveEdit.initializeLiveVersion({ projectId: created.project_id, runId: created.run_id, artifact: gameDsl });
+    const staleReport = buildRuntimeCapabilityReport({ runId: created.run_id, validatedDsl: gameDsl });
+    staleReport.liveEditCapabilities.warmRestart = staleReport.liveEditCapabilities.warmRestart.filter((path) => path !== '/level/waves/*/x');
+    await writeJsonFile(workspace.getModelOutputPath(created.project_id, created.run_id, 'runtime_capability_report.json'), staleReport);
+    await writeJsonFile(join(workspace.getGeneratedProjectDir(created.project_id), 'side_scrolling_run_and_gun', 'src', 'live-edit-registry.generated.json'), { runId: created.run_id });
+
+    const current = await service.getLiveCurrent(created.project_id, created.run_id);
+
+    expect(current.runtime_capability_report.liveEditCapabilities.warmRestart).not.toContain('/level/waves/*/x');
+    expect(current.live_edit_capabilities.warmRestart).not.toContain('/level/waves/*/x');
+  });
+
+  it('does not let Workbench prepare bypass stale generated runtime capability gates', async () => {
+    const created = await service.generateProject({ idea: '横版跑枪', language: 'zh' });
+    const rawDsl = RawGameDslSchema.parse(createSideScrollingRunAndGunRawDsl());
+    const gameDsl = buildGameDslArtifact({
+      rawDsl,
+      runId: created.run_id,
+      intentPlan: { normalizedGenre: 'side_scrolling_run_and_gun', matchedAlias: '横版跑枪' }
+    });
+    await liveEdit.initializeLiveVersion({ projectId: created.project_id, runId: created.run_id, artifact: gameDsl });
+    const staleReport = buildRuntimeCapabilityReport({ runId: created.run_id, validatedDsl: gameDsl });
+    staleReport.liveEditCapabilities.warmRestart = staleReport.liveEditCapabilities.warmRestart.filter((path) => path !== '/level/waves/*/x');
+    await writeJsonFile(workspace.getModelOutputPath(created.project_id, created.run_id, 'runtime_capability_report.json'), staleReport);
+    await writeJsonFile(join(workspace.getGeneratedProjectDir(created.project_id), 'side_scrolling_run_and_gun', 'src', 'live-edit-registry.generated.json'), {
+      runId: created.run_id
+    });
+
+    const prepared = await service.prepareWorkbenchLiveEdit(created.project_id, created.run_id, {
+      op: 'replace',
+      path: '/level/waves/spawn_intro_drone/x',
+      value: 1200
+    });
+
+    expect(prepared).toMatchObject({
+      status: 'unsupported',
+      apply_mode: 'none',
+      validation_report: { status: 'valid' },
+      live_update_plan: { affectedPaths: ['/level/waves/spawn_intro_drone/x'] }
+    });
+    expect(prepared.runtime_patch).toBeUndefined();
+  });
+
+  it('ignores generated runtime registry capabilities when the registry runId is stale', async () => {
+    const created = await service.generateProject({ idea: '横版跑枪', language: 'zh' });
+    const rawDsl = RawGameDslSchema.parse(createSideScrollingRunAndGunRawDsl());
+    const gameDsl = buildGameDslArtifact({
+      rawDsl,
+      runId: created.run_id,
+      intentPlan: { normalizedGenre: 'side_scrolling_run_and_gun', matchedAlias: '横版跑枪' }
+    });
+    await liveEdit.initializeLiveVersion({ projectId: created.project_id, runId: created.run_id, artifact: gameDsl });
+    const staleReport = buildRuntimeCapabilityReport({ runId: created.run_id, validatedDsl: gameDsl });
+    staleReport.liveEditCapabilities.warmRestart = staleReport.liveEditCapabilities.warmRestart.filter((path) => path !== '/level/waves/*/x');
+    await writeJsonFile(workspace.getModelOutputPath(created.project_id, created.run_id, 'runtime_capability_report.json'), staleReport);
+    await writeJsonFile(join(workspace.getGeneratedProjectDir(created.project_id), 'side_scrolling_run_and_gun', 'src', 'live-edit-registry.generated.json'), {
+      runId: 'run_older_generated_runtime',
+      liveEditCapabilities: buildRuntimeCapabilityReport({ runId: created.run_id, validatedDsl: gameDsl }).liveEditCapabilities
+    });
+
+    const current = await service.getLiveCurrent(created.project_id, created.run_id);
+    const prepared = await service.prepareWorkbenchLiveEdit(created.project_id, created.run_id, {
+      op: 'replace',
+      path: '/level/waves/spawn_intro_drone/x',
+      value: 1200
+    });
+
+    expect(current.runtime_capability_report.liveEditCapabilities.warmRestart).not.toContain('/level/waves/*/x');
+    expect(prepared).toMatchObject({ status: 'unsupported', apply_mode: 'none' });
+  });
+
+  it('treats run-mismatched generated runtime registries as non-targetable for top-down prepare requests', async () => {
+    const created = await service.generateProject({ idea: '小猫大战坦克', language: 'zh' });
+    const gameDsl = await writeCatVsTankArtifacts(workspace, liveEdit, created.project_id, created.run_id);
+    await writeJsonFile(join(workspace.getGeneratedProjectDir(created.project_id), 'shooter', 'src', 'live-edit-registry.generated.json'), {
+      runId: 'run_older_generated_runtime',
+      liveEditCapabilities: buildRuntimeCapabilityReport({ runId: created.run_id, validatedDsl: gameDsl }).liveEditCapabilities
+    });
+
+    const current = await service.getLiveCurrent(created.project_id, created.run_id);
+    const prepared = await service.prepareWorkbenchLiveEdit(created.project_id, created.run_id, {
+      op: 'replace',
+      path: '/player/physics/maxSpeed',
+      value: 320
+    });
+
+    expect(current.live_edit_capabilities.hot).not.toContain('/player/physics/maxSpeed');
+    expect(prepared).toMatchObject({ status: 'unsupported', apply_mode: 'none' });
+  });
+
   it('prepares a generic Workbench replace op and records failed runtime result without advancing current_version', async () => {
     const created = await service.generateProject({ idea: '小猫大战坦克', language: 'zh' });
     await writeCatVsTankArtifacts(workspace, liveEdit, created.project_id, created.run_id);
@@ -994,7 +1115,12 @@ async function writeCatVsTankArtifacts(workspace: LocalWorkspaceService, liveEdi
     intentPlan: { normalizedGenre: 'top_down_shooter', matchedAlias: '小猫大战坦克' }
   });
   await liveEdit.initializeLiveVersion({ projectId, runId, artifact: gameDsl });
-  await writeJsonFile(workspace.getModelOutputPath(projectId, runId, 'runtime_capability_report.json'), buildRuntimeCapabilityReport({ runId, validatedDsl: gameDsl }));
+  const runtimeCapabilityReport = buildRuntimeCapabilityReport({ runId, validatedDsl: gameDsl });
+  await writeJsonFile(workspace.getModelOutputPath(projectId, runId, 'runtime_capability_report.json'), runtimeCapabilityReport);
+  await writeJsonFile(join(workspace.getGeneratedProjectDir(projectId), 'shooter', 'src', 'live-edit-registry.generated.json'), {
+    runId,
+    liveEditCapabilities: runtimeCapabilityReport.liveEditCapabilities
+  });
   return gameDsl;
 }
 

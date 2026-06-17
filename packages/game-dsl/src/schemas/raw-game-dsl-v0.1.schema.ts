@@ -69,6 +69,36 @@ function findForbiddenDslValue(value: unknown, path: Array<string | number> = []
   return null;
 }
 
+function findCopyrightedRunAndGunValue(value: unknown, path: Array<string | number> = []): { term: string; path: Array<string | number> } | null {
+  if (typeof value === 'string') {
+    const lower = value.toLowerCase();
+    const term = copyrightedRunAndGunTerms.find((candidate) => lower.includes(candidate));
+    return term === undefined ? null : { term, path };
+  }
+
+  if (Array.isArray(value)) {
+    for (const [index, item] of value.entries()) {
+      const violation = findCopyrightedRunAndGunValue(item, [...path, index]);
+      if (violation) {
+        return violation;
+      }
+    }
+
+    return null;
+  }
+
+  if (value && typeof value === 'object') {
+    for (const [key, child] of Object.entries(value)) {
+      const violation = findCopyrightedRunAndGunValue(child, [...path, key]);
+      if (violation) {
+        return violation;
+      }
+    }
+  }
+
+  return null;
+}
+
 const MovementSchema = z.strictObject({
   type: z.enum([
     'static',
@@ -455,15 +485,13 @@ function addSideScrollingRunAndGunIssues(value: z.infer<typeof RawGameDslSchema>
   addSideScrollingRunAndGunLevelIssues(value, ctx);
   addSideScrollingRunAndGunWinLoseIssues(value, ctx);
 
-  const serialized = JSON.stringify(value).toLowerCase();
-  for (const term of copyrightedRunAndGunTerms) {
-    if (serialized.includes(term)) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['metadata', 'title'],
-        message: `side_scrolling_run_and_gun DSL must not contain copyrighted source term "${term}"`
-      });
-    }
+  const copyrightedSourceReference = findCopyrightedRunAndGunValue(value);
+  if (copyrightedSourceReference !== null) {
+    ctx.addIssue({
+      code: 'custom',
+      path: copyrightedSourceReference.path,
+      message: `side_scrolling_run_and_gun DSL must not contain copyrighted source term "${copyrightedSourceReference.term}"`
+    });
   }
 }
 

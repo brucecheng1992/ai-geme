@@ -17,7 +17,7 @@ export type SideScrollingRuntimePatch = {
   player?: PlayerRuntimePatch;
   enemyTypes?: Record<string, EnemyRuntimePatch>;
   projectiles?: Record<string, { speed?: number; damage?: number }>;
-  level?: { waves?: Record<string, { count?: number }> };
+  level?: { waves?: Record<string, { count?: number; x?: number }> };
   world?: { width?: number };
 };
 
@@ -64,7 +64,7 @@ const liveEditCapabilities = {
     '/projectiles/*/damage'
   ],
   assetSwap: [],
-  warmRestart: ['/player/label', '/enemyTypes/*/label', '/level/waves/*/count', '/world/width'],
+  warmRestart: ['/player/label', '/enemyTypes/*/label', '/level/waves/*/count', '/level/waves/*/x', '/world/width'],
   rebuildRequired: ['/genre', '/world/coordinateSystem', '/world/physics/mode', '/player/controller']
 } as const;
 
@@ -151,17 +151,26 @@ export function createSideScrollingRuntimeBridge(input: BridgeInput) {
         }
       }
 
+      let touchedWaveCount = false;
       for (const [waveId, wavePatch] of Object.entries(parsed.patch.level?.waves ?? {})) {
         const wave = plan.waves.find((item) => item.id === waveId);
-        if (wave === undefined || wavePatch.count === undefined) {
+        if (wave === undefined) {
           return unsupported(`/level/waves/${waveId}`);
         }
-        wave.count = wavePatch.count;
-        if (plan.winCondition.kind === 'enemy_cleared') {
-          plan.winCondition.targetCount = wavePatch.count;
+        if (wavePatch.count !== undefined) {
+          wave.count = wavePatch.count;
+          touchedWaveCount = true;
+          appliedPaths.push(`/level/waves/${waveId}/count`);
         }
-        appliedPaths.push(`/level/waves/${waveId}/count`);
+        if (wavePatch.x !== undefined) {
+          wave.triggerX = wavePatch.x;
+          wave.spawnX = wavePatch.x;
+          appliedPaths.push(`/level/waves/${waveId}/x`);
+        }
         applyMode = 'warm_restart';
+      }
+      if (touchedWaveCount && plan.winCondition.kind === 'enemy_cleared') {
+        plan.winCondition.targetCount = plan.waves.reduce((total, wave) => total + wave.count, 0);
       }
 
       if (parsed.patch.world?.width !== undefined) {
@@ -256,11 +265,16 @@ function parseRuntimePatch(
       if (!plan.waves.some((wave) => wave.id === waveId) || !isRecord(wavePatch)) {
         return { ok: false, result: unsupported(`/level/waves/${waveId}`) };
       }
-      const wave = pickNumberPatch(wavePatch, ['count']);
-      if (!wave.ok || typeof wave.value.count !== 'number' || !intInRange(wave.value.count, 1, 100)) {
-        return { ok: false, result: failed('RUNTIME_PATCH_INVALID', `/level/waves/${waveId}`, 'wave patch count is outside the allowed runtime range.') };
+      const wave = pickNumberPatch(wavePatch, ['count', 'x']);
+      if (
+        !wave.ok ||
+        (wave.value.count === undefined && wave.value.x === undefined) ||
+        (wave.value.count !== undefined && !intInRange(wave.value.count, 1, 100)) ||
+        (wave.value.x !== undefined && !intInRange(wave.value.x, 0, plan.scene.world.width))
+      ) {
+        return { ok: false, result: failed('RUNTIME_PATCH_INVALID', `/level/waves/${waveId}`, 'wave patch values are outside the allowed runtime range.') };
       }
-      waves[waveId] = { count: wave.value.count };
+      waves[waveId] = { count: wave.value.count, x: wave.value.x };
     }
     normalized.level = { waves };
   }
