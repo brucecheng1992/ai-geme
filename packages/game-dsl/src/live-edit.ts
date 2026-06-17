@@ -1,5 +1,12 @@
 import { z } from 'zod';
 
+import {
+  describeRuntimeGenreCapability,
+  findRuntimeGenreCapability,
+  isRuntimeGenreExecutable,
+  RUNTIME_SUPPORT_STATUSES,
+  type RuntimeSupportStatus
+} from './runtime-capabilities.js';
 import { checkPhaserRuntimeCapabilities } from './runtime-capability-gate.js';
 import {
   buildGameDslArtifact,
@@ -25,7 +32,7 @@ export const RUNTIME_APPLY_REPORT_SCHEMA_VERSION = 'runtime_apply_report.v1';
 
 const PatchIdSchema = z.string().regex(/^patch_[a-z0-9_]{4,40}$/);
 const VersionIdSchema = z.string().regex(/^v_[A-Za-z0-9_-]{3,80}$/);
-const AdapterIdSchema = z.literal('top_down_shooter.phaser.v1');
+const AdapterIdSchema = z.string().min(1).max(160);
 
 const LiveEditCapabilitiesSchema = z.strictObject({
   hot: z.array(z.string()),
@@ -53,18 +60,47 @@ export const RuntimeCapabilityReportSchema = z.strictObject({
   artifactKind: z.literal(RUNTIME_CAPABILITY_REPORT_KIND),
   schemaVersion: z.literal(RUNTIME_CAPABILITY_REPORT_SCHEMA_VERSION),
   runId: z.string().min(1).max(120),
-  validatedDslRef: z.strictObject({
-    artifactKind: z.literal('game_dsl'),
-    schemaVersion: z.literal('game_dsl.v1'),
-    dslId: z.string().min(1)
-  }),
-  selectedAdapterId: AdapterIdSchema,
+  intentPlanRef: z
+    .strictObject({
+      artifact: z.literal('intent_plan.json'),
+      normalizedGenre: z.string().min(1).max(120),
+      matchedAlias: z.string().min(1).max(80).optional()
+    })
+    .optional(),
+  validatedDslRef: z
+    .strictObject({
+      artifactKind: z.literal('game_dsl'),
+      schemaVersion: z.literal('game_dsl.v1'),
+      dslId: z.string().min(1)
+    })
+    .optional(),
+  selectedAdapterId: AdapterIdSchema.optional(),
+  runtimeSupportStatus: z.enum(RUNTIME_SUPPORT_STATUSES).optional(),
+  runtimeTemplateId: z.string().min(1).max(160).optional(),
+  qaProfile: z.string().min(1).max(160).optional(),
   status: z.enum(['supported', 'unsupported']),
   requiredCapabilities: z.array(z.string()),
   adapterCapabilities: z.array(z.string()),
   unsupportedCapabilities: z.array(z.strictObject({ capability: z.string(), path: z.string(), reason: z.string() })),
   unsupportedDslPaths: z.array(z.string()),
-  liveEditCapabilities: LiveEditCapabilitiesSchema
+  liveEditCapabilities: LiveEditCapabilitiesSchema,
+  message: z.string().min(1).max(500).optional()
+}).superRefine((report, ctx) => {
+  if (report.intentPlanRef === undefined && report.validatedDslRef === undefined) {
+    ctx.addIssue({ code: 'custom', path: ['intentPlanRef'], message: 'runtime capability report must reference intent_plan.json or game_dsl.json.' });
+  }
+  if (report.status === 'supported' && report.validatedDslRef === undefined) {
+    ctx.addIssue({ code: 'custom', path: ['validatedDslRef'], message: 'supported runtime reports must reference a validated DSL artifact.' });
+  }
+  if (report.status === 'supported' && report.selectedAdapterId === undefined) {
+    ctx.addIssue({ code: 'custom', path: ['selectedAdapterId'], message: 'supported runtime reports must include the selected adapter id.' });
+  }
+  if (report.status === 'supported' && report.runtimeTemplateId === undefined) {
+    ctx.addIssue({ code: 'custom', path: ['runtimeTemplateId'], message: 'supported runtime reports must include the runtime template id.' });
+  }
+  if (report.status === 'supported' && report.qaProfile === undefined) {
+    ctx.addIssue({ code: 'custom', path: ['qaProfile'], message: 'supported runtime reports must include the QA profile.' });
+  }
 });
 
 export type RuntimeCapabilityReport = z.infer<typeof RuntimeCapabilityReportSchema>;
@@ -233,44 +269,119 @@ const patchPathRules: PatchPathRule[] = [
   { kind: 'rebuildRequired', pattern: '/player/controller', value: 'unknown' }
 ];
 
+const emptyLiveEditCapabilities: LiveEditCapabilities = { hot: [], assetSwap: [], warmRestart: [], rebuildRequired: [] };
+
+const runtimeReportAdapterByGenre: Partial<
+  Record<
+    GameDslArtifact['genre'],
+    {
+      selectedAdapterId: string;
+      adapterCapabilities: string[];
+      liveEditCapabilities: LiveEditCapabilities;
+    }
+  >
+> = {
+  top_down_shooter: {
+    selectedAdapterId: 'top_down_shooter.phaser.v1',
+    adapterCapabilities: [
+      'top_down_camera',
+      'eight_direction_movement',
+      'projectile_combat',
+      'enemy_waves',
+      ...topDownShooterPhaserLiveEditCapabilities.hot,
+      ...topDownShooterPhaserLiveEditCapabilities.assetSwap,
+      ...topDownShooterPhaserLiveEditCapabilities.warmRestart,
+      ...topDownShooterPhaserLiveEditCapabilities.rebuildRequired
+    ],
+    liveEditCapabilities: {
+      hot: [...topDownShooterPhaserLiveEditCapabilities.hot],
+      assetSwap: [...topDownShooterPhaserLiveEditCapabilities.assetSwap],
+      warmRestart: [...topDownShooterPhaserLiveEditCapabilities.warmRestart],
+      rebuildRequired: [...topDownShooterPhaserLiveEditCapabilities.rebuildRequired]
+    }
+  },
+  dodger_collector: {
+    selectedAdapterId: 'dodger_collector.phaser.v1',
+    adapterCapabilities: ['top_down_camera', 'eight_direction_movement', 'collectibles', 'hazards'],
+    liveEditCapabilities: emptyLiveEditCapabilities
+  }
+};
+
 export function buildRuntimeCapabilityReport(input: { runId: string; validatedDsl: GameDslArtifact }): RuntimeCapabilityReport {
-  const adapterCapabilities = [
-    'top_down_camera',
-    'eight_direction_movement',
-    'projectile_combat',
-    'enemy_waves',
-    ...topDownShooterPhaserLiveEditCapabilities.hot,
-    ...topDownShooterPhaserLiveEditCapabilities.assetSwap,
-    ...topDownShooterPhaserLiveEditCapabilities.warmRestart,
-    ...topDownShooterPhaserLiveEditCapabilities.rebuildRequired
-  ];
+  const runtimeCapability = findRuntimeGenreCapability(input.validatedDsl.genre);
+  const adapterConfig = runtimeReportAdapterByGenre[input.validatedDsl.genre];
+  const adapterCapabilities = adapterConfig?.adapterCapabilities ?? [];
   const normalized = validateAndNormalizeRawGameDsl(input.validatedDsl.sourceDsl);
   const runtimeGate = normalized.ok ? checkPhaserRuntimeCapabilities(normalized.ir) : { ok: false as const, unsupportedCapabilities: [] };
-  const unsupportedFromAdapter =
-    input.validatedDsl.genre === 'top_down_shooter'
-      ? []
-      : input.validatedDsl.requiredCapabilities
-          .filter((capability) => !adapterCapabilities.includes(capability))
-          .map((capability) => ({
-            capability,
-            path: 'requiredCapabilities',
-            reason: `top_down_shooter.phaser.v1 does not support ${capability}.`
-          }));
+  const unsupportedFromAdapter = input.validatedDsl.requiredCapabilities
+    .filter((capability) => !adapterCapabilities.includes(capability))
+    .map((capability) => ({
+      capability,
+      path: 'requiredCapabilities',
+      reason: `${adapterConfig?.selectedAdapterId ?? 'no selected Phaser adapter'} does not support ${capability}.`
+    }));
   const unsupportedCapabilities = [...unsupportedFromAdapter, ...(!runtimeGate.ok ? runtimeGate.unsupportedCapabilities : [])];
-  const supported = input.validatedDsl.genre === 'top_down_shooter' && unsupportedCapabilities.length === 0;
+  const supported =
+    runtimeCapability !== undefined &&
+    isRuntimeGenreExecutable(runtimeCapability) &&
+    adapterConfig !== undefined &&
+    unsupportedCapabilities.length === 0;
 
   return RuntimeCapabilityReportSchema.parse({
     artifactKind: RUNTIME_CAPABILITY_REPORT_KIND,
     schemaVersion: RUNTIME_CAPABILITY_REPORT_SCHEMA_VERSION,
     runId: input.runId,
+    intentPlanRef: input.validatedDsl.intentPlanRef,
     validatedDslRef: { artifactKind: 'game_dsl', schemaVersion: 'game_dsl.v1', dslId: input.validatedDsl.dslId },
-    selectedAdapterId: 'top_down_shooter.phaser.v1',
+    ...(adapterConfig === undefined ? {} : { selectedAdapterId: adapterConfig.selectedAdapterId }),
+    runtimeSupportStatus: runtimeCapability?.status ?? (supported ? 'supported' : 'unsupported'),
+    ...(runtimeCapability?.templateId === undefined ? {} : { runtimeTemplateId: runtimeCapability.templateId }),
+    ...(runtimeCapability?.qaProfile === undefined ? {} : { qaProfile: runtimeCapability.qaProfile }),
     status: supported ? 'supported' : 'unsupported',
     requiredCapabilities: input.validatedDsl.requiredCapabilities,
     adapterCapabilities,
     unsupportedCapabilities,
     unsupportedDslPaths: unsupportedCapabilities.map((item) => item.path),
-    liveEditCapabilities: supported ? topDownShooterPhaserLiveEditCapabilities : { hot: [], assetSwap: [], warmRestart: [], rebuildRequired: [] }
+    liveEditCapabilities: supported ? adapterConfig.liveEditCapabilities : emptyLiveEditCapabilities
+  });
+}
+
+export function buildUnsupportedRuntimeCapabilityReport(input: {
+  runId: string;
+  intentPlan: {
+    normalizedGenre: string;
+    matchedAlias?: string;
+    runtimeSupportStatus?: RuntimeSupportStatus;
+    unsupportedCapabilities?: string[];
+  };
+}): RuntimeCapabilityReport {
+  const runtimeCapability = findRuntimeGenreCapability(input.intentPlan.normalizedGenre);
+  const missingCapabilities = runtimeCapability?.missingCapabilities ?? input.intentPlan.unsupportedCapabilities ?? ['recognized_2d_genre'];
+  const requiredCapabilities = runtimeCapability?.requiredCapabilities ?? missingCapabilities;
+  const reason = describeRuntimeGenreCapability(runtimeCapability);
+  const unsupportedCapabilities = missingCapabilities.map((capability) => ({
+    capability,
+    path: 'intentPlan.normalizedGenre',
+    reason
+  }));
+
+  return RuntimeCapabilityReportSchema.parse({
+    artifactKind: RUNTIME_CAPABILITY_REPORT_KIND,
+    schemaVersion: RUNTIME_CAPABILITY_REPORT_SCHEMA_VERSION,
+    runId: input.runId,
+    intentPlanRef: {
+      artifact: 'intent_plan.json',
+      normalizedGenre: input.intentPlan.normalizedGenre,
+      ...(input.intentPlan.matchedAlias === undefined ? {} : { matchedAlias: input.intentPlan.matchedAlias })
+    },
+    runtimeSupportStatus: runtimeCapability?.status ?? input.intentPlan.runtimeSupportStatus ?? 'unsupported',
+    status: 'unsupported',
+    requiredCapabilities,
+    adapterCapabilities: runtimeCapability?.implementedCapabilities ?? [],
+    unsupportedCapabilities,
+    unsupportedDslPaths: ['intentPlan.normalizedGenre'],
+    liveEditCapabilities: emptyLiveEditCapabilities,
+    message: reason
   });
 }
 
@@ -311,7 +422,7 @@ export function validateAndPlanDslPatch(input: {
 
   const affectedPaths = patch.ops.map((op) => op.path);
   const capabilityReport = input.capabilityReport ?? buildRuntimeCapabilityReport({ runId: patch.runId, validatedDsl: input.baseDsl });
-  if (capabilityReport.runId !== patch.runId || capabilityReport.validatedDslRef.dslId !== input.baseDsl.dslId) {
+  if (capabilityReport.runId !== patch.runId || capabilityReport.validatedDslRef?.dslId !== input.baseDsl.dslId) {
     errors.push({ code: 'RUNTIME_CAPABILITY_REPORT_MISMATCH', path: 'runtime', message: 'Runtime capability report does not match this patch and base DSL.' });
   }
 

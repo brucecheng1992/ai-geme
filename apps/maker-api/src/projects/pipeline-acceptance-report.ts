@@ -87,6 +87,9 @@ type BuildPipelineAcceptanceReportInput = {
     runId: string;
     source?: string;
   };
+  runtimeCapability?: {
+    status?: 'supported' | 'unsupported';
+  };
   assetLibraryUsage?: {
     status?: 'pass' | 'warn' | 'fail';
   };
@@ -97,6 +100,7 @@ type BuildPipelineAcceptanceReportInput = {
 
 const ARTIFACT_ORDER = [
   'generationInputReport',
+  'intentPlan',
   'gameDsl',
   'gameDslCandidate',
   'dslValidationReport',
@@ -120,7 +124,7 @@ export function buildPipelineAcceptanceReport(input: BuildPipelineAcceptanceRepo
     buildGenerationInputCheck(input, artifacts.get('generationInputReport')),
     buildDslValidationCheck(input, artifacts.get('dslValidationReport')),
     buildDslArtifactCheck(input, artifacts),
-    buildArtifactCheck('runtime_capability', 'runtime', true, artifacts.get('runtimeCapabilityReport')),
+    buildRuntimeCapabilityCheck(input, artifacts.get('runtimeCapabilityReport')),
     buildArtifactCheck('asset_pipeline', 'assets', true, artifacts.get('assetPipelineReport')),
     buildAssetLibraryUsageCheck(input, artifacts.get('assetLibraryUsageReport')),
     buildAssetBindingTraceCheck(input, artifacts.get('assetBindingTraceReport')),
@@ -144,6 +148,34 @@ export function buildPipelineAcceptanceReport(input: BuildPipelineAcceptanceRepo
   };
 
   return PipelineAcceptanceReportSchema.parse(report);
+}
+
+function buildRuntimeCapabilityCheck(input: BuildPipelineAcceptanceReportInput, artifact: PipelineArtifactRef | undefined): PipelineAcceptanceCheck {
+  const artifactCheck = buildArtifactCheck('runtime_capability', 'runtime', true, artifact);
+  if (artifactCheck.status !== 'pass') {
+    return artifactCheck;
+  }
+
+  if (input.runtimeCapability?.status === 'supported') {
+    return {
+      ...artifactCheck,
+      reason: 'runtime_capability_report.json status is supported.'
+    };
+  }
+
+  if (input.runtimeCapability?.status === 'unsupported') {
+    return {
+      ...artifactCheck,
+      status: 'fail',
+      reason: 'runtime_capability_report.json status is unsupported.'
+    };
+  }
+
+  return {
+    ...artifactCheck,
+    status: 'fail',
+    reason: 'runtime_capability_report.json status is unavailable.'
+  };
 }
 
 function buildAssetBindingTraceCheck(input: BuildPipelineAcceptanceReportInput, artifact: PipelineArtifactRef | undefined): PipelineAcceptanceCheck {

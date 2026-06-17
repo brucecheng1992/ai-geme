@@ -36,6 +36,7 @@ describe('Pipeline acceptance report contract', () => {
       artifactIndex: index,
       dslValidation: { valid: true, sourceArtifact: 'game_dsl.json' },
       generationInput: { projectId, runId, source: 'manual' },
+      runtimeCapability: { status: 'supported' },
       assetLibraryUsage: { status: 'pass' },
       assetBindingTrace: { status: 'pass' }
     });
@@ -45,6 +46,7 @@ describe('Pipeline acceptance report contract', () => {
       artifactIndex: { ...index, artifacts: [...index.artifacts].reverse() },
       dslValidation: { valid: true, sourceArtifact: 'game_dsl.json' },
       generationInput: { projectId, runId, source: 'manual' },
+      runtimeCapability: { status: 'supported' },
       assetLibraryUsage: { status: 'pass' },
       assetBindingTrace: { status: 'pass' }
     });

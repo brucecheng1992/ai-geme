@@ -1,4 +1,10 @@
-import type { GameBrief } from '../../../../packages/game-dsl/src/index.js';
+import {
+  describeRuntimeGenreCapability,
+  findRuntimeGenreCapability,
+  isRuntimeGenreExecutable,
+  type GameBrief,
+  type RuntimeSupportStatus
+} from '../../../../packages/game-dsl/src/index.js';
 
 export const NORMALIZED_2D_GENRES = [
   'top_down_shooter',
@@ -20,6 +26,10 @@ export type IntentPlan = {
   matchedAlias?: string;
   language: 'zh' | 'en';
   runtimeDslSupport: 'supported' | 'unsupported';
+  runtimeSupportStatus: RuntimeSupportStatus;
+  runtimeSupportReason: string;
+  runtimeTemplateId?: string;
+  qaProfile?: string;
   unsupportedCapabilities: string[];
 };
 
@@ -34,12 +44,13 @@ const genreAliases: ReadonlyArray<{ genre: Normalized2dGenre; aliases: readonly 
   { genre: 'maze_chase', aliases: ['迷宫追逐', 'maze chase'] }
 ];
 
-const supportedRuntimeDslGenres = new Set<IntentNormalizedGenre>(['top_down_shooter', 'dodger_collector']);
 const copyrightedRunAndGunTerms = ['魂斗罗', 'contra'];
 
 export function buildIntentPlan(params: { idea: string; language: Language }): IntentPlan {
   const match = matchGenreAlias(params.idea);
   const normalizedGenre = match?.genre ?? defaultGenreForPrompt(params.idea);
+  const runtimeCapability = findRuntimeGenreCapability(normalizedGenre);
+  const runtimeExecutable = runtimeCapability !== undefined && isRuntimeGenreExecutable(runtimeCapability);
 
   return {
     schemaVersion: 'intent-plan-v0.1',
@@ -47,8 +58,12 @@ export function buildIntentPlan(params: { idea: string; language: Language }): I
     normalizedGenre,
     matchedAlias: match?.alias,
     language: params.language,
-    runtimeDslSupport: supportedRuntimeDslGenres.has(normalizedGenre) ? 'supported' : 'unsupported',
-    unsupportedCapabilities: unsupportedCapabilitiesForGenre(normalizedGenre)
+    runtimeDslSupport: runtimeExecutable ? 'supported' : 'unsupported',
+    runtimeSupportStatus: runtimeCapability?.status ?? 'unsupported',
+    runtimeSupportReason: describeRuntimeGenreCapability(runtimeCapability),
+    ...(runtimeExecutable && runtimeCapability.templateId !== undefined ? { runtimeTemplateId: runtimeCapability.templateId } : {}),
+    ...(runtimeExecutable && runtimeCapability.qaProfile !== undefined ? { qaProfile: runtimeCapability.qaProfile } : {}),
+    unsupportedCapabilities: runtimeExecutable ? [] : runtimeCapability?.missingCapabilities ?? ['recognized_2d_genre']
   };
 }
 
@@ -104,34 +119,6 @@ function defaultGenreForPrompt(idea: string): IntentNormalizedGenre {
   }
 
   return 'unrecognized_2d_genre';
-}
-
-function unsupportedCapabilitiesForGenre(genre: IntentNormalizedGenre): string[] {
-  switch (genre) {
-    case 'side_scrolling_platformer':
-      return ['side_view_camera', 'gravity_platformer_physics', 'run_jump_controller', 'platforms_terrain_collision'];
-    case 'side_scrolling_run_and_gun':
-      return [
-        'side_view_camera',
-        'gravity_platformer_physics',
-        'run_jump_controller',
-        'multi_direction_shooting',
-        'projectile_combat',
-        'enemy_spawn_triggers',
-        'platforms_terrain_collision',
-        'checkpoint_or_lives_system'
-      ];
-    case 'vertical_shooter':
-      return ['vertical_scroll_camera', 'vertical_shooter_enemy_patterns'];
-    case 'breakout':
-      return ['paddle_ball_physics', 'brick_collision_grid'];
-    case 'maze_chase':
-      return ['tilemap_maze_navigation', 'chaser_pathfinding'];
-    case 'unrecognized_2d_genre':
-      return ['recognized_2d_genre'];
-    default:
-      return [];
-  }
 }
 
 function sanitizeRunAndGunTitle(title: string): string {

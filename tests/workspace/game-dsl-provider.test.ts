@@ -217,7 +217,23 @@ describe('buildIntentPlan', () => {
     expect(buildIntentPlan({ idea: '飞机大战', language: 'zh' })).toMatchObject({
       normalizedGenre: 'vertical_shooter',
       runtimeDslSupport: 'unsupported',
+      runtimeSupportStatus: 'unsupported',
       unsupportedCapabilities: expect.arrayContaining(['vertical_scroll_camera'])
+    });
+    expect(buildIntentPlan({ idea: '横版跑枪', language: 'zh' })).toMatchObject({
+      normalizedGenre: 'side_scrolling_run_and_gun',
+      runtimeDslSupport: 'unsupported',
+      runtimeSupportStatus: 'planned',
+      runtimeSupportReason: expect.stringContaining('Semantic alias recognition exists'),
+      unsupportedCapabilities: expect.arrayContaining(['side_view_camera'])
+    });
+    expect(buildIntentPlan({ idea: '小猫大战坦克', language: 'zh' })).toMatchObject({
+      normalizedGenre: 'top_down_shooter',
+      runtimeDslSupport: 'supported',
+      runtimeSupportStatus: 'supported',
+      runtimeTemplateId: 'phaser/shooter_v1',
+      qaProfile: 'top_down_shooter_smoke',
+      unsupportedCapabilities: []
     });
   });
 

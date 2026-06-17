@@ -15,6 +15,7 @@ import {
 import type { NormalizedGameIr, RawGameDsl } from '../../../../packages/game-dsl/src/index.js';
 import {
   buildRuntimeCapabilityReport,
+  buildUnsupportedRuntimeCapabilityReport,
   buildDslValidationReport,
   buildGameDslArtifact,
   checkPhaserRuntimeCapabilities,
@@ -38,7 +39,7 @@ import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
 import { createDeterministicRawGameDsl } from './deterministic-game-dsl.js';
 import { GenerationInputReportSchema, buildGenerationInputReport, type GenerationInputReport } from './generation-input-report.js';
 import { buildPipelineAcceptanceReport, writePipelineAcceptanceReport } from './pipeline-acceptance-report.js';
-import { buildInvalidDslPipelineArtifactIndex, buildValidPipelineArtifactIndex, writePipelineArtifactIndex } from './pipeline-artifact-index.js';
+import { buildInvalidDslPipelineArtifactIndex, buildUnsupportedIntentPipelineArtifactIndex, buildValidPipelineArtifactIndex, writePipelineArtifactIndex, type PipelineArtifactIndex } from './pipeline-artifact-index.js';
 import { ProjectStoreService } from './project-store.service.js';
 import type { JobEventRecord, ProjectStatus } from './project-state.types.js';
 import { RunStoreService } from './run-store.service.js';
@@ -144,6 +145,7 @@ export class GenerationPipelineService {
     await this.appendEvent(input.runId, 'intent.planned', `Intent normalized to ${intentPlan.normalizedGenre}.`);
 
     if (intentPlan.runtimeDslSupport === 'unsupported') {
+      await this.writeUnsupportedIntentArtifacts(input, intentPlan);
       await this.setStatus(input.projectId, input.runId, 'RUNTIME_UNSUPPORTED', 'dsl-generation', 'FAILED');
       await this.appendEvent(
         input.runId,
@@ -569,6 +571,11 @@ export class GenerationPipelineService {
     await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   }
 
+  private async writeUnsupportedIntentArtifacts(input: GenerationPipelineInput, intentPlan: IntentPlan): Promise<void> {
+    await this.writeRuntimeCapabilityReport(input, buildUnsupportedRuntimeCapabilityReport({ runId: input.runId, intentPlan }));
+    await this.writeUnsupportedIntentPipelineArtifactIndex(input);
+  }
+
   private async writeRawDslNormalizationFailureArtifacts(
     input: GenerationPipelineInput,
     artifact: GameDslArtifact,
@@ -639,11 +646,32 @@ export class GenerationPipelineService {
     await writePipelineArtifactIndex(this.workspace.getModelOutputPath(input.projectId, input.runId, 'pipeline_artifact_index.json'), index);
   }
 
-  private async writePipelineAcceptanceReport(input: GenerationPipelineInput, artifactIndex: ReturnType<typeof buildValidPipelineArtifactIndex>): Promise<void> {
+  private async writeUnsupportedIntentPipelineArtifactIndex(input: GenerationPipelineInput): Promise<void> {
+    const intentPlan = (await this.readModelOutputJson(input.projectId, input.runId, 'intent_plan.json')) as { normalizedGenre?: unknown };
+    const index = buildUnsupportedIntentPipelineArtifactIndex({
+      projectId: input.projectId,
+      runId: input.runId,
+      normalizedGenre: typeof intentPlan.normalizedGenre === 'string' ? intentPlan.normalizedGenre : 'unrecognized_2d_genre'
+    });
+    await this.writePipelineAcceptanceReport(input, index, {
+      dslValidation: {
+        valid: false
+      }
+    });
+    await writePipelineArtifactIndex(this.workspace.getModelOutputPath(input.projectId, input.runId, 'pipeline_artifact_index.json'), index);
+  }
+
+  private async writePipelineAcceptanceReport(
+    input: GenerationPipelineInput,
+    artifactIndex: PipelineArtifactIndex,
+    options: { dslValidation?: { valid: boolean; sourceArtifact?: string } } = {}
+  ): Promise<void> {
     const generationInput = GenerationInputReportSchema.parse(
       await this.readModelOutputJson(input.projectId, input.runId, 'generation_input_report.json')
     );
-    const dslValidation = (await this.readModelOutputJson(input.projectId, input.runId, 'dsl_validation_report.json')) as { valid?: unknown; sourceArtifact?: unknown };
+    const dslValidation =
+      options.dslValidation ??
+      ((await this.readModelOutputJson(input.projectId, input.runId, 'dsl_validation_report.json')) as { valid?: unknown; sourceArtifact?: unknown });
     const report = buildPipelineAcceptanceReport({
       projectId: input.projectId,
       runId: input.runId,
@@ -653,6 +681,7 @@ export class GenerationPipelineService {
         runId: generationInput.runId,
         source: generationInput.source
       },
+      runtimeCapability: await this.readRuntimeCapabilityStatus(input.projectId, input.runId, artifactIndex),
       dslValidation: {
         valid: dslValidation.valid === true,
         sourceArtifact: typeof dslValidation.sourceArtifact === 'string' ? dslValidation.sourceArtifact : undefined
@@ -684,6 +713,16 @@ export class GenerationPipelineService {
       throw new Error('asset_library_usage_report identity does not match the current project and run.');
     }
     return { status: report.status };
+  }
+
+  private async readRuntimeCapabilityStatus(projectId: string, runId: string, artifactIndex: PipelineArtifactIndex): Promise<{ status?: 'supported' | 'unsupported' } | undefined> {
+    const artifact = artifactIndex.artifacts.find((candidate) => candidate.id === 'runtimeCapabilityReport');
+    if (artifact?.status !== 'present') {
+      return undefined;
+    }
+
+    const report = (await this.readModelOutputJson(projectId, runId, 'runtime_capability_report.json')) as { status?: unknown };
+    return report.status === 'supported' || report.status === 'unsupported' ? { status: report.status } : { status: undefined };
   }
 
   private async readAssetBindingTraceStatus(projectId: string, runId: string, artifactIndex: ReturnType<typeof buildValidPipelineArtifactIndex>): Promise<{ status?: 'pass' | 'warn' | 'fail' } | undefined> {

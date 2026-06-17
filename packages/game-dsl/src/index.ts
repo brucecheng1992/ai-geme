@@ -194,6 +194,16 @@ export {
   type LiveEditCapabilityStatus
 } from './live-edit-capability-status.js';
 export {
+  describeRuntimeGenreCapability,
+  findRuntimeGenreCapability,
+  isRuntimeGenreExecutable,
+  RUNTIME_GENRE_CAPABILITIES,
+  RUNTIME_SUPPORT_STATUSES,
+  type RuntimeGenreCapability,
+  type RuntimeSupportStatus
+} from './runtime-capabilities.js';
+export {
+  buildUnsupportedRuntimeCapabilityReport,
   buildRuntimeCapabilityReport,
   validateAndPlanDslPatch,
   DslPatchV1Schema,

@@ -552,6 +552,11 @@ describe('GenerationPipelineService failure states', () => {
         runtimeDslSupport: 'unsupported',
         unsupportedCapabilities: expect.arrayContaining([expectedCapability])
       });
+      await expectUnsupportedIntentArtifacts({
+        normalizedGenre,
+        expectedCapability,
+        expectedRuntimeSupportStatus: normalizedGenre === 'side_scrolling_run_and_gun' ? 'planned' : 'unsupported'
+      });
       await expect(runStore.readEvents(runId)).resolves.toEqual(
         expect.arrayContaining([
           expect.objectContaining({ type: 'intent.planned', message: `Intent normalized to ${normalizedGenre}.` }),
@@ -580,6 +585,11 @@ describe('GenerationPipelineService failure states', () => {
       normalizedGenre: 'unrecognized_2d_genre',
       runtimeDslSupport: 'unsupported',
       unsupportedCapabilities: ['recognized_2d_genre']
+    });
+    await expectUnsupportedIntentArtifacts({
+      normalizedGenre: 'unrecognized_2d_genre',
+      expectedCapability: 'recognized_2d_genre',
+      expectedRuntimeSupportStatus: 'unsupported'
     });
     await expect(runStore.readEvents(runId)).resolves.toEqual(
       expect.arrayContaining([
@@ -1232,6 +1242,67 @@ describe('GenerationPipelineService failure states', () => {
 
   async function runPipeline(pipeline: GenerationPipelineService, input: Partial<{ idea: string; language: string }> = {}) {
     return await pipeline.run({ projectId, runId, idea: input.idea ?? 'cat shooter', language: input.language ?? 'en' });
+  }
+
+  async function expectUnsupportedIntentArtifacts(input: {
+    normalizedGenre: string;
+    expectedCapability: string;
+    expectedRuntimeSupportStatus: string;
+  }): Promise<void> {
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'game_dsl.json'), 'utf8')).rejects.toThrow();
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'dsl_validation_report.json'), 'utf8')).rejects.toThrow();
+
+    const runtimeCapabilityReport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'runtime_capability_report.json'), 'utf8'));
+    expect(runtimeCapabilityReport).toMatchObject({
+      artifactKind: 'runtime_capability_report',
+      schemaVersion: 'runtime_capability_report.v1',
+      runId,
+      intentPlanRef: { artifact: 'intent_plan.json', normalizedGenre: input.normalizedGenre },
+      runtimeSupportStatus: input.expectedRuntimeSupportStatus,
+      status: 'unsupported',
+      requiredCapabilities: expect.arrayContaining([input.expectedCapability]),
+      unsupportedCapabilities: expect.arrayContaining([
+        expect.objectContaining({ capability: input.expectedCapability, path: 'intentPlan.normalizedGenre' })
+      ]),
+      liveEditCapabilities: { hot: [], assetSwap: [], warmRestart: [], rebuildRequired: [] }
+    });
+
+    const index = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_artifact_index.json'), 'utf8'));
+    const acceptance = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_acceptance_report.json'), 'utf8'));
+
+    expect(index).toMatchObject({
+      projectId,
+      runId,
+      artifacts: expect.arrayContaining([
+        expect.objectContaining({ id: 'intentPlan', status: 'present', path: 'intent_plan.json' }),
+        expect.objectContaining({ id: 'runtimeCapabilityReport', status: 'present', path: 'runtime_capability_report.json' }),
+        expect.objectContaining({ id: 'gameDsl', status: 'skipped', reason: 'runtime_unsupported_before_dsl_generation' }),
+        expect.objectContaining({ id: 'dslValidationReport', status: 'skipped', reason: 'runtime_unsupported_before_dsl_validation' }),
+        expect.objectContaining({ id: 'phaserPreviewManifest', status: 'skipped', reason: 'runtime_unsupported_before_compile' }),
+        expect.objectContaining({ id: 'qaReport', status: 'skipped', reason: 'runtime_unsupported_before_qa' }),
+        expect.objectContaining({ id: 'pipelineAcceptanceReport', status: 'present', path: 'pipeline_acceptance_report.json' }),
+        expect.objectContaining({ id: 'pipelineArtifactIndex', status: 'present', path: 'pipeline_artifact_index.json' })
+      ])
+    });
+    expect(acceptance).toMatchObject({
+      projectId,
+      runId,
+      overallStatus: 'fail',
+      previewable: false,
+      checks: expect.arrayContaining([
+        expect.objectContaining({ id: 'runtime_capability', status: 'fail', reason: 'runtime_capability_report.json status is unsupported.' }),
+        expect.objectContaining({ id: 'dsl_validation', status: 'skipped', reason: 'runtime_unsupported_before_dsl_validation' }),
+        expect.objectContaining({ id: 'dsl_artifact', status: 'skipped', reason: 'runtime_unsupported_before_dsl_generation' }),
+        expect.objectContaining({ id: 'preview_manifest', status: 'skipped', reason: 'runtime_unsupported_before_compile' })
+      ])
+    });
+    if (input.normalizedGenre !== 'side_scrolling_run_and_gun') {
+      expect(index.artifacts).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'phaserPreviewManifest', path: 'runtime_unsupported/src/asset-manifest.generated.json' })
+        ])
+      );
+    }
   }
 
   async function compileWithDist(): Promise<RuntimeCompileResult> {

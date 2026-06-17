@@ -15,7 +15,7 @@ import {
   type DslPatchV1,
   type GameDslArtifact
 } from '../../packages/game-dsl/src/index.js';
-import { createShooterRawDsl, createSideScrollingRunAndGunRawDsl } from '../contracts/fixtures.js';
+import { createDodgerRawDsl, createShooterRawDsl, createSideScrollingRunAndGunRawDsl } from '../contracts/fixtures.js';
 
 const projectId = 'proj_20260614_120000_live';
 const runId = 'run_20260614_120000_live';
@@ -87,6 +87,24 @@ describe('DSL live edit pipeline', () => {
       ok: true,
       report: { status: 'valid', errorCount: 0 },
       plan: { status: 'unsupported', applyMode: 'none' }
+    });
+  });
+
+  it('keeps dodger_collector runtime reports aligned with the executable registry', () => {
+    const dodger = buildGameDslArtifact({
+      rawDsl: RawGameDslSchema.parse(createDodgerRawDsl()),
+      runId,
+      intentPlan: { normalizedGenre: 'dodger_collector' }
+    });
+
+    expect(buildRuntimeCapabilityReport({ runId, validatedDsl: dodger })).toMatchObject({
+      status: 'supported',
+      runtimeSupportStatus: 'supported',
+      runtimeTemplateId: 'phaser/dodger_v1',
+      qaProfile: 'dodger_collector_smoke',
+      selectedAdapterId: 'dodger_collector.phaser.v1',
+      unsupportedCapabilities: [],
+      liveEditCapabilities: { hot: [], assetSwap: [], warmRestart: [], rebuildRequired: [] }
     });
   });
 

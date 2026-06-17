@@ -9,6 +9,7 @@ const PipelineArtifactRootSchema = z.enum(['model-output', 'generated-project', 
 export const PipelineArtifactRefSchema = z.strictObject({
   id: z.enum([
     'gameDsl',
+    'intentPlan',
     'generationInputReport',
     'gameDslCandidate',
     'dslValidationReport',
@@ -86,6 +87,7 @@ export function buildValidPipelineArtifactIndex(input: {
 
   return parseIndex(input.projectId, input.runId, [
     artifact('generationInputReport', 'prompt', 'model-output', 'generation_input_report.json', 'present', true, 'generation', 'json'),
+    artifact('intentPlan', 'prompt', 'model-output', 'intent_plan.json', 'present', true, 'generation', 'json'),
     artifact('gameDsl', 'dsl', 'model-output', 'game_dsl.json', 'present', true, 'generation', 'json'),
     artifact('gameDslCandidate', 'dsl', 'model-output', 'game_dsl.candidate.json', 'skipped', false, 'generation', 'json', 'valid_dsl_path_uses_game_dsl_json'),
     artifact('dslValidationReport', 'validation', 'model-output', 'dsl_validation_report.json', 'present', true, 'generation', 'json'),
@@ -120,6 +122,7 @@ export function buildInvalidDslPipelineArtifactIndex(input: { projectId: string;
   const sourceArtifact = input.sourceArtifact ?? 'game_dsl.candidate.json';
   return parseIndex(input.projectId, input.runId, [
     artifact('generationInputReport', 'prompt', 'model-output', 'generation_input_report.json', 'present', true, 'generation', 'json'),
+    artifact('intentPlan', 'prompt', 'model-output', 'intent_plan.json', 'present', true, 'generation', 'json'),
     artifact(
       'gameDsl',
       'dsl',
@@ -170,6 +173,30 @@ export function buildInvalidDslPipelineArtifactIndex(input: { projectId: string;
   ]);
 }
 
+export function buildUnsupportedIntentPipelineArtifactIndex(input: { projectId: string; runId: string; normalizedGenre: string }): PipelineArtifactIndex {
+  return parseIndex(input.projectId, input.runId, [
+    artifact('generationInputReport', 'prompt', 'model-output', 'generation_input_report.json', 'present', true, 'generation', 'json'),
+    artifact('intentPlan', 'prompt', 'model-output', 'intent_plan.json', 'present', true, 'generation', 'json'),
+    artifact('gameDsl', 'dsl', 'model-output', 'game_dsl.json', 'skipped', true, 'generation', 'json', 'runtime_unsupported_before_dsl_generation'),
+    artifact('gameDslCandidate', 'dsl', 'model-output', 'game_dsl.candidate.json', 'skipped', false, 'generation', 'json', 'runtime_unsupported_before_dsl_generation'),
+    artifact('dslValidationReport', 'validation', 'model-output', 'dsl_validation_report.json', 'skipped', true, 'generation', 'json', 'runtime_unsupported_before_dsl_validation'),
+    artifact('runtimeCapabilityReport', 'runtime', 'model-output', 'runtime_capability_report.json', 'present', true, 'runtime-capability', 'json'),
+    skippedGeneratedArtifact('assetPlan', 'runtime_unsupported_before_compile'),
+    skippedGeneratedArtifact('publicAssetManifest', 'runtime_unsupported_before_compile'),
+    artifact('phaserPreviewManifest', 'preview', 'generated-project', previewManifestPathForUnsupportedGenre(input.normalizedGenre), 'skipped', true, 'compiler', 'json', 'runtime_unsupported_before_compile'),
+    skippedGeneratedArtifact('assetResolutionReport', 'runtime_unsupported_before_compile'),
+    skippedGeneratedArtifact('assetPipelineReport', 'runtime_unsupported_before_compile'),
+    skippedGeneratedArtifact('assetLibraryUsageReport', 'runtime_unsupported_before_compile'),
+    skippedGeneratedArtifact('assetBindingTraceReport', 'runtime_unsupported_before_compile'),
+    skippedGeneratedArtifact('semanticExtractionTraceReport', 'runtime_unsupported_before_compile'),
+    skippedGeneratedArtifact('semanticModelReport', 'runtime_unsupported_before_compile'),
+    artifact('buildLog', 'build', 'build-log', `${input.runId}.log`, 'skipped', false, 'build', 'log', 'runtime_unsupported_before_build'),
+    artifact('qaReport', 'qa', 'qa-report', `${input.runId}.json`, 'skipped', false, 'qa', 'json', 'runtime_unsupported_before_qa'),
+    artifact('pipelineAcceptanceReport', 'index', 'model-output', 'pipeline_acceptance_report.json', 'present', true, 'pipeline-acceptance', 'json'),
+    artifact('pipelineArtifactIndex', 'index', 'model-output', 'pipeline_artifact_index.json', 'present', true, 'pipeline-artifact-index', 'json')
+  ]);
+}
+
 export async function writePipelineArtifactIndex(path: string, index: PipelineArtifactIndex): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, `${JSON.stringify(PipelineArtifactIndexSchema.parse(index), null, 2)}\n`, 'utf8');
@@ -198,7 +225,7 @@ function generatedArtifact(id: keyof typeof GENERATED_ARTIFACTS, path: string, p
   );
 }
 
-function skippedGeneratedArtifact(id: keyof typeof GENERATED_ARTIFACTS): ArtifactInput {
+function skippedGeneratedArtifact(id: keyof typeof GENERATED_ARTIFACTS, reason = 'dsl_validation_failed_before_compile'): ArtifactInput {
   return artifact(
     id,
     'asset',
@@ -208,7 +235,7 @@ function skippedGeneratedArtifact(id: keyof typeof GENERATED_ARTIFACTS): Artifac
     true,
     producedByForGeneratedArtifact(id),
     'json',
-    'dsl_validation_failed_before_compile'
+    reason
   );
 }
 
@@ -220,6 +247,12 @@ function producedByForGeneratedArtifact(id: keyof typeof GENERATED_ARTIFACTS): A
     return 'asset-pipeline';
   }
   return 'compiler';
+}
+
+function previewManifestPathForUnsupportedGenre(genre: string): string {
+  return genre === 'side_scrolling_run_and_gun'
+    ? 'side_scrolling_run_and_gun/src/asset-manifest.generated.json'
+    : 'runtime_unsupported/src/asset-manifest.generated.json';
 }
 
 function artifact(

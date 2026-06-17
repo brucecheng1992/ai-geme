@@ -20,7 +20,7 @@ describe('Workbench pipeline evidence client', () => {
       projectId: 'proj_20260615_evidence',
       runId: 'run_20260615_evidence'
     });
-    expect(group(view, 'Prompt / Provenance')?.artifacts.map((artifact) => artifact.id)).toEqual(['generationInputReport']);
+    expect(group(view, 'Prompt / Provenance')?.artifacts.map((artifact) => artifact.id)).toEqual(['generationInputReport', 'intentPlan']);
     expect(group(view, 'DSL')?.artifacts.map((artifact) => artifact.id)).toEqual(['gameDsl', 'gameDslCandidate', 'dslValidationReport']);
     expect(group(view, 'Runtime')?.artifacts.map((artifact) => artifact.id)).toEqual(['runtimeCapabilityReport']);
     expect(group(view, 'Assets')?.artifacts.map((artifact) => artifact.id)).toEqual([
@@ -201,6 +201,7 @@ function makeIndex(): PipelineArtifactIndex {
     runId: 'run_20260615_evidence',
     artifacts: [
       artifact('generationInputReport', 'prompt', 'model-output', 'generation_input_report.json', 'present', true, 'generation', 'json'),
+      artifact('intentPlan', 'prompt', 'model-output', 'intent_plan.json', 'present', true, 'generation', 'json'),
       artifact('gameDsl', 'dsl', 'model-output', 'game_dsl.json', 'present', true, 'generation', 'json'),
       artifact('gameDslCandidate', 'dsl', 'model-output', 'game_dsl.candidate.json', 'skipped', false, 'generation', 'json', 'valid_dsl_path_uses_game_dsl_json'),
       artifact('dslValidationReport', 'validation', 'model-output', 'dsl_validation_report.json', 'present', true, 'generation', 'json'),
