@@ -272,6 +272,13 @@ function buildSideScrollingRunAndGunPlan(raw: RawGameDsl) {
       movement: {
         type: enemyType.movement.type,
         speedPxPerSec: enemyType.movement.speed_px_per_sec ?? 0
+      },
+      firing: {
+        projectileEntityId: projectileEntity?.id ?? fireAction?.spawns ?? 'projectile',
+        cooldownMs: 1400,
+        speedPxPerSec: Math.max(180, Math.round(projectileSpeed * 0.6)),
+        damage: Math.max(1, projectileDamage),
+        rangePx: 520
       }
     })),
     waves: (level?.spawns ?? []).map((spawn) => ({

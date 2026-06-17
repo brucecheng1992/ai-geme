@@ -281,9 +281,13 @@ describe('Compiler + Build + Preview services', () => {
     await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/template-params.generated.json'), 'utf8')).resolves.toContain('"assetLabels"');
     await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/asset-manifest.generated.json'), 'utf8')).resolves.toContain('"loadKey": "agm.enemy"');
     await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/main.ts'), 'utf8')).resolves.toContain('runtime-plan.generated.json');
+    await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/main.ts'), 'utf8')).resolves.toContain('live-edit-registry.generated.json');
+    await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/live-edit-registry.generated.json'), 'utf8')).resolves.toContain(`"runId": "${runId}"`);
     await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/main.ts'), 'utf8')).resolves.toContain('new SideScrollingRunAndGunScene');
     await expect(readFile(join(result.outputDir, 'src/main.ts'), 'utf8')).resolves.toContain("../side_scrolling_run_and_gun/src/main.js");
     expect(result.files).toContain('side_scrolling_run_and_gun/src/runtime-plan.generated.json');
+    expect(result.files).toContain('side_scrolling_run_and_gun/src/side-scrolling-live-edit-bridge.ts');
+    expect(result.files).toContain('side_scrolling_run_and_gun/src/live-edit-registry.generated.json');
     expect(result.files).toContain('side_scrolling_run_and_gun/src/asset-manifest.generated.json');
   });
 

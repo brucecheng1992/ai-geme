@@ -63,12 +63,14 @@ export class TemplateCompilerService {
       ...(genre === 'shooter' ? [`${genre}/src/template-visuals.ts`] : []),
       ...(genre === 'side_scrolling_run_and_gun' ? [`${genre}/src/side-scrolling-art-library.ts`] : []),
       ...(genre === 'side_scrolling_run_and_gun' ? [`${genre}/src/side-scrolling-runtime-plan.ts`] : []),
+      ...(genre === 'side_scrolling_run_and_gun' ? [`${genre}/src/side-scrolling-live-edit-bridge.ts`] : []),
       `${genre}/src/template-params.ts`,
       'shared/kernel.ts',
       'shared/end-screen.ts',
       ...(genre === 'collector' || genre === 'dodger' || genre === 'shooter' || genre === 'side_scrolling_run_and_gun' ? [`${genre}/src/asset-manifest.generated.json`] : []),
       ...(genre === 'dodger' || genre === 'shooter' || genre === 'side_scrolling_run_and_gun' ? [`${genre}/src/runtime-plan.generated.json`] : []),
       ...(genre === 'shooter' ? [`${genre}/src/live-edit-registry.generated.json`] : []),
+      ...(genre === 'side_scrolling_run_and_gun' ? [`${genre}/src/live-edit-registry.generated.json`] : []),
       `${genre}/src/template-params.generated.json`
     ];
 
@@ -97,6 +99,9 @@ export class TemplateCompilerService {
         join(outputDir, `${genre}`, 'src', 'live-edit-registry.generated.json'),
         JSON.stringify({ ...readShooterLiveEditRegistry(ir.template_params.params), runId: input.runId }, null, 2)
       );
+    }
+    if (genre === 'side_scrolling_run_and_gun') {
+      await writeFile(join(outputDir, `${genre}`, 'src', 'live-edit-registry.generated.json'), JSON.stringify({ runId: input.runId }, null, 2));
     }
     const compileFilesWithoutUsageReport = [...files, 'game.ir.json', ...assetArtifacts.files, 'asset_pipeline_report.json'];
     const semanticExtractionTraceReport = buildSemanticExtractionTraceReport({

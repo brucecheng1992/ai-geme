@@ -389,7 +389,12 @@ describe('GenerationPipelineService failure states', () => {
       runtimeTemplateId: 'phaser/side_scrolling_run_and_gun.v1',
       qaProfile: 'side_scrolling_run_and_gun_smoke',
       selectedAdapterId: 'side_scrolling_run_and_gun.phaser.v1',
-      liveEditCapabilities: { hot: [], assetSwap: [], warmRestart: [], rebuildRequired: [] }
+      liveEditCapabilities: {
+        hot: expect.arrayContaining(['/player/physics/maxSpeed', '/enemyTypes/*/health/max', '/projectiles/*/damage']),
+        assetSwap: [],
+        warmRestart: expect.arrayContaining(['/player/label', '/enemyTypes/*/label', '/level/waves/*/count', '/world/width']),
+        rebuildRequired: expect.arrayContaining(['/genre', '/world/coordinateSystem'])
+      }
     });
     expect(index.artifacts).toEqual(
       expect.arrayContaining([

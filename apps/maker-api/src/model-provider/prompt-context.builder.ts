@@ -366,6 +366,7 @@ export function buildRawDslPromptContext(params: BuildRawDslPromptContextParams)
     valid_example: validExamplesByGenre[params.brief.genre] ?? validCollectorExample,
     invalid_examples_summary: [
       'Do not include engine names, rendering API names, scripts, callbacks, functions or executable expressions.',
+      'All id and string reference fields such as id, spawns, source, action target ids, and enemyType must use ASCII lower_snake_case matching /^[a-z][a-z0-9_]{1,39}$/. Numeric objective targets stay numeric. Use localized names only in title, description, and label fields.',
       'Do not add fields outside the schema. Use cooldown_ms and spawns on player.actions; use movement.speed_px_per_sec, not entity-level speed.',
       'Collision effects only support type and optional value. Do not add target inside effects.',
       'Objectives support type and optional target only. Do not add duration_sec.',

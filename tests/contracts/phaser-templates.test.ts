@@ -193,7 +193,12 @@ describe('Phaser templates', () => {
       } else if (genre === 'side_scrolling_run_and_gun') {
         expect(main).toContain("from './runtime-plan.generated.json'");
         expect(main).toContain("from './asset-manifest.generated.json'");
+        expect(main).toContain("from './live-edit-registry.generated.json'");
         expect(main).toContain('new SideScrollingRunAndGunScene(sideScrollingParams, sideScrollingRuntimePlan, sideScrollingArt)');
+        expect(main).toContain('AIGAME_RUNTIME_READY');
+        expect(main).toContain('AIGAME_GET_CAPABILITIES');
+        expect(main).toContain('AIGAME_APPLY_PATCH');
+        expect(main).toContain('AIGAME_PATCH_RESULT');
         expect(main).toContain('sideScrollingRuntimeSlice.scene.viewport.width');
         expect(main).toContain('sideScrollingRuntimeSlice.scene.viewport.height');
       } else {
@@ -506,6 +511,66 @@ describe('Phaser templates', () => {
     });
     expect(params.world.width).toBe(1120);
     expect(resizedWidths).toEqual([1120]);
+  });
+
+  it('side-scrolling runtime bridge targets known projectile ids only', async () => {
+    const { createSideScrollingRuntimeBridge } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/side-scrolling-live-edit-bridge.js');
+    const { defaultSideScrollingRuntimeSlice } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/side-scrolling-runtime-plan.js');
+    const { defaultSideScrollingParams } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/template-params.js');
+    const plan: SideScrollingRuntimeSlice = {
+      ...structuredClone(defaultSideScrollingRuntimeSlice),
+      player: {
+        ...defaultSideScrollingRuntimeSlice.player,
+        projectileEntityId: 'pulse_bolt',
+        projectileSpeedPxPerSec: 620,
+        projectileDamage: 1
+      },
+      enemyDefinitions: [
+        {
+          id: 'drone_type',
+          label: 'Drone',
+          health: 1,
+          movement: { type: 'patrol', speedPxPerSec: 90 },
+          firing: { projectileEntityId: 'pulse_bolt', cooldownMs: 1400, speedPxPerSec: 372, damage: 1, rangePx: 520 }
+        },
+        {
+          id: 'turret_type',
+          label: 'Turret',
+          health: 2,
+          movement: { type: 'static', speedPxPerSec: 0 },
+          firing: { projectileEntityId: 'enemy_missile', cooldownMs: 1200, speedPxPerSec: 260, damage: 1, rangePx: 420 }
+        }
+      ]
+    };
+    const projectiles = [
+      { id: 'player_projectile_1', owner: 'player' as const, sourceId: 'pulse_bolt', vx: 620, damage: 1 },
+      { id: 'enemy_projectile_1', owner: 'enemy' as const, sourceId: 'enemy_missile', vx: -260, damage: 1 }
+    ];
+    const bridge = createSideScrollingRuntimeBridge({
+      params: structuredClone(defaultSideScrollingParams),
+      plan,
+      getEnemies: () => [],
+      getProjectiles: () => projectiles,
+      setPlayerMaxHealth: () => {},
+      setWorldWidth: () => {}
+    });
+
+    expect(bridge.applyPatch({ projectiles: { unknown_bolt: { speed: 700 } } })).toMatchObject({
+      status: 'unsupported',
+      errors: [expect.objectContaining({ path: '/projectiles/unknown_bolt' })]
+    });
+    expect(bridge.applyPatch({ projectiles: { pulse_bolt: { speed: 700, damage: 2 } } })).toMatchObject({
+      status: 'applied_hot',
+      appliedPaths: expect.arrayContaining(['/projectiles/pulse_bolt/speed', '/projectiles/pulse_bolt/damage'])
+    });
+    expect(plan.player.projectileSpeedPxPerSec).toBe(700);
+    expect(plan.player.projectileDamage).toBe(2);
+    expect(plan.enemyDefinitions[0].firing).toMatchObject({ speedPxPerSec: 700, damage: 2 });
+    expect(plan.enemyDefinitions[1].firing).toMatchObject({ speedPxPerSec: 260, damage: 1 });
+    expect(projectiles).toEqual([
+      expect.objectContaining({ sourceId: 'pulse_bolt', vx: 700, damage: 2 }),
+      expect.objectContaining({ sourceId: 'enemy_missile', vx: -260, damage: 1 })
+    ]);
   });
 
   it('exposes dodger runtime_plan spawn metadata through the QA snapshot', async () => {
@@ -859,8 +924,10 @@ describe('Phaser templates', () => {
     expect(scene).toContain('spawnTriggeredWaves');
     expect(scene).toContain("this.telemetry.emit('player.jumped'");
     expect(scene).toContain("this.telemetry.emit('player.fired'");
+    expect(scene).toContain("this.telemetry.emit('enemy.fired'");
     expect(scene).toContain("this.telemetry.emit('enemy.hit'");
     expect(scene).toContain("this.telemetry.emit('enemy.cleared'");
+    expect(scene).toContain("source: 'enemy_projectile'");
     expect(scene).toContain("this.telemetry.emit('checkpoint.reached'");
     expect(scene).toContain("this.telemetry.emit('level.segment.completed'");
   });
@@ -919,7 +986,15 @@ describe('Phaser templates', () => {
         projectileDamage: 1
       },
       platforms: [{ id: 'ground_test', kind: 'ground', x: 0, y: 500, width: 960, height: 40 }],
-      enemyDefinitions: [{ id: 'grunt', label: 'Grunt', health: 1, movement: { type: 'static', speedPxPerSec: 0 } }],
+      enemyDefinitions: [
+        {
+          id: 'grunt',
+          label: 'Grunt',
+          health: 1,
+          movement: { type: 'static', speedPxPerSec: 0 },
+          firing: { projectileEntityId: 'pulse_bolt', cooldownMs: 1400, speedPxPerSec: 360, damage: 1, rangePx: 520 }
+        }
+      ],
       waves: [{ id: 'close_wave', enemyTypeId: 'grunt', trigger: 'reach_x', triggerX: 240, spawnX: 260, count: 1 }],
       winCondition: { kind: 'enemy_cleared', targetCount: 1 }
     };
@@ -951,6 +1026,44 @@ describe('Phaser templates', () => {
     expect(globalThis.__GAME_QA__?.telemetry().map((event) => event.type)).toEqual(
       expect.arrayContaining(['projectile.spawned', 'enemy.hit', 'enemy.cleared', 'score.changed', 'objective.completed', 'game.won'])
     );
+  });
+
+  it('uses side-scrolling runtime_plan for enemy firing and enemy projectile damage', async () => {
+    const { SideScrollingRunAndGunScene } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/GameScene.js');
+    const { defaultSideScrollingRuntimeSlice } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/side-scrolling-runtime-plan.js');
+    const { defaultSideScrollingParams } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/template-params.js');
+    const plan: SideScrollingRuntimeSlice = {
+      ...defaultSideScrollingRuntimeSlice,
+      player: {
+        ...defaultSideScrollingRuntimeSlice.player,
+        spawn: { x: 80, y: 448 },
+        health: 3,
+        lives: 1
+      },
+      platforms: [{ id: 'ground_test', kind: 'ground', x: 0, y: 500, width: 960, height: 40 }],
+      enemyDefinitions: [
+        {
+          id: 'turret',
+          label: 'Turret',
+          health: 3,
+          movement: { type: 'static', speedPxPerSec: 0 },
+          firing: { projectileEntityId: 'pulse_bolt', cooldownMs: 0, speedPxPerSec: 620, damage: 1, rangePx: 520 }
+        }
+      ],
+      waves: [{ id: 'turret_wave', enemyTypeId: 'turret', trigger: 'reach_x', triggerX: 80, spawnX: 300, count: 1 }],
+      winCondition: { kind: 'reach_exit', targetX: 900 }
+    };
+    const scene = new SideScrollingRunAndGunScene(defaultSideScrollingParams, { side_scrolling: plan });
+
+    scene.create();
+    scene.start();
+    for (let frame = 0; frame < 12 && globalThis.__GAME_QA__?.snapshot().health === 3; frame += 1) {
+      scene.update(frame * 100, 100);
+    }
+
+    const snapshot = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
+    expect(snapshot?.health).toBeLessThan(3);
+    expect(globalThis.__GAME_QA__?.telemetry().map((event) => event.type)).toEqual(expect.arrayContaining(['enemy.fired', 'projectile.spawned', 'player.damaged']));
   });
 
   it('clears side-scrolling static render objects before restart re-renders the first frame', async () => {

@@ -56,6 +56,20 @@ export const topDownShooterPhaserLiveEditCapabilities = {
   rebuildRequired: ['/genre', '/world/coordinateSystem', '/world/physics/mode', '/player/controller']
 } as const;
 
+export const sideScrollingRunAndGunPhaserLiveEditCapabilities = {
+  hot: [
+    '/player/physics/maxSpeed',
+    '/player/health/max',
+    '/enemyTypes/*/physics/speed',
+    '/enemyTypes/*/health/max',
+    '/projectiles/*/speed',
+    '/projectiles/*/damage'
+  ],
+  assetSwap: [],
+  warmRestart: ['/player/label', '/enemyTypes/*/label', '/level/waves/*/count', '/world/width'],
+  rebuildRequired: ['/genre', '/world/coordinateSystem', '/world/physics/mode', '/player/controller']
+} as const;
+
 export const RuntimeCapabilityReportSchema = z.strictObject({
   artifactKind: z.literal(RUNTIME_CAPABILITY_REPORT_KIND),
   schemaVersion: z.literal(RUNTIME_CAPABILITY_REPORT_SCHEMA_VERSION),
@@ -315,9 +329,18 @@ const runtimeReportAdapterByGenre: Partial<
       'projectile_combat',
       'enemy_spawn_triggers',
       'platforms_terrain_collision',
-      'checkpoint_or_lives_system'
+      'checkpoint_or_lives_system',
+      ...sideScrollingRunAndGunPhaserLiveEditCapabilities.hot,
+      ...sideScrollingRunAndGunPhaserLiveEditCapabilities.assetSwap,
+      ...sideScrollingRunAndGunPhaserLiveEditCapabilities.warmRestart,
+      ...sideScrollingRunAndGunPhaserLiveEditCapabilities.rebuildRequired
     ],
-    liveEditCapabilities: emptyLiveEditCapabilities
+    liveEditCapabilities: {
+      hot: [...sideScrollingRunAndGunPhaserLiveEditCapabilities.hot],
+      assetSwap: [...sideScrollingRunAndGunPhaserLiveEditCapabilities.assetSwap],
+      warmRestart: [...sideScrollingRunAndGunPhaserLiveEditCapabilities.warmRestart],
+      rebuildRequired: [...sideScrollingRunAndGunPhaserLiveEditCapabilities.rebuildRequired]
+    }
   }
 };
 

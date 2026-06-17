@@ -37,6 +37,7 @@ side_scrolling_run_and_gun prompt
 | 31.7 Workbench Preview and Artifact Index Closure | completed | Workbench preview 和 artifact evidence 显示 supported/unsupported 状态一致。 |
 | 31.8 Live-edit Registry Handoff, Not Full Live-edit Yet | completed | 只登记 live-edit exposure handoff，不实现完整 live-edit。 |
 | 31.9 Final Contract / Oracle Review | completed | 最终验证、浏览器/QA evidence、Oracle closure 和剩余范围归档。 |
+| 31.10 Live-edit Patch Bridge and Enemy Fire Regression Closure | completed | 修复 side-scrolling runtime 无法热改、敌人不射击、玩家/敌人 projectile 未区分的问题，并把 `enemy.fired` 纳入 QA 必检。 |
 
 ## 31.1 Runtime Capability Registry and Support Gate Cleanup
 
@@ -464,9 +465,97 @@ PlaywrightQaRunnerService side_scrolling_run_and_gun smoke against http://127.0.
 - Preview server 必须以 `data/generated-projects/proj_step31_side_scroll_smoke` 为 root 启动。
 - `PLAYABLE_WITH_FALLBACK_ASSETS` 来自 deterministic template fallback SVG；runtime/visual/telemetry/asset gate 均通过。
 
-最终剩余范围：
+31.9 时点剩余范围（已由 31.10 更新）：
+
+说明：以下是 31.9 Oracle 复审时的剩余范围；当前事实以 31.10 的“新的剩余范围”为准。
 
 - 未实现 side-scrolling hot/warm live-edit；当前仅 runtime report supported，patch application 仍按 capability gate 返回 unsupported。
 - 未实现 pickup runtime behavior。
 - 未实现 enemy projectile / enemy fire。
 - 未做 full art asset pack rollout；当前 smoke 使用 deterministic fallback assets。
+
+## 31.10 Live-edit Patch Bridge and Enemy Fire Regression Closure
+
+当前目标：修复真实 Workbench 中 side-scrolling preview “不能修改”、玩家/敌人射击链路不完整的问题，并防止旧的 runtime support green gate 再次漏掉敌人开火。
+
+完成时间：2026-06-17
+
+已完成内容：
+
+- `SideScrollingRunAndGunScene` 将 projectile 区分为 `player` / `enemy` owner，并新增 enemy firing cooldown、range、damage 与 telemetry。
+- `runtime_plan.side_scrolling.enemyDefinitions[]` 新增 `firing` contract；normalizer 从玩家 projectile facts 派生敌人最小开火参数。
+- `side-scrolling-live-edit-bridge.ts` 新增 runtime bridge：
+  - hot patch：`/player/physics/maxSpeed`、`/player/health/max`、`/enemyTypes/*/physics/speed`、`/enemyTypes/*/health/max`、`/projectiles/*/speed`、`/projectiles/*/damage`。
+  - warm restart：`/player/label`、`/enemyTypes/*/label`、`/level/waves/*/count`、`/world/width`。
+- `main.ts` 安装 `AIGAME_RUNTIME_READY` / `AIGAME_GET_CAPABILITIES` / `AIGAME_APPLY_PATCH` protocol，compiler 写入 side-scrolling `live-edit-registry.generated.json`。
+- `runtime_capability_report.json` 对 side-scrolling 暴露非空 live-edit capabilities；未登记 path 仍走 `unsupported`，避免 UI 误报可改。
+- QA contract / playable gate / Playwright deterministic interaction 新增 `enemy.fired` 必检，防止只有玩家射击或只有敌人受击也被判定 playable。
+- Prompt context 增加 Raw DSL id/reference ASCII lower_snake_case 约束，修复真实中文 prompt 生成 `脉冲弹` / `无人机_type` 等非 schema id 后 DSL 失败的问题。
+
+真实运行证据摘录：
+
+说明：以下记录来自 2026-06-17 本地 `maker:start`、真实 API 生成、QA report 读取、Live Edit prepare API 和 Workbench 浏览器验证；这些 `data/local-data` / generated report artifacts 不纳入 git 工作树。
+
+```txt
+POST /api/projects
+  -> projectId: proj_20260617_120220_1025
+  -> runId: run_20260617_120220_1025
+  -> status: PLAYABLE
+
+intent_plan.json
+  -> normalizedGenre: side_scrolling_run_and_gun
+  -> matchedAlias: 横版跑枪
+  -> templateId: phaser/side_scrolling_run_and_gun.v1
+  -> qaProfile: side_scrolling_run_and_gun_smoke
+
+runtime_capability_report.json
+  -> status: supported
+  -> selectedAdapterId: side_scrolling_run_and_gun.phaser.v1
+  -> liveEditCapabilities.hot: player speed/health, enemy speed/health, projectile speed/damage
+  -> liveEditCapabilities.warmRestart: player label, enemy label, wave count, world width
+
+qa_report.json
+  -> status: PASSED
+  -> runtime_status: PASSED
+  -> missing_events: []
+  -> observed: player.fired, projectile.spawned, enemy.hit, enemy.fired, projectile.spawned
+
+POST /api/projects/proj_20260617_120220_1025/runs/run_20260617_120220_1025/live-edits/prepare
+  body: replace /projectiles/pulse_bolt/damage -> 2
+  -> status: hot_patchable
+  -> apply_mode: hot
+  -> validation: valid
+  -> runtime_patch.projectiles.pulse_bolt.damage: 2
+```
+
+Workbench / browser 验证：
+
+```txt
+Preview: http://127.0.0.1:3000/preview/proj_20260617_120220_1025/index.html
+  -> Enter / ArrowRight / Space / J 后 telemetry 包含 player.fired、enemy.fired、player.damaged、enemy.hit、enemy.cleared
+
+Workbench: http://127.0.0.1:5173/
+  -> Runtime ready: phaser:side_scrolling_run_and_gun
+  -> LIVE-EDIT SUPPORTED: 10
+  -> 修改 Max speed 为 320 后返回 applied_hot
+  -> history: patch_workbench_01adf32c:applied:/player/physics/maxSpeed
+```
+
+已通过验证：
+
+```txt
+npm run typecheck:root
+  -> passed
+
+npx vitest run tests/workspace/game-dsl-provider.test.ts tests/contracts/phaser-templates.test.ts tests/contracts/dsl-validator-normalizer.test.ts tests/contracts/contract-freeze.test.ts tests/workspace/live-edit-pipeline.test.ts tests/workspace/compiler-service.test.ts tests/workspace/generation-pipeline.service.test.ts
+  -> passed, 7 files, 224 tests
+
+npx vitest run tests/workspace/playwright-qa-runner.test.ts
+  -> passed, 1 file, 32 tests
+```
+
+新的剩余范围：
+
+- Side-scrolling 仍不支持 `/player/render/scale`、asset swap 或 arbitrary DSL path；这些必须继续由 capability gate 明确拒绝。
+- Enemy fire 当前是最小 projectile smoke，不包含复杂寻路、武器差异、弹幕模式或可配置 firing DSL 字段。
+- Pickup runtime behavior 与 full art asset pack rollout 仍是后续范围。

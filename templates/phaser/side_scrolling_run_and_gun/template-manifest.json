@@ -20,6 +20,7 @@
     "player.moved",
     "player.jumped",
     "player.fired",
+    "enemy.fired",
     "projectile.spawned",
     "enemy.hit",
     "checkpoint.reached",
@@ -31,9 +32,11 @@
     "src/GameScene.ts",
     "src/side-scrolling-art-library.ts",
     "src/side-scrolling-runtime-plan.ts",
+    "src/side-scrolling-live-edit-bridge.ts",
     "src/template-params.ts",
     "src/template-params.generated.json",
     "src/runtime-plan.generated.json",
+    "src/live-edit-registry.generated.json",
     "src/asset-manifest.generated.json"
   ],
   "shared_files": ["../shared/kernel.ts", "../shared/end-screen.ts"]

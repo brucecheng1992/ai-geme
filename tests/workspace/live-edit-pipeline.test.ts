@@ -58,7 +58,7 @@ describe('DSL live edit pipeline', () => {
     });
   });
 
-  it('keeps side-scrolling live edit unsupported while runtime support is available', () => {
+  it('exposes side-scrolling liveEditCapabilities while rejecting unbridged scale edits', () => {
     const sideScrolling = buildGameDslArtifact({
       rawDsl: RawGameDslSchema.parse(createSideScrollingRunAndGunRawDsl()),
       runId,
@@ -72,7 +72,12 @@ describe('DSL live edit pipeline', () => {
       qaProfile: 'side_scrolling_run_and_gun_smoke',
       selectedAdapterId: 'side_scrolling_run_and_gun.phaser.v1',
       unsupportedCapabilities: [],
-      liveEditCapabilities: { hot: [], assetSwap: [], warmRestart: [], rebuildRequired: [] }
+      liveEditCapabilities: {
+        hot: expect.arrayContaining(['/player/physics/maxSpeed', '/enemyTypes/*/health/max', '/projectiles/*/damage']),
+        assetSwap: [],
+        warmRestart: expect.arrayContaining(['/player/label', '/enemyTypes/*/label', '/level/waves/*/count', '/world/width']),
+        rebuildRequired: expect.arrayContaining(['/genre', '/world/coordinateSystem'])
+      }
     });
     const patch = DslPatchV1Schema.parse({
       artifactKind: 'dsl_patch',
@@ -109,6 +114,49 @@ describe('DSL live edit pipeline', () => {
       selectedAdapterId: 'dodger_collector.phaser.v1',
       unsupportedCapabilities: [],
       liveEditCapabilities: { hot: [], assetSwap: [], warmRestart: [], rebuildRequired: [] }
+    });
+  });
+
+  it('prepares side-scrolling hot runtime patches for player, enemy, and projectile fields', async () => {
+    const sideRunId = `${runId}_side_hot`;
+    const sideScrolling = buildGameDslArtifact({
+      rawDsl: RawGameDslSchema.parse(createSideScrollingRunAndGunRawDsl()),
+      runId: sideRunId,
+      intentPlan: { normalizedGenre: 'side_scrolling_run_and_gun', matchedAlias: '横版跑枪' }
+    });
+    await service.initializeLiveVersion({ projectId, runId: sideRunId, artifact: sideScrolling });
+    const patch = DslPatchV1Schema.parse({
+      artifactKind: 'dsl_patch',
+      schemaVersion: 'dsl_patch.v1',
+      patchId: 'patch_side_hot',
+      runId: sideRunId,
+      baseDslId: sideScrolling.dslId,
+      baseVersionId: 'v_initial',
+      source: 'workbench',
+      intent: 'make the side-scrolling slice faster and stronger',
+      ops: [
+        { op: 'replace', path: '/player/physics/maxSpeed', value: 320 },
+        { op: 'replace', path: '/enemyTypes/drone_type/health/max', value: 2 },
+        { op: 'replace', path: '/projectiles/pulse_bolt/damage', value: 2 }
+      ]
+    });
+
+    const prepared = await service.prepareLiveEditPatch({ projectId, runId: sideRunId, patch });
+
+    expect(prepared).toMatchObject({
+      status: 'hot_patchable',
+      applyMode: 'hot',
+      validationReport: { status: 'valid', errorCount: 0 },
+      runtimePatch: {
+        player: { maxSpeed: 320 },
+        enemyTypes: { drone_type: { maxHealth: 2 } },
+        projectiles: { pulse_bolt: { damage: 2 } }
+      },
+      liveUpdatePlan: {
+        status: 'hot_patchable',
+        applyMode: 'hot',
+        affectedPaths: ['/player/physics/maxSpeed', '/enemyTypes/drone_type/health/max', '/projectiles/pulse_bolt/damage']
+      }
     });
   });
 

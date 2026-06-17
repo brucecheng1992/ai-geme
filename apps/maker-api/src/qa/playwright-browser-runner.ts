@@ -366,7 +366,9 @@ async function runDeterministicInteraction(page: Page, genre: QaGenre, timeoutMs
 
     const progressed = await runSideScrollingCombat(page, timeoutMs);
     await page.keyboard.press('r');
-    return progressed ? { ok: true } : { ok: false, message: 'Side-scrolling QA expected run-and-gun input to produce enemy.hit, enemy.cleared, or mission completion.' };
+    return progressed
+      ? { ok: true }
+      : { ok: false, message: 'Side-scrolling QA expected run-and-gun input to produce enemy.fired plus enemy.hit, enemy.cleared, or mission completion.' };
   }
 
   if (genre !== 'shooter') {
@@ -790,6 +792,13 @@ async function runSideScrollingCombat(page: Page, timeoutMs: number): Promise<bo
           () => {
             const qa = (globalThis as BrowserQaGlobal).__GAME_QA__;
             return (
+              qa?.telemetry().some((event) => {
+                if (typeof event !== 'object' || event === null || !('type' in event)) {
+                  return false;
+                }
+
+                return event.type === 'enemy.fired';
+              }) === true &&
               qa?.telemetry().some((event) => {
                 if (typeof event !== 'object' || event === null || !('type' in event)) {
                   return false;

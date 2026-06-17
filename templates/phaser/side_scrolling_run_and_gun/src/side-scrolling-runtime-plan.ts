@@ -15,6 +15,13 @@ export type SideScrollingEnemyDefinition = {
     type: 'static' | 'horizontal' | 'patrol' | 'chase_player' | 'move_left' | 'move_right';
     speedPxPerSec: number;
   };
+  firing: {
+    projectileEntityId: string;
+    cooldownMs: number;
+    speedPxPerSec: number;
+    damage: number;
+    rangePx: number;
+  };
 };
 
 export type SideScrollingWave = {
@@ -105,7 +112,13 @@ export const defaultSideScrollingRuntimeSlice: SideScrollingRuntimeSlice = {
     { id: 'platform_bridge', kind: 'platform', x: 980, y: 380, width: 280, height: 24 }
   ],
   enemyDefinitions: [
-    { id: 'drone_type', label: 'Alien Drone', health: 1, movement: { type: 'patrol', speedPxPerSec: 90 } }
+    {
+      id: 'drone_type',
+      label: 'Alien Drone',
+      health: 1,
+      movement: { type: 'patrol', speedPxPerSec: 90 },
+      firing: { projectileEntityId: 'pulse_bolt', cooldownMs: 1400, speedPxPerSec: 372, damage: 1, rangePx: 520 }
+    }
   ],
   waves: [
     { id: 'spawn_intro_drone', enemyTypeId: 'drone_type', trigger: 'enter_segment', triggerX: 640, spawnX: 640, count: 3 },

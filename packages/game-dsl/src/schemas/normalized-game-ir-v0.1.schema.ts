@@ -122,6 +122,13 @@ const SideScrollingRuntimePlanSchema = z.strictObject({
       movement: z.strictObject({
         type: z.enum(['static', 'horizontal', 'patrol', 'chase_player', 'move_left', 'move_right']),
         speedPxPerSec: z.number().int().min(0).max(1000)
+      }),
+      firing: z.strictObject({
+        projectileEntityId: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/),
+        cooldownMs: z.number().int().min(0).max(5000),
+        speedPxPerSec: z.number().int().min(1).max(1200),
+        damage: z.number().int().min(1).max(20),
+        rangePx: z.number().int().min(1).max(2000)
       })
     })
   ).min(1),

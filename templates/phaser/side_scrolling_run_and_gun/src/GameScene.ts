@@ -14,6 +14,7 @@ import {
   exposeRuntime
 } from '../../shared/kernel.js';
 import { EndScreenRenderer } from '../../shared/end-screen.js';
+import { createSideScrollingRuntimeBridge } from './side-scrolling-live-edit-bridge.js';
 import type { SideScrollingArtRuntime } from './side-scrolling-art-library.js';
 import {
   defaultSideScrollingRuntimePlan,
@@ -42,11 +43,14 @@ type EnemyActor = RuntimeActor & {
   entityId: string;
   waveId: string;
   definition: SideScrollingEnemyDefinition;
+  nextFireAtMs: number;
   cleared: boolean;
 };
 
 type ProjectileActor = RuntimeActor & {
+  owner: 'player' | 'enemy';
   damage: number;
+  sourceId?: string;
 };
 
 export class SideScrollingRunAndGunScene {
@@ -61,9 +65,11 @@ export class SideScrollingRunAndGunScene {
   private readonly gameState;
   private readonly objective;
   private readonly endScreen: EndScreenRenderer;
+  private readonly liveEditBridge;
   private phaserScene?: Phaser.Scene;
   private player: RuntimeActor;
   private lives: number;
+  private runtimeClockMs = 0;
   private nextProjectileAtMs = 0;
   private readonly runInput: Record<SideScrollingDirection, boolean> = { left: false, right: false };
   private readonly triggeredWaves = new Set<string>();
@@ -95,6 +101,14 @@ export class SideScrollingRunAndGunScene {
     this.player = this.createPlayerActor();
     this.lives = this.plan.player.lives;
     this.endScreen = new EndScreenRenderer(this.plan.scene.viewport, params.ui.screens);
+    this.liveEditBridge = createSideScrollingRuntimeBridge({
+      params,
+      plan: this.plan,
+      getEnemies: () => this.enemies,
+      getProjectiles: () => this.projectiles,
+      setPlayerMaxHealth: (maxHealth) => this.setPlayerMaxHealth(maxHealth),
+      setWorldWidth: (width) => this.setWorldWidth(width)
+    });
   }
 
   create(phaserScene?: Phaser.Scene): void {
@@ -108,7 +122,7 @@ export class SideScrollingRunAndGunScene {
         gravity: this.plan.scene.world.gravityY,
         platforms: this.plan.platforms,
         enemies: this.enemies.map((enemy) => this.enemySnapshot(enemy)),
-        projectiles: this.projectiles.map((projectile) => ({ id: projectile.id, x: projectile.x, y: projectile.y })),
+        projectiles: this.projectiles.map((projectile) => ({ id: projectile.id, owner: projectile.owner, x: projectile.x, y: projectile.y })),
         waves: this.plan.waves.map((wave) => ({ ...wave, triggered: this.triggeredWaves.has(wave.id) })),
         lives: this.lives,
         winCondition: this.plan.winCondition,
@@ -152,6 +166,7 @@ export class SideScrollingRunAndGunScene {
 
     const projectile: ProjectileActor = {
       id: `projectile_${this.state.frame}_${this.projectiles.length}`,
+      owner: 'player',
       x: this.player.x + this.player.width / 2,
       y: this.player.y + this.player.height / 2 - 5,
       vx: this.plan.player.projectileSpeedPxPerSec,
@@ -159,7 +174,8 @@ export class SideScrollingRunAndGunScene {
       width: 24,
       height: 10,
       health: 1,
-      damage: this.plan.player.projectileDamage
+      damage: this.plan.player.projectileDamage,
+      sourceId: this.plan.player.projectileEntityId
     };
     this.projectiles.push(projectile);
     this.nextProjectileAtMs = nowMs + this.plan.player.fireCooldownMs;
@@ -168,12 +184,12 @@ export class SideScrollingRunAndGunScene {
     this.renderProjectile(projectile);
   }
 
-  damagePlayer(amount = 1): void {
+  damagePlayer(amount = 1, source = 'enemy', projectileId?: string): void {
     if (this.state.gameStatus !== 'PLAYING') {
       return;
     }
 
-    this.collision.collide({ source: 'enemy', target: 'player' });
+    this.collision.collide({ source, target: 'player', ...(projectileId === undefined ? {} : { projectileId }) });
     this.state.health = Math.max(0, this.state.health - amount);
     this.telemetry.emit('player.damaged', { health: this.state.health, lives: this.lives });
     if (this.state.health <= 0) {
@@ -201,9 +217,10 @@ export class SideScrollingRunAndGunScene {
     }
 
     this.state.frame += 1;
+    this.runtimeClockMs += deltaMs;
     this.movePlayer(deltaMs);
     this.spawnTriggeredWaves();
-    this.advanceEnemies(deltaMs);
+    this.advanceEnemies(deltaMs, this.runtimeClockMs);
     this.advanceProjectiles(deltaMs);
     this.checkObjective();
     this.renderHud();
@@ -214,6 +231,7 @@ export class SideScrollingRunAndGunScene {
     this.gameState.restart();
     this.player = this.createPlayerActor();
     this.lives = this.plan.player.lives;
+    this.runtimeClockMs = 0;
     this.nextProjectileAtMs = 0;
     this.triggeredWaves.clear();
     this.checkpointsReached.clear();
@@ -297,6 +315,7 @@ export class SideScrollingRunAndGunScene {
         width: 40,
         height: 46,
         health: definition.health,
+        nextFireAtMs: this.runtimeClockMs + Math.min(120, definition.firing.cooldownMs) + index * 120,
         cleared: false
       };
       this.enemies.push(enemy);
@@ -305,7 +324,7 @@ export class SideScrollingRunAndGunScene {
     }
   }
 
-  private advanceEnemies(deltaMs: number): void {
+  private advanceEnemies(deltaMs: number, nowMs: number): void {
     for (const enemy of this.enemies) {
       if (enemy.cleared) {
         continue;
@@ -317,7 +336,9 @@ export class SideScrollingRunAndGunScene {
         this.destroyObject(this.enemySprites.get(enemy.id));
         this.enemySprites.delete(enemy.id);
         this.damagePlayer(1);
+        continue;
       }
+      this.fireEnemyProjectile(enemy, nowMs);
     }
   }
 
@@ -325,14 +346,50 @@ export class SideScrollingRunAndGunScene {
     for (const projectile of [...this.projectiles]) {
       projectile.x += (projectile.vx * deltaMs) / 1000;
       this.setObjectPosition(this.projectileSprites.get(projectile.id), projectile.x, projectile.y);
-      const enemy = this.enemies.find((candidate) => !candidate.cleared && hitboxesOverlap(projectile, candidate));
-      if (enemy !== undefined) {
-        this.hitEnemy(projectile, enemy);
+      if (projectile.owner === 'player') {
+        const enemy = this.enemies.find((candidate) => !candidate.cleared && hitboxesOverlap(projectile, candidate));
+        if (enemy !== undefined) {
+          this.hitEnemy(projectile, enemy);
+          continue;
+        }
+      } else if (hitboxesOverlap(projectile, this.player)) {
+        this.removeProjectile(projectile);
+        this.damagePlayer(projectile.damage, 'enemy_projectile', projectile.id);
+        continue;
       }
-      if (projectile.x > this.plan.scene.world.width) {
+      if (projectile.x > this.plan.scene.world.width || projectile.x + projectile.width < 0) {
         this.removeProjectile(projectile);
       }
     }
+  }
+
+  private fireEnemyProjectile(enemy: EnemyActor, nowMs: number): void {
+    const firing = enemy.definition.firing;
+    if (nowMs < enemy.nextFireAtMs || enemy.x < this.player.x || enemy.x - this.player.x > firing.rangePx) {
+      return;
+    }
+    if (enemy.x < this.cameraScrollX - 80 || enemy.x > this.cameraScrollX + this.plan.scene.viewport.width + 80) {
+      return;
+    }
+
+    const projectile: ProjectileActor = {
+      id: `enemy_projectile_${enemy.id}_${this.state.frame}_${this.projectiles.length}`,
+      owner: 'enemy',
+      x: enemy.x - 18,
+      y: enemy.y + enemy.height / 2 - 5,
+      vx: -firing.speedPxPerSec,
+      vy: 0,
+      width: 18,
+      height: 10,
+      health: 1,
+      damage: firing.damage,
+      sourceId: firing.projectileEntityId
+    };
+    enemy.nextFireAtMs = nowMs + Math.max(120, firing.cooldownMs);
+    this.projectiles.push(projectile);
+    this.telemetry.emit('enemy.fired', { enemyId: enemy.id, entityId: enemy.entityId, projectileEntityId: firing.projectileEntityId, waveId: enemy.waveId });
+    this.spawn.spawn('projectile', { source: 'enemy_projectile', projectileId: projectile.id, enemyId: enemy.id, entityId: enemy.entityId });
+    this.renderProjectile(projectile);
   }
 
   private hitEnemy(projectile: ProjectileActor, enemy: EnemyActor): void {
@@ -425,7 +482,10 @@ export class SideScrollingRunAndGunScene {
     if (scene === undefined) {
       return;
     }
-    const object = this.art?.addImage(scene, 'projectile', projectile.x, projectile.y) ?? scene.add.graphics().fillStyle(0xffef6e, 1).fillRect(projectile.x, projectile.y, projectile.width, projectile.height);
+    const fallbackColor = projectile.owner === 'enemy' ? 0xff745c : 0xffef6e;
+    const object =
+      this.art?.addImage(scene, 'projectile', projectile.x, projectile.y) ??
+      scene.add.graphics().fillStyle(fallbackColor, 1).fillRect(projectile.x, projectile.y, projectile.width, projectile.height);
     this.projectileSprites.set(projectile.id, object);
   }
 
@@ -475,6 +535,25 @@ export class SideScrollingRunAndGunScene {
     }
     this.destroyObject(this.projectileSprites.get(projectile.id));
     this.projectileSprites.delete(projectile.id);
+  }
+
+  getLiveEditBridge() {
+    return this.liveEditBridge;
+  }
+
+  private setPlayerMaxHealth(maxHealth: number): void {
+    this.plan.player.health = maxHealth;
+    this.state.maxHealth = maxHealth;
+    this.state.health = clamp(this.state.health, 0, maxHealth);
+    this.player.health = clamp(this.player.health, 0, maxHealth);
+    this.renderHud();
+  }
+
+  private setWorldWidth(width: number): void {
+    this.plan.scene.world.width = width;
+    this.plan.camera.bounds.width = width;
+    this.phaserScene?.cameras.main.setBounds(this.plan.camera.bounds.x, this.plan.camera.bounds.y, width, this.plan.camera.bounds.height);
+    this.updateCamera();
   }
 
   private syncPlayerSprite(): void {

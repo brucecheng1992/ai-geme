@@ -53,6 +53,7 @@
         "player.moved",
         "player.jumped",
         "player.fired",
+        "enemy.fired",
         "projectile.spawned",
         "enemy.hit",
         "checkpoint.reached",

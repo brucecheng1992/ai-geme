@@ -127,6 +127,8 @@ describe('buildRawDslPromptContext', () => {
     expect((context.valid_example as { entities: Array<{ kind: string }> }).entities.some((entity) => entity.kind === 'collectible')).toBe(false);
     expect(context.forbidden_fields).toEqual(expect.arrayContaining(['projectile_id', 'cooldown_sec', 'duration_sec']));
     expect(context.invalid_examples_summary.join('\n')).toContain('Collision effects only support type and optional value.');
+    expect(context.invalid_examples_summary.join('\n')).toContain('All id and string reference fields');
+    expect(context.invalid_examples_summary.join('\n')).toContain('Numeric objective targets stay numeric');
     expect(context.invalid_examples_summary.join('\n')).toContain('required fire-hit-clear loop');
     expect(context.invalid_examples_summary.join('\n')).toContain('Do not use survive_duration for shooter.');
     expect(context.invalid_examples_summary.join('\n')).toContain('primary enemy projectile_hit score_add value multiplied by the primary enemy count');
