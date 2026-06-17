@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { SemanticIndex } from '@ai-game-maker/game-dsl';
 
 import { SemanticPatchDiffPanel } from '../semantic-editing/index.js';
+import { SemanticAmendmentProposalCard, type SemanticAmendmentProposalCardView } from '../semantic-amendments/index.js';
 import { BriefTextbox } from './BriefTextbox.js';
 import { useBriefTextboxDraft } from './useBriefTextboxDraft.js';
 import type { BriefTextboxPatchReviewHandoff } from './briefTextboxIntentBridge.js';
@@ -14,13 +15,18 @@ export type BriefTextboxPanelProps = {
   value: string;
   language: string;
   mode: BriefTextboxMode;
+  className?: string;
   conversationMessages?: GameConversationMessage[];
+  amendmentCards?: SemanticAmendmentProposalCardView[];
   document?: unknown;
   semanticIndex?: SemanticIndex;
   loading?: boolean;
+  activityLabel?: string;
+  agentStatusMessage?: GameConversationMessage;
   primaryAction?: ReactNode;
   onTextChange: (text: string) => void;
   onLanguageChange: (language: string) => void;
+  onSubmitNewGame?: () => void | Promise<void>;
   onSubmitEdit?: (text: string) => BriefTextboxEditSubmitResult | Promise<BriefTextboxEditSubmitResult>;
   onPreviewHandoff?: (handoff: BriefTextboxPatchReviewHandoff) => void;
 };
@@ -33,6 +39,7 @@ export type GameConversationMessage = {
   title: string;
   body: string;
   meta?: string;
+  live?: boolean;
 };
 
 const panelClass = 'rounded-lg border border-[#d8c7a6] bg-[#fffef9] p-4 shadow-[0_1px_0_rgba(49,43,34,0.08)]';
@@ -48,13 +55,18 @@ export function BriefTextboxPanel({
   value,
   language,
   mode,
+  className = '',
   conversationMessages = [],
+  amendmentCards = [],
   document,
   semanticIndex,
   loading = false,
+  activityLabel,
+  agentStatusMessage,
   primaryAction,
   onTextChange,
   onLanguageChange,
+  onSubmitNewGame,
   onSubmitEdit,
   onPreviewHandoff
 }: BriefTextboxPanelProps) {
@@ -95,9 +107,26 @@ export function BriefTextboxPanel({
   const validationErrors = hasDraftText ? brief.validation.errors : [];
   const validationWarnings = brief.validation.warnings.filter((issue) => isEditMode || issue.code !== 'BRIEF_TEXTBOX_NEW_GAME_MODE');
   const canSubmitEdit = isEditMode && brief.validation.ok && hasDraftText && projectId.trim().length > 0 && runId.trim().length > 0;
+  const canSubmitNewGame = !isEditMode && brief.validation.ok && hasDraftText && onSubmitNewGame !== undefined;
+  const canSubmitCurrentDraft = !loading && (isEditMode ? canSubmitEdit : canSubmitNewGame);
+  const editSubmitLabel = activityLabel === 'Sending edit' ? 'Sending edit' : 'Send edit';
+  const dialogMessages = agentStatusMessage === undefined ? conversationMessages : [...conversationMessages, agentStatusMessage];
+
+  function submitCurrentDraft(): void {
+    if (!canSubmitCurrentDraft) {
+      return;
+    }
+
+    if (isEditMode) {
+      void submitEditMessage();
+      return;
+    }
+
+    void onSubmitNewGame?.();
+  }
 
   return (
-    <section className={`${panelClass} border-[#312b22] bg-gradient-to-b from-white to-[#fff1d6] shadow-[6px_6px_0_rgba(21,19,15,0.08)]`}>
+    <section className={`${panelClass} ${className} flex flex-col border-[#312b22] bg-gradient-to-b from-white to-[#fff1d6] shadow-[6px_6px_0_rgba(21,19,15,0.08)]`}>
       <div className={panelHeadingClass}>
         <div>
           <p className={eyebrowClass}>Game</p>
@@ -108,35 +137,41 @@ export function BriefTextboxPanel({
         </span>
       </div>
 
-      <ConversationHistory messages={conversationMessages} />
+      <section className="flex min-h-0 flex-1 flex-col gap-3 rounded-lg border border-[#ead9ba] bg-[#fffaf0] p-3">
+        <ConversationHistory messages={dialogMessages} amendmentCards={amendmentCards} />
 
-      <BriefTextbox
-        disabled={loading}
-        language={language}
-        mode={brief.draft.mode}
-        onLanguageChange={onLanguageChange}
-        onTextChange={(text) => {
-          brief.setText(text);
-          onTextChange(text);
-        }}
-        status={brief.draft.status}
-        text={brief.draft.text}
-      />
+        <div className="grid shrink-0 gap-3 border-t border-[#ead9ba] pt-3">
+          <BriefTextbox
+            canSubmit={canSubmitCurrentDraft}
+            disabled={loading}
+            language={language}
+            mode={brief.draft.mode}
+            onLanguageChange={onLanguageChange}
+            onSubmit={submitCurrentDraft}
+            onTextChange={(text) => {
+              brief.setText(text);
+              onTextChange(text);
+            }}
+            status={brief.draft.status}
+            text={brief.draft.text}
+          />
 
-      {isEditMode ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button className={secondaryButtonClass} type="button" onClick={() => void submitEditMessage()} disabled={loading || !canSubmitEdit}>
-            Send edit
-          </button>
-          {brief.previewResult === null ? null : (
-            <button className={secondaryButtonClass} type="button" onClick={brief.clearPreview} disabled={loading}>
-              Clear Preview
-            </button>
+          {isEditMode ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <button className={secondaryButtonClass} type="button" onClick={() => void submitEditMessage()} disabled={loading || !canSubmitEdit}>
+                {editSubmitLabel}
+              </button>
+              {brief.previewResult === null ? null : (
+                <button className={secondaryButtonClass} type="button" onClick={brief.clearPreview} disabled={loading}>
+                  Clear Preview
+                </button>
+              )}
+            </div>
+          ) : (
+            <div>{primaryAction}</div>
           )}
         </div>
-      ) : (
-        <div className="mt-3">{primaryAction}</div>
-      )}
+      </section>
 
       <IssueList title="Validation errors" tone="error" items={validationErrors.map((issue) => `${issue.code}: ${issue.message}`)} />
       <IssueList title="Validation warnings" tone="warn" items={validationWarnings.map((issue) => `${issue.code}: ${issue.message}`)} />
@@ -163,21 +198,33 @@ export function BriefTextboxPanel({
   );
 }
 
-function ConversationHistory({ messages }: { messages: GameConversationMessage[] }) {
+function ConversationHistory({ messages, amendmentCards }: { messages: GameConversationMessage[]; amendmentCards: SemanticAmendmentProposalCardView[] }) {
+  const hasHistory = messages.length > 0 || amendmentCards.length > 0;
+
   return (
-    <section className="mb-3 grid gap-2 rounded-lg border border-[#ead9ba] bg-[#fffaf0] p-2">
+    <section className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] gap-2">
       <h3 className="m-0 px-1 text-[11px] font-black uppercase text-[#6f6558]">History</h3>
-      {messages.length === 0 ? (
+      {!hasHistory ? (
         <p className="m-0 px-1 pb-1 text-sm font-bold text-[#69645d]">No conversation yet.</p>
       ) : (
-        <ol className="m-0 grid max-h-56 list-none gap-2 overflow-auto p-0 pr-1">
+        <ol className="m-0 grid min-h-28 list-none content-start gap-2 overflow-y-auto overscroll-contain p-0 pr-1" role="log">
           {messages.map((message) => (
-            <li className={`rounded-lg border p-2 text-xs font-bold [overflow-wrap:anywhere] ${messageClass(message.role)}`} key={message.id}>
+            <li
+              aria-live={message.live ? 'polite' : undefined}
+              className={`rounded-lg border p-2 text-xs font-bold [overflow-wrap:anywhere] ${messageClass(message.role)}`}
+              key={message.id}
+              role={message.live ? 'status' : undefined}
+            >
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-black text-[#15130f]">{message.title}</span>
                 {message.meta === undefined ? null : <span className="rounded-full border border-[#d0b993] bg-[#fff7e8] px-2 py-0.5 text-[10px] font-black text-[#8a5b13]">{message.meta}</span>}
               </div>
               <p className="m-0 mt-1 leading-snug">{message.body}</p>
+            </li>
+          ))}
+          {amendmentCards.map((card) => (
+            <li key={card.id}>
+              <SemanticAmendmentProposalCard card={card} />
             </li>
           ))}
         </ol>

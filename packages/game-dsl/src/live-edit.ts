@@ -52,7 +52,17 @@ export const topDownShooterPhaserLiveEditCapabilities = {
     '/projectiles/*/damage'
   ],
   assetSwap: ['/assets/roles/player', '/assets/roles/enemy', '/assets/roles/projectile', '/assets/roles/background'],
-  warmRestart: ['/player/label', '/enemyTypes/*/label', '/level/waves', '/level/waves/*/count', '/world/width', '/level/spawnRules', '/pickups', '/bosses'],
+  warmRestart: [
+    '/player/label',
+    '/player/actions/*/cooldownMs',
+    '/enemyTypes/*/label',
+    '/level/waves',
+    '/level/waves/*/count',
+    '/world/width',
+    '/level/spawnRules',
+    '/pickups',
+    '/bosses'
+  ],
   rebuildRequired: ['/genre', '/world/coordinateSystem', '/world/physics/mode', '/player/controller']
 } as const;
 
@@ -66,7 +76,7 @@ export const sideScrollingRunAndGunPhaserLiveEditCapabilities = {
     '/projectiles/*/damage'
   ],
   assetSwap: [],
-  warmRestart: ['/player/label', '/enemyTypes/*/label', '/level/waves/*/count', '/level/waves/*/x', '/world/width'],
+  warmRestart: ['/player/label', '/player/actions/*/cooldownMs', '/enemyTypes/*/label', '/level/waves/*/count', '/level/waves/*/x', '/world/width'],
   rebuildRequired: ['/genre', '/world/coordinateSystem', '/world/physics/mode', '/player/controller']
 } as const;
 
@@ -238,6 +248,7 @@ type PatchPathRule = {
   value:
     | 'speed'
     | 'player-label'
+    | 'player-action-cooldown'
     | 'player-health'
     | 'enemy-health'
     | 'enemy-label'
@@ -262,6 +273,7 @@ const patchPathRules: PatchPathRule[] = [
   { kind: 'hot', pattern: '/player/render/scale', value: 'scale' },
   { kind: 'hot', pattern: '/player/health/max', value: 'player-health' },
   { kind: 'warmRestart', pattern: '/player/label', value: 'player-label' },
+  { kind: 'warmRestart', pattern: '/player/actions/*/cooldownMs', value: 'player-action-cooldown' },
   { kind: 'hot', pattern: '/enemyTypes/*/physics/speed', value: 'speed' },
   { kind: 'hot', pattern: '/enemyTypes/*/health/max', value: 'enemy-health' },
   { kind: 'warmRestart', pattern: '/enemyTypes/*/label', value: 'enemy-label' },
@@ -639,6 +651,9 @@ function applyCandidatePatch(baseDsl: GameDslArtifact, patch: DslPatchV1): unkno
     if (applyPlayerLabelPatch(next, op.path, op.value)) {
       continue;
     }
+    if (applyPlayerActionCooldownPatch(next, op.path, op.value)) {
+      continue;
+    }
     if (applyWaveCountPatch(next, op.path, op.value)) {
       continue;
     }
@@ -667,6 +682,27 @@ function applyPlayerLabelPatch(artifact: GameDslArtifact, path: string, value: u
   const label = value.trim();
   artifact.player.label = label;
   artifact.sourceDsl.player.label = label;
+  return true;
+}
+
+function applyPlayerActionCooldownPatch(artifact: GameDslArtifact, path: string, value: unknown): boolean {
+  if (typeof value !== 'number') {
+    return false;
+  }
+
+  const segments = path.split('/').slice(1);
+  if (segments[0] !== 'player' || segments[1] !== 'actions' || segments[3] !== 'cooldownMs') {
+    return false;
+  }
+  const actionIndex = Number(segments[2]);
+  if (!Number.isInteger(actionIndex) || actionIndex < 0 || actionIndex >= artifact.player.actions.length) {
+    return false;
+  }
+
+  artifact.player.actions[actionIndex].cooldownMs = value;
+  if (artifact.sourceDsl.player.actions[actionIndex] !== undefined) {
+    artifact.sourceDsl.player.actions[actionIndex].cooldown_ms = value;
+  }
   return true;
 }
 
@@ -1053,6 +1089,9 @@ function valueMatchesRule(value: unknown, rule: PatchPathRule, baseDsl: GameDslA
   if (rule.value === 'player-label') {
     return typeof value === 'string' && value.trim().length > 0 && value.trim().length <= 40;
   }
+  if (rule.value === 'player-action-cooldown') {
+    return isIntInRange(value, 0, 5000) && referencedIdExists(baseDsl, path);
+  }
   if (rule.value === 'enemy-health') {
     return isIntInRange(value, 1, 50) && referencedIdExists(baseDsl, path);
   }
@@ -1097,6 +1136,10 @@ function referencedIdExists(baseDsl: GameDslArtifact, path: string): boolean {
   const segments = path.split('/').slice(1);
   if (segments[0] === 'enemyTypes' && segments[1] !== undefined) {
     return baseDsl.enemyTypes[segments[1]] !== undefined;
+  }
+  if (segments[0] === 'player' && segments[1] === 'actions' && segments[2] !== undefined) {
+    const actionIndex = Number(segments[2]);
+    return Number.isInteger(actionIndex) && actionIndex >= 0 && actionIndex < baseDsl.player.actions.length;
   }
   if (segments[0] === 'projectiles' && segments[1] !== undefined) {
     return baseDsl.projectiles[segments[1]] !== undefined;

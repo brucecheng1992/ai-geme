@@ -6,8 +6,10 @@ export type BriefTextboxProps = {
   mode: BriefTextboxMode;
   status: BriefTextboxDraftStatus;
   disabled?: boolean;
+  canSubmit?: boolean;
   onTextChange: (text: string) => void;
   onLanguageChange: (language: string) => void;
+  onSubmit?: () => void;
 };
 
 const fieldClass =
@@ -19,8 +21,10 @@ export function BriefTextbox({
   mode,
   status,
   disabled = false,
+  canSubmit = false,
   onTextChange,
-  onLanguageChange
+  onLanguageChange,
+  onSubmit
 }: BriefTextboxProps) {
   const label = mode === 'new_game' ? 'New game message' : 'Modify current game';
   const placeholder =
@@ -36,6 +40,23 @@ export function BriefTextbox({
           className={`${fieldClass} min-h-24 resize-y`}
           disabled={disabled}
           onChange={(event) => onTextChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (
+              event.key !== 'Enter' ||
+              event.shiftKey ||
+              event.altKey ||
+              event.ctrlKey ||
+              event.metaKey ||
+              event.nativeEvent.isComposing
+            ) {
+              return;
+            }
+
+            event.preventDefault();
+            if (canSubmit) {
+              onSubmit?.();
+            }
+          }}
           placeholder={placeholder}
           rows={4}
           value={text}

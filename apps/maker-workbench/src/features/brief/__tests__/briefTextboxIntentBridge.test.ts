@@ -147,14 +147,41 @@ describe('Brief textbox semantic editing bridge', () => {
 
   it('keeps generation and current-game edits in one conversation composer', async () => {
     const appSource = await readFile(new URL('../../../App.tsx', import.meta.url), 'utf8');
+    const panelSource = await readFile(new URL('../BriefTextboxPanel.tsx', import.meta.url), 'utf8');
     const textboxSource = await readFile(new URL('../BriefTextbox.tsx', import.meta.url), 'utf8');
 
     expect(appSource).toContain('conversationMessages={gameConversationMessages}');
+    expect(appSource).toContain('conversationInputHistory');
+    expect(appSource).toContain('conversationInputSequenceRef');
+    expect(appSource).toContain('grid min-h-[calc(100dvh-82px)] grid-cols-[minmax(340px,420px)_minmax(0,1fr)]');
+    expect(appSource).toContain('max-lg:h-[calc(100dvh-7rem)]');
+    expect(appSource).toContain('className="h-full min-h-0"');
+    expect(appSource).toContain('previewViewportClass');
+    expect(appSource).toContain("appendConversationInput('new_game', idea)");
+    expect(appSource).toContain("appendConversationInput('edit_current_game', text)");
     expect(appSource).toContain('onSubmitEdit={submitConversationEdit}');
+    expect(appSource).toContain('onSubmitNewGame={() => void generateProject()}');
+    expect(appSource).toContain('activityLabel={conversationActivityLabel}');
+    expect(appSource).toContain('agentStatusMessage={agentStatusMessage}');
+    expect(appSource).toContain('amendmentCards={semanticAmendmentCardViews}');
+    expect(appSource).toContain('planSemanticAmendment({');
     expect(appSource).toContain("setBriefMode('edit_current_game')");
     expect(appSource).toContain('primaryAction={');
     expect(appSource).toContain('{loading ? \'Working\' : \'Generate\'}');
+    expect(panelSource).toContain('agentStatusMessage');
+    expect(panelSource).toContain('className?: string;');
+    expect(panelSource).toContain('flex min-h-0 flex-1 flex-col');
+    expect(panelSource).toContain('role="log"');
+    expect(panelSource).toContain("role={message.live ? 'status' : undefined}");
     expect(appSource).not.toContain('New game action');
+    expect(textboxSource).toContain("event.key !== 'Enter'");
+    expect(textboxSource).toContain('event.shiftKey');
+    expect(textboxSource).toContain('event.altKey');
+    expect(textboxSource).toContain('event.ctrlKey');
+    expect(textboxSource).toContain('event.metaKey');
+    expect(textboxSource).toContain('event.nativeEvent.isComposing');
+    expect(textboxSource).toContain('if (canSubmit)');
+    expect(textboxSource).toContain('event.preventDefault();');
     expect(textboxSource).not.toContain('Semantic target');
     expect(textboxSource).not.toContain('value=\"edit_current_game\"');
     expect(textboxSource).not.toContain('value=\"new_game\"');
@@ -183,7 +210,9 @@ describe('Brief textbox semantic editing bridge', () => {
     const appSource = await readFile(new URL('../../../App.tsx', import.meta.url), 'utf8');
 
     expect(panelSource).toContain("if (submitResult === 'blocked')");
-    expect(appSource).toContain("return (await applyLiveEdits(parsed.edits, text)) ? 'handled' : 'blocked';");
+    expect(appSource).toContain("return 'blocked';");
+    expect(appSource).toContain("return 'handled';");
+    expect(appSource).not.toContain('parseConversationLiveEditCommand({ text');
   });
 
   it('parses conversation messages into current hot-edit fields', () => {

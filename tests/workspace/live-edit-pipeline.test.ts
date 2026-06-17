@@ -52,7 +52,7 @@ describe('DSL live edit pipeline', () => {
       liveEditCapabilities: {
         hot: expect.arrayContaining(['/player/physics/maxSpeed', '/projectiles/*/damage']),
         assetSwap: expect.arrayContaining(['/assets/roles/player']),
-        warmRestart: expect.arrayContaining(['/player/label', '/enemyTypes/*/label', '/level/waves', '/level/waves/*/count', '/world/width']),
+        warmRestart: expect.arrayContaining(['/player/label', '/player/actions/*/cooldownMs', '/enemyTypes/*/label', '/level/waves', '/level/waves/*/count', '/world/width']),
         rebuildRequired: expect.arrayContaining(['/genre', '/world/coordinateSystem'])
       }
     });
@@ -75,7 +75,7 @@ describe('DSL live edit pipeline', () => {
       liveEditCapabilities: {
         hot: expect.arrayContaining(['/player/physics/maxSpeed', '/enemyTypes/*/health/max', '/projectiles/*/damage']),
         assetSwap: [],
-        warmRestart: expect.arrayContaining(['/player/label', '/enemyTypes/*/label', '/level/waves/*/count', '/level/waves/*/x', '/world/width']),
+        warmRestart: expect.arrayContaining(['/player/label', '/player/actions/*/cooldownMs', '/enemyTypes/*/label', '/level/waves/*/count', '/level/waves/*/x', '/world/width']),
         rebuildRequired: expect.arrayContaining(['/genre', '/world/coordinateSystem'])
       }
     });
@@ -509,6 +509,31 @@ describe('DSL live edit pipeline', () => {
     await expect(readAuditLog()).resolves.toEqual([expect.objectContaining({ patchId: patch.patchId, status: 'invalid' })]);
   });
 
+  it('rejects invalid weapon cooldown patches without mutating current_version', async () => {
+    const before = await readCurrentVersion();
+    const patches = [
+      makePatch([{ op: 'replace', path: '/player/actions/0/cooldownMs', value: 5001 }]),
+      makePatch([{ op: 'replace', path: '/player/actions/0/cooldownMs', value: 225.5 }]),
+      makePatch([{ op: 'replace', path: '/player/actions/99/cooldownMs', value: 225 }])
+    ];
+
+    for (const patch of patches) {
+      const result = await service.applyPatch({ projectId, runId, patch });
+
+      expect(result).toMatchObject({
+        status: 'failed_validation',
+        validationReport: {
+          status: 'invalid',
+          errors: expect.arrayContaining([expect.objectContaining({ code: 'PATCH_VALUE_INVALID', path: 'ops.0.value' })])
+        },
+        liveUpdatePlan: { status: 'failed_validation', applyMode: 'none' }
+      });
+      await expect(readCurrentVersion()).resolves.toEqual(before);
+    }
+    await expect(readFile(workspace.getLivePatchHistoryPath(projectId, runId), 'utf8')).rejects.toThrow();
+    await expect(readAuditLog()).resolves.toEqual(patches.map((patch) => expect.objectContaining({ patchId: patch.patchId, status: 'invalid' })));
+  });
+
   it('writes validation artifacts for schema-invalid patches without mutating current_version', async () => {
     const before = await readCurrentVersion();
     const result = await service.applyPatch({
@@ -693,6 +718,56 @@ describe('DSL live edit pipeline', () => {
     const patchedDsl = JSON.parse(await readFile(workspace.getLiveArtifactPath(projectId, runId, `${recorded.versionId}.game_dsl.json`), 'utf8')) as GameDslArtifact;
     expect(patchedDsl.world.width).toBe(1120);
     expect(patchedDsl.sourceDsl.world.width).toBe(1120);
+  });
+
+  it('commits a warm restart weapon cooldown patch after runtime confirmation', async () => {
+    const before = await readCurrentVersion();
+    const patch = makePatch([{ op: 'replace', path: '/player/actions/0/cooldownMs', value: 225 }]);
+
+    const prepared = await service.applyPatch({ projectId, runId, patch });
+
+    expect(prepared).toMatchObject({
+      status: 'warm_restart_required',
+      applyMode: 'warm_restart',
+      validationReport: { status: 'valid' },
+      liveUpdatePlan: {
+        status: 'warm_restart_required',
+        applyMode: 'warm_restart',
+        affectedPaths: ['/player/actions/0/cooldownMs']
+      }
+    });
+    expect((prepared as { runtimePatch?: unknown }).runtimePatch).toBeUndefined();
+    await expect(readCurrentVersion()).resolves.toEqual(before);
+
+    const pendingCandidatePath = workspace.getLivePendingArtifactPath(projectId, runId, patch.patchId, 'game_dsl.candidate.json');
+    const pendingCandidate = JSON.parse(await readFile(pendingCandidatePath, 'utf8')) as GameDslArtifact;
+    expect(pendingCandidate.player.actions[0]).toMatchObject({ cooldownMs: 225 });
+    expect(pendingCandidate.sourceDsl.player.actions[0]).toMatchObject({ cooldown_ms: 225 });
+
+    const recorded = await service.recordRuntimeApplyResult({
+      projectId,
+      runId,
+      patchId: patch.patchId,
+      report: {
+        artifactKind: 'runtime_apply_report',
+        schemaVersion: 'runtime_apply_report.v1',
+        runId,
+        patchId: patch.patchId,
+        liveUpdatePlanRef: { artifact: `${patch.patchId}.live_update_plan.json`, patchId: patch.patchId },
+        status: 'applied_warm_restart',
+        applyMode: 'warm_restart',
+        runtimeTarget: 'phaser:top_down_shooter',
+        appliedPaths: ['/player/actions/0/cooldownMs'],
+        warnings: [],
+        errors: []
+      }
+    });
+
+    expect(recorded).toMatchObject({ status: 'applied_warm_restart', versionId: expect.stringContaining(patch.patchId) });
+    const patchedDsl = JSON.parse(await readFile(workspace.getLiveArtifactPath(projectId, runId, `${recorded.versionId}.game_dsl.json`), 'utf8')) as GameDslArtifact;
+    expect(patchedDsl.player.actions[0]).toMatchObject({ cooldownMs: 225 });
+    expect(patchedDsl.sourceDsl.player.actions[0]).toMatchObject({ cooldown_ms: 225 });
+    expect(validateGameDslArtifact(patchedDsl).report).toMatchObject({ status: 'valid', errorCount: 0 });
   });
 
   it('validates a side-scrolling pickup kind patch while keeping live edit unsupported', async () => {

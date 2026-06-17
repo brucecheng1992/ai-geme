@@ -50,6 +50,48 @@ describe('LocalWorkspaceService', () => {
     expect(workspace.getRepairReportPath('proj_20260609_153000_abcd', 'run_20260609_153000_0001')).toBe(
       resolve(root, 'data/local-data/repair-reports/proj_20260609_153000_abcd/run_20260609_153000_0001.json')
     );
+    expect(workspace.getSemanticAmendmentDir('proj_20260609_153000_abcd', 'run_20260609_153000_0001', 'amend_20260618_000000_abcd')).toBe(
+      resolve(root, 'data/local-data/model-outputs/proj_20260609_153000_abcd/run_20260609_153000_0001/semantic-amendments/amend_20260618_000000_abcd')
+    );
+    expect(
+      workspace.getSemanticAmendmentArtifactPath(
+        'proj_20260609_153000_abcd',
+        'run_20260609_153000_0001',
+        'amend_20260618_000000_abcd',
+        'proposal.json'
+      )
+    ).toBe(
+      resolve(
+        root,
+        'data/local-data/model-outputs/proj_20260609_153000_abcd/run_20260609_153000_0001/semantic-amendments/amend_20260618_000000_abcd/proposal.json'
+      )
+    );
+    expect(
+      workspace.getSemanticAmendmentReviewArtifactPath(
+        'proj_20260609_153000_abcd',
+        'run_20260609_153000_0001',
+        'amend_20260618_000000_abcd',
+        'preview_state.json'
+      )
+    ).toBe(
+      resolve(
+        root,
+        'data/local-data/model-outputs/proj_20260609_153000_abcd/run_20260609_153000_0001/semantic-amendments/amend_20260618_000000_abcd/review/preview_state.json'
+      )
+    );
+    expect(
+      workspace.getSemanticAmendmentCandidateArtifactPath(
+        'proj_20260609_153000_abcd',
+        'run_20260609_153000_0001',
+        'amend_20260618_000000_abcd',
+        'candidate_dsl.json'
+      )
+    ).toBe(
+      resolve(
+        root,
+        'data/local-data/model-outputs/proj_20260609_153000_abcd/run_20260609_153000_0001/semantic-amendments/amend_20260618_000000_abcd/candidate/candidate_dsl.json'
+      )
+    );
     expect(workspace.getGeneratedProjectDir('proj_20260609_153000_abcd')).toBe(
       resolve(root, 'data/generated-projects/proj_20260609_153000_abcd')
     );
@@ -62,6 +104,25 @@ describe('LocalWorkspaceService', () => {
     expect(() => workspace.getRunDir('run/escape')).toThrow(WorkspacePathError);
     expect(() =>
       workspace.getModelOutputPath('proj_20260609_153000_abcd', 'run_20260609_153000_0001', '../brief.raw.json')
+    ).toThrow(WorkspacePathError);
+    expect(() =>
+      workspace.getSemanticAmendmentArtifactPath('proj_20260609_153000_abcd', 'run_20260609_153000_0001', '../amend_escape', 'proposal.json')
+    ).toThrow(WorkspacePathError);
+    expect(() =>
+      workspace.getSemanticAmendmentReviewArtifactPath(
+        'proj_20260609_153000_abcd',
+        'run_20260609_153000_0001',
+        'amend_20260618_000000_abcd',
+        '../preview_state.json'
+      )
+    ).toThrow(WorkspacePathError);
+    expect(() =>
+      workspace.getSemanticAmendmentCandidateArtifactPath(
+        'proj_20260609_153000_abcd',
+        'run_20260609_153000_0001',
+        'amend_20260618_000000_abcd',
+        '../candidate_dsl.json'
+      )
     ).toThrow(WorkspacePathError);
   });
 

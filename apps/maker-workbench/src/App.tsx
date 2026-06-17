@@ -3,8 +3,23 @@ import { buildSemanticIndex } from '@ai-game-maker/game-dsl';
 
 import { AssetStatusPanel } from './AssetStatusPanel.js';
 import { AssetBindingTraceSummaryPanel, fetchAssetBindingTrace, type AssetBindingTraceView } from './asset-binding-trace-client.js';
-import { BriefTextboxPanel, parseConversationLiveEditCommand, type BriefTextboxMode, type GameConversationMessage } from './features/brief/index.js';
+import { BriefTextboxPanel, type BriefTextboxMode, type GameConversationMessage } from './features/brief/index.js';
 import { PreviewFrame, PreviewStatusBadge, usePreviewRuntimeRefresh } from './features/preview/index.js';
+import {
+  acceptSemanticAmendment,
+  buildSemanticAmendmentRuntimeApplyReport,
+  isPreviewableSemanticAmendment,
+  planSemanticAmendment,
+  previewSemanticAmendment,
+  rejectSemanticAmendment,
+  requiresRuntimeApplyReport,
+  undoSemanticAmendment,
+  type SemanticAmendmentDesignDelta,
+  type SemanticAmendmentPreviewState,
+  type SemanticAmendmentProposalCardAction,
+  type SemanticAmendmentProposalCardView,
+  type SemanticEditProposal
+} from './features/semantic-amendments/index.js';
 import {
   buildLiveEditCapabilityDiagnostics,
   SemanticPatchReviewPanel,
@@ -15,7 +30,6 @@ import {
 import { PromptCoachPanel } from './PromptCoachPanel.js';
 import { QaStatusPanel } from './QaStatusPanel.js';
 import {
-  buildConversationEditableFields,
   buildEditableFields,
   buildLiveObjectTree,
   buildReplacePrepareBody,
@@ -65,6 +79,51 @@ const primaryButtonClass =
   'inline-flex min-h-10 items-center justify-center rounded-lg border border-[#15130f] bg-[#15130f] px-4 text-sm font-extrabold text-[#fffaf0] transition hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-[#2b261d] hover:shadow-[4px_4px_0_#ffb13b] disabled:translate-x-0 disabled:translate-y-0 disabled:border-[#978f82] disabled:bg-[#978f82] disabled:shadow-none';
 const secondaryButtonClass =
   'inline-flex min-h-10 items-center justify-center rounded-lg border border-[#15130f] bg-[#fffef9] px-4 text-sm font-extrabold text-[#15130f] transition hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-[#fff7e8] hover:shadow-[4px_4px_0_#ffb13b] disabled:translate-x-0 disabled:translate-y-0 disabled:border-[#978f82] disabled:text-[#978f82] disabled:shadow-none';
+const previewViewportClass = 'h-[calc(100dvh-11rem)] min-h-[520px] max-lg:h-[clamp(360px,58vh,560px)] max-lg:min-h-0';
+
+type ConversationAction = 'generating' | 'submitting_edit';
+type ConversationInputRecord = {
+  id: string;
+  mode: BriefTextboxMode;
+  body: string;
+  meta: string;
+};
+
+type SemanticAmendmentCardStatus =
+  | 'planned'
+  | 'previewing'
+  | 'ready'
+  | 'unsupported'
+  | 'needs_clarification'
+  | 'accepting'
+  | 'accepted'
+  | 'rejecting'
+  | 'rejected'
+  | 'undoing'
+  | 'undone'
+  | 'failed';
+
+type SemanticAmendmentConversationCard = {
+  id: string;
+  projectId: string;
+  runId: string;
+  proposal: SemanticEditProposal;
+  status: SemanticAmendmentCardStatus;
+  previewState?: SemanticAmendmentPreviewState;
+  message?: string;
+  failureReason?: string;
+};
+
+type PendingSemanticAmendmentRuntimeApply = {
+  cardId: string;
+  projectId: string;
+  runId: string;
+  proposalId: string;
+  previewState: SemanticAmendmentPreviewState;
+  previewInstanceId: string;
+};
+
+const CONVERSATION_INPUT_HISTORY_LIMIT = 24;
 
 function statusToneClass(status: string) {
   const tone = getWorkbenchStatusTone(status);
@@ -125,6 +184,10 @@ export function App() {
   const [liveCurrent, setLiveCurrent] = useState<LiveCurrentResponse | undefined>(undefined);
   const [runtimeReady, setRuntimeReady] = useState(false);
   const [pendingPatchId, setPendingPatchId] = useState<string | null>(null);
+  const [conversationAction, setConversationAction] = useState<ConversationAction | null>(null);
+  const [conversationInputHistory, setConversationInputHistory] = useState<ConversationInputRecord[]>([]);
+  const [semanticAmendmentCards, setSemanticAmendmentCards] = useState<SemanticAmendmentConversationCard[]>([]);
+  const [pendingSemanticAmendmentId, setPendingSemanticAmendmentId] = useState<string | null>(null);
   const [selectedObjectPath, setSelectedObjectPath] = useState('/player');
   const [previewInstanceId, setPreviewInstanceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -133,6 +196,8 @@ export function App() {
   const runtimeReadyRef = useRef(false);
   const runtimeReadyRetryRef = useRef<{ url: string; attempted: boolean } | null>(null);
   const pendingPatchRef = useRef<PreparedDeterministicPatch | null>(null);
+  const pendingSemanticAmendmentRef = useRef<PendingSemanticAmendmentRuntimeApply | null>(null);
+  const conversationInputSequenceRef = useRef(0);
   const previewRefresh = usePreviewRuntimeRefresh();
   const previewRefreshResult = previewRefresh.current;
   const previewRefreshId = previewRefreshResult?.refreshId;
@@ -170,10 +235,6 @@ export function App() {
     () => (liveCurrent ? buildEditableFields(liveCurrent.game_dsl, liveCurrent.live_edit_capabilities, selectedObjectPath) : []),
     [liveCurrent, selectedObjectPath]
   );
-  const conversationEditableFields = useMemo(
-    () => (liveCurrent ? buildConversationEditableFields(liveCurrent.game_dsl, liveCurrent.live_edit_capabilities) : []),
-    [liveCurrent]
-  );
   const liveEditCapabilityDiagnostics = useMemo(
     () =>
       liveCurrent
@@ -186,10 +247,47 @@ export function App() {
   const semanticEditDocument = useMemo(() => liveCurrent?.game_dsl, [liveCurrent]);
   const semanticEditIndex = useMemo(() => (liveCurrent ? buildSemanticIndex(liveCurrent.game_dsl) : undefined), [liveCurrent]);
   const canEditCurrentGame = projectId.trim().length > 0 && runId.trim().length > 0;
+  const conversationActivityLabel =
+    pendingSemanticAmendmentId !== null
+      ? `Applying amendment: ${pendingSemanticAmendmentId}`
+      : pendingPatchId !== null
+      ? `Applying live edit: ${pendingPatchId}`
+      : conversationAction === 'generating'
+        ? 'Generating game'
+        : conversationAction === 'submitting_edit'
+          ? 'Sending edit'
+          : undefined;
+  const conversationBusy = loading || pendingPatchId !== null || pendingSemanticAmendmentId !== null;
+  const agentStatusBody =
+    conversationActivityLabel ??
+    (latestRun !== undefined && !isTerminal
+      ? `Pipeline running: ${latestRun.status}`
+      : projectId.trim().length === 0 || runId.trim().length === 0
+        ? 'Waiting for a game prompt.'
+        : liveEditStatus);
+  const agentStatusMessage: GameConversationMessage = {
+    id: 'agent:status',
+    role: 'system',
+    title: conversationActivityLabel === undefined && (latestRun === undefined || isTerminal) ? 'Agent status' : 'Agent running',
+    body: agentStatusBody,
+    meta: conversationActivityLabel !== undefined || (latestRun !== undefined && !isTerminal) ? 'running' : 'idle',
+    live: true
+  };
   const gameConversationMessages = useMemo<GameConversationMessage[]>(() => {
     const messages: GameConversationMessage[] = [];
     const trimmedIdea = idea.trim();
-    if (trimmedIdea.length > 0) {
+
+    conversationInputHistory.forEach((record) => {
+      messages.push({
+        id: record.id,
+        role: 'user',
+        title: record.mode === 'new_game' ? 'New game prompt' : 'Edit request',
+        body: record.body,
+        meta: record.meta
+      });
+    });
+
+    if (conversationInputHistory.length === 0 && trimmedIdea.length > 0) {
       messages.push({
         id: 'brief:current',
         role: 'user',
@@ -230,7 +328,23 @@ export function App() {
     });
 
     return messages;
-  }, [displayStatus, idea, liveCurrent?.patch_history, projectId, runId, semanticPatchActions.state.history]);
+  }, [conversationInputHistory, displayStatus, idea, liveCurrent?.patch_history, projectId, runId, semanticPatchActions.state.history]);
+  const semanticAmendmentCardViews = useMemo<SemanticAmendmentProposalCardView[]>(
+    () =>
+      semanticAmendmentCards.map((card) =>
+        buildSemanticAmendmentCardView(card, {
+          currentProjectId: projectId,
+          currentRunId: runId,
+          runtimeReady,
+          previewInstanceId,
+          actionDisabled: loading || pendingPatchId !== null || pendingSemanticAmendmentId !== null,
+          onAccept: () => void acceptSemanticAmendmentCard(card.id),
+          onReject: () => void rejectSemanticAmendmentCard(card.id),
+          onUndo: () => void undoSemanticAmendmentCard(card.id)
+        })
+      ),
+    [loading, pendingPatchId, pendingSemanticAmendmentId, previewInstanceId, projectId, runId, runtimeReady, semanticAmendmentCards]
+  );
 
   useEffect(() => {
     if (!projectId || !runId || isTerminal) {
@@ -253,6 +367,13 @@ export function App() {
     if (!projectId || !runId || !previewUrl || previewBlankScreen) {
       return;
     }
+    const hasCurrentRefreshForRun = previewRefreshResult !== undefined && previewRefreshResult.projectId === projectId && previewRefreshResult.runId === runId;
+    if (hasCurrentRefreshForRun && previewRefreshResult.status !== 'failed' && previewRefreshResult.status !== 'waiting_for_build') {
+      return;
+    }
+    if (hasCurrentRefreshForRun && previewRefreshResult.status === 'failed' && data.pipelineArtifactIndex === undefined) {
+      return;
+    }
 
     previewRefresh.requestRefresh(
       { projectId, runId, reason: 'generation_completed', forceQa: true },
@@ -264,7 +385,7 @@ export function App() {
         workbenchOrigin: window.location.origin
       }
     );
-  }, [data.pipelineArtifactIndex, latestRun?.status, previewBlankScreen, previewRefresh.requestRefresh, previewUrl, projectId, runId]);
+  }, [data.pipelineArtifactIndex, latestRun?.status, previewBlankScreen, previewRefresh.requestRefresh, previewRefreshResult, previewUrl, projectId, runId]);
 
   useEffect(() => {
     if (previewRefreshId === undefined || data.qaReport === undefined) {
@@ -315,6 +436,8 @@ export function App() {
     setPreviewInstanceId(null);
     runtimeReadyRetryRef.current = activePreviewUrl && !previewBlankScreen ? { url: activePreviewUrl, attempted: false } : null;
     pendingPatchRef.current = null;
+    pendingSemanticAmendmentRef.current = null;
+    setPendingSemanticAmendmentId(null);
     setLiveEditStatus(activePreviewUrl && !previewBlankScreen ? 'Waiting for runtime' : 'Runtime not connected');
   }, [activePreviewUrl, previewBlankScreen]);
 
@@ -347,12 +470,9 @@ export function App() {
 
       if (data.type === 'AIGAME_RUNTIME_ERROR') {
         const prepared = pendingPatchRef.current;
-        if (!runtimeMessageMatchesPending(data, prepared, runId, previewInstanceId)) {
-          return;
-        }
-        const message = typeof data.message === 'string' ? data.message : 'Runtime bridge error.';
-        setLiveEditStatus(`Runtime error: ${message}`);
-        if (prepared !== null) {
+        if (runtimeMessageMatchesPending(data, prepared, runId, previewInstanceId)) {
+          const message = typeof data.message === 'string' ? data.message : 'Runtime bridge error.';
+          setLiveEditStatus(`Runtime error: ${message}`);
           void recordRuntimePatchResult(prepared, {
             status: 'failed_runtime_apply',
             applyMode: 'none',
@@ -361,7 +481,23 @@ export function App() {
             warnings: [],
             errors: [{ code: 'AIGAME_RUNTIME_ERROR', path: 'runtime', message }]
           });
+          return;
         }
+
+        const pendingSemanticAmendment = pendingSemanticAmendmentRef.current;
+        if (!runtimeMessageMatchesPendingSemantic(data, pendingSemanticAmendment)) {
+          return;
+        }
+        const message = typeof data.message === 'string' ? data.message : 'Runtime bridge error.';
+        setLiveEditStatus(`Runtime error: ${message}`);
+        void recordSemanticAmendmentRuntimeResult(pendingSemanticAmendment, {
+          status: 'failed_runtime_apply',
+          applyMode: 'none',
+          runtimeTarget: 'phaser:top_down_shooter',
+          appliedPaths: [],
+          warnings: [],
+          errors: [{ code: 'AIGAME_RUNTIME_ERROR', path: 'runtime', message }]
+        });
         return;
       }
 
@@ -370,10 +506,15 @@ export function App() {
       }
 
       const prepared = pendingPatchRef.current;
-      if (!runtimeMessageMatchesPending(data, prepared, runId, previewInstanceId)) {
+      if (runtimeMessageMatchesPending(data, prepared, runId, previewInstanceId)) {
+        void recordRuntimePatchResult(prepared, data.result);
         return;
       }
-      void recordRuntimePatchResult(prepared, data.result);
+
+      const pendingSemanticAmendment = pendingSemanticAmendmentRef.current;
+      if (runtimeMessageMatchesPendingSemantic(data, pendingSemanticAmendment)) {
+        void recordSemanticAmendmentRuntimeResult(pendingSemanticAmendment, data.result);
+      }
     };
 
     window.addEventListener('message', handleRuntimeMessage);
@@ -381,18 +522,24 @@ export function App() {
   }, [projectId, runId, previewInstanceId, previewRefresh.markRuntimeLoaded, previewRefreshId]);
 
   async function generateProject() {
-    await runAction(async () => {
-      const created = await requestJson<{ ok: true; project_id: string; run_id: string }>(`${API_BASE}/api/projects/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildGenerateProjectRequest({ idea, language, promptOptimizationSelection }))
+    appendConversationInput('new_game', idea);
+    setConversationAction('generating');
+    try {
+      await runAction(async () => {
+        const created = await requestJson<{ ok: true; project_id: string; run_id: string }>(`${API_BASE}/api/projects/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(buildGenerateProjectRequest({ idea, language, promptOptimizationSelection }))
+        });
+        setProjectId(created.project_id);
+        setRunId(created.run_id);
+        setSemanticEditText('');
+        setBriefMode('edit_current_game');
+        await loadProject(created.project_id, created.run_id);
       });
-      setProjectId(created.project_id);
-      setRunId(created.run_id);
-      setSemanticEditText('');
-      setBriefMode('edit_current_game');
-      await loadProject(created.project_id, created.run_id);
-    });
+    } finally {
+      setConversationAction(null);
+    }
   }
 
   async function loadProject(selectedProjectId = projectId, selectedRunId = runId, options: { silent?: boolean } = {}) {
@@ -592,14 +739,328 @@ export function App() {
     setSemanticEditText(nextText);
   }
 
+  function appendConversationInput(mode: BriefTextboxMode, text: string): void {
+    const body = text.trim();
+    if (body.length === 0) {
+      return;
+    }
+
+    const id = `input:${conversationInputSequenceRef.current}`;
+    conversationInputSequenceRef.current += 1;
+
+    setConversationInputHistory((previous) => [
+      ...previous.slice(-(CONVERSATION_INPUT_HISTORY_LIMIT - 1)),
+      {
+        id,
+        mode,
+        body,
+        meta: mode === 'new_game' ? 'new game' : 'edit'
+      }
+    ]);
+  }
+
+  function createSemanticAmendmentCard(input: {
+    projectId: string;
+    runId: string;
+    proposal: SemanticEditProposal;
+  }): SemanticAmendmentConversationCard {
+    return {
+      id: input.proposal.id,
+      projectId: input.projectId,
+      runId: input.runId,
+      proposal: input.proposal,
+      status: initialSemanticAmendmentCardStatus(input.proposal),
+      message: input.proposal.userMessage
+    };
+  }
+
+  function upsertSemanticAmendmentCard(card: SemanticAmendmentConversationCard): void {
+    setSemanticAmendmentCards((previous) => {
+      const next = previous.filter((item) => item.id !== card.id);
+      return [...next, card].slice(-8);
+    });
+  }
+
+  function updateSemanticAmendmentCard(cardId: string, update: (card: SemanticAmendmentConversationCard) => SemanticAmendmentConversationCard): void {
+    setSemanticAmendmentCards((previous) => previous.map((card) => (card.id === cardId ? update(card) : card)));
+  }
+
+  function setSemanticAmendmentCardStatus(cardId: string, status: SemanticAmendmentCardStatus, message?: string): void {
+    updateSemanticAmendmentCard(cardId, (card) => ({
+      ...card,
+      status,
+      ...(message === undefined ? {} : { message })
+    }));
+  }
+
   async function submitConversationEdit(text: string): Promise<'handled' | 'blocked'> {
-    const parsed = parseConversationLiveEditCommand({ text, fields: conversationEditableFields });
-    if (!parsed.ok) {
-      setError(parsed.message);
+    appendConversationInput('edit_current_game', text);
+    const selectedProjectId = projectId.trim();
+    const selectedRunId = runId.trim();
+    if (selectedProjectId.length === 0 || selectedRunId.length === 0) {
+      setError('Select a project and run before requesting a game amendment.');
       return 'blocked';
     }
 
-    return (await applyLiveEdits(parsed.edits, text)) ? 'handled' : 'blocked';
+    setConversationAction('submitting_edit');
+    setLoading(true);
+    setError(null);
+    try {
+      const planned = await planSemanticAmendment({
+        apiBase: API_BASE,
+        projectId: selectedProjectId,
+        runId: selectedRunId,
+        text,
+        language
+      });
+      const initialCard = createSemanticAmendmentCard({
+        projectId: selectedProjectId,
+        runId: selectedRunId,
+        proposal: planned.proposal
+      });
+      upsertSemanticAmendmentCard(initialCard);
+
+      if (!isPreviewableSemanticAmendment(planned.proposal)) {
+        return 'handled';
+      }
+
+      setSemanticAmendmentCardStatus(planned.proposal.id, 'previewing', planned.proposal.userMessage);
+      const previewed = await previewSemanticAmendment({
+        apiBase: API_BASE,
+        projectId: selectedProjectId,
+        runId: selectedRunId,
+        proposalId: planned.proposal.id
+      });
+      upsertSemanticAmendmentCard({
+        ...initialCard,
+        proposal: previewed.proposal,
+        previewState: previewed.preview_state,
+        status: previewed.preview_state.reviewState === 'previewing' ? 'ready' : 'failed',
+        message: previewed.proposal.userMessage,
+        failureReason: previewed.preview_state.failureReason
+      });
+      return 'handled';
+    } catch (submitError) {
+      const message = submitError instanceof Error ? submitError.message : 'Semantic amendment request failed.';
+      setError(sanitizeWorkbenchErrorMessage(message, 'Semantic amendment request failed.'));
+      return 'blocked';
+    } finally {
+      setLoading(false);
+      setConversationAction(null);
+    }
+  }
+
+  async function acceptSemanticAmendmentCard(cardId: string): Promise<void> {
+    const card = semanticAmendmentCards.find((candidate) => candidate.id === cardId);
+    if (card === undefined) {
+      return;
+    }
+
+    if (requiresRuntimeApplyReport(card.proposal)) {
+      await sendSemanticAmendmentRuntimePatch(card);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSemanticAmendmentCardStatus(card.id, 'accepting', 'Promoting semantic amendment candidate.');
+    try {
+      const accepted = await acceptSemanticAmendment({
+        apiBase: API_BASE,
+        projectId: card.projectId,
+        runId: card.runId,
+        proposalId: card.proposal.id
+      });
+      updateSemanticAmendmentCard(card.id, (current) => ({
+        ...current,
+        proposal: accepted.proposal,
+        status: accepted.proposal.reviewState === 'accepted' ? 'accepted' : 'failed',
+        message: accepted.proposal.userMessage
+      }));
+
+      const activeRunId = accepted.accept_log.candidatePromotionResult?.activeRunId ?? card.runId;
+      if (activeRunId !== runId) {
+        setRunId(activeRunId);
+      }
+      await loadProject(card.projectId, activeRunId);
+    } catch (acceptError) {
+      const message = acceptError instanceof Error ? acceptError.message : 'Semantic amendment accept failed.';
+      updateSemanticAmendmentCard(card.id, (current) => ({ ...current, status: 'ready', failureReason: sanitizeWorkbenchErrorMessage(message) }));
+      setError(sanitizeWorkbenchErrorMessage(message, 'Semantic amendment accept failed.'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function sendSemanticAmendmentRuntimePatch(card: SemanticAmendmentConversationCard): Promise<void> {
+    setLoading(true);
+    setError(null);
+    try {
+      if (pendingPatchRef.current !== null || pendingSemanticAmendmentRef.current !== null) {
+        throw new Error('A live edit patch is already waiting for runtime confirmation.');
+      }
+      if (projectId !== card.projectId || runId !== card.runId) {
+        throw new Error('This proposal was previewed for a different active run. Reload that run before accepting it.');
+      }
+      if (!runtimeReady || previewInstanceId === null) {
+        throw new Error('Preview runtime is not ready for semantic amendment accept.');
+      }
+      if (card.previewState?.preparedLiveEdit === undefined) {
+        throw new Error('Semantic amendment preview did not prepare a runtime patch.');
+      }
+      const prepared = card.previewState.preparedLiveEdit;
+      if ((prepared.apply_mode !== 'hot' && prepared.apply_mode !== 'warm_restart') || prepared.runtime_patch === undefined) {
+        throw new Error(`Semantic amendment preview is not runtime-applicable: ${prepared.apply_mode}.`);
+      }
+      const previewWindow = previewFrameRef.current?.contentWindow;
+      if (previewWindow === undefined || previewWindow === null) {
+        throw new Error('Preview runtime is not available.');
+      }
+
+      pendingSemanticAmendmentRef.current = {
+        cardId: card.id,
+        projectId: card.projectId,
+        runId: card.runId,
+        proposalId: card.proposal.id,
+        previewState: card.previewState,
+        previewInstanceId
+      };
+      setPendingSemanticAmendmentId(card.id);
+      setSemanticAmendmentCardStatus(card.id, 'accepting', `Runtime patch sent: ${prepared.patch_id}`);
+      setLiveEditStatus(`Semantic amendment patch sent: ${prepared.patch_id}`);
+      previewWindow.postMessage(
+        { type: 'AIGAME_APPLY_PATCH', runId: card.runId, patchId: prepared.patch_id, previewInstanceId, runtimePatch: prepared.runtime_patch },
+        '*'
+      );
+    } catch (acceptError) {
+      const message = acceptError instanceof Error ? acceptError.message : 'Semantic amendment runtime accept failed.';
+      if (pendingSemanticAmendmentRef.current?.cardId === card.id) {
+        pendingSemanticAmendmentRef.current = null;
+        setPendingSemanticAmendmentId(null);
+      }
+      updateSemanticAmendmentCard(card.id, (current) => ({ ...current, status: 'ready', failureReason: sanitizeWorkbenchErrorMessage(message) }));
+      setError(sanitizeWorkbenchErrorMessage(message, 'Semantic amendment runtime accept failed.'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function recordSemanticAmendmentRuntimeResult(pending: PendingSemanticAmendmentRuntimeApply, result: RuntimePatchResult): Promise<void> {
+    try {
+      const runtimeApplyReport = buildSemanticAmendmentRuntimeApplyReport(pending.runId, pending.previewState, result);
+      const accepted = await acceptSemanticAmendment({
+        apiBase: API_BASE,
+        projectId: pending.projectId,
+        runId: pending.runId,
+        proposalId: pending.proposalId,
+        runtimeApplyReport
+      });
+      updateSemanticAmendmentCard(pending.cardId, (card) => ({
+        ...card,
+        proposal: accepted.proposal,
+        status: accepted.proposal.reviewState === 'accepted' ? 'accepted' : 'failed',
+        message: accepted.proposal.userMessage,
+        failureReason: accepted.proposal.reviewState === 'accepted' ? undefined : 'Runtime apply did not produce an accepted amendment.'
+      }));
+      const runtimeStatus = accepted.accept_log.runtimeApplyResult?.status ?? runtimeApplyReport.status;
+      const versionId = accepted.accept_log.runtimeApplyResult?.version_id;
+      setLiveEditStatus(`Semantic amendment ${runtimeStatus}${versionId ? ` -> ${versionId}` : ''}`);
+      if (accepted.proposal.reviewState === 'accepted' && pending.previewState.preparedLiveEdit !== undefined) {
+        previewRefresh.requestRefresh(
+          {
+            projectId: pending.projectId,
+            runId: pending.runId,
+            patchId: pending.previewState.preparedLiveEdit.patch_id,
+            reason: 'semantic_patch_applied',
+            forceQa: true
+          },
+          {
+            apiBase: API_BASE,
+            projectPreviewUrl: previewUrl,
+            artifactIndex: data.pipelineArtifactIndex,
+            runStatus: latestRun?.status,
+            workbenchOrigin: window.location.origin
+          }
+        );
+      }
+      await loadProject(pending.projectId, pending.runId, { silent: true });
+    } catch (applyError) {
+      const message = applyError instanceof Error ? applyError.message : 'Semantic amendment runtime result recording failed.';
+      updateSemanticAmendmentCard(pending.cardId, (card) => ({ ...card, status: 'failed', failureReason: sanitizeWorkbenchErrorMessage(message) }));
+      setError(sanitizeWorkbenchErrorMessage(message, 'Semantic amendment runtime result recording failed.'));
+    } finally {
+      pendingSemanticAmendmentRef.current = null;
+      setPendingSemanticAmendmentId(null);
+    }
+  }
+
+  async function rejectSemanticAmendmentCard(cardId: string): Promise<void> {
+    const card = semanticAmendmentCards.find((candidate) => candidate.id === cardId);
+    if (card === undefined) {
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSemanticAmendmentCardStatus(card.id, 'rejecting', 'Rejecting semantic amendment.');
+    try {
+      const rejected = await rejectSemanticAmendment({
+        apiBase: API_BASE,
+        projectId: card.projectId,
+        runId: card.runId,
+        proposalId: card.proposal.id,
+        reason: 'Rejected from Workbench proposal card.'
+      });
+      updateSemanticAmendmentCard(card.id, (current) => ({
+        ...current,
+        proposal: rejected.proposal,
+        status: 'rejected',
+        message: rejected.proposal.userMessage
+      }));
+    } catch (rejectError) {
+      const message = rejectError instanceof Error ? rejectError.message : 'Semantic amendment reject failed.';
+      updateSemanticAmendmentCard(card.id, (current) => ({ ...current, status: 'failed', failureReason: sanitizeWorkbenchErrorMessage(message) }));
+      setError(sanitizeWorkbenchErrorMessage(message, 'Semantic amendment reject failed.'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function undoSemanticAmendmentCard(cardId: string): Promise<void> {
+    const card = semanticAmendmentCards.find((candidate) => candidate.id === cardId);
+    if (card === undefined) {
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSemanticAmendmentCardStatus(card.id, 'undoing', 'Restoring semantic amendment checkpoint.');
+    try {
+      const undone = await undoSemanticAmendment({
+        apiBase: API_BASE,
+        projectId: card.projectId,
+        runId: card.runId,
+        proposalId: card.proposal.id,
+        reason: 'Undo from Workbench proposal card.'
+      });
+      updateSemanticAmendmentCard(card.id, (current) => ({
+        ...current,
+        proposal: undone.proposal,
+        status: 'undone',
+        message: undone.proposal.userMessage
+      }));
+      const restoredRunId = undone.undo_log.restoredRunId ?? card.runId;
+      if (restoredRunId !== runId) {
+        setRunId(restoredRunId);
+      }
+      await loadProject(card.projectId, restoredRunId);
+    } catch (undoError) {
+      const message = undoError instanceof Error ? undoError.message : 'Semantic amendment undo failed.';
+      updateSemanticAmendmentCard(card.id, (current) => ({ ...current, status: 'accepted', failureReason: sanitizeWorkbenchErrorMessage(message) }));
+      setError(sanitizeWorkbenchErrorMessage(message, 'Semantic amendment undo failed.'));
+    } finally {
+      setLoading(false);
+    }
   }
 
   function openSemanticPatchReview(handoff: SemanticPatchReviewInput) {
@@ -654,16 +1115,21 @@ export function App() {
         </div>
       </header>
 
-      <section className="grid grid-cols-[320px_minmax(0,1fr)] gap-5 p-5 max-lg:grid-cols-1 max-sm:p-3">
-        <aside className="sticky top-24 flex flex-col gap-4 self-start max-lg:static">
+      <section className="grid min-h-[calc(100dvh-82px)] grid-cols-[minmax(340px,420px)_minmax(0,1fr)] border-b border-[#ead9ba] max-lg:grid-cols-1">
+        <aside className="sticky top-[82px] flex h-[calc(100dvh-82px)] min-h-0 flex-col self-start border-r border-[#ead9ba] bg-[#fffaf0]/96 p-5 shadow-[12px_0_30px_rgba(49,43,34,0.08)] max-lg:static max-lg:h-[calc(100dvh-7rem)] max-lg:min-h-[460px] max-lg:border-b max-lg:border-r-0 max-sm:h-[calc(100dvh-8rem)] max-sm:min-h-[420px] max-sm:p-3">
           <BriefTextboxPanel
+            agentStatusMessage={agentStatusMessage}
+            className="h-full min-h-0"
+            amendmentCards={semanticAmendmentCardViews}
             conversationMessages={gameConversationMessages}
             document={semanticEditDocument}
             language={language}
-            loading={loading}
+            loading={conversationBusy}
+            activityLabel={conversationActivityLabel}
             mode={briefMode}
             onLanguageChange={setLanguage}
             onPreviewHandoff={openSemanticPatchReview}
+            onSubmitNewGame={() => void generateProject()}
             onSubmitEdit={submitConversationEdit}
             onTextChange={updateBriefText}
             primaryAction={
@@ -676,43 +1142,9 @@ export function App() {
             semanticIndex={semanticEditIndex}
             value={briefMode === 'new_game' ? idea : semanticEditText}
           />
-
-          <section className={panelClass}>
-            <div className={panelHeadingClass}>
-              <div>
-                <p className={eyebrowClass}>Run</p>
-                <h2 className={headingClass}>Session</h2>
-              </div>
-            </div>
-            <label className="mb-3 grid gap-2 text-sm font-bold text-[#69645d]">
-              Project ID
-              <input className={fieldClass} value={projectId} onChange={(event) => updateProjectId(event.target.value)} />
-            </label>
-            <label className="mb-0 grid gap-2 text-sm font-bold text-[#69645d]">
-              Run ID
-              <input className={fieldClass} value={runId} onChange={(event) => updateRunId(event.target.value)} />
-            </label>
-          </section>
-
-          <section className={panelClass}>
-            <div className={panelHeadingClass}>
-              <div>
-                <p className={eyebrowClass}>Pipeline</p>
-                <h2 className={headingClass}>Timeline</h2>
-              </div>
-            </div>
-            <ol className="m-0 grid list-none gap-2.5 p-0">
-              {timelineSteps.map((step) => (
-                <li className="grid grid-cols-[78px_1fr] items-center gap-2.5 text-sm font-bold text-[#302b24]" key={step.name}>
-                  <span className={`rounded-full border px-2 py-1 text-center text-[11px] font-black ${stepStatusClass(step.status)}`}>{step.status}</span>
-                  {step.name}
-                </li>
-              ))}
-            </ol>
-          </section>
         </aside>
 
-        <section className="flex min-w-0 flex-col gap-4">
+        <section className="flex min-w-0 flex-col gap-4 p-5 max-sm:p-3">
           {error ? (
             <div className="sticky top-24 z-[5] rounded-lg border border-[#f09a8f] bg-[#ffe2dc] px-4 py-3 font-extrabold text-[#c93d35] shadow-[0_8px_22px_rgba(201,61,53,0.16)]">
               {error}
@@ -736,26 +1168,60 @@ export function App() {
               </div>
             </div>
             {previewBlankScreen ? (
-              <div className="flex h-[clamp(360px,50vh,560px)] flex-col items-center justify-center gap-2 bg-[#2d1114] p-6 text-center text-[#ffd8ce]">
+              <div className={`flex ${previewViewportClass} flex-col items-center justify-center gap-2 bg-[#2d1114] p-6 text-center text-[#ffd8ce]`}>
                 <strong>PREVIEW_BLANK_SCREEN</strong>
                 <span className="max-w-xl text-[#ffc1b5]">Visual QA failed: the preview returned a blank rendered frame, so this run is not PLAYABLE.</span>
               </div>
             ) : activePreviewUrl ? (
               <div
-                className="h-[clamp(360px,50vh,560px)] w-full outline-none focus-visible:ring-4 focus-visible:ring-[#ffb13b]"
+                className={`${previewViewportClass} w-full outline-none focus-visible:ring-4 focus-visible:ring-[#ffb13b]`}
                 ref={previewHostRef}
                 tabIndex={0}
               >
                 <PreviewFrame ref={previewFrameRef} src={activePreviewUrl} onLoad={handlePreviewFrameLoad} />
               </div>
             ) : (
-              <div className="flex h-[clamp(360px,50vh,560px)] items-center justify-center text-[#b8cadd]">
+              <div className={`flex ${previewViewportClass} items-center justify-center text-[#b8cadd]`}>
                 {previewRefreshResult?.status === 'waiting_for_build' ? 'Waiting for generated artifact' : 'No preview'}
               </div>
             )}
           </section>
 
           <section className="grid grid-cols-[minmax(260px,0.95fr)_minmax(320px,1.05fr)] gap-4 max-lg:grid-cols-1">
+            <section className={panelClass}>
+              <div className={panelHeadingClass}>
+                <div>
+                  <p className={eyebrowClass}>Run</p>
+                  <h2 className={headingClass}>Session</h2>
+                </div>
+              </div>
+              <label className="mb-3 grid gap-2 text-sm font-bold text-[#69645d]">
+                Project ID
+                <input className={fieldClass} value={projectId} onChange={(event) => updateProjectId(event.target.value)} />
+              </label>
+              <label className="mb-0 grid gap-2 text-sm font-bold text-[#69645d]">
+                Run ID
+                <input className={fieldClass} value={runId} onChange={(event) => updateRunId(event.target.value)} />
+              </label>
+            </section>
+
+            <section className={panelClass}>
+              <div className={panelHeadingClass}>
+                <div>
+                  <p className={eyebrowClass}>Pipeline</p>
+                  <h2 className={headingClass}>Timeline</h2>
+                </div>
+              </div>
+              <ol className="m-0 grid list-none gap-2.5 p-0">
+                {timelineSteps.map((step) => (
+                  <li className="grid grid-cols-[78px_1fr] items-center gap-2.5 text-sm font-bold text-[#302b24]" key={step.name}>
+                    <span className={`rounded-full border px-2 py-1 text-center text-[11px] font-black ${stepStatusClass(step.status)}`}>{step.status}</span>
+                    {step.name}
+                  </li>
+                ))}
+              </ol>
+            </section>
+
             <QaStatusPanel report={data.qaReport} />
 
             <PromptCoachPanel
@@ -950,6 +1416,257 @@ export function App() {
   );
 }
 
+function initialSemanticAmendmentCardStatus(proposal: SemanticEditProposal): SemanticAmendmentCardStatus {
+  if (proposal.execution.mode === 'unsupported_capability') {
+    return 'unsupported';
+  }
+  if (proposal.execution.mode === 'needs_clarification') {
+    return 'needs_clarification';
+  }
+  return 'planned';
+}
+
+function buildSemanticAmendmentCardView(
+  card: SemanticAmendmentConversationCard,
+  context: {
+    currentProjectId: string;
+    currentRunId: string;
+    runtimeReady: boolean;
+    previewInstanceId: string | null;
+    actionDisabled: boolean;
+    onAccept: () => void;
+    onReject: () => void;
+    onUndo: () => void;
+  }
+): SemanticAmendmentProposalCardView {
+  const proposal = card.proposal;
+  return {
+    id: card.id,
+    title: proposal.understanding.understood ? 'Semantic amendment proposal' : 'Clarification needed',
+    summary: card.message ?? proposal.userMessage,
+    statusLabel: semanticAmendmentStatusLabel(card.status),
+    statusTone: semanticAmendmentStatusTone(card.status),
+    modeLabel: semanticAmendmentModeLabel(proposal.execution.mode),
+    reviewState: proposal.reviewState,
+    detailRows: buildSemanticAmendmentDetailRows(card, context),
+    plannedChanges: buildSemanticAmendmentPlannedChanges(proposal),
+    missingCapabilities: proposal.execution.missingCapabilities,
+    rejectedUnsafeFallbacks: proposal.execution.rejectedUnsafeFallbacks,
+    candidateRunId: card.previewState?.candidatePreview?.candidateRunId ?? proposal.candidate?.candidateRunId,
+    failureReason: card.failureReason ?? card.previewState?.failureReason,
+    actions: buildSemanticAmendmentActions(card, context)
+  };
+}
+
+function buildSemanticAmendmentActions(
+  card: SemanticAmendmentConversationCard,
+  context: {
+    currentProjectId: string;
+    currentRunId: string;
+    runtimeReady: boolean;
+    previewInstanceId: string | null;
+    actionDisabled: boolean;
+    onAccept: () => void;
+    onReject: () => void;
+    onUndo: () => void;
+  }
+): SemanticAmendmentProposalCardAction[] {
+  const actions: SemanticAmendmentProposalCardAction[] = [];
+  const runtimeAcceptBlocked =
+    requiresRuntimeApplyReport(card.proposal) &&
+    (context.currentProjectId !== card.projectId || context.currentRunId !== card.runId || !context.runtimeReady || context.previewInstanceId === null);
+
+  if (card.status === 'ready') {
+    actions.push({
+      id: `${card.id}:accept`,
+      label: 'Accept',
+      tone: 'primary',
+      disabled: context.actionDisabled || runtimeAcceptBlocked,
+      onClick: context.onAccept
+    });
+  }
+
+  if (['planned', 'ready', 'unsupported', 'needs_clarification', 'failed'].includes(card.status)) {
+    actions.push({
+      id: `${card.id}:reject`,
+      label: 'Reject',
+      tone: 'danger',
+      disabled: context.actionDisabled,
+      onClick: context.onReject
+    });
+  }
+
+  if (card.status === 'accepted') {
+    actions.push({
+      id: `${card.id}:undo`,
+      label: 'Undo',
+      tone: 'secondary',
+      disabled: context.actionDisabled,
+      onClick: context.onUndo
+    });
+  }
+
+  return actions;
+}
+
+function buildSemanticAmendmentDetailRows(
+  card: SemanticAmendmentConversationCard,
+  context: { currentProjectId: string; currentRunId: string; runtimeReady: boolean; previewInstanceId: string | null }
+): Array<{ label: string; value: string }> {
+  const proposal = card.proposal;
+  const rows = [
+    { label: 'Domains', value: proposal.understanding.affectedDomains.join(', ') || 'none' },
+    { label: 'Confidence', value: `${Math.round(proposal.understanding.confidence * 100)}%` }
+  ];
+
+  if (proposal.execution.reason.trim().length > 0) {
+    rows.push({ label: 'Reason', value: proposal.execution.reason });
+  }
+
+  if (card.previewState?.preparedLiveEdit !== undefined) {
+    rows.push({
+      label: 'Preview',
+      value: `${card.previewState.preparedLiveEdit.status} / ${card.previewState.preparedLiveEdit.apply_mode}`
+    });
+  }
+
+  if (card.previewState?.candidatePreview !== undefined) {
+    rows.push({
+      label: 'QA',
+      value: `${card.previewState.candidatePreview.previewAvailable ? 'candidate ready' : 'candidate unavailable'} / ${card.previewState.candidatePreview.qaStatus}`
+    });
+  }
+
+  if (requiresRuntimeApplyReport(proposal)) {
+    rows.push({
+      label: 'Runtime',
+      value:
+        context.currentProjectId === card.projectId && context.currentRunId === card.runId
+          ? context.runtimeReady && context.previewInstanceId !== null
+            ? 'ready'
+            : 'waiting'
+          : 'active run differs'
+    });
+  }
+
+  return rows;
+}
+
+function buildSemanticAmendmentPlannedChanges(proposal: SemanticEditProposal): string[] {
+  const changes = [
+    ...proposal.understanding.designDeltas.flatMap(formatSemanticDesignDelta),
+    ...(proposal.candidate?.expectedChangeSummary ?? []),
+    ...(proposal.candidate?.candidateBrief === undefined ? [] : [proposal.candidate.candidateBrief.amendmentSummary])
+  ];
+  const unique = uniqueNonEmpty(changes);
+  return unique.length > 0 ? unique : [proposal.understanding.summary];
+}
+
+function formatSemanticDesignDelta(delta: SemanticAmendmentDesignDelta): string[] {
+  if (delta.kind === 'tune_stat') {
+    return [`${delta.targetDomain ?? 'target'}.${delta.stat ?? 'stat'} ${delta.direction ?? 'change'}${formatSemanticAmount(delta.amount)}`];
+  }
+  if (delta.kind === 'modify_pacing') {
+    return uniqueNonEmpty([
+      delta.description ?? `pacing ${delta.direction ?? 'change'}`,
+      ...(delta.inferredDeltas ?? []).flatMap(formatSemanticDesignDelta)
+    ]);
+  }
+  if (delta.kind === 'reskin_or_theme') {
+    return [`${delta.target ?? 'target'} theme: ${delta.themeDescription ?? 'theme update'}`];
+  }
+  if (delta.kind === 'add_mechanic') {
+    return [`${delta.mechanic ?? 'mechanic'}: ${delta.description ?? 'add mechanic'}`];
+  }
+  if (delta.kind === 'add_feedback') {
+    return [`${delta.event ?? 'event'} feedback: ${delta.feedback ?? delta.description ?? 'feedback'}`];
+  }
+  if (delta.kind === 'change_genre_or_perspective') {
+    return [`genre: ${delta.targetGenre ?? delta.description ?? 'change perspective'}`];
+  }
+  if (delta.kind === 'open_design_request') {
+    return uniqueNonEmpty([delta.description, ...(delta.inferredGoals ?? [])]);
+  }
+  return [delta.description ?? delta.kind];
+}
+
+function formatSemanticAmount(amount: number | string | undefined): string {
+  return amount === undefined ? '' : ` ${String(amount)}`;
+}
+
+function semanticAmendmentModeLabel(mode: SemanticEditProposal['execution']['mode']): string {
+  if (mode === 'hot_runtime_patch') {
+    return 'hot runtime patch';
+  }
+  if (mode === 'dsl_patch_warm_restart') {
+    return 'DSL patch + warm restart';
+  }
+  if (mode === 'candidate_regeneration') {
+    return 'candidate regeneration';
+  }
+  if (mode === 'unsupported_capability') {
+    return 'unsupported capability';
+  }
+  return 'needs clarification';
+}
+
+function semanticAmendmentStatusLabel(status: SemanticAmendmentCardStatus): string {
+  if (status === 'planned') {
+    return 'planned';
+  }
+  if (status === 'previewing') {
+    return 'previewing';
+  }
+  if (status === 'ready') {
+    return 'preview ready';
+  }
+  if (status === 'unsupported') {
+    return 'unsupported';
+  }
+  if (status === 'needs_clarification') {
+    return 'clarify';
+  }
+  if (status === 'accepting') {
+    return 'accepting';
+  }
+  if (status === 'accepted') {
+    return 'accepted';
+  }
+  if (status === 'rejecting') {
+    return 'rejecting';
+  }
+  if (status === 'rejected') {
+    return 'rejected';
+  }
+  if (status === 'undoing') {
+    return 'undoing';
+  }
+  if (status === 'undone') {
+    return 'undone';
+  }
+  return 'failed';
+}
+
+function semanticAmendmentStatusTone(status: SemanticAmendmentCardStatus): SemanticAmendmentProposalCardView['statusTone'] {
+  if (status === 'ready') {
+    return 'ready';
+  }
+  if (status === 'planned' || status === 'previewing' || status === 'accepting' || status === 'rejecting' || status === 'undoing') {
+    return 'pending';
+  }
+  if (status === 'unsupported' || status === 'needs_clarification' || status === 'rejected' || status === 'undone') {
+    return 'blocked';
+  }
+  if (status === 'accepted') {
+    return 'accepted';
+  }
+  return 'failed';
+}
+
+function uniqueNonEmpty(values: Array<string | undefined>): string[] {
+  return [...new Set(values.map((value) => value?.trim()).filter((value): value is string => value !== undefined && value.length > 0))];
+}
+
 function readInspectorFieldValue(field: LiveEditableField, input: HTMLInputElement | null | undefined): number | string {
   const rawValue = input?.value ?? field.value ?? '';
   return field.valueKind === 'label' ? String(rawValue).trim() : Number(rawValue);
@@ -993,6 +1710,16 @@ function runtimeMessageMatchesPending(
     return false;
   }
   return data.runId === runId && data.patchId === prepared.patch_id && data.previewInstanceId === previewInstanceId;
+}
+
+function runtimeMessageMatchesPendingSemantic(
+  data: { runId?: unknown; patchId?: unknown; previewInstanceId?: unknown },
+  pending: PendingSemanticAmendmentRuntimeApply | null
+): pending is PendingSemanticAmendmentRuntimeApply {
+  if (pending === null || pending.previewState.preparedLiveEdit === undefined) {
+    return false;
+  }
+  return data.runId === pending.runId && data.patchId === pending.previewState.preparedLiveEdit.patch_id && data.previewInstanceId === pending.previewInstanceId;
 }
 
 function isRuntimePatchResult(value: unknown): value is RuntimePatchResult {

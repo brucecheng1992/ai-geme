@@ -18,10 +18,12 @@ import { PromptCoachService } from './prompt-coach.service.js';
 import { ProjectsController } from './projects.controller.js';
 import { ProjectsService } from './projects.service.js';
 import { RunStoreService } from './run-store.service.js';
+import { SemanticAmendmentController } from './semantic-amendment.controller.js';
+import { SemanticAmendmentService } from './semantic-amendment.service.js';
 
 @Module({
   imports: [LocalWorkspaceModule, ModelProviderModule, CompilerModule, QaModule],
-  controllers: [ProjectsController],
+  controllers: [ProjectsController, SemanticAmendmentController],
   providers: [
     {
       provide: ProjectStoreService,
@@ -54,6 +56,12 @@ import { RunStoreService } from './run-store.service.js';
         });
       },
       inject: [LocalWorkspaceService]
+    },
+    {
+      provide: SemanticAmendmentService,
+      useFactory: (projectStore: ProjectStoreService, runStore: RunStoreService, workspace: LocalWorkspaceService, liveEdit: DslLiveEditService) =>
+        new SemanticAmendmentService(projectStore, runStore, workspace, liveEdit),
+      inject: [ProjectStoreService, RunStoreService, LocalWorkspaceService, DslLiveEditService]
     },
     {
       provide: ProjectsService,
@@ -89,6 +97,6 @@ import { RunStoreService } from './run-store.service.js';
       ]
     }
   ],
-  exports: [ProjectStoreService, RunStoreService, ProjectsService, GenerationPipelineService, DslLiveEditService, PromptCoachService]
+  exports: [ProjectStoreService, RunStoreService, ProjectsService, GenerationPipelineService, DslLiveEditService, PromptCoachService, SemanticAmendmentService]
 })
 export class ProjectsModule {}

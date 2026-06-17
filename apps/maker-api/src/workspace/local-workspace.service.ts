@@ -133,6 +133,55 @@ export class LocalWorkspaceService {
     return this.getLiveArtifactPath(projectId, runId, 'edit_audit_log.jsonl');
   }
 
+  getSemanticAmendmentDir(projectId: string, runId: string, proposalId: string): string {
+    return this.resolveInsideWorkspace(
+      LOCAL_DATA_DIR,
+      LOCAL_DATA_SUBDIRS.modelOutputs,
+      this.assertSafeSegment(projectId, 'projectId'),
+      this.assertSafeSegment(runId, 'runId'),
+      'semantic-amendments',
+      this.assertSafeSegment(proposalId, 'proposalId')
+    );
+  }
+
+  getSemanticAmendmentArtifactPath(projectId: string, runId: string, proposalId: string, name: string): string {
+    return this.resolveInsideWorkspace(
+      LOCAL_DATA_DIR,
+      LOCAL_DATA_SUBDIRS.modelOutputs,
+      this.assertSafeSegment(projectId, 'projectId'),
+      this.assertSafeSegment(runId, 'runId'),
+      'semantic-amendments',
+      this.assertSafeSegment(proposalId, 'proposalId'),
+      this.assertSafeFileName(name, 'name')
+    );
+  }
+
+  getSemanticAmendmentReviewArtifactPath(projectId: string, runId: string, proposalId: string, name: string): string {
+    return this.resolveInsideWorkspace(
+      LOCAL_DATA_DIR,
+      LOCAL_DATA_SUBDIRS.modelOutputs,
+      this.assertSafeSegment(projectId, 'projectId'),
+      this.assertSafeSegment(runId, 'runId'),
+      'semantic-amendments',
+      this.assertSafeSegment(proposalId, 'proposalId'),
+      'review',
+      this.assertSafeFileName(name, 'name')
+    );
+  }
+
+  getSemanticAmendmentCandidateArtifactPath(projectId: string, runId: string, proposalId: string, name: string): string {
+    return this.resolveInsideWorkspace(
+      LOCAL_DATA_DIR,
+      LOCAL_DATA_SUBDIRS.modelOutputs,
+      this.assertSafeSegment(projectId, 'projectId'),
+      this.assertSafeSegment(runId, 'runId'),
+      'semantic-amendments',
+      this.assertSafeSegment(proposalId, 'proposalId'),
+      'candidate',
+      this.assertSafeFileName(name, 'name')
+    );
+  }
+
   getLiveCurrentVersionPath(projectId: string, runId: string): string {
     return this.getLiveArtifactPath(projectId, runId, 'current_version.json');
   }
