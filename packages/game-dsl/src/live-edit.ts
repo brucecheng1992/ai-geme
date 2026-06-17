@@ -786,18 +786,27 @@ function applyWaveCountPatch(artifact: GameDslArtifact, path: string, value: unk
   }
 
   wave.count = value;
+  const sourceSpawn = artifact.sourceDsl.level?.spawns.find((spawn) => spawn.id === wave.id);
+  if (sourceSpawn !== undefined) {
+    sourceSpawn.count = value;
+  }
   const sourceEnemy = wave.enemyTypeRef === undefined ? undefined : artifact.sourceDsl.entities.find((entity) => entity.id === wave.enemyTypeRef);
   if (sourceEnemy !== undefined && sourceEnemy.kind === 'enemy') {
     sourceEnemy.count = value;
   }
-  if (artifact.winLose.win === 'enemy_cleared') {
-    artifact.winLose.target = value;
-  }
-  if (artifact.sourceDsl.objectives.win.type === 'enemy_cleared') {
-    artifact.sourceDsl.objectives.win.target = value;
-  }
+  syncEnemyClearedTargetWithWaveCounts(artifact);
 
   return true;
+}
+
+function syncEnemyClearedTargetWithWaveCounts(artifact: GameDslArtifact): void {
+  const target = Object.values(artifact.level.waves).reduce((total, wave) => total + (wave.count ?? 0), 0);
+  if (artifact.winLose.win === 'enemy_cleared') {
+    artifact.winLose.target = target;
+  }
+  if (artifact.sourceDsl.objectives.win.type === 'enemy_cleared') {
+    artifact.sourceDsl.objectives.win.target = target;
+  }
 }
 
 function applyWorldWidthPatch(artifact: GameDslArtifact, path: string, value: unknown): boolean {

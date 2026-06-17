@@ -84,6 +84,36 @@ const FIELD_KEYWORDS: FieldKeywordGroup[] = [
     clamp: (value) => clampInteger(value, 1, 100)
   }
 ];
+const NON_COUNT_NUMERIC_KEYWORDS = [
+  'speed',
+  '速度',
+  '移速',
+  '更快',
+  '变快',
+  '跑快',
+  '慢一点',
+  '减速',
+  'health',
+  'hp',
+  'life',
+  '血量',
+  '生命',
+  '生命值',
+  '耐打',
+  'damage',
+  '攻击',
+  '伤害',
+  '威力',
+  '火力',
+  '更强',
+  'scale',
+  'size',
+  '缩放',
+  '大小',
+  '体型',
+  '变大',
+  '变小'
+];
 
 const INCREASE_KEYWORDS = [
   'increase',
@@ -155,19 +185,19 @@ export function parseConversationLiveEditCommand(input: { text: string; fields: 
       if (!parsed.ok) {
         return parsed;
       }
-      edits.push(parsed.edit);
+      edits.push(...parsed.edits);
     }
     return success(edits);
   }
 
   const parsed = parseNumericEdit(normalized, enabledFields);
-  return parsed.ok ? success([parsed.edit]) : parsed;
+  return parsed.ok ? success(parsed.edits) : parsed;
 }
 
 function parseNumericEdit(
   normalized: string,
   enabledFields: LiveEditableField[]
-): { ok: true; edit: ConversationLiveEdit } | ConversationLiveEditParseFailure {
+): { ok: true; edits: ConversationLiveEdit[] } | ConversationLiveEditParseFailure {
   const numericFields = enabledFields.filter((field) => field.valueKind === 'number');
   const scored = numericFields
     .map((field) => ({ field, score: scoreField(field, normalized) }))
@@ -178,6 +208,10 @@ function parseNumericEdit(
     return unsupportedFailure(buildUnknownLiveEditIntentDetails({ fields: enabledFields, message: '没有找到这句话对应的可编辑游戏字段。' }));
   }
   if (scored.length > 1 && scored[0]!.score === scored[1]!.score) {
+    const aggregateEdits = buildAggregateNumericEdits(scored, normalized);
+    if (aggregateEdits !== undefined) {
+      return { ok: true, edits: aggregateEdits };
+    }
     return { ok: false, reason: 'ambiguous_field', message: '这句话同时匹配了多个字段，请补充对象或属性。' };
   }
 
@@ -194,11 +228,58 @@ function parseNumericEdit(
 
   return {
     ok: true,
-    edit: {
-      field,
-      value,
-      summary: `${field.label}: ${field.value ?? 'unknown'} -> ${value}`
+    edits: [buildConversationEdit(field, value)]
+  };
+}
+
+function buildAggregateNumericEdits(scored: Array<{ field: LiveEditableField; score: number }>, normalized: string): ConversationLiveEdit[] | undefined {
+  if (!isEnemyCountAggregateIntent(normalized)) {
+    return undefined;
+  }
+
+  const topScore = scored[0]?.score;
+  const topFields = scored.filter((entry) => entry.score === topScore).map((entry) => entry.field);
+  const waveCountFields = topFields.filter(isWaveCountField);
+  if (waveCountFields.length === 0) {
+    return undefined;
+  }
+
+  const change = parseNumericChange(normalized);
+  if (change === undefined) {
+    return undefined;
+  }
+
+  const edits: ConversationLiveEdit[] = [];
+  for (const field of waveCountFields) {
+    const value = resolveNextValue(field, change);
+    if (value === undefined) {
+      return undefined;
     }
+    edits.push(buildConversationEdit(field, value));
+  }
+  return edits;
+}
+
+function isWaveCountField(field: LiveEditableField): boolean {
+  return field.path.includes('/level/waves/') && field.path.endsWith('/count');
+}
+
+function isEnemyCountAggregateIntent(normalized: string): boolean {
+  const hasEnemySubject = ['enemy', 'enemies', '敌人', '怪物', '外星人', 'alien'].some((keyword) => normalized.includes(keyword));
+  const hasCountIntent = ['count', 'number', 'amount', 'wave', 'more enemies', '敌人数量', '敌人个数', '数量', '个数', '波次', '更多敌人', '多一点敌人'].some((keyword) =>
+    normalized.includes(keyword)
+  );
+  const hasAddEnemyIntent = hasEnemySubject && INCREASE_KEYWORDS.some((keyword) => normalized.includes(keyword));
+  const hasExplicitNonCountProperty = NON_COUNT_NUMERIC_KEYWORDS.some((keyword) => normalized.includes(normalizeText(keyword)));
+
+  return (hasCountIntent || hasAddEnemyIntent) && !hasExplicitNonCountProperty;
+}
+
+function buildConversationEdit(field: LiveEditableField, value: number | string): ConversationLiveEdit {
+  return {
+    field,
+    value,
+    summary: `${field.label}: ${field.value ?? 'unknown'} -> ${value}`
   };
 }
 

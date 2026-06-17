@@ -160,6 +160,62 @@ describe('DSL live edit pipeline', () => {
     });
   });
 
+  it('prepares side-scrolling multi-wave count patches with source DSL spawns kept in sync', async () => {
+    const sideRunId = `${runId}_side_wave_count`;
+    const rawDsl = RawGameDslSchema.parse(createSideScrollingRunAndGunRawDsl());
+    rawDsl.winLose = { ...(rawDsl.winLose ?? { lose: 'player_health_zero' }), win: 'enemy_cleared' };
+    rawDsl.objectives.win = { type: 'enemy_cleared', target: 8 };
+    const sideScrolling = buildGameDslArtifact({
+      rawDsl,
+      runId: sideRunId,
+      intentPlan: { normalizedGenre: 'side_scrolling_run_and_gun', matchedAlias: '横版跑枪' }
+    });
+    await service.initializeLiveVersion({ projectId, runId: sideRunId, artifact: sideScrolling });
+    const patch = DslPatchV1Schema.parse({
+      artifactKind: 'dsl_patch',
+      schemaVersion: 'dsl_patch.v1',
+      patchId: 'patch_side_wave_count',
+      runId: sideRunId,
+      baseDslId: sideScrolling.dslId,
+      baseVersionId: 'v_initial',
+      source: 'workbench',
+      intent: '增加敌人数量',
+      ops: [
+        { op: 'replace', path: '/level/waves/spawn_intro_drone/count', value: 4 },
+        { op: 'replace', path: '/level/waves/spawn_bridge_drone/count', value: 6 }
+      ]
+    });
+
+    const prepared = await service.prepareLiveEditPatch({ projectId, runId: sideRunId, patch });
+
+    expect(prepared).toMatchObject({
+      status: 'warm_restart_required',
+      applyMode: 'warm_restart',
+      validationReport: { status: 'valid', errorCount: 0 },
+      runtimePatch: {
+        level: {
+          waves: {
+            spawn_intro_drone: { count: 4 },
+            spawn_bridge_drone: { count: 6 }
+          }
+        }
+      }
+    });
+    const pendingCandidatePath = workspace.getLivePendingArtifactPath(projectId, sideRunId, patch.patchId, 'game_dsl.candidate.json');
+    const pendingCandidate = JSON.parse(await readFile(pendingCandidatePath, 'utf8')) as GameDslArtifact;
+    expect(pendingCandidate.level.waves.spawn_intro_drone.count).toBe(4);
+    expect(pendingCandidate.level.waves.spawn_bridge_drone.count).toBe(6);
+    expect(pendingCandidate.winLose).toMatchObject({ win: 'enemy_cleared', target: 10 });
+    expect(pendingCandidate.sourceDsl.objectives.win).toMatchObject({ type: 'enemy_cleared', target: 10 });
+    expect(pendingCandidate.sourceDsl.level?.spawns).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'spawn_intro_drone', count: 4 }),
+        expect.objectContaining({ id: 'spawn_bridge_drone', count: 6 })
+      ])
+    );
+    expect(validateGameDslArtifact(pendingCandidate).report).toMatchObject({ status: 'valid', errorCount: 0 });
+  });
+
   it('applies a valid hot patch after runtime confirmation, emits artifacts, and records patch history', async () => {
     const patch = makePatch([
       { op: 'replace', path: '/player/render/scale', value: 1.4 },
