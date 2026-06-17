@@ -7,6 +7,8 @@ export const SEMANTIC_EDIT_INTENT_KINDS = [
   'bind_asset',
   'adjust_camera',
   'change_physics',
+  'configure_feedback',
+  'configure_boss',
   'add_entity',
   'remove_entity',
   'modify_rule'

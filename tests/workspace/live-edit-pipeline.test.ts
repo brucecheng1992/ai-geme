@@ -518,6 +518,104 @@ describe('DSL live edit pipeline', () => {
     expect(patchedDsl.sourceDsl.world.width).toBe(1120);
   });
 
+  it('validates a side-scrolling pickup kind patch while keeping unsupported runtime separate', async () => {
+    const pickupRunId = `${runId}_pickup`;
+    const pickupDsl = buildPickupSideScrollingDsl(pickupRunId);
+    await service.initializeLiveVersion({ projectId, runId: pickupRunId, artifact: pickupDsl });
+    const patch = DslPatchV1Schema.parse({
+      artifactKind: 'dsl_patch',
+      schemaVersion: 'dsl_patch.v1',
+      patchId: 'patch_pickup_kind',
+      runId: pickupRunId,
+      baseDslId: pickupDsl.dslId,
+      baseVersionId: 'v_initial',
+      source: 'workbench',
+      intent: 'turn the field pickup into a weapon pickup',
+      ops: [{ op: 'replace', path: '/pickups/field_medkit/kind', value: 'weapon' }]
+    });
+
+    const prepared = await service.applyPatch({ projectId, runId: pickupRunId, patch });
+
+    expect(prepared).toMatchObject({
+      status: 'unsupported',
+      applyMode: 'none',
+      validationReport: { status: 'valid', errorCount: 0 },
+      liveUpdatePlan: {
+        status: 'unsupported',
+        applyMode: 'none',
+        affectedPaths: ['/pickups/field_medkit/kind']
+      }
+    });
+    expect(prepared.runtimePatch).toBeUndefined();
+    const pendingCandidatePath = workspace.getLivePendingArtifactPath(projectId, pickupRunId, patch.patchId, 'game_dsl.candidate.json');
+    const pendingCandidate = JSON.parse(await readFile(pendingCandidatePath, 'utf8')) as GameDslArtifact;
+    expect(pendingCandidate.pickups?.field_medkit).toMatchObject({ kind: 'weapon' });
+    expect(pendingCandidate.sourceDsl.pickups?.find((pickup) => pickup.id === 'field_medkit')).toMatchObject({ kind: 'weapon' });
+    await expect(readFile(workspace.getLivePatchHistoryPath(projectId, pickupRunId), 'utf8')).rejects.toThrow();
+    await expect(readAuditLog(pickupRunId)).resolves.toEqual([expect.objectContaining({ patchId: patch.patchId, status: 'unsupported', applyMode: 'none' })]);
+  });
+
+  it('rejects pickup patches for missing ids and unsupported kinds', () => {
+    const pickupDsl = buildPickupSideScrollingDsl(`${runId}_pickup_contract`);
+    const validPatchBase = {
+      artifactKind: 'dsl_patch',
+      schemaVersion: 'dsl_patch.v1',
+      runId: `${runId}_pickup_contract`,
+      baseDslId: pickupDsl.dslId,
+      baseVersionId: 'v_initial',
+      source: 'workbench',
+      intent: 'pickup contract regression'
+    } as const;
+
+    expect(
+      validateAndPlanDslPatch({
+        baseDsl: pickupDsl,
+        baseVersionId: 'v_initial',
+        patch: DslPatchV1Schema.parse({
+          ...validPatchBase,
+          patchId: 'patch_pickup_kind_bad',
+          ops: [{ op: 'replace', path: '/pickups/field_medkit/kind', value: 'shield' }]
+        })
+      })
+    ).toMatchObject({
+      ok: false,
+      report: { status: 'invalid', errors: [expect.objectContaining({ code: 'PATCH_VALUE_INVALID', path: 'ops.0.value' })] },
+      plan: { status: 'failed_validation', applyMode: 'none' }
+    });
+
+    expect(
+      validateAndPlanDslPatch({
+        baseDsl: pickupDsl,
+        baseVersionId: 'v_initial',
+        patch: DslPatchV1Schema.parse({
+          ...validPatchBase,
+          patchId: 'patch_pickup_missing',
+          ops: [{ op: 'replace', path: '/pickups/missing/kind', value: 'weapon' }]
+        })
+      })
+    ).toMatchObject({
+      ok: false,
+      report: { status: 'invalid', errors: [expect.objectContaining({ code: 'PATCH_VALUE_INVALID', path: 'ops.0.value' })] },
+      plan: { status: 'failed_validation', applyMode: 'none' }
+    });
+
+    expect(
+      validateAndPlanDslPatch({
+        baseDsl: pickupDsl,
+        baseVersionId: 'v_initial',
+        patch: DslPatchV1Schema.parse({
+          ...validPatchBase,
+          patchId: 'patch_pickup_value_blocked',
+          ops: [{ op: 'replace', path: '/pickups/field_medkit/value', value: 99 }]
+        })
+      })
+    ).toMatchObject({
+      ok: false,
+      report: { status: 'invalid', errors: [expect.objectContaining({ code: 'PATCH_PATH_NOT_ALLOWED', path: 'ops.0.path' })] },
+      plan: { status: 'failed_validation', applyMode: 'none' }
+    });
+  });
+
   it('commits an enemy concept replacement as a warm restart semantic live edit', async () => {
     const before = await readCurrentVersion();
     const patch = makePatch([{ op: 'replace', path: '/enemyTypes/alien/label', value: '猫' }]);
@@ -820,6 +918,14 @@ function buildTopDownShooterDsl(): GameDslArtifact {
     rawDsl: RawGameDslSchema.parse(createShooterRawDsl()),
     runId,
     intentPlan: { normalizedGenre: 'top_down_shooter', matchedAlias: '小猫大战坦克' }
+  });
+}
+
+function buildPickupSideScrollingDsl(targetRunId: string): GameDslArtifact {
+  return buildGameDslArtifact({
+    rawDsl: RawGameDslSchema.parse(createSideScrollingRunAndGunRawDsl()),
+    runId: targetRunId,
+    intentPlan: { normalizedGenre: 'side_scrolling_run_and_gun', matchedAlias: 'pickup contract' }
   });
 }
 

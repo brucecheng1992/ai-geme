@@ -326,6 +326,7 @@ export function buildGameDslArtifact(input: {
   const enemyTypes = buildEnemyTypes(input.rawDsl);
   const projectiles = buildProjectiles(input.rawDsl);
   const pickups = buildPickups(input.rawDsl);
+  const bosses = buildBosses(input.rawDsl);
 
   return {
     artifactKind: GAME_DSL_ARTIFACT_KIND,
@@ -387,7 +388,8 @@ export function buildGameDslArtifact(input: {
       checkpoints: input.rawDsl.winLose?.checkpoints
     },
     sourceDsl: input.rawDsl,
-    ...(Object.keys(pickups).length > 0 ? { pickups } : {})
+    ...(Object.keys(pickups).length > 0 ? { pickups } : {}),
+    ...(Object.keys(bosses).length > 0 ? { bosses } : {})
   };
 }
 
@@ -991,6 +993,22 @@ function buildPickups(rawDsl: RawGameDsl): NonNullable<GameDslArtifact['pickups'
     rawDsl.entities
       .filter((entity) => entity.kind === 'collectible')
       .map((entity) => [entity.id, { id: entity.id, label: entity.label, kind: 'score' as const, value: entity.count }])
+  );
+}
+
+function buildBosses(rawDsl: RawGameDsl): NonNullable<GameDslArtifact['bosses']> {
+  return Object.fromEntries(
+    (rawDsl.bosses?.items ?? []).map((boss) => [
+      boss.id,
+      {
+        id: boss.id,
+        label: boss.label,
+        health: { max: boss.health },
+        physics: { speed: boss.movement.speed_px_per_sec ?? 0 },
+        movement: toArtifactMovement(boss.movement),
+        phases: boss.phases.length
+      }
+    ])
   );
 }
 

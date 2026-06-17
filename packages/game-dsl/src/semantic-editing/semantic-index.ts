@@ -17,7 +17,7 @@ export type SemanticIndex = {
 };
 
 type RawGameDslLike = Pick<RawGameDsl, 'metadata' | 'game' | 'world' | 'camera' | 'player' | 'entities' | 'rules'> &
-  Partial<Pick<RawGameDsl, 'projectiles' | 'enemyTypes' | 'level' | 'pickups'>>;
+  Partial<Pick<RawGameDsl, 'projectiles' | 'enemyTypes' | 'level' | 'pickups' | 'bosses'>>;
 
 /**
  * Builds a semantic address index over the current Raw DSL SSOT without introducing generated-code paths.
@@ -40,6 +40,7 @@ export function buildSemanticIndex(ssot: unknown): SemanticIndex {
     ssot.projectiles?.forEach((projectile, index) => addNamedRef(refs, 'entity', projectile.id, `/projectiles/${index}`, projectile));
     ssot.enemyTypes?.forEach((enemyType, index) => addNamedRef(refs, 'entity', enemyType.id, `/enemyTypes/${index}`, enemyType));
     ssot.pickups?.forEach((pickup, index) => addNamedRef(refs, 'entity', pickup.id, `/pickups/${index}`, pickup));
+    ssot.bosses?.items?.forEach((boss, index) => addNamedRef(refs, 'entity', boss.id, `/bosses/items/${index}`, boss));
     ssot.level?.segments.forEach((segment, index) => addNamedRef(refs, 'scene', segment.id, `/level/segments/${index}`, segment));
   }
 
@@ -99,6 +100,7 @@ function isRawGameDslLike(value: unknown): value is RawGameDslLike {
     isOptionalArrayOfRecords(value.projectiles) &&
     isOptionalArrayOfRecords(value.enemyTypes) &&
     isOptionalArrayOfRecords(value.pickups) &&
+    (value.bosses === undefined || (isRecord(value.bosses) && isOptionalArrayOfRecords(value.bosses.items))) &&
     (value.level === undefined || (isRecord(value.level) && Array.isArray(value.level.segments) && value.level.segments.every(isRecordWithOptionalId)))
   );
 }

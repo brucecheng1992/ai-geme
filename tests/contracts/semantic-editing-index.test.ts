@@ -33,13 +33,27 @@ describe('Semantic editing address and index', () => {
   });
 
   it('indexes optional side-scrolling SSOT nodes without inventing generated file paths', () => {
-    const index = buildSemanticIndex(createSideScrollingRunAndGunRawDsl());
+    const index = buildSemanticIndex({
+      ...createSideScrollingRunAndGunRawDsl(),
+      bosses: {
+        items: [
+          {
+            id: 'boss_alpha',
+            label: 'Sentinel Boss',
+            health: 30,
+            movement: { type: 'patrol', speed_px_per_sec: 80 },
+            phases: [{ healthThresholdPct: 100, attacks: ['spread_shot'] }]
+          }
+        ]
+      }
+    });
 
     expect(index.resolve('camera:main')).toMatchObject({ path: '/camera' });
     expect(index.resolve('scene:segment_intro')).toMatchObject({ kind: 'scene', path: '/level/segments/0' });
     expect(index.resolve('entity:field_medkit')).toMatchObject({ kind: 'entity', path: '/pickups/0' });
+    expect(index.resolve('entity:boss_alpha')).toMatchObject({ kind: 'entity', path: '/bosses/items/0' });
     expect(index.list('entity').map((ref) => ref.id)).toEqual(
-      expect.arrayContaining(['entity:player', 'entity:drone', 'entity:pulse_bolt', 'entity:field_medkit'])
+      expect.arrayContaining(['entity:player', 'entity:drone', 'entity:pulse_bolt', 'entity:field_medkit', 'entity:boss_alpha'])
     );
     expect(index.list().every((ref) => !ref.path.endsWith('.ts') && !ref.path.includes('/generated/'))).toBe(true);
   });

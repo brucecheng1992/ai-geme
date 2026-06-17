@@ -13,8 +13,21 @@ describe('Live edit capability diagnostics', () => {
     expect(groupKeys(groups, 'supported-live-edit')).not.toEqual(expect.arrayContaining(['pickups.weapon', 'bosses.enabled']));
 
     expect(groupKeys(groups, 'warm-restart-only')).toEqual(expect.arrayContaining(['bosses.enabled']));
-    expect(groupKeys(groups, 'known-not-exposed')).toEqual(expect.arrayContaining(['pickups.weapon', 'feedback.cameraShake']));
-    expect(groupKeys(groups, 'resolver-only')).toEqual(expect.arrayContaining(['audio.events.explosion']));
+    expect(groupKeys(groups, 'runtime-adapter-missing')).toEqual(
+      expect.arrayContaining([
+        'audio.events.explosion',
+        'bosses.attackPatterns',
+        'bosses.defeatEffect',
+        'bosses.health',
+        'bosses.healthBar',
+        'bosses.introWarning',
+        'collision.effects',
+        'feedback.cameraShake',
+        'feedback.hitFlash',
+        'pickups.weapon',
+        'ui.warningBanner'
+      ])
+    );
     expect(groupKeys(groups, 'requires-generator-gate')).toEqual(expect.arrayContaining(['hazards.movement', 'obstacles.platforms']));
   });
 
@@ -30,7 +43,7 @@ describe('Live edit capability diagnostics', () => {
       supportedEndToEnd: true
     });
     expect(pickupWeapon).toMatchObject({
-      status: 'known-not-exposed',
+      status: 'runtime-adapter-missing',
       runtimeCapabilityMode: 'warm-restart',
       supportedEndToEnd: false,
       blockedFallbacks: ['enemy.count', 'projectile.damage']

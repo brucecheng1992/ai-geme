@@ -102,6 +102,23 @@ const ActionSchema = z.strictObject({
   spawns: DslIdSchema.optional()
 });
 
+const FeedbackCameraShakeSchema = z.strictObject({
+  enabled: z.boolean(),
+  intensity: z.number().min(0).max(1),
+  durationMs: z.number().int().min(0).max(5000)
+});
+
+const FeedbackHitFlashSchema = z.strictObject({
+  enabled: z.boolean(),
+  durationMs: z.number().int().min(0).max(3000),
+  flashCount: z.number().int().min(1).max(20).optional()
+});
+
+const InvulnerabilityFramesSchema = z.strictObject({
+  durationMs: z.number().int().min(0).max(10000),
+  flashEnabled: z.boolean()
+});
+
 const PlayerSchema = z.strictObject({
   id: DslIdSchema,
   label: z.string().min(1).max(40),
@@ -109,7 +126,8 @@ const PlayerSchema = z.strictObject({
   movement: MovementSchema,
   actions: z.array(ActionSchema).max(6).default([]),
   controller: z.enum(['run_jump_shoot']).optional(),
-  aiming: z.strictObject({ mode: z.enum(['multi_direction', 'eight_direction']) }).optional()
+  aiming: z.strictObject({ mode: z.enum(['multi_direction', 'eight_direction']) }).optional(),
+  invulnerabilityFrames: InvulnerabilityFramesSchema.optional()
 });
 
 const EntitySchema = z.strictObject({
@@ -126,6 +144,49 @@ const EntitySchema = z.strictObject({
 const EffectSchema = z.strictObject({
   type: z.enum(['damage', 'destroy', 'score_add', 'heal', 'knockback', 'end_game']),
   value: z.number().int().min(0).max(1000).optional()
+});
+
+const ExplosionEffectSchema = z.strictObject({
+  enabled: z.boolean(),
+  scale: z.number().min(0.1).max(10),
+  durationMs: z.number().int().min(50).max(5000),
+  audioEvent: z.enum(['explosion', 'bossDefeated']).optional(),
+  cameraShake: FeedbackCameraShakeSchema.optional()
+});
+
+const AudioAssetRefSchema = z.string().regex(/^asset:[a-z][a-z0-9_]{1,39}$/);
+
+const AudioEventBindingSchema = z.strictObject({
+  assetRef: AudioAssetRefSchema.optional(),
+  volume: z.number().min(0).max(1),
+  enabled: z.boolean()
+});
+
+const AudioEventsSchema = z.strictObject({
+  shoot: AudioEventBindingSchema.optional(),
+  enemyHit: AudioEventBindingSchema.optional(),
+  enemyDefeated: AudioEventBindingSchema.optional(),
+  playerHit: AudioEventBindingSchema.optional(),
+  pickupCollected: AudioEventBindingSchema.optional(),
+  weaponPickup: AudioEventBindingSchema.optional(),
+  shieldPickup: AudioEventBindingSchema.optional(),
+  bossIntro: AudioEventBindingSchema.optional(),
+  bossDefeated: AudioEventBindingSchema.optional(),
+  explosion: AudioEventBindingSchema.optional(),
+  warning: AudioEventBindingSchema.optional()
+});
+
+const AudioSchema = z.strictObject({
+  events: AudioEventsSchema
+});
+
+const FeedbackSchema = z.strictObject({
+  cameraShake: FeedbackCameraShakeSchema.optional(),
+  hitFlash: FeedbackHitFlashSchema.optional()
+});
+
+const EffectsSchema = z.strictObject({
+  explosion: ExplosionEffectSchema.optional()
 });
 
 const CollisionRuleSchema = z.strictObject({
@@ -198,6 +259,39 @@ const PickupSchema = z.strictObject({
   y: z.number().int().min(0).max(20000)
 });
 
+const BossAttackPatternSchema = z.enum(['spread_shot', 'charge', 'summon_minions', 'laser_burst', 'ground_slam']);
+
+const BossPhaseSchema = z.strictObject({
+  healthThresholdPct: z.number().int().min(1).max(100),
+  attacks: z.array(BossAttackPatternSchema).min(1).max(4)
+});
+
+const BossSchema = z.strictObject({
+  id: DslIdSchema,
+  label: z.string().min(1).max(40),
+  health: z.number().int().min(1).max(50),
+  movement: MovementSchema,
+  healthBar: z.strictObject({ enabled: z.boolean() }).optional(),
+  phases: z.array(BossPhaseSchema).min(1).max(8),
+  intro: z
+    .strictObject({
+      warningEnabled: z.boolean(),
+      warningText: z.string().min(1).max(40).optional(),
+      audioEvent: z.enum(['bossIntro', 'warning']).optional()
+    })
+    .optional(),
+  defeat: z
+    .strictObject({
+      explosionEffect: z.boolean(),
+      audioEvent: z.enum(['bossDefeated', 'explosion']).optional()
+    })
+    .optional()
+});
+
+const BossesSchema = z.strictObject({
+  items: z.array(BossSchema).min(1).max(4)
+});
+
 const WinLoseSchema = z.strictObject({
   win: z.enum(['reach_exit', 'enemy_cleared']),
   lose: z.enum(['player_health_zero', 'lives_zero']),
@@ -217,7 +311,12 @@ const UiSchema = z.strictObject({
       title: z.string().min(1).max(40),
       subtitle: z.string().min(1).max(120)
     })
-  })
+  }),
+  warningBanner: z.strictObject({
+    enabled: z.boolean(),
+    text: z.string().min(1).max(40),
+    durationMs: z.number().int().min(0).max(5000)
+  }).optional()
 });
 
 /** Raw DSL 只允许表达引擎无关的玩法语义，不能包含 runtime API 或任意脚本。 */
@@ -243,12 +342,16 @@ export const RawGameDslSchema = z.strictObject({
   }),
   camera: CameraSchema.optional(),
   player: PlayerSchema,
+  feedback: FeedbackSchema.optional(),
+  audio: AudioSchema.optional(),
+  effects: EffectsSchema.optional(),
   entities: z.array(EntitySchema).min(1).max(12),
   semanticModel: GameSemanticModelSchema.optional(),
   projectiles: z.array(ProjectileSchema).min(1).max(8).optional(),
   enemyTypes: z.array(EnemyTypeSchema).min(1).max(12).optional(),
   level: LevelSchema.optional(),
   pickups: z.array(PickupSchema).max(20).optional(),
+  bosses: BossesSchema.optional(),
   winLose: WinLoseSchema.optional(),
   rules: z.strictObject({
     collisions: z.array(CollisionRuleSchema).min(1).max(12)

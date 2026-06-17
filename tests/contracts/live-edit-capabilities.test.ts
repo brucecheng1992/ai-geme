@@ -37,7 +37,7 @@ describe('Live-edit capability exposure matrix', () => {
     expect(topDownShooterPhaserLiveEditCapabilities.warmRestart).toEqual(expect.arrayContaining(['/pickups', '/bosses']));
 
     expect(findLiveEditCapabilityExposure('pickups.weapon')).toMatchObject({
-      status: 'known-not-exposed',
+      status: 'runtime-adapter-missing',
       parserMapping: false,
       runtimePatchAdapter: false,
       phaserRuntimeBehavior: false
@@ -57,12 +57,12 @@ describe('Live-edit capability exposure matrix', () => {
 
   it('keeps known advanced semantics out of nearby supported fallback fields', () => {
     expect(findLiveEditCapabilityExposure('audio.events.explosion')).toMatchObject({
-      status: 'resolver-only',
-      resolver: true,
+      status: 'runtime-adapter-missing',
+      resolver: false,
       blockedFallbacks: ['projectile.damage']
     });
     expect(findLiveEditCapabilityExposure('feedback.cameraShake')).toMatchObject({
-      status: 'known-not-exposed',
+      status: 'runtime-adapter-missing',
       blockedFallbacks: ['world.width']
     });
     expect(findLiveEditCapabilityExposure('hazards.movement')).toMatchObject({
@@ -86,27 +86,86 @@ describe('Live-edit capability exposure matrix', () => {
       artifactContract: false
     });
     expect(findLiveEditCapabilityExposure('pickups.weapon')).toMatchObject({
-      dslSchema: false,
-      artifactContract: false
+      dslSchema: true,
+      artifactContract: true,
+      semanticPatchShape: true
     });
     expect(findLiveEditCapabilityExposure('bosses.enabled')).toMatchObject({
-      dslSchema: false,
+      dslSchema: true,
       promptContext: true,
       artifactContract: true
     });
-    expect(findLiveEditCapabilityExposure('audio.events.explosion')).toMatchObject({
-      dslSchema: false,
-      artifactContract: false,
-      resolver: true
-    });
-    expect(findLiveEditCapabilityExposure('collision.effects')).toMatchObject({
+    expect(findLiveEditCapabilityExposure('bosses.health')).toMatchObject({
+      status: 'runtime-adapter-missing',
       dslSchema: true,
       artifactContract: true,
-      resolver: true
+      semanticPatchShape: true,
+      parserMapping: false,
+      runtimePatchAdapter: false,
+      phaserRuntimeBehavior: false,
+      contractTests: true
+    });
+    expect(findLiveEditCapabilityExposure('bosses.attackPatterns')).toMatchObject({
+      status: 'runtime-adapter-missing',
+      dslSchema: true,
+      semanticPatchShape: true,
+      contractTests: true
+    });
+    expect(findLiveEditCapabilityExposure('bosses.introWarning')).toMatchObject({
+      status: 'runtime-adapter-missing',
+      dslSchema: true,
+      semanticPatchShape: true,
+      contractTests: true
+    });
+    expect(findLiveEditCapabilityExposure('bosses.defeatEffect')).toMatchObject({
+      status: 'runtime-adapter-missing',
+      dslSchema: true,
+      semanticPatchShape: true,
+      contractTests: true
+    });
+    expect(findLiveEditCapabilityExposure('audio.events.explosion')).toMatchObject({
+      dslSchema: true,
+      artifactContract: true,
+      resolver: false
+    });
+    expect(findLiveEditCapabilityExposure('feedback.cameraShake')).toMatchObject({
+      status: 'runtime-adapter-missing',
+      dslSchema: true,
+      artifactContract: true,
+      semanticPatchShape: true,
+      parserMapping: false,
+      runtimePatchAdapter: false,
+      phaserRuntimeBehavior: false,
+      contractTests: true
+    });
+    expect(findLiveEditCapabilityExposure('player.invulnerabilityFrames')).toMatchObject({
+      status: 'runtime-adapter-missing',
+      dslSchema: true,
+      artifactContract: true,
+      semanticPatchShape: true,
+      contractTests: true
+    });
+    expect(findLiveEditCapabilityExposure('collision.effects')).toMatchObject({
+      status: 'runtime-adapter-missing',
+      dslSchema: true,
+      artifactContract: true,
+      resolver: true,
+      semanticPatchShape: true,
+      contractTests: true
     });
     expect(findLiveEditCapabilityExposure('effects.explosion')).toMatchObject({
-      dslSchema: false,
-      artifactContract: false
+      status: 'runtime-adapter-missing',
+      dslSchema: true,
+      artifactContract: true,
+      semanticPatchShape: true,
+      contractTests: true
+    });
+    expect(findLiveEditCapabilityExposure('ui.warningBanner')).toMatchObject({
+      status: 'runtime-adapter-missing',
+      dslSchema: true,
+      artifactContract: true,
+      semanticPatchShape: true,
+      contractTests: true
     });
   });
 

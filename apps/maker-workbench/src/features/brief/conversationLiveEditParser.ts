@@ -1,4 +1,9 @@
 import type { LiveEditableField } from '../../live-edit-client.js';
+import {
+  buildUnknownLiveEditIntentDetails,
+  detectUnsupportedLiveEditIntent,
+  type UnsupportedLiveEditIntentDetails
+} from './unsupportedLiveEditIntentDiagnostics.js';
 
 export type ConversationLiveEditParseResult =
   | {
@@ -8,11 +13,18 @@ export type ConversationLiveEditParseResult =
       summary: string;
       edits: ConversationLiveEdit[];
     }
+  | ConversationLiveEditParseFailure;
+
+export type ConversationLiveEditParseFailure =
   | {
       ok: false;
-      reason: 'empty_text' | 'missing_number' | 'no_enabled_fields' | 'ambiguous_field' | 'unsupported_field';
+      reason: 'empty_text' | 'missing_number' | 'no_enabled_fields' | 'ambiguous_field';
       message: string;
-    };
+    }
+  | ({
+      ok: false;
+      reason: 'unsupported_field';
+    } & UnsupportedLiveEditIntentDetails);
 
 export type ConversationLiveEdit = {
   field: LiveEditableField;
@@ -106,29 +118,6 @@ const SET_KEYWORDS = ['set', 'change to', 'make it', 'make', '改成', '设为',
 const REPLACE_KEYWORDS = ['change into', 'change to', 'replace with', 'turn into', 'make it', 'make', '修改成', '改成', '变成', '换成', '改为', '设为', '设置为', '成为'];
 const TRAILING_FILLER_PATTERN = /[。.!！?？,，;；\s]*(了|吧|吗)?[。.!！?？,，;；\s]*$/u;
 const EDIT_CLAUSE_SPLIT_PATTERN = /[。.!！?？,，;；]+|还有|以及|并且|同时/u;
-const FUTURE_INTENT_KEYWORDS = [
-  'obstacle',
-  'barrier',
-  'trap',
-  'level',
-  'stage',
-  'effect',
-  'effects',
-  'particle',
-  'particles',
-  'screen shake',
-  '障碍物',
-  '障碍',
-  '陷阱',
-  '下一关',
-  '下个关卡',
-  '关卡',
-  '特效',
-  '效果',
-  '粒子',
-  '爆炸',
-  '屏幕震动'
-];
 
 /**
  * Turns the Workbench conversation text into a concrete DSL edit by scoring the
@@ -148,8 +137,9 @@ export function parseConversationLiveEditCommand(input: { text: string; fields: 
   }
 
   const normalized = normalizeText(text);
-  if (containsUnsupportedFutureIntent(normalized, enabledFields)) {
-    return { ok: false, reason: 'unsupported_field', message: '这句话涉及尚未暴露为实时编辑字段的游戏能力。' };
+  const unsupportedIntent = detectUnsupportedLiveEditIntent({ normalizedText: normalized, fields: enabledFields });
+  if (unsupportedIntent !== undefined) {
+    return unsupportedFailure(unsupportedIntent);
   }
 
   const semanticReplacement = parseSemanticReplacement(text, normalized, enabledFields);
@@ -177,7 +167,7 @@ export function parseConversationLiveEditCommand(input: { text: string; fields: 
 function parseNumericEdit(
   normalized: string,
   enabledFields: LiveEditableField[]
-): { ok: true; edit: ConversationLiveEdit } | Extract<ConversationLiveEditParseResult, { ok: false }> {
+): { ok: true; edit: ConversationLiveEdit } | ConversationLiveEditParseFailure {
   const numericFields = enabledFields.filter((field) => field.valueKind === 'number');
   const scored = numericFields
     .map((field) => ({ field, score: scoreField(field, normalized) }))
@@ -185,7 +175,7 @@ function parseNumericEdit(
     .sort((left, right) => right.score - left.score);
 
   if (scored.length === 0) {
-    return { ok: false, reason: 'unsupported_field', message: '没有找到这句话对应的可编辑游戏字段。' };
+    return unsupportedFailure(buildUnknownLiveEditIntentDetails({ fields: enabledFields, message: '没有找到这句话对应的可编辑游戏字段。' }));
   }
   if (scored.length > 1 && scored[0]!.score === scored[1]!.score) {
     return { ok: false, reason: 'ambiguous_field', message: '这句话同时匹配了多个字段，请补充对象或属性。' };
@@ -375,16 +365,12 @@ function splitEditClauses(text: string): string[] {
     .filter((clause) => clause.length > 0);
 }
 
-function containsUnsupportedFutureIntent(normalizedText: string, fields: LiveEditableField[]): boolean {
-  const keyword = FUTURE_INTENT_KEYWORDS.find((candidate) => normalizedText.includes(candidate));
-  if (keyword === undefined) {
-    return false;
-  }
-
-  return !fields.some((field) => {
-    const searchable = [field.label, field.path, field.targetKind, ...field.aliases].map(normalizeText).join(' ');
-    return searchable.includes(keyword);
-  });
+function unsupportedFailure(details: UnsupportedLiveEditIntentDetails): Extract<ConversationLiveEditParseFailure, { reason: 'unsupported_field' }> {
+  return {
+    ok: false,
+    reason: 'unsupported_field',
+    ...details
+  };
 }
 
 function fieldMax(field: LiveEditableField, fallback: number): number {

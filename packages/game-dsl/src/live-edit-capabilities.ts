@@ -82,6 +82,12 @@ function notExposed(input: {
   artifactContract?: boolean;
   resolver?: boolean;
   runtimeCapabilityList?: boolean;
+  parserMapping?: boolean;
+  semanticPatchShape?: boolean;
+  runtimePatchAdapter?: boolean;
+  phaserRuntimeBehavior?: boolean;
+  acceptRejectUndoTested?: boolean;
+  contractTests?: boolean;
   diagnostic: string;
   blockedFallbacks?: readonly string[];
   notes?: string;
@@ -93,12 +99,12 @@ function notExposed(input: {
     artifactContract: input.artifactContract ?? false,
     resolver: input.resolver ?? false,
     runtimeCapabilityList: input.runtimeCapabilityList ?? false,
-    parserMapping: false,
-    semanticPatchShape: false,
-    runtimePatchAdapter: false,
-    phaserRuntimeBehavior: false,
-    acceptRejectUndoTested: false,
-    contractTests: false,
+    parserMapping: input.parserMapping ?? false,
+    semanticPatchShape: input.semanticPatchShape ?? false,
+    runtimePatchAdapter: input.runtimePatchAdapter ?? false,
+    phaserRuntimeBehavior: input.phaserRuntimeBehavior ?? false,
+    acceptRejectUndoTested: input.acceptRejectUndoTested ?? false,
+    contractTests: input.contractTests ?? false,
     status: input.status ?? 'known-not-exposed',
     blockedFallbacks: input.blockedFallbacks ?? [],
     key: input.key,
@@ -221,12 +227,17 @@ export const liveEditCapabilityExposureRegistry = [
     key: 'pickups.weapon',
     label: 'Weapon pickup',
     examples: ['让敌人掉落散弹', '加入激光武器掉落'],
-    dslPaths: ['/pickups', '/pickups/items/*/effect/weaponRef'],
+    dslPaths: ['/pickups', '/pickups/*/kind'],
+    status: 'runtime-adapter-missing',
+    dslSchema: true,
     promptContext: true,
+    artifactContract: true,
     runtimeCapabilityList: true,
-    diagnostic: 'Weapon pickup semantics are known, but Workbench cannot live-edit weapon drop behavior yet.',
+    semanticPatchShape: true,
+    contractTests: true,
+    diagnostic: 'Weapon pickup kind can be represented and validated as a DSL patch, but the preview runtime adapter does not apply pickup behavior yet.',
     blockedFallbacks: ['enemy.count', 'projectile.damage'],
-    nextAction: 'Step 30.2 Pickups Editable Contract'
+    nextAction: 'Step 30.5 Phaser Runtime Patch Behavior'
   }),
   notExposed({
     key: 'pickups.shield',
@@ -244,6 +255,7 @@ export const liveEditCapabilityExposureRegistry = [
     examples: ['增加关底 Boss'],
     dslPaths: ['/bosses'],
     status: 'warm-restart-only',
+    dslSchema: true,
     promptContext: true,
     artifactContract: true,
     runtimeCapabilityList: true,
@@ -256,10 +268,14 @@ export const liveEditCapabilityExposureRegistry = [
     label: 'Boss health',
     examples: ['让 Boss 血量更高'],
     dslPaths: ['/bosses', '/bosses/items/*/health'],
+    status: 'runtime-adapter-missing',
+    dslSchema: true,
     promptContext: true,
     artifactContract: true,
     runtimeCapabilityList: true,
-    diagnostic: 'Boss health is not mapped to a boss-specific live-edit patch contract yet.',
+    semanticPatchShape: true,
+    contractTests: true,
+    diagnostic: 'Boss health has a validated semantic patch shape, but the preview runtime adapter does not apply boss behavior yet.',
     blockedFallbacks: ['enemy.health']
   }),
   notExposed({
@@ -267,18 +283,28 @@ export const liveEditCapabilityExposureRegistry = [
     label: 'Boss health bar',
     examples: ['显示 Boss 血条'],
     dslPaths: ['/bosses', '/bosses/items/*/healthBar/enabled'],
+    status: 'runtime-adapter-missing',
+    dslSchema: true,
+    artifactContract: true,
     promptContext: true,
     runtimeCapabilityList: true,
-    diagnostic: 'Boss health bars are not productized as live-edit runtime behavior yet.'
+    semanticPatchShape: true,
+    contractTests: true,
+    diagnostic: 'Boss health bars have a validated semantic patch shape, but preview UI/runtime behavior is not productized yet.'
   }),
   notExposed({
     key: 'bosses.attackPatterns',
     label: 'Boss attack patterns',
     examples: ['Boss 有三种攻击模式'],
     dslPaths: ['/bosses', '/bosses/items/*/phases/*/attacks'],
+    status: 'runtime-adapter-missing',
+    dslSchema: true,
+    artifactContract: true,
     promptContext: true,
     runtimeCapabilityList: true,
-    diagnostic: 'Boss attack pattern requests need structured enum slots before live-edit support can be claimed.',
+    semanticPatchShape: true,
+    contractTests: true,
+    diagnostic: 'Boss attack patterns use validated enum slots, but runtime attack behavior is not productized yet.',
     blockedFallbacks: ['enemy.count', 'projectile.damage']
   }),
   notExposed({
@@ -286,28 +312,41 @@ export const liveEditCapabilityExposureRegistry = [
     label: 'Boss intro warning',
     examples: ['Boss 登场时显示 WARNING'],
     dslPaths: ['/bosses', '/bosses/items/*/intro/warningEnabled'],
+    status: 'runtime-adapter-missing',
+    dslSchema: true,
+    artifactContract: true,
     promptContext: true,
     runtimeCapabilityList: true,
-    diagnostic: 'Boss intro warnings are known but not bound to parser, patch, runtime adapter, and tests.'
+    semanticPatchShape: true,
+    contractTests: true,
+    diagnostic: 'Boss intro warnings have a validated semantic patch shape, but parser and preview runtime behavior are not productized yet.'
   }),
   notExposed({
     key: 'bosses.defeatEffect',
     label: 'Boss defeat effect',
     examples: ['Boss 死亡大爆炸'],
     dslPaths: ['/bosses', '/bosses/items/*/defeat/explosionEffect'],
+    status: 'runtime-adapter-missing',
+    dslSchema: true,
+    artifactContract: true,
     promptContext: true,
     runtimeCapabilityList: true,
-    diagnostic: 'Boss defeat effects are not exposed as live-edit feedback runtime behavior.'
+    semanticPatchShape: true,
+    contractTests: true,
+    diagnostic: 'Boss defeat effects have a validated semantic patch shape, but defeat-event runtime hooks are not productized yet.'
   }),
   notExposed({
     key: 'audio.events.pickupCollected',
     label: 'Pickup audio event',
     examples: ['获得武器时播放提示音'],
     dslPaths: ['/audio/events/pickupCollected'],
-    status: 'resolver-only',
+    status: 'runtime-adapter-missing',
+    dslSchema: true,
     promptContext: true,
-    resolver: true,
-    diagnostic: 'Audio assets can be resolved, but pickup audio event binding is not a live-edit field.',
+    artifactContract: true,
+    semanticPatchShape: true,
+    contractTests: true,
+    diagnostic: 'Pickup audio event binding has a validated semantic patch shape, but event assetRef resolver binding and runtime hooks are not productized.',
     blockedFallbacks: ['projectile.damage']
   }),
   notExposed({
@@ -315,10 +354,13 @@ export const liveEditCapabilityExposureRegistry = [
     label: 'Explosion audio event',
     examples: ['爆炸音效更强'],
     dslPaths: ['/audio/events/explosion'],
-    status: 'resolver-only',
+    status: 'runtime-adapter-missing',
+    dslSchema: true,
     promptContext: true,
-    resolver: true,
-    diagnostic: 'Audio resolver support does not imply live-editable explosion event binding.',
+    artifactContract: true,
+    semanticPatchShape: true,
+    contractTests: true,
+    diagnostic: 'Explosion audio event binding has a validated semantic patch shape, but event assetRef resolver binding and runtime hooks are not productized.',
     blockedFallbacks: ['projectile.damage']
   }),
   notExposed({
@@ -326,28 +368,41 @@ export const liveEditCapabilityExposureRegistry = [
     label: 'Warning audio event',
     examples: ['播放警告提示音'],
     dslPaths: ['/audio/events/warning'],
-    status: 'resolver-only',
+    status: 'runtime-adapter-missing',
+    dslSchema: true,
     promptContext: true,
-    resolver: true,
-    diagnostic: 'Warning audio event binding is resolver-known but not live-editable.'
+    artifactContract: true,
+    semanticPatchShape: true,
+    contractTests: true,
+    diagnostic: 'Warning audio event binding has a validated semantic patch shape, but event assetRef resolver binding and runtime hooks are not productized.'
   }),
   notExposed({
     key: 'feedback.cameraShake',
     label: 'Camera shake',
     examples: ['屏幕震动', 'Boss 登场时屏幕震动'],
     dslPaths: ['/feedback/cameraShake'],
+    status: 'runtime-adapter-missing',
+    dslSchema: true,
     promptContext: true,
-    diagnostic: 'Camera shake is not currently exposed as a live-edit runtime feedback contract.',
+    artifactContract: true,
+    semanticPatchShape: true,
+    contractTests: true,
+    diagnostic: 'Camera shake has a validated semantic patch shape, but parser/runtime feedback hooks are not productized.',
     blockedFallbacks: ['world.width'],
-    nextAction: 'Step 30.4 Runtime Feedback Effects Contract'
+    nextAction: 'Step 30.5 Phaser Runtime Patch Behavior'
   }),
   notExposed({
     key: 'feedback.hitFlash',
     label: 'Hit flash',
     examples: ['玩家受击后闪烁'],
     dslPaths: ['/feedback/hitFlash'],
+    status: 'runtime-adapter-missing',
+    dslSchema: true,
     promptContext: true,
-    diagnostic: 'Hit flash is recognized as a future feedback concept, but it is not live-editable yet.',
+    artifactContract: true,
+    semanticPatchShape: true,
+    contractTests: true,
+    diagnostic: 'Hit flash has a validated semantic patch shape, but player-hit runtime feedback hooks are not productized.',
     blockedFallbacks: ['player.health']
   }),
   notExposed({
@@ -355,8 +410,13 @@ export const liveEditCapabilityExposureRegistry = [
     label: 'Player invulnerability frames',
     examples: ['玩家受击后短暂无敌'],
     dslPaths: ['/player/invulnerabilityFrames'],
+    status: 'runtime-adapter-missing',
+    dslSchema: true,
     promptContext: true,
-    diagnostic: 'Invulnerability frames require collision lifecycle support before live-edit exposure.',
+    artifactContract: true,
+    semanticPatchShape: true,
+    contractTests: true,
+    diagnostic: 'Invulnerability frames have a validated semantic patch shape, but collision damage gating is not productized.',
     blockedFallbacks: ['player.health']
   }),
   notExposed({
@@ -364,20 +424,41 @@ export const liveEditCapabilityExposureRegistry = [
     label: 'Explosion visual effect',
     examples: ['击败 Boss 时触发大爆炸'],
     dslPaths: ['/effects/explosion'],
+    status: 'runtime-adapter-missing',
+    dslSchema: true,
     promptContext: true,
-    diagnostic: 'Explosion visual effects are not equivalent to audio or projectile damage live-edit fields.',
+    artifactContract: true,
+    semanticPatchShape: true,
+    contractTests: true,
+    diagnostic: 'Explosion visual effects have a validated semantic patch shape, but defeat-event runtime hooks are not productized.',
     blockedFallbacks: ['projectile.damage']
+  }),
+  notExposed({
+    key: 'ui.warningBanner',
+    label: 'Warning banner',
+    examples: ['显示 WARNING 提示'],
+    dslPaths: ['/ui/warningBanner'],
+    status: 'runtime-adapter-missing',
+    dslSchema: true,
+    promptContext: true,
+    artifactContract: true,
+    semanticPatchShape: true,
+    contractTests: true,
+    diagnostic: 'Warning banners have a validated semantic patch shape, but runtime UI hooks are not productized.'
   }),
   notExposed({
     key: 'collision.effects',
     label: 'Collision-triggered effects',
     examples: ['碰撞触发效果'],
     dslPaths: ['/rules/collisions/*/effects'],
-    status: 'schema-only',
+    status: 'runtime-adapter-missing',
     dslSchema: true,
     artifactContract: true,
     resolver: true,
-    diagnostic: 'Collision effects exist in schema/rules, but Workbench live-edit runtime hooks are not productized.'
+    semanticPatchShape: true,
+    contractTests: true,
+    diagnostic: 'Collision effects can be represented by a validated semantic modify_rule patch, but Workbench parser/runtime hooks are not productized.',
+    nextAction: 'Step 30.5 Phaser Runtime Patch Behavior'
   }),
   notExposed({
     key: 'hazards.damage',

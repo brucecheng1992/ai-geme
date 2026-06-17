@@ -11,6 +11,7 @@ const numericPaths = new Set([
   'world.width',
   'world.height',
   'player.health',
+  'player.invulnerabilityFrames.durationMs',
   'player.movement.speed_px_per_sec',
   'player.actions.cooldown_ms',
   'entities.count',
@@ -38,8 +39,20 @@ const numericPaths = new Set([
   'level.spawns.count',
   'pickups.x',
   'pickups.y',
+  'bosses.items.health',
+  'bosses.items.movement.speed_px_per_sec',
+  'bosses.items.phases.healthThresholdPct',
   'winLose.lives',
-  'winLose.checkpoints'
+  'winLose.checkpoints',
+  'feedback.cameraShake.intensity',
+  'feedback.cameraShake.durationMs',
+  'feedback.hitFlash.durationMs',
+  'feedback.hitFlash.flashCount',
+  'effects.explosion.scale',
+  'effects.explosion.durationMs',
+  'effects.explosion.cameraShake.intensity',
+  'effects.explosion.cameraShake.durationMs',
+  'ui.warningBanner.durationMs'
 ]);
 
 export function validateRawGameDsl(input: unknown): DslValidationResult<RawGameDsl> {
@@ -68,7 +81,8 @@ function validateSemanticModelReferences(raw: RawGameDsl): DslValidationIssue[] 
 
   const rolesById = new Map<string, GameplayRole>([
     [raw.player.id, 'player'],
-    ...raw.entities.map((entity) => [entity.id, roleForEntityKind(entity.kind)] as [string, GameplayRole])
+    ...raw.entities.map((entity) => [entity.id, roleForEntityKind(entity.kind)] as [string, GameplayRole]),
+    ...(raw.bosses?.items ?? []).map((boss) => [boss.id, 'enemy'] as [string, GameplayRole])
   ]);
   const issues: DslValidationIssue[] = [];
 
@@ -120,11 +134,16 @@ function toSchemaIssue(issue: z.core.$ZodIssue): DslValidationIssue {
     return { code: 'INVALID_ID_FORMAT', path, message: issue.message };
   }
 
-  if (numericPaths.has(path.replace(/\.\d+/g, ''))) {
+  if (isNumericSchemaPath(path)) {
     return { code: 'NUMERIC_RANGE_INVALID', path, message: issue.message };
   }
 
   return { code: 'SCHEMA_VALIDATION_FAILED', path, message: issue.message };
+}
+
+function isNumericSchemaPath(path: string): boolean {
+  const normalizedPath = path.replace(/\.\d+/g, '');
+  return numericPaths.has(normalizedPath) || /^audio\.events\.[^.]+\.volume$/.test(normalizedPath);
 }
 
 function validateUniqueIds(raw: RawGameDsl): DslValidationIssue[] {
@@ -154,6 +173,7 @@ function collectIds(raw: RawGameDsl): Array<[string, string]> {
     ...(raw.level?.terrain ?? []).map((terrain, index) => [`level.terrain.${index}.id`, terrain.id] as [string, string]),
     ...(raw.level?.spawns ?? []).map((spawn, index) => [`level.spawns.${index}.id`, spawn.id] as [string, string]),
     ...(raw.pickups ?? []).map((pickup, index) => [`pickups.${index}.id`, pickup.id] as [string, string]),
+    ...(raw.bosses?.items ?? []).map((boss, index) => [`bosses.items.${index}.id`, boss.id] as [string, string]),
     ...raw.rules.collisions.map((collision, index) => [`rules.collisions.${index}.id`, collision.id] as [string, string])
   ];
 }

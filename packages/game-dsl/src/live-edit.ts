@@ -192,6 +192,7 @@ type PatchPathRule = {
     | 'enemy-health'
     | 'enemy-label'
     | 'projectile-damage'
+    | 'pickup-kind'
     | 'wave-count'
     | 'world-width'
     | 'scale'
@@ -223,6 +224,7 @@ const patchPathRules: PatchPathRule[] = [
   { kind: 'warmRestart', pattern: '/world/width', value: 'world-width' },
   { kind: 'warmRestart', pattern: '/level/waves', value: 'unknown' },
   { kind: 'warmRestart', pattern: '/level/spawnRules', value: 'unknown' },
+  { kind: 'warmRestart', pattern: '/pickups/*/kind', value: 'pickup-kind' },
   { kind: 'warmRestart', pattern: '/pickups', value: 'unknown' },
   { kind: 'warmRestart', pattern: '/bosses', value: 'unknown' },
   { kind: 'rebuildRequired', pattern: '/genre', value: 'genre' },
@@ -469,6 +471,9 @@ function applyCandidatePatch(baseDsl: GameDslArtifact, patch: DslPatchV1): unkno
     if (applyEnemyLabelPatch(next, op.path, op.value)) {
       continue;
     }
+    if (applyPickupPatch(next, op.path, op.value)) {
+      continue;
+    }
     replaceJsonPointerValue(next, op.path, op.value);
   }
   return next;
@@ -672,6 +677,32 @@ function applyEnemyLabelPatch(artifact: GameDslArtifact, path: string, value: un
   return true;
 }
 
+function applyPickupPatch(artifact: GameDslArtifact, path: string, value: unknown): boolean {
+  const segments = path.split('/').slice(1);
+  if (segments[0] !== 'pickups' || segments[1] === undefined || segments[2] === undefined) {
+    return false;
+  }
+
+  const pickup = artifact.pickups?.[segments[1]];
+  if (pickup === undefined) {
+    return false;
+  }
+
+  if (segments[2] === 'kind') {
+    if (!isRawPickupKind(value)) {
+      return false;
+    }
+    pickup.kind = value;
+    const sourcePickup = artifact.sourceDsl.pickups?.find((candidate) => candidate.id === segments[1]);
+    if (sourcePickup !== undefined) {
+      sourcePickup.kind = value;
+    }
+    return true;
+  }
+
+  return false;
+}
+
 function buildRuntimePatch(patch: DslPatchV1, baseDsl: GameDslArtifact): NonNullable<LiveUpdatePlan['runtimePatch']> {
   const runtimePatch: NonNullable<LiveUpdatePlan['runtimePatch']> = {};
   for (const op of patch.ops) {
@@ -807,6 +838,9 @@ function valueMatchesRule(value: unknown, rule: PatchPathRule, baseDsl: GameDslA
   if (rule.value === 'projectile-damage') {
     return isIntInRange(value, 1, 50) && referencedIdExists(baseDsl, path);
   }
+  if (rule.value === 'pickup-kind') {
+    return isRawPickupKind(value) && referencedIdExists(baseDsl, path);
+  }
   if (rule.value === 'wave-count') {
     return isIntInRange(value, 1, 100) && referencedIdExists(baseDsl, path);
   }
@@ -843,7 +877,14 @@ function referencedIdExists(baseDsl: GameDslArtifact, path: string): boolean {
   if (segments[0] === 'level' && segments[1] === 'waves' && segments[2] !== undefined) {
     return baseDsl.level.waves[segments[2]] !== undefined;
   }
+  if (segments[0] === 'pickups' && segments[1] !== undefined) {
+    return baseDsl.pickups?.[segments[1]] !== undefined;
+  }
   return true;
+}
+
+function isRawPickupKind(value: unknown): value is 'health' | 'score' | 'weapon' {
+  return typeof value === 'string' && ['health', 'score', 'weapon'].includes(value);
 }
 
 function hasUnsafePatchValue(value: unknown): boolean {

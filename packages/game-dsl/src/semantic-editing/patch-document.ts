@@ -149,11 +149,24 @@ function resolveParent(
 
   let current: unknown = document;
   for (const segment of segments.slice(0, -1)) {
+    if (isUnsafePathSegment(segment)) {
+      return operationFailure('Semantic patch parent path is missing.');
+    }
+
+    if (Array.isArray(current)) {
+      const index = parseExistingArrayIndex(segment, current.length);
+      if (index === null || !hasOwnArrayIndex(current, index)) {
+        return operationFailure('Semantic patch parent path is missing.');
+      }
+      current = current[index];
+      continue;
+    }
+
     if (!isJsonRecord(current)) {
       return operationFailure('Semantic patch parent path must resolve through object values.');
     }
 
-    if (isUnsafePathSegment(segment) || !hasOwn(current, segment)) {
+    if (!hasOwn(current, segment)) {
       return operationFailure('Semantic patch parent path is missing.');
     }
 
@@ -201,6 +214,22 @@ function isJsonRecord(value: unknown): value is Record<string, unknown> {
 
 function hasOwn(record: Record<string, unknown>, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(record, key);
+}
+
+function hasOwnArrayIndex(array: unknown[], index: number): boolean {
+  return Object.prototype.hasOwnProperty.call(array, index);
+}
+
+function parseExistingArrayIndex(segment: string, length: number): number | null {
+  if (!/^(0|[1-9]\d*)$/.test(segment)) {
+    return null;
+  }
+
+  const index = Number(segment);
+  if (!Number.isSafeInteger(index) || index < 0 || index >= length) {
+    return null;
+  }
+  return index;
 }
 
 function isUnsafePathSegment(segment: string): boolean {

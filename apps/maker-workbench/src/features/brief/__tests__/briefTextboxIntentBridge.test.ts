@@ -213,6 +213,15 @@ describe('Brief textbox semantic editing bridge', () => {
     });
 
     expect(result).toMatchObject({ ok: false, reason: 'unsupported_field' });
+    if (result.ok || !('unsupported' in result)) {
+      throw new Error('expected unsupported live-edit diagnostic');
+    }
+    expect(result).toMatchObject({
+      unsupported: true,
+      unsupportedReason: 'unknown-concept',
+      recognizedCapabilities: [],
+      blockedFallbacks: []
+    });
   });
 
   it('parses relative natural-language edits against current DSL candidates', () => {
@@ -314,7 +323,79 @@ describe('Brief textbox semantic editing bridge', () => {
     }
 
     for (const text of futureUnsupportedCases) {
-      expect(parseConversationLiveEditCommand({ text, fields })).toMatchObject({ ok: false, reason: 'unsupported_field' });
+      const result = parseConversationLiveEditCommand({ text, fields });
+      expect(result).toMatchObject({ ok: false, reason: 'unsupported_field', unsupported: true });
+    }
+  });
+
+  it('returns capability diagnostics for known unsupported high-level live-edit intents', () => {
+    const fields = liveEditVocabularyFields();
+    const cases: Array<{
+      text: string;
+      unsupportedReason: string;
+      capabilities: string[];
+      blockedFallbacks: string[];
+    }> = [
+      {
+        text: '加入散弹武器掉落',
+        unsupportedReason: 'runtime-adapter-missing',
+        capabilities: ['pickups.weapon'],
+        blockedFallbacks: ['enemy.count', 'projectile.damage']
+      },
+      {
+        text: 'Boss 登场时屏幕震动并播放警告提示',
+        unsupportedReason: 'runtime-adapter-missing',
+        capabilities: ['bosses.introWarning', 'audio.events.warning', 'feedback.cameraShake'],
+        blockedFallbacks: ['world.width']
+      },
+      {
+        text: '玩家受击后闪烁并短暂无敌',
+        unsupportedReason: 'runtime-adapter-missing',
+        capabilities: ['feedback.hitFlash', 'player.invulnerabilityFrames'],
+        blockedFallbacks: ['player.health']
+      },
+      {
+        text: '获得武器时播放提示音',
+        unsupportedReason: 'runtime-adapter-missing',
+        capabilities: ['audio.events.pickupCollected'],
+        blockedFallbacks: ['projectile.damage']
+      },
+      {
+        text: '击败 Boss 时触发大爆炸',
+        unsupportedReason: 'runtime-adapter-missing',
+        capabilities: ['bosses.defeatEffect', 'effects.explosion'],
+        blockedFallbacks: ['projectile.damage']
+      },
+      {
+        text: '爆炸音效更强',
+        unsupportedReason: 'runtime-adapter-missing',
+        capabilities: ['audio.events.explosion'],
+        blockedFallbacks: ['projectile.damage']
+      },
+      {
+        text: '加入会移动的陷阱',
+        unsupportedReason: 'requires-generator-gate',
+        capabilities: ['hazards.movement'],
+        blockedFallbacks: ['enemy.count']
+      }
+    ];
+
+    for (const testCase of cases) {
+      const result = parseConversationLiveEditCommand({ text: testCase.text, fields });
+      expect(result).toMatchObject({
+        ok: false,
+        reason: 'unsupported_field',
+        unsupported: true,
+        unsupportedReason: testCase.unsupportedReason
+      });
+      if (result.ok || !('unsupported' in result)) {
+        throw new Error(`expected unsupported diagnostic for ${testCase.text}`);
+      }
+      expect(result.recognizedCapabilities).toEqual(expect.arrayContaining(testCase.capabilities));
+      expect(result.blockedFallbacks).toEqual(expect.arrayContaining(testCase.blockedFallbacks));
+      expect(result.suggestions.length).toBeGreaterThan(0);
+      expect(result.diagnostics.map((diagnostic) => diagnostic.capability)).toEqual(expect.arrayContaining(testCase.capabilities));
+      expect(result.message).toContain('没有应用 patch');
     }
   });
 

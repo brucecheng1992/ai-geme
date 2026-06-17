@@ -3,6 +3,7 @@ import collectorContract from '../../packages/game-dsl/src/contracts/collector.c
 import shooterContract from '../../packages/game-dsl/src/contracts/shooter.contract.json' with { type: 'json' };
 import sideScrollingRunAndGunContract from '../../packages/game-dsl/src/contracts/side_scrolling_run_and_gun.contract.json' with { type: 'json' };
 import {
+  buildGameDslArtifact,
   DslValidationError,
   normalizeRawGameDsl,
   validateAndNormalizeRawGameDsl,
@@ -52,6 +53,252 @@ describe('DSL Validator and Normalizer', () => {
       'forbidden term'
     );
     expectIssue(validateRawGameDsl({ ...rawDsl, script: 'return true' }), 'ARBITRARY_CODE_NOT_ALLOWED', 'script');
+  });
+
+  it('accepts structured feedback and audio DSL contracts without changing normalized runtime requirements', () => {
+    const rawDsl = createShooterRawDsl();
+    const baseline = validateAndNormalizeRawGameDsl(rawDsl);
+    const result = validateAndNormalizeRawGameDsl({
+      ...rawDsl,
+      player: {
+        ...rawDsl.player,
+        invulnerabilityFrames: {
+          durationMs: 1200,
+          flashEnabled: true
+        }
+      },
+      feedback: {
+        cameraShake: {
+          enabled: true,
+          intensity: 0.5,
+          durationMs: 500
+        },
+        hitFlash: {
+          enabled: true,
+          durationMs: 900,
+          flashCount: 6
+        }
+      },
+      effects: {
+        explosion: {
+          enabled: true,
+          scale: 1.5,
+          durationMs: 800,
+          audioEvent: 'explosion',
+          cameraShake: {
+            enabled: true,
+            intensity: 0.35,
+            durationMs: 300
+          }
+        }
+      },
+      audio: {
+        events: {
+          warning: {
+            assetRef: 'asset:warning_sfx',
+            volume: 0.85,
+            enabled: true
+          },
+          explosion: {
+            volume: 0.7,
+            enabled: true
+          }
+        }
+      },
+      ui: {
+        ...rawDsl.ui,
+        warningBanner: {
+          enabled: true,
+          text: 'WARNING',
+          durationMs: 1200
+        }
+      }
+    });
+
+    expect(baseline.ok).toBe(true);
+    expect(result.ok).toBe(true);
+    if (!baseline.ok || !result.ok) {
+      throw new Error('expected feedback/audio DSL contract to validate');
+    }
+
+    expect(result.rawDsl.feedback?.cameraShake?.intensity).toBe(0.5);
+    expect(result.rawDsl.audio?.events.warning?.assetRef).toBe('asset:warning_sfx');
+    expect(result.rawDsl.effects?.explosion?.audioEvent).toBe('explosion');
+    expect(result.rawDsl.player.invulnerabilityFrames?.durationMs).toBe(1200);
+    expect(result.rawDsl.ui.warningBanner?.text).toBe('WARNING');
+    expect(result.ir.runtime_requirements).toEqual(baseline.ir.runtime_requirements);
+    expect(result.ir.runtime_plan).toEqual(baseline.ir.runtime_plan);
+  });
+
+  it('rejects invalid feedback and audio DSL contract boundaries', () => {
+    const rawDsl = createShooterRawDsl();
+
+    expectIssue(
+      validateRawGameDsl({
+        ...rawDsl,
+        feedback: {
+          cameraShake: {
+            enabled: true,
+            intensity: 1.5,
+            durationMs: 500
+          }
+        }
+      }),
+      'NUMERIC_RANGE_INVALID',
+      'Too big'
+    );
+    expectIssue(
+      validateRawGameDsl({
+        ...rawDsl,
+        audio: {
+          events: {
+            warning: {
+              volume: 1.2,
+              enabled: true
+            }
+          }
+        }
+      }),
+      'NUMERIC_RANGE_INVALID',
+      'Too big'
+    );
+    expectIssue(
+      validateRawGameDsl({
+        ...rawDsl,
+        audio: {
+          events: {
+            screenShake: {
+              volume: 0.8,
+              enabled: true
+            }
+          }
+        }
+      }),
+      'SCHEMA_VALIDATION_FAILED'
+    );
+    expectIssue(
+      validateRawGameDsl({
+        ...rawDsl,
+        effects: {
+          explosion: {
+            enabled: true,
+            scale: 0,
+            durationMs: 500
+          }
+        }
+      }),
+      'NUMERIC_RANGE_INVALID'
+    );
+  });
+
+  it('accepts structured boss DSL contracts without changing normalized runtime requirements', () => {
+    const rawDsl = createSideScrollingRunAndGunRawDsl();
+    const baseline = validateAndNormalizeRawGameDsl(rawDsl);
+    const result = validateAndNormalizeRawGameDsl({
+      ...rawDsl,
+      bosses: {
+        items: [
+          {
+            id: 'boss_alpha',
+            label: 'Sentinel Boss',
+            health: 30,
+            movement: { type: 'patrol', speed_px_per_sec: 80 },
+            healthBar: { enabled: true },
+            phases: [
+              { healthThresholdPct: 100, attacks: ['spread_shot'] },
+              { healthThresholdPct: 50, attacks: ['charge', 'laser_burst'] }
+            ],
+            intro: { warningEnabled: true, warningText: 'WARNING', audioEvent: 'bossIntro' },
+            defeat: { explosionEffect: true, audioEvent: 'bossDefeated' }
+          }
+        ]
+      }
+    });
+
+    expect(baseline.ok).toBe(true);
+    expect(result.ok).toBe(true);
+    if (!baseline.ok || !result.ok) {
+      throw new Error('expected boss DSL contract to validate');
+    }
+
+    expect(result.rawDsl.bosses?.items[0]).toMatchObject({
+      id: 'boss_alpha',
+      health: 30,
+      healthBar: { enabled: true },
+      intro: { warningEnabled: true },
+      defeat: { explosionEffect: true }
+    });
+    expect(result.ir.runtime_requirements).toEqual(baseline.ir.runtime_requirements);
+    expect(result.ir.runtime_plan).toEqual(baseline.ir.runtime_plan);
+
+    const artifact = buildGameDslArtifact({
+      rawDsl: result.rawDsl,
+      runId: 'run_boss_contract',
+      intentPlan: { normalizedGenre: 'side_scrolling_run_and_gun' }
+    });
+    expect(artifact.bosses?.boss_alpha).toMatchObject({
+      id: 'boss_alpha',
+      label: 'Sentinel Boss',
+      health: { max: 30 },
+      physics: { speed: 80 },
+      phases: 2
+    });
+  });
+
+  it('rejects invalid boss DSL contract boundaries', () => {
+    const rawDsl = createSideScrollingRunAndGunRawDsl();
+
+    expectIssue(
+      validateRawGameDsl({
+        ...rawDsl,
+        bosses: {
+          items: [
+            {
+              id: 'boss_alpha',
+              label: 'Sentinel Boss',
+              health: 0,
+              movement: { type: 'patrol', speed_px_per_sec: 80 },
+              phases: [{ healthThresholdPct: 100, attacks: ['spread_shot'] }]
+            }
+          ]
+        }
+      }),
+      'NUMERIC_RANGE_INVALID'
+    );
+    expectIssue(
+      validateRawGameDsl({
+        ...rawDsl,
+        bosses: {
+          items: [
+            {
+              id: 'boss_alpha',
+              label: 'Sentinel Boss',
+              health: 30,
+              movement: { type: 'patrol', speed_px_per_sec: 80 },
+              phases: [{ healthThresholdPct: 100, attacks: ['teleport_script'] }]
+            }
+          ]
+        }
+      }),
+      'SCHEMA_VALIDATION_FAILED'
+    );
+    expectIssue(
+      validateRawGameDsl({
+        ...rawDsl,
+        bosses: {
+          items: [
+            {
+              id: 'boss_alpha',
+              label: 'Sentinel Boss',
+              health: 30,
+              movement: { type: 'patrol', speed_px_per_sec: 80 },
+              phases: [{ healthThresholdPct: 100, attacks: ['spread_shot'], timeline: 'phase script' }]
+            }
+          ]
+        }
+      }),
+      'SCHEMA_VALIDATION_FAILED'
+    );
   });
 
   it('rejects duplicate ids and unresolved references before normalization', () => {

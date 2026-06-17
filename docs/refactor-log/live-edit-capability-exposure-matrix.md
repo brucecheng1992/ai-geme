@@ -44,22 +44,23 @@ Workbench live-edit support 只能在 capability 同时具备 parser mapping、v
 | `world.width` | 扩大/缩小世界宽度 | `/world/width` | `warm-restart` | `supported-live-edit` | n/a |
 | `pickups.enabled` | 开启补给掉落 | `/pickups` | `warm-restart` | `known-not-exposed` | `enemy.count`, `projectile.damage` |
 | `pickups.dropRate` | 提高补给掉落概率 | `/pickups/dropRate` | `warm-restart` | `known-not-exposed` | `enemy.count` |
-| `pickups.weapon` | 掉落散弹/激光/火焰武器 | `/pickups/items/*/effect/weaponRef` | `warm-restart` | `known-not-exposed` | `enemy.count`, `projectile.damage` |
+| `pickups.weapon` | 将既有 pickup 改为 weapon 类型 | `/pickups/*/kind` | `warm-restart` | `runtime-adapter-missing` | `enemy.count`, `projectile.damage` |
 | `pickups.shield` | 掉落护盾/无敌道具 | `/pickups/items/*/effect/type` | `warm-restart` | `known-not-exposed` | `player.health` |
 | `bosses.enabled` | 增加关底 Boss | `/bosses` | `warm-restart` | `warm-restart-only` | `enemy.count` |
-| `bosses.health` | 提高 Boss 血量 | `/bosses/items/*/health` | `warm-restart` | `known-not-exposed` | `enemy.health` |
-| `bosses.healthBar` | 显示 Boss 血条 | `/bosses/items/*/healthBar/enabled` | `warm-restart` | `known-not-exposed` | n/a |
-| `bosses.attackPatterns` | Boss 三种攻击模式 | `/bosses/items/*/phases/*/attacks` | `warm-restart` | `known-not-exposed` | `enemy.count`, `projectile.damage` |
-| `bosses.introWarning` | Boss 登场警告 | `/bosses/items/*/intro/warningEnabled` | `warm-restart` | `known-not-exposed` | n/a |
-| `bosses.defeatEffect` | Boss 死亡大爆炸 | `/bosses/items/*/defeat/explosionEffect` | `warm-restart` | `known-not-exposed` | n/a |
-| `audio.events.pickupCollected` | 获得武器提示音 | `/audio/events/pickupCollected` | `not-listed` | `resolver-only` | `projectile.damage` |
-| `audio.events.explosion` | 爆炸音效 | `/audio/events/explosion` | `not-listed` | `resolver-only` | `projectile.damage` |
-| `audio.events.warning` | 警告提示音 | `/audio/events/warning` | `not-listed` | `resolver-only` | n/a |
-| `feedback.cameraShake` | 屏幕震动 | `/feedback/cameraShake` | `not-listed` | `known-not-exposed` | `world.width` |
-| `feedback.hitFlash` | 玩家受击闪烁 | `/feedback/hitFlash` | `not-listed` | `known-not-exposed` | `player.health` |
-| `player.invulnerabilityFrames` | 短暂无敌 | `/player/invulnerabilityFrames` | `not-listed` | `known-not-exposed` | `player.health` |
-| `effects.explosion` | 爆炸视觉效果 | `/effects/explosion` | `not-listed` | `known-not-exposed` | `projectile.damage` |
-| `collision.effects` | 碰撞触发效果 | `/rules/collisions/*/effects` | `not-listed` | `schema-only` | n/a |
+| `bosses.health` | 提高 Boss 血量 | `/bosses/items/*/health` | `warm-restart` | `runtime-adapter-missing` | `enemy.health` |
+| `bosses.healthBar` | 显示 Boss 血条 | `/bosses/items/*/healthBar/enabled` | `warm-restart` | `runtime-adapter-missing` | n/a |
+| `bosses.attackPatterns` | Boss 三种攻击模式 | `/bosses/items/*/phases/*/attacks` | `warm-restart` | `runtime-adapter-missing` | `enemy.count`, `projectile.damage` |
+| `bosses.introWarning` | Boss 登场警告 | `/bosses/items/*/intro/warningEnabled` | `warm-restart` | `runtime-adapter-missing` | n/a |
+| `bosses.defeatEffect` | Boss 死亡大爆炸 | `/bosses/items/*/defeat/explosionEffect` | `warm-restart` | `runtime-adapter-missing` | n/a |
+| `audio.events.pickupCollected` | 获得武器提示音 | `/audio/events/pickupCollected` | `not-listed` | `runtime-adapter-missing` | `projectile.damage` |
+| `audio.events.explosion` | 爆炸音效 | `/audio/events/explosion` | `not-listed` | `runtime-adapter-missing` | `projectile.damage` |
+| `audio.events.warning` | 警告提示音 | `/audio/events/warning` | `not-listed` | `runtime-adapter-missing` | n/a |
+| `feedback.cameraShake` | 屏幕震动 | `/feedback/cameraShake` | `not-listed` | `runtime-adapter-missing` | `world.width` |
+| `feedback.hitFlash` | 玩家受击闪烁 | `/feedback/hitFlash` | `not-listed` | `runtime-adapter-missing` | `player.health` |
+| `player.invulnerabilityFrames` | 短暂无敌 | `/player/invulnerabilityFrames` | `not-listed` | `runtime-adapter-missing` | `player.health` |
+| `effects.explosion` | 爆炸视觉效果 | `/effects/explosion` | `not-listed` | `runtime-adapter-missing` | `projectile.damage` |
+| `collision.effects` | 碰撞触发效果 | `/rules/collisions/*/effects` | `not-listed` | `runtime-adapter-missing` | n/a |
+| `ui.warningBanner` | WARNING 提示横幅 | `/ui/warningBanner` | `not-listed` | `runtime-adapter-missing` | n/a |
 | `hazards.damage` | 陷阱伤害 | `/hazards/*/damage` | `not-listed` | `known-not-exposed` | `enemy.health`, `projectile.damage` |
 | `hazards.movement` | 移动陷阱 | `/hazards/*/movement` | `not-listed` | `requires-generator-gate` | `enemy.count` |
 | `obstacles.platforms` | 平台/障碍 | `/level/terrain`, `/obstacles` | `not-listed` | `requires-generator-gate` | `world.width`, `enemy.count` |
