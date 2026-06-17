@@ -5,7 +5,13 @@ import { AssetStatusPanel } from './AssetStatusPanel.js';
 import { AssetBindingTraceSummaryPanel, fetchAssetBindingTrace, type AssetBindingTraceView } from './asset-binding-trace-client.js';
 import { BriefTextboxPanel, parseConversationLiveEditCommand, type BriefTextboxMode, type GameConversationMessage } from './features/brief/index.js';
 import { PreviewFrame, PreviewStatusBadge, usePreviewRuntimeRefresh } from './features/preview/index.js';
-import { SemanticPatchReviewPanel, useSemanticPatchActions, type SemanticPatchReviewInput } from './features/semantic-editing/index.js';
+import {
+  buildLiveEditCapabilityDiagnostics,
+  SemanticPatchReviewPanel,
+  useSemanticPatchActions,
+  type LiveEditCapabilityDiagnosticItem,
+  type SemanticPatchReviewInput
+} from './features/semantic-editing/index.js';
 import { PromptCoachPanel } from './PromptCoachPanel.js';
 import { QaStatusPanel } from './QaStatusPanel.js';
 import {
@@ -166,6 +172,15 @@ export function App() {
   );
   const conversationEditableFields = useMemo(
     () => (liveCurrent ? buildConversationEditableFields(liveCurrent.game_dsl, liveCurrent.live_edit_capabilities) : []),
+    [liveCurrent]
+  );
+  const liveEditCapabilityDiagnostics = useMemo(
+    () =>
+      liveCurrent
+        ? buildLiveEditCapabilityDiagnostics(liveCurrent.live_edit_capabilities, {
+            runtimeStatus: liveCurrent.runtime_capability_report.status
+          })
+        : [],
     [liveCurrent]
   );
   const semanticEditDocument = useMemo(() => liveCurrent?.game_dsl, [liveCurrent]);
@@ -831,6 +846,20 @@ export function App() {
                   {liveEditableFields.length === 0 ? <span className="text-sm font-bold text-[#69645d]">Select player, enemy, or projectile</span> : null}
                 </div>
               </div>
+              {liveEditCapabilityDiagnostics.length > 0 ? (
+                <div className="mt-3 grid gap-2 border-t border-[#ead9ba] pt-3">
+                  {liveEditCapabilityDiagnostics.map((group) => (
+                    <div className="grid gap-1 rounded-lg border border-[#ead9ba] bg-[#fffaf0] px-3 py-2" key={group.status}>
+                      <span className="text-[11px] font-black uppercase text-[#6f6558]">{`${group.title}: ${group.items.length}`}</span>
+                      <span className="text-xs font-bold leading-snug text-[#69645d]">{group.summary}</span>
+                      <span className="text-xs font-bold leading-snug text-[#69645d]">{formatCapabilityDiagnosticItems(group.items)}</span>
+                      {formatCapabilityBlockedFallbacks(group.items) ? (
+                        <span className="text-xs font-bold leading-snug text-[#9a4d22]">{formatCapabilityBlockedFallbacks(group.items)}</span>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               <div className="mt-3 grid gap-1 border-t border-[#ead9ba] pt-3 text-xs font-bold text-[#69645d]">
                 <span>{`Runtime: ${runtimeReady ? 'ready' : 'waiting'} · ${liveEditStatus}`}</span>
                 <span>{`History: ${liveCurrent?.patch_history.map((item) => `${item.patchId}:${item.status}:${item.ops?.map((op) => op.path).join('|') ?? ''}`).join(', ') || 'none'}`}</span>
@@ -924,6 +953,17 @@ export function App() {
 function readInspectorFieldValue(field: LiveEditableField, input: HTMLInputElement | null | undefined): number | string {
   const rawValue = input?.value ?? field.value ?? '';
   return field.valueKind === 'label' ? String(rawValue).trim() : Number(rawValue);
+}
+
+function formatCapabilityDiagnosticItems(items: LiveEditCapabilityDiagnosticItem[]): string {
+  const visible = items.slice(0, 5).map((item) => `${item.label} (${item.runtimeCapabilityMode})`);
+  const remaining = items.length - visible.length;
+  return remaining > 0 ? `${visible.join(', ')} +${remaining}` : visible.join(', ');
+}
+
+function formatCapabilityBlockedFallbacks(items: LiveEditCapabilityDiagnosticItem[]): string {
+  const fallbacks = [...new Set(items.flatMap((item) => item.blockedFallbacks))];
+  return fallbacks.length > 0 ? `Blocked fallback: ${fallbacks.join(', ')}` : '';
 }
 
 function isPreviewControlKey(key: string): boolean {

@@ -177,6 +177,23 @@ export {
   type DslValidationSourceArtifact
 } from './artifact-contract.js';
 export {
+  classifyLiveEditCapabilityRuntimeMode,
+  findLiveEditCapabilityExposure,
+  isLiveEditCapabilitySupportedEndToEnd,
+  listLiveEditCapabilityExposuresByStatus,
+  liveEditCapabilityExposureRegistry,
+  summarizeLiveEditCapabilityExposure,
+  type LiveEditCapabilityExposure,
+  type LiveEditCapabilityExposureSummary,
+  type LiveEditCapabilityRuntimeMode,
+  type LiveEditRuntimeCapabilityInventory
+} from './live-edit-capabilities.js';
+export {
+  isEndToEndLiveEditStatus,
+  LIVE_EDIT_CAPABILITY_STATUSES,
+  type LiveEditCapabilityStatus
+} from './live-edit-capability-status.js';
+export {
   buildRuntimeCapabilityReport,
   validateAndPlanDslPatch,
   DslPatchV1Schema,

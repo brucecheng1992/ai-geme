@@ -12,6 +12,11 @@ export {
   type SemanticEditPreviewRefreshEvent
 } from './semanticEditPreviewRefreshBridge.js';
 export {
+  buildLiveEditCapabilityDiagnostics,
+  type LiveEditCapabilityDiagnosticGroup,
+  type LiveEditCapabilityDiagnosticItem
+} from './liveEditDiagnostics.js';
+export {
   acceptSemanticPatchAction,
   beginAcceptSemanticPatch,
   beginUndoSemanticPatch,
