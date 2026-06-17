@@ -115,7 +115,8 @@ function semanticFromModel(role: AssetPlanItem['role'], semanticModel: Normalize
 
 function forbiddenTagsForConcept(concept: string): string[] {
   const tagsByConcept: Record<string, string[]> = {
-    cat: ['tank', 'vehicle', 'spaceship', 'robot', 'turret'],
+    cat: ['dog', 'puppy', 'canine', 'tank', 'vehicle', 'spaceship', 'robot', 'turret'],
+    dog: ['cat', 'kitten', 'feline', 'tank', 'vehicle', 'spaceship', 'robot', 'turret'],
     alien: ['tank', 'vehicle', 'soldier', 'turret'],
     human_character: ['tank', 'vehicle', 'spaceship', 'robot', 'turret'],
     tank: ['cat', 'kitten', 'feline', 'alien', 'extraterrestrial'],

@@ -46,7 +46,7 @@ export class ShooterGameScene {
   private readonly objective;
   private readonly renderer;
   private readonly endScreen: EndScreenRenderer;
-  private readonly enemyWave: ResolvedShooterEnemyWave;
+  private enemyWave: ResolvedShooterEnemyWave;
   private readonly liveEditBridge;
   private runtime: ShooterRuntimeState;
   private readonly moveInput: Record<ShooterDirection, boolean> = { left: false, right: false, up: false, down: false };
@@ -77,13 +77,26 @@ export class ShooterGameScene {
       registry: {
         playerId: 'player_main',
         enemyTypeId: liveEditRegistry?.enemyTypeId ?? this.enemyWave.entityId,
-        projectileId: liveEditRegistry?.projectileId ?? 'projectile'
+        projectileId: liveEditRegistry?.projectileId ?? 'projectile',
+        waveId: liveEditRegistry?.waveId ?? `${this.enemyWave.entityId}_wave`
       },
       renderer: this.renderer,
       setPlayerMaxHealth: (maxHealth) => {
         this.state.maxHealth = maxHealth;
         this.state.health = Math.min(this.state.health, maxHealth);
         this.renderHud();
+      },
+      setPlayerAppearance: () => {
+        this.applyPlayerAppearance();
+      },
+      setEnemyAppearance: () => {
+        this.applyEnemyAppearance();
+      },
+      setEnemyWaveCount: (count) => {
+        this.applyEnemyWaveCount(count);
+      },
+      setWorldWidth: (width) => {
+        this.applyWorldWidth(width);
       }
     });
     primeShooterEnemyWave(this.runtime, this.enemyWave);
@@ -241,6 +254,37 @@ export class ShooterGameScene {
     this.moveInput.right = false;
     this.moveInput.up = false;
     this.moveInput.down = false;
+  }
+
+  private applyEnemyWaveCount(count: number): void {
+    this.params.enemy.count = count;
+    if (this.params.objective.winType === 'enemy_cleared') {
+      this.params.objective.targetCount = count;
+    }
+    this.enemyWave = {
+      ...this.enemyWave,
+      count,
+      maxActive: Math.min(count, Math.max(1, this.enemyWave.maxActive))
+    };
+    this.restart();
+  }
+
+  private applyWorldWidth(width: number): void {
+    this.params.world.width = width;
+    this.phaserScene?.scale.resize(width, this.params.world.height);
+    this.phaserScene?.cameras.main.setBounds(0, 0, width, this.params.world.height);
+    this.restart();
+  }
+
+  private applyPlayerAppearance(): void {
+    this.renderer.usePrimitivePlayerVisual();
+    this.restart();
+    this.renderer.renderPlayer(this.requireScene(), this.runtime);
+  }
+
+  private applyEnemyAppearance(): void {
+    this.renderer.usePrimitiveEnemyVisual();
+    this.restart();
   }
 
   private objectiveReached(): boolean {

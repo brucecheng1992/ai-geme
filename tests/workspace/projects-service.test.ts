@@ -791,6 +791,31 @@ describe('ProjectsService', () => {
     await expect(readFile(workspace.getLivePatchHistoryPath(created.project_id, created.run_id), 'utf8')).rejects.toThrow();
   });
 
+  it('prepares multiple Workbench replace ops from one conversation edit request', async () => {
+    const created = await service.generateProject({ idea: '小猫大战坦克', language: 'zh' });
+    await writeCatVsTankArtifacts(workspace, liveEdit, created.project_id, created.run_id);
+
+    const prepared = await service.prepareWorkbenchLiveEdit(created.project_id, created.run_id, {
+      intent: '增加敌人数量，增加游戏x轴',
+      ops: [
+        { op: 'replace', path: '/level/waves/tank_basic_wave/count', value: 9 },
+        { op: 'replace', path: '/world/width', value: 1120 }
+      ]
+    });
+
+    expect(prepared).toMatchObject({
+      status: 'warm_restart_required',
+      apply_mode: 'warm_restart',
+      runtime_patch: {
+        level: { waves: { tank_basic_wave: { count: 9 } } },
+        world: { width: 1120 }
+      },
+      live_update_plan: {
+        affectedPaths: ['/level/waves/tank_basic_wave/count', '/world/width']
+      }
+    });
+  });
+
   it('rejects stale runtime success without advancing patch history', async () => {
     const created = await service.generateProject({ idea: '小猫大战坦克', language: 'zh' });
     await writeCatVsTankArtifacts(workspace, liveEdit, created.project_id, created.run_id);

@@ -1,22 +1,40 @@
 import type { ShooterRuntimeState } from './shooter-runtime.js';
-import type { ShooterTemplateParams } from './template-params.js';
+import type { ShooterEntityVisualParams, ShooterTemplateParams } from './template-params.js';
+
+type EnemyRuntimePatch = {
+  speed?: number;
+  maxHealth?: number;
+  label?: string;
+  visual?: ShooterEntityVisualParams;
+};
+
+type PlayerRuntimePatch = {
+  scale?: number;
+  maxSpeed?: number;
+  maxHealth?: number;
+  label?: string;
+  visual?: ShooterEntityVisualParams;
+};
 
 export type ShooterRuntimePatch = {
-  player?: { scale?: number; maxSpeed?: number; maxHealth?: number };
-  enemyTypes?: Record<string, { speed?: number; maxHealth?: number }>;
+  player?: PlayerRuntimePatch;
+  enemyTypes?: Record<string, EnemyRuntimePatch>;
   projectiles?: Record<string, { speed?: number; damage?: number }>;
+  level?: { waves?: Record<string, { count?: number }> };
+  world?: { width?: number };
 };
 
 export type ShooterLiveEditRegistry = {
   playerId: 'player_main';
   enemyTypeId: string;
   projectileId: string;
+  waveId?: string;
   runId?: string;
 };
 
 export type ShooterRuntimeBridgeResult = {
-  status: 'applied_hot' | 'failed_runtime_apply' | 'unsupported';
-  applyMode: 'hot' | 'none';
+  status: 'applied_hot' | 'applied_warm_restart' | 'failed_runtime_apply' | 'unsupported';
+  applyMode: 'hot' | 'warm_restart' | 'none';
   runtimeTarget: 'phaser:top_down_shooter';
   appliedPaths: string[];
   warnings: Array<{ code: string; path: string; message: string }>;
@@ -39,6 +57,10 @@ type BridgeInput = {
   registry: ShooterLiveEditRegistry;
   renderer?: BridgeRenderer;
   setPlayerMaxHealth?: (maxHealth: number) => void;
+  setPlayerAppearance?: () => void;
+  setEnemyAppearance?: () => void;
+  setEnemyWaveCount?: (count: number) => void;
+  setWorldWidth?: (width: number) => void;
 };
 
 const liveEditCapabilities = {
@@ -52,7 +74,7 @@ const liveEditCapabilities = {
     '/projectiles/*/damage'
   ],
   assetSwap: ['/assets/roles/player', '/assets/roles/enemy', '/assets/roles/projectile', '/assets/roles/background'],
-  warmRestart: ['/level/waves', '/level/spawnRules', '/pickups', '/bosses'],
+  warmRestart: ['/player/label', '/enemyTypes/*/label', '/level/waves', '/level/waves/*/count', '/world/width', '/level/spawnRules', '/pickups', '/bosses'],
   rebuildRequired: ['/genre', '/world/coordinateSystem', '/world/physics/mode', '/player/controller']
 } as const;
 
@@ -77,6 +99,7 @@ export function createShooterRuntimeBridge(input: BridgeInput) {
       const runtime = getRuntime();
       const appliedPaths: string[] = [];
       const { params, registry } = input;
+      let applyMode: 'hot' | 'warm_restart' = 'hot';
       const playerPatch = parsed.patch.player;
       if (playerPatch?.scale !== undefined) {
         input.renderer?.setPlayerScale?.(playerPatch.scale);
@@ -90,6 +113,15 @@ export function createShooterRuntimeBridge(input: BridgeInput) {
         params.player.health = playerPatch.maxHealth;
         input.setPlayerMaxHealth?.(playerPatch.maxHealth);
         appliedPaths.push('/player/health/max');
+      }
+      if (playerPatch?.label !== undefined) {
+        params.player.label = playerPatch.label;
+        if (playerPatch.visual !== undefined) {
+          params.player.visual = playerPatch.visual;
+        }
+        input.setPlayerAppearance?.();
+        appliedPaths.push('/player/label');
+        applyMode = 'warm_restart';
       }
 
       const enemyPatch = parsed.patch.enemyTypes?.[registry.enemyTypeId];
@@ -105,6 +137,15 @@ export function createShooterRuntimeBridge(input: BridgeInput) {
           }
         }
         appliedPaths.push(`/enemyTypes/${registry.enemyTypeId}/health/max`);
+      }
+      if (enemyPatch?.label !== undefined) {
+        params.enemy.label = enemyPatch.label;
+        if (enemyPatch.visual !== undefined) {
+          params.enemy.visual = enemyPatch.visual;
+        }
+        input.setEnemyAppearance?.();
+        appliedPaths.push(`/enemyTypes/${registry.enemyTypeId}/label`);
+        applyMode = 'warm_restart';
       }
 
       const projectilePatch = parsed.patch.projectiles?.[registry.projectileId];
@@ -122,7 +163,33 @@ export function createShooterRuntimeBridge(input: BridgeInput) {
         appliedPaths.push(`/projectiles/${registry.projectileId}/damage`);
       }
 
-      return { status: 'applied_hot', applyMode: 'hot', runtimeTarget: 'phaser:top_down_shooter', appliedPaths, warnings: [], errors: [] };
+      const waveId = registry.waveId ?? `${registry.enemyTypeId}_wave`;
+      const wavePatch = parsed.patch.level?.waves?.[waveId];
+      if (wavePatch?.count !== undefined) {
+        params.enemy.count = wavePatch.count;
+        if (params.objective.winType === 'enemy_cleared') {
+          params.objective.targetCount = wavePatch.count;
+        }
+        input.setEnemyWaveCount?.(wavePatch.count);
+        appliedPaths.push(`/level/waves/${waveId}/count`);
+        applyMode = 'warm_restart';
+      }
+
+      if (parsed.patch.world?.width !== undefined) {
+        params.world.width = parsed.patch.world.width;
+        input.setWorldWidth?.(parsed.patch.world.width);
+        appliedPaths.push('/world/width');
+        applyMode = 'warm_restart';
+      }
+
+      return {
+        status: applyMode === 'warm_restart' ? 'applied_warm_restart' : 'applied_hot',
+        applyMode,
+        runtimeTarget: 'phaser:top_down_shooter',
+        appliedPaths,
+        warnings: [],
+        errors: []
+      };
     },
     snapshotState(): ShooterRuntimeBridgeState {
       return cloneState({ params: input.params, runtime: getRuntime() });
@@ -149,7 +216,7 @@ function parseRuntimePatch(
   }
 
   const patch = input as Record<string, unknown>;
-  const unsupportedKeys = Object.keys(patch).filter((key) => key !== 'player' && key !== 'enemyTypes' && key !== 'projectiles');
+  const unsupportedKeys = Object.keys(patch).filter((key) => key !== 'player' && key !== 'enemyTypes' && key !== 'projectiles' && key !== 'level' && key !== 'world');
   if (unsupportedKeys.length > 0) {
     return { ok: false, result: unsupported(unsupportedKeys.map((key) => `/${key}`).join(',')) };
   }
@@ -159,7 +226,7 @@ function parseRuntimePatch(
     if (!isRecord(patch.player)) {
       return { ok: false, result: failed('RUNTIME_PATCH_INVALID', '/player', 'player patch must be an object.') };
     }
-    const player = pickNumberPatch(patch.player, ['scale', 'maxSpeed', 'maxHealth']);
+    const player = pickPlayerPatch(patch.player);
     if (!player.ok || (player.value.scale !== undefined && !inRange(player.value.scale, 0.1, 5)) || (player.value.maxSpeed !== undefined && !intInRange(player.value.maxSpeed, 1, 2000)) || (player.value.maxHealth !== undefined && !intInRange(player.value.maxHealth, 1, 20))) {
       return { ok: false, result: failed('RUNTIME_PATCH_INVALID', '/player', 'player patch values are outside the allowed runtime ranges.') };
     }
@@ -174,7 +241,7 @@ function parseRuntimePatch(
     if (enemyPatch === undefined || Object.keys(patch.enemyTypes).some((key) => key !== registry.enemyTypeId) || !isRecord(enemyPatch)) {
       return { ok: false, result: unsupported('/enemyTypes') };
     }
-    const enemy = pickNumberPatch(enemyPatch, ['speed', 'maxHealth']);
+    const enemy = pickEnemyPatch(enemyPatch);
     if (!enemy.ok || (enemy.value.speed !== undefined && !intInRange(enemy.value.speed, 1, 2000)) || (enemy.value.maxHealth !== undefined && !intInRange(enemy.value.maxHealth, 1, 50))) {
       return { ok: false, result: failed('RUNTIME_PATCH_INVALID', `/enemyTypes/${registry.enemyTypeId}`, 'enemy patch values are outside the allowed runtime ranges.') };
     }
@@ -196,6 +263,33 @@ function parseRuntimePatch(
     normalized.projectiles = { [registry.projectileId]: projectile.value };
   }
 
+  if ('level' in patch) {
+    const waveId = registry.waveId ?? `${registry.enemyTypeId}_wave`;
+    if (!isRecord(patch.level) || !isRecord(patch.level.waves)) {
+      return { ok: false, result: failed('RUNTIME_PATCH_INVALID', '/level', 'level patch must contain a waves object map.') };
+    }
+    const wavePatch = patch.level.waves[waveId];
+    if (wavePatch === undefined || Object.keys(patch.level.waves).some((key) => key !== waveId) || !isRecord(wavePatch)) {
+      return { ok: false, result: unsupported('/level/waves') };
+    }
+    const wave = pickNumberPatch(wavePatch, ['count']);
+    if (!wave.ok || typeof wave.value.count !== 'number' || !intInRange(wave.value.count, 1, 100)) {
+      return { ok: false, result: failed('RUNTIME_PATCH_INVALID', `/level/waves/${waveId}`, 'wave patch count is outside the allowed runtime range.') };
+    }
+    normalized.level = { waves: { [waveId]: { count: wave.value.count } } };
+  }
+
+  if ('world' in patch) {
+    if (!isRecord(patch.world)) {
+      return { ok: false, result: failed('RUNTIME_PATCH_INVALID', '/world', 'world patch must be an object.') };
+    }
+    const world = pickNumberPatch(patch.world, ['width']);
+    if (!world.ok || typeof world.value.width !== 'number' || !intInRange(world.value.width, 320, 24000)) {
+      return { ok: false, result: failed('RUNTIME_PATCH_INVALID', '/world/width', 'world width is outside the allowed runtime range.') };
+    }
+    normalized.world = { width: world.value.width };
+  }
+
   return { ok: true, patch: normalized };
 }
 
@@ -208,6 +302,81 @@ function pickNumberPatch(record: Record<string, unknown>, allowedKeys: string[])
     value[key] = child;
   }
   return { ok: true, value };
+}
+
+function pickPlayerPatch(record: Record<string, unknown>): { ok: true; value: PlayerRuntimePatch } | { ok: false } {
+  const value: PlayerRuntimePatch = {};
+  for (const [key, child] of Object.entries(record)) {
+    if (key === 'scale' || key === 'maxSpeed' || key === 'maxHealth') {
+      if (typeof child !== 'number') {
+        return { ok: false };
+      }
+      value[key] = child;
+      continue;
+    }
+    if (key === 'label') {
+      if (typeof child !== 'string' || child.trim().length === 0 || child.trim().length > 40) {
+        return { ok: false };
+      }
+      value.label = child.trim();
+      continue;
+    }
+    if (key === 'visual') {
+      if (!isShooterEntityVisualParams(child)) {
+        return { ok: false };
+      }
+      value.visual = child;
+      continue;
+    }
+    return { ok: false };
+  }
+  return { ok: true, value };
+}
+
+function pickEnemyPatch(record: Record<string, unknown>): { ok: true; value: EnemyRuntimePatch } | { ok: false } {
+  const value: EnemyRuntimePatch = {};
+  for (const [key, child] of Object.entries(record)) {
+    if (key === 'speed' || key === 'maxHealth') {
+      if (typeof child !== 'number') {
+        return { ok: false };
+      }
+      value[key] = child;
+      continue;
+    }
+    if (key === 'label') {
+      if (typeof child !== 'string' || child.trim().length === 0 || child.trim().length > 40) {
+        return { ok: false };
+      }
+      value.label = child.trim();
+      continue;
+    }
+    if (key === 'visual') {
+      if (!isShooterEntityVisualParams(child)) {
+        return { ok: false };
+      }
+      value.visual = child;
+      continue;
+    }
+    return { ok: false };
+  }
+  return { ok: true, value };
+}
+
+function isShooterEntityVisualParams(value: unknown): value is ShooterEntityVisualParams {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.kind === 'string' &&
+    ['cat', 'dog', 'alien', 'tank', 'ship', 'circle'].includes(value.kind) &&
+    typeof value.fillColor === 'number' &&
+    Number.isInteger(value.fillColor) &&
+    inRange(value.fillColor, 0, 0xffffff) &&
+    typeof value.accentColor === 'number' &&
+    Number.isInteger(value.accentColor) &&
+    inRange(value.accentColor, 0, 0xffffff)
+  );
 }
 
 function failed(code: string, path: string, message: string): ShooterRuntimeBridgeResult {

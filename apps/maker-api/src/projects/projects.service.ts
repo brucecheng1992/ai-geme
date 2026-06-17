@@ -312,8 +312,8 @@ export class ProjectsService {
       baseDslId: baseDsl.dslId,
       baseVersionId: current.versionId,
       source: 'workbench',
-      intent: request.intent ?? `Workbench edit ${request.path}`,
-      ops: [{ op: 'replace', path: request.path, value: request.value }]
+      intent: request.intent ?? `Workbench edit ${request.ops.map((op) => op.path).join(', ')}`,
+      ops: request.ops
     });
     const prepared = await this.liveEdit.prepareLiveEditPatch({ projectId, runId, patch });
 
@@ -492,10 +492,32 @@ export class ProjectsService {
     }
   }
 
-  private parsePrepareLiveEditRequest(body: unknown): Required<Pick<PrepareLiveEditRequest, 'op' | 'path'>> & Pick<PrepareLiveEditRequest, 'value' | 'intent'> {
+  private parsePrepareLiveEditRequest(body: unknown): { ops: Array<{ op: 'replace'; path: string; value: unknown }>; intent?: string } {
     if (!isRecord(body)) {
       throw new ProjectRequestError('Request body must be an object.');
     }
+
+    if (Array.isArray(body.ops)) {
+      if (body.ops.length === 0 || body.ops.length > 20) {
+        throw new ProjectRequestError('ops must contain between 1 and 20 live edit operations.');
+      }
+      return {
+        ops: body.ops.map((op, index) => {
+          if (!isRecord(op)) {
+            throw new ProjectRequestError(`ops.${index} must be an object.`);
+          }
+          if (op.op !== 'replace') {
+            throw new ProjectRequestError('Only replace live edit operations are supported.');
+          }
+          if (typeof op.path !== 'string' || op.path.trim().length === 0) {
+            throw new ProjectRequestError(`ops.${index}.path is required.`);
+          }
+          return { op: 'replace', path: op.path.trim(), value: op.value };
+        }),
+        intent: typeof body.intent === 'string' && body.intent.trim().length > 0 ? body.intent.trim() : undefined
+      };
+    }
+
     if (body.op !== 'replace') {
       throw new ProjectRequestError('Only replace live edit operations are supported.');
     }
@@ -504,9 +526,7 @@ export class ProjectsService {
     }
 
     return {
-      op: 'replace',
-      path: body.path.trim(),
-      value: body.value,
+      ops: [{ op: 'replace', path: body.path.trim(), value: body.value }],
       intent: typeof body.intent === 'string' && body.intent.trim().length > 0 ? body.intent.trim() : undefined
     };
   }

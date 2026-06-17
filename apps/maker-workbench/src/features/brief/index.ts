@@ -1,5 +1,6 @@
 export { BriefTextbox } from './BriefTextbox.js';
-export { BriefTextboxPanel } from './BriefTextboxPanel.js';
+export { BriefTextboxPanel, type BriefTextboxEditSubmitResult, type GameConversationMessage } from './BriefTextboxPanel.js';
+export { parseConversationLiveEditCommand, type ConversationLiveEditParseResult } from './conversationLiveEditParser.js';
 export {
   previewBriefTextboxSemanticPatch,
   type BriefTextboxPatchPreviewFailure,

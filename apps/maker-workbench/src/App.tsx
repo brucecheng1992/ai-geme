@@ -3,12 +3,20 @@ import { buildSemanticIndex } from '@ai-game-maker/game-dsl';
 
 import { AssetStatusPanel } from './AssetStatusPanel.js';
 import { AssetBindingTraceSummaryPanel, fetchAssetBindingTrace, type AssetBindingTraceView } from './asset-binding-trace-client.js';
-import { BriefTextboxPanel, type BriefTextboxMode } from './features/brief/index.js';
+import { BriefTextboxPanel, parseConversationLiveEditCommand, type BriefTextboxMode, type GameConversationMessage } from './features/brief/index.js';
 import { PreviewFrame, PreviewStatusBadge, usePreviewRuntimeRefresh } from './features/preview/index.js';
 import { SemanticPatchReviewPanel, useSemanticPatchActions, type SemanticPatchReviewInput } from './features/semantic-editing/index.js';
 import { PromptCoachPanel } from './PromptCoachPanel.js';
 import { QaStatusPanel } from './QaStatusPanel.js';
-import { buildEditableFields, buildLiveObjectTree, buildReplacePrepareBody, buildRuntimeApplyReportFromPatchResult, type LiveEditableField } from './live-edit-client.js';
+import {
+  buildConversationEditableFields,
+  buildEditableFields,
+  buildLiveObjectTree,
+  buildReplacePrepareBody,
+  buildReplacePrepareBodyForEdits,
+  buildRuntimeApplyReportFromPatchResult,
+  type LiveEditableField
+} from './live-edit-client.js';
 import { PipelineAcceptanceSummary, fetchPipelineAcceptance, type PipelineAcceptanceView } from './pipeline-acceptance-client.js';
 import { PipelineEvidencePanel, fetchPipelineEvidence, type PipelineEvidenceView } from './pipeline-evidence-client.js';
 import { buildGenerateProjectRequest, type PromptCoachProvenanceSelection } from './prompt-coach-client.js';
@@ -116,6 +124,8 @@ export function App() {
   const [loading, setLoading] = useState(false);
   const previewHostRef = useRef<HTMLDivElement | null>(null);
   const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
+  const runtimeReadyRef = useRef(false);
+  const runtimeReadyRetryRef = useRef<{ url: string; attempted: boolean } | null>(null);
   const pendingPatchRef = useRef<PreparedDeterministicPatch | null>(null);
   const previewRefresh = usePreviewRuntimeRefresh();
   const previewRefreshResult = previewRefresh.current;
@@ -154,8 +164,58 @@ export function App() {
     () => (liveCurrent ? buildEditableFields(liveCurrent.game_dsl, liveCurrent.live_edit_capabilities, selectedObjectPath) : []),
     [liveCurrent, selectedObjectPath]
   );
+  const conversationEditableFields = useMemo(
+    () => (liveCurrent ? buildConversationEditableFields(liveCurrent.game_dsl, liveCurrent.live_edit_capabilities) : []),
+    [liveCurrent]
+  );
   const semanticEditDocument = useMemo(() => liveCurrent?.game_dsl, [liveCurrent]);
   const semanticEditIndex = useMemo(() => (liveCurrent ? buildSemanticIndex(liveCurrent.game_dsl) : undefined), [liveCurrent]);
+  const canEditCurrentGame = projectId.trim().length > 0 && runId.trim().length > 0;
+  const gameConversationMessages = useMemo<GameConversationMessage[]>(() => {
+    const messages: GameConversationMessage[] = [];
+    const trimmedIdea = idea.trim();
+    if (trimmedIdea.length > 0) {
+      messages.push({
+        id: 'brief:current',
+        role: 'user',
+        title: 'Brief',
+        body: trimmedIdea,
+        meta: projectId ? 'generated' : 'draft'
+      });
+    }
+
+    if (projectId.trim().length > 0 && runId.trim().length > 0) {
+      messages.push({
+        id: `run:${projectId}:${runId}`,
+        role: 'workbench',
+        title: 'Generated game',
+        body: `${projectId} · ${runId}`,
+        meta: displayStatus
+      });
+    }
+
+    liveCurrent?.patch_history.slice(-5).forEach((item) => {
+      messages.push({
+        id: `live:${item.patchId}:${item.versionId}`,
+        role: 'workbench',
+        title: 'Live edit applied',
+        body: item.ops?.map((op) => `${op.op} ${op.path}`).join(', ') || item.patchId,
+        meta: item.versionId
+      });
+    });
+
+    semanticPatchActions.state.history.slice(-5).forEach((item) => {
+      messages.push({
+        id: `semantic:${item.id}`,
+        role: item.status === 'failed' || item.status === 'stale' || item.status === 'hash_conflict' ? 'system' : 'workbench',
+        title: `Semantic ${item.action}`,
+        body: item.message,
+        meta: item.status
+      });
+    });
+
+    return messages;
+  }, [displayStatus, idea, liveCurrent?.patch_history, projectId, runId, semanticPatchActions.state.history]);
 
   useEffect(() => {
     if (!projectId || !runId || isTerminal) {
@@ -168,6 +228,11 @@ export function App() {
 
     return () => window.clearInterval(timer);
   }, [projectId, runId, isTerminal]);
+
+  useEffect(() => {
+    const nextMode: BriefTextboxMode = canEditCurrentGame ? 'edit_current_game' : 'new_game';
+    setBriefMode((currentMode) => (currentMode === nextMode ? currentMode : nextMode));
+  }, [canEditCurrentGame]);
 
   useEffect(() => {
     if (!projectId || !runId || !previewUrl || previewBlankScreen) {
@@ -225,9 +290,15 @@ export function App() {
   }, [activePreviewUrl, previewBlankScreen]);
 
   useEffect(() => {
+    runtimeReadyRef.current = runtimeReady;
+  }, [runtimeReady]);
+
+  useEffect(() => {
     setRuntimeReady(false);
+    runtimeReadyRef.current = false;
     setPendingPatchId(null);
     setPreviewInstanceId(null);
+    runtimeReadyRetryRef.current = activePreviewUrl && !previewBlankScreen ? { url: activePreviewUrl, attempted: false } : null;
     pendingPatchRef.current = null;
     setLiveEditStatus(activePreviewUrl && !previewBlankScreen ? 'Waiting for runtime' : 'Runtime not connected');
   }, [activePreviewUrl, previewBlankScreen]);
@@ -303,6 +374,8 @@ export function App() {
       });
       setProjectId(created.project_id);
       setRunId(created.run_id);
+      setSemanticEditText('');
+      setBriefMode('edit_current_game');
       await loadProject(created.project_id, created.run_id);
     });
   }
@@ -380,26 +453,38 @@ export function App() {
     }
   }
 
-  async function applyLiveField(field: LiveEditableField, nextValue: number) {
-    await runAction(async () => {
+  async function applyLiveField(field: LiveEditableField, nextValue: number | string, intent?: string): Promise<boolean> {
+    return applyLiveEdits([{ field, value: nextValue }], intent);
+  }
+
+  async function applyLiveEdits(edits: Array<{ field: LiveEditableField; value: number | string }>, intent?: string): Promise<boolean> {
+    let patchSent = false;
+    const actionOk = await runAction(async () => {
       if (pendingPatchRef.current !== null) {
         throw new Error('A live edit patch is already waiting for runtime confirmation.');
       }
       if (!runtimeReady || previewInstanceId === null) {
         throw new Error('Preview runtime is not ready for live edit.');
       }
-      setLiveEditStatus(`Preparing ${field.path}`);
+      setLiveEditStatus(`Preparing ${edits.map((edit) => edit.field.path).join(', ')}`);
       const prepared = await requestJson<PreparedDeterministicPatch>(`${API_BASE}/api/projects/${projectId}/runs/${runId}/live-edits/prepare`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildReplacePrepareBody(field.path, nextValue))
+        body: JSON.stringify(
+          edits.length === 1
+            ? buildReplacePrepareBody(edits[0]!.field.path, edits[0]!.value, intent)
+            : buildReplacePrepareBodyForEdits(
+                edits.map((edit) => ({ path: edit.field.path, value: edit.value })),
+                intent
+              )
+        )
       });
       setLiveEditStatus(`Plan: ${prepared.status}`);
 
       if (prepared.validation_report?.status === 'invalid') {
         return;
       }
-      if (prepared.apply_mode !== 'hot' || prepared.runtime_patch === undefined) {
+      if ((prepared.apply_mode !== 'hot' && prepared.apply_mode !== 'warm_restart') || prepared.runtime_patch === undefined) {
         pendingPatchRef.current = null;
         setPendingPatchId(null);
         return;
@@ -417,7 +502,9 @@ export function App() {
         '*'
       );
       setLiveEditStatus(`Patch sent: ${prepared.patch_id}`);
+      patchSent = true;
     });
+    return actionOk && patchSent;
   }
 
   async function recordRuntimePatchResult(prepared: PreparedDeterministicPatch, result: RuntimePatchResult) {
@@ -439,16 +526,18 @@ export function App() {
     }
   }
 
-  async function runAction(action: () => Promise<void>, options: { silent?: boolean } = {}) {
+  async function runAction(action: () => Promise<void>, options: { silent?: boolean } = {}): Promise<boolean> {
     if (!options.silent) {
       setLoading(true);
       setError(null);
     }
     try {
       await action();
+      return true;
     } catch (actionError) {
       const message = actionError instanceof Error ? actionError.message : 'Request failed.';
       setError(sanitizeWorkbenchErrorMessage(message));
+      return false;
     } finally {
       if (!options.silent) {
         setLoading(false);
@@ -488,6 +577,16 @@ export function App() {
     setSemanticEditText(nextText);
   }
 
+  async function submitConversationEdit(text: string): Promise<'handled' | 'blocked'> {
+    const parsed = parseConversationLiveEditCommand({ text, fields: conversationEditableFields });
+    if (!parsed.ok) {
+      setError(parsed.message);
+      return 'blocked';
+    }
+
+    return (await applyLiveEdits(parsed.edits, text)) ? 'handled' : 'blocked';
+  }
+
   function openSemanticPatchReview(handoff: SemanticPatchReviewInput) {
     setLiveEditStatus(`Semantic patch preview: ${handoff.patchId}`);
     semanticPatchActions.openReview(handoff);
@@ -502,6 +601,21 @@ export function App() {
     if (previewRefreshId !== undefined) {
       previewRefresh.markIframeLoaded(previewRefreshId);
     }
+    const retry = runtimeReadyRetryRef.current;
+    if (retry === null || retry.attempted || retry.url !== activePreviewUrl) {
+      return;
+    }
+
+    window.setTimeout(() => {
+      const currentRetry = runtimeReadyRetryRef.current;
+      if (runtimeReadyRef.current || currentRetry === null || currentRetry.attempted || currentRetry.url !== activePreviewUrl) {
+        return;
+      }
+      currentRetry.attempted = true;
+      if (previewFrameRef.current !== null) {
+        previewFrameRef.current.src = activePreviewUrl;
+      }
+    }, 400);
   }
 
   return (
@@ -528,31 +642,25 @@ export function App() {
       <section className="grid grid-cols-[320px_minmax(0,1fr)] gap-5 p-5 max-lg:grid-cols-1 max-sm:p-3">
         <aside className="sticky top-24 flex flex-col gap-4 self-start max-lg:static">
           <BriefTextboxPanel
+            conversationMessages={gameConversationMessages}
             document={semanticEditDocument}
             language={language}
             loading={loading}
             mode={briefMode}
             onLanguageChange={setLanguage}
-            onModeChange={setBriefMode}
             onPreviewHandoff={openSemanticPatchReview}
+            onSubmitEdit={submitConversationEdit}
             onTextChange={updateBriefText}
+            primaryAction={
+              <button className={primaryButtonClass} type="button" onClick={() => void generateProject()} disabled={loading || briefMode !== 'new_game'}>
+                {loading ? 'Working' : 'Generate'}
+              </button>
+            }
             projectId={projectId}
             runId={runId}
             semanticIndex={semanticEditIndex}
             value={briefMode === 'new_game' ? idea : semanticEditText}
           />
-
-          <section className={panelClass}>
-            <div className={panelHeadingClass}>
-              <div>
-                <p className={eyebrowClass}>Create</p>
-                <h2 className={headingClass}>New game action</h2>
-              </div>
-            </div>
-            <button className={primaryButtonClass} type="button" onClick={() => void generateProject()} disabled={loading || briefMode !== 'new_game'}>
-              {loading ? 'Working' : 'Generate'}
-            </button>
-          </section>
 
           <section className={panelClass}>
             <div className={panelHeadingClass}>
@@ -696,14 +804,14 @@ export function App() {
                       <span className="[overflow-wrap:anywhere]">{field.label}</span>
                       <input
                         className={`${fieldClass} min-h-9 px-2 py-1 text-xs`}
-                        defaultValue={field.value ?? 0}
+                        defaultValue={field.value ?? (field.valueKind === 'label' ? '' : 0)}
                         disabled={!field.enabled || pendingPatchId !== null || !runtimeReady || previewInstanceId === null}
                         key={`${liveCurrent?.current_version.versionId ?? 'none'}:${field.path}`}
-                        step="0.1"
-                        type="number"
+                        step={field.valueKind === 'number' ? '0.1' : undefined}
+                        type={field.valueKind === 'number' ? 'number' : 'text'}
                         onKeyDown={(event) => {
                           if (event.key === 'Enter') {
-                            void applyLiveField(field, Number((event.currentTarget as HTMLInputElement).value));
+                            void applyLiveField(field, readInspectorFieldValue(field, event.currentTarget as HTMLInputElement));
                           }
                         }}
                       />
@@ -713,7 +821,7 @@ export function App() {
                         type="button"
                         onClick={(event) => {
                           const input = event.currentTarget.parentElement?.querySelector('input');
-                          void applyLiveField(field, Number(input?.value ?? field.value ?? 0));
+                          void applyLiveField(field, readInspectorFieldValue(field, input));
                         }}
                       >
                         Apply
@@ -813,6 +921,11 @@ export function App() {
   );
 }
 
+function readInspectorFieldValue(field: LiveEditableField, input: HTMLInputElement | null | undefined): number | string {
+  const rawValue = input?.value ?? field.value ?? '';
+  return field.valueKind === 'label' ? String(rawValue).trim() : Number(rawValue);
+}
+
 function isPreviewControlKey(key: string): boolean {
   const normalized = key.toLowerCase();
   return key === ' ' || key === 'Enter' || key.startsWith('Arrow') || normalized === 'w' || normalized === 'a' || normalized === 's' || normalized === 'd' || normalized === 'r';
@@ -849,8 +962,8 @@ function isRuntimePatchResult(value: unknown): value is RuntimePatchResult {
 
   const candidate = value as Partial<RuntimePatchResult>;
   return (
-    (candidate.status === 'applied_hot' || candidate.status === 'failed_runtime_apply' || candidate.status === 'unsupported') &&
-    (candidate.applyMode === 'hot' || candidate.applyMode === 'none') &&
+    (candidate.status === 'applied_hot' || candidate.status === 'applied_warm_restart' || candidate.status === 'failed_runtime_apply' || candidate.status === 'unsupported') &&
+    (candidate.applyMode === 'hot' || candidate.applyMode === 'warm_restart' || candidate.applyMode === 'none') &&
     typeof candidate.runtimeTarget === 'string' &&
     Array.isArray(candidate.appliedPaths) &&
     Array.isArray(candidate.warnings) &&

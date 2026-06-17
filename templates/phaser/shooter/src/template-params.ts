@@ -22,7 +22,7 @@ export type ShooterTemplateParams = {
 };
 
 export type ShooterEntityVisualParams = {
-  kind: 'cat' | 'alien' | 'tank' | 'ship' | 'circle';
+  kind: 'cat' | 'dog' | 'alien' | 'tank' | 'ship' | 'circle';
   fillColor: number;
   accentColor: number;
 };

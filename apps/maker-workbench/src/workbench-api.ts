@@ -362,6 +362,7 @@ export type GameDslArtifact = {
   dslId: string;
   runId: string;
   genre: string;
+  world?: { width?: number; height?: number };
   player: {
     id: string;
     label?: string;
@@ -372,7 +373,7 @@ export type GameDslArtifact = {
   };
   enemyTypes: Record<string, { id: string; label?: string; physics?: { speed?: number }; health?: { max?: number } }>;
   projectiles: Record<string, { id: string; label?: string; speed?: number; damage?: number }>;
-  level: { id: string; waves?: Array<{ id: string }> | Record<string, { id: string }> };
+  level: { id: string; waves?: Array<{ id: string; enemyTypeRef?: string; count?: number }> | Record<string, { id: string; enemyTypeRef?: string; count?: number }> };
 };
 
 export type LiveUpdatePlanStatus = 'hot_patchable' | 'warm_restart_required' | 'rebuild_required' | 'unsupported' | 'failed_validation';
@@ -385,9 +386,25 @@ export type RuntimeCapabilityReport = {
   liveEditCapabilities: LiveEditCapabilities;
 };
 export type RuntimePatch = {
-  player?: { scale?: number; maxSpeed?: number; maxHealth?: number };
-  enemyTypes?: Record<string, { speed?: number; maxHealth?: number }>;
+  player?: {
+    scale?: number;
+    maxSpeed?: number;
+    maxHealth?: number;
+    label?: string;
+    visual?: { kind: 'cat' | 'dog' | 'alien' | 'tank' | 'ship' | 'circle'; fillColor: number; accentColor: number };
+  };
+  enemyTypes?: Record<
+    string,
+    {
+      speed?: number;
+      maxHealth?: number;
+      label?: string;
+      visual?: { kind: 'cat' | 'dog' | 'alien' | 'tank' | 'ship' | 'circle'; fillColor: number; accentColor: number };
+    }
+  >;
   projectiles?: Record<string, { speed?: number; damage?: number }>;
+  level?: { waves?: Record<string, { count?: number }> };
+  world?: { width?: number };
 };
 
 export type PreparedDeterministicPatch = {
@@ -403,8 +420,8 @@ export type PreparedDeterministicPatch = {
 };
 
 export type RuntimePatchResult = {
-  status: 'applied_hot' | 'failed_runtime_apply' | 'unsupported';
-  applyMode: 'hot' | 'none';
+  status: 'applied_hot' | 'applied_warm_restart' | 'failed_runtime_apply' | 'unsupported';
+  applyMode: 'hot' | 'warm_restart' | 'none';
   runtimeTarget: string;
   appliedPaths: string[];
   warnings: RuntimeIssue[];

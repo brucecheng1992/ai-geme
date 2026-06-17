@@ -65,7 +65,8 @@ export function useBriefTextboxDraft(options: UseBriefTextboxDraftOptions): UseB
 
   useEffect(() => {
     setDraft((previous) => {
-      if (previous.text === options.text && previous.language === options.language) {
+      const nextMode = options.initialMode ?? previous.mode;
+      if (previous.text === options.text && previous.language === options.language && previous.mode === nextMode) {
         return previous;
       }
 
@@ -75,12 +76,12 @@ export function useBriefTextboxDraft(options: UseBriefTextboxDraftOptions): UseB
         text: options.text,
         language: options.language,
         target: previous.target,
-        mode: previous.mode,
+        mode: nextMode,
         dirty: false
       });
     });
     setPreviewResult(null);
-  }, [options.language, options.projectId, options.runId, options.text]);
+  }, [options.initialMode, options.language, options.projectId, options.runId, options.text]);
 
   function setText(text: string): void {
     setDraft((previous) =>

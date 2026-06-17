@@ -197,6 +197,7 @@ export class DslLiveEditService {
         patchId,
         status: validation.plan.status,
         applyMode: validation.plan.applyMode,
+        runtimePatch: validation.plan.runtimePatch,
         validationReport: validation.report,
         liveUpdatePlan: validation.plan,
         artifactRefs: { ...artifactRefs, ...pendingRefs }

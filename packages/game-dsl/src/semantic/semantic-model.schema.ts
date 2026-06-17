@@ -8,6 +8,7 @@ export const VisualConceptSchema = z.enum([
   'generic_actor',
   'human_character',
   'cat',
+  'dog',
   'alien',
   'tank',
   'fishbone',

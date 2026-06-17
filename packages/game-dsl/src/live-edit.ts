@@ -10,6 +10,7 @@ import {
   type DslValidationReportIssue
 } from './artifact-contract.js';
 import { validateAndNormalizeRawGameDsl } from './normalizer.js';
+import { buildShooterEntityVisualParams } from './template-visual-params.js';
 
 export const RUNTIME_CAPABILITY_REPORT_KIND = 'runtime_capability_report';
 export const RUNTIME_CAPABILITY_REPORT_SCHEMA_VERSION = 'runtime_capability_report.v1';
@@ -44,7 +45,7 @@ export const topDownShooterPhaserLiveEditCapabilities = {
     '/projectiles/*/damage'
   ],
   assetSwap: ['/assets/roles/player', '/assets/roles/enemy', '/assets/roles/projectile', '/assets/roles/background'],
-  warmRestart: ['/level/waves', '/level/spawnRules', '/pickups', '/bosses'],
+  warmRestart: ['/player/label', '/enemyTypes/*/label', '/level/waves', '/level/waves/*/count', '/world/width', '/level/spawnRules', '/pickups', '/bosses'],
   rebuildRequired: ['/genre', '/world/coordinateSystem', '/world/physics/mode', '/player/controller']
 } as const;
 
@@ -112,9 +113,41 @@ export type PatchValidationReport = z.infer<typeof PatchValidationReportSchema>;
 export type PatchValidationIssue = PatchValidationReport['errors'][number];
 
 const RuntimePatchSchema = z.strictObject({
-  player: z.strictObject({ scale: z.number().optional(), maxSpeed: z.number().optional(), maxHealth: z.number().optional() }).optional(),
-  enemyTypes: z.record(z.string(), z.strictObject({ speed: z.number().optional(), maxHealth: z.number().optional() })).optional(),
-  projectiles: z.record(z.string(), z.strictObject({ speed: z.number().optional(), damage: z.number().optional() })).optional()
+  player: z
+    .strictObject({
+      scale: z.number().optional(),
+      maxSpeed: z.number().optional(),
+      maxHealth: z.number().optional(),
+      label: z.string().min(1).max(40).optional(),
+      visual: z
+        .strictObject({
+          kind: z.enum(['cat', 'dog', 'alien', 'tank', 'ship', 'circle']),
+          fillColor: z.number().int().min(0).max(0xffffff),
+          accentColor: z.number().int().min(0).max(0xffffff)
+        })
+        .optional()
+    })
+    .optional(),
+  enemyTypes: z
+    .record(
+      z.string(),
+      z.strictObject({
+        speed: z.number().optional(),
+        maxHealth: z.number().optional(),
+        label: z.string().min(1).max(40).optional(),
+        visual: z
+          .strictObject({
+            kind: z.enum(['cat', 'dog', 'alien', 'tank', 'ship', 'circle']),
+            fillColor: z.number().int().min(0).max(0xffffff),
+            accentColor: z.number().int().min(0).max(0xffffff)
+          })
+          .optional()
+      })
+    )
+    .optional(),
+  projectiles: z.record(z.string(), z.strictObject({ speed: z.number().optional(), damage: z.number().optional() })).optional(),
+  level: z.strictObject({ waves: z.record(z.string(), z.strictObject({ count: z.number().optional() })).optional() }).optional(),
+  world: z.strictObject({ width: z.number().optional() }).optional()
 });
 
 export const LiveUpdatePlanSchema = z.strictObject({
@@ -152,7 +185,20 @@ export type RuntimeApplyReport = z.infer<typeof RuntimeApplyReportSchema>;
 type PatchPathRule = {
   kind: 'hot' | 'assetSwap' | 'warmRestart' | 'rebuildRequired';
   pattern: string;
-  value: 'speed' | 'player-health' | 'enemy-health' | 'projectile-damage' | 'scale' | 'genre' | 'coordinate-system' | 'asset-role' | 'unknown';
+  value:
+    | 'speed'
+    | 'player-label'
+    | 'player-health'
+    | 'enemy-health'
+    | 'enemy-label'
+    | 'projectile-damage'
+    | 'wave-count'
+    | 'world-width'
+    | 'scale'
+    | 'genre'
+    | 'coordinate-system'
+    | 'asset-role'
+    | 'unknown';
 };
 
 type PatchValidationResult =
@@ -163,14 +209,18 @@ const patchPathRules: PatchPathRule[] = [
   { kind: 'hot', pattern: '/player/physics/maxSpeed', value: 'speed' },
   { kind: 'hot', pattern: '/player/render/scale', value: 'scale' },
   { kind: 'hot', pattern: '/player/health/max', value: 'player-health' },
+  { kind: 'warmRestart', pattern: '/player/label', value: 'player-label' },
   { kind: 'hot', pattern: '/enemyTypes/*/physics/speed', value: 'speed' },
   { kind: 'hot', pattern: '/enemyTypes/*/health/max', value: 'enemy-health' },
+  { kind: 'warmRestart', pattern: '/enemyTypes/*/label', value: 'enemy-label' },
   { kind: 'hot', pattern: '/projectiles/*/speed', value: 'speed' },
   { kind: 'hot', pattern: '/projectiles/*/damage', value: 'projectile-damage' },
   { kind: 'assetSwap', pattern: '/assets/roles/player', value: 'asset-role' },
   { kind: 'assetSwap', pattern: '/assets/roles/enemy', value: 'asset-role' },
   { kind: 'assetSwap', pattern: '/assets/roles/projectile', value: 'asset-role' },
   { kind: 'assetSwap', pattern: '/assets/roles/background', value: 'asset-role' },
+  { kind: 'warmRestart', pattern: '/level/waves/*/count', value: 'wave-count' },
+  { kind: 'warmRestart', pattern: '/world/width', value: 'world-width' },
   { kind: 'warmRestart', pattern: '/level/waves', value: 'unknown' },
   { kind: 'warmRestart', pattern: '/level/spawnRules', value: 'unknown' },
   { kind: 'warmRestart', pattern: '/pickups', value: 'unknown' },
@@ -289,10 +339,11 @@ export function validateAndPlanDslPatch(input: {
   const classification = classifyPatch(patch);
   const candidateDsl = classification.kind === 'hot' ? applyHotPatch(input.baseDsl, patch) : applyCandidatePatch(input.baseDsl, patch);
   const candidateDslValidation = validateGameDslArtifact(candidateDsl, { sourceArtifact: 'game_dsl.candidate.json' });
-  if (classification.kind === 'hot') {
+  const candidateMustBeValid = classification.kind === 'hot' || classification.kind === 'warmRestart' || classification.kind === 'assetSwap';
+  if (candidateMustBeValid) {
     checks.push({ name: 'patched_dsl_valid', status: candidateDslValidation.ok ? 'passed' : 'failed' });
   }
-  if (classification.kind === 'hot' && !candidateDslValidation.ok) {
+  if (candidateMustBeValid && !candidateDslValidation.ok) {
     const report = buildPatchValidationReport(
       patch.patchId,
       candidateDslValidation.report.errors.map((issue) => ({ ...issue, path: `patchedDsl.${issue.path}` })),
@@ -302,7 +353,7 @@ export function validateAndPlanDslPatch(input: {
   }
 
   const report = buildPatchValidationReport(patch.patchId, [], checks);
-  const plan = buildLiveUpdatePlan({ patch, classification, affectedPaths });
+  const plan = buildLiveUpdatePlan({ patch, classification, affectedPaths, baseDsl: input.baseDsl });
   return {
     ok: true,
     patch,
@@ -349,6 +400,7 @@ function buildLiveUpdatePlan(input: {
   patch: DslPatchV1;
   classification: { kind: PatchPathRule['kind'] };
   affectedPaths: string[];
+  baseDsl: GameDslArtifact;
 }): LiveUpdatePlan {
   if (input.classification.kind === 'hot') {
     return LiveUpdatePlanSchema.parse({
@@ -358,10 +410,11 @@ function buildLiveUpdatePlan(input: {
       status: 'hot_patchable',
       applyMode: 'hot',
       affectedPaths: input.affectedPaths,
-      runtimePatch: buildRuntimePatch(input.patch)
+      runtimePatch: buildRuntimePatch(input.patch, input.baseDsl)
     });
   }
   if (input.classification.kind === 'warmRestart' || input.classification.kind === 'assetSwap') {
+    const runtimePatch = buildRuntimePatch(input.patch, input.baseDsl);
     return LiveUpdatePlanSchema.parse({
       artifactKind: LIVE_UPDATE_PLAN_KIND,
       schemaVersion: LIVE_UPDATE_PLAN_SCHEMA_VERSION,
@@ -369,6 +422,7 @@ function buildLiveUpdatePlan(input: {
       status: 'warm_restart_required',
       applyMode: 'warm_restart',
       affectedPaths: input.affectedPaths,
+      ...(hasRuntimePatch(runtimePatch) ? { runtimePatch } : {}),
       reason: 'Patch touches paths that require a warm restart.'
     });
   }
@@ -386,21 +440,8 @@ function buildLiveUpdatePlan(input: {
 function applyHotPatch(baseDsl: GameDslArtifact, patch: DslPatchV1): GameDslArtifact {
   const next = cloneArtifact(baseDsl);
   for (const op of patch.ops) {
-    const segments = op.path.split('/').slice(1);
-    const value = op.value;
-    if (segments.join('/') === 'player/physics/maxSpeed' && typeof value === 'number') {
-      next.player.physics.maxSpeed = value;
-      next.player.movement.speedPxPerSec = value;
-      next.sourceDsl.player.movement.speed_px_per_sec = value;
-    } else if (segments.join('/') === 'player/render/scale' && typeof value === 'number') {
-      next.player.render.scale = value;
-    } else if (segments.join('/') === 'player/health/max' && typeof value === 'number') {
-      next.player.health.max = value;
-      next.sourceDsl.player.health = value;
-    } else if (segments[0] === 'enemyTypes' && typeof segments[1] === 'string' && typeof value === 'number') {
-      applyEnemyTypePatch(next, segments[1], segments.slice(2).join('/'), value);
-    } else if (segments[0] === 'projectiles' && typeof segments[1] === 'string' && typeof value === 'number') {
-      applyProjectilePatch(next, segments[1], segments.slice(2).join('/'), value);
+    if (op.op === 'replace') {
+      applyHotReplacePatch(next, op.path, op.value);
     }
   }
 
@@ -408,14 +449,71 @@ function applyHotPatch(baseDsl: GameDslArtifact, patch: DslPatchV1): GameDslArti
 }
 
 function applyCandidatePatch(baseDsl: GameDslArtifact, patch: DslPatchV1): unknown {
-  const next: unknown = JSON.parse(JSON.stringify(baseDsl));
+  const next = cloneArtifact(baseDsl);
   for (const op of patch.ops) {
     if (op.op !== 'replace') {
+      continue;
+    }
+    if (applyHotReplacePatch(next, op.path, op.value)) {
+      continue;
+    }
+    if (applyPlayerLabelPatch(next, op.path, op.value)) {
+      continue;
+    }
+    if (applyWaveCountPatch(next, op.path, op.value)) {
+      continue;
+    }
+    if (applyWorldWidthPatch(next, op.path, op.value)) {
+      continue;
+    }
+    if (applyEnemyLabelPatch(next, op.path, op.value)) {
       continue;
     }
     replaceJsonPointerValue(next, op.path, op.value);
   }
   return next;
+}
+
+function applyPlayerLabelPatch(artifact: GameDslArtifact, path: string, value: unknown): boolean {
+  if (path !== '/player/label' || typeof value !== 'string') {
+    return false;
+  }
+
+  const label = value.trim();
+  artifact.player.label = label;
+  artifact.sourceDsl.player.label = label;
+  return true;
+}
+
+function applyHotReplacePatch(artifact: GameDslArtifact, path: string, value: unknown): boolean {
+  if (typeof value !== 'number') {
+    return false;
+  }
+
+  const segments = path.split('/').slice(1);
+  if (segments.join('/') === 'player/physics/maxSpeed') {
+    artifact.player.physics.maxSpeed = value;
+    artifact.player.movement.speedPxPerSec = value;
+    artifact.sourceDsl.player.movement.speed_px_per_sec = value;
+    return true;
+  }
+  if (segments.join('/') === 'player/render/scale') {
+    artifact.player.render.scale = value;
+    return true;
+  }
+  if (segments.join('/') === 'player/health/max') {
+    artifact.player.health.max = value;
+    artifact.sourceDsl.player.health = value;
+    return true;
+  }
+  if (segments[0] === 'enemyTypes' && typeof segments[1] === 'string') {
+    return applyEnemyTypePatch(artifact, segments[1], segments.slice(2).join('/'), value);
+  }
+  if (segments[0] === 'projectiles' && typeof segments[1] === 'string') {
+    return applyProjectilePatch(artifact, segments[1], segments.slice(2).join('/'), value);
+  }
+
+  return false;
 }
 
 function replaceJsonPointerValue(root: unknown, path: string, value: unknown): void {
@@ -445,10 +543,10 @@ function decodeJsonPointerSegment(segment: string): string {
   return segment.replace(/~1/g, '/').replace(/~0/g, '~');
 }
 
-function applyEnemyTypePatch(artifact: GameDslArtifact, enemyTypeId: string, subpath: string, value: number): void {
+function applyEnemyTypePatch(artifact: GameDslArtifact, enemyTypeId: string, subpath: string, value: number): boolean {
   const enemyType = artifact.enemyTypes[enemyTypeId];
   if (enemyType === undefined) {
-    return;
+    return false;
   }
   const sourceEntity = artifact.sourceDsl.entities.find((entity) => entity.id === enemyTypeId);
   const sourceEnemyType = artifact.sourceDsl.enemyTypes?.find((item) => item.id === enemyTypeId);
@@ -461,6 +559,7 @@ function applyEnemyTypePatch(artifact: GameDslArtifact, enemyTypeId: string, sub
     if (sourceEnemyType !== undefined) {
       sourceEnemyType.movement.speed_px_per_sec = value;
     }
+    return true;
   }
   if (subpath === 'health/max') {
     enemyType.health.max = value;
@@ -470,13 +569,15 @@ function applyEnemyTypePatch(artifact: GameDslArtifact, enemyTypeId: string, sub
     if (sourceEnemyType !== undefined) {
       sourceEnemyType.health = value;
     }
+    return true;
   }
+  return false;
 }
 
-function applyProjectilePatch(artifact: GameDslArtifact, projectileId: string, subpath: string, value: number): void {
+function applyProjectilePatch(artifact: GameDslArtifact, projectileId: string, subpath: string, value: number): boolean {
   const projectile = artifact.projectiles[projectileId];
   if (projectile === undefined) {
-    return;
+    return false;
   }
   const sourceEntity = artifact.sourceDsl.entities.find((entity) => entity.id === projectileId);
   const sourceProjectile = artifact.sourceDsl.projectiles?.find((item) => item.id === projectileId);
@@ -489,6 +590,7 @@ function applyProjectilePatch(artifact: GameDslArtifact, projectileId: string, s
     if (sourceProjectile !== undefined) {
       sourceProjectile.speed_px_per_sec = value;
     }
+    return true;
   }
   if (subpath === 'damage') {
     projectile.damage = value;
@@ -498,16 +600,105 @@ function applyProjectilePatch(artifact: GameDslArtifact, projectileId: string, s
     if (sourceProjectile !== undefined) {
       sourceProjectile.damage = value;
     }
+    return true;
   }
+  return false;
 }
 
-function buildRuntimePatch(patch: DslPatchV1): NonNullable<LiveUpdatePlan['runtimePatch']> {
+function applyWaveCountPatch(artifact: GameDslArtifact, path: string, value: unknown): boolean {
+  if (typeof value !== 'number') {
+    return false;
+  }
+  const segments = path.split('/').slice(1);
+  if (segments[0] !== 'level' || segments[1] !== 'waves' || segments[2] === undefined || segments[3] !== 'count') {
+    return false;
+  }
+
+  const wave = artifact.level.waves[segments[2]];
+  if (wave === undefined) {
+    return false;
+  }
+
+  wave.count = value;
+  const sourceEnemy = wave.enemyTypeRef === undefined ? undefined : artifact.sourceDsl.entities.find((entity) => entity.id === wave.enemyTypeRef);
+  if (sourceEnemy !== undefined && sourceEnemy.kind === 'enemy') {
+    sourceEnemy.count = value;
+  }
+  if (artifact.winLose.win === 'enemy_cleared') {
+    artifact.winLose.target = value;
+  }
+  if (artifact.sourceDsl.objectives.win.type === 'enemy_cleared') {
+    artifact.sourceDsl.objectives.win.target = value;
+  }
+
+  return true;
+}
+
+function applyWorldWidthPatch(artifact: GameDslArtifact, path: string, value: unknown): boolean {
+  if (path !== '/world/width' || typeof value !== 'number') {
+    return false;
+  }
+
+  artifact.world.width = value;
+  artifact.sourceDsl.world.width = value;
+  return true;
+}
+
+function applyEnemyLabelPatch(artifact: GameDslArtifact, path: string, value: unknown): boolean {
+  if (typeof value !== 'string') {
+    return false;
+  }
+  const segments = path.split('/').slice(1);
+  if (segments[0] !== 'enemyTypes' || segments[1] === undefined || segments[2] !== 'label') {
+    return false;
+  }
+
+  const enemyType = artifact.enemyTypes[segments[1]];
+  if (enemyType === undefined) {
+    return false;
+  }
+
+  const label = value.trim();
+  enemyType.label = label;
+  const sourceEntity = artifact.sourceDsl.entities.find((entity) => entity.id === segments[1]);
+  if (sourceEntity !== undefined) {
+    sourceEntity.label = label;
+  }
+  const sourceEnemyType = artifact.sourceDsl.enemyTypes?.find((item) => item.id === segments[1]);
+  if (sourceEnemyType !== undefined) {
+    sourceEnemyType.label = label;
+  }
+
+  return true;
+}
+
+function buildRuntimePatch(patch: DslPatchV1, baseDsl: GameDslArtifact): NonNullable<LiveUpdatePlan['runtimePatch']> {
   const runtimePatch: NonNullable<LiveUpdatePlan['runtimePatch']> = {};
   for (const op of patch.ops) {
+    const segments = op.path.split('/').slice(1);
+    if (typeof op.value === 'string' && segments.join('/') === 'player/label') {
+      runtimePatch.player = {
+        ...runtimePatch.player,
+        label: op.value.trim(),
+        visual: buildShooterEntityVisualParams(op.value.trim(), baseDsl.world.visualTheme, 'player')
+      };
+      continue;
+    }
+    if (typeof op.value === 'string' && segments[0] === 'enemyTypes' && segments[1] !== undefined && segments[2] === 'label') {
+      const current = runtimePatch.enemyTypes?.[segments[1]] ?? {};
+      runtimePatch.enemyTypes = {
+        ...runtimePatch.enemyTypes,
+        [segments[1]]: {
+          ...current,
+          label: op.value.trim(),
+          visual: buildShooterEntityVisualParams(op.value.trim(), baseDsl.world.visualTheme, 'enemy')
+        }
+      };
+      continue;
+    }
     if (typeof op.value !== 'number') {
       continue;
     }
-    const segments = op.path.split('/').slice(1);
     if (segments.join('/') === 'player/render/scale') {
       runtimePatch.player = { ...runtimePatch.player, scale: op.value };
     } else if (segments.join('/') === 'player/physics/maxSpeed') {
@@ -520,10 +711,25 @@ function buildRuntimePatch(patch: DslPatchV1): NonNullable<LiveUpdatePlan['runti
     } else if (segments[0] === 'projectiles' && segments[1] !== undefined) {
       const current = runtimePatch.projectiles?.[segments[1]] ?? {};
       runtimePatch.projectiles = { ...runtimePatch.projectiles, [segments[1]]: { ...current, ...projectileRuntimePatch(segments.slice(2).join('/'), op.value) } };
+    } else if (segments[0] === 'level' && segments[1] === 'waves' && segments[2] !== undefined && segments[3] === 'count') {
+      const current = runtimePatch.level?.waves?.[segments[2]] ?? {};
+      runtimePatch.level = {
+        ...runtimePatch.level,
+        waves: {
+          ...runtimePatch.level?.waves,
+          [segments[2]]: { ...current, count: op.value }
+        }
+      };
+    } else if (segments.join('/') === 'world/width') {
+      runtimePatch.world = { ...runtimePatch.world, width: op.value };
     }
   }
 
   return RuntimePatchSchema.parse(runtimePatch);
+}
+
+function hasRuntimePatch(patch: NonNullable<LiveUpdatePlan['runtimePatch']>): boolean {
+  return Object.keys(patch).length > 0;
 }
 
 function enemyRuntimePatch(subpath: string, value: number): { speed?: number; maxHealth?: number } {
@@ -589,11 +795,23 @@ function valueMatchesRule(value: unknown, rule: PatchPathRule, baseDsl: GameDslA
   if (rule.value === 'player-health') {
     return isIntInRange(value, 1, 20);
   }
+  if (rule.value === 'player-label') {
+    return typeof value === 'string' && value.trim().length > 0 && value.trim().length <= 40;
+  }
   if (rule.value === 'enemy-health') {
     return isIntInRange(value, 1, 50) && referencedIdExists(baseDsl, path);
   }
+  if (rule.value === 'enemy-label') {
+    return typeof value === 'string' && value.trim().length > 0 && value.trim().length <= 40 && referencedIdExists(baseDsl, path);
+  }
   if (rule.value === 'projectile-damage') {
     return isIntInRange(value, 1, 50) && referencedIdExists(baseDsl, path);
+  }
+  if (rule.value === 'wave-count') {
+    return isIntInRange(value, 1, 100) && referencedIdExists(baseDsl, path);
+  }
+  if (rule.value === 'world-width') {
+    return isIntInRange(value, 320, 24000);
   }
   if (rule.value === 'scale') {
     return typeof value === 'number' && value >= 0.1 && value <= 5;
@@ -621,6 +839,9 @@ function referencedIdExists(baseDsl: GameDslArtifact, path: string): boolean {
   }
   if (segments[0] === 'projectiles' && segments[1] !== undefined) {
     return baseDsl.projectiles[segments[1]] !== undefined;
+  }
+  if (segments[0] === 'level' && segments[1] === 'waves' && segments[2] !== undefined) {
+    return baseDsl.level.waves[segments[2]] !== undefined;
   }
   return true;
 }

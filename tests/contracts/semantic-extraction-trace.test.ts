@@ -33,6 +33,23 @@ describe('Semantic extraction trace', () => {
     );
   });
 
+  it('records explicit dog enemy terms from 小猫射击小狗', () => {
+    const trace = traceShooter('做一个小猫射击小狗的小游戏', {
+      playerLabel: '小猫',
+      enemyId: 'dog',
+      enemyLabel: '小狗'
+    });
+    const enemy = findEntry(trace.entries, 'dog');
+
+    expect(enemy).toMatchObject({
+      sourceTerm: '小狗',
+      gameplayRole: 'enemy',
+      visualConcept: 'dog',
+      extractionSource: 'manual_prompt',
+      inferred: false
+    });
+  });
+
   it('records tank player semantics from 坦克大战 without generic tank guessing', () => {
     const trace = traceShooter('坦克大战', {
       playerLabel: '坦克',

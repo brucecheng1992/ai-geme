@@ -102,6 +102,7 @@ export type PrepareLiveEditRequest = {
   op?: 'replace';
   path?: string;
   value?: unknown;
+  ops?: Array<{ op?: 'replace'; path?: string; value?: unknown }>;
 };
 
 export type RuntimeApplyResultResponse = {

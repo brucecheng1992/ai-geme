@@ -8,8 +8,8 @@ import { inferAssetSemanticConstraint, LocalAssetPackSchema } from '../../packag
 
 const fixturePath = join('tests', 'fixtures', 'asset-semantic-canary.briefs.json');
 const assetPackRoot = join('assets', 'asset-packs');
-const supportedCanonicalConcepts = new Set(['cat', 'alien', 'tank', 'space', 'battlefield', 'fishbone']);
-const forbiddenExpansionConcepts = new Set(['dog', 'rabbit', 'robot', 'bird', 'slime', 'asteroid']);
+const supportedCanonicalConcepts = new Set(['cat', 'dog', 'alien', 'tank', 'space', 'battlefield', 'fishbone']);
+const forbiddenExpansionConcepts = new Set(['rabbit', 'robot', 'bird', 'slime', 'asteroid']);
 const step8bPromotedIds = [
   'cat_fishbone_alien_shooter',
   'kitten_extraterrestrial_shooter',
@@ -91,6 +91,7 @@ describe('Asset semantic canary brief fixture', () => {
 
   it('matches current taxonomy inference for supported canary concepts', () => {
     expect(inferAssetSemanticConstraint({ role: 'player_character', subject: '小猫' }).expectedConcept).toBe('cat');
+    expect(inferAssetSemanticConstraint({ role: 'enemy', subject: '小狗' }).expectedConcept).toBe('dog');
     expect(inferAssetSemanticConstraint({ role: 'enemy', subject: '异星人' }).expectedConcept).toBe('alien');
     expect(inferAssetSemanticConstraint({ role: 'player_character', subject: '坦克' }).expectedConcept).toBe('tank');
     expect(inferAssetSemanticConstraint({ role: 'player_character', subject: '装甲车' }).expectedConcept).toBe('tank');

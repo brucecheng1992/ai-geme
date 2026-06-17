@@ -17,6 +17,8 @@ export class ShooterRenderer {
   private playerObject?: ShooterRenderObject;
   private readonly enemyObjects = new Map<number, ShooterRenderObject>();
   private readonly projectileObjects = new Map<number, ShooterRenderObject>();
+  private preferPrimitivePlayerVisual = false;
+  private preferPrimitiveEnemyVisual = false;
 
   constructor(
     private readonly params: ShooterTemplateParams,
@@ -37,10 +39,7 @@ export class ShooterRenderer {
         .strokeRoundedRect(24, 24, this.params.world.width - 48, this.params.world.height - 48, 24);
     }
 
-    this.playerObject = this.art?.addImage(scene, 'player_character', runtime.player.x, runtime.player.y, 92, 74);
-    if (this.playerObject === undefined) {
-      this.playerObject = drawShooterPlayer(scene, runtime.player.x, runtime.player.y, this.params.player.label, this.params.player.visual);
-    }
+    this.renderPlayer(scene, runtime);
     this.scoreText = scene.add.text(40, 32, '', {
       fontFamily: 'Arial, sans-serif',
       fontSize: '28px',
@@ -61,8 +60,24 @@ export class ShooterRenderer {
     (this.playerObject as OrientableRenderObject | undefined)?.setScale?.(scale);
   }
 
+  usePrimitivePlayerVisual(): void {
+    this.preferPrimitivePlayerVisual = true;
+  }
+
+  renderPlayer(scene: Phaser.Scene, runtime: ShooterRuntimeState): void {
+    this.playerObject?.destroy();
+    this.playerObject = this.preferPrimitivePlayerVisual ? undefined : this.art?.addImage(scene, 'player_character', runtime.player.x, runtime.player.y, 92, 74);
+    if (this.playerObject === undefined) {
+      this.playerObject = drawShooterPlayer(scene, runtime.player.x, runtime.player.y, this.params.player.label, this.params.player.visual);
+    }
+  }
+
+  usePrimitiveEnemyVisual(): void {
+    this.preferPrimitiveEnemyVisual = true;
+  }
+
   renderEnemy(scene: Phaser.Scene, enemy: ShooterEnemyState): void {
-    const image = this.art?.addImage(scene, 'enemy', enemy.x, enemy.y, 88, 70);
+    const image = this.preferPrimitiveEnemyVisual ? undefined : this.art?.addImage(scene, 'enemy', enemy.x, enemy.y, 88, 70);
     const enemyObject = image ?? drawShooterEnemy(scene, enemy.x, enemy.y, this.params.enemy.label, this.params.enemy.visual);
     this.enemyObjects.set(enemy.id, faceObjectX(enemyObject, -1));
   }

@@ -107,6 +107,14 @@ describe('Preview runtime refresh adapter', () => {
     });
   });
 
+  it('keeps stale refresh events from replacing the current hook state', async () => {
+    const source = await readFile(new URL('../usePreviewRuntimeRefresh.ts', import.meta.url), 'utf8');
+
+    expect(source).toContain("result.status === 'stale'");
+    expect(source).toContain('latest.refreshId !== result.refreshId');
+    expect(source).toContain('setCurrent(latest)');
+  });
+
   it('does not treat iframe load as QA passed or visually observable', () => {
     const adapter = createPreviewRuntimeRefreshAdapter({ createRefreshId: () => 'refresh_iframe' });
 
@@ -291,6 +299,14 @@ describe('Preview runtime refresh adapter', () => {
     expect(appSource).toContain('pipelineArtifactIndex: artifacts?.pipeline_artifact_index');
     expect(appSource).toContain('artifactIndex: data.pipelineArtifactIndex');
     expect(appSource).toContain("const activePreviewUrl = previewRefreshResult === undefined ? previewUrl : (previewRefreshResult.iframeUrl ?? '');");
+  });
+
+  it('keeps a one-shot iframe retry for missed runtime-ready messages', async () => {
+    const appSource = await readFile(new URL('../../../App.tsx', import.meta.url), 'utf8');
+
+    expect(appSource).toContain('runtimeReadyRetryRef');
+    expect(appSource).toContain('currentRetry.attempted = true');
+    expect(appSource).toContain('previewFrameRef.current.src = activePreviewUrl');
   });
 });
 

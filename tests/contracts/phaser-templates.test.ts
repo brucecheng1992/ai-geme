@@ -45,6 +45,10 @@ type CollectorTemplateSnapshot = TemplateSnapshot & {
   collectible: { x: number; y: number };
 };
 
+type ShooterTemplateSnapshot = TemplateSnapshot & {
+  enemyWavePlan: { count: number };
+};
+
 type TemplateAssetTelemetry = {
   manifestLoaded: boolean;
   required: string[];
@@ -128,6 +132,7 @@ describe('Phaser templates', () => {
     expect(renderer).not.toContain('drawAlienEnemy');
     expect(visuals).toContain("visual.kind === 'tank'");
     expect(visuals).toContain("visual.kind === 'cat'");
+    expect(visuals).toContain("visual.kind === 'dog'");
     expect(visuals).toContain("visual.kind === 'alien'");
     expect(visuals).toContain("visual.kind === 'ship'");
     expect(visuals).toContain("visual.kind === 'shell'");
@@ -441,6 +446,31 @@ describe('Phaser templates', () => {
       status: 'failed_runtime_apply',
       errors: [expect.objectContaining({ code: 'RUNTIME_PATCH_INVALID' })]
     });
+  });
+
+  it('mock shooter runtime bridge applies world width as a warm restart patch', async () => {
+    const { createShooterRuntimeBridge } = await import('../../templates/phaser/shooter/src/live-edit-bridge.js');
+    const { createShooterRuntimeState } = await import('../../templates/phaser/shooter/src/shooter-runtime.js');
+    const { defaultShooterParams } = await import('../../templates/phaser/shooter/src/template-params.js');
+    const params = structuredClone(defaultShooterParams);
+    const resizedWidths: number[] = [];
+    const bridge = createShooterRuntimeBridge({
+      params,
+      runtime: createShooterRuntimeState(params),
+      registry: { playerId: 'player_main', enemyTypeId: 'tank_basic', projectileId: 'fishbone' },
+      setWorldWidth(width: number) {
+        resizedWidths.push(width);
+      }
+    });
+
+    expect(bridge.getCapabilities().warmRestart).toEqual(expect.arrayContaining(['/world/width']));
+    expect(bridge.applyPatch({ world: { width: 1120 } })).toMatchObject({
+      status: 'applied_warm_restart',
+      applyMode: 'warm_restart',
+      appliedPaths: ['/world/width']
+    });
+    expect(params.world.width).toBe(1120);
+    expect(resizedWidths).toEqual([1120]);
   });
 
   it('exposes dodger runtime_plan spawn metadata through the QA snapshot', async () => {
@@ -985,6 +1015,83 @@ describe('Phaser templates', () => {
     scene.create(sceneMock as unknown as Parameters<typeof scene.create>[0]);
 
     expect(sceneMock.textValues).toContain('Score 0  HP 3\nObjective Clear enemies 0/6');
+  });
+
+  it('applies shooter wave count through the warm restart runtime bridge', async () => {
+    const { ShooterGameScene } = await import('../../templates/phaser/shooter/src/GameScene.js');
+    const { defaultShooterParams } = await import('../../templates/phaser/shooter/src/template-params.js');
+    const sceneMock = createPhaserSceneMock();
+    const scene = new ShooterGameScene(defaultShooterParams, undefined, undefined, {
+      enemyTypeId: 'alien',
+      projectileId: 'bolt',
+      waveId: 'alien_wave'
+    });
+
+    scene.create(sceneMock as unknown as Parameters<typeof scene.create>[0]);
+    scene.start();
+    const result = scene.getLiveEditBridge().applyPatch({ level: { waves: { alien_wave: { count: 9 } } } });
+
+    expect(result).toMatchObject({
+      status: 'applied_warm_restart',
+      applyMode: 'warm_restart',
+      appliedPaths: ['/level/waves/alien_wave/count']
+    });
+    expect(sceneMock.textValues).toContain('Score 0  HP 3\nObjective Clear enemies 0/9');
+    expect((globalThis.__GAME_QA__?.snapshot() as ShooterTemplateSnapshot).enemyWavePlan).toMatchObject({ count: 9 });
+  });
+
+  it('applies shooter enemy concept through the warm restart runtime bridge', async () => {
+    const { ShooterGameScene } = await import('../../templates/phaser/shooter/src/GameScene.js');
+    const { defaultShooterParams } = await import('../../templates/phaser/shooter/src/template-params.js');
+    const sceneMock = createPhaserSceneMock();
+    const scene = new ShooterGameScene(defaultShooterParams, undefined, undefined, {
+      enemyTypeId: 'alien',
+      projectileId: 'bolt',
+      waveId: 'alien_wave'
+    });
+
+    scene.create(sceneMock as unknown as Parameters<typeof scene.create>[0]);
+    scene.start();
+    const result = scene.getLiveEditBridge().applyPatch({
+      enemyTypes: { alien: { label: '猫', visual: { kind: 'cat', fillColor: 0xffd28a, accentColor: 0xffc36b } } }
+    });
+
+    expect(result).toMatchObject({
+      status: 'applied_warm_restart',
+      applyMode: 'warm_restart',
+      appliedPaths: ['/enemyTypes/alien/label']
+    });
+    expect(scene.getLiveEditBridge().snapshotState().params.enemy).toMatchObject({
+      label: '猫',
+      visual: { kind: 'cat', fillColor: 0xffd28a, accentColor: 0xffc36b }
+    });
+  });
+
+  it('applies shooter player concept through the warm restart runtime bridge', async () => {
+    const { ShooterGameScene } = await import('../../templates/phaser/shooter/src/GameScene.js');
+    const { defaultShooterParams } = await import('../../templates/phaser/shooter/src/template-params.js');
+    const sceneMock = createPhaserSceneMock();
+    const scene = new ShooterGameScene(defaultShooterParams, undefined, undefined, {
+      enemyTypeId: 'alien',
+      projectileId: 'bolt',
+      waveId: 'alien_wave'
+    });
+
+    scene.create(sceneMock as unknown as Parameters<typeof scene.create>[0]);
+    scene.start();
+    const result = scene.getLiveEditBridge().applyPatch({
+      player: { label: '小猫', visual: { kind: 'cat', fillColor: 0xffd28a, accentColor: 0xffc36b } }
+    });
+
+    expect(result).toMatchObject({
+      status: 'applied_warm_restart',
+      applyMode: 'warm_restart',
+      appliedPaths: ['/player/label']
+    });
+    expect(scene.getLiveEditBridge().snapshotState().params.player).toMatchObject({
+      label: '小猫',
+      visual: { kind: 'cat', fillColor: 0xffd28a, accentColor: 0xffc36b }
+    });
   });
 
   it('renders win and lose screens for every playable template through shared UI contract', async () => {

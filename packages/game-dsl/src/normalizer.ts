@@ -314,7 +314,8 @@ function buildTemplateParams(raw: RawGameDsl): Record<string, unknown> {
     liveEditRegistry: {
       playerId: 'player_main',
       enemyTypeId: enemy?.id ?? 'enemy',
-      projectileId: projectile?.id ?? 'projectile'
+      projectileId: projectile?.id ?? 'projectile',
+      waveId: enemy === undefined ? 'enemy_wave' : `${enemy.id}_wave`
     },
     objective:
       raw.objectives.win.type === 'target_score'

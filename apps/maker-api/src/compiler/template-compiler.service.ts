@@ -246,16 +246,18 @@ export default defineConfig({
   }
 }
 
-function readShooterLiveEditRegistry(params: Record<string, unknown>): { playerId: 'player_main'; enemyTypeId: string; projectileId: string } {
+function readShooterLiveEditRegistry(params: Record<string, unknown>): { playerId: 'player_main'; enemyTypeId: string; projectileId: string; waveId: string } {
   const registry = params.liveEditRegistry;
   if (registry !== null && typeof registry === 'object' && !Array.isArray(registry)) {
     const record = registry as Record<string, unknown>;
+    const enemyTypeId = typeof record.enemyTypeId === 'string' ? record.enemyTypeId : 'enemy';
     return {
       playerId: 'player_main',
-      enemyTypeId: typeof record.enemyTypeId === 'string' ? record.enemyTypeId : 'enemy',
-      projectileId: typeof record.projectileId === 'string' ? record.projectileId : 'projectile'
+      enemyTypeId,
+      projectileId: typeof record.projectileId === 'string' ? record.projectileId : 'projectile',
+      waveId: typeof record.waveId === 'string' ? record.waveId : `${enemyTypeId}_wave`
     };
   }
 
-  return { playerId: 'player_main', enemyTypeId: 'enemy', projectileId: 'projectile' };
+  return { playerId: 'player_main', enemyTypeId: 'enemy', projectileId: 'projectile', waveId: 'enemy_wave' };
 }

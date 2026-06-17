@@ -1,9 +1,9 @@
 import type { RawGameDsl } from './schemas/raw-game-dsl-v0.1.schema.js';
 
-type ShooterVisualKind = 'cat' | 'alien' | 'tank' | 'ship' | 'circle';
+export type ShooterVisualKind = 'cat' | 'dog' | 'alien' | 'tank' | 'ship' | 'circle';
 type ShooterProjectileVisualKind = 'bolt' | 'shell' | 'beam';
 
-type EntityVisualParams = {
+export type ShooterEntityVisualParams = {
   kind: ShooterVisualKind;
   fillColor: number;
   accentColor: number;
@@ -16,9 +16,9 @@ type ProjectileVisualParams = {
 };
 
 export type ShooterVisualParams = {
-  player: EntityVisualParams;
+  player: ShooterEntityVisualParams;
   projectile: ProjectileVisualParams;
-  enemy: EntityVisualParams;
+  enemy: ShooterEntityVisualParams;
 };
 
 /** Derives deterministic primitive-shape visuals from validated DSL semantics. */
@@ -27,13 +27,13 @@ export function buildShooterVisualParams(raw: RawGameDsl): ShooterVisualParams {
   const enemy = raw.entities.find((entity) => entity.kind === 'enemy');
 
   return {
-    player: entityVisual(raw.player.label, raw.world.visual_theme, 'player'),
+    player: buildShooterEntityVisualParams(raw.player.label, raw.world.visual_theme, 'player'),
     projectile: projectileVisual(projectile?.label ?? '', raw.world.visual_theme),
-    enemy: entityVisual(enemy?.label ?? '', raw.world.visual_theme, 'enemy')
+    enemy: buildShooterEntityVisualParams(enemy?.label ?? '', raw.world.visual_theme, 'enemy')
   };
 }
 
-function entityVisual(label: string, theme: string, role: 'player' | 'enemy'): EntityVisualParams {
+export function buildShooterEntityVisualParams(label: string, theme: string, role: 'player' | 'enemy'): ShooterEntityVisualParams {
   if (hasAny(label, ['坦克', 'tank'])) {
     return role === 'player'
       ? { kind: 'tank', fillColor: 0x728a45, accentColor: 0x2c3824 }
@@ -42,6 +42,10 @@ function entityVisual(label: string, theme: string, role: 'player' | 'enemy'): E
 
   if (hasAny(label, ['猫', 'cat'])) {
     return { kind: 'cat', fillColor: 0xffd28a, accentColor: 0xffc36b };
+  }
+
+  if (hasAny(label, ['狗', 'dog', 'puppy', 'canine'])) {
+    return { kind: 'dog', fillColor: 0xc58a55, accentColor: 0x8a5a35 };
   }
 
   if (hasAny(label, ['外星', 'alien'])) {

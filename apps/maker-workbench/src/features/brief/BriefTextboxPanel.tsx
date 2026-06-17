@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import type { SemanticIndex } from '@ai-game-maker/game-dsl';
 
 import { SemanticPatchDiffPanel } from '../semantic-editing/index.js';
@@ -12,13 +14,25 @@ export type BriefTextboxPanelProps = {
   value: string;
   language: string;
   mode: BriefTextboxMode;
+  conversationMessages?: GameConversationMessage[];
   document?: unknown;
   semanticIndex?: SemanticIndex;
   loading?: boolean;
+  primaryAction?: ReactNode;
   onTextChange: (text: string) => void;
   onLanguageChange: (language: string) => void;
-  onModeChange: (mode: BriefTextboxMode) => void;
+  onSubmitEdit?: (text: string) => BriefTextboxEditSubmitResult | Promise<BriefTextboxEditSubmitResult>;
   onPreviewHandoff?: (handoff: BriefTextboxPatchReviewHandoff) => void;
+};
+
+export type BriefTextboxEditSubmitResult = boolean | 'handled' | 'blocked' | 'unhandled';
+
+export type GameConversationMessage = {
+  id: string;
+  role: 'user' | 'workbench' | 'system';
+  title: string;
+  body: string;
+  meta?: string;
 };
 
 const panelClass = 'rounded-lg border border-[#d8c7a6] bg-[#fffef9] p-4 shadow-[0_1px_0_rgba(49,43,34,0.08)]';
@@ -34,12 +48,14 @@ export function BriefTextboxPanel({
   value,
   language,
   mode,
+  conversationMessages = [],
   document,
   semanticIndex,
   loading = false,
+  primaryAction,
   onTextChange,
   onLanguageChange,
-  onModeChange,
+  onSubmitEdit,
   onPreviewHandoff
 }: BriefTextboxPanelProps) {
   const brief = useBriefTextboxDraft({
@@ -59,50 +75,71 @@ export function BriefTextboxPanel({
     }
   }
 
+  async function submitEditMessage(): Promise<void> {
+    const text = brief.draft.text.trim();
+    const submitResult = (await onSubmitEdit?.(text)) ?? 'unhandled';
+    if (submitResult === true || submitResult === 'handled') {
+      brief.setText('');
+      onTextChange('');
+      return;
+    }
+    if (submitResult === 'blocked') {
+      return;
+    }
+
+    previewPatch();
+  }
+
+  const isEditMode = brief.draft.mode === 'edit_current_game';
+  const hasDraftText = brief.draft.text.trim().length > 0;
+  const validationErrors = hasDraftText ? brief.validation.errors : [];
+  const validationWarnings = brief.validation.warnings.filter((issue) => isEditMode || issue.code !== 'BRIEF_TEXTBOX_NEW_GAME_MODE');
+  const canSubmitEdit = isEditMode && brief.validation.ok && hasDraftText && projectId.trim().length > 0 && runId.trim().length > 0;
+
   return (
     <section className={`${panelClass} border-[#312b22] bg-gradient-to-b from-white to-[#fff1d6] shadow-[6px_6px_0_rgba(21,19,15,0.08)]`}>
       <div className={panelHeadingClass}>
         <div>
-          <p className={eyebrowClass}>Create</p>
-          <h2 className={headingClass}>Game brief</h2>
+          <p className={eyebrowClass}>Game</p>
+          <h2 className={headingClass}>Conversation</h2>
         </div>
         <span className="rounded-full border border-[#d0b993] bg-[#ece1ce] px-2.5 py-1 text-[11px] font-black text-[#69645d]">
           {brief.validation.draftHash}
         </span>
       </div>
 
+      <ConversationHistory messages={conversationMessages} />
+
       <BriefTextbox
         disabled={loading}
         language={language}
         mode={brief.draft.mode}
         onLanguageChange={onLanguageChange}
-        onModeChange={(nextMode) => {
-          brief.setMode(nextMode);
-          onModeChange(nextMode);
-        }}
-        onTargetChange={brief.setTarget}
         onTextChange={(text) => {
           brief.setText(text);
           onTextChange(text);
         }}
         status={brief.draft.status}
-        target={brief.draft.target ?? ''}
         text={brief.draft.text}
       />
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <button className={secondaryButtonClass} type="button" onClick={previewPatch} disabled={loading || !brief.canPreview}>
-          Preview Patch
-        </button>
-        {brief.previewResult === null ? null : (
-          <button className={secondaryButtonClass} type="button" onClick={brief.clearPreview} disabled={loading}>
-            Clear Preview
+      {isEditMode ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button className={secondaryButtonClass} type="button" onClick={() => void submitEditMessage()} disabled={loading || !canSubmitEdit}>
+            Send edit
           </button>
-        )}
-      </div>
+          {brief.previewResult === null ? null : (
+            <button className={secondaryButtonClass} type="button" onClick={brief.clearPreview} disabled={loading}>
+              Clear Preview
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="mt-3">{primaryAction}</div>
+      )}
 
-      <IssueList title="Validation errors" tone="error" items={brief.validation.errors.map((issue) => `${issue.code}: ${issue.message}`)} />
-      <IssueList title="Validation warnings" tone="warn" items={brief.validation.warnings.map((issue) => `${issue.code}: ${issue.message}`)} />
+      <IssueList title="Validation errors" tone="error" items={validationErrors.map((issue) => `${issue.code}: ${issue.message}`)} />
+      <IssueList title="Validation warnings" tone="warn" items={validationWarnings.map((issue) => `${issue.code}: ${issue.message}`)} />
 
       {brief.previewResult === null ? null : (
         <section className="mt-3 grid gap-3">
@@ -124,6 +161,41 @@ export function BriefTextboxPanel({
       )}
     </section>
   );
+}
+
+function ConversationHistory({ messages }: { messages: GameConversationMessage[] }) {
+  return (
+    <section className="mb-3 grid gap-2 rounded-lg border border-[#ead9ba] bg-[#fffaf0] p-2">
+      <h3 className="m-0 px-1 text-[11px] font-black uppercase text-[#6f6558]">History</h3>
+      {messages.length === 0 ? (
+        <p className="m-0 px-1 pb-1 text-sm font-bold text-[#69645d]">No conversation yet.</p>
+      ) : (
+        <ol className="m-0 grid max-h-56 list-none gap-2 overflow-auto p-0 pr-1">
+          {messages.map((message) => (
+            <li className={`rounded-lg border p-2 text-xs font-bold [overflow-wrap:anywhere] ${messageClass(message.role)}`} key={message.id}>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-black text-[#15130f]">{message.title}</span>
+                {message.meta === undefined ? null : <span className="rounded-full border border-[#d0b993] bg-[#fff7e8] px-2 py-0.5 text-[10px] font-black text-[#8a5b13]">{message.meta}</span>}
+              </div>
+              <p className="m-0 mt-1 leading-snug">{message.body}</p>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+function messageClass(role: GameConversationMessage['role']): string {
+  if (role === 'user') {
+    return 'border-[#c9dbff] bg-[#e9f0ff] text-[#1d57a7]';
+  }
+
+  if (role === 'workbench') {
+    return 'border-[#91d49b] bg-[#dff3df] text-[#208a4d]';
+  }
+
+  return 'border-[#d0b993] bg-[#fffefa] text-[#69645d]';
 }
 
 function IssueList({ title, tone, items }: { title: string; tone: 'error' | 'warn'; items: string[] }) {

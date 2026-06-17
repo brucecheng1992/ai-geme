@@ -42,6 +42,11 @@ function drawEntity(scene: Phaser.Scene, x: number, y: number, label: string, vi
     return container;
   }
 
+  if (visual.kind === 'dog') {
+    drawDog(scene, container, graphics, label, visual);
+    return container;
+  }
+
   if (visual.kind === 'ship') {
     drawShip(scene, container, graphics, label, visual);
     return container;
@@ -148,6 +153,31 @@ function drawCat(
     .lineStyle(4, visual.fillColor, 1)
     .strokeCircle(-42, 24, 16);
   addLabel(scene, container, -48, 56, label, 0xffe8bc);
+}
+
+function drawDog(
+  scene: Phaser.Scene,
+  container: Phaser.GameObjects.Container,
+  graphics: Phaser.GameObjects.Graphics,
+  label: string,
+  visual: ShooterEntityVisualParams
+): void {
+  graphics
+    .fillStyle(visual.accentColor, 1)
+    .fillEllipse(-34, -26, 24, 42)
+    .fillEllipse(34, -26, 24, 42)
+    .fillStyle(visual.fillColor, 1)
+    .fillEllipse(0, 0, 92, 78)
+    .fillStyle(0xffffff, 1)
+    .fillCircle(-16, -10, 9)
+    .fillCircle(16, -10, 9)
+    .fillStyle(0x122033, 1)
+    .fillCircle(-16, -10, 4)
+    .fillCircle(16, -10, 4)
+    .fillEllipse(0, 10, 24, 16)
+    .fillStyle(0xf2f2f2, 1)
+    .fillEllipse(0, 18, 34, 22);
+  addLabel(scene, container, -44, 56, label, 0xf8e0c4);
 }
 
 function drawAlien(

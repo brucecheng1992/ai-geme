@@ -52,7 +52,7 @@ describe('DSL live edit pipeline', () => {
       liveEditCapabilities: {
         hot: expect.arrayContaining(['/player/physics/maxSpeed', '/projectiles/*/damage']),
         assetSwap: expect.arrayContaining(['/assets/roles/player']),
-        warmRestart: expect.arrayContaining(['/level/waves']),
+        warmRestart: expect.arrayContaining(['/player/label', '/enemyTypes/*/label', '/level/waves', '/level/waves/*/count', '/world/width']),
         rebuildRequired: expect.arrayContaining(['/genre', '/world/coordinateSystem'])
       }
     });
@@ -298,7 +298,7 @@ describe('DSL live edit pipeline', () => {
 
   it('rejects invalid paths without mutating current_version', async () => {
     const before = await readCurrentVersion();
-    const patch = makePatch([{ op: 'replace', path: '/player/label', value: 'Nope' }]);
+    const patch = makePatch([{ op: 'replace', path: '/player/name', value: 'Nope' }]);
 
     const result = await service.applyPatch({ projectId, runId, patch });
 
@@ -415,6 +415,250 @@ describe('DSL live edit pipeline', () => {
     ]);
   });
 
+  it('commits a warm restart wave-count patch after runtime confirmation', async () => {
+    const before = await readCurrentVersion();
+    const patch = makePatch([{ op: 'replace', path: '/level/waves/alien_wave/count', value: 9 }]);
+
+    const prepared = await service.applyPatch({ projectId, runId, patch });
+
+    expect(prepared).toMatchObject({
+      status: 'warm_restart_required',
+      applyMode: 'warm_restart',
+      runtimePatch: { level: { waves: { alien_wave: { count: 9 } } } },
+      validationReport: { status: 'valid' },
+      liveUpdatePlan: {
+        status: 'warm_restart_required',
+        applyMode: 'warm_restart',
+        affectedPaths: ['/level/waves/alien_wave/count']
+      }
+    });
+    await expect(readCurrentVersion()).resolves.toEqual(before);
+    const pendingCandidatePath = workspace.getLivePendingArtifactPath(projectId, runId, patch.patchId, 'game_dsl.candidate.json');
+    await expect(readFile(pendingCandidatePath, 'utf8')).resolves.toContain('"count": 9');
+    await expect(readAuditLog()).resolves.toEqual([
+      expect.objectContaining({
+        patchId: patch.patchId,
+        status: 'warm_restart_required',
+        applyMode: 'warm_restart'
+      })
+    ]);
+
+    const recorded = await service.recordRuntimeApplyResult({
+      projectId,
+      runId,
+      patchId: patch.patchId,
+      report: {
+        artifactKind: 'runtime_apply_report',
+        schemaVersion: 'runtime_apply_report.v1',
+        runId,
+        patchId: patch.patchId,
+        liveUpdatePlanRef: { artifact: `${patch.patchId}.live_update_plan.json`, patchId: patch.patchId },
+        status: 'applied_warm_restart',
+        applyMode: 'warm_restart',
+        runtimeTarget: 'phaser:top_down_shooter',
+        appliedPaths: ['/level/waves/alien_wave/count'],
+        warnings: [],
+        errors: []
+      }
+    });
+
+    expect(recorded).toMatchObject({ status: 'applied_warm_restart', versionId: expect.stringContaining(patch.patchId) });
+    const patchedDsl = JSON.parse(await readFile(workspace.getLiveArtifactPath(projectId, runId, `${recorded.versionId}.game_dsl.json`), 'utf8')) as GameDslArtifact;
+    expect(patchedDsl.level.waves.alien_wave.count).toBe(9);
+    expect(patchedDsl.sourceDsl.entities.find((entity) => entity.id === 'alien')).toMatchObject({ count: 9 });
+    expect(patchedDsl.sourceDsl.objectives.win).toMatchObject({ target: 9 });
+    expect(patchedDsl.winLose).toMatchObject({ target: 9 });
+    await expect(readPatchHistory()).resolves.toEqual([expect.objectContaining({ patchId: patch.patchId, status: 'applied' })]);
+    await expect(readAuditLog()).resolves.toEqual([
+      expect.objectContaining({ patchId: patch.patchId, status: 'warm_restart_required' }),
+      expect.objectContaining({ patchId: patch.patchId, status: 'applied', applyMode: 'warm_restart' })
+    ]);
+  });
+
+  it('commits a warm restart world width patch after runtime confirmation', async () => {
+    const before = await readCurrentVersion();
+    const patch = makePatch([{ op: 'replace', path: '/world/width', value: 1120 }]);
+
+    const prepared = await service.applyPatch({ projectId, runId, patch });
+
+    expect(prepared).toMatchObject({
+      status: 'warm_restart_required',
+      applyMode: 'warm_restart',
+      runtimePatch: { world: { width: 1120 } },
+      validationReport: { status: 'valid' },
+      liveUpdatePlan: {
+        status: 'warm_restart_required',
+        applyMode: 'warm_restart',
+        affectedPaths: ['/world/width']
+      }
+    });
+    await expect(readCurrentVersion()).resolves.toEqual(before);
+
+    const recorded = await service.recordRuntimeApplyResult({
+      projectId,
+      runId,
+      patchId: patch.patchId,
+      report: {
+        artifactKind: 'runtime_apply_report',
+        schemaVersion: 'runtime_apply_report.v1',
+        runId,
+        patchId: patch.patchId,
+        liveUpdatePlanRef: { artifact: `${patch.patchId}.live_update_plan.json`, patchId: patch.patchId },
+        status: 'applied_warm_restart',
+        applyMode: 'warm_restart',
+        runtimeTarget: 'phaser:top_down_shooter',
+        appliedPaths: ['/world/width'],
+        warnings: [],
+        errors: []
+      }
+    });
+
+    const patchedDsl = JSON.parse(await readFile(workspace.getLiveArtifactPath(projectId, runId, `${recorded.versionId}.game_dsl.json`), 'utf8')) as GameDslArtifact;
+    expect(patchedDsl.world.width).toBe(1120);
+    expect(patchedDsl.sourceDsl.world.width).toBe(1120);
+  });
+
+  it('commits an enemy concept replacement as a warm restart semantic live edit', async () => {
+    const before = await readCurrentVersion();
+    const patch = makePatch([{ op: 'replace', path: '/enemyTypes/alien/label', value: '猫' }]);
+
+    const prepared = await service.applyPatch({ projectId, runId, patch });
+
+    expect(prepared).toMatchObject({
+      status: 'warm_restart_required',
+      applyMode: 'warm_restart',
+      runtimePatch: {
+        enemyTypes: {
+          alien: {
+            label: '猫',
+            visual: { kind: 'cat', fillColor: 0xffd28a, accentColor: 0xffc36b }
+          }
+        }
+      },
+      validationReport: { status: 'valid' },
+      liveUpdatePlan: {
+        status: 'warm_restart_required',
+        applyMode: 'warm_restart',
+        affectedPaths: ['/enemyTypes/alien/label']
+      }
+    });
+    await expect(readCurrentVersion()).resolves.toEqual(before);
+    const pendingCandidatePath = workspace.getLivePendingArtifactPath(projectId, runId, patch.patchId, 'game_dsl.candidate.json');
+    const pendingCandidate = JSON.parse(await readFile(pendingCandidatePath, 'utf8')) as GameDslArtifact;
+    expect(pendingCandidate.enemyTypes.alien.label).toBe('猫');
+    expect(pendingCandidate.sourceDsl.entities.find((entity) => entity.id === 'alien')).toMatchObject({ label: '猫' });
+
+    const recorded = await service.recordRuntimeApplyResult({
+      projectId,
+      runId,
+      patchId: patch.patchId,
+      report: {
+        artifactKind: 'runtime_apply_report',
+        schemaVersion: 'runtime_apply_report.v1',
+        runId,
+        patchId: patch.patchId,
+        liveUpdatePlanRef: { artifact: `${patch.patchId}.live_update_plan.json`, patchId: patch.patchId },
+        status: 'applied_warm_restart',
+        applyMode: 'warm_restart',
+        runtimeTarget: 'phaser:top_down_shooter',
+        appliedPaths: ['/enemyTypes/alien/label'],
+        warnings: [],
+        errors: []
+      }
+    });
+
+    expect(recorded).toMatchObject({ status: 'applied_warm_restart', versionId: expect.stringContaining(patch.patchId) });
+    const patchedDsl = JSON.parse(await readFile(workspace.getLiveArtifactPath(projectId, runId, `${recorded.versionId}.game_dsl.json`), 'utf8')) as GameDslArtifact;
+    expect(patchedDsl.enemyTypes.alien.label).toBe('猫');
+    expect(patchedDsl.sourceDsl.entities.find((entity) => entity.id === 'alien')).toMatchObject({ label: '猫' });
+    expect(validateGameDslArtifact(patchedDsl).report).toMatchObject({ status: 'valid', errorCount: 0 });
+    await expect(readPatchHistory()).resolves.toEqual([expect.objectContaining({ patchId: patch.patchId, status: 'applied' })]);
+    await expect(readAuditLog()).resolves.toEqual([
+      expect.objectContaining({ patchId: patch.patchId, status: 'warm_restart_required' }),
+      expect.objectContaining({ patchId: patch.patchId, status: 'applied', applyMode: 'warm_restart' })
+    ]);
+  });
+
+  it('commits a player concept replacement as a warm restart semantic live edit', async () => {
+    const before = await readCurrentVersion();
+    const patch = makePatch([{ op: 'replace', path: '/player/label', value: '小猫' }]);
+
+    const prepared = await service.applyPatch({ projectId, runId, patch });
+
+    expect(prepared).toMatchObject({
+      status: 'warm_restart_required',
+      applyMode: 'warm_restart',
+      runtimePatch: {
+        player: {
+          label: '小猫',
+          visual: { kind: 'cat', fillColor: 0xffd28a, accentColor: 0xffc36b }
+        }
+      },
+      validationReport: { status: 'valid' },
+      liveUpdatePlan: {
+        status: 'warm_restart_required',
+        applyMode: 'warm_restart',
+        affectedPaths: ['/player/label']
+      }
+    });
+    await expect(readCurrentVersion()).resolves.toEqual(before);
+    const pendingCandidatePath = workspace.getLivePendingArtifactPath(projectId, runId, patch.patchId, 'game_dsl.candidate.json');
+    const pendingCandidate = JSON.parse(await readFile(pendingCandidatePath, 'utf8')) as GameDslArtifact;
+    expect(pendingCandidate.player.label).toBe('小猫');
+    expect(pendingCandidate.sourceDsl.player.label).toBe('小猫');
+
+    const recorded = await service.recordRuntimeApplyResult({
+      projectId,
+      runId,
+      patchId: patch.patchId,
+      report: {
+        artifactKind: 'runtime_apply_report',
+        schemaVersion: 'runtime_apply_report.v1',
+        runId,
+        patchId: patch.patchId,
+        liveUpdatePlanRef: { artifact: `${patch.patchId}.live_update_plan.json`, patchId: patch.patchId },
+        status: 'applied_warm_restart',
+        applyMode: 'warm_restart',
+        runtimeTarget: 'phaser:top_down_shooter',
+        appliedPaths: ['/player/label'],
+        warnings: [],
+        errors: []
+      }
+    });
+
+    expect(recorded).toMatchObject({ status: 'applied_warm_restart', versionId: expect.stringContaining(patch.patchId) });
+    const patchedDsl = JSON.parse(await readFile(workspace.getLiveArtifactPath(projectId, runId, `${recorded.versionId}.game_dsl.json`), 'utf8')) as GameDslArtifact;
+    expect(patchedDsl.player.label).toBe('小猫');
+    expect(patchedDsl.sourceDsl.player.label).toBe('小猫');
+    expect(validateGameDslArtifact(patchedDsl).report).toMatchObject({ status: 'valid', errorCount: 0 });
+  });
+
+  it('keeps mixed warm and hot candidate patches source-consistent', async () => {
+    const patch = makePatch([
+      { op: 'replace', path: '/player/label', value: '小猫' },
+      { op: 'replace', path: '/player/physics/maxSpeed', value: 320 },
+      { op: 'replace', path: '/enemyTypes/alien/health/max', value: 4 }
+    ]);
+
+    const prepared = await service.applyPatch({ projectId, runId, patch });
+
+    expect(prepared).toMatchObject({
+      status: 'warm_restart_required',
+      validationReport: { status: 'valid' },
+      runtimePatch: {
+        player: { label: '小猫', maxSpeed: 320 },
+        enemyTypes: { alien: { maxHealth: 4 } }
+      }
+    });
+    const pendingCandidatePath = workspace.getLivePendingArtifactPath(projectId, runId, patch.patchId, 'game_dsl.candidate.json');
+    const pendingCandidate = JSON.parse(await readFile(pendingCandidatePath, 'utf8')) as GameDslArtifact;
+    expect(pendingCandidate.player.physics.maxSpeed).toBe(320);
+    expect(pendingCandidate.sourceDsl.player.movement.speed_px_per_sec).toBe(320);
+    expect(pendingCandidate.enemyTypes.alien.health.max).toBe(4);
+    expect(pendingCandidate.sourceDsl.entities.find((entity) => entity.id === 'alien')).toMatchObject({ health: 4 });
+    expect(validateGameDslArtifact(pendingCandidate).report).toMatchObject({ status: 'valid', errorCount: 0 });
+  });
+
   it('records unsupported patches in edit_audit_log without patch_history', async () => {
     const unsupportedRunId = `${runId}_unsupported`;
     const sideScrolling = buildGameDslArtifact({
@@ -505,7 +749,7 @@ describe('DSL live edit pipeline', () => {
   });
 
   it('keeps patch_history replay scoped to applied versions only', async () => {
-    const invalidPatch = makePatch([{ op: 'replace', path: '/player/label', value: 'Nope' }]);
+    const invalidPatch = makePatch([{ op: 'replace', path: '/player/name', value: 'Nope' }]);
     const hotPatch = makePatch([{ op: 'replace', path: '/projectiles/bolt/damage', value: 3 }]);
 
     await service.applyPatch({ projectId, runId, patch: invalidPatch });

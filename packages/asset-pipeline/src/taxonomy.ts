@@ -11,7 +11,12 @@ const CORE_ENTITY_RULES: SemanticRule[] = [
   {
     concept: 'cat',
     tags: ['cat', 'kitten', 'feline'],
-    forbiddenTags: ['tank', 'vehicle', 'spaceship', 'robot', 'turret']
+    forbiddenTags: ['dog', 'puppy', 'canine', 'tank', 'vehicle', 'spaceship', 'robot', 'turret']
+  },
+  {
+    concept: 'dog',
+    tags: ['dog', 'puppy', 'canine'],
+    forbiddenTags: ['cat', 'kitten', 'feline', 'tank', 'vehicle', 'spaceship', 'robot', 'turret']
   },
   {
     concept: 'alien',
@@ -57,7 +62,14 @@ const SYNONYMS: Record<string, string> = {
   kitten: 'cat',
   feline: 'cat',
   小猫: 'cat',
+  猫咪: 'cat',
+  猫猫: 'cat',
   猫: 'cat',
+  puppy: 'dog',
+  canine: 'dog',
+  小狗: 'dog',
+  狗狗: 'dog',
+  狗: 'dog',
   外星人: 'alien',
   外星: 'alien',
   异星人: 'alien',
@@ -70,7 +82,14 @@ const SYNONYMS: Record<string, string> = {
   'ufo creature': 'alien',
   space_creature: 'alien',
   'space creature': 'alien',
+  human: 'human_character',
+  person: 'human_character',
+  character: 'human_character',
+  hero: 'human_character',
   英雄: 'human_character',
+  人类: 'human_character',
+  角色: 'human_character',
+  人: 'human_character',
   坦克: 'tank',
   战车: 'tank',
   装甲车: 'tank',

@@ -22,10 +22,19 @@ export function usePreviewRuntimeRefresh(options: CreatePreviewRuntimeRefreshAda
   const [adapter] = useState(() => createPreviewRuntimeRefreshAdapter(options));
   const [current, setCurrent] = useState<PreviewRefreshResult | undefined>(() => adapter.current());
 
-  const update = useCallback((result: PreviewRefreshResult) => {
-    setCurrent(result);
-    return result;
-  }, []);
+  const update = useCallback(
+    (result: PreviewRefreshResult) => {
+      const latest = adapter.current();
+      if (result.status === 'stale' && latest !== undefined && latest.refreshId !== result.refreshId) {
+        setCurrent(latest);
+        return latest;
+      }
+
+      setCurrent(result);
+      return result;
+    },
+    [adapter]
+  );
 
   const requestRefresh = useCallback(
     (request: PreviewRefreshRequest, context: PreviewRefreshArtifactContext) => update(adapter.requestRefresh(request, context)),

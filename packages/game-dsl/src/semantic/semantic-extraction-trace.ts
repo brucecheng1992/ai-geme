@@ -16,11 +16,12 @@ export type BuildSemanticExtractionTraceInput = {
 
 const CONCEPT_ALIASES: Record<VisualConcept, string[]> = {
   generic_actor: [],
-  human_character: ['human', 'person', 'character', 'hero', '人类', '人', '角色', '英雄'],
-  cat: ['cat', 'kitten', 'feline', '猫', '小猫'],
-  alien: ['alien', 'extraterrestrial', 'ufo', '外星人', '外星'],
-  tank: ['tank', '坦克'],
-  fishbone: ['fishbone', 'fish bone', '鱼骨'],
+  human_character: ['human', 'person', '人类', '人'],
+  cat: ['cat', 'kitten', 'kitty', 'feline', '猫', '小猫', '猫咪', '猫猫'],
+  dog: ['dog', 'puppy', 'canine', '狗', '小狗', '狗狗'],
+  alien: ['alien', 'extraterrestrial', 'ufo creature', 'space creature', 'ufo', '外星人', '外星怪物', '外星', '异星人', '异星怪物'],
+  tank: ['armored vehicle', 'armoured vehicle', 'tank', 'turret', '坦克', '战车', '装甲车'],
+  fishbone: ['fishbone', 'fish bone', 'fish_bone', '鱼骨头子弹', '鱼骨子弹', '鱼骨头', '鱼骨'],
   bullet: ['bullet', 'projectile', 'bolt', 'laser', '子弹', '弹丸'],
   collectible: ['collectible', 'gem', 'coin', 'pickup', '收集物', '宝石', '金币'],
   hazard: ['hazard', 'obstacle', 'trap', '危险', '障碍'],

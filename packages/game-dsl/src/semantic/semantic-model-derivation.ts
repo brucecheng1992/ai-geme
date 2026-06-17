@@ -33,7 +33,7 @@ function buildEntitySemanticProfile(input: {
   label: string;
   sourcePaths: string[];
 }): GameSemanticModel['entities'][number] {
-  const concept = inferVisualConcept(input.role, input.label);
+  const concept = inferVisualConcept(input.role, `${input.label} ${input.entityId}`);
   return {
     entityId: input.entityId,
     role: input.role,
@@ -55,16 +55,19 @@ function toGameplayRole(kind: RawGameDsl['entities'][number]['kind']): GameplayR
 function inferVisualConcept(role: GameplayRole, label: string): VisualConcept {
   const normalized = normalizeSemanticText(label);
 
-  if (matchesAny(normalized, ['cat', 'kitten', 'feline', '小猫', '猫'])) {
+  if (matchesAny(normalized, ['cat', 'kitten', 'kitty', 'feline', '小猫', '猫咪', '猫猫', '猫'])) {
     return 'cat';
   }
-  if (matchesAny(normalized, ['alien', 'extraterrestrial', 'ufo', '外星人', '外星', '异星人', '异星'])) {
+  if (matchesAny(normalized, ['dog', 'puppy', 'canine', '小狗', '狗狗', '狗'])) {
+    return 'dog';
+  }
+  if (matchesAny(normalized, ['alien', 'extraterrestrial', 'ufo', 'ufo creature', 'space creature', '外星人', '外星怪物', '外星', '异星人', '异星怪物', '异星'])) {
     return 'alien';
   }
-  if (matchesAny(normalized, ['human', 'person', '人类', '英雄'])) {
+  if (matchesAny(normalized, ['human', 'person', '人类', '人'])) {
     return 'human_character';
   }
-  if (matchesAny(normalized, ['tank', 'turret', 'armored vehicle', 'armoured vehicle', '坦克', '战车', '装甲车'])) {
+  if (matchesAny(normalized, ['tank', 'turret', 'armored vehicle', 'armored_vehicle', 'armoured vehicle', 'armoured_vehicle', '坦克', '战车', '装甲车'])) {
     return 'tank';
   }
   if (matchesAny(normalized, ['fishbone', 'fish bone', 'fish_bone', '鱼骨', '鱼骨头', '鱼骨子弹', '鱼骨头子弹'])) {
@@ -94,6 +97,7 @@ function tagsForConcept(concept: VisualConcept): string[] {
     generic_actor: ['generic_actor'],
     human_character: ['human', 'person', 'hero'],
     cat: ['cat', 'kitten', 'feline'],
+    dog: ['dog', 'puppy', 'canine'],
     alien: ['alien', 'extraterrestrial', 'ufo_creature'],
     tank: ['tank', 'vehicle'],
     fishbone: ['fishbone', 'projectile'],

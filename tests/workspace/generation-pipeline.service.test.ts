@@ -321,7 +321,7 @@ describe('GenerationPipelineService failure states', () => {
       status: 'supported',
       liveEditCapabilities: {
         hot: expect.arrayContaining(['/player/render/scale', '/projectiles/*/damage']),
-        warmRestart: expect.arrayContaining(['/level/waves']),
+        warmRestart: expect.arrayContaining(['/player/label', '/enemyTypes/*/label', '/level/waves', '/level/waves/*/count']),
         rebuildRequired: expect.arrayContaining(['/genre', '/world/coordinateSystem'])
       }
     });

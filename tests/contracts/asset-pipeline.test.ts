@@ -44,7 +44,7 @@ describe('Asset pipeline contracts', () => {
     expect(planById.get('player')?.semantic).toMatchObject({
       expectedConcept: 'cat',
       expectedAnyTags: ['cat', 'kitten', 'feline'],
-      forbiddenTags: ['tank', 'vehicle', 'spaceship', 'robot', 'turret'],
+      forbiddenTags: ['dog', 'puppy', 'canine', 'tank', 'vehicle', 'spaceship', 'robot', 'turret'],
       strictness: 'hard'
     });
     expect(planById.get('enemy')?.semantic).toMatchObject({
@@ -431,6 +431,58 @@ describe('Asset pipeline contracts', () => {
         })
       ])
     );
+    await expect(validateGeneratedProjectAssets({ projectId, projectDir: root })).resolves.toMatchObject({ ok: true });
+  });
+
+  it('renders template SVG fallbacks from semantic concept instead of role defaults', async () => {
+    const normalized = validateAndNormalizeRawGameDsl(createCatVsCatShooterRawDsl());
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const result = await writeAssetArtifacts({ projectId, projectDir: root, ir: normalized.ir });
+    const enemy = result.manifest.assets.find((asset) => asset.id === 'enemy');
+
+    expect(enemy).toMatchObject({
+      source: 'template_svg',
+      semanticFit: {
+        status: 'fallback_generated',
+        strictness: 'hard',
+        expectedConcept: 'cat',
+        expectedAnyTags: ['cat', 'kitten', 'feline']
+      }
+    });
+
+    const enemySvg = await readFile(join(root, 'public/assets/enemy.svg'), 'utf8');
+    expect(enemySvg).toContain('template cat fallback');
+    expect(enemySvg).not.toContain('template alien fallback');
+    await expect(validateGeneratedProjectAssets({ projectId, projectDir: root })).resolves.toMatchObject({ ok: true });
+  });
+
+  it('keeps 小狗 shooter enemies as dog semantic fallbacks instead of tank assets', async () => {
+    const normalized = validateAndNormalizeRawGameDsl(createCatVsDogShooterRawDsl());
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const result = await writeAssetArtifacts({ projectId, projectDir: root, ir: normalized.ir });
+    const enemy = result.manifest.assets.find((asset) => asset.id === 'enemy');
+
+    expect(enemy).toMatchObject({
+      source: 'template_svg',
+      semanticFit: {
+        status: 'fallback_generated',
+        strictness: 'hard',
+        expectedConcept: 'dog',
+        expectedAnyTags: ['dog', 'puppy', 'canine']
+      }
+    });
+
+    const enemySvg = await readFile(join(root, 'public/assets/enemy.svg'), 'utf8');
+    expect(enemySvg).toContain('template dog fallback');
+    expect(enemySvg).not.toContain('Kenney grey tank enemy sprite');
     await expect(validateGeneratedProjectAssets({ projectId, projectDir: root })).resolves.toMatchObject({ ok: true });
   });
 
@@ -1092,6 +1144,48 @@ function createCatVsTankShooterRawDsl() {
     id: 'fishbone_hits_tank',
     source: 'fishbone',
     target: 'tank'
+  }));
+  rawDsl.objectives.win = { type: 'enemy_cleared', target: 8 };
+  return rawDsl;
+}
+
+function createCatVsCatShooterRawDsl() {
+  const rawDsl = createShooterRawDsl();
+  rawDsl.metadata.title = '小猫射击小猫';
+  rawDsl.metadata.description = '控制小猫射击敌人小猫。';
+  rawDsl.player.label = '小猫';
+  const enemy = rawDsl.entities.find((entity) => entity.id === 'alien');
+  if (enemy === undefined) {
+    throw new Error('Expected shooter fixture to include alien enemy.');
+  }
+  enemy.id = 'enemy_cat';
+  enemy.label = '敌人小猫';
+  enemy.count = 8;
+  rawDsl.rules.collisions = rawDsl.rules.collisions.map((collision) => ({
+    ...collision,
+    id: 'bolt_hits_enemy_cat',
+    target: collision.target === 'alien' ? 'enemy_cat' : collision.target
+  }));
+  rawDsl.objectives.win = { type: 'enemy_cleared', target: 8 };
+  return rawDsl;
+}
+
+function createCatVsDogShooterRawDsl() {
+  const rawDsl = createShooterRawDsl();
+  rawDsl.metadata.title = '小猫射击小狗';
+  rawDsl.metadata.description = '控制小猫射击小狗。';
+  rawDsl.player.label = '小猫';
+  const enemy = rawDsl.entities.find((entity) => entity.id === 'alien');
+  if (enemy === undefined) {
+    throw new Error('Expected shooter fixture to include alien enemy.');
+  }
+  enemy.id = 'dog';
+  enemy.label = '小狗';
+  enemy.count = 8;
+  rawDsl.rules.collisions = rawDsl.rules.collisions.map((collision) => ({
+    ...collision,
+    id: 'bolt_hits_dog',
+    target: collision.target === 'alien' ? 'dog' : collision.target
   }));
   rawDsl.objectives.win = { type: 'enemy_cleared', target: 8 };
   return rawDsl;

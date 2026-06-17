@@ -3,14 +3,11 @@ import type { BriefTextboxDraftStatus, BriefTextboxMode } from './briefTextboxSc
 export type BriefTextboxProps = {
   text: string;
   language: string;
-  target: string;
   mode: BriefTextboxMode;
   status: BriefTextboxDraftStatus;
   disabled?: boolean;
   onTextChange: (text: string) => void;
   onLanguageChange: (language: string) => void;
-  onTargetChange: (target: string) => void;
-  onModeChange: (mode: BriefTextboxMode) => void;
 };
 
 const fieldClass =
@@ -19,47 +16,31 @@ const fieldClass =
 export function BriefTextbox({
   text,
   language,
-  target,
   mode,
   status,
   disabled = false,
   onTextChange,
-  onLanguageChange,
-  onTargetChange,
-  onModeChange
+  onLanguageChange
 }: BriefTextboxProps) {
+  const label = mode === 'new_game' ? 'New game message' : 'Modify current game';
+  const placeholder =
+    mode === 'new_game'
+      ? 'Describe the game you want to generate...'
+      : 'Tell the current game what to change, for example: 把玩家速度改成 320';
+
   return (
     <div className="grid gap-3">
       <label className="grid gap-2 text-sm font-bold text-[#69645d]">
-        Idea
+        {label}
         <textarea
           className={`${fieldClass} min-h-24 resize-y`}
           disabled={disabled}
           onChange={(event) => onTextChange(event.target.value)}
+          placeholder={placeholder}
           rows={4}
           value={text}
         />
       </label>
-
-      <div className="grid gap-3">
-        <label className="grid gap-2 text-sm font-bold text-[#69645d]">
-          Mode
-          <select className={fieldClass} disabled={disabled} value={mode} onChange={(event) => onModeChange(event.target.value as BriefTextboxMode)}>
-            <option value="new_game">new_game</option>
-            <option value="edit_current_game">edit_current_game</option>
-          </select>
-        </label>
-
-        <label className="grid gap-2 text-sm font-bold text-[#69645d]">
-          Semantic target
-          <input
-            className={fieldClass}
-            disabled={disabled}
-            onChange={(event) => onTargetChange(event.target.value)}
-            value={target}
-          />
-        </label>
-      </div>
 
       <div className="grid grid-cols-[1fr_auto] items-end gap-3 max-sm:grid-cols-1">
         <label className="mb-0 grid gap-2 text-sm font-bold text-[#69645d]">
