@@ -41,7 +41,7 @@ describe('Workbench semantic amendment client', () => {
     expect(isPreviewableSemanticAmendment(createProposal({ mode: 'needs_clarification' }))).toBe(false);
 
     expect(requiresRuntimeApplyReport(createProposal({ mode: 'hot_runtime_patch' }))).toBe(true);
-    expect(requiresRuntimeApplyReport(createProposal({ mode: 'dsl_patch_warm_restart' }))).toBe(true);
+    expect(requiresRuntimeApplyReport(createProposal({ mode: 'dsl_patch_warm_restart' }))).toBe(false);
     expect(requiresRuntimeApplyReport(createProposal({ mode: 'candidate_regeneration' }))).toBe(false);
   });
 
@@ -53,9 +53,20 @@ describe('Workbench semantic amendment client', () => {
     expect(appSource).toContain('previewSemanticAmendment({');
     expect(appSource).toContain('acceptSemanticAmendment({');
     expect(appSource).toContain('amendmentCards={semanticAmendmentCardViews}');
+    expect(appSource).toContain('artifactRefs: mergeSemanticAmendmentArtifactRefs');
+    expect(appSource).toContain('acceptGateLabel: semanticAmendmentAcceptGateLabel(card, context)');
+    expect(appSource).toContain('evidenceRefs: buildSemanticAmendmentEvidenceRefs(card)');
+    expect(appSource).toContain('if (requiresRuntimeApplyReport(card.proposal))');
     expect(appSource).not.toContain('parseConversationLiveEditCommand({ text');
     expect(panelSource).toContain('SemanticAmendmentProposalCard');
     expect(panelSource).toContain('amendmentCards?: SemanticAmendmentProposalCardView[];');
+  });
+
+  it('renders semantic amendment accept gate and evidence refs in proposal cards', async () => {
+    const cardSource = await readFile(new URL('../SemanticAmendmentProposalCard.tsx', import.meta.url), 'utf8');
+
+    expect(cardSource).toContain('DetailRow label="Accept gate"');
+    expect(cardSource).toContain('CompactList title="Evidence refs"');
   });
 });
 

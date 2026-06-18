@@ -1,4 +1,4 @@
-import { isSemanticId, type SemanticId } from '@ai-game-maker/game-dsl';
+import { isSemanticId, type SemanticId } from '../../../../../packages/game-dsl/src/semantic-editing/index.js';
 
 export type BriefTextboxMode = 'new_game' | 'edit_current_game';
 

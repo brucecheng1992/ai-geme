@@ -1,13 +1,15 @@
 import {
   parseSemanticId,
-  runLiveSemanticEdit,
-  type LiveSemanticEditResult,
   type SemanticEditIntent,
   type SemanticId,
   type SemanticIndex,
   type SemanticPatch,
   type SemanticPatchDiffViewModel
-} from '@ai-game-maker/game-dsl';
+} from '../../../../../packages/game-dsl/src/semantic-editing/index.js';
+import {
+  runLiveSemanticEdit,
+  type LiveSemanticEditResult
+} from '../../../../../packages/game-dsl/src/live-editing/index.js';
 
 import {
   DEFAULT_BRIEF_TEXTBOX_TARGET,

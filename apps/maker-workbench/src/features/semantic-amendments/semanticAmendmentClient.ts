@@ -120,13 +120,18 @@ export type SemanticAmendmentPreparedLiveEdit = {
 
 export type SemanticAmendmentCandidatePreview = {
   candidateRunId: string;
-  candidateBriefRef: string;
+  candidateBriefRef?: string;
+  preservationContractRef?: string;
+  candidateArtifactPlanRef?: string;
   candidateDslRef: string;
   candidateDslDiffRef: string;
   candidateSceneIrRef?: string;
   candidateSceneIrDiffRef?: string;
   candidateAssetIntentManifestRef?: string;
   candidateAssetDiffRef?: string;
+  amendmentEffectDiffRef?: string;
+  capabilityEffectVerificationRef?: string;
+  candidateAmendmentVerificationRef?: string;
   candidateRunRef: string;
   candidateRuntimeCapabilityReportRef: string;
   previewAvailable: boolean;
@@ -141,10 +146,15 @@ export type SemanticAmendmentCandidateArtifactCheckpoint = {
   candidateDslRef: string;
   candidateDslDiffRef: string;
   candidateBriefRef?: string;
+  preservationContractRef?: string;
+  candidateArtifactPlanRef?: string;
   candidateSceneIrRef?: string;
   candidateSceneIrDiffRef?: string;
   candidateAssetIntentManifestRef?: string;
   candidateAssetDiffRef?: string;
+  amendmentEffectDiffRef?: string;
+  capabilityEffectVerificationRef?: string;
+  candidateAmendmentVerificationRef?: string;
   candidateRunRef?: string;
   candidateRuntimeCapabilityReportRef?: string;
   activeRunMutation: false;
@@ -158,6 +168,7 @@ export type SemanticAmendmentPreviewState = {
   executionMode: SemanticAmendmentExecutionMode;
   preparedLiveEdit?: SemanticAmendmentPreparedLiveEdit;
   candidatePreview?: SemanticAmendmentCandidatePreview;
+  runtimePatchPlanRef?: string;
   failureReason?: string;
   createdAt: string;
 };
@@ -189,6 +200,10 @@ export type AcceptSemanticAmendmentResponse = {
       apply_mode: RuntimeApplyReport['applyMode'];
       version_id?: string;
     };
+    runtimePatchPlanRef?: string;
+    amendmentVerificationRef?: string;
+    capabilityEffectVerificationRef?: string;
+    authoritativePromotionRef?: string;
     candidatePromotionResult?: {
       status: 'promoted_candidate';
       previousRunId: string;
@@ -317,7 +332,7 @@ export function isPreviewableSemanticAmendment(proposal: SemanticEditProposal): 
 }
 
 export function requiresRuntimeApplyReport(proposal: SemanticEditProposal): boolean {
-  return proposal.execution.mode === 'hot_runtime_patch' || proposal.execution.mode === 'dsl_patch_warm_restart';
+  return proposal.execution.mode === 'hot_runtime_patch';
 }
 
 export function buildSemanticAmendmentRuntimeApplyReport(

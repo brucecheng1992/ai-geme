@@ -2,9 +2,9 @@ import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 
 import {
   runLiveSemanticEdit,
-  type LiveSemanticEditResult,
-  type SemanticIndex
-} from '@ai-game-maker/game-dsl';
+  type LiveSemanticEditResult
+} from '../../../../../packages/game-dsl/src/live-editing/index.js';
+import type { SemanticIndex } from '../../../../../packages/game-dsl/src/semantic-editing/index.js';
 
 import { ResolverV2DiagnosticsPanel } from '../resolver-v2/index.js';
 import { SemanticPatchDiffPanel } from '../semantic-editing/index.js';

@@ -14,8 +14,10 @@ export type SemanticAmendmentProposalCardView = {
   statusTone: 'ready' | 'pending' | 'blocked' | 'failed' | 'accepted' | 'neutral';
   modeLabel: string;
   reviewState: string;
+  acceptGateLabel: string;
   detailRows: Array<{ label: string; value: string }>;
   plannedChanges: string[];
+  evidenceRefs: string[];
   missingCapabilities: string[];
   rejectedUnsafeFallbacks: string[];
   candidateRunId?: string;
@@ -40,6 +42,7 @@ export function SemanticAmendmentProposalCard({ card }: { card: SemanticAmendmen
       <dl className="m-0 grid gap-1">
         <DetailRow label="Mode" value={card.modeLabel} />
         <DetailRow label="Review" value={card.reviewState} />
+        <DetailRow label="Accept gate" value={card.acceptGateLabel} />
         {card.detailRows.map((row) => (
           <DetailRow key={`${card.id}:${row.label}`} label={row.label} value={row.value} />
         ))}
@@ -47,6 +50,7 @@ export function SemanticAmendmentProposalCard({ card }: { card: SemanticAmendmen
       </dl>
 
       <CompactList title="Planned changes" items={card.plannedChanges} tone="neutral" />
+      <CompactList title="Evidence refs" items={card.evidenceRefs} tone="neutral" />
       <CompactList title="Missing capabilities" items={card.missingCapabilities} tone="failed" />
       <CompactList title="Blocked fallbacks" items={card.rejectedUnsafeFallbacks} tone="blocked" />
 

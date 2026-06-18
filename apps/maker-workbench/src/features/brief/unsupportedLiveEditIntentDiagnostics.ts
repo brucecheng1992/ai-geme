@@ -1,9 +1,11 @@
 import {
   findLiveEditCapabilityExposure,
+  type LiveEditCapabilityExposure
+} from '../../../../../packages/game-dsl/src/live-edit-capabilities.js';
+import {
   isEndToEndLiveEditStatus,
-  type LiveEditCapabilityExposure,
   type LiveEditCapabilityStatus
-} from '@ai-game-maker/game-dsl';
+} from '../../../../../packages/game-dsl/src/live-edit-capability-status.js';
 
 import type { LiveEditableField } from '../../live-edit-client.js';
 

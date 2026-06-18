@@ -1,11 +1,13 @@
 import {
   classifyLiveEditCapabilityRuntimeMode,
-  isEndToEndLiveEditStatus,
   liveEditCapabilityExposureRegistry,
   type LiveEditCapabilityExposure,
-  type LiveEditCapabilityRuntimeMode,
+  type LiveEditCapabilityRuntimeMode
+} from '../../../../../packages/game-dsl/src/live-edit-capabilities.js';
+import {
+  isEndToEndLiveEditStatus,
   type LiveEditCapabilityStatus
-} from '@ai-game-maker/game-dsl';
+} from '../../../../../packages/game-dsl/src/live-edit-capability-status.js';
 
 import type { LiveEditCapabilities } from '../../workbench-api.js';
 

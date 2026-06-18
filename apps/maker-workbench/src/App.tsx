@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { buildSemanticIndex } from '@ai-game-maker/game-dsl';
+import { buildSemanticIndex } from '../../../packages/game-dsl/src/semantic-editing/index.js';
 
 import { AssetStatusPanel } from './AssetStatusPanel.js';
 import { AssetBindingTraceSummaryPanel, fetchAssetBindingTrace, type AssetBindingTraceView } from './asset-binding-trace-client.js';
@@ -14,6 +14,7 @@ import {
   rejectSemanticAmendment,
   requiresRuntimeApplyReport,
   undoSemanticAmendment,
+  type SemanticAmendmentArtifactRef,
   type SemanticAmendmentDesignDelta,
   type SemanticAmendmentPreviewState,
   type SemanticAmendmentProposalCardAction,
@@ -109,6 +110,7 @@ type SemanticAmendmentConversationCard = {
   runId: string;
   proposal: SemanticEditProposal;
   status: SemanticAmendmentCardStatus;
+  artifactRefs: SemanticAmendmentArtifactRef[];
   previewState?: SemanticAmendmentPreviewState;
   message?: string;
   failureReason?: string;
@@ -763,12 +765,14 @@ export function App() {
     projectId: string;
     runId: string;
     proposal: SemanticEditProposal;
+    artifactRefs: SemanticAmendmentArtifactRef[];
   }): SemanticAmendmentConversationCard {
     return {
       id: input.proposal.id,
       projectId: input.projectId,
       runId: input.runId,
       proposal: input.proposal,
+      artifactRefs: input.artifactRefs,
       status: initialSemanticAmendmentCardStatus(input.proposal),
       message: input.proposal.userMessage
     };
@@ -816,7 +820,8 @@ export function App() {
       const initialCard = createSemanticAmendmentCard({
         projectId: selectedProjectId,
         runId: selectedRunId,
-        proposal: planned.proposal
+        proposal: planned.proposal,
+        artifactRefs: planned.artifact_refs
       });
       upsertSemanticAmendmentCard(initialCard);
 
@@ -834,6 +839,7 @@ export function App() {
       upsertSemanticAmendmentCard({
         ...initialCard,
         proposal: previewed.proposal,
+        artifactRefs: mergeSemanticAmendmentArtifactRefs(initialCard.artifactRefs, previewed.artifact_refs),
         previewState: previewed.preview_state,
         status: previewed.preview_state.reviewState === 'previewing' ? 'ready' : 'failed',
         message: previewed.proposal.userMessage,
@@ -874,6 +880,7 @@ export function App() {
       updateSemanticAmendmentCard(card.id, (current) => ({
         ...current,
         proposal: accepted.proposal,
+        artifactRefs: mergeSemanticAmendmentArtifactRefs(current.artifactRefs, accepted.artifact_refs),
         status: accepted.proposal.reviewState === 'accepted' ? 'accepted' : 'failed',
         message: accepted.proposal.userMessage
       }));
@@ -958,6 +965,7 @@ export function App() {
       updateSemanticAmendmentCard(pending.cardId, (card) => ({
         ...card,
         proposal: accepted.proposal,
+        artifactRefs: mergeSemanticAmendmentArtifactRefs(card.artifactRefs, accepted.artifact_refs),
         status: accepted.proposal.reviewState === 'accepted' ? 'accepted' : 'failed',
         message: accepted.proposal.userMessage,
         failureReason: accepted.proposal.reviewState === 'accepted' ? undefined : 'Runtime apply did not produce an accepted amendment.'
@@ -1014,6 +1022,7 @@ export function App() {
       updateSemanticAmendmentCard(card.id, (current) => ({
         ...current,
         proposal: rejected.proposal,
+        artifactRefs: mergeSemanticAmendmentArtifactRefs(current.artifactRefs, rejected.artifact_refs),
         status: 'rejected',
         message: rejected.proposal.userMessage
       }));
@@ -1046,6 +1055,7 @@ export function App() {
       updateSemanticAmendmentCard(card.id, (current) => ({
         ...current,
         proposal: undone.proposal,
+        artifactRefs: mergeSemanticAmendmentArtifactRefs(current.artifactRefs, undone.artifact_refs),
         status: 'undone',
         message: undone.proposal.userMessage
       }));
@@ -1448,14 +1458,75 @@ function buildSemanticAmendmentCardView(
     statusTone: semanticAmendmentStatusTone(card.status),
     modeLabel: semanticAmendmentModeLabel(proposal.execution.mode),
     reviewState: proposal.reviewState,
+    acceptGateLabel: semanticAmendmentAcceptGateLabel(card, context),
     detailRows: buildSemanticAmendmentDetailRows(card, context),
     plannedChanges: buildSemanticAmendmentPlannedChanges(proposal),
+    evidenceRefs: buildSemanticAmendmentEvidenceRefs(card),
     missingCapabilities: proposal.execution.missingCapabilities,
     rejectedUnsafeFallbacks: proposal.execution.rejectedUnsafeFallbacks,
     candidateRunId: card.previewState?.candidatePreview?.candidateRunId ?? proposal.candidate?.candidateRunId,
     failureReason: card.failureReason ?? card.previewState?.failureReason,
     actions: buildSemanticAmendmentActions(card, context)
   };
+}
+
+function mergeSemanticAmendmentArtifactRefs(
+  current: SemanticAmendmentArtifactRef[],
+  incoming: SemanticAmendmentArtifactRef[]
+): SemanticAmendmentArtifactRef[] {
+  const byId = new Map(current.map((artifact) => [artifact.id, artifact]));
+  incoming.forEach((artifact) => byId.set(artifact.id, artifact));
+  return [...byId.values()];
+}
+
+function semanticAmendmentAcceptGateLabel(
+  card: SemanticAmendmentConversationCard,
+  context: { currentProjectId: string; currentRunId: string; runtimeReady: boolean; previewInstanceId: string | null }
+): string {
+  if (card.proposal.reviewState === 'accepted') {
+    return 'accepted';
+  }
+  if (card.proposal.reviewState === 'failed') {
+    return 'failed';
+  }
+  if (card.previewState?.candidatePreview !== undefined) {
+    return card.previewState.candidatePreview.qaStatus === 'passed' ? 'candidate evidence passed' : `candidate evidence ${card.previewState.candidatePreview.qaStatus}`;
+  }
+  if (requiresRuntimeApplyReport(card.proposal)) {
+    if (context.currentProjectId !== card.projectId || context.currentRunId !== card.runId) {
+      return 'blocked: active run differs';
+    }
+    return context.runtimeReady && context.previewInstanceId !== null ? 'runtime evidence pending' : 'blocked: runtime not ready';
+  }
+  if (!isPreviewableSemanticAmendment(card.proposal)) {
+    return 'not previewable';
+  }
+  return card.previewState?.reviewState === 'previewing' ? 'preview ready' : 'preview required';
+}
+
+function buildSemanticAmendmentEvidenceRefs(card: SemanticAmendmentConversationCard): string[] {
+  const preferredOrder = [
+    'modelInvocationProvenance',
+    'executionRoute',
+    'preservationContract',
+    'candidateArtifactPlan',
+    'amendmentEffectDiff',
+    'capabilityEffectVerification',
+    'candidateAmendmentVerification',
+    'runtimePatchPlan',
+    'amendmentVerification',
+    'authoritativePromotion',
+    'acceptLog',
+    'rejectLog',
+    'undoCheckpoint',
+    'undoLog'
+  ];
+  const artifacts = [...card.artifactRefs].sort((left, right) => {
+    const leftIndex = preferredOrder.indexOf(left.id);
+    const rightIndex = preferredOrder.indexOf(right.id);
+    return (leftIndex === -1 ? preferredOrder.length : leftIndex) - (rightIndex === -1 ? preferredOrder.length : rightIndex);
+  });
+  return artifacts.map((artifact) => `${artifact.id}: ${artifact.path}`);
 }
 
 function buildSemanticAmendmentActions(
@@ -1516,7 +1587,8 @@ function buildSemanticAmendmentDetailRows(
   const proposal = card.proposal;
   const rows = [
     { label: 'Domains', value: proposal.understanding.affectedDomains.join(', ') || 'none' },
-    { label: 'Confidence', value: `${Math.round(proposal.understanding.confidence * 100)}%` }
+    { label: 'Confidence', value: `${Math.round(proposal.understanding.confidence * 100)}%` },
+    { label: 'Active run', value: context.currentRunId.trim().length === 0 ? 'none' : context.currentRunId }
   ];
 
   if (proposal.execution.reason.trim().length > 0) {
@@ -1534,6 +1606,10 @@ function buildSemanticAmendmentDetailRows(
     rows.push({
       label: 'QA',
       value: `${card.previewState.candidatePreview.previewAvailable ? 'candidate ready' : 'candidate unavailable'} / ${card.previewState.candidatePreview.qaStatus}`
+    });
+    rows.push({
+      label: 'Active vs candidate',
+      value: context.currentRunId === card.previewState.candidatePreview.candidateRunId ? 'candidate is active' : `active ${context.currentRunId} / candidate ${card.previewState.candidatePreview.candidateRunId}`
     });
   }
 

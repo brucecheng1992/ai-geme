@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -8,6 +9,7 @@ import { ProjectStoreService } from '../../apps/maker-api/src/projects/project-s
 import { RunStoreService } from '../../apps/maker-api/src/projects/run-store.service.js';
 import { DslLiveEditService } from '../../apps/maker-api/src/projects/dsl-live-edit.service.js';
 import { SemanticAmendmentService } from '../../apps/maker-api/src/projects/semantic-amendment.service.js';
+import { buildCandidateArtifactBundle, buildPlayerThemeCandidateDsl } from '../../apps/maker-api/src/projects/semantic-amendment-candidate-artifacts.js';
 import { LocalWorkspaceService } from '../../apps/maker-api/src/workspace/local-workspace.service.js';
 import {
   buildSceneIr,
@@ -89,6 +91,7 @@ describe('SemanticAmendmentService', () => {
       },
       artifact_refs: expect.arrayContaining([
         expect.objectContaining({ id: 'sourceRequest', path: `semantic-amendments/${proposalId}/source_request.json` }),
+        expect.objectContaining({ id: 'modelInvocationProvenance', path: `semantic-amendments/${proposalId}/model_invocation_provenance.json` }),
         expect.objectContaining({ id: 'contextPack', path: `semantic-amendments/${proposalId}/context_pack.json` }),
         expect.objectContaining({ id: 'proposal', path: `semantic-amendments/${proposalId}/proposal.json` })
       ])
@@ -106,12 +109,91 @@ describe('SemanticAmendmentService', () => {
     const sourceRequest = JSON.parse(await readFile(workspace.getSemanticAmendmentArtifactPath(projectId, runId, proposalId, 'source_request.json'), 'utf8')) as {
       sourceText?: string;
     };
+    const executionRoute = JSON.parse(await readFile(workspace.getSemanticAmendmentArtifactPath(projectId, runId, proposalId, 'execution_route.json'), 'utf8')) as {
+      schemaVersion?: string;
+      mode?: string;
+      requiredCapabilities?: string[];
+      availableCapabilities?: string[];
+      verificationRequirements?: unknown[];
+    };
+    const modelInvocation = JSON.parse(await readFile(workspace.getSemanticAmendmentArtifactPath(projectId, runId, proposalId, 'model_invocation_provenance.json'), 'utf8')) as {
+      baseDslHash?: string;
+      fallbackUsed?: boolean;
+      inputHash?: string;
+      provider?: string;
+      invocationId?: string;
+      promptVersion?: string;
+      status?: string;
+      structuredOutputValidated?: boolean;
+    };
 
     expect(proposalArtifact.userMessage).toContain('已理解，可实时预览');
+    expect(proposalArtifact.understanding).toMatchObject({
+      intentClass: 'typed_edit',
+      plannerProvenanceStatus: 'RULE_FALLBACK',
+      modelInvocationId: 'rules_amend_20260618_120000_step32b'
+    });
     expect(contextPack.currentDsl?.dslId).toBe(gameDsl.dslId);
     expect(contextPack.runtimeCapabilityReport?.liveEditCapabilities?.hot).toContain('/player/physics/maxSpeed');
     expect(sourceRequest.sourceText).toBe('提高玩家速度');
+    expect(executionRoute).toMatchObject({
+      schemaVersion: 'step34.execution-plan.v1',
+      mode: 'hot_runtime_patch',
+      requiredCapabilities: expect.arrayContaining(['live_edit_path:/player/physics/maxSpeed']),
+      availableCapabilities: expect.arrayContaining(['live_edit_path:/player/physics/maxSpeed'])
+    });
+    expect(executionRoute.verificationRequirements?.length).toBeGreaterThan(0);
+    expect(modelInvocation).toMatchObject({
+      provider: 'rules',
+      invocationId: 'rules_amend_20260618_120000_step32b',
+      promptVersion: 'deterministic-semantic-amendment-planner.v1',
+      status: 'SUCCEEDED',
+      fallbackUsed: false,
+      inputHash: stableSha256('提高玩家速度'),
+      baseDslHash: stableSha256(gameDsl),
+      structuredOutputValidated: true
+    });
+    expect(modelInvocation.inputHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(modelInvocation.baseDslHash).toMatch(/^[a-f0-9]{64}$/);
     await expect(readFile(workspace.getLiveCurrentVersionPath(projectId, runId), 'utf8')).rejects.toThrow();
+  });
+
+  it('backfills legacy proposal artifacts before previewing them', async () => {
+    await writeShooterArtifacts(workspace, { writeGeneratedRegistry: true });
+    await service.plan(projectId, runId, { text: '提高玩家速度', language: 'zh' });
+    const proposalPath = workspace.getSemanticAmendmentArtifactPath(projectId, runId, proposalId, 'proposal.json');
+    const proposal = JSON.parse(await readFile(proposalPath, 'utf8')) as {
+      amendmentIr?: unknown;
+      understanding: Record<string, unknown>;
+    };
+    delete proposal.amendmentIr;
+    delete proposal.understanding.intentClass;
+    delete proposal.understanding.explicitConstraints;
+    delete proposal.understanding.inferredConstraints;
+    delete proposal.understanding.unresolvedReferences;
+    delete proposal.understanding.modelInvocationId;
+    delete proposal.understanding.plannerProvenanceStatus;
+    await writeFile(proposalPath, `${JSON.stringify(proposal, null, 2)}\n`, 'utf8');
+
+    const previewed = await service.preview(projectId, runId, proposalId);
+
+    expect(previewed).toMatchObject({
+      ok: true,
+      proposal: {
+        understanding: {
+          intentClass: 'typed_edit',
+          modelInvocationId: 'rules_amend_20260618_120000_step32b',
+          plannerProvenanceStatus: 'RULE_FALLBACK'
+        },
+        amendmentIr: {
+          schemaVersion: 'step34.game-amendment-ir.v1',
+          proposalId,
+          baseRunId: runId,
+          modelInvocationIds: ['rules_amend_20260618_120000_step32b']
+        },
+        reviewState: 'previewing'
+      }
+    });
   });
 
   it('does not bypass generated runtime capability gates when planning hot-path intents', async () => {
@@ -180,13 +262,23 @@ describe('SemanticAmendmentService', () => {
         candidatePreview: {
           candidateRunId,
           previewAvailable: true,
-          qaStatus: 'not_run'
+          qaStatus: 'passed',
+          preservationContractRef: `semantic-amendments/${proposalId}/candidate/preservation_contract.json`,
+          candidateArtifactPlanRef: `semantic-amendments/${proposalId}/candidate/candidate_artifact_plan.json`,
+          amendmentEffectDiffRef: `semantic-amendments/${proposalId}/candidate/amendment_effect_diff.json`,
+          capabilityEffectVerificationRef: `semantic-amendments/${proposalId}/candidate/capability_effect_verification.json`,
+          candidateAmendmentVerificationRef: `semantic-amendments/${proposalId}/candidate/candidate_amendment_verification.json`
         }
       },
       artifact_refs: expect.arrayContaining([
         expect.objectContaining({ id: 'candidateBrief', path: `semantic-amendments/${proposalId}/candidate/candidate_brief.json` }),
+        expect.objectContaining({ id: 'preservationContract', path: `semantic-amendments/${proposalId}/candidate/preservation_contract.json` }),
+        expect.objectContaining({ id: 'candidateArtifactPlan', path: `semantic-amendments/${proposalId}/candidate/candidate_artifact_plan.json` }),
         expect.objectContaining({ id: 'candidateDsl', path: `semantic-amendments/${proposalId}/candidate/candidate_dsl.json` }),
         expect.objectContaining({ id: 'candidateDslDiff', path: `semantic-amendments/${proposalId}/candidate/candidate_dsl_diff.json` }),
+        expect.objectContaining({ id: 'amendmentEffectDiff', path: `semantic-amendments/${proposalId}/candidate/amendment_effect_diff.json` }),
+        expect.objectContaining({ id: 'capabilityEffectVerification', path: `semantic-amendments/${proposalId}/candidate/capability_effect_verification.json` }),
+        expect.objectContaining({ id: 'candidateAmendmentVerification', path: `semantic-amendments/${proposalId}/candidate/candidate_amendment_verification.json` }),
         expect.objectContaining({ id: 'candidateRun', path: `semantic-amendments/${proposalId}/candidate/candidate_run.json` }),
         expect.objectContaining({ id: 'candidateRuntimeCapabilityReport', path: `semantic-amendments/${proposalId}/candidate/candidate_runtime_capability_report.json` }),
         expect.objectContaining({ id: 'previewState', path: `semantic-amendments/${proposalId}/review/preview_state.json` })
@@ -198,6 +290,14 @@ describe('SemanticAmendmentService', () => {
     await expect(runStore.readRun(candidateRunId)).resolves.toMatchObject({ run_id: candidateRunId, project_id: projectId, status: 'PREVIEW_READY' });
     const candidateDsl = JSON.parse(await readFile(workspace.getSemanticAmendmentCandidateArtifactPath(projectId, runId, proposalId, 'candidate_dsl.json'), 'utf8')) as GameDslArtifact;
     expect(candidateDsl).toMatchObject({ runId: candidateRunId, player: { label: '小猫' }, sourceDsl: { player: { label: '小猫' } } });
+    const capabilityEffectVerification = JSON.parse(
+      await readFile(workspace.getSemanticAmendmentCandidateArtifactPath(projectId, runId, proposalId, 'capability_effect_verification.json'), 'utf8')
+    ) as { status?: string; checks?: Array<{ effectKind?: string; status?: string }> };
+    expect(capabilityEffectVerification).toMatchObject({
+      schemaVersion: 'step34.capability-effect-verification.v1',
+      status: 'passed',
+      checks: [expect.objectContaining({ effectKind: 'asset_binding', status: 'passed' })]
+    });
     await expect(readFile(workspace.getModelOutputPath(projectId, candidateRunId, 'game_dsl.json'), 'utf8')).resolves.toContain('"runId": "run_candidate_20260618_120000_step32b"');
 
     const accepted = await service.accept(projectId, runId, proposalId, {});
@@ -205,6 +305,7 @@ describe('SemanticAmendmentService', () => {
     expect(accepted).toMatchObject({
       proposal: { reviewState: 'accepted', validation: { schemaValid: true } },
       accept_log: {
+        authoritativePromotionRef: `semantic-amendments/${proposalId}/review/authoritative_promotion.json`,
         candidatePromotionResult: {
           status: 'promoted_candidate',
           previousRunId: runId,
@@ -213,7 +314,12 @@ describe('SemanticAmendmentService', () => {
         },
         candidateArtifactCheckpoint: expect.objectContaining({
           candidateRunId,
-          candidateDslRef: `semantic-amendments/${proposalId}/candidate/candidate_dsl.json`
+          candidateDslRef: `semantic-amendments/${proposalId}/candidate/candidate_dsl.json`,
+          preservationContractRef: `semantic-amendments/${proposalId}/candidate/preservation_contract.json`,
+          candidateArtifactPlanRef: `semantic-amendments/${proposalId}/candidate/candidate_artifact_plan.json`,
+          amendmentEffectDiffRef: `semantic-amendments/${proposalId}/candidate/amendment_effect_diff.json`,
+          capabilityEffectVerificationRef: `semantic-amendments/${proposalId}/candidate/capability_effect_verification.json`,
+          candidateAmendmentVerificationRef: `semantic-amendments/${proposalId}/candidate/candidate_amendment_verification.json`
         })
       },
       undo_checkpoint: {
@@ -221,9 +327,29 @@ describe('SemanticAmendmentService', () => {
         acceptedRunId: candidateRunId,
         candidateArtifactCheckpoint: expect.objectContaining({
           candidateRunId,
-          candidateDslRef: `semantic-amendments/${proposalId}/candidate/candidate_dsl.json`
+          candidateDslRef: `semantic-amendments/${proposalId}/candidate/candidate_dsl.json`,
+          preservationContractRef: `semantic-amendments/${proposalId}/candidate/preservation_contract.json`,
+          candidateArtifactPlanRef: `semantic-amendments/${proposalId}/candidate/candidate_artifact_plan.json`,
+          amendmentEffectDiffRef: `semantic-amendments/${proposalId}/candidate/amendment_effect_diff.json`,
+          capabilityEffectVerificationRef: `semantic-amendments/${proposalId}/candidate/capability_effect_verification.json`,
+          candidateAmendmentVerificationRef: `semantic-amendments/${proposalId}/candidate/candidate_amendment_verification.json`
         })
       }
+    });
+    expect(accepted.artifact_refs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'authoritativePromotion', path: `semantic-amendments/${proposalId}/review/authoritative_promotion.json` })
+      ])
+    );
+    const authoritativePromotion = JSON.parse(
+      await readFile(workspace.getSemanticAmendmentReviewArtifactPath(projectId, runId, proposalId, 'authoritative_promotion.json'), 'utf8')
+    ) as { promotionKind?: string; before?: { activeRunId?: string }; after?: { activeRunId?: string; acceptedRunId?: string }; invariants?: Record<string, unknown> };
+    expect(authoritativePromotion).toMatchObject({
+      schemaVersion: 'step34.authoritative-promotion.v1',
+      promotionKind: 'candidate_run',
+      before: { activeRunId: runId },
+      after: { activeRunId: candidateRunId, acceptedRunId: candidateRunId },
+      invariants: { activeRunChanged: true, acceptedRunPromoted: true, sourceRunMutated: false }
     });
     expect(accepted.proposal.validation?.previewBooted).toBeUndefined();
     expect(accepted.proposal.validation?.runtimeNoException).toBeUndefined();
@@ -242,7 +368,11 @@ describe('SemanticAmendmentService', () => {
         reason: 'restore previous active run',
         candidateArtifactCheckpoint: expect.objectContaining({
           candidateRunId,
-          candidateDslRef: `semantic-amendments/${proposalId}/candidate/candidate_dsl.json`
+          candidateDslRef: `semantic-amendments/${proposalId}/candidate/candidate_dsl.json`,
+          preservationContractRef: `semantic-amendments/${proposalId}/candidate/preservation_contract.json`,
+          candidateArtifactPlanRef: `semantic-amendments/${proposalId}/candidate/candidate_artifact_plan.json`,
+          amendmentEffectDiffRef: `semantic-amendments/${proposalId}/candidate/amendment_effect_diff.json`,
+          candidateAmendmentVerificationRef: `semantic-amendments/${proposalId}/candidate/candidate_amendment_verification.json`
         })
       }
     });
@@ -267,7 +397,9 @@ describe('SemanticAmendmentService', () => {
             candidateSceneIr: `semantic-amendments/${proposalId}/candidate/candidate_scene_ir.json`,
             candidateSceneIrDiff: `semantic-amendments/${proposalId}/candidate/candidate_scene_ir_diff.json`,
             candidateAssetIntentManifest: `semantic-amendments/${proposalId}/candidate/candidate_asset_intent_manifest.json`,
-            candidateAssetDiff: `semantic-amendments/${proposalId}/candidate/candidate_asset_diff.json`
+            candidateAssetDiff: `semantic-amendments/${proposalId}/candidate/candidate_asset_diff.json`,
+            candidateArtifactPlan: `semantic-amendments/${proposalId}/candidate/candidate_artifact_plan.json`,
+            amendmentEffectDiff: `semantic-amendments/${proposalId}/candidate/amendment_effect_diff.json`
           })
         }
       },
@@ -276,16 +408,22 @@ describe('SemanticAmendmentService', () => {
         candidatePreview: {
           candidateRunId,
           previewAvailable: true,
-          qaStatus: 'not_run',
+          qaStatus: 'passed',
           candidateSceneIrRef: `semantic-amendments/${proposalId}/candidate/candidate_scene_ir.json`,
-          candidateAssetDiffRef: `semantic-amendments/${proposalId}/candidate/candidate_asset_diff.json`
+          candidateAssetDiffRef: `semantic-amendments/${proposalId}/candidate/candidate_asset_diff.json`,
+          candidateArtifactPlanRef: `semantic-amendments/${proposalId}/candidate/candidate_artifact_plan.json`,
+          amendmentEffectDiffRef: `semantic-amendments/${proposalId}/candidate/amendment_effect_diff.json`,
+          candidateAmendmentVerificationRef: `semantic-amendments/${proposalId}/candidate/candidate_amendment_verification.json`
         }
       },
       artifact_refs: expect.arrayContaining([
+        expect.objectContaining({ id: 'candidateArtifactPlan' }),
         expect.objectContaining({ id: 'candidateSceneIr' }),
         expect.objectContaining({ id: 'candidateSceneIrDiff' }),
         expect.objectContaining({ id: 'candidateAssetIntentManifest' }),
-        expect.objectContaining({ id: 'candidateAssetDiff' })
+        expect.objectContaining({ id: 'candidateAssetDiff' }),
+        expect.objectContaining({ id: 'amendmentEffectDiff' }),
+        expect.objectContaining({ id: 'candidateAmendmentVerification' })
       ])
     });
 
@@ -336,6 +474,71 @@ describe('SemanticAmendmentService', () => {
       createdAssetIntentRefs: ['player_cat'],
       activeRunMutation: false
     });
+    const candidateArtifactPlan = JSON.parse(
+      await readFile(workspace.getSemanticAmendmentCandidateArtifactPath(projectId, runId, proposalId, 'candidate_artifact_plan.json'), 'utf8')
+    ) as { artifacts?: Array<{ kind: string; status: string; reason?: string }>; diffs?: { sceneDiff?: string; assetDiff?: string } };
+    expect(candidateArtifactPlan).toMatchObject({
+      schemaVersion: 'step34.candidate-artifact-plan.v1',
+      proposalId,
+      baseRunId: runId,
+      candidateRunId,
+      diffs: {
+        sceneDiff: `semantic-amendments/${proposalId}/candidate/candidate_scene_ir_diff.json`,
+        assetDiff: `semantic-amendments/${proposalId}/candidate/candidate_asset_diff.json`
+      }
+    });
+    expect(candidateArtifactPlan.artifacts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'candidate_game_dsl', status: 'produced' }),
+        expect.objectContaining({ kind: 'preservation_contract', status: 'produced' }),
+        expect.objectContaining({ kind: 'candidate_scene_ir', status: 'produced' }),
+        expect.objectContaining({ kind: 'candidate_asset_manifest', status: 'produced' }),
+        expect.objectContaining({ kind: 'candidate_render_fidelity_report', status: 'skipped', reason: 'render_fidelity_not_run_in_step34_regeneration_preview' })
+      ])
+    );
+    const preservationContract = JSON.parse(
+      await readFile(workspace.getSemanticAmendmentCandidateArtifactPath(projectId, runId, proposalId, 'preservation_contract.json'), 'utf8')
+    ) as { preserve?: string[]; allowChange?: string[]; forbiddenFallbacks?: string[]; capabilityGate?: { regenerationCannotBypassUnsupportedCapability?: boolean } };
+    expect(preservationContract).toMatchObject({
+      schemaVersion: 'step34.preservation-contract.v1',
+      proposalId,
+      preserve: expect.arrayContaining(['/player/physics', '/player/health', '/player/actions', '/genre', '/projectiles']),
+      allowChange: expect.arrayContaining(['/player/label', '/sourceDsl/player/visual', '/scenes/0/player/visualAssetIntentRef']),
+      forbiddenFallbacks: ['player.scale'],
+      capabilityGate: { regenerationCannotBypassUnsupportedCapability: true }
+    });
+    const amendmentEffectDiff = JSON.parse(
+      await readFile(workspace.getSemanticAmendmentCandidateArtifactPath(projectId, runId, proposalId, 'amendment_effect_diff.json'), 'utf8')
+    ) as { driftStatus?: string; actualChanges?: unknown[]; unexpectedChanges?: unknown[]; preservedNodes?: Array<{ path: string; status: string }> };
+    expect(amendmentEffectDiff).toMatchObject({
+      schemaVersion: 'step34.amendment-effect-diff.v1',
+      proposalId,
+      sourceRunId: runId,
+      candidateRunId,
+      activeRunMutation: false,
+      driftStatus: 'passed',
+      unexpectedChanges: []
+    });
+    expect(amendmentEffectDiff.actualChanges?.length).toBeGreaterThan(0);
+    expect(amendmentEffectDiff.preservedNodes).toEqual(
+      expect.arrayContaining([
+        { path: '/player/physics', status: 'preserved' },
+        { path: '/player/health', status: 'preserved' },
+        { path: '/player/actions', status: 'preserved' },
+        { path: '/genre', status: 'preserved' }
+      ])
+    );
+    const candidateVerification = JSON.parse(
+      await readFile(workspace.getSemanticAmendmentCandidateArtifactPath(projectId, runId, proposalId, 'candidate_amendment_verification.json'), 'utf8')
+    ) as { status?: string; checks?: Array<{ checkId: string; status: string }> };
+    expect(candidateVerification).toMatchObject({
+      status: 'passed',
+      checks: expect.arrayContaining([
+        expect.objectContaining({ checkId: 'player_theme_label_changed', status: 'passed' }),
+        expect.objectContaining({ checkId: 'player_theme_visual_intent_changed', status: 'passed' }),
+        expect.objectContaining({ checkId: 'player_theme_asset_intent_created', status: 'passed' })
+      ])
+    });
     await expect(readFile(workspace.getModelOutputPath(projectId, candidateRunId, 'game.scene.ir.json'), 'utf8')).resolves.toContain('"player_cat"');
     await expect(readFile(workspace.getModelOutputPath(projectId, candidateRunId, 'asset_intent_manifest.json'), 'utf8')).resolves.toContain('"player_cat"');
   });
@@ -357,14 +560,122 @@ describe('SemanticAmendmentService', () => {
         failureReason: 'AMENDMENT_NO_VISIBLE_EFFECT'
       },
       artifact_refs: expect.arrayContaining([
+        expect.objectContaining({ id: 'candidateArtifactPlan' }),
         expect.objectContaining({ id: 'candidateDslDiff' }),
         expect.objectContaining({ id: 'candidateSceneIrDiff' }),
         expect.objectContaining({ id: 'candidateAssetDiff' }),
+        expect.objectContaining({ id: 'amendmentEffectDiff' }),
+        expect.objectContaining({ id: 'candidateAmendmentVerification' }),
         expect.objectContaining({ id: 'previewState' })
       ])
     });
+    const amendmentEffectDiff = JSON.parse(
+      await readFile(workspace.getSemanticAmendmentCandidateArtifactPath(projectId, runId, proposalId, 'amendment_effect_diff.json'), 'utf8')
+    ) as { noVisibleEffectCode?: string; noOpOperations?: string[] };
+    expect(amendmentEffectDiff).toMatchObject({
+      noVisibleEffectCode: 'AMENDMENT_NO_VISIBLE_EFFECT',
+      noOpOperations: expect.arrayContaining(['op_0_theme_regeneration'])
+    });
     await expect(runStore.readRun(candidateRunId)).rejects.toThrow();
     await expect(projectStore.readLatestRun(projectId)).resolves.toMatchObject({ run_id: runId });
+  });
+
+  it('fails candidate amendment verification when preserved gameplay nodes drift', async () => {
+    const baseDsl = await writeShooterArtifacts(workspace, { writeGeneratedRegistry: true });
+    const planned = await service.plan(projectId, runId, { text: '把玩家变成小猫', language: 'zh' });
+    const candidateDsl = buildPlayerThemeCandidateDsl(baseDsl, candidateRunId);
+    const driftedCandidateDsl: GameDslArtifact = {
+      ...candidateDsl,
+      player: {
+        ...candidateDsl.player,
+        physics: {
+          ...candidateDsl.player.physics,
+          maxSpeed: candidateDsl.player.physics.maxSpeed + 999
+        }
+      }
+    };
+
+    const bundle = buildCandidateArtifactBundle({
+      projectId,
+      sourceRunId: runId,
+      candidateRunId,
+      proposal: planned.proposal,
+      baseDsl,
+      candidateDsl: driftedCandidateDsl
+    });
+
+    expect(bundle.amendmentEffectDiff).toMatchObject({
+      driftStatus: 'failed',
+      preservedNodes: expect.arrayContaining([expect.objectContaining({ path: '/player/physics', status: 'changed' })])
+    });
+    expect(bundle.candidateAmendmentVerification).toMatchObject({
+      status: 'failed',
+      checks: expect.arrayContaining([expect.objectContaining({ checkId: 'amendment_effect_drift_guard', status: 'failed' })])
+    });
+  });
+
+  it('fails candidate amendment verification when preserved projectiles drift', async () => {
+    const baseDsl = await writeShooterArtifacts(workspace, { writeGeneratedRegistry: true });
+    const planned = await service.plan(projectId, runId, { text: '把玩家变成小猫', language: 'zh' });
+    const candidateDsl = buildPlayerThemeCandidateDsl(baseDsl, candidateRunId);
+    const driftedCandidateDsl: GameDslArtifact = {
+      ...candidateDsl,
+      projectiles: Object.fromEntries(
+        Object.entries(candidateDsl.projectiles).map(([id, projectile], index) => [
+          id,
+          index === 0 ? { ...projectile, damage: projectile.damage + 10 } : projectile
+        ])
+      )
+    };
+
+    const bundle = buildCandidateArtifactBundle({
+      projectId,
+      sourceRunId: runId,
+      candidateRunId,
+      proposal: planned.proposal,
+      baseDsl,
+      candidateDsl: driftedCandidateDsl
+    });
+
+    expect(bundle.amendmentEffectDiff).toMatchObject({
+      driftStatus: 'failed',
+      preservedNodes: expect.arrayContaining([expect.objectContaining({ path: '/projectiles', status: 'changed' })])
+    });
+    expect(bundle.candidateAmendmentVerification).toMatchObject({
+      status: 'failed',
+      checks: expect.arrayContaining([expect.objectContaining({ checkId: 'amendment_effect_drift_guard', status: 'failed' })])
+    });
+  });
+
+  it('marks unsupported expected effects inconclusive instead of passing capability-effect verification', async () => {
+    const baseDsl = await writeShooterArtifacts(workspace, { writeGeneratedRegistry: true });
+    const planned = await service.plan(projectId, runId, { text: '把玩家变成小猫', language: 'zh' });
+    const candidateDsl = buildPlayerThemeCandidateDsl(baseDsl, candidateRunId);
+    const proposalWithUnsupportedEffect = {
+      ...planned.proposal,
+      executionPlan: {
+        ...planned.proposal.executionPlan,
+        verificationRequirements: [{ kind: 'runtime_event' as const, eventName: 'boss_intro', minimumCount: 1 }]
+      }
+    };
+
+    const bundle = buildCandidateArtifactBundle({
+      projectId,
+      sourceRunId: runId,
+      candidateRunId,
+      proposal: proposalWithUnsupportedEffect,
+      baseDsl,
+      candidateDsl
+    });
+
+    expect(bundle.capabilityEffectVerification).toMatchObject({
+      status: 'failed',
+      checks: [expect.objectContaining({ effectKind: 'runtime_event', status: 'inconclusive' })]
+    });
+    expect(bundle.candidateAmendmentVerification).toMatchObject({
+      status: 'failed',
+      checks: expect.arrayContaining([expect.objectContaining({ checkId: 'capability_effect_verification', status: 'failed' })])
+    });
   });
 
   it('builds legacy side-scrolling candidate visual artifacts when the active DSL has no scenes contract', async () => {
@@ -417,7 +728,8 @@ describe('SemanticAmendmentService', () => {
         requiresRuntimeRevert: false,
         candidateArtifactCheckpoint: expect.objectContaining({
           candidateRunId,
-          candidateDslRef: `semantic-amendments/${proposalId}/candidate/candidate_dsl.json`
+          candidateDslRef: `semantic-amendments/${proposalId}/candidate/candidate_dsl.json`,
+          candidateAmendmentVerificationRef: `semantic-amendments/${proposalId}/candidate/candidate_amendment_verification.json`
         })
       }
     });
@@ -452,6 +764,49 @@ describe('SemanticAmendmentService', () => {
     await expect(readFile(workspace.getLiveCurrentVersionPath(projectId, candidateRunId), 'utf8')).rejects.toThrow();
   });
 
+  it('blocks candidate accept when the candidate run DSL no longer matches the verified candidate artifact', async () => {
+    await writeShooterArtifacts(workspace, { writeGeneratedRegistry: true });
+    await service.plan(projectId, runId, { text: '把玩家变成小猫', language: 'zh' });
+    await service.preview(projectId, runId, proposalId);
+    const candidatePath = workspace.getModelOutputPath(projectId, candidateRunId, 'game_dsl.json');
+    const candidateDsl = JSON.parse(await readFile(candidatePath, 'utf8')) as GameDslArtifact;
+    await writeFile(
+      candidatePath,
+      `${JSON.stringify({ ...candidateDsl, player: { ...candidateDsl.player, label: '不是小猫' } }, null, 2)}\n`,
+      'utf8'
+    );
+
+    await expect(service.accept(projectId, runId, proposalId, {})).rejects.toThrow(ProjectRequestError);
+    await expect(projectStore.readLatestRun(projectId)).resolves.toMatchObject({ run_id: runId });
+    await expect(readFile(workspace.getLiveCurrentVersionPath(projectId, candidateRunId), 'utf8')).rejects.toThrow();
+  });
+
+  it('blocks candidate accept when capability-effect verification status conflicts with checks', async () => {
+    await writeShooterArtifacts(workspace, { writeGeneratedRegistry: true });
+    await service.plan(projectId, runId, { text: '把玩家变成小猫', language: 'zh' });
+    await service.preview(projectId, runId, proposalId);
+    const capabilityEffectPath = workspace.getSemanticAmendmentCandidateArtifactPath(projectId, runId, proposalId, 'capability_effect_verification.json');
+    const capabilityEffectVerification = JSON.parse(await readFile(capabilityEffectPath, 'utf8')) as Record<string, unknown>;
+    await writeFile(
+      capabilityEffectPath,
+      `${JSON.stringify(
+        {
+          ...capabilityEffectVerification,
+          status: 'passed',
+          checks: [{ checkId: 'capability_effect_0', effectKind: 'asset_binding', status: 'inconclusive', expected: {}, evidenceRefs: [] }],
+          failureReasons: ['capability_effect_0: expected effect evidence was removed']
+        },
+        null,
+        2
+      )}\n`,
+      'utf8'
+    );
+
+    await expect(service.accept(projectId, runId, proposalId, {})).rejects.toThrow(ProjectRequestError);
+    await expect(projectStore.readLatestRun(projectId)).resolves.toMatchObject({ run_id: runId });
+    await expect(readFile(workspace.getLiveCurrentVersionPath(projectId, candidateRunId), 'utf8')).rejects.toThrow();
+  });
+
   it('previews, accepts, and undoes a hot semantic amendment through backend lifecycle artifacts', async () => {
     await writeShooterArtifacts(workspace, { writeGeneratedRegistry: true });
     await service.plan(projectId, runId, { text: '提高玩家速度', language: 'zh' });
@@ -467,10 +822,41 @@ describe('SemanticAmendmentService', () => {
           status: 'hot_patchable',
           apply_mode: 'hot',
           live_update_plan: { affectedPaths: ['/player/physics/maxSpeed'] }
-        }
+        },
+        runtimePatchPlanRef: `semantic-amendments/${proposalId}/review/runtime_patch_plan.json`
       },
-      artifact_refs: [expect.objectContaining({ id: 'previewState', path: `semantic-amendments/${proposalId}/review/preview_state.json` })]
+      artifact_refs: [
+        expect.objectContaining({ id: 'runtimePatchPlan', path: `semantic-amendments/${proposalId}/review/runtime_patch_plan.json` }),
+        expect.objectContaining({ id: 'previewState', path: `semantic-amendments/${proposalId}/review/preview_state.json` })
+      ]
     });
+    const runtimePatchPlan = JSON.parse(
+      await readFile(workspace.getSemanticAmendmentReviewArtifactPath(projectId, runId, proposalId, 'runtime_patch_plan.json'), 'utf8')
+    ) as {
+      schemaVersion?: string;
+      sessionKind?: string;
+      handshakeStatus?: string;
+      runtimeSessionId?: string;
+      baseDslHash?: string;
+      operations?: Array<{ adapterId?: string; before?: unknown; after?: unknown; reversible?: boolean; verificationProbeIds?: string[] }>;
+    };
+    expect(runtimePatchPlan).toMatchObject({
+      schemaVersion: 'step34.runtime-patch-plan.v1',
+      sessionKind: 'local_live_edit',
+      handshakeStatus: 'not_run',
+      proposalId,
+      runtimeSessionId: `local-live-edit:${projectId}:${runId}:v_initial`,
+      operations: [
+        expect.objectContaining({
+          adapterId: 'dsl-json-patch.player.physics.maxSpeed.v1',
+          before: expect.any(Number),
+          after: expect.any(Number),
+          reversible: true,
+          verificationProbeIds: expect.arrayContaining(['runtime_apply_report.appliedPaths#/player/physics/maxSpeed', 'accepted_game_dsl#/player/physics/maxSpeed'])
+        })
+      ]
+    });
+    expect(runtimePatchPlan.baseDslHash).toMatch(/^[a-f0-9]{64}$/);
     const beforeAccept = JSON.parse(await readFile(workspace.getLiveCurrentVersionPath(projectId, runId), 'utf8')) as { versionId: string };
     expect(beforeAccept.versionId).toBe('v_initial');
     const prepared = previewed.preview_state.preparedLiveEdit;
@@ -496,12 +882,51 @@ describe('SemanticAmendmentService', () => {
 
     expect(accepted).toMatchObject({
       proposal: { reviewState: 'accepted', validation: { runtimeNoException: true, previewBooted: true } },
-      accept_log: { runtimeApplyResult: { status: 'applied_hot', apply_mode: 'hot' } },
+      accept_log: {
+        runtimePatchPlanRef: `semantic-amendments/${proposalId}/review/runtime_patch_plan.json`,
+        capabilityEffectVerificationRef: `semantic-amendments/${proposalId}/review/capability_effect_verification.json`,
+        amendmentVerificationRef: `semantic-amendments/${proposalId}/review/amendment_verification.json`,
+        authoritativePromotionRef: `semantic-amendments/${proposalId}/review/authoritative_promotion.json`,
+        runtimeApplyResult: { status: 'applied_hot', apply_mode: 'hot' }
+      },
       undo_checkpoint: { beforeAcceptVersion: { versionId: 'v_initial' } },
       artifact_refs: expect.arrayContaining([
+        expect.objectContaining({ id: 'runtimePatchPlan' }),
+        expect.objectContaining({ id: 'capabilityEffectVerification' }),
+        expect.objectContaining({ id: 'amendmentVerification' }),
+        expect.objectContaining({ id: 'authoritativePromotion' }),
         expect.objectContaining({ id: 'acceptLog' }),
         expect.objectContaining({ id: 'undoCheckpoint' })
       ])
+    });
+    const amendmentVerification = JSON.parse(
+      await readFile(workspace.getSemanticAmendmentReviewArtifactPath(projectId, runId, proposalId, 'amendment_verification.json'), 'utf8')
+    ) as { status?: string; checks?: Array<{ checkId: string; status: string }> };
+    expect(amendmentVerification).toMatchObject({
+      status: 'passed',
+      checks: expect.arrayContaining([
+        expect.objectContaining({ checkId: 'runtime_apply_status', status: 'passed' }),
+        expect.objectContaining({ checkId: 'live_edit_operation_0', status: 'passed' }),
+        expect.objectContaining({ checkId: 'capability_effect_verification', status: 'passed' })
+      ])
+    });
+    const capabilityEffectVerification = JSON.parse(
+      await readFile(workspace.getSemanticAmendmentReviewArtifactPath(projectId, runId, proposalId, 'capability_effect_verification.json'), 'utf8')
+    ) as { status?: string; checks?: Array<{ effectKind?: string; status?: string }> };
+    expect(capabilityEffectVerification).toMatchObject({
+      schemaVersion: 'step34.capability-effect-verification.v1',
+      status: 'passed',
+      checks: [expect.objectContaining({ effectKind: 'property_changed', status: 'passed' })]
+    });
+    const authoritativePromotion = JSON.parse(
+      await readFile(workspace.getSemanticAmendmentReviewArtifactPath(projectId, runId, proposalId, 'authoritative_promotion.json'), 'utf8')
+    ) as { promotionKind?: string; before?: { activeRunId?: string; liveVersionId?: string }; after?: { activeRunId?: string; liveVersionId?: string }; invariants?: Record<string, unknown> };
+    expect(authoritativePromotion).toMatchObject({
+      schemaVersion: 'step34.authoritative-promotion.v1',
+      promotionKind: 'live_version',
+      before: { activeRunId: runId, liveVersionId: 'v_initial' },
+      after: { activeRunId: runId, liveVersionId: expect.stringContaining(prepared.patch_id) },
+      invariants: { activeRunChanged: false, acceptedVersionChanged: true, sourceRunMutated: true }
     });
     expect(JSON.stringify(accepted)).not.toContain(root);
     const afterAccept = JSON.parse(await readFile(workspace.getLiveCurrentVersionPath(projectId, runId), 'utf8')) as { versionId: string };
@@ -595,7 +1020,12 @@ describe('SemanticAmendmentService', () => {
       execution: {
         mode: 'dsl_patch_warm_restart',
         supportedNow: true,
+        requiresCandidateRun: true,
         rejectedUnsafeFallbacks: ['projectile.speed', 'projectile.damage']
+      },
+      executionPlan: {
+        mode: 'dsl_patch_warm_restart',
+        candidateRunRequired: true
       },
       candidate: {
         dslPatch: {
@@ -610,47 +1040,93 @@ describe('SemanticAmendmentService', () => {
 
     const previewed = await service.preview(projectId, runId, proposalId);
 
-    expect(previewed.preview_state).toMatchObject({
-      reviewState: 'previewing',
-      preparedLiveEdit: {
-        status: 'warm_restart_required',
-        apply_mode: 'warm_restart',
-        live_update_plan: { affectedPaths: ['/player/actions/0/cooldownMs'] }
-      }
+    expect(previewed).toMatchObject({
+      preview_state: {
+        reviewState: 'previewing',
+        candidatePreview: {
+          candidateRunId,
+          candidateDslRef: `semantic-amendments/${proposalId}/candidate/candidate_dsl.json`,
+          candidateDslDiffRef: `semantic-amendments/${proposalId}/candidate/candidate_dsl_diff.json`,
+          capabilityEffectVerificationRef: `semantic-amendments/${proposalId}/candidate/capability_effect_verification.json`,
+          candidateAmendmentVerificationRef: `semantic-amendments/${proposalId}/candidate/candidate_amendment_verification.json`,
+          candidateRunRef: `semantic-amendments/${proposalId}/candidate/candidate_run.json`,
+          previewAvailable: true,
+          qaStatus: 'passed'
+        }
+      },
+      artifact_refs: expect.arrayContaining([
+        expect.objectContaining({ id: 'candidateDsl' }),
+        expect.objectContaining({ id: 'candidateDslDiff' }),
+        expect.objectContaining({ id: 'capabilityEffectVerification' }),
+        expect.objectContaining({ id: 'candidateAmendmentVerification' }),
+        expect.objectContaining({ id: 'candidateRun' }),
+        expect.objectContaining({ id: 'candidateRuntimeCapabilityReport' })
+      ])
+    });
+    await expect(runStore.readRun(candidateRunId)).resolves.toMatchObject({ run_id: candidateRunId, status: 'PREVIEW_READY' });
+    const candidateDsl = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, candidateRunId, 'game_dsl.json'), 'utf8')) as GameDslArtifact;
+    expect(valueAtJsonPointer(candidateDsl, '/player/actions/0/cooldownMs')).toBe(plannedOp.value);
+    const candidateDslDiff = JSON.parse(
+      await readFile(workspace.getSemanticAmendmentCandidateArtifactPath(projectId, runId, proposalId, 'candidate_dsl_diff.json'), 'utf8')
+    ) as { changes?: Array<{ path: string; before: unknown; after: unknown }> };
+    expect(candidateDslDiff.changes).toContainEqual({
+      path: '/player/actions/0/cooldownMs',
+      before: 300,
+      after: plannedOp.value
+    });
+    const capabilityEffectVerification = JSON.parse(
+      await readFile(workspace.getSemanticAmendmentCandidateArtifactPath(projectId, runId, proposalId, 'capability_effect_verification.json'), 'utf8')
+    ) as { status?: string; checks?: Array<{ effectKind?: string; status?: string; observed?: { path?: string } }> };
+    expect(capabilityEffectVerification).toMatchObject({
+      schemaVersion: 'step34.capability-effect-verification.v1',
+      status: 'passed',
+      checks: [expect.objectContaining({ effectKind: 'property_changed', status: 'passed', observed: expect.objectContaining({ path: '/player/actions/0/cooldownMs' }) })]
     });
     const beforeAccept = JSON.parse(await readFile(workspace.getLiveCurrentVersionPath(projectId, runId), 'utf8')) as { versionId: string };
     expect(beforeAccept.versionId).toBe('v_initial');
-    const prepared = previewed.preview_state.preparedLiveEdit;
-    if (prepared === undefined) {
-      throw new Error('expected prepared live edit');
-    }
 
-    const accepted = await service.accept(projectId, runId, proposalId, {
-      runtimeApplyReport: {
-        artifactKind: 'runtime_apply_report',
-        schemaVersion: 'runtime_apply_report.v1',
-        runId,
-        patchId: prepared.patch_id,
-        liveUpdatePlanRef: prepared.live_update_plan_ref,
-        status: 'applied_warm_restart',
-        applyMode: 'warm_restart',
-        runtimeTarget: 'vitest-runtime',
-        appliedPaths: prepared.live_update_plan.affectedPaths,
-        warnings: [],
-        errors: []
-      }
-    });
+    const accepted = await service.accept(projectId, runId, proposalId, {});
 
     expect(accepted).toMatchObject({
-      proposal: { reviewState: 'accepted', validation: { runtimeNoException: true, previewBooted: true } },
-      accept_log: { runtimeApplyResult: { status: 'applied_warm_restart', apply_mode: 'warm_restart' } }
+      proposal: { reviewState: 'accepted', validation: { schemaValid: true } },
+      accept_log: {
+        candidatePromotionResult: {
+          status: 'promoted_candidate',
+          previousRunId: runId,
+          candidateRunId,
+          activeRunId: candidateRunId
+        }
+      }
     });
-    const current = JSON.parse(await readFile(workspace.getLiveCurrentVersionPath(projectId, runId), 'utf8')) as { versionId: string; dslArtifactPath: string };
-    expect(current.versionId).toContain(prepared.patch_id);
+    await expect(projectStore.readLatestRun(projectId)).resolves.toMatchObject({ run_id: candidateRunId });
+    const current = JSON.parse(await readFile(workspace.getLiveCurrentVersionPath(projectId, candidateRunId), 'utf8')) as { versionId: string; dslArtifactPath: string };
+    expect(current.versionId).toBe('v_initial');
     const acceptedDsl = JSON.parse(await readFile(current.dslArtifactPath, 'utf8')) as GameDslArtifact;
     expect(valueAtJsonPointer(acceptedDsl, '/player/actions/0/cooldownMs')).toBe(plannedOp.value);
     expect(acceptedDsl.sourceDsl.player.actions[0]).toMatchObject({ cooldown_ms: plannedOp.value });
     expect(acceptedDsl.projectiles.bolt).toMatchObject({ speed: 520, damage: 1 });
+  });
+
+  it('rejects a warm restart candidate without requiring runtime revert or changing active run', async () => {
+    await writeShooterArtifacts(workspace, { writeGeneratedRegistry: true });
+    await service.plan(projectId, runId, { text: '增加武器射速', language: 'zh' });
+    await service.preview(projectId, runId, proposalId);
+
+    const rejected = await service.reject(projectId, runId, proposalId, { reason: 'keep current weapon timing' });
+
+    expect(rejected).toMatchObject({
+      proposal: { reviewState: 'rejected' },
+      reject_log: {
+        reason: 'keep current weapon timing',
+        requiresRuntimeRevert: false,
+        candidateArtifactCheckpoint: expect.objectContaining({
+          candidateRunId,
+          candidateDslRef: `semantic-amendments/${proposalId}/candidate/candidate_dsl.json`
+        })
+      }
+    });
+    await expect(projectStore.readLatestRun(projectId)).resolves.toMatchObject({ run_id: runId });
+    await expect(runStore.readRun(candidateRunId)).resolves.toMatchObject({ status: 'PREVIEW_READY' });
   });
 
   it('does not accept a failed runtime apply or write an undo checkpoint', async () => {
@@ -766,6 +1242,10 @@ async function writeShooterArtifacts(workspace: LocalWorkspaceService, input: { 
   }
 
   return gameDsl;
+}
+
+function stableSha256(value: unknown): string {
+  return createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(value)).digest('hex');
 }
 
 async function writeSideScrollingSceneArtifacts(

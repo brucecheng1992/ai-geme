@@ -7,6 +7,7 @@ import type { PrepareDeterministicPatchResponse, RuntimeApplyResultResponse } fr
 export const SemanticAmendmentArtifactRefSchema = z.strictObject({
   id: z.enum([
     'sourceRequest',
+    'modelInvocationProvenance',
     'contextPack',
     'understanding',
     'designDeltas',
@@ -15,15 +16,23 @@ export const SemanticAmendmentArtifactRefSchema = z.strictObject({
     'rejectedUnsafeFallbacks',
     'proposal',
     'candidateBrief',
+    'preservationContract',
+    'candidateArtifactPlan',
     'candidateDsl',
     'candidateDslDiff',
     'candidateSceneIr',
     'candidateSceneIrDiff',
     'candidateAssetIntentManifest',
     'candidateAssetDiff',
+    'amendmentEffectDiff',
+    'capabilityEffectVerification',
+    'candidateAmendmentVerification',
     'candidateRun',
     'candidateRuntimeCapabilityReport',
     'previewState',
+    'runtimePatchPlan',
+    'amendmentVerification',
+    'authoritativePromotion',
     'acceptLog',
     'rejectLog',
     'undoCheckpoint',
@@ -51,13 +60,18 @@ export type SemanticAmendmentPreparedLiveEdit = Omit<PrepareDeterministicPatchRe
 
 export type SemanticAmendmentCandidatePreview = {
   candidateRunId: string;
-  candidateBriefRef: string;
+  candidateBriefRef?: string;
+  preservationContractRef?: string;
+  candidateArtifactPlanRef?: string;
   candidateDslRef: string;
   candidateDslDiffRef: string;
   candidateSceneIrRef?: string;
   candidateSceneIrDiffRef?: string;
   candidateAssetIntentManifestRef?: string;
   candidateAssetDiffRef?: string;
+  amendmentEffectDiffRef?: string;
+  capabilityEffectVerificationRef?: string;
+  candidateAmendmentVerificationRef?: string;
   candidateRunRef: string;
   candidateRuntimeCapabilityReportRef: string;
   previewAvailable: boolean;
@@ -72,10 +86,15 @@ export type SemanticAmendmentCandidateArtifactCheckpoint = {
   candidateDslRef: string;
   candidateDslDiffRef: string;
   candidateBriefRef?: string;
+  preservationContractRef?: string;
+  candidateArtifactPlanRef?: string;
   candidateSceneIrRef?: string;
   candidateSceneIrDiffRef?: string;
   candidateAssetIntentManifestRef?: string;
   candidateAssetDiffRef?: string;
+  amendmentEffectDiffRef?: string;
+  capabilityEffectVerificationRef?: string;
+  candidateAmendmentVerificationRef?: string;
   candidateRunRef?: string;
   candidateRuntimeCapabilityReportRef?: string;
   activeRunMutation: false;
@@ -89,6 +108,7 @@ export type SemanticAmendmentPreviewState = {
   executionMode: SemanticEditProposal['execution']['mode'];
   preparedLiveEdit?: SemanticAmendmentPreparedLiveEdit;
   candidatePreview?: SemanticAmendmentCandidatePreview;
+  runtimePatchPlanRef?: string;
   failureReason?: string;
   createdAt: string;
 };
@@ -100,6 +120,10 @@ export type SemanticAmendmentAcceptLog = {
   acceptedAt: string;
   previousReviewState: SemanticEditProposal['reviewState'];
   runtimeApplyResult?: RuntimeApplyResultResponse;
+  runtimePatchPlanRef?: string;
+  amendmentVerificationRef?: string;
+  capabilityEffectVerificationRef?: string;
+  authoritativePromotionRef?: string;
   candidatePromotionResult?: {
     status: 'promoted_candidate';
     previousRunId: string;

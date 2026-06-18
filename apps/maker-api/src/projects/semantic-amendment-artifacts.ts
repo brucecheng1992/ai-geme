@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
@@ -14,24 +15,49 @@ import {
 
 type PlanArtifactId = Extract<
   SemanticAmendmentArtifactRef['id'],
-  'sourceRequest' | 'contextPack' | 'understanding' | 'designDeltas' | 'gameOperations' | 'executionRoute' | 'rejectedUnsafeFallbacks' | 'proposal'
+  | 'sourceRequest'
+  | 'modelInvocationProvenance'
+  | 'contextPack'
+  | 'understanding'
+  | 'designDeltas'
+  | 'gameOperations'
+  | 'executionRoute'
+  | 'rejectedUnsafeFallbacks'
+  | 'proposal'
 >;
-type ReviewArtifactId = Extract<SemanticAmendmentArtifactRef['id'], 'previewState' | 'acceptLog' | 'rejectLog' | 'undoCheckpoint' | 'undoLog'>;
+type ReviewArtifactId = Extract<
+  SemanticAmendmentArtifactRef['id'],
+  | 'previewState'
+  | 'runtimePatchPlan'
+  | 'amendmentVerification'
+  | 'capabilityEffectVerification'
+  | 'authoritativePromotion'
+  | 'acceptLog'
+  | 'rejectLog'
+  | 'undoCheckpoint'
+  | 'undoLog'
+>;
 type CandidateArtifactId = Extract<
   SemanticAmendmentArtifactRef['id'],
   | 'candidateBrief'
+  | 'preservationContract'
+  | 'candidateArtifactPlan'
   | 'candidateDsl'
   | 'candidateDslDiff'
   | 'candidateSceneIr'
   | 'candidateSceneIrDiff'
   | 'candidateAssetIntentManifest'
   | 'candidateAssetDiff'
+  | 'amendmentEffectDiff'
+  | 'capabilityEffectVerification'
+  | 'candidateAmendmentVerification'
   | 'candidateRun'
   | 'candidateRuntimeCapabilityReport'
 >;
 
 const planArtifactFileNameById: Record<PlanArtifactId, string> = {
   sourceRequest: 'source_request.json',
+  modelInvocationProvenance: 'model_invocation_provenance.json',
   contextPack: 'context_pack.json',
   understanding: 'understanding.json',
   designDeltas: 'design_deltas.json',
@@ -43,6 +69,10 @@ const planArtifactFileNameById: Record<PlanArtifactId, string> = {
 
 const reviewArtifactFileNameById: Record<ReviewArtifactId, string> = {
   previewState: 'preview_state.json',
+  runtimePatchPlan: 'runtime_patch_plan.json',
+  amendmentVerification: 'amendment_verification.json',
+  capabilityEffectVerification: 'capability_effect_verification.json',
+  authoritativePromotion: 'authoritative_promotion.json',
   acceptLog: 'accept_log.json',
   rejectLog: 'reject_log.json',
   undoCheckpoint: 'undo_checkpoint.json',
@@ -51,12 +81,17 @@ const reviewArtifactFileNameById: Record<ReviewArtifactId, string> = {
 
 const candidateArtifactFileNameById: Record<CandidateArtifactId, string> = {
   candidateBrief: 'candidate_brief.json',
+  preservationContract: 'preservation_contract.json',
+  candidateArtifactPlan: 'candidate_artifact_plan.json',
   candidateDsl: 'candidate_dsl.json',
   candidateDslDiff: 'candidate_dsl_diff.json',
   candidateSceneIr: 'candidate_scene_ir.json',
   candidateSceneIrDiff: 'candidate_scene_ir_diff.json',
   candidateAssetIntentManifest: 'candidate_asset_intent_manifest.json',
   candidateAssetDiff: 'candidate_asset_diff.json',
+  amendmentEffectDiff: 'amendment_effect_diff.json',
+  capabilityEffectVerification: 'capability_effect_verification.json',
+  candidateAmendmentVerification: 'candidate_amendment_verification.json',
   candidateRun: 'candidate_run.json',
   candidateRuntimeCapabilityReport: 'candidate_runtime_capability_report.json'
 };
@@ -105,16 +140,33 @@ export async function writeSemanticAmendmentPlanArtifacts(
 ): Promise<void> {
   await Promise.all([
     writeArtifact(workspace, input.projectId, input.runId, input.proposal.id, planArtifactFileNameById.sourceRequest, input.request),
+    writeArtifact(workspace, input.projectId, input.runId, input.proposal.id, planArtifactFileNameById.modelInvocationProvenance, {
+      schemaVersion: 'step34.model-invocation.v1',
+      invocationId: input.proposal.understanding.modelInvocationId,
+      stage: 'semantic_understanding',
+      provider: 'rules',
+      promptVersion: 'deterministic-semantic-amendment-planner.v1',
+      status: 'SUCCEEDED',
+      fallbackUsed: false,
+      inputHash: stableSha256(input.proposal.sourceText),
+      baseDslHash: input.context.currentDsl === undefined ? 'missing-current-dsl' : stableSha256(input.context.currentDsl),
+      runtimeProfileId: input.context.activeRuntimeTemplate ?? input.context.activeGenre ?? 'unknown',
+      structuredOutputValidated: true
+    }),
     writeArtifact(workspace, input.projectId, input.runId, input.proposal.id, planArtifactFileNameById.contextPack, input.context),
     writeArtifact(workspace, input.projectId, input.runId, input.proposal.id, planArtifactFileNameById.understanding, input.proposal.understanding),
     writeArtifact(workspace, input.projectId, input.runId, input.proposal.id, planArtifactFileNameById.designDeltas, input.proposal.understanding.designDeltas),
     writeArtifact(workspace, input.projectId, input.runId, input.proposal.id, planArtifactFileNameById.gameOperations, input.proposal.understanding.operations),
-    writeArtifact(workspace, input.projectId, input.runId, input.proposal.id, planArtifactFileNameById.executionRoute, input.proposal.execution),
+    writeArtifact(workspace, input.projectId, input.runId, input.proposal.id, planArtifactFileNameById.executionRoute, input.proposal.executionPlan),
     writeArtifact(workspace, input.projectId, input.runId, input.proposal.id, planArtifactFileNameById.rejectedUnsafeFallbacks, {
       rejectedUnsafeFallbacks: input.proposal.execution.rejectedUnsafeFallbacks
     }),
     writeArtifact(workspace, input.projectId, input.runId, input.proposal.id, planArtifactFileNameById.proposal, input.proposal)
   ]);
+}
+
+function stableSha256(value: unknown): string {
+  return createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(value)).digest('hex');
 }
 
 export function buildSemanticAmendmentReviewArtifactRef(proposalId: string, id: ReviewArtifactId): SemanticAmendmentArtifactRef {
@@ -141,9 +193,104 @@ export async function readSemanticAmendmentProposal(
   runId: string,
   proposalId: string
 ): Promise<SemanticEditProposal> {
-  return SemanticEditProposalSchema.parse(
-    JSON.parse(await readFile(workspace.getSemanticAmendmentArtifactPath(projectId, runId, proposalId, planArtifactFileNameById.proposal), 'utf8'))
-  );
+  const rawProposal = JSON.parse(await readFile(workspace.getSemanticAmendmentArtifactPath(projectId, runId, proposalId, planArtifactFileNameById.proposal), 'utf8'));
+  const parsedProposal = SemanticEditProposalSchema.safeParse(rawProposal);
+  if (parsedProposal.success) {
+    return parsedProposal.data;
+  }
+
+  return SemanticEditProposalSchema.parse(backfillLegacySemanticEditProposal(rawProposal));
+}
+
+function backfillLegacySemanticEditProposal(value: unknown): unknown {
+  if (!isRecord(value)) {
+    return value;
+  }
+
+  const proposalId = typeof value.id === 'string' ? value.id : 'unknown_proposal';
+  const baseRunId = typeof value.runId === 'string' ? value.runId : 'unknown_run';
+  const sourceText = typeof value.sourceText === 'string' ? value.sourceText : '';
+  const rawUnderstanding = isRecord(value.understanding) ? value.understanding : {};
+  const rawExecution = isRecord(value.execution) ? value.execution : {};
+  const modelInvocationId = typeof rawUnderstanding.modelInvocationId === 'string' ? rawUnderstanding.modelInvocationId : `rules_${proposalId}`;
+  const nextUnderstanding = {
+    ...rawUnderstanding,
+    intentClass: typeof rawUnderstanding.intentClass === 'string' ? rawUnderstanding.intentClass : inferLegacyIntentClass(rawUnderstanding),
+    explicitConstraints: Array.isArray(rawUnderstanding.explicitConstraints) ? rawUnderstanding.explicitConstraints : [],
+    inferredConstraints: Array.isArray(rawUnderstanding.inferredConstraints) ? rawUnderstanding.inferredConstraints : [],
+    unresolvedReferences: Array.isArray(rawUnderstanding.unresolvedReferences) ? rawUnderstanding.unresolvedReferences : [],
+    modelInvocationId,
+    plannerProvenanceStatus: typeof rawUnderstanding.plannerProvenanceStatus === 'string' ? rawUnderstanding.plannerProvenanceStatus : 'RULE_FALLBACK'
+  };
+  const designDeltas = Array.isArray(rawUnderstanding.designDeltas) ? rawUnderstanding.designDeltas : [];
+  const operations = Array.isArray(rawUnderstanding.operations) ? rawUnderstanding.operations : [];
+
+  return {
+    ...value,
+    understanding: nextUnderstanding,
+    executionPlan: isRecord(value.executionPlan)
+      ? value.executionPlan
+      : {
+          schemaVersion: 'step34.execution-plan.v1',
+          proposalId,
+          mode: typeof rawExecution.mode === 'string' ? rawExecution.mode : 'unsupported_capability',
+          reason: typeof rawExecution.reason === 'string' ? rawExecution.reason : 'Backfilled from legacy proposal execution.',
+          requiredCapabilities: Array.isArray(rawExecution.missingCapabilities) ? rawExecution.missingCapabilities.map(String) : [],
+          availableCapabilities: [],
+          missingCapabilities: Array.isArray(rawExecution.missingCapabilities) ? rawExecution.missingCapabilities.map(String) : [],
+          incompatibleCapabilities: [],
+          runtimeSessionRequired: rawExecution.mode === 'hot_runtime_patch',
+          candidateRunRequired: rawExecution.requiresCandidateRun === true,
+          previewReloadRequired: rawExecution.requiresPreviewReload === true,
+          operationPlan: [],
+          verificationRequirements: [],
+          rejectedUnsafeFallbacks: Array.isArray(rawExecution.rejectedUnsafeFallbacks) ? rawExecution.rejectedUnsafeFallbacks.map(String) : []
+        },
+    amendmentIr: isRecord(value.amendmentIr)
+      ? value.amendmentIr
+      : {
+          schemaVersion: 'step34.game-amendment-ir.v1',
+          proposalId,
+          requestId: proposalId,
+          baseRunId,
+          baseArtifactHashes: {},
+          modelInvocationIds: [modelInvocationId],
+          operations: [],
+          operationDependencies: [],
+          preservedConstraints: [],
+          rejectedUnsafeFallbacks: (Array.isArray(rawExecution.rejectedUnsafeFallbacks) ? rawExecution.rejectedUnsafeFallbacks : []).map((fallback) => ({
+            requestedConcept: typeof rawUnderstanding.summary === 'string' ? rawUnderstanding.summary : 'legacy semantic amendment',
+            rejectedFallback: String(fallback),
+            reason: 'Backfilled from legacy proposal execution rejectedUnsafeFallbacks.'
+          })),
+          provenance: {
+            sourceTextHash: stableSha256(sourceText),
+            semanticUnderstandingHash: stableSha256(nextUnderstanding),
+            designDeltasHash: stableSha256(designDeltas.length === 0 ? operations : designDeltas)
+          }
+        }
+  };
+}
+
+function inferLegacyIntentClass(understanding: Record<string, unknown>): SemanticEditProposal['understanding']['intentClass'] {
+  if (understanding.understood === false || typeof understanding.clarificationQuestion === 'string') {
+    return 'ambiguous';
+  }
+  const designDeltas = Array.isArray(understanding.designDeltas) ? understanding.designDeltas : [];
+  if (designDeltas.some((delta) => isRecord(delta) && delta.kind === 'change_genre_or_perspective')) {
+    return 'genre_or_system_edit';
+  }
+  if (designDeltas.some((delta) => isRecord(delta) && delta.kind === 'open_design_request')) {
+    return 'open_design_edit';
+  }
+  if (designDeltas.some((delta) => isRecord(delta) && (delta.kind === 'add_mechanic' || delta.kind === 'add_feedback'))) {
+    return 'structural_edit';
+  }
+  return 'typed_edit';
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export async function writeSemanticAmendmentProposal(

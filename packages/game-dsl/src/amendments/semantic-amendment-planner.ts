@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import {
   describeRuntimeGenreCapability,
   findRuntimeGenreCapability,
@@ -8,14 +10,19 @@ import type { RuntimeCapabilityReport } from '../live-edit.js';
 import {
   AmendmentContextPackSchema,
   SemanticEditProposalSchema,
+  type AmendmentExecutionPlan,
   type AmendmentContextPack,
+  type GameAmendmentIr,
   type GameDesignDelta,
   type GameDomain,
   type GameOperation,
+  type StableTargetSelector,
   type SemanticAmendmentDraftPatch,
   type SemanticAmendmentExecutionMode,
   type SemanticEditProposal
 } from './semantic-amendment-schema.js';
+
+type SemanticIntentClass = SemanticEditProposal['understanding']['intentClass'];
 
 export type BuildAmendmentContextPackInput = {
   projectId: string;
@@ -94,12 +101,28 @@ export function planSemanticAmendment(input: PlanSemanticAmendmentInput): Semant
   const createdAt = (input.now ?? (() => new Date()))().toISOString();
   const proposalId = input.createProposalId?.() ?? `amend_${createdAt.replace(/[-:.TZ]/g, '').slice(0, 14)}`;
   const draft = understandSemanticAmendment(sourceText);
+  const modelInvocationId = `rules_${proposalId}`;
+  const amendmentIr = buildGameAmendmentIr({
+    proposalId,
+    runId: input.runId,
+    sourceText,
+    currentDsl: input.context.currentDsl,
+    understanding: draft,
+    modelInvocationId
+  });
   const draftPatchResult = buildDraftPatch(draft.designDeltas, input.context);
   const dslPatch = draftPatchResult.ok ? draftPatchResult.patch : undefined;
   const execution = routeAmendment({
     draft,
     dslPatch,
     draftPatchMissingCapabilities: draftPatchResult.ok ? [] : draftPatchResult.missingCapabilities,
+    context: input.context
+  });
+  const executionPlan = buildAmendmentExecutionPlan({
+    proposalId,
+    amendmentIr,
+    execution,
+    dslPatch,
     context: input.context
   });
   const candidate = buildCandidatePreview({ draft, dslPatch, mode: execution.mode, sourceText });
@@ -115,16 +138,323 @@ export function planSemanticAmendment(input: PlanSemanticAmendmentInput): Semant
       understood: draft.understood,
       confidence: draft.confidence,
       summary: draft.summary,
+      intentClass: classifyIntent(draft),
       affectedDomains: draft.affectedDomains,
       designDeltas: draft.designDeltas,
       operations: draft.operations,
+      explicitConstraints: [],
+      inferredConstraints: inferredConstraintsForDraft(draft),
+      unresolvedReferences: [],
+      modelInvocationId,
+      plannerProvenanceStatus: 'RULE_FALLBACK',
       ...(draft.clarificationQuestion === undefined ? {} : { clarificationQuestion: draft.clarificationQuestion })
     },
+    amendmentIr,
     execution,
+    executionPlan,
     ...(candidate === undefined ? {} : { candidate }),
     reviewState: 'proposed',
     userMessage: userMessageForExecution(execution.mode, draft.summary, execution.missingCapabilities)
   });
+}
+
+function buildAmendmentExecutionPlan(input: {
+  proposalId: string;
+  amendmentIr: GameAmendmentIr;
+  execution: SemanticEditProposal['execution'];
+  dslPatch: SemanticAmendmentDraftPatch | undefined;
+  context: AmendmentContextPack;
+}): AmendmentExecutionPlan {
+  const operationPlan = input.amendmentIr.operations.map((operation, index) => {
+    const patchOp = input.dslPatch?.ops[index];
+    const pathMode = patchOp === undefined ? undefined : capabilityModeForPath(patchOp.path, input.context);
+    const executionMode = executionModeForOperation(input.execution.mode, pathMode);
+    return {
+      operationId: operation.id,
+      compilerId: compilerIdForOperation(operation.operation),
+      ...(patchOp === undefined ? {} : { patchAdapterId: patchAdapterIdForPath(patchOp.path) }),
+      executionMode
+    };
+  });
+  const operationCapabilities = unique(input.amendmentIr.operations.flatMap((operation) => operation.requiresCapabilities.map((capability) => capability.capabilityId)));
+  const patchCapabilities = input.dslPatch?.ops.map((op) => `live_edit_path:${op.path}`) ?? [];
+  const candidateCapabilities = input.execution.mode === 'candidate_regeneration' ? ['candidate_brief', 'candidate_dsl', 'candidate_run'] : [];
+  const requiredCapabilities = unique([...operationCapabilities, ...patchCapabilities, ...candidateCapabilities, ...input.execution.missingCapabilities]);
+  const availableCapabilities = unique([
+    ...operationCapabilities.filter((capability) => isAvailableOperationCapability(capability, input.context)),
+    ...availablePatchCapabilities(input.dslPatch, input.context),
+    ...candidateCapabilities.filter((capability) => input.context.generatorCapabilities.includes(capability))
+  ]);
+  const incompatibleCapabilities: string[] = [];
+  const missingCapabilities = unique([
+    ...input.execution.missingCapabilities,
+    ...requiredCapabilities.filter((capability) => !availableCapabilities.includes(capability) && !incompatibleCapabilities.includes(capability))
+  ]);
+
+  return {
+    schemaVersion: 'step34.execution-plan.v1',
+    proposalId: input.proposalId,
+    mode: input.execution.mode,
+    reason: input.execution.reason,
+    requiredCapabilities,
+    availableCapabilities,
+    missingCapabilities,
+    incompatibleCapabilities,
+    runtimeSessionRequired: input.execution.mode === 'hot_runtime_patch',
+    candidateRunRequired: input.execution.requiresCandidateRun,
+    previewReloadRequired: input.execution.requiresPreviewReload,
+    operationPlan,
+    verificationRequirements: input.amendmentIr.operations.flatMap((operation) => operation.expectedEffects),
+    rejectedUnsafeFallbacks: input.execution.rejectedUnsafeFallbacks
+  };
+}
+
+function isAvailableOperationCapability(capability: string, context: AmendmentContextPack): boolean {
+  if (capability.startsWith('candidate_')) {
+    return context.generatorCapabilities.includes(capability);
+  }
+  return capability.startsWith('amendment.') || capability.startsWith('behavior.') || capability.startsWith('rules.');
+}
+
+function buildGameAmendmentIr(input: {
+  proposalId: string;
+  runId: string;
+  sourceText: string;
+  currentDsl?: GameDslArtifact;
+  understanding: UnderstandingDraft;
+  modelInvocationId: string;
+}): GameAmendmentIr {
+  const operations = input.understanding.operations.map((operation, index) => operationToAmendmentOperation(operation, index, input.currentDsl));
+  return {
+    schemaVersion: 'step34.game-amendment-ir.v1',
+    proposalId: input.proposalId,
+    requestId: input.proposalId,
+    baseRunId: input.runId,
+    baseArtifactHashes: {
+      currentDsl: input.currentDsl === undefined ? 'missing-current-dsl' : stableSha256(input.currentDsl)
+    },
+    modelInvocationIds: [input.modelInvocationId],
+    operations,
+    operationDependencies: operations.map((operation, index) => ({
+      operationId: operation.id,
+      dependsOn: index === 0 ? [] : [operations[index - 1]?.id ?? '']
+    })),
+    preservedConstraints: inferredConstraintsForDraft(input.understanding).map((description, index) => ({
+      id: `constraint_${index}`,
+      description
+    })),
+    rejectedUnsafeFallbacks: input.understanding.rejectedUnsafeFallbacks.map((fallback) => ({
+      requestedConcept: input.understanding.summary,
+      rejectedFallback: fallback,
+      reason: 'Unsafe semantic fallback would change a different game concept than the user requested.'
+    })),
+    provenance: {
+      sourceTextHash: stableSha256(input.sourceText),
+      semanticUnderstandingHash: stableSha256({
+        summary: input.understanding.summary,
+        affectedDomains: input.understanding.affectedDomains,
+        operations: input.understanding.operations
+      }),
+      designDeltasHash: stableSha256(input.understanding.designDeltas)
+    }
+  };
+}
+
+function operationToAmendmentOperation(operation: GameOperation, index: number, currentDsl: GameDslArtifact | undefined): GameAmendmentIr['operations'][number] {
+  if (operation.kind === 'stat_tuning') {
+    const target = stableComponentTargetForStat(operation);
+    return {
+      operation: 'setComponentProperty',
+      id: `op_${index}_stat_tuning`,
+      target,
+      componentType: componentTypeForStat(operation),
+      property: operation.stat,
+      value: operation.change,
+      preconditions: preconditionsForStatOperation(operation, target, currentDsl),
+      requiresCapabilities: [
+        {
+          capabilityId: `amendment.set_component_property.${target.role ?? operation.target}.${operation.stat}.v1`,
+          reason: `Change ${operation.target}.${operation.stat}.`,
+          required: true
+        }
+      ],
+      expectedEffects: [
+        {
+          kind: 'property_changed',
+          target: { scope: 'component', role: operation.target },
+          property: operation.stat,
+          comparison: operation.change.direction === 'increase' ? 'increased' : operation.change.direction === 'decrease' ? 'decreased' : 'equals',
+          expectedValue: operation.change.amount
+        }
+      ]
+    };
+  }
+  if (operation.kind === 'theme_regeneration') {
+    const target = { scope: 'component' as const, id: `${operation.target}.visual`, role: operation.target };
+    return {
+      operation: 'replaceAsset',
+      id: `op_${index}_theme_regeneration`,
+      target,
+      property: 'theme',
+      value: operation.themePrompt,
+      preconditions: [
+        { kind: 'target_exists', target },
+        { kind: 'component_exists', target, componentType: 'visual' },
+        { kind: 'asset_role_resolvable', assetRole: operation.target }
+      ],
+      requiresCapabilities: [
+        {
+          capabilityId: `candidate_theme_${operation.target}`,
+          reason: `Regenerate ${operation.target} visual/theme identity.`,
+          required: true
+        }
+      ],
+      expectedEffects: [
+        {
+          kind: 'asset_binding',
+          target: { scope: 'component', role: operation.target },
+          requiredAssetRoles: [operation.target],
+          allowRequiredFallback: false
+        }
+      ]
+    };
+  }
+  if (operation.kind === 'event_action') {
+    const target = { scope: 'scene' as const, id: 'scene.main', role: 'main' };
+    return {
+      operation: 'addRule',
+      id: `op_${index}_event_action`,
+      target,
+      value: operation,
+      preconditions: [
+        { kind: 'target_exists', target },
+        { kind: 'required_scene_active', sceneRef: 'scene.main' }
+      ],
+      requiresCapabilities: [
+        {
+          capabilityId: 'rules.event_action.v1',
+          reason: `Run actions when ${operation.event} occurs.`,
+          required: true
+        }
+      ],
+      expectedEffects: [
+        {
+          kind: 'runtime_event',
+          eventName: operation.event,
+          minimumCount: 1
+        }
+      ]
+    };
+  }
+  return {
+    operation: 'addBehavior',
+    id: `op_${index}_behavior_change`,
+    target: { scope: 'component', role: operation.target },
+    value: operation,
+    preconditions: [{ kind: 'target_exists', target: { scope: 'component', role: operation.target } }],
+    requiresCapabilities: [
+      {
+        capabilityId: `behavior.${operation.behavior}.v1`,
+        reason: `Add or modify behavior ${operation.behavior}.`,
+        required: true
+      }
+    ],
+    expectedEffects: [
+      {
+        kind: 'runtime_event',
+        eventName: operation.behavior,
+        minimumCount: 1
+      }
+    ]
+  };
+}
+
+function stableComponentTargetForStat(operation: GameOperation & { kind: 'stat_tuning' }): StableTargetSelector {
+  if (operation.target === 'player') {
+    return { scope: 'component', id: `player.${componentTypeForStat(operation)}`, role: 'player' };
+  }
+  if (operation.target === 'player.primaryWeapon') {
+    return { scope: 'component', id: 'player.primaryWeapon', role: 'weapon', parentRef: 'player' };
+  }
+  if (operation.target === 'enemy') {
+    return { scope: 'component', id: `enemyType.*.${componentTypeForStat(operation)}`, role: 'enemy', tags: ['enemy_archetype'] };
+  }
+  if (operation.target === 'projectile') {
+    return { scope: 'component', id: 'projectile.*', role: 'projectile', tags: ['projectile_archetype'] };
+  }
+  return { scope: 'component', id: operation.target, role: operation.target };
+}
+
+function componentTypeForStat(operation: GameOperation & { kind: 'stat_tuning' }): string {
+  if (operation.stat === 'speed') {
+    return 'physics';
+  }
+  if (operation.stat === 'health') {
+    return 'health';
+  }
+  if (operation.stat === 'fireRate') {
+    return 'weapon';
+  }
+  if (operation.stat === 'count') {
+    return 'spawnPlan';
+  }
+  return 'stats';
+}
+
+function preconditionsForStatOperation(
+  operation: GameOperation & { kind: 'stat_tuning' },
+  target: StableTargetSelector,
+  currentDsl: GameDslArtifact | undefined
+): GameAmendmentIr['operations'][number]['preconditions'] {
+  const preconditions: GameAmendmentIr['operations'][number]['preconditions'] = [
+    { kind: 'target_exists', target },
+    { kind: 'component_exists', target, componentType: componentTypeForStat(operation) }
+  ];
+  const baseValue = currentValueForStatOperation(operation, currentDsl);
+  if (baseValue !== undefined) {
+    preconditions.push({ kind: 'current_value_equals', target, property: operation.stat, expectedValue: baseValue });
+  }
+  return preconditions;
+}
+
+function currentValueForStatOperation(operation: GameOperation & { kind: 'stat_tuning' }, currentDsl: GameDslArtifact | undefined): unknown {
+  if (currentDsl === undefined) {
+    return undefined;
+  }
+  if (operation.target === 'player' && operation.stat === 'speed') {
+    return currentDsl.player.physics.maxSpeed;
+  }
+  if (operation.target === 'player' && operation.stat === 'health') {
+    return currentDsl.player.health.max;
+  }
+  if (operation.target === 'player.primaryWeapon' && operation.stat === 'fireRate') {
+    return currentDsl.player.actions.find((action) => action.type === 'shoot_projectile')?.cooldownMs;
+  }
+  return undefined;
+}
+
+function stableSha256(value: unknown): string {
+  return createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(value)).digest('hex');
+}
+
+function classifyIntent(draft: UnderstandingDraft): SemanticIntentClass {
+  if (!draft.understood || draft.clarificationQuestion !== undefined) {
+    return 'ambiguous';
+  }
+  if (draft.designDeltas.some((delta) => delta.kind === 'change_genre_or_perspective')) {
+    return 'genre_or_system_edit';
+  }
+  if (draft.designDeltas.some((delta) => delta.kind === 'open_design_request')) {
+    return 'open_design_edit';
+  }
+  if (draft.designDeltas.some((delta) => delta.kind === 'add_mechanic' || delta.kind === 'add_feedback')) {
+    return 'structural_edit';
+  }
+  return 'typed_edit';
+}
+
+function inferredConstraintsForDraft(draft: UnderstandingDraft): string[] {
+  return draft.designDeltas.some((delta) => delta.kind === 'reskin_or_theme') ? ['preserve_gameplay_unless_explicitly_requested'] : [];
 }
 
 function understandSemanticAmendment(sourceText: string): UnderstandingDraft {
@@ -465,6 +795,57 @@ function routeAmendment(input: {
   return route('dsl_patch_warm_restart', 'At least one planned operation requires DSL patch plus preview reload.', input.draft.rejectedUnsafeFallbacks);
 }
 
+function executionModeForOperation(
+  routeMode: SemanticAmendmentExecutionMode,
+  pathMode: ReturnType<typeof capabilityModeForPath> | undefined
+): SemanticAmendmentExecutionMode {
+  if (routeMode === 'unsupported_capability' || routeMode === 'needs_clarification' || routeMode === 'candidate_regeneration') {
+    return routeMode;
+  }
+  if (pathMode === 'hot') {
+    return 'hot_runtime_patch';
+  }
+  if (pathMode === 'warm' || pathMode === 'rebuild') {
+    return 'dsl_patch_warm_restart';
+  }
+  return routeMode;
+}
+
+function compilerIdForOperation(operation: GameAmendmentIr['operations'][number]['operation']): string {
+  if (operation === 'setComponentProperty') {
+    return 'profile-backed.set-component-property.v1';
+  }
+  if (operation === 'replaceAsset' || operation === 'bindAsset') {
+    return 'profile-backed.asset-amendment.v1';
+  }
+  if (operation === 'addRule' || operation === 'modifyRule') {
+    return 'profile-backed.rule-amendment.v1';
+  }
+  return 'profile-backed.generic-amendment.v1';
+}
+
+function patchAdapterIdForPath(path: string): string {
+  const normalized = path
+    .split('/')
+    .filter((segment) => segment.length > 0)
+    .map((segment) => (/^\d+$/.test(segment) ? '*' : segment))
+    .join('.');
+  return `dsl-json-patch.${normalized || 'root'}.v1`;
+}
+
+function availablePatchCapabilities(dslPatch: SemanticAmendmentDraftPatch | undefined, context: AmendmentContextPack): string[] {
+  if (dslPatch === undefined) {
+    return [];
+  }
+  return dslPatch.ops
+    .filter((op) => capabilityModeForPath(op.path, context) !== 'none')
+    .map((op) => `live_edit_path:${op.path}`);
+}
+
+function unique(values: string[]): string[] {
+  return [...new Set(values)];
+}
+
 function route(
   mode: SemanticAmendmentExecutionMode,
   reason: string,
@@ -479,7 +860,7 @@ function route(
     reason,
     supportedNow: mode === 'hot_runtime_patch' || mode === 'dsl_patch_warm_restart' || mode === 'candidate_regeneration',
     requiresPreviewReload: mode === 'dsl_patch_warm_restart' || mode === 'candidate_regeneration',
-    requiresCandidateRun: mode === 'candidate_regeneration',
+    requiresCandidateRun: mode === 'dsl_patch_warm_restart' || mode === 'candidate_regeneration',
     missingCapabilities: [],
     rejectedUnsafeFallbacks
   };
