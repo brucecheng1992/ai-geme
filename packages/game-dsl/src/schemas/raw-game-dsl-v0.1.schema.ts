@@ -22,7 +22,6 @@ const forbiddenTerms = [
   'pixi',
   'godot',
   'cocos',
-  'scene',
   'sprite',
   'texture',
   'physics',
@@ -120,6 +119,18 @@ const CameraSchema = z.strictObject({
   mode: z.enum(['follow_player_x'])
 });
 
+const SceneRefSchema = z.string().regex(/^[a-z][a-z0-9_.-]{1,79}$/);
+
+const EntityVisualSchema = z.strictObject({
+  assetIntentRef: SceneRefSchema,
+  styleRef: SceneRefSchema.optional(),
+  scale: z.number().min(0.1).max(8).optional(),
+  facingMode: z.enum(['flip_x', 'separate_animations']).optional(),
+  animationSetRef: SceneRefSchema.optional(),
+  tintIntent: z.string().min(1).max(80).optional(),
+  silhouetteIntent: z.string().min(1).max(120).optional()
+});
+
 /** Entity spawn 是模型可生成的引擎无关入场语义，不允许表达脚本或坐标运算。 */
 const SpawnSchema = z.strictObject({
   strategy: z.enum(['fixed_positions', 'right_edge_wave', 'top_edge_stream']),
@@ -160,7 +171,8 @@ const PlayerSchema = z.strictObject({
   actions: z.array(ActionSchema).max(6).default([]),
   controller: z.enum(['run_jump_shoot']).optional(),
   aiming: z.strictObject({ mode: z.enum(['multi_direction', 'eight_direction']) }).optional(),
-  invulnerabilityFrames: InvulnerabilityFramesSchema.optional()
+  invulnerabilityFrames: InvulnerabilityFramesSchema.optional(),
+  visual: EntityVisualSchema.optional()
 });
 
 const EntitySchema = z.strictObject({
@@ -252,7 +264,13 @@ const EnemyTypeSchema = z.strictObject({
   id: DslIdSchema,
   label: z.string().min(1).max(40),
   health: z.number().int().min(1).max(20),
-  movement: MovementSchema
+  movement: MovementSchema,
+  behaviorRef: SceneRefSchema.optional(),
+  visual: EntityVisualSchema.optional(),
+  colliderRef: SceneRefSchema.optional(),
+  weaponRef: SceneRefSchema.optional(),
+  movementRef: SceneRefSchema.optional(),
+  tags: z.array(DslIdSchema).max(12).optional()
 });
 
 const LevelTerrainSchema = z.strictObject({
@@ -332,6 +350,77 @@ const WinLoseSchema = z.strictObject({
   checkpoints: z.array(z.number().int().min(0).max(20000)).min(1).max(12).optional()
 });
 
+const SceneThemeSchema = z.strictObject({
+  id: DslIdSchema,
+  style: z.string().min(1).max(80),
+  biome: z.string().min(1).max(80),
+  faction: z.string().min(1).max(80).optional(),
+  timeOfDay: z.enum(['day', 'night', 'dawn', 'dusk', 'interior']).optional(),
+  weather: z.string().min(1).max(80).optional(),
+  atmosphere: z.string().min(1).max(120).optional(),
+  paletteIntent: z.string().min(1).max(120).optional(),
+  terrainMaterialSet: SceneRefSchema.optional(),
+  propFamily: SceneRefSchema.optional(),
+  lightingIntent: z.string().min(1).max(120).optional()
+});
+
+const BackgroundLayerSchema = z.strictObject({
+  id: DslIdSchema,
+  role: z.enum(['sky', 'far', 'mid', 'near', 'overlay']),
+  assetIntentRef: SceneRefSchema,
+  parallax: z.number().min(0).max(1),
+  repeatX: z.boolean().optional(),
+  fixedToCamera: z.boolean().optional(),
+  opacity: z.number().min(0).max(1).optional(),
+  depth: z.number().int().min(-1000).max(1000)
+});
+
+const ScenePlatformSchema = z.strictObject({
+  id: DslIdSchema,
+  x: z.number().int().min(0).max(20000),
+  y: z.number().int().min(0).max(20000),
+  width: z.number().int().min(16).max(SIDE_SCROLLING_WORLD_BOUNDS.maxWorldWidth),
+  height: z.number().int().min(8).max(400),
+  shape: z.enum(['rectangle', 'slope', 'one_way']),
+  materialRef: SceneRefSchema,
+  visualAssetIntentRef: SceneRefSchema.optional(),
+  collision: z.strictObject({
+    enabled: z.boolean(),
+    oneWay: z.boolean().optional()
+  }),
+  tags: z.array(DslIdSchema).max(12).optional()
+});
+
+const SceneEntityInstanceSchema = z.strictObject({
+  id: DslIdSchema,
+  archetypeRef: DslIdSchema,
+  x: z.number().int().min(0).max(20000),
+  y: z.number().int().min(0).max(20000),
+  spawnRule: DslIdSchema.optional()
+});
+
+const SceneGoalSchema = z.strictObject({
+  id: DslIdSchema,
+  kind: z.enum(['reach', 'destroy', 'collect', 'survive']),
+  entityRef: DslIdSchema.optional(),
+  x: z.number().int().min(0).max(20000).optional(),
+  y: z.number().int().min(0).max(20000).optional(),
+  visualAssetIntentRef: SceneRefSchema.optional()
+});
+
+const SceneSchema = z.strictObject({
+  id: DslIdSchema,
+  theme: SceneThemeSchema,
+  backgroundLayers: z.array(BackgroundLayerSchema).min(1).max(8),
+  platforms: z.array(ScenePlatformSchema).min(1).max(80),
+  playerSpawn: z.strictObject({
+    x: z.number().int().min(0).max(20000),
+    y: z.number().int().min(0).max(20000)
+  }),
+  enemyInstances: z.array(SceneEntityInstanceSchema).max(80),
+  goal: SceneGoalSchema
+});
+
 const UiSchema = z.strictObject({
   hud: z.array(z.enum(['score', 'health', 'timer', 'objective'])).min(1).max(4),
   restart: z.boolean(),
@@ -383,6 +472,7 @@ export const RawGameDslSchema = z.strictObject({
   projectiles: z.array(ProjectileSchema).min(1).max(8).optional(),
   enemyTypes: z.array(EnemyTypeSchema).min(1).max(12).optional(),
   level: LevelSchema.optional(),
+  scenes: z.array(SceneSchema).min(1).max(8).optional(),
   pickups: z.array(PickupSchema).max(20).optional(),
   bosses: BossesSchema.optional(),
   winLose: WinLoseSchema.optional(),
@@ -416,6 +506,7 @@ export const RawGameDslSchema = z.strictObject({
       ['projectiles', value.projectiles],
       ['enemyTypes', value.enemyTypes],
       ['level', value.level],
+      ['scenes', value.scenes],
       ['pickups', value.pickups],
       ['winLose', value.winLose]
     ] as const) {
@@ -493,6 +584,7 @@ function addSideScrollingRunAndGunIssues(value: z.infer<typeof RawGameDslSchema>
 
   addSideScrollingRunAndGunCombatIssues(value, ctx);
   addSideScrollingRunAndGunLevelIssues(value, ctx);
+  addSideScrollingRunAndGunSceneIssues(value, ctx);
   addSideScrollingRunAndGunWinLoseIssues(value, ctx);
 
   const copyrightedSourceReference = findCopyrightedRunAndGunValue(value);
@@ -587,6 +679,58 @@ function addSideScrollingRunAndGunLevelIssues(value: z.infer<typeof RawGameDslSc
         message: 'side_scrolling_run_and_gun pickup must stay inside world bounds'
       });
     }
+  }
+}
+
+function addSideScrollingRunAndGunSceneIssues(value: z.infer<typeof RawGameDslSchema>, ctx: z.RefinementCtx): void {
+  const scenes = value.scenes;
+  if (scenes === undefined) {
+    return;
+  }
+
+  for (const [sceneIndex, scene] of scenes.entries()) {
+    addPointWithinWorld(scene.playerSpawn, value.world, ['scenes', sceneIndex, 'playerSpawn'], ctx, 'scene player spawn must stay inside world bounds');
+
+    for (const [platformIndex, platform] of scene.platforms.entries()) {
+      if (platform.x + platform.width > value.world.width || platform.y + platform.height > value.world.height) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['scenes', sceneIndex, 'platforms', platformIndex],
+          message: 'scene platform geometry must stay inside world bounds'
+        });
+      }
+    }
+
+    for (const [instanceIndex, instance] of scene.enemyInstances.entries()) {
+      addPointWithinWorld(instance, value.world, ['scenes', sceneIndex, 'enemyInstances', instanceIndex], ctx, 'scene enemy instance must stay inside world bounds');
+    }
+
+    if (scene.goal.kind === 'reach' && (scene.goal.x === undefined || scene.goal.y === undefined)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['scenes', sceneIndex, 'goal'],
+        message: 'reach scene goal requires x and y coordinates'
+      });
+    }
+    if (scene.goal.x !== undefined && scene.goal.y !== undefined) {
+      addPointWithinWorld({ x: scene.goal.x, y: scene.goal.y }, value.world, ['scenes', sceneIndex, 'goal'], ctx, 'scene goal must stay inside world bounds');
+    }
+  }
+}
+
+function addPointWithinWorld(
+  point: { x: number; y: number },
+  world: { width: number; height: number },
+  path: Array<string | number>,
+  ctx: z.RefinementCtx,
+  message: string
+): void {
+  if (point.x > world.width || point.y > world.height) {
+    ctx.addIssue({
+      code: 'custom',
+      path,
+      message
+    });
   }
 }
 

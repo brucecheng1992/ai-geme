@@ -32,10 +32,10 @@ export type PipelineEvidenceView =
 
 const GROUPS: Array<{ id: string; title: string; artifactIds: string[] }> = [
   { id: 'prompt', title: 'Prompt / Provenance', artifactIds: ['generationInputReport', 'intentPlan', 'promptOptimizationReport', 'optimizedPrompt'] },
-  { id: 'dsl', title: 'DSL', artifactIds: ['gameDsl', 'gameDslCandidate', 'dslValidationReport'] },
-  { id: 'runtime', title: 'Runtime', artifactIds: ['runtimeCapabilityReport'] },
-  { id: 'assets', title: 'Assets', artifactIds: ['assetPlan', 'publicAssetManifest', 'phaserPreviewManifest', 'assetResolutionReport', 'assetPipelineReport', 'assetLibraryUsageReport', 'assetBindingTraceReport'] },
-  { id: 'build-qa', title: 'Build / QA / Preview', artifactIds: ['buildLog', 'qaReport', 'pipelineAcceptanceReport', 'pipelineArtifactIndex'] }
+  { id: 'dsl', title: 'DSL', artifactIds: ['gameDsl', 'gameDslCandidate', 'dslValidationReport', 'dslConsumptionReport'] },
+  { id: 'runtime', title: 'Runtime', artifactIds: ['runtimeCapabilityReport', 'sceneIr', 'runtimeSceneBindingReport'] },
+  { id: 'assets', title: 'Assets', artifactIds: ['assetIntentManifest', 'assetPlan', 'publicAssetManifest', 'phaserPreviewManifest', 'assetResolutionReport', 'assetPipelineReport', 'assetLibraryUsageReport', 'assetBindingTraceReport'] },
+  { id: 'build-qa', title: 'Build / QA / Preview', artifactIds: ['buildLog', 'qaReport', 'renderFidelityReport', 'pipelineAcceptanceReport', 'pipelineArtifactIndex'] }
 ];
 
 const panelClass = 'rounded-lg border border-[#d8c7a6] bg-[#fffef9] p-4 shadow-[0_1px_0_rgba(49,43,34,0.08)]';

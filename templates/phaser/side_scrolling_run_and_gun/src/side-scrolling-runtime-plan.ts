@@ -7,6 +7,16 @@ export type SideScrollingPlatform = {
   height: number;
 };
 
+export type SideScrollingBackground = {
+  id: string;
+  role: 'sky' | 'far' | 'mid' | 'near' | 'overlay';
+  parallax: number;
+  fixedToCamera?: boolean;
+  repeatX?: boolean;
+  opacity?: number;
+  depth: number;
+};
+
 export type SideScrollingEnemyDefinition = {
   id: string;
   label: string;
@@ -30,7 +40,15 @@ export type SideScrollingWave = {
   trigger: 'enter_segment' | 'reach_x';
   triggerX: number;
   spawnX: number;
+  spawnY?: number;
   count: number;
+};
+
+export type SideScrollingGoal = {
+  id: string;
+  kind: 'reach' | 'destroy' | 'collect' | 'survive' | 'enemy_cleared';
+  x?: number;
+  y?: number;
 };
 
 export type SideScrollingRuntimeSlice = {
@@ -60,10 +78,12 @@ export type SideScrollingRuntimeSlice = {
     projectileSpeedPxPerSec: number;
     projectileDamage: number;
   };
+  backgrounds?: SideScrollingBackground[];
   platforms: SideScrollingPlatform[];
   enemyDefinitions: SideScrollingEnemyDefinition[];
   waves: SideScrollingWave[];
   pickups: Array<{ id: string; kind: 'health' | 'score' | 'weapon'; x: number; y: number }>;
+  goals?: SideScrollingGoal[];
   winCondition: { kind: 'reach_exit'; targetX: number } | { kind: 'enemy_cleared'; targetCount: number };
   telemetry: { profile: 'side_scrolling_run_and_gun_smoke' };
 };

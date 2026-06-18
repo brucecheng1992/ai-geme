@@ -4,10 +4,11 @@ import { SideScrollingRunAndGunScene, type SideScrollingDirection } from './Game
 import generatedAssetManifest from './asset-manifest.generated.json';
 import generatedLiveEditRegistry from './live-edit-registry.generated.json';
 import generatedRuntimePlan from './runtime-plan.generated.json';
+import generatedSceneIr from './scene-ir.generated.json';
 import { createSideScrollingArtRuntime } from './side-scrolling-art-library.js';
+import { resolveSideScrollingRuntimeSliceWithSceneIr, type SideScrollingSceneIr } from './side-scrolling-scene-ir.js';
 import {
   defaultSideScrollingRuntimePlan,
-  resolveSideScrollingRuntimeSlice,
   type SideScrollingRuntimePlan
 } from './side-scrolling-runtime-plan.js';
 import generatedParams from './template-params.generated.json';
@@ -15,9 +16,10 @@ import { defaultSideScrollingParams, type SideScrollingTemplateParams } from './
 
 const sideScrollingParams = mergeSideScrollingParams(generatedParams as Partial<SideScrollingTemplateParams>);
 const sideScrollingRuntimePlan = mergeSideScrollingRuntimePlan(generatedRuntimePlan as Partial<SideScrollingRuntimePlan>);
-const sideScrollingRuntimeSlice = resolveSideScrollingRuntimeSlice(sideScrollingRuntimePlan);
+const sideScrollingSceneRuntime = resolveSideScrollingRuntimeSliceWithSceneIr(sideScrollingRuntimePlan, generatedSceneIr as SideScrollingSceneIr);
+const sideScrollingRuntimeSlice = sideScrollingSceneRuntime.plan;
 const sideScrollingArt = createSideScrollingArtRuntime(generatedAssetManifest);
-const scene = new SideScrollingRunAndGunScene(sideScrollingParams, sideScrollingRuntimePlan, sideScrollingArt);
+const scene = new SideScrollingRunAndGunScene(sideScrollingParams, { side_scrolling: sideScrollingRuntimeSlice }, sideScrollingArt, sideScrollingSceneRuntime.bindingState);
 
 if (typeof window !== 'undefined') {
   class SideScrollingPhaserScene extends Phaser.Scene {

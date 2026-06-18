@@ -32,12 +32,21 @@ export type QaReport = {
   asset_semantic_status?: AssetSemanticStatus;
   overall_status?: OverallStatus;
   visual_status?: string;
+  render_fidelity?: QaRenderFidelitySummary;
   observed_events?: string[];
   missing_events?: string[];
   missing_any_groups?: string[][];
   console_errors?: string[];
   code?: string;
   asset_report?: QaAssetReport;
+};
+
+export type QaRenderFidelitySummary = {
+  status: 'PASSED' | 'PASSED_WITH_OPTIONAL_FALLBACKS' | 'VISUALLY_DEGRADED' | 'FAILED' | string;
+  reason: string;
+  expected: string[];
+  observed: string[];
+  missing: string[];
 };
 
 export type QaAssetRuntimeTelemetry = {
@@ -242,12 +251,27 @@ export type PipelineAcceptanceCheck = {
   evidenceRefs: string[];
 };
 
+export type PipelineRenderFidelityStatus = 'PASSED' | 'PASSED_WITH_OPTIONAL_FALLBACKS' | 'VISUALLY_DEGRADED' | 'FAILED';
+
+export type PipelineRenderFidelity = {
+  status: PipelineRenderFidelityStatus | string;
+  reason: string;
+  evidenceRefs: string[];
+  coreRequiredFallbackCount: number;
+  requestRequiredFallbackCount: number;
+  optionalFallbackCount: number;
+  runtimeUnboundCount: number;
+  assetBindingStatus: 'pass' | 'warn' | 'fail' | 'unavailable' | string;
+  assetLibraryStatus: 'pass' | 'warn' | 'fail' | 'unavailable' | string;
+};
+
 export type PipelineAcceptanceReport = {
   reportVersion: 'pipeline_acceptance_report.v1' | string;
   projectId: string;
   runId: string;
   overallStatus: PipelineAcceptanceStatus | string;
   previewable: boolean;
+  renderFidelity: PipelineRenderFidelity;
   checkedArtifacts: PipelineAcceptanceCheckedArtifact[];
   checks: PipelineAcceptanceCheck[];
   errors: string[];

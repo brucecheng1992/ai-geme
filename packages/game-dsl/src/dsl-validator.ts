@@ -52,7 +52,22 @@ const numericPaths = new Set([
   'effects.explosion.durationMs',
   'effects.explosion.cameraShake.intensity',
   'effects.explosion.cameraShake.durationMs',
-  'ui.warningBanner.durationMs'
+  'ui.warningBanner.durationMs',
+  'player.visual.scale',
+  'enemyTypes.visual.scale',
+  'scenes.backgroundLayers.parallax',
+  'scenes.backgroundLayers.opacity',
+  'scenes.backgroundLayers.depth',
+  'scenes.platforms.x',
+  'scenes.platforms.y',
+  'scenes.platforms.width',
+  'scenes.platforms.height',
+  'scenes.playerSpawn.x',
+  'scenes.playerSpawn.y',
+  'scenes.enemyInstances.x',
+  'scenes.enemyInstances.y',
+  'scenes.goal.x',
+  'scenes.goal.y'
 ]);
 
 export function validateRawGameDsl(input: unknown): DslValidationResult<RawGameDsl> {
@@ -64,6 +79,7 @@ export function validateRawGameDsl(input: unknown): DslValidationResult<RawGameD
 
   const issues = [
     ...validateUniqueIds(parsed.data),
+    ...validateSceneDuplicateIds(parsed.data),
     ...validateReferences(parsed.data),
     ...validateSemanticModelReferences(parsed.data),
     ...validateMechanicContract(parsed.data),
@@ -178,9 +194,41 @@ function collectIds(raw: RawGameDsl): Array<[string, string]> {
   ];
 }
 
+function validateSceneDuplicateIds(raw: RawGameDsl): DslValidationIssue[] {
+  const issues: DslValidationIssue[] = [];
+  const sceneIds = new Set<string>();
+
+  for (const [sceneIndex, scene] of (raw.scenes ?? []).entries()) {
+    if (sceneIds.has(scene.id)) {
+      issues.push({ code: 'DUPLICATE_ID', path: `scenes.${sceneIndex}.id`, message: `Duplicate scene id "${scene.id}"` });
+    }
+    sceneIds.add(scene.id);
+    issues.push(
+      ...duplicateSceneNodeIssues(scene.backgroundLayers.map((layer) => layer.id), `scenes.${sceneIndex}.backgroundLayers`),
+      ...duplicateSceneNodeIssues(scene.platforms.map((platform) => platform.id), `scenes.${sceneIndex}.platforms`),
+      ...duplicateSceneNodeIssues(scene.enemyInstances.map((instance) => instance.id), `scenes.${sceneIndex}.enemyInstances`)
+    );
+  }
+
+  return issues;
+}
+
+function duplicateSceneNodeIssues(ids: string[], path: string): DslValidationIssue[] {
+  const issues: DslValidationIssue[] = [];
+  const seen = new Set<string>();
+  for (const [index, id] of ids.entries()) {
+    if (seen.has(id)) {
+      issues.push({ code: 'DUPLICATE_ID', path: `${path}.${index}.id`, message: `Duplicate scene node id "${id}"` });
+    }
+    seen.add(id);
+  }
+  return issues;
+}
+
 function validateReferences(raw: RawGameDsl): DslValidationIssue[] {
   const entityIds = new Set([raw.player.id, ...raw.entities.map((entity) => entity.id)]);
   const collisionIds = new Set([...entityIds, ...(raw.projectiles ?? []).map((projectile) => projectile.id)]);
+  const enemyTypeIds = new Set((raw.enemyTypes ?? []).map((enemyType) => enemyType.id));
   const issues: DslValidationIssue[] = [];
 
   for (const [index, action] of raw.player.actions.entries()) {
@@ -205,7 +253,6 @@ function validateReferences(raw: RawGameDsl): DslValidationIssue[] {
     }
   }
 
-  const enemyTypeIds = new Set((raw.enemyTypes ?? []).map((enemyType) => enemyType.id));
   for (const [index, spawn] of (raw.level?.spawns ?? []).entries()) {
     if (!enemyTypeIds.has(spawn.enemyType)) {
       issues.push({
@@ -216,5 +263,76 @@ function validateReferences(raw: RawGameDsl): DslValidationIssue[] {
     }
   }
 
+  return [...issues, ...validateSceneReferences(raw, enemyTypeIds)];
+}
+
+function validateSceneReferences(raw: RawGameDsl, enemyTypeIds: Set<string>): DslValidationIssue[] {
+  const issues: DslValidationIssue[] = [];
+  const spawnIds = new Set((raw.level?.spawns ?? []).map((spawn) => spawn.id));
+  const enemyEntityIds = new Set(raw.entities.filter((entity) => entity.kind === 'enemy').map((entity) => entity.id));
+  const collectibleEntityIds = new Set(raw.entities.filter((entity) => entity.kind === 'collectible').map((entity) => entity.id));
+  const pickupIds = new Set((raw.pickups ?? []).map((pickup) => pickup.id));
+
+  for (const [sceneIndex, scene] of (raw.scenes ?? []).entries()) {
+    const sceneEnemyInstanceIds = new Set(scene.enemyInstances.map((instance) => instance.id));
+
+    for (const [instanceIndex, instance] of scene.enemyInstances.entries()) {
+      if (!enemyTypeIds.has(instance.archetypeRef)) {
+        issues.push({
+          code: 'UNRESOLVED_REFERENCE',
+          path: `scenes.${sceneIndex}.enemyInstances.${instanceIndex}.archetypeRef`,
+          message: `Unknown enemy archetype "${instance.archetypeRef}"`
+        });
+      }
+      if (instance.spawnRule !== undefined && !spawnIds.has(instance.spawnRule)) {
+        issues.push({
+          code: 'UNRESOLVED_REFERENCE',
+          path: `scenes.${sceneIndex}.enemyInstances.${instanceIndex}.spawnRule`,
+          message: `Unknown scene spawn rule "${instance.spawnRule}"`
+        });
+      }
+    }
+
+    const goalRef = scene.goal.entityRef;
+    if (goalRef === undefined) {
+      continue;
+    }
+
+    const allowedGoalRefs = goalEntityRefsForKind(scene.goal.kind, {
+      enemyTypeIds,
+      enemyEntityIds,
+      collectibleEntityIds,
+      pickupIds,
+      sceneEnemyInstanceIds
+    });
+    if (!allowedGoalRefs.has(goalRef)) {
+      issues.push({
+        code: 'UNRESOLVED_REFERENCE',
+        path: `scenes.${sceneIndex}.goal.entityRef`,
+        message: `Unknown ${scene.goal.kind} goal entityRef "${goalRef}"`
+      });
+    }
+  }
+
   return issues;
+}
+
+function goalEntityRefsForKind(
+  kind: NonNullable<RawGameDsl['scenes']>[number]['goal']['kind'],
+  refs: {
+    enemyTypeIds: Set<string>;
+    enemyEntityIds: Set<string>;
+    collectibleEntityIds: Set<string>;
+    pickupIds: Set<string>;
+    sceneEnemyInstanceIds: Set<string>;
+  }
+): Set<string> {
+  if (kind === 'destroy') {
+    return new Set([...refs.enemyTypeIds, ...refs.enemyEntityIds, ...refs.sceneEnemyInstanceIds]);
+  }
+  if (kind === 'collect') {
+    return new Set([...refs.collectibleEntityIds, ...refs.pickupIds]);
+  }
+
+  return new Set<string>();
 }

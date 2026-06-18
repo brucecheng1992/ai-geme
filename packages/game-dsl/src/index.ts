@@ -2,6 +2,16 @@ export { GameBriefSchema, type GameBrief } from './schemas/game-brief-v0.1.schem
 export { RawGameDslSchema, type RawGameDsl } from './schemas/raw-game-dsl-v0.1.schema.js';
 export { NormalizedGameIrSchema, type NormalizedGameIr } from './schemas/normalized-game-ir-v0.1.schema.js';
 export {
+  buildDslConsumptionReport,
+  DslConsumptionEntrySchema,
+  DslConsumptionReportSchema,
+  DslConsumptionStatusSchema,
+  type DslConsumptionEntry,
+  type DslConsumptionReport,
+  type DslConsumptionStatus
+} from './dsl-consumption-report.js';
+export { buildSceneIr, SceneIrSchema, type SceneIr } from './scene-ir.js';
+export {
   EntitySemanticProfileSchema,
   GameSemanticModelSchema,
   GameplayRoleSchema,

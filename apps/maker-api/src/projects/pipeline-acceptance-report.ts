@@ -8,6 +8,8 @@ import type { PipelineArtifactIndex, PipelineArtifactRef } from './pipeline-arti
 const PipelineAcceptanceStatusSchema = z.enum(['pass', 'warn', 'fail']);
 const PipelineAcceptanceCheckStatusSchema = z.enum(['pass', 'warn', 'fail', 'skipped']);
 const PipelineAcceptanceCategorySchema = z.enum(['prompt', 'dsl', 'runtime', 'assets', 'preview', 'qa', 'artifacts']);
+const RenderFidelityStatusSchema = z.enum(['PASSED', 'PASSED_WITH_OPTIONAL_FALLBACKS', 'VISUALLY_DEGRADED', 'FAILED']);
+const RenderFidelityEvidenceStatusSchema = z.enum(['pass', 'warn', 'fail', 'unavailable']);
 
 export const PipelineAcceptanceCheckedArtifactSchema = z.strictObject({
   artifactId: z.string().min(1),
@@ -21,14 +23,19 @@ export const PipelineAcceptanceCheckSchema = z.strictObject({
     'generation_input',
     'dsl_validation',
     'dsl_artifact',
+    'dsl_consumption',
+    'scene_ir',
+    'runtime_scene_binding',
     'runtime_capability',
+    'asset_intent_resolution',
     'asset_pipeline',
     'asset_library_usage',
     'asset_binding_trace',
     'preview_manifest',
     'artifact_index_consistency',
     'build_log',
-    'qa_report'
+    'qa_report',
+    'render_fidelity_report'
   ]),
   category: PipelineAcceptanceCategorySchema,
   status: PipelineAcceptanceCheckStatusSchema,
@@ -39,12 +46,25 @@ export const PipelineAcceptanceCheckSchema = z.strictObject({
   evidenceRefs: z.array(z.string().min(1).refine(isSafeEvidenceRef, 'evidenceRefs must not expose unsafe paths or sensitive content'))
 });
 
+export const PipelineRenderFidelitySchema = z.strictObject({
+  status: RenderFidelityStatusSchema,
+  reason: z.string().min(1).refine(isSafeText, 'reason must not expose sensitive content'),
+  evidenceRefs: z.array(z.string().min(1).refine(isSafeEvidenceRef, 'evidenceRefs must not expose unsafe paths or sensitive content')),
+  coreRequiredFallbackCount: z.number().int().min(0),
+  requestRequiredFallbackCount: z.number().int().min(0),
+  optionalFallbackCount: z.number().int().min(0),
+  runtimeUnboundCount: z.number().int().min(0),
+  assetBindingStatus: RenderFidelityEvidenceStatusSchema,
+  assetLibraryStatus: RenderFidelityEvidenceStatusSchema
+});
+
 const PipelineAcceptanceReportBaseSchema = z.strictObject({
   reportVersion: z.literal('pipeline_acceptance_report.v1'),
   projectId: z.string().regex(/^proj_[A-Za-z0-9_-]+$/),
   runId: z.string().regex(/^run_[A-Za-z0-9_-]+$/),
   overallStatus: PipelineAcceptanceStatusSchema,
   previewable: z.boolean(),
+  renderFidelity: PipelineRenderFidelitySchema,
   checkedArtifacts: z.array(PipelineAcceptanceCheckedArtifactSchema),
   checks: z.array(PipelineAcceptanceCheckSchema),
   errors: z.array(z.string().min(1).refine(isSafeText, 'errors must not expose sensitive content')),
@@ -69,10 +89,20 @@ export const PipelineAcceptanceReportSchema = PipelineAcceptanceReportBaseSchema
       message: `previewable must be derived from required checks: ${String(expectedPreviewable)}`
     });
   }
+
+  const expectedRenderFidelityStatus = deriveRenderFidelityStatus(report.renderFidelity, report.checks);
+  if (report.renderFidelity.status !== expectedRenderFidelityStatus) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['renderFidelity', 'status'],
+      message: `renderFidelity.status must be derived from evidence: ${expectedRenderFidelityStatus}`
+    });
+  }
 });
 
 export type PipelineAcceptanceReport = z.infer<typeof PipelineAcceptanceReportSchema>;
 export type PipelineAcceptanceCheck = z.infer<typeof PipelineAcceptanceCheckSchema>;
+export type PipelineRenderFidelity = z.infer<typeof PipelineRenderFidelitySchema>;
 
 type BuildPipelineAcceptanceReportInput = {
   projectId: string;
@@ -81,6 +111,10 @@ type BuildPipelineAcceptanceReportInput = {
   dslValidation: {
     valid: boolean;
     sourceArtifact?: string;
+  };
+  dslConsumption?: {
+    ignoredAuthoritativeCount?: number;
+    coverageRatio?: number;
   };
   generationInput: {
     projectId: string;
@@ -93,6 +127,18 @@ type BuildPipelineAcceptanceReportInput = {
   assetLibraryUsage?: {
     status?: 'pass' | 'warn' | 'fail';
   };
+  assetIntentResolution?: {
+    coreRequiredFallbackCount?: number;
+    requestRequiredFallbackCount?: number;
+    optionalFallbackCount?: number;
+  };
+  runtimeSceneBinding?: {
+    status?: 'pass' | 'fail';
+    unboundCount?: number;
+  };
+  renderFidelityQa?: {
+    status?: PipelineRenderFidelity['status'];
+  };
   assetBindingTrace?: {
     status?: 'pass' | 'warn' | 'fail';
   };
@@ -104,7 +150,11 @@ const ARTIFACT_ORDER = [
   'gameDsl',
   'gameDslCandidate',
   'dslValidationReport',
+  'dslConsumptionReport',
+  'sceneIr',
+  'runtimeSceneBindingReport',
   'runtimeCapabilityReport',
+  'assetIntentManifest',
   'assetPlan',
   'publicAssetManifest',
   'phaserPreviewManifest',
@@ -114,6 +164,7 @@ const ARTIFACT_ORDER = [
   'assetBindingTraceReport',
   'buildLog',
   'qaReport',
+  'renderFidelityReport',
   'pipelineAcceptanceReport',
   'pipelineArtifactIndex'
 ] as const satisfies readonly PipelineArtifactRef['id'][];
@@ -124,14 +175,19 @@ export function buildPipelineAcceptanceReport(input: BuildPipelineAcceptanceRepo
     buildGenerationInputCheck(input, artifacts.get('generationInputReport')),
     buildDslValidationCheck(input, artifacts.get('dslValidationReport')),
     buildDslArtifactCheck(input, artifacts),
+    buildDslConsumptionCheck(input, artifacts.get('dslConsumptionReport')),
+    buildSceneIrCheck(artifacts.get('sceneIr')),
+    buildRuntimeSceneBindingCheck(input, artifacts.get('runtimeSceneBindingReport')),
     buildRuntimeCapabilityCheck(input, artifacts.get('runtimeCapabilityReport')),
+    buildAssetIntentResolutionCheck(input, artifacts),
     buildArtifactCheck('asset_pipeline', 'assets', true, artifacts.get('assetPipelineReport')),
     buildAssetLibraryUsageCheck(input, artifacts.get('assetLibraryUsageReport')),
     buildAssetBindingTraceCheck(input, artifacts.get('assetBindingTraceReport')),
     buildPreviewManifestCheck(artifacts),
     buildArtifactIndexConsistencyCheck(input, artifacts.get('pipelineArtifactIndex'), artifacts.get('pipelineAcceptanceReport')),
     buildArtifactCheck('build_log', 'artifacts', false, artifacts.get('buildLog')),
-    buildArtifactCheck('qa_report', 'qa', false, artifacts.get('qaReport'))
+    buildArtifactCheck('qa_report', 'qa', false, artifacts.get('qaReport')),
+    buildRenderFidelityReportCheck(input, artifacts.get('renderFidelityReport'))
   ];
   const report = {
     reportVersion: 'pipeline_acceptance_report.v1',
@@ -139,6 +195,7 @@ export function buildPipelineAcceptanceReport(input: BuildPipelineAcceptanceRepo
     runId: input.runId,
     overallStatus: deriveOverallStatus(checks),
     previewable: derivePreviewable(checks),
+    renderFidelity: buildRenderFidelity(input, checks),
     checkedArtifacts: buildCheckedArtifacts(input.artifactIndex.artifacts),
     checks,
     errors: checks
@@ -214,6 +271,60 @@ function buildAssetBindingTraceCheck(input: BuildPipelineAcceptanceReportInput, 
   };
 }
 
+function buildAssetIntentResolutionCheck(input: BuildPipelineAcceptanceReportInput, artifacts: Map<string, PipelineArtifactRef>): PipelineAcceptanceCheck {
+  const intentArtifact = artifacts.get('assetIntentManifest');
+  const resolutionArtifact = artifacts.get('assetResolutionReport');
+  const artifactCheck = buildArtifactCheck('asset_intent_resolution', 'assets', true, intentArtifact);
+  const evidenceRefs = [intentArtifact, resolutionArtifact].filter((artifact): artifact is PipelineArtifactRef => artifact !== undefined).map(toEvidenceRef);
+
+  if (artifactCheck.status !== 'pass') {
+    return { ...artifactCheck, evidenceRefs };
+  }
+
+  if (resolutionArtifact?.status !== 'present') {
+    return {
+      id: 'asset_intent_resolution',
+      category: 'assets',
+      status: resolutionArtifact?.status === 'skipped' ? 'skipped' : 'fail',
+      required: true,
+      artifactId: 'assetResolutionReport',
+      artifactPath: resolutionArtifact?.path ?? intentArtifact?.path ?? null,
+      reason: resolutionArtifact?.reason ?? 'asset_resolution_report.json is unavailable for asset intent resolution.',
+      evidenceRefs
+    };
+  }
+
+  if (
+    input.assetIntentResolution?.coreRequiredFallbackCount === undefined ||
+    input.assetIntentResolution.requestRequiredFallbackCount === undefined ||
+    input.assetIntentResolution.optionalFallbackCount === undefined
+  ) {
+    return {
+      ...artifactCheck,
+      status: 'fail',
+      reason: 'asset_intent_manifest.json fallback summary is unavailable.',
+      evidenceRefs
+    };
+  }
+
+  const blockingFallbacks =
+    input.assetIntentResolution.coreRequiredFallbackCount + input.assetIntentResolution.requestRequiredFallbackCount;
+  if (blockingFallbacks > 0) {
+    return {
+      ...artifactCheck,
+      status: 'fail',
+      reason: `asset_intent_manifest.json has ${blockingFallbacks} core/request-required fallback asset(s).`,
+      evidenceRefs
+    };
+  }
+
+  return {
+    ...artifactCheck,
+    reason: 'asset_intent_manifest.json has no core/request-required fallback assets.',
+    evidenceRefs
+  };
+}
+
 function buildAssetLibraryUsageCheck(input: BuildPipelineAcceptanceReportInput, artifact: PipelineArtifactRef | undefined): PipelineAcceptanceCheck {
   const artifactCheck = buildArtifactCheck('asset_library_usage', 'assets', true, artifact);
   if (artifactCheck.status !== 'pass') {
@@ -247,6 +358,46 @@ function buildAssetLibraryUsageCheck(input: BuildPipelineAcceptanceReportInput, 
   return {
     ...artifactCheck,
     reason: 'asset_library_usage_report.json status is pass.'
+  };
+}
+
+function buildRenderFidelityReportCheck(input: BuildPipelineAcceptanceReportInput, artifact: PipelineArtifactRef | undefined): PipelineAcceptanceCheck {
+  const artifactCheck = buildArtifactCheck('render_fidelity_report', 'qa', false, artifact);
+  if (artifactCheck.status !== 'pass') {
+    return {
+      ...artifactCheck,
+      status: 'fail',
+      reason: 'render_fidelity_report.json status is unavailable.'
+    };
+  }
+
+  if (input.renderFidelityQa?.status === undefined) {
+    return {
+      ...artifactCheck,
+      status: 'fail',
+      reason: 'render_fidelity_report.json status is unavailable.'
+    };
+  }
+
+  if (input.renderFidelityQa.status === 'FAILED') {
+    return {
+      ...artifactCheck,
+      status: 'fail',
+      reason: 'render_fidelity_report.json status is FAILED.'
+    };
+  }
+
+  if (input.renderFidelityQa.status === 'VISUALLY_DEGRADED' || input.renderFidelityQa.status === 'PASSED_WITH_OPTIONAL_FALLBACKS') {
+    return {
+      ...artifactCheck,
+      status: 'warn',
+      reason: `render_fidelity_report.json status is ${input.renderFidelityQa.status}.`
+    };
+  }
+
+  return {
+    ...artifactCheck,
+    reason: 'render_fidelity_report.json status is PASSED.'
   };
 }
 
@@ -296,6 +447,68 @@ function buildDslArtifactCheck(input: BuildPipelineAcceptanceReportInput, artifa
   return input.dslValidation.valid
     ? { ...artifactCheck, reason: 'Validated Game DSL artifact is present.' }
     : { ...artifactCheck, status: 'fail', reason: `DSL validation failed for ${artifactCheck.artifactPath}.` };
+}
+
+function buildDslConsumptionCheck(input: BuildPipelineAcceptanceReportInput, artifact: PipelineArtifactRef | undefined): PipelineAcceptanceCheck {
+  const artifactCheck = buildArtifactCheck('dsl_consumption', 'dsl', true, artifact);
+  if (artifactCheck.status !== 'pass') {
+    return artifactCheck;
+  }
+
+  if (input.dslConsumption?.ignoredAuthoritativeCount === undefined) {
+    return {
+      ...artifactCheck,
+      status: 'fail',
+      reason: 'dsl_consumption_report.json summary is unavailable.'
+    };
+  }
+
+  if (input.dslConsumption.ignoredAuthoritativeCount > 0) {
+    return {
+      ...artifactCheck,
+      status: 'fail',
+      reason: `dsl_consumption_report.json has ${input.dslConsumption.ignoredAuthoritativeCount} ignored authoritative path(s).`
+    };
+  }
+
+  const coverage =
+    input.dslConsumption.coverageRatio === undefined ? 'available' : `${Math.round(input.dslConsumption.coverageRatio * 10000) / 100}%`;
+  return {
+    ...artifactCheck,
+    reason: `dsl_consumption_report.json has no ignored authoritative paths; coverage ${coverage}.`
+  };
+}
+
+function buildSceneIrCheck(artifact: PipelineArtifactRef | undefined): PipelineAcceptanceCheck {
+  return buildArtifactCheck('scene_ir', 'runtime', artifact?.required === true, artifact);
+}
+
+function buildRuntimeSceneBindingCheck(input: BuildPipelineAcceptanceReportInput, artifact: PipelineArtifactRef | undefined): PipelineAcceptanceCheck {
+  const artifactCheck = buildArtifactCheck('runtime_scene_binding', 'runtime', artifact?.required === true, artifact);
+  if (artifactCheck.status !== 'pass') {
+    return artifactCheck;
+  }
+
+  if (input.runtimeSceneBinding?.status === undefined || input.runtimeSceneBinding.unboundCount === undefined) {
+    return {
+      ...artifactCheck,
+      status: 'fail',
+      reason: 'runtime_scene_binding_report.json status is unavailable.'
+    };
+  }
+
+  if (input.runtimeSceneBinding.status === 'fail' || input.runtimeSceneBinding.unboundCount > 0) {
+    return {
+      ...artifactCheck,
+      status: 'fail',
+      reason: `runtime_scene_binding_report.json has ${input.runtimeSceneBinding.unboundCount} unbound scene node(s).`
+    };
+  }
+
+  return {
+    ...artifactCheck,
+    reason: 'runtime_scene_binding_report.json has no unbound scene nodes.'
+  };
 }
 
 function buildPreviewManifestCheck(artifacts: Map<string, PipelineArtifactRef>): PipelineAcceptanceCheck {
@@ -461,6 +674,118 @@ function deriveOverallStatus(checks: PipelineAcceptanceCheck[]): PipelineAccepta
 
 function derivePreviewable(checks: PipelineAcceptanceCheck[]): boolean {
   return checks.filter((check) => check.required).every((check) => check.status === 'pass' || check.status === 'warn');
+}
+
+function buildRenderFidelity(input: BuildPipelineAcceptanceReportInput, checks: PipelineAcceptanceCheck[]): PipelineRenderFidelity {
+  const evidence = {
+    coreRequiredFallbackCount: input.assetIntentResolution?.coreRequiredFallbackCount ?? 0,
+    requestRequiredFallbackCount: input.assetIntentResolution?.requestRequiredFallbackCount ?? 0,
+    optionalFallbackCount: input.assetIntentResolution?.optionalFallbackCount ?? 0,
+    runtimeUnboundCount: input.runtimeSceneBinding?.unboundCount ?? 0,
+    assetBindingStatus: toRenderFidelityEvidenceStatus(input.assetBindingTrace?.status),
+    assetLibraryStatus: toRenderFidelityEvidenceStatus(input.assetLibraryUsage?.status)
+  } satisfies Omit<PipelineRenderFidelity, 'status' | 'reason' | 'evidenceRefs'>;
+
+  const status = deriveRenderFidelityStatus(evidence, checks);
+  return {
+    status,
+    reason: reasonForRenderFidelityStatus(status, evidence, checks),
+    evidenceRefs: renderFidelityEvidenceRefs(checks),
+    ...evidence
+  };
+}
+
+function deriveRenderFidelityStatus(
+  evidence: Pick<
+    PipelineRenderFidelity,
+    | 'coreRequiredFallbackCount'
+    | 'requestRequiredFallbackCount'
+    | 'optionalFallbackCount'
+    | 'runtimeUnboundCount'
+    | 'assetBindingStatus'
+    | 'assetLibraryStatus'
+  >,
+  checks: PipelineAcceptanceCheck[]
+): PipelineRenderFidelity['status'] {
+  if (
+    evidence.coreRequiredFallbackCount > 0 ||
+    evidence.requestRequiredFallbackCount > 0 ||
+    evidence.runtimeUnboundCount > 0 ||
+    evidence.assetBindingStatus === 'fail' ||
+    evidence.assetBindingStatus === 'unavailable' ||
+    evidence.assetLibraryStatus === 'fail' ||
+    evidence.assetLibraryStatus === 'unavailable' ||
+    checks.some((check) => isRenderFidelityCheck(check.id) && check.required && (check.status === 'fail' || check.status === 'skipped')) ||
+    checks.some((check) => check.id === 'render_fidelity_report' && check.status === 'fail')
+  ) {
+    return 'FAILED';
+  }
+
+  if (
+    evidence.assetBindingStatus === 'warn' ||
+    evidence.assetLibraryStatus === 'warn' ||
+    checks.some((check) => check.id === 'render_fidelity_report' && check.status === 'warn')
+  ) {
+    return 'VISUALLY_DEGRADED';
+  }
+
+  if (evidence.optionalFallbackCount > 0) {
+    return 'PASSED_WITH_OPTIONAL_FALLBACKS';
+  }
+
+  return 'PASSED';
+}
+
+function reasonForRenderFidelityStatus(
+  status: PipelineRenderFidelity['status'],
+  evidence: Pick<
+    PipelineRenderFidelity,
+    | 'coreRequiredFallbackCount'
+    | 'requestRequiredFallbackCount'
+    | 'optionalFallbackCount'
+    | 'runtimeUnboundCount'
+    | 'assetBindingStatus'
+      | 'assetLibraryStatus'
+  >,
+  checks: PipelineAcceptanceCheck[]
+): string {
+  if (status === 'FAILED') {
+    const renderFidelityCheck = checks.find((check) => check.id === 'render_fidelity_report' && check.status === 'fail');
+    if (renderFidelityCheck !== undefined) {
+      return `Render fidelity failed: ${renderFidelityCheck.reason}`;
+    }
+    return `Render fidelity failed: core=${evidence.coreRequiredFallbackCount}, request=${evidence.requestRequiredFallbackCount}, runtimeUnbound=${evidence.runtimeUnboundCount}, assetBinding=${evidence.assetBindingStatus}, assetLibrary=${evidence.assetLibraryStatus}.`;
+  }
+  if (status === 'VISUALLY_DEGRADED') {
+    return `Render fidelity degraded: assetBinding=${evidence.assetBindingStatus}, assetLibrary=${evidence.assetLibraryStatus}.`;
+  }
+  if (status === 'PASSED_WITH_OPTIONAL_FALLBACKS') {
+    return `Render fidelity passed with ${evidence.optionalFallbackCount} optional fallback asset(s).`;
+  }
+  return 'Render fidelity passed with required assets and runtime bindings intact.';
+}
+
+function toRenderFidelityEvidenceStatus(status: 'pass' | 'warn' | 'fail' | undefined): PipelineRenderFidelity['assetBindingStatus'] {
+  return status ?? 'unavailable';
+}
+
+function renderFidelityEvidenceRefs(checks: PipelineAcceptanceCheck[]): string[] {
+  return checks
+    .filter((check) => isRenderFidelityCheck(check.id))
+    .flatMap((check) => check.evidenceRefs);
+}
+
+function isRenderFidelityCheck(id: PipelineAcceptanceCheck['id']): boolean {
+  return (
+    id === 'scene_ir' ||
+    id === 'runtime_scene_binding' ||
+    id === 'asset_intent_resolution' ||
+    id === 'asset_pipeline' ||
+    id === 'asset_library_usage' ||
+    id === 'asset_binding_trace' ||
+    id === 'preview_manifest' ||
+    id === 'render_fidelity_report'
+  );
 }
 
 function toEvidenceRef(artifact: PipelineArtifactRef): string {

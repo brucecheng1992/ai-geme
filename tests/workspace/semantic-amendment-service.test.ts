@@ -10,13 +10,17 @@ import { DslLiveEditService } from '../../apps/maker-api/src/projects/dsl-live-e
 import { SemanticAmendmentService } from '../../apps/maker-api/src/projects/semantic-amendment.service.js';
 import { LocalWorkspaceService } from '../../apps/maker-api/src/workspace/local-workspace.service.js';
 import {
+  buildSceneIr,
   buildGameDslArtifact,
   buildRuntimeCapabilityReport,
   RawGameDslSchema,
   SemanticEditProposalSchema,
-  type GameDslArtifact
+  validateAndNormalizeRawGameDsl,
+  type GameDslArtifact,
+  type RawGameDsl
 } from '../../packages/game-dsl/src/index.js';
-import { createShooterRawDsl } from '../contracts/fixtures.js';
+import { buildAssetIntentManifest, buildAssetPlanFromIr } from '../../packages/asset-pipeline/src/index.js';
+import { createShooterRawDsl, createSideScrollingRunAndGunRawDsl } from '../contracts/fixtures.js';
 
 const projectId = 'proj_20260618_120000_step32b';
 const runId = 'run_20260618_120000_step32b';
@@ -199,20 +203,30 @@ describe('SemanticAmendmentService', () => {
     const accepted = await service.accept(projectId, runId, proposalId, {});
 
     expect(accepted).toMatchObject({
-      proposal: { reviewState: 'accepted', validation: { schemaValid: true, previewBooted: true, runtimeNoException: true } },
+      proposal: { reviewState: 'accepted', validation: { schemaValid: true } },
       accept_log: {
         candidatePromotionResult: {
           status: 'promoted_candidate',
           previousRunId: runId,
           candidateRunId,
           activeRunId: candidateRunId
-        }
+        },
+        candidateArtifactCheckpoint: expect.objectContaining({
+          candidateRunId,
+          candidateDslRef: `semantic-amendments/${proposalId}/candidate/candidate_dsl.json`
+        })
       },
       undo_checkpoint: {
         beforeActiveRunId: runId,
-        acceptedRunId: candidateRunId
+        acceptedRunId: candidateRunId,
+        candidateArtifactCheckpoint: expect.objectContaining({
+          candidateRunId,
+          candidateDslRef: `semantic-amendments/${proposalId}/candidate/candidate_dsl.json`
+        })
       }
     });
+    expect(accepted.proposal.validation?.previewBooted).toBeUndefined();
+    expect(accepted.proposal.validation?.runtimeNoException).toBeUndefined();
     expect(JSON.stringify(accepted)).not.toContain(root);
     await expect(projectStore.readLatestRun(projectId)).resolves.toMatchObject({ run_id: candidateRunId });
     await expect(projectStore.readProject(projectId)).resolves.toMatchObject({ latest_run_id: candidateRunId, status: 'PREVIEW_READY' });
@@ -223,10 +237,169 @@ describe('SemanticAmendmentService', () => {
 
     expect(undone).toMatchObject({
       proposal: { reviewState: 'undone' },
-      undo_log: { restoredRunId: runId, reason: 'restore previous active run' }
+      undo_log: {
+        restoredRunId: runId,
+        reason: 'restore previous active run',
+        candidateArtifactCheckpoint: expect.objectContaining({
+          candidateRunId,
+          candidateDslRef: `semantic-amendments/${proposalId}/candidate/candidate_dsl.json`
+        })
+      }
     });
     await expect(projectStore.readLatestRun(projectId)).resolves.toMatchObject({ run_id: runId });
     await expect(projectStore.readProject(projectId)).resolves.toMatchObject({ latest_run_id: runId });
+  });
+
+  it('builds side-scrolling candidate Scene IR and asset diffs without mutating active artifacts before accept', async () => {
+    const activeDsl = await writeSideScrollingSceneArtifacts(workspace);
+    const activeDslBeforePreview = await readFile(workspace.getModelOutputPath(projectId, runId, 'game_dsl.json'), 'utf8');
+    const activeAssetIntentBeforePreview = await readFile(workspace.getModelOutputPath(projectId, runId, 'asset_intent_manifest.json'), 'utf8');
+    await service.plan(projectId, runId, { text: '把玩家变成小猫', language: 'zh' });
+
+    const previewed = await service.preview(projectId, runId, proposalId);
+
+    expect(previewed).toMatchObject({
+      proposal: {
+        reviewState: 'previewing',
+        candidate: {
+          candidateRunId,
+          artifactRefs: expect.objectContaining({
+            candidateSceneIr: `semantic-amendments/${proposalId}/candidate/candidate_scene_ir.json`,
+            candidateSceneIrDiff: `semantic-amendments/${proposalId}/candidate/candidate_scene_ir_diff.json`,
+            candidateAssetIntentManifest: `semantic-amendments/${proposalId}/candidate/candidate_asset_intent_manifest.json`,
+            candidateAssetDiff: `semantic-amendments/${proposalId}/candidate/candidate_asset_diff.json`
+          })
+        }
+      },
+      preview_state: {
+        reviewState: 'previewing',
+        candidatePreview: {
+          candidateRunId,
+          previewAvailable: true,
+          qaStatus: 'not_run',
+          candidateSceneIrRef: `semantic-amendments/${proposalId}/candidate/candidate_scene_ir.json`,
+          candidateAssetDiffRef: `semantic-amendments/${proposalId}/candidate/candidate_asset_diff.json`
+        }
+      },
+      artifact_refs: expect.arrayContaining([
+        expect.objectContaining({ id: 'candidateSceneIr' }),
+        expect.objectContaining({ id: 'candidateSceneIrDiff' }),
+        expect.objectContaining({ id: 'candidateAssetIntentManifest' }),
+        expect.objectContaining({ id: 'candidateAssetDiff' })
+      ])
+    });
+
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'game_dsl.json'), 'utf8')).resolves.toBe(activeDslBeforePreview);
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'asset_intent_manifest.json'), 'utf8')).resolves.toBe(activeAssetIntentBeforePreview);
+    await expect(projectStore.readLatestRun(projectId)).resolves.toMatchObject({ run_id: runId });
+
+    const candidateDsl = JSON.parse(await readFile(workspace.getSemanticAmendmentCandidateArtifactPath(projectId, runId, proposalId, 'candidate_dsl.json'), 'utf8')) as GameDslArtifact;
+    expect(candidateDsl).toMatchObject({
+      runId: candidateRunId,
+      player: { label: '小猫' },
+      sourceDsl: { player: { label: '小猫', visual: expect.objectContaining({ assetIntentRef: 'player_cat' }) } }
+    });
+    expect(activeDsl.sourceDsl.player.visual?.assetIntentRef).toBe('player_red_runner');
+
+    const candidateSceneIr = JSON.parse(await readFile(workspace.getSemanticAmendmentCandidateArtifactPath(projectId, runId, proposalId, 'candidate_scene_ir.json'), 'utf8')) as {
+      runId?: string;
+      scenes?: Array<{ player?: { visualAssetIntentRef?: string } }>;
+    };
+    expect(candidateSceneIr.runId).toBe(candidateRunId);
+    expect(candidateSceneIr.scenes?.[0]?.player?.visualAssetIntentRef).toBe('player_cat');
+
+    const candidateSceneIrDiff = JSON.parse(await readFile(workspace.getSemanticAmendmentCandidateArtifactPath(projectId, runId, proposalId, 'candidate_scene_ir_diff.json'), 'utf8')) as {
+      changedRuntimeIds?: string[];
+      changes?: Array<{ path: string; before: unknown; after: unknown }>;
+    };
+    expect(candidateSceneIrDiff.changedRuntimeIds).toContain('entity.player');
+    expect(candidateSceneIrDiff.changes).toContainEqual({
+      path: '/scenes/0/player/visualAssetIntentRef',
+      before: 'player_red_runner',
+      after: 'player_cat'
+    });
+
+    const candidateAssetManifest = JSON.parse(
+      await readFile(workspace.getSemanticAmendmentCandidateArtifactPath(projectId, runId, proposalId, 'candidate_asset_intent_manifest.json'), 'utf8')
+    ) as { intents?: Array<{ id: string; requiredLevel: string; sourceDslPaths: string[] }> };
+    expect(candidateAssetManifest.intents).toContainEqual(
+      expect.objectContaining({ id: 'player_cat', requiredLevel: 'request_required', sourceDslPaths: expect.arrayContaining(['/player/visual']) })
+    );
+
+    const candidateAssetDiff = JSON.parse(await readFile(workspace.getSemanticAmendmentCandidateArtifactPath(projectId, runId, proposalId, 'candidate_asset_diff.json'), 'utf8')) as {
+      invalidatedAssetIntentRefs?: string[];
+      createdAssetIntentRefs?: string[];
+      activeRunMutation?: boolean;
+    };
+    expect(candidateAssetDiff).toMatchObject({
+      invalidatedAssetIntentRefs: ['player_red_runner'],
+      createdAssetIntentRefs: ['player_cat'],
+      activeRunMutation: false
+    });
+    await expect(readFile(workspace.getModelOutputPath(projectId, candidateRunId, 'game.scene.ir.json'), 'utf8')).resolves.toContain('"player_cat"');
+    await expect(readFile(workspace.getModelOutputPath(projectId, candidateRunId, 'asset_intent_manifest.json'), 'utf8')).resolves.toContain('"player_cat"');
+  });
+
+  it('marks a no-op player theme candidate as AMENDMENT_NO_VISIBLE_EFFECT without creating a candidate run', async () => {
+    await writeSideScrollingSceneArtifacts(workspace, { playerLabel: '小猫', playerVisualAssetIntentRef: 'player_cat' });
+    await service.plan(projectId, runId, { text: '把玩家变成小猫', language: 'zh' });
+
+    const previewed = await service.preview(projectId, runId, proposalId);
+
+    expect(previewed).toMatchObject({
+      proposal: {
+        reviewState: 'failed',
+        validation: { schemaValid: true, runtimeNoException: false, previewBooted: false }
+      },
+      preview_state: {
+        reviewState: 'failed',
+        executionMode: 'candidate_regeneration',
+        failureReason: 'AMENDMENT_NO_VISIBLE_EFFECT'
+      },
+      artifact_refs: expect.arrayContaining([
+        expect.objectContaining({ id: 'candidateDslDiff' }),
+        expect.objectContaining({ id: 'candidateSceneIrDiff' }),
+        expect.objectContaining({ id: 'candidateAssetDiff' }),
+        expect.objectContaining({ id: 'previewState' })
+      ])
+    });
+    await expect(runStore.readRun(candidateRunId)).rejects.toThrow();
+    await expect(projectStore.readLatestRun(projectId)).resolves.toMatchObject({ run_id: runId });
+  });
+
+  it('builds legacy side-scrolling candidate visual artifacts when the active DSL has no scenes contract', async () => {
+    await writeSideScrollingSceneArtifacts(workspace, { includeScenes: false });
+    await service.plan(projectId, runId, { text: '把玩家变成小猫', language: 'zh' });
+
+    const previewed = await service.preview(projectId, runId, proposalId);
+
+    expect(previewed).toMatchObject({
+      proposal: { reviewState: 'previewing' },
+      preview_state: {
+        reviewState: 'previewing',
+        candidatePreview: {
+          candidateRunId,
+          candidateSceneIrRef: `semantic-amendments/${proposalId}/candidate/candidate_scene_ir.json`,
+          candidateAssetIntentManifestRef: `semantic-amendments/${proposalId}/candidate/candidate_asset_intent_manifest.json`
+        }
+      }
+    });
+
+    const candidateSceneIr = JSON.parse(await readFile(workspace.getSemanticAmendmentCandidateArtifactPath(projectId, runId, proposalId, 'candidate_scene_ir.json'), 'utf8')) as {
+      source?: string;
+      scenes?: Array<{ player?: { visualAssetIntentRef?: string } }>;
+    };
+    expect(candidateSceneIr).toMatchObject({
+      source: 'runtime_plan_derived',
+      scenes: [expect.objectContaining({ player: expect.objectContaining({ visualAssetIntentRef: 'player_cat' }) })]
+    });
+    const candidateAssetManifest = JSON.parse(
+      await readFile(workspace.getSemanticAmendmentCandidateArtifactPath(projectId, runId, proposalId, 'candidate_asset_intent_manifest.json'), 'utf8')
+    ) as { intents?: Array<{ id: string; requiredLevel: string; sourceDslPaths: string[] }> };
+    expect(candidateAssetManifest.intents).toContainEqual(
+      expect.objectContaining({ id: 'player_cat', requiredLevel: 'request_required', sourceDslPaths: expect.arrayContaining(['/player/visual']) })
+    );
+    await expect(runStore.readRun(candidateRunId)).resolves.toMatchObject({ run_id: candidateRunId, status: 'PREVIEW_READY' });
   });
 
   it('rejects a previewed player theme candidate without promoting the candidate run', async () => {
@@ -241,7 +414,11 @@ describe('SemanticAmendmentService', () => {
       reject_log: {
         previousReviewState: 'previewing',
         reason: 'try another theme',
-        requiresRuntimeRevert: false
+        requiresRuntimeRevert: false,
+        candidateArtifactCheckpoint: expect.objectContaining({
+          candidateRunId,
+          candidateDslRef: `semantic-amendments/${proposalId}/candidate/candidate_dsl.json`
+        })
       }
     });
     await expect(projectStore.readLatestRun(projectId)).resolves.toMatchObject({ run_id: runId });
@@ -589,6 +766,116 @@ async function writeShooterArtifacts(workspace: LocalWorkspaceService, input: { 
   }
 
   return gameDsl;
+}
+
+async function writeSideScrollingSceneArtifacts(
+  workspace: LocalWorkspaceService,
+  input: { playerLabel?: string; playerVisualAssetIntentRef?: string; includeScenes?: boolean } = {}
+): Promise<GameDslArtifact> {
+  const rawDsl = RawGameDslSchema.parse(createSideScrollingSceneRawDsl(input));
+  const gameDsl = buildGameDslArtifact({
+    rawDsl,
+    runId,
+    intentPlan: { normalizedGenre: 'side_scrolling_run_and_gun', matchedAlias: '横版跑枪' }
+  });
+  const normalized = validateAndNormalizeRawGameDsl(rawDsl);
+  if (!normalized.ok) {
+    throw new Error(`expected side-scrolling fixture to normalize: ${normalized.issues.map((issue) => issue.message).join(', ')}`);
+  }
+  const sceneIr = buildSceneIr({ projectId, runId, rawDsl, ir: normalized.ir });
+  const assetPlan = buildAssetPlanFromIr(projectId, normalized.ir);
+  const assetIntentManifest = buildAssetIntentManifest({ projectId, plan: assetPlan, sceneIr });
+  const runtimeCapabilityReport = buildRuntimeCapabilityReport({ runId, validatedDsl: gameDsl });
+
+  await writeJsonFile(workspace.getModelOutputPath(projectId, runId, 'game_dsl.json'), gameDsl);
+  await writeJsonFile(workspace.getModelOutputPath(projectId, runId, 'runtime_capability_report.json'), runtimeCapabilityReport);
+  await writeJsonFile(workspace.getModelOutputPath(projectId, runId, 'game.scene.ir.json'), sceneIr);
+  await writeJsonFile(workspace.getModelOutputPath(projectId, runId, 'asset_intent_manifest.json'), assetIntentManifest);
+  await writeJsonFile(join(workspace.getGeneratedProjectDir(projectId), 'side_scrolling_run_and_gun', 'src', 'live-edit-registry.generated.json'), {
+    runId,
+    liveEditCapabilities: runtimeCapabilityReport.liveEditCapabilities
+  });
+
+  return gameDsl;
+}
+
+function createSideScrollingSceneRawDsl(input: { playerLabel?: string; playerVisualAssetIntentRef?: string; includeScenes?: boolean } = {}): RawGameDsl {
+  const base = createSideScrollingRunAndGunRawDsl();
+  const enemyType = base.enemyTypes[0];
+  const playerVisualAssetIntentRef = input.playerVisualAssetIntentRef ?? 'player_red_runner';
+
+  return RawGameDslSchema.parse({
+    ...base,
+    player: {
+      ...base.player,
+      label: input.playerLabel ?? base.player.label,
+      visual: {
+        assetIntentRef: playerVisualAssetIntentRef,
+        styleRef: 'style_pixel_16',
+        facingMode: 'flip_x',
+        animationSetRef: 'anim_run_jump_shoot'
+      }
+    },
+    enemyTypes: [
+      {
+        ...enemyType,
+        behaviorRef: 'behavior_ground_patrol',
+        visual: {
+          assetIntentRef: 'enemy_mech_drone',
+          styleRef: 'style_pixel_16',
+          facingMode: 'flip_x',
+          animationSetRef: 'anim_enemy_patrol'
+        },
+        colliderRef: 'collider_small_enemy',
+        movementRef: 'movement_ground_patrol',
+        tags: ['mechanical']
+      }
+    ],
+    ...(input.includeScenes === false
+      ? {}
+      : {
+          scenes: [
+            {
+              id: 'level_01',
+              theme: {
+                id: 'snow_base_night',
+                style: 'pixel art 16 bit',
+                biome: 'snow base',
+                timeOfDay: 'night',
+                terrainMaterialSet: 'terrain_snow_metal'
+              },
+              backgroundLayers: [
+                {
+                  id: 'sky_night',
+                  role: 'sky',
+                  assetIntentRef: 'scene_night_sky',
+                  parallax: 0,
+                  fixedToCamera: true,
+                  repeatX: true,
+                  depth: -40
+                }
+              ],
+              platforms: [
+                {
+                  id: 'ground_intro_visual',
+                  x: 0,
+                  y: 500,
+                  width: 1280,
+                  height: 40,
+                  shape: 'rectangle',
+                  materialRef: 'terrain_snow_metal',
+                  visualAssetIntentRef: 'tile_snow_metal_ground',
+                  collision: { enabled: true },
+                  tags: ['ground']
+                }
+              ],
+              playerSpawn: { x: 120, y: 452 },
+              enemyInstances: [{ id: 'enemy_intro_01', archetypeRef: enemyType.id, x: 720, y: 450, spawnRule: 'spawn_intro_drone' }],
+              goal: { id: 'goal_exit_01', kind: 'reach', x: 1240, y: 460, visualAssetIntentRef: 'goal_exit_beacon' }
+            }
+          ]
+        })
+  });
 }
 
 async function writeJsonFile(path: string, value: unknown): Promise<void> {

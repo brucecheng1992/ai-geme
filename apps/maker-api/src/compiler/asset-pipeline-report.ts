@@ -10,6 +10,7 @@ export const AssetPipelineReportSchema = z.strictObject({
   projectId: z.string().regex(/^proj_[A-Za-z0-9_-]+$/),
   templateId: z.enum(['collector_v1', 'dodger_v1', 'shooter_v1', 'side_scrolling_run_and_gun.v1']),
   artifacts: z.strictObject({
+    assetIntentManifest: z.literal('asset_intent_manifest.json'),
     assetPlan: z.literal('asset_plan.json'),
     publicManifest: z.literal('public/asset_manifest.json'),
     previewManifest: z.string().regex(/^(collector|dodger|shooter|side_scrolling_run_and_gun)\/src\/asset-manifest\.generated\.json$/),
@@ -48,7 +49,7 @@ export async function writeAssetPipelineReport(input: {
   assertManifestProjectId(input.projectId, publicManifest);
   assertCatalogIdentityMatches(publicManifest, templateManifest);
   assertManifestIdentity(publicManifest, templateManifest);
-  assertListedFiles(input.compileFiles, ['asset_plan.json', 'public/asset_manifest.json', 'asset_resolution_report.json', ...assetFiles]);
+  assertListedFiles(input.compileFiles, ['asset_intent_manifest.json', 'asset_plan.json', 'public/asset_manifest.json', 'asset_resolution_report.json', ...assetFiles]);
   await assertPreviewManifestConsumed(input.outputDir, input.genre);
   await assertAssetFilesExist(input.outputDir, assetFiles);
 
@@ -57,6 +58,7 @@ export async function writeAssetPipelineReport(input: {
     projectId: input.projectId,
     templateId: input.templateId,
     artifacts: {
+      assetIntentManifest: 'asset_intent_manifest.json',
       assetPlan: 'asset_plan.json',
       publicManifest: 'public/asset_manifest.json',
       previewManifest,

@@ -19,7 +19,15 @@ type PlanArtifactId = Extract<
 type ReviewArtifactId = Extract<SemanticAmendmentArtifactRef['id'], 'previewState' | 'acceptLog' | 'rejectLog' | 'undoCheckpoint' | 'undoLog'>;
 type CandidateArtifactId = Extract<
   SemanticAmendmentArtifactRef['id'],
-  'candidateBrief' | 'candidateDsl' | 'candidateDslDiff' | 'candidateRun' | 'candidateRuntimeCapabilityReport'
+  | 'candidateBrief'
+  | 'candidateDsl'
+  | 'candidateDslDiff'
+  | 'candidateSceneIr'
+  | 'candidateSceneIrDiff'
+  | 'candidateAssetIntentManifest'
+  | 'candidateAssetDiff'
+  | 'candidateRun'
+  | 'candidateRuntimeCapabilityReport'
 >;
 
 const planArtifactFileNameById: Record<PlanArtifactId, string> = {
@@ -45,6 +53,10 @@ const candidateArtifactFileNameById: Record<CandidateArtifactId, string> = {
   candidateBrief: 'candidate_brief.json',
   candidateDsl: 'candidate_dsl.json',
   candidateDslDiff: 'candidate_dsl_diff.json',
+  candidateSceneIr: 'candidate_scene_ir.json',
+  candidateSceneIrDiff: 'candidate_scene_ir_diff.json',
+  candidateAssetIntentManifest: 'candidate_asset_intent_manifest.json',
+  candidateAssetDiff: 'candidate_asset_diff.json',
   candidateRun: 'candidate_run.json',
   candidateRuntimeCapabilityReport: 'candidate_runtime_capability_report.json'
 };

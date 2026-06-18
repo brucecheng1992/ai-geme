@@ -7,6 +7,7 @@ import { writeAssetArtifacts } from '../../../../packages/asset-pipeline/src/ind
 import {
   buildSemanticExtractionTraceReport,
   buildSemanticModelReport,
+  buildSceneIr,
   checkPhaserRuntimeCapabilities,
   findRuntimeGenreCapabilityByTemplateManifestId,
   getRuntimeLiveEditCapabilitiesForGenre,
@@ -17,6 +18,7 @@ import { writeAssetBindingTraceReport } from './asset-binding-trace-report.js';
 import { writeAssetLibraryUsageReport } from './asset-library-usage-report.js';
 import { writeAssetPipelineReport } from './asset-pipeline-report.js';
 import type { RuntimeCompileInput, RuntimeCompileResult } from './compiler.types.js';
+import { buildRuntimeSceneBindingReport, writeRuntimeSceneBindingReport } from './runtime-scene-binding-report.js';
 
 @Injectable()
 export class TemplateCompilerService {
@@ -61,6 +63,9 @@ export class TemplateCompilerService {
     const genre = runtimeCapability.templateDir;
     const liveEditCapabilities = getRuntimeLiveEditCapabilitiesForGenre(runtimeCapability.genre);
     const generatedTemplateArtifacts = new Set(runtimeCapability.generatedTemplateArtifacts ?? []);
+    const sceneIr = templateId === 'side_scrolling_run_and_gun.v1'
+      ? buildSceneIr({ projectId: input.projectId, runId: input.runId, rawDsl: input.rawDsl, ir })
+      : undefined;
     const outputDir = this.workspace.getGeneratedProjectDir(input.projectId);
     const distDir = this.workspace.getGeneratedProjectDistDir(input.projectId);
     const files = [
@@ -76,8 +81,10 @@ export class TemplateCompilerService {
       'shared/end-screen.ts',
       ...(generatedTemplateArtifacts.has('assetManifest') ? [`${genre}/src/asset-manifest.generated.json`] : []),
       ...(generatedTemplateArtifacts.has('runtimePlan') ? [`${genre}/src/runtime-plan.generated.json`] : []),
+      ...(generatedTemplateArtifacts.has('sceneIr') && sceneIr !== undefined ? [`${genre}/src/scene-ir.generated.json`] : []),
       ...(generatedTemplateArtifacts.has('liveEditRegistry') ? [`${genre}/src/live-edit-registry.generated.json`] : []),
-      `${genre}/src/template-params.generated.json`
+      `${genre}/src/template-params.generated.json`,
+      ...(sceneIr === undefined ? [] : ['game.scene.ir.json', 'runtime_scene_binding_report.json'])
     ];
 
     await rm(outputDir, { recursive: true, force: true });
@@ -89,10 +96,21 @@ export class TemplateCompilerService {
       projectId: input.projectId,
       projectDir: outputDir,
       ir,
+      sceneIr,
       assetPacksDir: join(this.templateRoot, '..', '..', 'assets', 'asset-packs')
     });
     const templateAssetRoot = join(this.templateRoot, '..', '..');
     await writeFile(join(outputDir, 'game.ir.json'), `${JSON.stringify(ir, null, 2)}\n`, 'utf8');
+    if (sceneIr !== undefined) {
+      await writeFile(join(outputDir, 'game.scene.ir.json'), `${JSON.stringify(sceneIr, null, 2)}\n`, 'utf8');
+      if (generatedTemplateArtifacts.has('sceneIr')) {
+        await writeFile(join(outputDir, `${genre}`, 'src', 'scene-ir.generated.json'), `${JSON.stringify(sceneIr, null, 2)}\n`, 'utf8');
+      }
+      await writeRuntimeSceneBindingReport({
+        outputDir,
+        report: buildRuntimeSceneBindingReport({ projectId: input.projectId, runId: input.runId, sceneIr })
+      });
+    }
     await writeFile(join(outputDir, `${genre}`, 'src', 'template-params.generated.json'), JSON.stringify(ir.template_params.params, null, 2));
     if (generatedTemplateArtifacts.has('assetManifest')) {
       await writeFile(join(outputDir, `${genre}`, 'src', 'asset-manifest.generated.json'), JSON.stringify(assetArtifacts.manifest, null, 2));

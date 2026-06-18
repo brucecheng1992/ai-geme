@@ -14,6 +14,7 @@ import {
   exposeRuntime
 } from '../../shared/kernel.js';
 import { EndScreenRenderer } from '../../shared/end-screen.js';
+import type { SideScrollingRuntimeSceneBindingState } from './side-scrolling-scene-ir.js';
 import { createSideScrollingRuntimeBridge } from './side-scrolling-live-edit-bridge.js';
 import type { SideScrollingArtRuntime } from './side-scrolling-art-library.js';
 import {
@@ -86,7 +87,8 @@ export class SideScrollingRunAndGunScene {
   constructor(
     private readonly params: SideScrollingTemplateParams,
     runtimePlan: SideScrollingRuntimePlan = defaultSideScrollingRuntimePlan,
-    private readonly art?: SideScrollingArtRuntime
+    private readonly art?: SideScrollingArtRuntime,
+    private readonly sceneBindingState?: SideScrollingRuntimeSceneBindingState
   ) {
     this.plan = resolveSideScrollingRuntimeSlice(runtimePlan);
     this.state = createRuntimeState(this.plan.player.health);
@@ -120,7 +122,10 @@ export class SideScrollingRunAndGunScene {
         player: { x: this.player.x, y: this.player.y, onGround: this.player.vy === 0 },
         camera: this.cameraSnapshot(),
         gravity: this.plan.scene.world.gravityY,
+        backgrounds: this.plan.backgrounds ?? [],
         platforms: this.plan.platforms,
+        goals: this.plan.goals ?? [],
+        sceneBindings: this.sceneBindingState,
         enemies: this.enemies.map((enemy) => this.enemySnapshot(enemy)),
         projectiles: this.projectiles.map((projectile) => ({ id: projectile.id, owner: projectile.owner, x: projectile.x, y: projectile.y })),
         waves: this.plan.waves.map((wave) => ({ ...wave, triggered: this.triggeredWaves.has(wave.id) })),
@@ -309,7 +314,7 @@ export class SideScrollingRunAndGunScene {
         waveId: wave.id,
         definition,
         x: wave.spawnX + index * 54,
-        y: this.enemyY(),
+        y: wave.spawnY ?? this.enemyY(),
         vx: -definition.movement.speedPxPerSec,
         vy: 0,
         width: 40,
@@ -442,9 +447,18 @@ export class SideScrollingRunAndGunScene {
     scene.cameras.main.setBackgroundColor('#10253a');
     this.configureCamera(scene);
     this.clearStaticSprites();
-    const background = this.art?.drawBackground(scene, this.plan.scene.world.width, this.plan.scene.world.height);
-    if (background !== undefined) {
-      this.trackStaticSprite(background);
+    const backgrounds = this.plan.backgrounds ?? [];
+    if (backgrounds.length > 0) {
+      for (const [index, background] of [...backgrounds].sort((left, right) => left.depth - right.depth).entries()) {
+        const renderedBackground = index === 0 ? this.art?.drawBackground(scene, this.plan.scene.world.width, this.plan.scene.world.height) : undefined;
+        this.trackStaticSprite(
+          renderedBackground ??
+            scene.add
+              .graphics()
+              .fillStyle(backgroundColor(background.role), background.opacity ?? 1)
+              .fillRect(0, 0, this.plan.scene.world.width, this.plan.scene.world.height)
+        );
+      }
     } else {
       this.trackStaticSprite(scene.add.graphics().fillStyle(0x10253a, 1).fillRect(0, 0, this.plan.scene.world.width, this.plan.scene.world.height));
     }
@@ -609,4 +623,19 @@ function hitboxesOverlap(a: RuntimeActor, b: RuntimeActor): boolean {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function backgroundColor(role: NonNullable<SideScrollingRuntimeSlice['backgrounds']>[number]['role']): number {
+  switch (role) {
+    case 'sky':
+      return 0x10253a;
+    case 'far':
+      return 0x1f3f5f;
+    case 'mid':
+      return 0x27505d;
+    case 'near':
+      return 0x315f45;
+    case 'overlay':
+      return 0x07111f;
+  }
 }

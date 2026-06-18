@@ -63,6 +63,12 @@ describe('P0 generation pipeline smoke', () => {
         const qaReport = JSON.parse(await readFile(workspace.getQaReportPath(projectId, runId), 'utf8')) as {
           status: string;
           visual_status?: string;
+          render_fidelity?: {
+            status: string;
+            expected: string[];
+            observed: string[];
+            missing: string[];
+          };
           observed_events: string[];
           screenshot_path?: string;
           visual_metrics?: { canvas_width: number; canvas_height: number; non_background_pixel_ratio: number; varied_pixel_ratio: number };
@@ -75,6 +81,30 @@ describe('P0 generation pipeline smoke', () => {
         expect(qaReport.visual_metrics?.non_background_pixel_ratio).toBeGreaterThan(0.01);
         expect(qaReport.visual_metrics?.varied_pixel_ratio).toBeGreaterThan(0.005);
         expect(qaReport.screenshot_path).toBe(workspace.getQaScreenshotPath(projectId, runId));
+        expect(qaReport.render_fidelity).toMatchObject({
+          status: 'VISUALLY_DEGRADED',
+          expected: expect.arrayContaining(['QA screenshot is non-blank.']),
+          missing: []
+        });
+        const renderFidelityReport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'render_fidelity_report.json'), 'utf8')) as {
+          status: string;
+          visualEvidence?: { screenshotRef?: string };
+        };
+        expect(renderFidelityReport).toMatchObject({
+          reportVersion: 'render-fidelity-report.v1',
+          projectId,
+          runId,
+          status: 'VISUALLY_DEGRADED',
+          visualEvidence: { screenshotRef: 'qa/screenshot.png' }
+        });
+        const artifactIndex = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_artifact_index.json'), 'utf8')) as {
+          artifacts: Array<{ id: string; path: string; status: string }>;
+        };
+        expect(artifactIndex.artifacts).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ id: 'renderFidelityReport', path: 'render_fidelity_report.json', status: 'present' })
+          ])
+        );
         const screenshot = await stat(workspace.getQaScreenshotPath(projectId, runId));
         expect(screenshot.size).toBeGreaterThan(0);
 

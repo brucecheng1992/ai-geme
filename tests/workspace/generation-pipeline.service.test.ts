@@ -12,20 +12,24 @@ import {
 import { ProjectStoreService } from '../../apps/maker-api/src/projects/project-store.service.js';
 import { RunStoreService } from '../../apps/maker-api/src/projects/run-store.service.js';
 import { LocalWorkspaceService } from '../../apps/maker-api/src/workspace/local-workspace.service.js';
+import { TemplateCompilerService } from '../../apps/maker-api/src/compiler/template-compiler.service.js';
 import type { RuntimeCompileResult } from '../../apps/maker-api/src/compiler/compiler.types.js';
 import type { QaGenre, QaReport } from '../../apps/maker-api/src/qa/qa.types.js';
 import {
   AssetManifestSchema,
   AssetResolutionReportSchema,
+  buildAssetIntentManifest,
   buildAssetPlanFromIr,
+  buildAssetResolutionReport,
   type AssetManifest,
   type AssetPlan,
   type AssetResolutionReport
 } from '../../packages/asset-pipeline/src/index.js';
-import { GameBriefSchema, RawGameDslSchema, buildGameDslArtifact, type GameDslArtifact, type NormalizedGameIr, type RawGameDsl } from '../../packages/game-dsl/src/index.js';
+import { GameBriefSchema, RawGameDslSchema, SceneIrSchema, buildGameDslArtifact, type GameDslArtifact, type NormalizedGameIr, type RawGameDsl, type SceneIr } from '../../packages/game-dsl/src/index.js';
 
 const projectId = 'proj_20260610_050000_pipe';
 const runId = 'run_20260610_050000_pipe';
+const templateRoot = join(process.cwd(), 'templates', 'phaser');
 
 type PipelineOverrides = {
   modelProvider?: ConstructorParameters<typeof GenerationPipelineService>[3];
@@ -121,6 +125,55 @@ describe('GenerationPipelineService failure states', () => {
         beforeAssetSemanticStatus: 'FAILED'
       }
     });
+  });
+
+  it('rewrites side-scrolling runtime scene binding report from QA snapshot evidence', async () => {
+    const rawDsl = RawGameDslSchema.parse(createSideScrollingRunAndGunRawDsl());
+    const pipeline = createPipeline({
+      modelProvider: createModelProviderForRawDsl(rawDsl),
+      compiler: new TemplateCompilerService(workspace, templateRoot),
+      buildRunner: {
+        async build() {
+          const distDir = workspace.getGeneratedProjectDistDir(projectId);
+          const logPath = workspace.getBuildLogPath(projectId, runId);
+          await mkdir(distDir, { recursive: true });
+          await writeFile(join(distDir, 'index.html'), '<html></html>', 'utf8');
+          await mkdir(dirname(logPath), { recursive: true });
+          await writeFile(logPath, 'vite build ok', 'utf8');
+          return { ok: true, projectId, distDir, logPath };
+        }
+      },
+      qaRunner: {
+        async run(input: { genre: QaGenre }) {
+          const sceneIr = SceneIrSchema.parse(JSON.parse(await readFile(join(workspace.getGeneratedProjectDir(projectId), 'game.scene.ir.json'), 'utf8')));
+          return createQaReport(input.genre, {
+            observed_events: ['game.started'],
+            snapshot: { sceneBindings: buildObservedSceneBindings(sceneIr) }
+          });
+        }
+      }
+    });
+
+    await expect(runPipeline(pipeline, { idea: '横版跑枪', language: 'zh' })).resolves.toBe('PLAYABLE');
+
+    const runtimeSceneBindingReport = JSON.parse(await readFile(join(workspace.getGeneratedProjectDir(projectId), 'runtime_scene_binding_report.json'), 'utf8'));
+    const acceptance = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_acceptance_report.json'), 'utf8'));
+    expect(runtimeSceneBindingReport).toMatchObject({
+      reportVersion: 'runtime-scene-binding-report.v1',
+      projectId,
+      runId,
+      status: 'pass',
+      summary: expect.objectContaining({ unboundCount: 0 })
+    });
+    expect(acceptance.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'runtime_scene_binding',
+          status: 'pass',
+          reason: 'runtime_scene_binding_report.json has no unbound scene nodes.'
+        })
+      ])
+    );
   });
 
   it('maps compiler exceptions to BUILD_FAILED and records build.failed', async () => {
@@ -1322,6 +1375,7 @@ describe('GenerationPipelineService failure states', () => {
   }): Promise<void> {
     await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'game_dsl.json'), 'utf8')).rejects.toThrow();
     await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'dsl_validation_report.json'), 'utf8')).rejects.toThrow();
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'dsl_consumption_report.json'), 'utf8')).rejects.toThrow();
 
     const runtimeCapabilityReport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'runtime_capability_report.json'), 'utf8'));
     expect(runtimeCapabilityReport).toMatchObject({
@@ -1349,6 +1403,7 @@ describe('GenerationPipelineService failure states', () => {
         expect.objectContaining({ id: 'runtimeCapabilityReport', status: 'present', path: 'runtime_capability_report.json' }),
         expect.objectContaining({ id: 'gameDsl', status: 'skipped', reason: 'runtime_unsupported_before_dsl_generation' }),
         expect.objectContaining({ id: 'dslValidationReport', status: 'skipped', reason: 'runtime_unsupported_before_dsl_validation' }),
+        expect.objectContaining({ id: 'dslConsumptionReport', status: 'skipped', reason: 'runtime_unsupported_before_consumption_audit' }),
         expect.objectContaining({ id: 'phaserPreviewManifest', status: 'skipped', reason: 'runtime_unsupported_before_compile' }),
         expect.objectContaining({ id: 'qaReport', status: 'skipped', reason: 'runtime_unsupported_before_qa' }),
         expect.objectContaining({ id: 'pipelineAcceptanceReport', status: 'present', path: 'pipeline_acceptance_report.json' }),
@@ -1364,6 +1419,7 @@ describe('GenerationPipelineService failure states', () => {
         expect.objectContaining({ id: 'runtime_capability', status: 'fail', reason: 'runtime_capability_report.json status is unsupported.' }),
         expect.objectContaining({ id: 'dsl_validation', status: 'skipped', reason: 'runtime_unsupported_before_dsl_validation' }),
         expect.objectContaining({ id: 'dsl_artifact', status: 'skipped', reason: 'runtime_unsupported_before_dsl_generation' }),
+        expect.objectContaining({ id: 'dsl_consumption', status: 'skipped', reason: 'runtime_unsupported_before_consumption_audit' }),
         expect.objectContaining({ id: 'preview_manifest', status: 'skipped', reason: 'runtime_unsupported_before_compile' })
       ])
     });
@@ -1383,13 +1439,15 @@ describe('GenerationPipelineService failure states', () => {
     return compileResult();
   }
 
-  async function compileWithArtifactFiles(): Promise<RuntimeCompileResult> {
+  async function compileWithArtifactFiles(input: { ir: NormalizedGameIr }): Promise<RuntimeCompileResult> {
     const distDir = workspace.getGeneratedProjectDistDir(projectId);
     await mkdir(distDir, { recursive: true });
     await writeFile(join(distDir, 'index.html'), '<html></html>', 'utf8');
+    await writePassingAssetArtifacts(buildAssetPlanFromIr(projectId, input.ir));
     await writeAssetLibraryUsageReportFixture();
     await writeAssetBindingTraceReportFixture();
     return compileResult([
+      'asset_intent_manifest.json',
       'asset_plan.json',
       'public/asset_manifest.json',
       'asset_resolution_report.json',
@@ -1434,6 +1492,87 @@ describe('GenerationPipelineService failure states', () => {
       templateId: 'shooter_v1',
       files
     };
+  }
+
+  async function writePassingAssetArtifacts(plan: AssetPlan): Promise<void> {
+    const outputDir = workspace.getGeneratedProjectDir(projectId);
+    const assetsDir = join(outputDir, 'public', 'assets');
+    const sourcePack = 'kenney-tiny-shooter-tanks';
+    await mkdir(assetsDir, { recursive: true });
+    await mkdir(join(outputDir, 'shooter', 'src'), { recursive: true });
+    await writeFile(join(outputDir, 'asset_plan.json'), `${JSON.stringify(plan, null, 2)}\n`, 'utf8');
+    await writeFile(join(outputDir, 'asset_intent_manifest.json'), `${JSON.stringify(buildAssetIntentManifest({ projectId, plan }), null, 2)}\n`, 'utf8');
+
+    const assets = plan.items.map((item) => ({
+      id: item.id,
+      loadKey: `agm.${item.id}`,
+      role: item.role,
+      type: 'image' as const,
+      format: item.format,
+      path: `assets/${item.id}.svg`,
+      source: 'local_asset_pack' as const,
+      sourcePack,
+      licenseId: 'CC0-1.0',
+      licenseName: 'Creative Commons CC0 1.0 Universal',
+      attribution: 'Kenney Tanks by Kenney Vleugels',
+      sourceUrl: 'https://kenney.nl/assets/tanks',
+      catalogRef: {
+        catalogVersion: 'template_asset_catalog.v1' as const,
+        catalogAssetId: `local-pack:${sourcePack}:${item.id}`,
+        source: 'local-template' as const
+      },
+      required: item.required,
+      status: 'ready' as const,
+      size: item.size,
+      semanticFit: {
+        status: 'exact' as const,
+        confidence: 1,
+        strictness: item.semantic?.strictness,
+        expectedConcept: item.semantic?.expectedConcept,
+        expectedAnyTags: item.semantic?.expectedAnyTags,
+        actualTags: item.semantic?.expectedAnyTags,
+        reason: `Test asset semantic tags exactly match expected ${item.semantic?.expectedConcept ?? item.id}.`
+      }
+    }));
+    const manifest = AssetManifestSchema.parse({
+      version: 'asset-manifest-v0.1',
+      projectId,
+      strict: true,
+      assets,
+      summary: {
+        required: assets.filter((asset) => asset.required).length,
+        ready: assets.length,
+        fallback_used: 0,
+        missing: 0,
+        placeholder_used: 0
+      }
+    });
+
+    for (const asset of manifest.assets) {
+      await writeFile(join(outputDir, 'public', asset.path), '<svg xmlns="http://www.w3.org/2000/svg"></svg>', 'utf8');
+    }
+    await writeFile(join(outputDir, 'public', 'asset_manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+    await writeFile(join(outputDir, 'shooter', 'src', 'asset-manifest.generated.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+    await writeFile(
+      join(outputDir, 'asset_resolution_report.json'),
+      `${JSON.stringify(
+        buildAssetResolutionReport({
+          plan,
+          manifest,
+          candidates: [
+            {
+              packId: sourcePack,
+              status: 'selected',
+              reason: 'selected',
+              message: `Selected complete local asset pack ${sourcePack}.`
+            }
+          ]
+        }),
+        null,
+        2
+      )}\n`,
+      'utf8'
+    );
   }
 
   async function writeAssetLibraryUsageReportFixture(): Promise<void> {
@@ -1577,6 +1716,32 @@ describe('GenerationPipelineService failure states', () => {
       started_at: now,
       completed_at: now,
       ...patch
+    };
+  }
+
+  function buildObservedSceneBindings(sceneIr: SceneIr) {
+    const scene = sceneIr.scenes[0];
+    const binding = (kind: string, sceneRuntimeId: string, provenanceRef: string) => {
+      const provenance = sceneIr.provenance[provenanceRef] ?? sceneIr.provenance[sceneRuntimeId];
+      return {
+        kind,
+        sceneRuntimeId,
+        runtimeInstanceId: sceneRuntimeId,
+        source: provenance?.source ?? 'system',
+        sourceDslPath: provenance?.dslPath,
+        status: 'bound'
+      };
+    };
+
+    return {
+      source: 'scene_ir',
+      bindings: [
+        ...scene.backgrounds.map((background) => binding('background', background.runtimeId, background.provenanceRef)),
+        ...scene.platforms.map((platform) => binding('platform', platform.runtimeId, platform.provenanceRef)),
+        binding('player', scene.player.runtimeId, scene.player.provenanceRef),
+        ...scene.enemyInstances.map((enemy) => binding('enemy', enemy.runtimeId, enemy.provenanceRef)),
+        ...scene.goals.map((goal) => binding('goal', goal.runtimeId, goal.provenanceRef))
+      ]
     };
   }
 

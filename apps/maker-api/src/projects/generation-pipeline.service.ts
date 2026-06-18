@@ -3,8 +3,10 @@ import { dirname, join } from 'node:path';
 
 import {
   AssetManifestSchema,
+  AssetIntentManifestSchema,
   AssetResolutionReportSchema,
   buildAssetRepairPlan,
+  summarizeAssetIntentResolutionFallbacks,
   executeAssetRepairPlan,
   type AssetManifest,
   type AssetRepairExecutionResult,
@@ -15,8 +17,11 @@ import {
 import type { NormalizedGameIr, RawGameDsl } from '../../../../packages/game-dsl/src/index.js';
 import {
   buildRuntimeCapabilityReport,
+  buildDslConsumptionReport,
   buildUnsupportedRuntimeCapabilityReport,
   buildDslValidationReport,
+  DslConsumptionReportSchema,
+  SceneIrSchema,
   buildGameDslArtifact,
   checkPhaserRuntimeCapabilities,
   findRuntimeGenreCapability,
@@ -30,11 +35,18 @@ import {
 import type { RuntimeCompileResult, RuntimeCompileSuccess } from '../compiler/compiler.types.js';
 import { AssetLibraryUsageReportSchema } from '../compiler/asset-library-usage-report.js';
 import { AssetBindingTraceReportSchema } from '../compiler/asset-binding-trace-report.js';
+import { RuntimeSceneBindingReportSchema, buildRuntimeObservedSceneBindingReport, writeRuntimeSceneBindingReport } from '../compiler/runtime-scene-binding-report.js';
 import { TemplateCompilerService } from '../compiler/template-compiler.service.js';
 import { ViteBuildRunnerService } from '../compiler/vite-build-runner.service.js';
 import { GameDslProviderService, type GameDslProviderResult } from '../model-provider/game-dsl-provider.service.js';
 import { buildIntentPlan, type IntentPlan } from '../model-provider/intent-plan.js';
 import { PlaywrightQaRunnerService } from '../qa/playwright-qa-runner.service.js';
+import {
+  RenderFidelityReportSchema,
+  buildRenderFidelityReport,
+  summarizeRenderFidelityForQaReport,
+  writeRenderFidelityReport
+} from '../qa/render-fidelity-report.js';
 import type { QaAssetSemanticRepairReport, QaAssetSemanticRepairSkippedReason, QaGenre, QaReport } from '../qa/qa.types.js';
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
 import { createDeterministicRawGameDsl } from './deterministic-game-dsl.js';
@@ -116,9 +128,10 @@ export class GenerationPipelineService {
       title: rawDsl.metadata.title,
       genre: rawDsl.game.genre
     });
+    await this.writeDslConsumptionReport(input, rawDsl, normalized.ir);
     await this.appendEvent(input.runId, 'ir.generated', 'Normalized IR generated from validated DSL.');
 
-    const compiled = await this.compileProject(input, normalized.ir, generated.brief);
+    const compiled = await this.compileProject(input, rawDsl, normalized.ir, generated.brief);
     if (!compiled.ok) {
       return compiled.status;
     }
@@ -189,7 +202,7 @@ export class GenerationPipelineService {
     return await this.handleModelGenerationFailure(input, brief);
   }
 
-  private async compileProject(input: GenerationPipelineInput, ir: NormalizedGameIr, brief?: unknown): Promise<RuntimeCompileSuccess | { ok: false; status: ProjectStatus }> {
+  private async compileProject(input: GenerationPipelineInput, rawDsl: RawGameDsl, ir: NormalizedGameIr, brief?: unknown): Promise<RuntimeCompileSuccess | { ok: false; status: ProjectStatus }> {
     await this.setStatus(input.projectId, input.runId, 'RUNTIME_CHECKING', 'project-generation', 'RUNNING');
     const runtimeGate = checkPhaserRuntimeCapabilities(ir);
     if (!runtimeGate.ok) {
@@ -209,6 +222,7 @@ export class GenerationPipelineService {
       compiled = await this.compiler.compile({
         projectId: input.projectId,
         runId: input.runId,
+        rawDsl,
         ir,
         semanticTraceContext: { originalPrompt: input.idea, brief }
       });
@@ -273,15 +287,21 @@ export class GenerationPipelineService {
     const repairResult = await this.maybeRunAssetSemanticRepair(input, genre, compiled, firstReport);
     const finalReport = withAssetSemanticRepairReport(repairResult.report, repairResult.assetSemanticRepair);
 
-    await this.writeQaReport(input.projectId, input.runId, finalReport);
-    await this.writeValidPipelineArtifactIndex(input, compiled, { buildLogPresent: true, qaReportPresent: true });
+    await this.writeObservedRuntimeSceneBindingReport(input, finalReport);
+    const renderFidelityReport = await this.writeRenderFidelityReport(input, finalReport);
+    const finalReportWithRenderFidelity: QaReport = {
+      ...finalReport,
+      render_fidelity: summarizeRenderFidelityForQaReport(renderFidelityReport)
+    };
+    await this.writeQaReport(input.projectId, input.runId, finalReportWithRenderFidelity);
+    await this.writeValidPipelineArtifactIndex(input, compiled, { buildLogPresent: true, qaReportPresent: true, renderFidelityReportPresent: true });
 
     if (repairResult.kind === 'status') {
       await this.setPipelineStep(input.projectId, input.runId, 'qa', 'DONE');
       return repairResult.status;
     }
 
-    return await this.completeQa(input, finalReport);
+    return await this.completeQa(input, finalReportWithRenderFidelity);
   }
 
   private async runQaAttempt(input: GenerationPipelineInput, genre: QaGenre, phase: 'initial' | 'repair-rerun'): Promise<QaReport> {
@@ -572,6 +592,14 @@ export class GenerationPipelineService {
     await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   }
 
+  private async writeDslConsumptionReport(input: GenerationPipelineInput, rawDsl: RawGameDsl, ir: NormalizedGameIr): Promise<void> {
+    const outputPath = this.workspace.getModelOutputPath(input.projectId, input.runId, 'dsl_consumption_report.json');
+    const report = buildDslConsumptionReport({ projectId: input.projectId, runId: input.runId, rawDsl, ir });
+
+    await mkdir(dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  }
+
   private async writeUnsupportedIntentArtifacts(input: GenerationPipelineInput, intentPlan: IntentPlan): Promise<void> {
     await this.writeRuntimeCapabilityReport(input, buildUnsupportedRuntimeCapabilityReport({ runId: input.runId, intentPlan }));
     await this.writeUnsupportedIntentPipelineArtifactIndex(input);
@@ -626,14 +654,15 @@ export class GenerationPipelineService {
   private async writeValidPipelineArtifactIndex(
     input: GenerationPipelineInput,
     compiled: RuntimeCompileSuccess,
-    options: { buildLogPresent?: boolean; qaReportPresent?: boolean } = {}
+    options: { buildLogPresent?: boolean; qaReportPresent?: boolean; renderFidelityReportPresent?: boolean } = {}
   ): Promise<void> {
     const index = buildValidPipelineArtifactIndex({
       projectId: input.projectId,
       runId: input.runId,
       compileFiles: compiled.files,
       buildLogPresent: options.buildLogPresent,
-      qaReportPresent: options.qaReportPresent
+      qaReportPresent: options.qaReportPresent,
+      renderFidelityReportPresent: options.renderFidelityReportPresent
     });
     await this.writePipelineAcceptanceReport(input, index);
     await writePipelineArtifactIndex(this.workspace.getModelOutputPath(input.projectId, input.runId, 'pipeline_artifact_index.json'), index);
@@ -687,6 +716,10 @@ export class GenerationPipelineService {
         valid: dslValidation.valid === true,
         sourceArtifact: typeof dslValidation.sourceArtifact === 'string' ? dslValidation.sourceArtifact : undefined
       },
+      dslConsumption: await this.readDslConsumptionSummary(input.projectId, input.runId, artifactIndex),
+      assetIntentResolution: await this.readAssetIntentResolutionSummary(input.projectId, input.runId, artifactIndex),
+      runtimeSceneBinding: await this.readRuntimeSceneBindingStatus(input.projectId, input.runId, artifactIndex),
+      renderFidelityQa: await this.readRenderFidelityReportStatus(input.projectId, input.runId, artifactIndex),
       assetLibraryUsage: await this.readAssetLibraryUsageStatus(input.projectId, input.runId, artifactIndex),
       assetBindingTrace: await this.readAssetBindingTraceStatus(input.projectId, input.runId, artifactIndex)
     });
@@ -726,6 +759,47 @@ export class GenerationPipelineService {
     return report.status === 'supported' || report.status === 'unsupported' ? { status: report.status } : { status: undefined };
   }
 
+  private async readDslConsumptionSummary(
+    projectId: string,
+    runId: string,
+    artifactIndex: PipelineArtifactIndex
+  ): Promise<{ ignoredAuthoritativeCount?: number; coverageRatio?: number } | undefined> {
+    const artifact = artifactIndex.artifacts.find((candidate) => candidate.id === 'dslConsumptionReport');
+    if (artifact?.status !== 'present') {
+      return undefined;
+    }
+
+    const report = DslConsumptionReportSchema.parse(await this.readModelOutputJson(projectId, runId, 'dsl_consumption_report.json'));
+    if (report.projectId !== projectId || report.runId !== runId) {
+      throw new Error('dsl_consumption_report identity does not match the current project and run.');
+    }
+    return {
+      ignoredAuthoritativeCount: report.summary.ignoredAuthoritativeCount,
+      coverageRatio: report.summary.coverageRatio
+    };
+  }
+
+  private async readAssetIntentResolutionSummary(
+    projectId: string,
+    runId: string,
+    artifactIndex: PipelineArtifactIndex
+  ): Promise<{ coreRequiredFallbackCount?: number; requestRequiredFallbackCount?: number; optionalFallbackCount?: number } | undefined> {
+    const intentArtifact = artifactIndex.artifacts.find((candidate) => candidate.id === 'assetIntentManifest');
+    const resolutionArtifact = artifactIndex.artifacts.find((candidate) => candidate.id === 'assetResolutionReport');
+    if (intentArtifact?.status !== 'present' || resolutionArtifact?.status !== 'present') {
+      return undefined;
+    }
+
+    const projectDir = this.workspace.getGeneratedProjectDir(projectId);
+    const intentManifest = AssetIntentManifestSchema.parse(JSON.parse(await readFile(join(projectDir, 'asset_intent_manifest.json'), 'utf8')));
+    const resolutionReport = AssetResolutionReportSchema.parse(JSON.parse(await readFile(join(projectDir, 'asset_resolution_report.json'), 'utf8')));
+    if (intentManifest.projectId !== projectId || resolutionReport.projectId !== projectId) {
+      throw new Error('asset intent / resolution report identity does not match the current project.');
+    }
+
+    return summarizeAssetIntentResolutionFallbacks({ manifest: intentManifest, resolutionReport });
+  }
+
   private async readAssetBindingTraceStatus(projectId: string, runId: string, artifactIndex: ReturnType<typeof buildValidPipelineArtifactIndex>): Promise<{ status?: 'pass' | 'warn' | 'fail' } | undefined> {
     const artifact = artifactIndex.artifacts.find((candidate) => candidate.id === 'assetBindingTraceReport');
     if (artifact?.status !== 'present') {
@@ -739,6 +813,121 @@ export class GenerationPipelineService {
       throw new Error('asset_binding_trace_report identity does not match the current project and run.');
     }
     return { status: report.status };
+  }
+
+  private async readRuntimeSceneBindingStatus(projectId: string, runId: string, artifactIndex: PipelineArtifactIndex): Promise<{ status?: 'pass' | 'fail'; unboundCount?: number } | undefined> {
+    const artifact = artifactIndex.artifacts.find((candidate) => candidate.id === 'runtimeSceneBindingReport');
+    if (artifact?.status !== 'present') {
+      return undefined;
+    }
+
+    const report = RuntimeSceneBindingReportSchema.parse(
+      JSON.parse(await readFile(join(this.workspace.getGeneratedProjectDir(projectId), 'runtime_scene_binding_report.json'), 'utf8'))
+    );
+    if (report.projectId !== projectId || report.runId !== runId) {
+      throw new Error('runtime_scene_binding_report identity does not match the current project and run.');
+    }
+    return { status: report.status, unboundCount: report.summary.unboundCount };
+  }
+
+  private async readRenderFidelityReportStatus(
+    projectId: string,
+    runId: string,
+    artifactIndex: PipelineArtifactIndex
+  ): Promise<{ status?: 'PASSED' | 'PASSED_WITH_OPTIONAL_FALLBACKS' | 'VISUALLY_DEGRADED' | 'FAILED' } | undefined> {
+    const artifact = artifactIndex.artifacts.find((candidate) => candidate.id === 'renderFidelityReport');
+    if (artifact?.status !== 'present') {
+      return undefined;
+    }
+
+    const report = RenderFidelityReportSchema.parse(await this.readModelOutputJson(projectId, runId, 'render_fidelity_report.json'));
+    if (report.projectId !== projectId || report.runId !== runId) {
+      throw new Error('render_fidelity_report identity does not match the current project and run.');
+    }
+    return { status: report.status };
+  }
+
+  private async writeRenderFidelityReport(input: GenerationPipelineInput, qaReport: QaReport) {
+    const report = buildRenderFidelityReport({
+      projectId: input.projectId,
+      runId: input.runId,
+      qaReport,
+      dslConsumption: await this.readDslConsumptionSummaryDirect(input.projectId, input.runId),
+      assetBindingTrace: await this.readAssetBindingTraceSummaryDirect(input.projectId, input.runId),
+      runtimeSceneBinding: await this.readRuntimeSceneBindingSummaryDirect(input.projectId, input.runId)
+    });
+
+    await writeRenderFidelityReport(this.workspace.getModelOutputPath(input.projectId, input.runId, 'render_fidelity_report.json'), report);
+    return report;
+  }
+
+  private async readDslConsumptionSummaryDirect(projectId: string, runId: string): Promise<{ ignoredAuthoritativeCount: number; coverageRatio?: number } | undefined> {
+    const path = this.workspace.getModelOutputPath(projectId, runId, 'dsl_consumption_report.json');
+    if (!(await pathExists(path))) {
+      return undefined;
+    }
+
+    const report = DslConsumptionReportSchema.parse(JSON.parse(await readFile(path, 'utf8')));
+    if (report.projectId !== projectId || report.runId !== runId) {
+      throw new Error('dsl_consumption_report identity does not match the current project and run.');
+    }
+    return {
+      ignoredAuthoritativeCount: report.summary.ignoredAuthoritativeCount,
+      coverageRatio: report.summary.coverageRatio
+    };
+  }
+
+  private async readAssetBindingTraceSummaryDirect(projectId: string, runId: string): Promise<{ status: 'pass' | 'warn' | 'fail'; warningCount: number; errorCount: number } | undefined> {
+    const path = join(this.workspace.getGeneratedProjectDir(projectId), 'asset_binding_trace_report.json');
+    if (!(await pathExists(path))) {
+      return undefined;
+    }
+
+    const report = AssetBindingTraceReportSchema.parse(JSON.parse(await readFile(path, 'utf8')));
+    if (report.projectId !== projectId || report.runId !== runId) {
+      throw new Error('asset_binding_trace_report identity does not match the current project and run.');
+    }
+    return {
+      status: report.status,
+      warningCount: report.warnings.length,
+      errorCount: report.errors.length
+    };
+  }
+
+  private async readRuntimeSceneBindingSummaryDirect(projectId: string, runId: string): Promise<{ status: 'pass' | 'fail'; boundCount: number; unboundCount: number } | undefined> {
+    const path = join(this.workspace.getGeneratedProjectDir(projectId), 'runtime_scene_binding_report.json');
+    if (!(await pathExists(path))) {
+      return undefined;
+    }
+
+    const report = RuntimeSceneBindingReportSchema.parse(JSON.parse(await readFile(path, 'utf8')));
+    if (report.projectId !== projectId || report.runId !== runId) {
+      throw new Error('runtime_scene_binding_report identity does not match the current project and run.');
+    }
+    return {
+      status: report.status,
+      boundCount: report.summary.boundCount,
+      unboundCount: report.summary.unboundCount
+    };
+  }
+
+  private async writeObservedRuntimeSceneBindingReport(input: GenerationPipelineInput, qaReport: QaReport): Promise<void> {
+    const projectDir = this.workspace.getGeneratedProjectDir(input.projectId);
+    const sceneIrPath = join(projectDir, 'game.scene.ir.json');
+    if (!(await pathExists(sceneIrPath))) {
+      return;
+    }
+
+    const sceneIr = JSON.parse(await readFile(sceneIrPath, 'utf8')) as unknown;
+    await writeRuntimeSceneBindingReport({
+      outputDir: projectDir,
+      report: buildRuntimeObservedSceneBindingReport({
+        projectId: input.projectId,
+        runId: input.runId,
+        sceneIr: SceneIrSchema.parse(sceneIr),
+        snapshot: qaReport.snapshot
+      })
+    });
   }
 
   private async writeIntentPlan(input: GenerationPipelineInput, intentPlan: IntentPlan): Promise<void> {

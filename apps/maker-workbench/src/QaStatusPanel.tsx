@@ -1,3 +1,4 @@
+import { sanitizeWorkbenchText } from './workbench-display-safety.js';
 import { getWorkbenchStatusTone, type AssetSemanticStatus, type QaReport, type RuntimeStatus, type WorkbenchStatusTone } from './workbench-api.js';
 
 const panelClass = 'rounded-lg border border-[#d8c7a6] bg-[#fffef9] p-4 shadow-[0_1px_0_rgba(49,43,34,0.08)]';
@@ -12,6 +13,7 @@ type QaStatusPanelProps = {
 export function QaStatusPanel({ report }: QaStatusPanelProps) {
   const runtimeStatus = runtimeStatusLabel(report);
   const assetSemanticStatus = assetSemanticStatusLabel(report);
+  const renderFidelity = report?.render_fidelity;
   const overallStatus = report?.overall_status ?? report?.status ?? 'No report';
   const missingLabel = (report?.missing_events ?? []).join(', ') || 'none';
 
@@ -27,10 +29,29 @@ export function QaStatusPanel({ report }: QaStatusPanelProps) {
         <StatusLine label="Overall" value={overallStatus} tone={getWorkbenchStatusTone(overallStatus)} />
         <StatusLine label="Runtime" value={runtimeStatus} tone={runtimeTone(runtimeStatus)} />
         <StatusLine label="Asset semantic" value={assetSemanticStatus} tone={assetSemanticTone(assetSemanticStatus)} />
+        {renderFidelity === undefined ? null : (
+          <StatusLine label="Render fidelity" value={sanitizeWorkbenchText(renderFidelity.status)} tone={renderFidelityTone(renderFidelity.status)} />
+        )}
       </div>
+      {renderFidelity === undefined ? null : <RenderFidelityEvidence report={renderFidelity} />}
       <p className="m-0 mb-1 text-sm leading-snug text-[#69645d]">{report?.code ?? 'No failure code'}</p>
       <p className="m-0 text-sm leading-snug text-[#69645d]">Missing: {missingLabel}</p>
     </article>
+  );
+}
+
+function RenderFidelityEvidence({ report }: { report: NonNullable<QaReport['render_fidelity']> }) {
+  const expected = report.expected.map(sanitizeWorkbenchText).join(' ');
+  const observed = report.observed.map(sanitizeWorkbenchText).join(' ');
+  const missing = report.missing.map(sanitizeWorkbenchText).join(' ') || 'none';
+
+  return (
+    <div className="mb-3 grid gap-1 rounded-lg border border-[#ead9ba] bg-[#fffaf0] p-3 text-xs font-bold leading-snug text-[#69645d]">
+      <p className="m-0 text-[#15130f] [overflow-wrap:anywhere]">{sanitizeWorkbenchText(report.reason)}</p>
+      <p className="m-0 [overflow-wrap:anywhere]">Expected: {expected}</p>
+      <p className="m-0 [overflow-wrap:anywhere]">Observed: {observed}</p>
+      <p className="m-0 [overflow-wrap:anywhere]">Missing: {missing}</p>
+    </div>
   );
 }
 
@@ -88,6 +109,19 @@ function assetSemanticTone(status: AssetSemanticStatus | 'No report'): 'neutral'
     return 'bad';
   }
 
+  return 'neutral';
+}
+
+function renderFidelityTone(status: string): 'neutral' | 'good' | 'warn' | 'bad' {
+  if (status === 'PASSED') {
+    return 'good';
+  }
+  if (status === 'PASSED_WITH_OPTIONAL_FALLBACKS' || status === 'VISUALLY_DEGRADED') {
+    return 'warn';
+  }
+  if (status === 'FAILED') {
+    return 'bad';
+  }
   return 'neutral';
 }
 

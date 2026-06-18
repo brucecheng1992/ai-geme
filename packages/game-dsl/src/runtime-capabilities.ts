@@ -35,7 +35,7 @@ export const SIDE_SCROLLING_WORLD_BOUNDS = {
 export type RawDslGameGenre = (typeof RAW_DSL_GAME_GENRES)[number];
 export type RuntimeTemplateManifestId = (typeof RUNTIME_TEMPLATE_MANIFEST_IDS)[number];
 export type RuntimeTemplateDir = (typeof RUNTIME_TEMPLATE_DIRS)[number];
-export type RuntimeGeneratedTemplateArtifact = 'assetManifest' | 'runtimePlan' | 'liveEditRegistry';
+export type RuntimeGeneratedTemplateArtifact = 'assetManifest' | 'runtimePlan' | 'sceneIr' | 'liveEditRegistry';
 
 const topDownShooterCapabilities = ['top_down_camera', 'eight_direction_movement', 'projectile_combat', 'enemy_waves'] as const;
 const collectorCapabilities = ['top_down_camera', 'eight_direction_movement', 'collectibles'] as const;
@@ -117,8 +117,8 @@ export const RuntimeGenreRegistry: RuntimeGenreCapability[] = [
     runtimeTemplate: 'phaser/side_scrolling_run_and_gun',
     runtimeTemplateManifestId: 'side_scrolling_run_and_gun.v1',
     templateDir: 'side_scrolling_run_and_gun',
-    templateSourceFiles: ['src/side-scrolling-art-library.ts', 'src/side-scrolling-runtime-plan.ts', 'src/side-scrolling-live-edit-bridge.ts'],
-    generatedTemplateArtifacts: ['assetManifest', 'runtimePlan', 'liveEditRegistry'],
+    templateSourceFiles: ['src/side-scrolling-art-library.ts', 'src/side-scrolling-scene-ir.ts', 'src/side-scrolling-runtime-plan.ts', 'src/side-scrolling-live-edit-bridge.ts'],
+    generatedTemplateArtifacts: ['assetManifest', 'runtimePlan', 'sceneIr', 'liveEditRegistry'],
     requiredCapabilities: [...sideScrollingRunAndGunCapabilities],
     implementedCapabilities: [...sideScrollingRunAndGunCapabilities],
     missingCapabilities: [],

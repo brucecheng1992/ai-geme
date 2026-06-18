@@ -17,6 +17,8 @@ describe('Workbench pipeline acceptance client', () => {
     expect(view).toMatchObject({
       status: 'ready',
       overallStatus: 'fail',
+      renderFidelityStatus: 'FAILED',
+      renderFidelityReason: 'render fidelity has blocking evidence.',
       previewable: false,
       requiredPassCount: 4,
       requiredFailCount: 1,
@@ -185,6 +187,8 @@ describe('Workbench pipeline acceptance client', () => {
 
     expect(markup).toContain('Pipeline Acceptance');
     expect(markup).toContain('FAIL');
+    expect(markup).toContain('Render fidelity: FAILED');
+    expect(markup).toContain('render fidelity has blocking evidence.');
     expect(markup).toContain('Previewable: No');
     expect(markup).toContain('Required checks: 4 passed / 1 failed');
     expect(markup).toContain('Warnings: 1');
@@ -212,6 +216,17 @@ function makeReport(): PipelineAcceptanceReport {
     runId: 'run_20260615_acceptance',
     overallStatus: 'fail',
     previewable: false,
+    renderFidelity: {
+      status: 'FAILED',
+      reason: 'render fidelity has blocking evidence.',
+      evidenceRefs: ['assetIntentManifest:asset_intent_manifest.json'],
+      coreRequiredFallbackCount: 1,
+      requestRequiredFallbackCount: 0,
+      optionalFallbackCount: 0,
+      runtimeUnboundCount: 0,
+      assetBindingStatus: 'pass',
+      assetLibraryStatus: 'pass'
+    },
     checkedArtifacts: [
       { artifactId: 'generationInputReport', artifactPath: 'generation_input_report.json', status: 'present', required: true },
       { artifactId: 'dslValidationReport', artifactPath: 'dsl_validation_report.json', status: 'present', required: true },

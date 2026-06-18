@@ -123,10 +123,31 @@ export type SemanticAmendmentCandidatePreview = {
   candidateBriefRef: string;
   candidateDslRef: string;
   candidateDslDiffRef: string;
+  candidateSceneIrRef?: string;
+  candidateSceneIrDiffRef?: string;
+  candidateAssetIntentManifestRef?: string;
+  candidateAssetDiffRef?: string;
   candidateRunRef: string;
   candidateRuntimeCapabilityReportRef: string;
   previewAvailable: boolean;
   qaStatus: 'not_run' | 'passed' | 'failed';
+};
+
+export type SemanticAmendmentCandidateArtifactCheckpoint = {
+  proposalId: string;
+  projectId: string;
+  sourceRunId: string;
+  candidateRunId: string;
+  candidateDslRef: string;
+  candidateDslDiffRef: string;
+  candidateBriefRef?: string;
+  candidateSceneIrRef?: string;
+  candidateSceneIrDiffRef?: string;
+  candidateAssetIntentManifestRef?: string;
+  candidateAssetDiffRef?: string;
+  candidateRunRef?: string;
+  candidateRuntimeCapabilityReportRef?: string;
+  activeRunMutation: false;
 };
 
 export type SemanticAmendmentPreviewState = {
@@ -174,6 +195,7 @@ export type AcceptSemanticAmendmentResponse = {
       candidateRunId: string;
       activeRunId: string;
     };
+    candidateArtifactCheckpoint?: SemanticAmendmentCandidateArtifactCheckpoint;
   };
   undo_checkpoint?: {
     proposalId: string;
@@ -183,6 +205,7 @@ export type AcceptSemanticAmendmentResponse = {
     beforeActiveRunId?: string;
     acceptedRunId?: string;
     acceptedVersionId?: string;
+    candidateArtifactCheckpoint?: SemanticAmendmentCandidateArtifactCheckpoint;
   };
   artifact_refs: SemanticAmendmentArtifactRef[];
 };
@@ -198,6 +221,7 @@ export type RejectSemanticAmendmentResponse = {
     previousReviewState: SemanticAmendmentReviewState;
     reason?: string;
     requiresRuntimeRevert: boolean;
+    candidateArtifactCheckpoint?: SemanticAmendmentCandidateArtifactCheckpoint;
   };
   artifact_refs: SemanticAmendmentArtifactRef[];
 };
@@ -212,6 +236,7 @@ export type UndoSemanticAmendmentResponse = {
     undoneAt: string;
     restoredRunId?: string;
     reason?: string;
+    candidateArtifactCheckpoint?: SemanticAmendmentCandidateArtifactCheckpoint;
   };
   artifact_refs: SemanticAmendmentArtifactRef[];
 };

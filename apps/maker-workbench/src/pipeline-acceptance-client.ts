@@ -27,6 +27,8 @@ export type PipelineAcceptanceView =
       runId: string;
       overallStatus: string;
       previewable: boolean;
+      renderFidelityStatus: string;
+      renderFidelityReason: string;
       requiredPassCount: number;
       requiredFailCount: number;
       warnCount: number;
@@ -52,6 +54,8 @@ export function buildPipelineAcceptanceView(report: PipelineAcceptanceReport): P
     runId: sanitizeWorkbenchText(report.runId),
     overallStatus: sanitizeWorkbenchText(report.overallStatus),
     previewable: report.previewable,
+    renderFidelityStatus: sanitizeWorkbenchText(report.renderFidelity.status),
+    renderFidelityReason: sanitizeWorkbenchText(report.renderFidelity.reason),
     requiredPassCount: checks.filter((check) => check.required && check.status === 'pass').length,
     requiredFailCount: checks.filter((check) => check.required && check.status === 'fail').length,
     warnCount: checks.filter((check) => check.status === 'warn').length,
@@ -125,11 +129,13 @@ function renderReadyView(view: Extract<PipelineAcceptanceView, { status: 'ready'
       'div',
       { className: 'flex flex-wrap items-center gap-2' },
       h('span', { className: statusClass(view.overallStatus) }, view.overallStatus.toUpperCase()),
+      h('span', { className: renderFidelityClass(view.renderFidelityStatus) }, `Render fidelity: ${view.renderFidelityStatus}`),
       h('span', { className: 'rounded-full border border-[#d0b993] bg-[#fff7e8] px-2.5 py-1 text-xs font-black text-[#69645d]' }, `Previewable: ${view.previewable ? 'Yes' : 'No'}`)
     ),
     h(
       'div',
       { className: 'grid gap-1 text-xs font-bold text-[#69645d]' },
+      h('span', undefined, view.renderFidelityReason),
       h('span', undefined, `Required checks: ${view.requiredPassCount} passed / ${view.requiredFailCount} failed`),
       h('span', undefined, `Warnings: ${view.warnCount}`),
       h('span', undefined, `Skipped: ${view.skippedCount}`)
@@ -194,6 +200,19 @@ function statusClass(status: string): string {
     return 'rounded-full border border-[#f2a39b] bg-[#ffe2dc] px-2 py-0.5 font-black text-[#c93d35]';
   }
   if (status === 'warn') {
+    return 'rounded-full border border-[#f4cc72] bg-[#fff0bf] px-2 py-0.5 font-black text-[#9b6a14]';
+  }
+  return 'rounded-full border border-[#d0b993] bg-[#fff7e8] px-2 py-0.5 font-black text-[#69645d]';
+}
+
+function renderFidelityClass(status: string): string {
+  if (status === 'PASSED') {
+    return 'rounded-full border border-[#91d49b] bg-[#dff3df] px-2 py-0.5 font-black text-[#208a4d]';
+  }
+  if (status === 'FAILED') {
+    return 'rounded-full border border-[#f2a39b] bg-[#ffe2dc] px-2 py-0.5 font-black text-[#c93d35]';
+  }
+  if (status === 'PASSED_WITH_OPTIONAL_FALLBACKS' || status === 'VISUALLY_DEGRADED') {
     return 'rounded-full border border-[#f4cc72] bg-[#fff0bf] px-2 py-0.5 font-black text-[#9b6a14]';
   }
   return 'rounded-full border border-[#d0b993] bg-[#fff7e8] px-2 py-0.5 font-black text-[#69645d]';

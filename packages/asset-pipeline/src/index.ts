@@ -1,5 +1,13 @@
 export { buildAssetPlanFromIr } from './plan.js';
 export {
+  AssetIntentManifestSchema,
+  AssetIntentSchema,
+  buildAssetIntentManifest,
+  summarizeAssetIntentResolutionFallbacks,
+  type AssetIntent,
+  type AssetIntentManifest
+} from './asset-intent-manifest.js';
+export {
   ArtAssetMetadataSchema,
   parseArtAssetMetadata,
   type ArtAssetMetadata

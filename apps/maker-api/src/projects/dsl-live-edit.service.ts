@@ -135,7 +135,15 @@ export class DslLiveEditService {
       const artifact = GameDslArtifactSchema.parse(
         JSON.parse(await readFile(this.workspace.getModelOutputPath(input.projectId, input.runId, 'game_dsl.json'), 'utf8'))
       );
-      return await this.initializeLiveVersion({ ...input, artifact });
+      const version: LiveVersionRecord = {
+        versionId: 'v_initial',
+        dslId: artifact.dslId,
+        dslArtifactPath: this.workspace.getModelOutputPath(input.projectId, input.runId, 'game_dsl.json'),
+        updatedAt: new Date().toISOString()
+      };
+      await mkdir(this.workspace.getLiveDir(input.projectId, input.runId), { recursive: true });
+      await writeJson(this.workspace.getLiveCurrentVersionPath(input.projectId, input.runId), version);
+      return version;
     }
   }
 

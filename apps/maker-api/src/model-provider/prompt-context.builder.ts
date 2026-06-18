@@ -247,14 +247,39 @@ const validSideScrollingRunAndGunExample: RawGameDsl = {
     movement: { type: 'horizontal', speed_px_per_sec: 260 },
     controller: 'run_jump_shoot',
     aiming: { mode: 'multi_direction' },
-    actions: [{ id: 'fire', type: 'shoot_projectile', cooldown_ms: 260, spawns: 'pulse_bolt' }]
+    actions: [{ id: 'fire', type: 'shoot_projectile', cooldown_ms: 260, spawns: 'pulse_bolt' }],
+    visual: {
+      assetIntentRef: 'player_red_runner',
+      styleRef: 'style_pixel_16',
+      facingMode: 'flip_x',
+      animationSetRef: 'anim_run_jump_shoot',
+      tintIntent: 'red armor',
+      silhouetteIntent: 'compact side-view runner'
+    }
   },
   entities: [
     { id: 'pulse_bolt', kind: 'projectile', label: 'Pulse Bolt', damage: 1, movement: { type: 'move_right', speed_px_per_sec: 620 } },
     { id: 'drone', kind: 'enemy', label: 'Drone', count: 8, health: 1, movement: { type: 'patrol', speed_px_per_sec: 90 } }
   ],
   projectiles: [{ id: 'pulse_bolt_spec', label: 'Pulse Bolt', damage: 1, speed_px_per_sec: 620 }],
-  enemyTypes: [{ id: 'drone_type', label: 'Drone', health: 1, movement: { type: 'patrol', speed_px_per_sec: 90 } }],
+  enemyTypes: [
+    {
+      id: 'drone_type',
+      label: 'Drone',
+      health: 1,
+      movement: { type: 'patrol', speed_px_per_sec: 90 },
+      behaviorRef: 'behavior_ground_patrol',
+      visual: {
+        assetIntentRef: 'enemy_mech_drone',
+        styleRef: 'style_pixel_16',
+        facingMode: 'flip_x',
+        animationSetRef: 'anim_enemy_patrol'
+      },
+      colliderRef: 'collider_small_enemy',
+      movementRef: 'movement_ground_patrol',
+      tags: ['mechanical']
+    }
+  ],
   level: {
     segments: [
       { id: 'segment_intro', startX: 0, endX: 720 },
@@ -269,6 +294,70 @@ const validSideScrollingRunAndGunExample: RawGameDsl = {
       { id: 'spawn_bridge_drone', enemyType: 'drone_type', trigger: 'reach_x', x: 1080, count: 5 }
     ]
   },
+  scenes: [
+    {
+      id: 'level_01',
+      theme: {
+        id: 'snow_base_night',
+        style: 'pixel art 16 bit',
+        biome: 'snow base',
+        faction: 'mechanical patrol',
+        timeOfDay: 'night',
+        atmosphere: 'cold bright edges',
+        paletteIntent: 'blue white red accents',
+        terrainMaterialSet: 'terrain_snow_metal',
+        propFamily: 'base_outpost',
+        lightingIntent: 'moonlit cold lights'
+      },
+      backgroundLayers: [
+        {
+          id: 'sky_night',
+          role: 'sky',
+          assetIntentRef: 'scene_night_sky',
+          parallax: 0,
+          fixedToCamera: true,
+          depth: -40
+        },
+        {
+          id: 'base_far',
+          role: 'far',
+          assetIntentRef: 'bg_snow_base_far',
+          parallax: 0.25,
+          repeatX: true,
+          depth: -30
+        }
+      ],
+      platforms: [
+        {
+          id: 'ground_intro_visual',
+          x: 0,
+          y: 500,
+          width: 1280,
+          height: 40,
+          shape: 'rectangle',
+          materialRef: 'terrain_snow_metal',
+          visualAssetIntentRef: 'tile_snow_metal_ground',
+          collision: { enabled: true },
+          tags: ['ground']
+        },
+        {
+          id: 'platform_bridge_visual',
+          x: 980,
+          y: 380,
+          width: 280,
+          height: 24,
+          shape: 'rectangle',
+          materialRef: 'terrain_snow_metal',
+          visualAssetIntentRef: 'tile_snow_metal_platform',
+          collision: { enabled: true },
+          tags: ['platform']
+        }
+      ],
+      playerSpawn: { x: 120, y: 452 },
+      enemyInstances: [{ id: 'enemy_intro_01', archetypeRef: 'drone_type', x: 720, y: 450, spawnRule: 'spawn_intro_drone' }],
+      goal: { id: 'goal_exit_01', kind: 'reach', x: 1240, y: 460, visualAssetIntentRef: 'goal_exit_beacon' }
+    }
+  ],
   pickups: [{ id: 'field_medkit', label: 'Medkit', kind: 'health', x: 720, y: 450 }],
   winLose: { win: 'reach_exit', lose: 'player_health_zero', lives: 3, checkpoints: [0, 720] },
   rules: {
@@ -333,9 +422,14 @@ export function buildRawDslPromptContext(params: BuildRawDslPromptContextParams)
       aiming_modes: ['multi_direction', 'eight_direction'],
       terrain_kinds: ['platform', 'ground', 'slope'],
       spawn_triggers: ['enter_segment', 'reach_x'],
-      pickup_kinds: ['health', 'score', 'weapon']
+      pickup_kinds: ['health', 'score', 'weapon'],
+      scene_background_roles: ['sky', 'far', 'mid', 'near', 'overlay'],
+      scene_platform_shapes: ['rectangle', 'slope', 'one_way'],
+      scene_goal_kinds: ['reach', 'destroy', 'collect', 'survive'],
+      scene_theme_time_of_day: ['day', 'night', 'dawn', 'dusk', 'interior'],
+      visual_facing_modes: ['flip_x', 'separate_animations']
     },
-    forbidden_terms: ['phaser', 'pixi', 'godot', 'cocos', 'scene', 'sprite', 'texture', 'physics', 'arcade', 'matter', 'canvas', 'webgl'],
+    forbidden_terms: ['phaser', 'pixi', 'godot', 'cocos', 'sprite', 'texture', 'physics', 'arcade', 'matter', 'canvas', 'webgl'],
     forbidden_fields: [
       'script',
       'custom_script',
@@ -378,6 +472,8 @@ export function buildRawDslPromptContext(params: BuildRawDslPromptContextParams)
       'If shooter uses target_score instead, target must be less than or equal to the primary enemy projectile_hit score_add value multiplied by the primary enemy count.',
       'For shooter in P0, do not include collectibles or multiple enemy kinds because the current runtime template only consumes one primary projectile and one primary enemy.',
       'Only dodger hazard right_edge_wave and dodger collectible fixed_positions may use spawn. Do not add spawn to collector, shooter, projectile or enemy entities.',
+      'For side_scrolling_run_and_gun, use scenes[] to express theme, backgroundLayers, platforms, playerSpawn, enemyInstances, and goal. Scene refs such as scene_night_sky are allowed Raw DSL references, but do not output engine objects or rendering API names.',
+      'Scene enemyInstances[].archetypeRef must reference enemyTypes[].id. enemyInstances[].spawnRule must reference level.spawns[].id. Goal entityRef must reference a target allowed by the goal kind.',
       'Do not output a different genre by renaming entities while keeping incompatible mechanics.',
       'Do not invent unsupported mechanics when they cannot be represented by game-dsl-v0.1.'
     ],

@@ -30,6 +30,7 @@ describe('Pipeline artifact index contract', () => {
       runId,
       compileFiles: [
         'public/assets/player.svg',
+        'asset_intent_manifest.json',
         'asset_plan.json',
         'public/asset_manifest.json',
         'asset_resolution_report.json',
@@ -43,6 +44,8 @@ describe('Pipeline artifact index contract', () => {
       ],
       buildLogPresent: true,
       qaReportPresent: true
+      ,
+      renderFidelityReportPresent: true
     });
     const second = buildValidPipelineArtifactIndex({
       projectId,
@@ -50,6 +53,8 @@ describe('Pipeline artifact index contract', () => {
       compileFiles: [...index.artifacts.filter((artifact) => artifact.artifactRoot === 'generated-project').map((artifact) => artifact.path)].reverse(),
       buildLogPresent: true,
       qaReportPresent: true
+      ,
+      renderFidelityReportPresent: true
     });
 
     expect(index).toEqual(second);
@@ -64,7 +69,11 @@ describe('Pipeline artifact index contract', () => {
       'gameDsl',
       'gameDslCandidate',
       'dslValidationReport',
+      'dslConsumptionReport',
+      'sceneIr',
+      'runtimeSceneBindingReport',
       'runtimeCapabilityReport',
+      'assetIntentManifest',
       'assetPlan',
       'publicAssetManifest',
       'phaserPreviewManifest',
@@ -76,6 +85,7 @@ describe('Pipeline artifact index contract', () => {
       'semanticModelReport',
       'buildLog',
       'qaReport',
+      'renderFidelityReport',
       'pipelineAcceptanceReport',
       'pipelineArtifactIndex'
     ]);
@@ -85,6 +95,10 @@ describe('Pipeline artifact index contract', () => {
         expect.objectContaining({ id: 'intentPlan', status: 'present', artifactRoot: 'model-output', path: 'intent_plan.json' }),
         expect.objectContaining({ id: 'gameDsl', status: 'present', artifactRoot: 'model-output', path: 'game_dsl.json' }),
         expect.objectContaining({ id: 'gameDslCandidate', status: 'skipped', reason: 'valid_dsl_path_uses_game_dsl_json' }),
+        expect.objectContaining({ id: 'dslConsumptionReport', status: 'present', artifactRoot: 'model-output', path: 'dsl_consumption_report.json', producedBy: 'dsl-consumption' }),
+        expect.objectContaining({ id: 'sceneIr', status: 'skipped', required: false, artifactRoot: 'generated-project', path: 'game.scene.ir.json', role: 'runtime' }),
+        expect.objectContaining({ id: 'runtimeSceneBindingReport', status: 'skipped', required: false, artifactRoot: 'generated-project', path: 'runtime_scene_binding_report.json', role: 'runtime' }),
+        expect.objectContaining({ id: 'assetIntentManifest', status: 'present', artifactRoot: 'generated-project', path: 'asset_intent_manifest.json' }),
         expect.objectContaining({ id: 'publicAssetManifest', status: 'present', artifactRoot: 'generated-project', path: 'public/asset_manifest.json' }),
         expect.objectContaining({ id: 'phaserPreviewManifest', status: 'present', path: 'shooter/src/asset-manifest.generated.json' }),
         expect.objectContaining({ id: 'assetPipelineReport', status: 'present', path: 'asset_pipeline_report.json' }),
@@ -94,6 +108,7 @@ describe('Pipeline artifact index contract', () => {
         expect.objectContaining({ id: 'semanticModelReport', status: 'present', path: 'semantic_model_report.json', producedBy: 'compiler' }),
         expect.objectContaining({ id: 'buildLog', status: 'present', artifactRoot: 'build-log', path: `${runId}.log` }),
         expect.objectContaining({ id: 'qaReport', status: 'present', artifactRoot: 'qa-report', path: `${runId}.json` }),
+        expect.objectContaining({ id: 'renderFidelityReport', status: 'present', artifactRoot: 'model-output', path: 'render_fidelity_report.json', producedBy: 'qa' }),
         expect.objectContaining({ id: 'pipelineAcceptanceReport', status: 'present', artifactRoot: 'model-output', path: 'pipeline_acceptance_report.json' }),
         expect.objectContaining({ id: 'pipelineArtifactIndex', status: 'present', artifactRoot: 'model-output', path: 'pipeline_artifact_index.json' })
       ])
@@ -105,6 +120,49 @@ describe('Pipeline artifact index contract', () => {
     }
   });
 
+  it('marks Scene IR present and required for side-scrolling compile files', () => {
+    const index = buildValidPipelineArtifactIndex({
+      projectId,
+      runId,
+      compileFiles: [
+        'game.scene.ir.json',
+        'runtime_scene_binding_report.json',
+        'asset_intent_manifest.json',
+        'asset_plan.json',
+        'public/asset_manifest.json',
+        'asset_resolution_report.json',
+        'side_scrolling_run_and_gun/src/runtime-plan.generated.json',
+        'side_scrolling_run_and_gun/src/asset-manifest.generated.json',
+        'asset_pipeline_report.json',
+        'asset_library_usage_report.json',
+        'asset_binding_trace_report.json'
+      ]
+    });
+
+    expect(index.artifacts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'sceneIr',
+          role: 'runtime',
+          artifactRoot: 'generated-project',
+          path: 'game.scene.ir.json',
+          status: 'present',
+          required: true,
+          producedBy: 'compiler'
+        }),
+        expect.objectContaining({
+          id: 'runtimeSceneBindingReport',
+          role: 'runtime',
+          artifactRoot: 'generated-project',
+          path: 'runtime_scene_binding_report.json',
+          status: 'present',
+          required: true,
+          producedBy: 'runtime-scene-binding'
+        })
+      ])
+    );
+  });
+
   it('marks downstream artifacts skipped on invalid DSL without consulting stale generated-project files', async () => {
     const index = buildInvalidDslPipelineArtifactIndex({ projectId, runId });
 
@@ -114,12 +172,17 @@ describe('Pipeline artifact index contract', () => {
         expect.objectContaining({ id: 'generationInputReport', status: 'present', path: 'generation_input_report.json' }),
         expect.objectContaining({ id: 'gameDslCandidate', status: 'present', path: 'game_dsl.candidate.json' }),
         expect.objectContaining({ id: 'dslValidationReport', status: 'present', path: 'dsl_validation_report.json' }),
+        expect.objectContaining({ id: 'dslConsumptionReport', status: 'skipped', reason: 'dsl_validation_failed_before_consumption_audit' }),
+        expect.objectContaining({ id: 'sceneIr', status: 'skipped', reason: 'dsl_validation_failed_before_compile', role: 'runtime' }),
+        expect.objectContaining({ id: 'runtimeSceneBindingReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile', role: 'runtime' }),
+        expect.objectContaining({ id: 'assetIntentManifest', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),
         expect.objectContaining({ id: 'assetPipelineReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),
         expect.objectContaining({ id: 'assetLibraryUsageReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),
         expect.objectContaining({ id: 'assetBindingTraceReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),
         expect.objectContaining({ id: 'semanticExtractionTraceReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),
         expect.objectContaining({ id: 'semanticModelReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),
         expect.objectContaining({ id: 'pipelineAcceptanceReport', status: 'present', path: 'pipeline_acceptance_report.json' }),
+        expect.objectContaining({ id: 'renderFidelityReport', status: 'skipped', reason: 'dsl_validation_failed_before_qa' }),
         expect.objectContaining({ id: 'qaReport', status: 'skipped', reason: 'dsl_validation_failed_before_qa' })
       ])
     );

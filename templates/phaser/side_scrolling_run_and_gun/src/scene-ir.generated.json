@@ -1,0 +1,85 @@
+{
+  "schemaVersion": "step33.scene-ir.v1",
+  "projectId": "proj_template_default",
+  "runId": "run_template_default",
+  "runtimeProfile": "side_scrolling_run_and_gun.v1",
+  "source": "runtime_plan_derived",
+  "scenes": [
+    {
+      "id": "runtime_plan_scene",
+      "world": { "width": 1280, "height": 540, "viewportWidth": 960, "viewportHeight": 540 },
+      "camera": {
+        "mode": "side_follow",
+        "followTarget": "player",
+        "bounds": { "x": 0, "y": 0, "width": 1280, "height": 540 }
+      },
+      "backgrounds": [
+        {
+          "runtimeId": "background.runtime_plan_default",
+          "role": "sky",
+          "parallax": 0,
+          "fixedToCamera": true,
+          "depth": -40,
+          "provenanceRef": "background.runtime_plan_default"
+        }
+      ],
+      "platforms": [
+        {
+          "runtimeId": "platform.ground_intro",
+          "kind": "ground",
+          "x": 0,
+          "y": 500,
+          "width": 1280,
+          "height": 40,
+          "shape": "rectangle",
+          "collider": { "runtimeId": "collider.ground_intro", "enabled": true },
+          "provenanceRef": "platform.ground_intro"
+        },
+        {
+          "runtimeId": "platform.platform_bridge",
+          "kind": "platform",
+          "x": 980,
+          "y": 380,
+          "width": 280,
+          "height": 24,
+          "shape": "rectangle",
+          "collider": { "runtimeId": "collider.platform_bridge", "enabled": true },
+          "provenanceRef": "platform.platform_bridge"
+        }
+      ],
+      "player": { "runtimeId": "entity.player", "prefabRef": "player.run_and_gun.v1", "x": 120, "y": 452, "provenanceRef": "entity.player" },
+      "enemyInstances": [
+        {
+          "runtimeId": "spawn.spawn_intro_drone",
+          "archetypeRef": "drone_type",
+          "prefabRef": "enemy.drone_type.v1",
+          "x": 640,
+          "y": 458,
+          "count": 3,
+          "spawnRule": "spawn_intro_drone",
+          "provenanceRef": "spawn.spawn_intro_drone"
+        },
+        {
+          "runtimeId": "spawn.spawn_bridge_drone",
+          "archetypeRef": "drone_type",
+          "prefabRef": "enemy.drone_type.v1",
+          "x": 1080,
+          "y": 458,
+          "count": 5,
+          "spawnRule": "spawn_bridge_drone",
+          "provenanceRef": "spawn.spawn_bridge_drone"
+        }
+      ],
+      "goals": [{ "runtimeId": "goal.reach_exit", "kind": "reach", "x": 1240, "y": 460, "provenanceRef": "goal.reach_exit" }]
+    }
+  ],
+  "provenance": {
+    "background.runtime_plan_default": { "source": "system", "dslPath": "/world/visual_theme" },
+    "platform.ground_intro": { "source": "runtime_plan", "dslPath": "/runtime_plan/side_scrolling/platforms/0" },
+    "platform.platform_bridge": { "source": "runtime_plan", "dslPath": "/runtime_plan/side_scrolling/platforms/1" },
+    "entity.player": { "source": "runtime_plan", "dslPath": "/runtime_plan/side_scrolling/player" },
+    "spawn.spawn_intro_drone": { "source": "runtime_plan", "dslPath": "/runtime_plan/side_scrolling/waves/0" },
+    "spawn.spawn_bridge_drone": { "source": "runtime_plan", "dslPath": "/runtime_plan/side_scrolling/waves/1" },
+    "goal.reach_exit": { "source": "runtime_plan", "dslPath": "/runtime_plan/side_scrolling/winCondition" }
+  }
+}

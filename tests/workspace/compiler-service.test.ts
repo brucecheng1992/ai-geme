@@ -9,8 +9,8 @@ import { AssetPipelineReportSchema } from '../../apps/maker-api/src/compiler/ass
 import type { RuntimeCompileResult, RuntimeCompileSuccess } from '../../apps/maker-api/src/compiler/compiler.types.js';
 import { ViteBuildRunnerService } from '../../apps/maker-api/src/compiler/vite-build-runner.service.js';
 import { LocalWorkspaceService } from '../../apps/maker-api/src/workspace/local-workspace.service.js';
-import { AssetManifestSchema, AssetResolutionReportSchema } from '../../packages/asset-pipeline/src/index.js';
-import { SemanticExtractionTraceReportSchema, SemanticModelReportSchema, validateAndNormalizeRawGameDsl } from '../../packages/game-dsl/src/index.js';
+import { AssetIntentManifestSchema, AssetManifestSchema, AssetResolutionReportSchema } from '../../packages/asset-pipeline/src/index.js';
+import { SceneIrSchema, SemanticExtractionTraceReportSchema, SemanticModelReportSchema, validateAndNormalizeRawGameDsl } from '../../packages/game-dsl/src/index.js';
 import { createCollectorRawDsl, createDodgerRawDsl, createShooterRawDsl, createSideScrollingRunAndGunRawDsl } from '../contracts/fixtures.js';
 
 const projectId = 'proj_20260610_020000_abcd';
@@ -79,6 +79,14 @@ describe('Compiler + Build + Preview services', () => {
       semanticTraceRef: { artifact: 'semantic_extraction_trace_report.json' }
     });
     await expect(readFile(join(result.outputDir, 'asset_plan.json'), 'utf8')).resolves.toContain('"asset-plan-v0.1"');
+    const assetIntentManifest = AssetIntentManifestSchema.parse(JSON.parse(await readFile(join(result.outputDir, 'asset_intent_manifest.json'), 'utf8')));
+    expect(result.files).toContain('asset_intent_manifest.json');
+    expect(assetIntentManifest).toMatchObject({
+      version: 'asset-intent-manifest-v0.1',
+      projectId,
+      sourceArtifacts: { assetPlan: 'asset_plan.json' },
+      summary: { requestRequired: 0 }
+    });
     await expect(readFile(join(result.outputDir, 'public/asset_manifest.json'), 'utf8')).resolves.toContain('"sourcePack": "agm-tiny-collector"');
     await expect(readFile(join(result.outputDir, 'public/asset_manifest.json'), 'utf8')).resolves.toContain('"licenseId": "CC0-1.0"');
     await expect(readFile(join(result.outputDir, 'public/assets/player.svg'), 'utf8')).resolves.toContain('<svg');
@@ -124,6 +132,7 @@ describe('Compiler + Build + Preview services', () => {
       projectId,
       templateId: 'collector_v1',
       artifacts: {
+        assetIntentManifest: 'asset_intent_manifest.json',
         assetPlan: 'asset_plan.json',
         publicManifest: 'public/asset_manifest.json',
         previewManifest: 'collector/src/asset-manifest.generated.json',
@@ -278,18 +287,66 @@ describe('Compiler + Build + Preview services', () => {
     });
     await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/GameScene.ts'), 'utf8')).resolves.toContain('SideScrollingRunAndGunScene');
     await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/runtime-plan.generated.json'), 'utf8')).resolves.toContain('"side_scrolling"');
+    await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/scene-ir.generated.json'), 'utf8')).resolves.toContain('"step33.scene-ir.v1"');
+    const sceneIr = SceneIrSchema.parse(JSON.parse(await readFile(join(result.outputDir, 'game.scene.ir.json'), 'utf8')));
+    const runtimeSceneBindingReport = JSON.parse(await readFile(join(result.outputDir, 'runtime_scene_binding_report.json'), 'utf8')) as {
+      reportVersion?: string;
+      status?: string;
+      summary?: { backgroundCount?: number; platformCount?: number; enemyInstanceCount?: number; goalCount?: number; unboundCount?: number };
+      bindings?: Array<{ kind?: string; sceneRuntimeId?: string; runtimeInstanceId?: string; sourceDslPath?: string; status?: string }>;
+      sourceArtifacts?: Record<string, string>;
+    };
+    const sideScrollingIntentManifest = AssetIntentManifestSchema.parse(JSON.parse(await readFile(join(result.outputDir, 'asset_intent_manifest.json'), 'utf8')));
+    expect(sceneIr).toMatchObject({
+      schemaVersion: 'step33.scene-ir.v1',
+      source: 'runtime_plan_derived',
+      scenes: [expect.objectContaining({ id: 'runtime_plan_scene' })]
+    });
+    expect(runtimeSceneBindingReport).toMatchObject({
+      reportVersion: 'runtime-scene-binding-report.v1',
+      status: 'fail',
+      sourceArtifacts: {
+        sceneIr: 'game.scene.ir.json',
+        generatedSceneIr: 'side_scrolling_run_and_gun/src/scene-ir.generated.json',
+        runtimePlan: 'side_scrolling_run_and_gun/src/runtime-plan.generated.json'
+      },
+      summary: {
+        backgroundCount: sceneIr.scenes[0].backgrounds.length,
+        platformCount: sceneIr.scenes[0].platforms.length,
+        enemyInstanceCount: sceneIr.scenes[0].enemyInstances.length,
+        goalCount: sceneIr.scenes[0].goals.length,
+        boundCount: 0,
+        unboundCount:
+          sceneIr.scenes[0].backgrounds.length +
+          sceneIr.scenes[0].platforms.length +
+          1 +
+          sceneIr.scenes[0].enemyInstances.length +
+          sceneIr.scenes[0].goals.length
+      },
+      bindings: expect.arrayContaining([
+        expect.objectContaining({ kind: 'player', sceneRuntimeId: 'entity.player', runtimeInstanceId: null, status: 'unbound', reason: 'runtime_observation_pending' }),
+        expect.objectContaining({ kind: 'platform', sceneRuntimeId: sceneIr.scenes[0].platforms[0].runtimeId, status: 'unbound' }),
+        expect.objectContaining({ kind: 'goal', sceneRuntimeId: sceneIr.scenes[0].goals[0].runtimeId, status: 'unbound' })
+      ])
+    });
+    expect(sideScrollingIntentManifest.sourceArtifacts).toEqual({ assetPlan: 'asset_plan.json', sceneIr: 'game.scene.ir.json' });
     await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/template-params.generated.json'), 'utf8')).resolves.toContain('"assetLabels"');
     await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/asset-manifest.generated.json'), 'utf8')).resolves.toContain('"loadKey": "agm.enemy"');
     await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/main.ts'), 'utf8')).resolves.toContain('runtime-plan.generated.json');
+    await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/main.ts'), 'utf8')).resolves.toContain('scene-ir.generated.json');
     await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/main.ts'), 'utf8')).resolves.toContain('live-edit-registry.generated.json');
     await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/live-edit-registry.generated.json'), 'utf8')).resolves.toContain(`"runId": "${runId}"`);
     await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/live-edit-registry.generated.json'), 'utf8')).resolves.toContain('"/level/waves/*/x"');
     await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/main.ts'), 'utf8')).resolves.toContain('new SideScrollingRunAndGunScene');
     await expect(readFile(join(result.outputDir, 'src/main.ts'), 'utf8')).resolves.toContain("../side_scrolling_run_and_gun/src/main.js");
     expect(result.files).toContain('side_scrolling_run_and_gun/src/runtime-plan.generated.json');
+    expect(result.files).toContain('side_scrolling_run_and_gun/src/scene-ir.generated.json');
     expect(result.files).toContain('side_scrolling_run_and_gun/src/side-scrolling-live-edit-bridge.ts');
     expect(result.files).toContain('side_scrolling_run_and_gun/src/live-edit-registry.generated.json');
     expect(result.files).toContain('side_scrolling_run_and_gun/src/asset-manifest.generated.json');
+    expect(result.files).toContain('game.scene.ir.json');
+    expect(result.files).toContain('runtime_scene_binding_report.json');
+    expect(result.files).toContain('asset_intent_manifest.json');
   });
 
   it('writes optional dodger collectible params when the DSL includes coins', async () => {

@@ -9,6 +9,7 @@ import { AssetManifestSchema, type AssetManifest } from '../../packages/asset-pi
 
 const projectId = 'proj_20260614_asset_report';
 const compileFiles = [
+  'asset_intent_manifest.json',
   'asset_plan.json',
   'public/asset_manifest.json',
   'asset_resolution_report.json',
@@ -121,6 +122,7 @@ async function writeReportFixture(rootDir: string, manifest: AssetManifest, main
   await mkdir(join(rootDir, 'public', 'assets'), { recursive: true });
   await mkdir(join(rootDir, 'collector', 'src'), { recursive: true });
   await writeFile(join(rootDir, 'public', 'assets', 'player.svg'), '<svg role="img"></svg>\n', 'utf8');
+  await writeFile(join(rootDir, 'asset_intent_manifest.json'), '{"version":"asset-intent-manifest-v0.1"}\n', 'utf8');
   await writeFile(join(rootDir, 'public', 'asset_manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   await writeFile(join(rootDir, 'collector', 'src', 'asset-manifest.generated.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   await writeFile(join(rootDir, 'collector', 'src', 'main.ts'), mainEntry, 'utf8');

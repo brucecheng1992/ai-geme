@@ -17,6 +17,10 @@ export const SemanticAmendmentArtifactRefSchema = z.strictObject({
     'candidateBrief',
     'candidateDsl',
     'candidateDslDiff',
+    'candidateSceneIr',
+    'candidateSceneIrDiff',
+    'candidateAssetIntentManifest',
+    'candidateAssetDiff',
     'candidateRun',
     'candidateRuntimeCapabilityReport',
     'previewState',
@@ -50,10 +54,31 @@ export type SemanticAmendmentCandidatePreview = {
   candidateBriefRef: string;
   candidateDslRef: string;
   candidateDslDiffRef: string;
+  candidateSceneIrRef?: string;
+  candidateSceneIrDiffRef?: string;
+  candidateAssetIntentManifestRef?: string;
+  candidateAssetDiffRef?: string;
   candidateRunRef: string;
   candidateRuntimeCapabilityReportRef: string;
   previewAvailable: boolean;
   qaStatus: 'not_run' | 'passed' | 'failed';
+};
+
+export type SemanticAmendmentCandidateArtifactCheckpoint = {
+  proposalId: string;
+  projectId: string;
+  sourceRunId: string;
+  candidateRunId: string;
+  candidateDslRef: string;
+  candidateDslDiffRef: string;
+  candidateBriefRef?: string;
+  candidateSceneIrRef?: string;
+  candidateSceneIrDiffRef?: string;
+  candidateAssetIntentManifestRef?: string;
+  candidateAssetDiffRef?: string;
+  candidateRunRef?: string;
+  candidateRuntimeCapabilityReportRef?: string;
+  activeRunMutation: false;
 };
 
 export type SemanticAmendmentPreviewState = {
@@ -81,6 +106,7 @@ export type SemanticAmendmentAcceptLog = {
     candidateRunId: string;
     activeRunId: string;
   };
+  candidateArtifactCheckpoint?: SemanticAmendmentCandidateArtifactCheckpoint;
 };
 
 export type SemanticAmendmentRejectLog = {
@@ -91,6 +117,7 @@ export type SemanticAmendmentRejectLog = {
   previousReviewState: SemanticEditProposal['reviewState'];
   reason?: string;
   requiresRuntimeRevert: boolean;
+  candidateArtifactCheckpoint?: SemanticAmendmentCandidateArtifactCheckpoint;
 };
 
 export type SemanticAmendmentVersionSummary = Omit<LiveVersionRecord, 'dslArtifactPath'>;
@@ -104,6 +131,7 @@ export type SemanticAmendmentUndoCheckpoint = {
   beforeActiveRunId?: string;
   acceptedRunId?: string;
   acceptedVersionId?: string;
+  candidateArtifactCheckpoint?: SemanticAmendmentCandidateArtifactCheckpoint;
 };
 
 export type SemanticAmendmentUndoCheckpointArtifact = Omit<SemanticAmendmentUndoCheckpoint, 'beforeAcceptVersion'> & {
@@ -118,6 +146,7 @@ export type SemanticAmendmentUndoLog = {
   restoredVersion?: SemanticAmendmentVersionSummary;
   restoredRunId?: string;
   reason?: string;
+  candidateArtifactCheckpoint?: SemanticAmendmentCandidateArtifactCheckpoint;
 };
 
 export type SemanticAmendmentUndoLogArtifact = Omit<SemanticAmendmentUndoLog, 'restoredVersion'> & {

@@ -2,6 +2,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import type { NormalizedGameIr } from '../../game-dsl/src/index.js';
+import type { SceneIr } from '../../game-dsl/src/index.js';
+import { buildAssetIntentManifest, type AssetIntentManifest } from './asset-intent-manifest.js';
 import { resolveLocalAssetPack } from './local-asset-pack-provider.js';
 import { buildAssetPlanFromIr } from './plan.js';
 import { buildAssetResolutionReport, buildTemplateSemanticFit } from './resolution-report.js';
@@ -10,6 +12,7 @@ import { renderTemplateSvg } from './template-svg-provider.js';
 
 export type WriteAssetArtifactsResult = {
   plan: AssetPlan;
+  intentManifest: AssetIntentManifest;
   manifest: AssetManifest;
   files: string[];
 };
@@ -18,14 +21,17 @@ export async function writeAssetArtifacts(input: {
   projectId: string;
   projectDir: string;
   ir: NormalizedGameIr;
+  sceneIr?: SceneIr;
   assetPacksDir?: string;
 }): Promise<WriteAssetArtifactsResult> {
   const plan = buildAssetPlanFromIr(input.projectId, input.ir);
+  const intentManifest = buildAssetIntentManifest({ projectId: input.projectId, plan, sceneIr: input.sceneIr });
   const publicDir = join(input.projectDir, 'public');
   const assetsDir = join(publicDir, 'assets');
 
   await mkdir(assetsDir, { recursive: true });
   await writeFile(join(input.projectDir, 'asset_plan.json'), `${JSON.stringify(plan, null, 2)}\n`, 'utf8');
+  await writeFile(join(input.projectDir, 'asset_intent_manifest.json'), `${JSON.stringify(intentManifest, null, 2)}\n`, 'utf8');
 
   const localPackResolution = await resolveLocalAssetPack({ plan, projectAssetsDir: assetsDir, packsDir: input.assetPacksDir });
   const manifest =
@@ -42,8 +48,9 @@ export async function writeAssetArtifacts(input: {
 
   return {
     plan,
+    intentManifest,
     manifest,
-    files: ['asset_plan.json', 'public/asset_manifest.json', 'asset_resolution_report.json', ...assetFiles]
+    files: ['asset_intent_manifest.json', 'asset_plan.json', 'public/asset_manifest.json', 'asset_resolution_report.json', ...assetFiles]
   };
 }
 

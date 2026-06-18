@@ -359,6 +359,7 @@ describe('ProjectsService', () => {
       runId: created.run_id,
       overallStatus: 'pass',
       previewable: true,
+      renderFidelity: makePipelineRenderFidelity('PASSED'),
       checkedArtifacts: [
         { artifactId: 'pipelineAcceptanceReport', artifactPath: 'pipeline_acceptance_report.json', status: 'present', required: true }
       ],
@@ -624,6 +625,7 @@ describe('ProjectsService', () => {
       runId: 'run_20260609_153000_other',
       overallStatus: 'pass',
       previewable: true,
+      renderFidelity: makePipelineRenderFidelity('PASSED'),
       checkedArtifacts: [],
       checks: [
         {
@@ -1024,6 +1026,23 @@ describe('ProjectsService', () => {
     await expect(readFile(workspace.getLiveCurrentVersionPath(created.project_id, created.run_id), 'utf8')).resolves.toBe('{"versionId":123}\n');
   });
 });
+
+function makePipelineRenderFidelity(status: 'PASSED' | 'FAILED') {
+  return {
+    status,
+    reason:
+      status === 'PASSED'
+        ? 'Render fidelity passed with required assets and runtime bindings intact.'
+        : 'Render fidelity failed: core=1, request=0, runtimeUnbound=0, assetBinding=pass, assetLibrary=pass.',
+    evidenceRefs: ['pipelineArtifactIndex:pipeline_artifact_index.json'],
+    coreRequiredFallbackCount: status === 'FAILED' ? 1 : 0,
+    requestRequiredFallbackCount: 0,
+    optionalFallbackCount: 0,
+    runtimeUnboundCount: 0,
+    assetBindingStatus: 'pass',
+    assetLibraryStatus: 'pass'
+  };
+}
 
 async function writeJsonFile(path: string, value: unknown): Promise<void> {
   await writeTextFile(path, `${JSON.stringify(value)}\n`);

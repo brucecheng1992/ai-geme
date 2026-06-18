@@ -8,6 +8,7 @@ import collectorManifest from '../../templates/phaser/collector/template-manifes
 import dodgerManifest from '../../templates/phaser/dodger/template-manifest.json' with { type: 'json' };
 import shooterManifest from '../../templates/phaser/shooter/template-manifest.json' with { type: 'json' };
 import sideScrollingManifest from '../../templates/phaser/side_scrolling_run_and_gun/template-manifest.json' with { type: 'json' };
+import type { SideScrollingSceneIr } from '../../templates/phaser/side_scrolling_run_and_gun/src/side-scrolling-scene-ir.js';
 import type { SideScrollingRuntimeSlice } from '../../templates/phaser/side_scrolling_run_and_gun/src/side-scrolling-runtime-plan.js';
 
 const root = new URL('../../templates/phaser/', import.meta.url);
@@ -64,6 +65,21 @@ type SideScrollingTemplateSnapshot = TemplateSnapshot & {
     scrollX: number;
     visibleLeft: number;
     visibleRight: number;
+  };
+  platforms: Array<{ id: string; x: number; y: number; width: number; height: number }>;
+  backgrounds?: Array<{ id: string; role: string }>;
+  goals?: Array<{ id: string; kind: string; x?: number; y?: number }>;
+  sceneBindings?: {
+    source: 'scene_ir' | 'runtime_plan';
+    summary: {
+      backgroundCount: number;
+      platformCount: number;
+      enemyInstanceCount: number;
+      goalCount: number;
+      boundCount: number;
+      unboundCount: number;
+    };
+    bindings: Array<{ kind: string; sceneRuntimeId: string; runtimeInstanceId: string; sourceDslPath?: string; status: string }>;
   };
   enemies: Array<{ id: string; entityId: string; x: number; y: number; health: number; cleared: boolean }>;
   projectiles: Array<{ id: string; x: number; y: number }>;
@@ -192,9 +208,11 @@ describe('Phaser templates', () => {
         expect(main).toContain('new CollectorGameScene(collectorParams, collectorArt)');
       } else if (genre === 'side_scrolling_run_and_gun') {
         expect(main).toContain("from './runtime-plan.generated.json'");
+        expect(main).toContain("from './scene-ir.generated.json'");
         expect(main).toContain("from './asset-manifest.generated.json'");
         expect(main).toContain("from './live-edit-registry.generated.json'");
-        expect(main).toContain('new SideScrollingRunAndGunScene(sideScrollingParams, sideScrollingRuntimePlan, sideScrollingArt)');
+        expect(main).toContain('resolveSideScrollingRuntimeSliceWithSceneIr(sideScrollingRuntimePlan');
+        expect(main).toContain('new SideScrollingRunAndGunScene(sideScrollingParams, { side_scrolling: sideScrollingRuntimeSlice }, sideScrollingArt, sideScrollingSceneRuntime.bindingState)');
         expect(main).toContain('AIGAME_RUNTIME_READY');
         expect(main).toContain('AIGAME_GET_CAPABILITIES');
         expect(main).toContain('AIGAME_APPLY_PATCH');
@@ -1007,6 +1025,98 @@ describe('Phaser templates', () => {
     );
   });
 
+  it('uses generated Scene IR to drive side-scrolling runtime structure and binding evidence', async () => {
+    const sideScrollingMain = await readFile('templates/phaser/side_scrolling_run_and_gun/src/main.ts', 'utf8');
+    expect(sideScrollingMain).toContain('scene-ir.generated.json');
+    expect(sideScrollingMain).toContain('resolveSideScrollingRuntimeSliceWithSceneIr');
+    expect(sideScrollingManifest.source_files).toEqual(expect.arrayContaining(['src/side-scrolling-scene-ir.ts', 'src/scene-ir.generated.json']));
+
+    const { SideScrollingRunAndGunScene } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/GameScene.js');
+    const { defaultSideScrollingRuntimeSlice } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/side-scrolling-runtime-plan.js');
+    const { resolveSideScrollingRuntimeSliceWithSceneIr } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/side-scrolling-scene-ir.js');
+    const { defaultSideScrollingParams } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/template-params.js');
+    const resolved = resolveSideScrollingRuntimeSliceWithSceneIr(
+      { side_scrolling: { ...defaultSideScrollingRuntimeSlice, platforms: [], waves: [], winCondition: { kind: 'reach_exit', targetX: 900 } } },
+      createSideScrollingSceneIrFixture()
+    );
+
+    expect(resolved.plan).toMatchObject({
+      scene: { world: { width: 1800, height: 540 }, viewport: { width: 960, height: 540 } },
+      camera: { bounds: { width: 1800, height: 540 } },
+      player: { entityId: 'entity.player', spawn: { x: 144, y: 428 } },
+      platforms: [
+        expect.objectContaining({ id: 'platform.ground_alpha', x: 0, y: 500, width: 1800, height: 40 }),
+        expect.objectContaining({ id: 'platform.bridge_beta', x: 620, y: 360, width: 320, height: 24 })
+      ],
+      waves: [expect.objectContaining({ id: 'entity.enemy.scout_01', enemyTypeId: 'drone_type', spawnX: 780, spawnY: 454, count: 1 })],
+      winCondition: { kind: 'reach_exit', targetX: 1720 }
+    });
+    expect(resolved.bindingState).toMatchObject({
+      source: 'scene_ir',
+      summary: {
+        backgroundCount: 2,
+        platformCount: 2,
+        enemyInstanceCount: 1,
+        goalCount: 1,
+        boundCount: 7,
+        unboundCount: 0
+      }
+    });
+
+    const scene = new SideScrollingRunAndGunScene(defaultSideScrollingParams, { side_scrolling: resolved.plan }, undefined, resolved.bindingState);
+    scene.create();
+
+    const snapshot = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
+    expect(snapshot).toMatchObject({
+      player: { x: 144, y: 428 },
+      platforms: [
+        expect.objectContaining({ id: 'platform.ground_alpha', y: 500 }),
+        expect.objectContaining({ id: 'platform.bridge_beta', y: 360 })
+      ],
+      backgrounds: [expect.objectContaining({ id: 'background.skyline_far' }), expect.objectContaining({ id: 'background.city_mid' })],
+      goals: [expect.objectContaining({ id: 'goal.exit_gate', kind: 'reach', x: 1720 })],
+      sceneBindings: {
+        source: 'scene_ir',
+        summary: expect.objectContaining({ boundCount: 7, unboundCount: 0 })
+      }
+    });
+  });
+
+  it('preserves Scene IR wave counts and fails closed for unsupported runtime goals', async () => {
+    const { defaultSideScrollingRuntimeSlice } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/side-scrolling-runtime-plan.js');
+    const { resolveSideScrollingRuntimeSliceWithSceneIr } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/side-scrolling-scene-ir.js');
+    const countedSceneIr = createSideScrollingSceneIrFixture();
+    countedSceneIr.source = 'runtime_plan_derived';
+    countedSceneIr.scenes[0].enemyInstances[0] = {
+      ...countedSceneIr.scenes[0].enemyInstances[0],
+      count: 4
+    } as SideScrollingSceneIr['scenes'][number]['enemyInstances'][number];
+    const counted = resolveSideScrollingRuntimeSliceWithSceneIr({ side_scrolling: defaultSideScrollingRuntimeSlice }, countedSceneIr);
+
+    expect(counted.plan.waves).toEqual([expect.objectContaining({ id: 'entity.enemy.scout_01', count: 4, spawnY: 454 })]);
+
+    const unsupportedGoalSceneIr = createSideScrollingSceneIrFixture();
+    unsupportedGoalSceneIr.scenes[0].goals = [
+      { runtimeId: 'goal.destroy_generator', kind: 'destroy', x: 1200, y: 440, provenanceRef: 'goal.destroy_generator' }
+    ];
+    unsupportedGoalSceneIr.provenance['goal.destroy_generator'] = { source: 'dsl', dslPath: '/scenes/0/goal' };
+    const unsupported = resolveSideScrollingRuntimeSliceWithSceneIr({ side_scrolling: defaultSideScrollingRuntimeSlice }, unsupportedGoalSceneIr);
+
+    expect(unsupported.plan.winCondition).toEqual(defaultSideScrollingRuntimeSlice.winCondition);
+    expect(unsupported.bindingState).toMatchObject({
+      source: 'scene_ir',
+      summary: expect.objectContaining({ goalCount: 1, unboundCount: 1 }),
+      bindings: expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'goal',
+          sceneRuntimeId: 'goal.destroy_generator',
+          status: 'unbound',
+          reason: 'unsupported_goal_kind'
+        })
+      ])
+    });
+  });
+
   it('uses side-scrolling runtime_plan for jump, wave spawn, projectile hit, and enemy-cleared wins', async () => {
     const { SideScrollingRunAndGunScene } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/GameScene.js');
     const { defaultSideScrollingRuntimeSlice } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/side-scrolling-runtime-plan.js');
@@ -1612,6 +1722,73 @@ function createPhaserSceneMock() {
       container: () => container,
       graphics: () => createGraphics(),
       text: (_x: unknown, _y: unknown, value: unknown) => createText(value)
+    }
+  };
+}
+
+function createSideScrollingSceneIrFixture(): SideScrollingSceneIr {
+  return {
+    schemaVersion: 'step33.scene-ir.v1',
+    projectId: 'proj_20260615_sceneir',
+    runId: 'run_20260615_sceneir',
+    runtimeProfile: 'side_scrolling_run_and_gun.v1',
+    source: 'dsl_scene_contract',
+    scenes: [
+      {
+        id: 'city_run',
+        world: { width: 1800, height: 540, viewportWidth: 960, viewportHeight: 540 },
+        camera: { mode: 'side_follow', followTarget: 'player', bounds: { x: 0, y: 0, width: 1800, height: 540 } },
+        backgrounds: [
+          { runtimeId: 'background.skyline_far', role: 'far', parallax: 0.15, fixedToCamera: false, depth: -80, provenanceRef: 'background.skyline_far' },
+          { runtimeId: 'background.city_mid', role: 'mid', parallax: 0.35, repeatX: true, depth: -40, provenanceRef: 'background.city_mid' }
+        ],
+        platforms: [
+          {
+            runtimeId: 'platform.ground_alpha',
+            kind: 'ground',
+            x: 0,
+            y: 500,
+            width: 1800,
+            height: 40,
+            shape: 'rectangle',
+            collider: { runtimeId: 'collider.ground_alpha', enabled: true },
+            provenanceRef: 'platform.ground_alpha'
+          },
+          {
+            runtimeId: 'platform.bridge_beta',
+            kind: 'platform',
+            x: 620,
+            y: 360,
+            width: 320,
+            height: 24,
+            shape: 'rectangle',
+            collider: { runtimeId: 'collider.bridge_beta', enabled: true },
+            provenanceRef: 'platform.bridge_beta'
+          }
+        ],
+        player: { runtimeId: 'entity.player', prefabRef: 'player.run_and_gun.v1', x: 144, y: 428, provenanceRef: 'entity.player' },
+        enemyInstances: [
+          {
+            runtimeId: 'entity.enemy.scout_01',
+            archetypeRef: 'drone_type',
+            prefabRef: 'enemy.drone_type.v1',
+            x: 780,
+            y: 454,
+            spawnRule: 'spawn_scout_01',
+            provenanceRef: 'entity.enemy.scout_01'
+          }
+        ],
+        goals: [{ runtimeId: 'goal.exit_gate', kind: 'reach', x: 1720, y: 460, provenanceRef: 'goal.exit_gate' }]
+      }
+    ],
+    provenance: {
+      'background.skyline_far': { source: 'dsl', dslPath: '/scenes/0/backgroundLayers/0' },
+      'background.city_mid': { source: 'dsl', dslPath: '/scenes/0/backgroundLayers/1' },
+      'platform.ground_alpha': { source: 'dsl', dslPath: '/scenes/0/platforms/0' },
+      'platform.bridge_beta': { source: 'dsl', dslPath: '/scenes/0/platforms/1' },
+      'entity.player': { source: 'dsl', dslPath: '/scenes/0/playerSpawn' },
+      'entity.enemy.scout_01': { source: 'dsl', dslPath: '/scenes/0/enemyInstances/0' },
+      'goal.exit_gate': { source: 'dsl', dslPath: '/scenes/0/goal' }
     }
   };
 }

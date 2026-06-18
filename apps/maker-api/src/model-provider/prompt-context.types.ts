@@ -28,6 +28,11 @@ export type RawDslPromptContext = {
     terrain_kinds: string[];
     spawn_triggers: string[];
     pickup_kinds: string[];
+    scene_background_roles: string[];
+    scene_platform_shapes: string[];
+    scene_goal_kinds: string[];
+    scene_theme_time_of_day: string[];
+    visual_facing_modes: string[];
   };
   forbidden_terms: string[];
   forbidden_fields: string[];

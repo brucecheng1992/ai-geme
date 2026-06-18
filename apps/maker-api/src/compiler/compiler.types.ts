@@ -1,9 +1,10 @@
-import type { NormalizedGameIr, UnsupportedRuntimeCapability } from '../../../../packages/game-dsl/src/index.js';
+import type { NormalizedGameIr, RawGameDsl, UnsupportedRuntimeCapability } from '../../../../packages/game-dsl/src/index.js';
 
 export type RuntimeCompileInput = {
   projectId: string;
   runId: string;
   ir: NormalizedGameIr;
+  rawDsl?: RawGameDsl;
   semanticTraceContext?: {
     originalPrompt?: string;
     brief?: unknown;

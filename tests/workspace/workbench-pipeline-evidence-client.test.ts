@@ -21,9 +21,10 @@ describe('Workbench pipeline evidence client', () => {
       runId: 'run_20260615_evidence'
     });
     expect(group(view, 'Prompt / Provenance')?.artifacts.map((artifact) => artifact.id)).toEqual(['generationInputReport', 'intentPlan']);
-    expect(group(view, 'DSL')?.artifacts.map((artifact) => artifact.id)).toEqual(['gameDsl', 'gameDslCandidate', 'dslValidationReport']);
-    expect(group(view, 'Runtime')?.artifacts.map((artifact) => artifact.id)).toEqual(['runtimeCapabilityReport']);
+    expect(group(view, 'DSL')?.artifacts.map((artifact) => artifact.id)).toEqual(['gameDsl', 'gameDslCandidate', 'dslValidationReport', 'dslConsumptionReport']);
+    expect(group(view, 'Runtime')?.artifacts.map((artifact) => artifact.id)).toEqual(['runtimeCapabilityReport', 'sceneIr', 'runtimeSceneBindingReport']);
     expect(group(view, 'Assets')?.artifacts.map((artifact) => artifact.id)).toEqual([
+      'assetIntentManifest',
       'assetPlan',
       'publicAssetManifest',
       'phaserPreviewManifest',
@@ -32,7 +33,7 @@ describe('Workbench pipeline evidence client', () => {
       'assetLibraryUsageReport',
       'assetBindingTraceReport'
     ]);
-    expect(group(view, 'Build / QA / Preview')?.artifacts.map((artifact) => artifact.id)).toEqual(['buildLog', 'qaReport', 'pipelineAcceptanceReport', 'pipelineArtifactIndex']);
+    expect(group(view, 'Build / QA / Preview')?.artifacts.map((artifact) => artifact.id)).toEqual(['buildLog', 'qaReport', 'renderFidelityReport', 'pipelineAcceptanceReport', 'pipelineArtifactIndex']);
     expect(group(view, 'DSL')?.artifacts).toContainEqual(
       expect.objectContaining({
         id: 'gameDslCandidate',
@@ -205,7 +206,11 @@ function makeIndex(): PipelineArtifactIndex {
       artifact('gameDsl', 'dsl', 'model-output', 'game_dsl.json', 'present', true, 'generation', 'json'),
       artifact('gameDslCandidate', 'dsl', 'model-output', 'game_dsl.candidate.json', 'skipped', false, 'generation', 'json', 'valid_dsl_path_uses_game_dsl_json'),
       artifact('dslValidationReport', 'validation', 'model-output', 'dsl_validation_report.json', 'present', true, 'generation', 'json'),
+      artifact('dslConsumptionReport', 'validation', 'model-output', 'dsl_consumption_report.json', 'present', true, 'dsl-consumption', 'json'),
       artifact('runtimeCapabilityReport', 'runtime', 'model-output', 'runtime_capability_report.json', 'present', true, 'runtime-capability', 'json'),
+      artifact('sceneIr', 'runtime', 'generated-project', 'game.scene.ir.json', 'present', true, 'compiler', 'json'),
+      artifact('runtimeSceneBindingReport', 'runtime', 'generated-project', 'runtime_scene_binding_report.json', 'present', true, 'runtime-scene-binding', 'json'),
+      artifact('assetIntentManifest', 'asset', 'generated-project', 'asset_intent_manifest.json', 'present', true, 'compiler', 'json'),
       artifact('assetPlan', 'asset', 'generated-project', 'asset_plan.json', 'present', true, 'compiler', 'json'),
       artifact('publicAssetManifest', 'asset', 'generated-project', 'public/asset_manifest.json', 'present', true, 'compiler', 'json'),
       artifact('phaserPreviewManifest', 'preview', 'generated-project', 'shooter/src/asset-manifest.generated.json', 'present', true, 'compiler', 'json'),
@@ -215,6 +220,7 @@ function makeIndex(): PipelineArtifactIndex {
       artifact('assetBindingTraceReport', 'asset', 'generated-project', 'asset_binding_trace_report.json', 'present', true, 'asset-binding-trace', 'json'),
       artifact('buildLog', 'build', 'build-log', 'run_20260615_evidence.log', 'present', false, 'build', 'log'),
       artifact('qaReport', 'qa', 'qa-report', 'run_20260615_evidence.json', 'missing', false, 'qa', 'json', 'qa_report_not_available_yet'),
+      artifact('renderFidelityReport', 'qa', 'model-output', 'render_fidelity_report.json', 'present', false, 'qa', 'json'),
       artifact('pipelineAcceptanceReport', 'index', 'model-output', 'pipeline_acceptance_report.json', 'present', true, 'pipeline-acceptance', 'json'),
       artifact('pipelineArtifactIndex', 'index', 'model-output', 'pipeline_artifact_index.json', 'present', true, 'pipeline-artifact-index', 'json')
     ]

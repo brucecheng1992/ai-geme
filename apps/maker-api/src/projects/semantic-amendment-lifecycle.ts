@@ -28,6 +28,7 @@ import {
   type PreviewSemanticAmendmentResponse,
   type RejectSemanticAmendmentResponse,
   type SemanticAmendmentAcceptLog,
+  type SemanticAmendmentCandidateArtifactCheckpoint,
   type SemanticAmendmentPreparedLiveEdit,
   type SemanticAmendmentPreviewState,
   type SemanticAmendmentRejectLog,
@@ -42,13 +43,15 @@ import {
   DslPatchV1Schema,
   GameDslArtifactSchema,
   SemanticEditProposalSchema,
-  buildGameDslArtifact,
   buildRuntimeCapabilityReport,
   validateGameDslArtifact,
   type GameDslArtifact,
+  type SceneIr,
   type SemanticEditProposal
 } from '../../../../packages/game-dsl/src/index.js';
+import type { AssetIntentManifest } from '../../../../packages/asset-pipeline/src/index.js';
 import type { RunRecord } from './project-state.types.js';
+import { buildCandidateArtifactBundle, buildPlayerThemeCandidateDsl } from './semantic-amendment-candidate-artifacts.js';
 
 export type SemanticAmendmentLifecycleDeps = {
   projectStore: ProjectStoreService;
@@ -218,6 +221,18 @@ export async function rejectSemanticAmendment(
   if (proposal.reviewState === 'accepted' || proposal.reviewState === 'undone') {
     throw new ProjectRequestError(`proposal cannot be rejected from state: ${proposal.reviewState}`);
   }
+  const candidateArtifactCheckpoint =
+    proposal.reviewState === 'previewing' && proposal.execution.mode === 'candidate_regeneration'
+      ? buildCandidateArtifactCheckpoint(
+          await readSemanticAmendmentReviewArtifact<SemanticAmendmentPreviewState>(
+            deps.workspace,
+            projectId,
+            runId,
+            proposalId,
+            'previewState'
+          )
+        )
+      : undefined;
 
   const rejectLog: SemanticAmendmentRejectLog = {
     proposalId,
@@ -226,7 +241,8 @@ export async function rejectSemanticAmendment(
     rejectedAt: deps.now().toISOString(),
     previousReviewState: proposal.reviewState,
     ...parseOptionalReason(body),
-    requiresRuntimeRevert: proposal.reviewState === 'previewing' && proposal.execution.mode !== 'candidate_regeneration'
+    requiresRuntimeRevert: proposal.reviewState === 'previewing' && proposal.execution.mode !== 'candidate_regeneration',
+    ...(candidateArtifactCheckpoint === undefined ? {} : { candidateArtifactCheckpoint })
   };
   const nextProposal = withReviewState(proposal, 'rejected');
   const rejectRef = await writeSemanticAmendmentReviewArtifact(deps.workspace, projectId, runId, proposalId, 'rejectLog', rejectLog);
@@ -322,7 +338,6 @@ async function previewCandidateAmendment(
   const candidateRunId = candidateRunIdForProposal(proposalId);
   const candidateDsl = buildPlayerThemeCandidateDsl(baseDsl, candidateRunId);
   const validation = validateGameDslArtifact(candidateDsl);
-  const candidateDiff = buildCandidateDslDiff(baseDsl, candidateDsl, proposal);
   const createdAt = deps.now().toISOString();
   if (!validation.ok) {
     const previewState: SemanticAmendmentPreviewState = {
@@ -350,6 +365,82 @@ async function previewCandidateAmendment(
     };
   }
 
+  const candidateArtifacts = buildCandidateArtifactBundle({
+    projectId,
+    sourceRunId: runId,
+    candidateRunId,
+    proposal,
+    baseDsl,
+    candidateDsl
+  });
+  const previewArtifactRefs = await Promise.all([
+    writeSemanticAmendmentCandidateArtifact(deps.workspace, projectId, runId, proposalId, 'candidateBrief', proposal.candidate.candidateBrief),
+    writeSemanticAmendmentCandidateArtifact(deps.workspace, projectId, runId, proposalId, 'candidateDsl', candidateDsl),
+    writeSemanticAmendmentCandidateArtifact(deps.workspace, projectId, runId, proposalId, 'candidateDslDiff', candidateArtifacts.candidateDslDiff),
+    ...(candidateArtifacts.candidateSceneIr === undefined
+      ? []
+      : [writeSemanticAmendmentCandidateArtifact(deps.workspace, projectId, runId, proposalId, 'candidateSceneIr', candidateArtifacts.candidateSceneIr)]),
+    ...(candidateArtifacts.candidateSceneIrDiff === undefined
+      ? []
+      : [writeSemanticAmendmentCandidateArtifact(deps.workspace, projectId, runId, proposalId, 'candidateSceneIrDiff', candidateArtifacts.candidateSceneIrDiff)]),
+    ...(candidateArtifacts.candidateAssetIntentManifest === undefined
+      ? []
+      : [
+          writeSemanticAmendmentCandidateArtifact(
+            deps.workspace,
+            projectId,
+            runId,
+            proposalId,
+            'candidateAssetIntentManifest',
+            candidateArtifacts.candidateAssetIntentManifest
+          )
+        ]),
+    ...(candidateArtifacts.candidateAssetDiff === undefined
+      ? []
+      : [writeSemanticAmendmentCandidateArtifact(deps.workspace, projectId, runId, proposalId, 'candidateAssetDiff', candidateArtifacts.candidateAssetDiff)])
+  ]);
+  const previewArtifactRefById = Object.fromEntries(previewArtifactRefs.map((artifact) => [artifact.id, artifact.path]));
+
+  if (!candidateArtifacts.hasVisibleEffect) {
+    const previewState: SemanticAmendmentPreviewState = {
+      proposalId,
+      projectId,
+      runId,
+      reviewState: 'failed',
+      executionMode: proposal.execution.mode,
+      failureReason: 'AMENDMENT_NO_VISIBLE_EFFECT',
+      createdAt
+    };
+    const nextProposal = withReviewState(
+      {
+        ...proposal,
+        candidate: {
+          ...proposal.candidate,
+          candidateDsl,
+          artifactRefs: {
+            ...(proposal.candidate.artifactRefs ?? {}),
+            ...previewArtifactRefById
+          }
+        }
+      },
+      'failed',
+      {
+        schemaValid: true,
+        runtimeNoException: false,
+        previewBooted: false
+      }
+    );
+    const previewRef = await writeSemanticAmendmentReviewArtifact(deps.workspace, projectId, runId, proposalId, 'previewState', previewState);
+    await writeSemanticAmendmentProposal(deps.workspace, projectId, runId, nextProposal);
+
+    return {
+      ok: true,
+      proposal: nextProposal,
+      preview_state: previewState,
+      artifact_refs: [...previewArtifactRefs, previewRef]
+    };
+  }
+
   const candidateRuntimeCapabilityReport = buildRuntimeCapabilityReport({ runId: candidateRunId, validatedDsl: candidateDsl });
   const candidateRun = await writeCandidateRunArtifacts(deps, {
     projectId,
@@ -357,22 +448,26 @@ async function previewCandidateAmendment(
     candidateRunId,
     proposalId,
     candidateDsl,
+    candidateSceneIr: candidateArtifacts.candidateSceneIr,
+    candidateAssetIntentManifest: candidateArtifacts.candidateAssetIntentManifest,
     candidateRuntimeCapabilityReport,
     createdAt
   });
-  const candidateRefs = await Promise.all([
-    writeSemanticAmendmentCandidateArtifact(deps.workspace, projectId, runId, proposalId, 'candidateBrief', proposal.candidate.candidateBrief),
-    writeSemanticAmendmentCandidateArtifact(deps.workspace, projectId, runId, proposalId, 'candidateDsl', candidateDsl),
-    writeSemanticAmendmentCandidateArtifact(deps.workspace, projectId, runId, proposalId, 'candidateDslDiff', candidateDiff),
+  const runArtifactRefs = await Promise.all([
     writeSemanticAmendmentCandidateArtifact(deps.workspace, projectId, runId, proposalId, 'candidateRun', candidateRun),
     writeSemanticAmendmentCandidateArtifact(deps.workspace, projectId, runId, proposalId, 'candidateRuntimeCapabilityReport', candidateRuntimeCapabilityReport)
   ]);
+  const candidateRefs = [...previewArtifactRefs, ...runArtifactRefs];
   const candidateRefById = Object.fromEntries(candidateRefs.map((artifact) => [artifact.id, artifact.path]));
   const candidatePreview = {
     candidateRunId,
     candidateBriefRef: candidateRefById.candidateBrief,
     candidateDslRef: candidateRefById.candidateDsl,
     candidateDslDiffRef: candidateRefById.candidateDslDiff,
+    ...(candidateRefById.candidateSceneIr === undefined ? {} : { candidateSceneIrRef: candidateRefById.candidateSceneIr }),
+    ...(candidateRefById.candidateSceneIrDiff === undefined ? {} : { candidateSceneIrDiffRef: candidateRefById.candidateSceneIrDiff }),
+    ...(candidateRefById.candidateAssetIntentManifest === undefined ? {} : { candidateAssetIntentManifestRef: candidateRefById.candidateAssetIntentManifest }),
+    ...(candidateRefById.candidateAssetDiff === undefined ? {} : { candidateAssetDiffRef: candidateRefById.candidateAssetDiff }),
     candidateRunRef: candidateRefById.candidateRun,
     candidateRuntimeCapabilityReportRef: candidateRefById.candidateRuntimeCapabilityReport,
     previewAvailable: validation.ok,
@@ -402,9 +497,7 @@ async function previewCandidateAmendment(
     },
     'previewing',
     {
-      schemaValid: validation.ok,
-      runtimeNoException: false,
-      previewBooted: false
+      schemaValid: validation.ok
     }
   );
   const previewRef = await writeSemanticAmendmentReviewArtifact(deps.workspace, projectId, runId, proposalId, 'previewState', previewState);
@@ -458,10 +551,9 @@ async function acceptCandidateAmendment(
     candidateRunId: candidateRun.run_id,
     activeRunId: activeRun.run_id
   };
+  const candidateArtifactCheckpoint = buildCandidateArtifactCheckpoint(previewState);
   const nextProposal = withReviewState(proposal, 'accepted', {
-    schemaValid: true,
-    runtimeNoException: true,
-    previewBooted: true
+    schemaValid: true
   });
   const acceptLog: SemanticAmendmentAcceptLog = {
     proposalId,
@@ -469,7 +561,8 @@ async function acceptCandidateAmendment(
     runId,
     acceptedAt,
     previousReviewState: proposal.reviewState,
-    candidatePromotionResult
+    candidatePromotionResult,
+    candidateArtifactCheckpoint
   };
   const undoCheckpointArtifact: SemanticAmendmentUndoCheckpointArtifact = {
     proposalId,
@@ -478,7 +571,8 @@ async function acceptCandidateAmendment(
     acceptedAt,
     ...(beforeAcceptVersion === undefined ? {} : { beforeAcceptVersion }),
     beforeActiveRunId: beforeActiveRun.run_id,
-    acceptedRunId: activeRun.run_id
+    acceptedRunId: activeRun.run_id,
+    candidateArtifactCheckpoint
   };
   const undoCheckpoint = sanitizeUndoCheckpoint(undoCheckpointArtifact);
   const acceptRef = await writeSemanticAmendmentReviewArtifact(deps.workspace, projectId, runId, proposalId, 'acceptLog', acceptLog);
@@ -529,6 +623,7 @@ async function undoCandidateAmendment(
     undoneAt: deps.now().toISOString(),
     ...(restoredVersion === undefined ? {} : { restoredVersion }),
     restoredRunId: restoredRun.run_id,
+    ...(checkpoint.candidateArtifactCheckpoint === undefined ? {} : { candidateArtifactCheckpoint: checkpoint.candidateArtifactCheckpoint }),
     ...parseOptionalReason(body)
   };
   const undoLog = sanitizeUndoLog(undoLogArtifact);
@@ -557,45 +652,6 @@ function candidateRunIdForProposal(proposalId: string): string {
   return `run_candidate_${suffix}`;
 }
 
-function buildPlayerThemeCandidateDsl(baseDsl: GameDslArtifact, candidateRunId: string): GameDslArtifact {
-  const rawDsl = JSON.parse(JSON.stringify(baseDsl.sourceDsl)) as GameDslArtifact['sourceDsl'];
-  rawDsl.player = {
-    ...rawDsl.player,
-    label: '小猫'
-  };
-
-  return buildGameDslArtifact({
-    rawDsl,
-    runId: candidateRunId,
-    intentPlan: {
-      normalizedGenre: baseDsl.intentPlanRef.normalizedGenre,
-      ...(baseDsl.intentPlanRef.matchedAlias === undefined ? {} : { matchedAlias: baseDsl.intentPlanRef.matchedAlias })
-    }
-  });
-}
-
-function buildCandidateDslDiff(baseDsl: GameDslArtifact, candidateDsl: GameDslArtifact, proposal: SemanticEditProposal): unknown {
-  return {
-    schemaVersion: 'semantic_amendment_candidate_dsl_diff.v1',
-    proposalId: proposal.id,
-    sourceRunId: proposal.runId,
-    candidateRunId: candidateDsl.runId,
-    summary: proposal.understanding.summary,
-    changes: [
-      {
-        path: '/player/label',
-        before: baseDsl.player.label,
-        after: candidateDsl.player.label
-      },
-      {
-        path: '/sourceDsl/player/label',
-        before: baseDsl.sourceDsl.player.label,
-        after: candidateDsl.sourceDsl.player.label
-      }
-    ]
-  };
-}
-
 async function writeCandidateRunArtifacts(
   deps: SemanticAmendmentLifecycleDeps,
   input: {
@@ -604,6 +660,8 @@ async function writeCandidateRunArtifacts(
     candidateRunId: string;
     proposalId: string;
     candidateDsl: GameDslArtifact;
+    candidateSceneIr?: SceneIr;
+    candidateAssetIntentManifest?: AssetIntentManifest;
     candidateRuntimeCapabilityReport: unknown;
     createdAt: string;
   }
@@ -616,6 +674,12 @@ async function writeCandidateRunArtifacts(
     message: `Candidate run generated from ${input.sourceRunId} for proposal ${input.proposalId}.`
   });
   await writeJson(deps.workspace.getModelOutputPath(input.projectId, input.candidateRunId, 'game_dsl.json'), input.candidateDsl);
+  if (input.candidateSceneIr !== undefined) {
+    await writeJson(deps.workspace.getModelOutputPath(input.projectId, input.candidateRunId, 'game.scene.ir.json'), input.candidateSceneIr);
+  }
+  if (input.candidateAssetIntentManifest !== undefined) {
+    await writeJson(deps.workspace.getModelOutputPath(input.projectId, input.candidateRunId, 'asset_intent_manifest.json'), input.candidateAssetIntentManifest);
+  }
   await writeJson(deps.workspace.getModelOutputPath(input.projectId, input.candidateRunId, 'runtime_capability_report.json'), input.candidateRuntimeCapabilityReport);
   return {
     ...updatedRun,
@@ -675,6 +739,32 @@ function withReviewState(
       ...validation
     }
   });
+}
+
+function buildCandidateArtifactCheckpoint(previewState: SemanticAmendmentPreviewState): SemanticAmendmentCandidateArtifactCheckpoint {
+  const candidatePreview = previewState.candidatePreview;
+  if (candidatePreview === undefined) {
+    throw new ProjectRequestError('candidate artifact checkpoint requires a candidate preview state.');
+  }
+
+  return {
+    proposalId: previewState.proposalId,
+    projectId: previewState.projectId,
+    sourceRunId: previewState.runId,
+    candidateRunId: candidatePreview.candidateRunId,
+    candidateDslRef: candidatePreview.candidateDslRef,
+    candidateDslDiffRef: candidatePreview.candidateDslDiffRef,
+    ...(candidatePreview.candidateBriefRef === undefined ? {} : { candidateBriefRef: candidatePreview.candidateBriefRef }),
+    ...(candidatePreview.candidateSceneIrRef === undefined ? {} : { candidateSceneIrRef: candidatePreview.candidateSceneIrRef }),
+    ...(candidatePreview.candidateSceneIrDiffRef === undefined ? {} : { candidateSceneIrDiffRef: candidatePreview.candidateSceneIrDiffRef }),
+    ...(candidatePreview.candidateAssetIntentManifestRef === undefined ? {} : { candidateAssetIntentManifestRef: candidatePreview.candidateAssetIntentManifestRef }),
+    ...(candidatePreview.candidateAssetDiffRef === undefined ? {} : { candidateAssetDiffRef: candidatePreview.candidateAssetDiffRef }),
+    ...(candidatePreview.candidateRunRef === undefined ? {} : { candidateRunRef: candidatePreview.candidateRunRef }),
+    ...(candidatePreview.candidateRuntimeCapabilityReportRef === undefined
+      ? {}
+      : { candidateRuntimeCapabilityReportRef: candidatePreview.candidateRuntimeCapabilityReportRef }),
+    activeRunMutation: false
+  };
 }
 
 function parseRuntimeApplyReport(body: unknown): unknown {

@@ -87,6 +87,7 @@ export type QaReport = {
   code?: QaFailureCode;
   message?: string;
   visual_status?: QaVisualStatus;
+  render_fidelity?: QaRenderFidelitySummary;
   asset_manifest_summary?: AssetManifest['summary'];
   asset_report?: QaAssetReport;
   screenshot_path?: string;
@@ -94,6 +95,14 @@ export type QaReport = {
   asset_semantic_repair?: QaAssetSemanticRepairReport;
   started_at: string;
   completed_at: string;
+};
+
+export type QaRenderFidelitySummary = {
+  status: 'PASSED' | 'PASSED_WITH_OPTIONAL_FALLBACKS' | 'VISUALLY_DEGRADED' | 'FAILED';
+  reason: string;
+  expected: string[];
+  observed: string[];
+  missing: string[];
 };
 
 export type QaBrowserRunner = (input: RunQaInput, requiredEvents: QaRequiredEvents) => Promise<QaBrowserResult>;

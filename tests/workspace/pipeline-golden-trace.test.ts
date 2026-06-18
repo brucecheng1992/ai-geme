@@ -17,8 +17,8 @@ import { LocalWorkspaceService } from '../../apps/maker-api/src/workspace/local-
 import { buildPipelineAcceptanceView } from '../../apps/maker-workbench/src/pipeline-acceptance-client.js';
 import { buildPipelineEvidenceView } from '../../apps/maker-workbench/src/pipeline-evidence-client.js';
 import type { QaGenre, QaReport } from '../../apps/maker-api/src/qa/qa.types.js';
-import { AssetManifestSchema, buildAssetPlanFromIr } from '../../packages/asset-pipeline/src/index.js';
-import { GameBriefSchema, RawGameDslSchema, type NormalizedGameIr, type RawGameDsl } from '../../packages/game-dsl/src/index.js';
+import { AssetIntentManifestSchema, AssetManifestSchema, buildAssetIntentManifest, buildAssetPlanFromIr, buildAssetResolutionReport } from '../../packages/asset-pipeline/src/index.js';
+import { DslConsumptionReportSchema, GameBriefSchema, RawGameDslSchema, type NormalizedGameIr, type RawGameDsl } from '../../packages/game-dsl/src/index.js';
 import type { PipelineAcceptanceReport } from '../../apps/maker-api/src/projects/pipeline-acceptance-report.js';
 import type { PipelineArtifactIndex } from '../../apps/maker-api/src/projects/pipeline-artifact-index.js';
 import type { GenerationInputReport } from '../../apps/maker-api/src/projects/generation-input-report.js';
@@ -81,6 +81,12 @@ describe('Pipeline golden trace', () => {
       stableIdSummary: expect.objectContaining({ duplicateIds: [] }),
       objectCounts: expect.objectContaining({ player: 1, enemyTypes: 1, projectiles: 1, waves: 1 })
     });
+    expect(trace.dslConsumption).toMatchObject({
+      schemaVersion: 'step33.dsl-consumption.v1',
+      projectId: trace.generated.project_id,
+      runId: trace.generated.run_id,
+      summary: expect.objectContaining({ ignoredAuthoritativeCount: 0 })
+    });
     expect(trace.assetPipelineReport).toMatchObject({
       version: 'asset-pipeline-report-v0.1',
       projectId: trace.generated.project_id,
@@ -92,6 +98,7 @@ describe('Pipeline golden trace', () => {
         assetFilesListedInCompileResult: true
       },
       artifacts: {
+        assetIntentManifest: 'asset_intent_manifest.json',
         assetPlan: 'asset_plan.json',
         publicManifest: 'public/asset_manifest.json',
         previewManifest: 'shooter/src/asset-manifest.generated.json',
@@ -111,6 +118,7 @@ describe('Pipeline golden trace', () => {
     expect(trace.assetBindingTraceReport.traces.every((row) => row.source === 'local-template' && row.catalogAssetId !== null && row.catalogVersion === 'template_asset_catalog.v1')).toBe(true);
     expectNoSensitiveTraceText(trace.assetBindingTraceReport);
     await expect(readFile(join(trace.workspace.getGeneratedProjectDir(trace.generated.project_id), 'asset_plan.json'), 'utf8')).resolves.toContain('"asset-plan-v0.1"');
+    await expect(readFile(join(trace.workspace.getGeneratedProjectDir(trace.generated.project_id), 'asset_intent_manifest.json'), 'utf8')).resolves.toContain('"asset-intent-manifest-v0.1"');
     await expect(readFile(join(trace.workspace.getGeneratedProjectDir(trace.generated.project_id), 'public', 'asset_manifest.json'), 'utf8')).resolves.toContain('"asset-manifest-v0.1"');
     await expect(readFile(join(trace.workspace.getGeneratedProjectDir(trace.generated.project_id), 'asset_resolution_report.json'), 'utf8')).resolves.toContain('"asset-resolution-report-v0.1"');
     await expect(readFile(join(trace.workspace.getGeneratedProjectDir(trace.generated.project_id), 'asset_binding_trace_report.json'), 'utf8')).resolves.toContain('"asset-binding-trace-report.v1"');
@@ -120,7 +128,11 @@ describe('Pipeline golden trace', () => {
         expect.objectContaining({ id: 'generationInputReport', status: 'present', path: 'generation_input_report.json' }),
         expect.objectContaining({ id: 'gameDsl', status: 'present', path: 'game_dsl.json' }),
         expect.objectContaining({ id: 'dslValidationReport', status: 'present', path: 'dsl_validation_report.json' }),
+        expect.objectContaining({ id: 'dslConsumptionReport', status: 'present', path: 'dsl_consumption_report.json' }),
+        expect.objectContaining({ id: 'sceneIr', status: 'skipped', path: 'game.scene.ir.json', required: false }),
+        expect.objectContaining({ id: 'runtimeSceneBindingReport', status: 'skipped', path: 'runtime_scene_binding_report.json', required: false }),
         expect.objectContaining({ id: 'runtimeCapabilityReport', status: 'present', path: 'runtime_capability_report.json' }),
+        expect.objectContaining({ id: 'assetIntentManifest', status: 'present', path: 'asset_intent_manifest.json' }),
         expect.objectContaining({ id: 'assetPlan', status: 'present', path: 'asset_plan.json' }),
         expect.objectContaining({ id: 'publicAssetManifest', status: 'present', path: 'public/asset_manifest.json' }),
         expect.objectContaining({ id: 'phaserPreviewManifest', status: 'present', path: 'shooter/src/asset-manifest.generated.json' }),
@@ -128,6 +140,7 @@ describe('Pipeline golden trace', () => {
         expect.objectContaining({ id: 'assetPipelineReport', status: 'present', path: 'asset_pipeline_report.json' }),
         expect.objectContaining({ id: 'assetLibraryUsageReport', status: 'present', path: 'asset_library_usage_report.json' }),
         expect.objectContaining({ id: 'assetBindingTraceReport', status: 'present', path: 'asset_binding_trace_report.json' }),
+        expect.objectContaining({ id: 'renderFidelityReport', status: 'present', path: 'render_fidelity_report.json' }),
         expect.objectContaining({ id: 'pipelineAcceptanceReport', status: 'present', path: 'pipeline_acceptance_report.json' }),
         expect.objectContaining({ id: 'pipelineArtifactIndex', status: 'present', path: 'pipeline_artifact_index.json' })
       ])
@@ -149,14 +162,19 @@ describe('Pipeline golden trace', () => {
       'generation_input',
       'dsl_validation',
       'dsl_artifact',
+      'dsl_consumption',
+      'scene_ir',
+      'runtime_scene_binding',
       'runtime_capability',
+      'asset_intent_resolution',
       'asset_pipeline',
       'asset_library_usage',
       'asset_binding_trace',
       'preview_manifest',
       'artifact_index_consistency',
       'build_log',
-      'qa_report'
+      'qa_report',
+      'render_fidelity_report'
     ]);
     expectNoSensitiveTraceText(trace.index, trace.acceptance);
 
@@ -171,14 +189,14 @@ describe('Pipeline golden trace', () => {
 
     expect(group(trace.evidenceView, 'Prompt / Provenance')?.artifacts.map((artifact) => artifact.id)).toContain('generationInputReport');
     expect(group(trace.evidenceView, 'DSL')?.artifacts.map((artifact) => artifact.id)).toEqual(
-      expect.arrayContaining(['gameDsl', 'dslValidationReport'])
+      expect.arrayContaining(['gameDsl', 'dslValidationReport', 'dslConsumptionReport'])
     );
-    expect(group(trace.evidenceView, 'Runtime')?.artifacts.map((artifact) => artifact.id)).toContain('runtimeCapabilityReport');
+    expect(group(trace.evidenceView, 'Runtime')?.artifacts.map((artifact) => artifact.id)).toEqual(expect.arrayContaining(['runtimeCapabilityReport', 'sceneIr', 'runtimeSceneBindingReport']));
     expect(group(trace.evidenceView, 'Assets')?.artifacts.map((artifact) => artifact.id)).toEqual(
-      expect.arrayContaining(['assetPlan', 'publicAssetManifest', 'phaserPreviewManifest', 'assetResolutionReport', 'assetPipelineReport', 'assetLibraryUsageReport', 'assetBindingTraceReport'])
+      expect.arrayContaining(['assetIntentManifest', 'assetPlan', 'publicAssetManifest', 'phaserPreviewManifest', 'assetResolutionReport', 'assetPipelineReport', 'assetLibraryUsageReport', 'assetBindingTraceReport'])
     );
     expect(group(trace.evidenceView, 'Build / QA / Preview')?.artifacts.map((artifact) => artifact.id)).toEqual(
-      expect.arrayContaining(['pipelineAcceptanceReport', 'pipelineArtifactIndex'])
+      expect.arrayContaining(['renderFidelityReport', 'pipelineAcceptanceReport', 'pipelineArtifactIndex'])
     );
     expect(trace.acceptanceView).toMatchObject({
       status: 'ready',
@@ -220,6 +238,9 @@ describe('Pipeline golden trace', () => {
         expect.objectContaining({ id: 'generationInputReport', status: 'present', path: 'generation_input_report.json' }),
         expect.objectContaining({ id: 'gameDslCandidate', status: 'present', path: 'game_dsl.candidate.json' }),
         expect.objectContaining({ id: 'dslValidationReport', status: 'present', path: 'dsl_validation_report.json' }),
+        expect.objectContaining({ id: 'dslConsumptionReport', status: 'skipped', reason: 'dsl_validation_failed_before_consumption_audit' }),
+        expect.objectContaining({ id: 'runtimeSceneBindingReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),
+        expect.objectContaining({ id: 'assetIntentManifest', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),
         expect.objectContaining({ id: 'runtimeCapabilityReport', status: 'skipped' }),
         expect.objectContaining({ id: 'assetPipelineReport', status: 'skipped' }),
         expect.objectContaining({ id: 'assetLibraryUsageReport', status: 'skipped' }),
@@ -233,6 +254,9 @@ describe('Pipeline golden trace', () => {
       previewable: false,
       checks: expect.arrayContaining([
         expect.objectContaining({ id: 'dsl_validation', status: 'fail' }),
+        expect.objectContaining({ id: 'dsl_consumption', status: 'skipped' }),
+        expect.objectContaining({ id: 'runtime_scene_binding', status: 'skipped' }),
+        expect.objectContaining({ id: 'asset_intent_resolution', status: 'skipped' }),
         expect.objectContaining({ id: 'asset_pipeline', status: 'skipped' }),
         expect.objectContaining({ id: 'asset_library_usage', status: 'skipped' }),
         expect.objectContaining({ id: 'asset_binding_trace', status: 'skipped' })
@@ -287,10 +311,14 @@ describe('Pipeline golden trace', () => {
     const generationInput = (await readModelJson(workspace, generated.project_id, generated.run_id, 'generation_input_report.json')) as GenerationInputReport;
     const gameDsl = await readModelJson(workspace, generated.project_id, generated.run_id, 'game_dsl.json');
     const dslValidation = (await readModelJson(workspace, generated.project_id, generated.run_id, 'dsl_validation_report.json')) as DslValidationTrace;
+    const dslConsumption = DslConsumptionReportSchema.parse(await readModelJson(workspace, generated.project_id, generated.run_id, 'dsl_consumption_report.json'));
     const index = (await readModelJson(workspace, generated.project_id, generated.run_id, 'pipeline_artifact_index.json')) as PipelineArtifactIndex;
     const acceptance = (await readModelJson(workspace, generated.project_id, generated.run_id, 'pipeline_acceptance_report.json')) as PipelineAcceptanceReport;
     const assetPipelineReport = AssetPipelineReportSchema.parse(
       JSON.parse(await readFile(join(workspace.getGeneratedProjectDir(generated.project_id), 'asset_pipeline_report.json'), 'utf8'))
+    );
+    const assetIntentManifest = AssetIntentManifestSchema.parse(
+      JSON.parse(await readFile(join(workspace.getGeneratedProjectDir(generated.project_id), 'asset_intent_manifest.json'), 'utf8'))
     );
     const assetManifest = AssetManifestSchema.parse(
       JSON.parse(await readFile(join(workspace.getGeneratedProjectDir(generated.project_id), 'public', 'asset_manifest.json'), 'utf8'))
@@ -317,6 +345,8 @@ describe('Pipeline golden trace', () => {
       generationInput,
       gameDsl,
       dslValidation,
+      dslConsumption,
+      assetIntentManifest,
       assetPipelineReport,
       assetManifest,
       assetLibraryUsageReport,
@@ -465,10 +495,12 @@ async function compileWithArtifactFiles(workspace: LocalWorkspaceService, projec
 async function writeAssetPipelineArtifacts(workspace: LocalWorkspaceService, projectId: string, runId: string, ir: NormalizedGameIr): Promise<string[]> {
   const outputDir = workspace.getGeneratedProjectDir(projectId);
   const plan = buildAssetPlanFromIr(projectId, ir);
+  const assetIntentManifest = buildAssetIntentManifest({ projectId, plan });
   const assetsDir = join(outputDir, 'public', 'assets');
   await mkdir(assetsDir, { recursive: true });
   await mkdir(join(outputDir, 'shooter', 'src'), { recursive: true });
   await writeFile(join(outputDir, 'asset_plan.json'), `${JSON.stringify(plan, null, 2)}\n`, 'utf8');
+  await writeFile(join(outputDir, 'asset_intent_manifest.json'), `${JSON.stringify(assetIntentManifest, null, 2)}\n`, 'utf8');
 
   const sourcePack = 'kenney-tiny-shooter-tanks';
   const assets = plan.items.map((item) => ({
@@ -525,11 +557,26 @@ async function writeAssetPipelineArtifacts(workspace: LocalWorkspaceService, pro
   );
   await writeFile(
     join(outputDir, 'asset_resolution_report.json'),
-    `${JSON.stringify({ version: 'asset-resolution-report-v0.1', projectId, summary: { selectedProvider: 'template_svg', fallbackUsed: false }, assets: [] }, null, 2)}\n`,
+    `${JSON.stringify(
+      buildAssetResolutionReport({
+        plan,
+        manifest,
+        candidates: [
+          {
+            packId: sourcePack,
+            status: 'selected',
+            reason: 'selected',
+            message: `Selected complete local asset pack ${sourcePack}.`
+          }
+        ]
+      }),
+      null,
+      2
+    )}\n`,
     'utf8'
   );
 
-  const compileFiles = ['asset_plan.json', 'public/asset_manifest.json', 'asset_resolution_report.json', 'shooter/src/asset-manifest.generated.json', ...assetFiles, 'asset_pipeline_report.json'];
+  const compileFiles = ['asset_intent_manifest.json', 'asset_plan.json', 'public/asset_manifest.json', 'asset_resolution_report.json', 'shooter/src/asset-manifest.generated.json', ...assetFiles, 'asset_pipeline_report.json'];
   await writeAssetPipelineReport({ projectId, templateId: 'shooter_v1', genre: 'shooter', outputDir, compileFiles });
   await writeAssetLibraryUsageReport({
     projectId,

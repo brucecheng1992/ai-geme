@@ -181,6 +181,9 @@ describe('buildRawDslPromptContext', () => {
       aliases: expect.arrayContaining(['魂斗罗', '横版跑枪', 'contra-like'])
     });
     expect(context.allowed_enums.genres).toContain('side_scrolling_run_and_gun');
+    expect(context.allowed_enums.scene_background_roles).toContain('sky');
+    expect(context.allowed_enums.scene_goal_kinds).toContain('reach');
+    expect(context.forbidden_terms).not.toContain('scene');
     expect(context.runtime_generation_context).toMatchObject({
       normalizedGenre: 'side_scrolling_run_and_gun',
       profileVersion: 'v1',
@@ -196,13 +199,26 @@ describe('buildRawDslPromptContext', () => {
       game: { genre: 'side_scrolling_run_and_gun', camera: 'side_view' },
       world: { coordinateSystem: 'side_view_2d', gravity: expect.any(Number) },
       camera: { mode: 'follow_player_x' },
-      player: { controller: 'run_jump_shoot', aiming: { mode: 'multi_direction' } },
+      player: {
+        controller: 'run_jump_shoot',
+        aiming: { mode: 'multi_direction' },
+        visual: expect.objectContaining({ assetIntentRef: 'player_red_runner' })
+      },
       level: {
         terrain: expect.arrayContaining([expect.objectContaining({ kind: 'platform' })]),
         spawns: expect.arrayContaining([expect.objectContaining({ trigger: expect.any(String) })])
-      }
+      },
+      enemyTypes: [expect.objectContaining({ visual: expect.objectContaining({ assetIntentRef: 'enemy_mech_drone' }) })],
+      scenes: [
+        expect.objectContaining({
+          backgroundLayers: expect.arrayContaining([expect.objectContaining({ assetIntentRef: 'scene_night_sky' })]),
+          enemyInstances: expect.arrayContaining([expect.objectContaining({ archetypeRef: 'drone_type', spawnRule: 'spawn_intro_drone' })])
+        })
+      ]
     });
+    expect(() => RawGameDslSchema.parse(context.valid_example)).not.toThrow();
     expect(context.anti_shell_rules.join('\n')).toContain('Do not output Contra');
+    expect(context.invalid_examples_summary.join('\n')).toContain('use scenes[] to express theme');
     expect(context.spawn_generation_guidance.join('\n')).toContain('level.spawns');
     expect(context.spawn_generation_guidance.join('\n')).toContain('world.width as side-scrolling level length');
   });
