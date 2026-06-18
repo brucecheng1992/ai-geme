@@ -60,6 +60,7 @@ describe('Pipeline artifact index contract', () => {
     });
     expect(index.artifacts.map((artifact) => artifact.id)).toEqual([
       'generationInputReport',
+      'intentPlan',
       'gameDsl',
       'gameDslCandidate',
       'dslValidationReport',
@@ -81,6 +82,7 @@ describe('Pipeline artifact index contract', () => {
     expect(index.artifacts).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: 'generationInputReport', status: 'present', artifactRoot: 'model-output', path: 'generation_input_report.json' }),
+        expect.objectContaining({ id: 'intentPlan', status: 'present', artifactRoot: 'model-output', path: 'intent_plan.json' }),
         expect.objectContaining({ id: 'gameDsl', status: 'present', artifactRoot: 'model-output', path: 'game_dsl.json' }),
         expect.objectContaining({ id: 'gameDslCandidate', status: 'skipped', reason: 'valid_dsl_path_uses_game_dsl_json' }),
         expect.objectContaining({ id: 'publicAssetManifest', status: 'present', artifactRoot: 'generated-project', path: 'public/asset_manifest.json' }),

@@ -1,7 +1,14 @@
 import 'reflect-metadata';
 
+import { execFileSync } from 'node:child_process';
+
 import { NestFactory } from '@nestjs/core';
 
+import {
+  listSupportedRuntimeGenres,
+  listSupportedRuntimeTemplateDirs,
+  RUNTIME_GENRE_REGISTRY_VERSION
+} from '../../../packages/game-dsl/src/index.js';
 import { AppModule } from './app.module.js';
 
 const API_PORT = 3000;
@@ -32,6 +39,7 @@ async function bootstrap(): Promise<void> {
     next();
   });
   await app.listen(API_PORT);
+  logRuntimeRegistryStartup();
   console.log(`maker-api listening on http://localhost:${API_PORT}`);
 }
 
@@ -48,3 +56,18 @@ type CorsResponse = {
   setHeader(name: string, value: string): void;
   end(): void;
 };
+
+function logRuntimeRegistryStartup(): void {
+  console.log(`gitCommit: ${readGitCommit()}`);
+  console.log(`runtimeRegistryVersion: ${RUNTIME_GENRE_REGISTRY_VERSION}`);
+  console.log(`supportedGenres:\n${listSupportedRuntimeGenres().map((genre) => `- ${genre}`).join('\n')}`);
+  console.log(`templates:\n${listSupportedRuntimeTemplateDirs().map((template) => `- ${template}`).join('\n')}`);
+}
+
+function readGitCommit(): string {
+  try {
+    return execFileSync('git', ['rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim();
+  } catch {
+    return 'unknown';
+  }
+}

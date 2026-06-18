@@ -10,7 +10,7 @@ const processes = [
   {
     label: 'maker-api',
     command: 'npm',
-    args: ['run', '--workspace', '@ai-game-maker/maker-api', 'start'],
+    args: ['run', '--workspace', '@ai-game-maker/maker-api', 'dev'],
     port: 3000,
     url: 'http://localhost:3000'
   },

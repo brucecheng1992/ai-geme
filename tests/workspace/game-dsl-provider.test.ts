@@ -181,6 +181,17 @@ describe('buildRawDslPromptContext', () => {
       aliases: expect.arrayContaining(['魂斗罗', '横版跑枪', 'contra-like'])
     });
     expect(context.allowed_enums.genres).toContain('side_scrolling_run_and_gun');
+    expect(context.runtime_generation_context).toMatchObject({
+      normalizedGenre: 'side_scrolling_run_and_gun',
+      profileVersion: 'v1',
+      dslProfile: 'side_scrolling_run_and_gun.v1',
+      irProfile: 'side_scrolling_run_and_gun.v1',
+      runtimeTemplate: 'phaser/side_scrolling_run_and_gun',
+      supportedCapabilities: expect.arrayContaining(['side_view_camera', 'gravity_platformer_physics', 'projectile_combat']),
+      requiredCapabilities: expect.arrayContaining(['platform_collision', 'enemy_spawn', 'player_health', 'restart_loop']),
+      deferredCapabilities: expect.arrayContaining(['bosses', 'weapon_pickups', 'screen_shake', 'eight_direction_shooting']),
+      schema: expect.objectContaining({ genre: 'side_scrolling_run_and_gun' })
+    });
     expect(context.valid_example).toMatchObject({
       game: { genre: 'side_scrolling_run_and_gun', camera: 'side_view' },
       world: { coordinateSystem: 'side_view_2d', gravity: expect.any(Number) },
@@ -193,6 +204,7 @@ describe('buildRawDslPromptContext', () => {
     });
     expect(context.anti_shell_rules.join('\n')).toContain('Do not output Contra');
     expect(context.spawn_generation_guidance.join('\n')).toContain('level.spawns');
+    expect(context.spawn_generation_guidance.join('\n')).toContain('world.width as side-scrolling level length');
   });
 });
 
@@ -226,8 +238,22 @@ describe('buildIntentPlan', () => {
       normalizedGenre: 'side_scrolling_run_and_gun',
       runtimeDslSupport: 'supported',
       runtimeSupportStatus: 'supported',
+      dslProfile: 'side_scrolling_run_and_gun.v1',
+      irProfile: 'side_scrolling_run_and_gun.v1',
+      runtimeTemplate: 'phaser/side_scrolling_run_and_gun',
       runtimeTemplateId: 'phaser/side_scrolling_run_and_gun.v1',
       qaProfile: 'side_scrolling_run_and_gun_smoke',
+      runtimeProfile: {
+        genre: 'side_scrolling_run_and_gun',
+        version: 'v1',
+        dslProfile: 'side_scrolling_run_and_gun.v1',
+        irProfile: 'side_scrolling_run_and_gun.v1',
+        runtimeTemplate: 'phaser/side_scrolling_run_and_gun',
+        runtimeTemplateId: 'phaser/side_scrolling_run_and_gun.v1',
+        qaProfile: 'side_scrolling_run_and_gun_smoke'
+      },
+      requiredCapabilities: expect.arrayContaining(['platform_collision', 'enemy_spawn', 'player_health', 'restart_loop']),
+      missingCapabilities: [],
       unsupportedCapabilities: []
     });
     expect(buildIntentPlan({ idea: '小猫大战坦克', language: 'zh' })).toMatchObject({

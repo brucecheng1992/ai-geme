@@ -28,8 +28,23 @@ export type IntentPlan = {
   runtimeDslSupport: 'supported' | 'unsupported';
   runtimeSupportStatus: RuntimeSupportStatus;
   runtimeSupportReason: string;
+  dslProfile?: string;
+  irProfile?: string;
+  runtimeTemplate?: string;
   runtimeTemplateId?: string;
   qaProfile?: string;
+  runtimeProfile?: {
+    genre: string;
+    version: string;
+    status: RuntimeSupportStatus;
+    dslProfile?: string;
+    irProfile?: string;
+    runtimeTemplate?: string;
+    runtimeTemplateId?: string;
+    qaProfile?: string;
+  };
+  requiredCapabilities: string[];
+  missingCapabilities: string[];
   unsupportedCapabilities: string[];
 };
 
@@ -61,9 +76,31 @@ export function buildIntentPlan(params: { idea: string; language: Language }): I
     runtimeDslSupport: runtimeExecutable ? 'supported' : 'unsupported',
     runtimeSupportStatus: runtimeCapability?.status ?? 'unsupported',
     runtimeSupportReason: describeRuntimeGenreCapability(runtimeCapability),
+    ...(runtimeCapability?.dslProfile !== undefined ? { dslProfile: runtimeCapability.dslProfile } : {}),
+    ...(runtimeCapability?.irProfile !== undefined ? { irProfile: runtimeCapability.irProfile } : {}),
+    ...(runtimeCapability?.runtimeTemplate !== undefined ? { runtimeTemplate: runtimeCapability.runtimeTemplate } : {}),
     ...(runtimeExecutable && runtimeCapability.templateId !== undefined ? { runtimeTemplateId: runtimeCapability.templateId } : {}),
     ...(runtimeExecutable && runtimeCapability.qaProfile !== undefined ? { qaProfile: runtimeCapability.qaProfile } : {}),
+    ...(runtimeCapability === undefined ? {} : { runtimeProfile: buildRuntimeProfile(runtimeCapability, runtimeExecutable) }),
+    requiredCapabilities: runtimeCapability?.requiredCapabilities ?? [],
+    missingCapabilities: runtimeExecutable ? [] : runtimeCapability?.missingCapabilities ?? ['recognized_2d_genre'],
     unsupportedCapabilities: runtimeExecutable ? [] : runtimeCapability?.missingCapabilities ?? ['recognized_2d_genre']
+  };
+}
+
+function buildRuntimeProfile(
+  capability: NonNullable<ReturnType<typeof findRuntimeGenreCapability>>,
+  runtimeExecutable: boolean
+): NonNullable<IntentPlan['runtimeProfile']> {
+  return {
+    genre: capability.genre,
+    version: capability.version,
+    status: capability.status,
+    ...(capability.dslProfile === undefined ? {} : { dslProfile: capability.dslProfile }),
+    ...(capability.irProfile === undefined ? {} : { irProfile: capability.irProfile }),
+    ...(capability.runtimeTemplate === undefined ? {} : { runtimeTemplate: capability.runtimeTemplate }),
+    ...(runtimeExecutable && capability.templateId !== undefined ? { runtimeTemplateId: capability.templateId } : {}),
+    ...(runtimeExecutable && capability.qaProfile !== undefined ? { qaProfile: capability.qaProfile } : {})
   };
 }
 

@@ -4,6 +4,7 @@ import shooterContract from '../../packages/game-dsl/src/contracts/shooter.contr
 import sideScrollingRunAndGunContract from '../../packages/game-dsl/src/contracts/side_scrolling_run_and_gun.contract.json' with { type: 'json' };
 import {
   buildGameDslArtifact,
+  checkPhaserRuntimeCapabilities,
   DslValidationError,
   normalizeRawGameDsl,
   validateAndNormalizeRawGameDsl,
@@ -775,6 +776,60 @@ describe('DSL Validator and Normalizer', () => {
       for (const runtimeOwnedKey of ['side_scrolling', 'camera', 'projectiles', 'enemyTypes', 'level', 'pickups', 'winLose']) {
         expect(result.ir.template_params.params).not.toHaveProperty(runtimeOwnedKey);
       }
+    }
+  });
+
+  it('normalizes side-scrolling run-and-gun stages wider than the viewport', () => {
+    const rawDsl = createSideScrollingRunAndGunRawDsl();
+    rawDsl.world.width = 2600;
+    rawDsl.level.segments = [
+      { id: 'segment_intro', startX: 0, endX: 800 },
+      { id: 'segment_mid', startX: 800, endX: 1800 },
+      { id: 'segment_final', startX: 1800, endX: 2600 }
+    ];
+    rawDsl.level.terrain = [
+      { ...rawDsl.level.terrain[0], width: 2600 },
+      rawDsl.level.terrain[1],
+      { id: 'platform_final', kind: 'platform', x: 2200, y: 360, width: 240, height: 24 }
+    ];
+    rawDsl.level.spawns = [
+      rawDsl.level.spawns[0],
+      { ...rawDsl.level.spawns[1], id: 'spawn_bridge_drone', x: 1600, count: 4 },
+      { id: 'spawn_final_drone', enemyType: 'drone_type', trigger: 'reach_x', x: 2350, count: 4 }
+    ];
+    rawDsl.projectiles = [...rawDsl.projectiles, { id: 'enemy_bullet_spec', label: 'Enemy Bullet', damage: 1, speed_px_per_sec: 300 }];
+    rawDsl.pickups = [{ ...rawDsl.pickups[0], x: 2000 }];
+    rawDsl.winLose = { ...rawDsl.winLose, checkpoints: [0, 1200, 2200] };
+    rawDsl.rules.collisions = [
+      ...rawDsl.rules.collisions,
+      {
+        id: 'enemy_bullet_hits_player',
+        source: 'enemy_bullet_spec',
+        target: 'player',
+        type: 'projectile_hit',
+        effects: [{ type: 'damage', value: 1 }]
+      }
+    ];
+    rawDsl.objectives = { ...rawDsl.objectives, win: { type: 'reach_exit', target: 2550 } };
+
+    const result = validateAndNormalizeRawGameDsl(rawDsl);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.ir.world.width).toBe(2600);
+      expect(result.ir.runtime_plan.side_scrolling).toMatchObject({
+        scene: { viewport: { width: 960, height: 540 }, world: { width: 2600, height: 540 } },
+        camera: { bounds: { width: 2600, height: 540 } },
+        platforms: expect.arrayContaining([expect.objectContaining({ id: 'ground_intro', width: 2600 })]),
+        enemyDefinitions: expect.arrayContaining([
+          expect.objectContaining({
+            firing: expect.objectContaining({ projectileEntityId: 'enemy_bullet_spec', speedPxPerSec: 300, damage: 1 })
+          })
+        ]),
+        waves: expect.arrayContaining([expect.objectContaining({ id: 'spawn_final_drone', triggerX: 2350, spawnX: 2350 })]),
+        winCondition: { kind: 'reach_exit', targetX: 2550 }
+      });
+      expect(checkPhaserRuntimeCapabilities(result.ir)).toMatchObject({ ok: true });
     }
   });
 

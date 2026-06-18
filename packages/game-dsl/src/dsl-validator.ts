@@ -179,11 +179,12 @@ function collectIds(raw: RawGameDsl): Array<[string, string]> {
 }
 
 function validateReferences(raw: RawGameDsl): DslValidationIssue[] {
-  const ids = new Set([raw.player.id, ...raw.entities.map((entity) => entity.id)]);
+  const entityIds = new Set([raw.player.id, ...raw.entities.map((entity) => entity.id)]);
+  const collisionIds = new Set([...entityIds, ...(raw.projectiles ?? []).map((projectile) => projectile.id)]);
   const issues: DslValidationIssue[] = [];
 
   for (const [index, action] of raw.player.actions.entries()) {
-    if (action.spawns !== undefined && !ids.has(action.spawns)) {
+    if (action.spawns !== undefined && !entityIds.has(action.spawns)) {
       issues.push({
         code: 'UNRESOLVED_REFERENCE',
         path: `player.actions.${index}.spawns`,
@@ -194,7 +195,7 @@ function validateReferences(raw: RawGameDsl): DslValidationIssue[] {
 
   for (const [index, collision] of raw.rules.collisions.entries()) {
     for (const key of ['source', 'target'] as const) {
-      if (!ids.has(collision[key])) {
+      if (!collisionIds.has(collision[key])) {
         issues.push({
           code: 'UNRESOLVED_REFERENCE',
           path: `rules.collisions.${index}.${key}`,

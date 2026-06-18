@@ -10,15 +10,13 @@ export function buildAssetPlanFromIr(projectId: string, input: NormalizedGameIr)
   const styleTheme = readOptionalString(world, 'visual_theme') ?? readOptionalString(style, 'visualTheme');
   const player = asRecord(params.player);
   const itemView = ir.game.camera === 'side_view' ? 'side_view' : 'top_down';
+  const backgroundSize = backgroundAssetSize(ir);
   const items: AssetPlanItem[] = [
     createItem(
       'background_main',
       'background',
       `${ir.metadata.title} ${ir.game.genre} background`,
-      {
-        w: ir.world.width,
-        h: ir.world.height
-      },
+      backgroundSize,
       ir.semanticModel,
       undefined,
       styleTheme,
@@ -69,6 +67,17 @@ export function buildAssetPlanFromIr(projectId: string, input: NormalizedGameIr)
     },
     items
   });
+}
+
+function backgroundAssetSize(ir: NormalizedGameIr): AssetPlanItem['size'] {
+  if (ir.game.genre !== 'side_scrolling_run_and_gun') {
+    return { w: ir.world.width, h: ir.world.height };
+  }
+
+  return {
+    w: ir.runtime_plan.side_scrolling?.scene.viewport.width ?? 960,
+    h: ir.runtime_plan.side_scrolling?.scene.viewport.height ?? ir.world.height
+  };
 }
 
 function createItem(

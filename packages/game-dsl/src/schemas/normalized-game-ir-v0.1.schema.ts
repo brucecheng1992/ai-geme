@@ -3,7 +3,10 @@ import collectorContract from '../contracts/collector.contract.json' with { type
 import dodgerContract from '../contracts/dodger.contract.json' with { type: 'json' };
 import shooterContract from '../contracts/shooter.contract.json' with { type: 'json' };
 import sideScrollingRunAndGunContract from '../contracts/side_scrolling_run_and_gun.contract.json' with { type: 'json' };
+import { RAW_DSL_GAME_GENRES, RUNTIME_TEMPLATE_MANIFEST_IDS, SIDE_SCROLLING_WORLD_BOUNDS } from '../runtime-capabilities.js';
 import { GameSemanticModelSchema } from '../semantic/semantic-model.schema.js';
+
+const topDownWorldMaxWidth = 1280;
 
 const TelemetryEventNameSchema = z.enum([
   'game.ready',
@@ -69,7 +72,7 @@ const SideScrollingRuntimePlanSchema = z.strictObject({
       height: z.literal(540)
     }),
     world: z.strictObject({
-      width: z.number().int().min(961).max(1280),
+      width: z.number().int().min(961).max(SIDE_SCROLLING_WORLD_BOUNDS.maxWorldWidth),
       height: z.number().int().min(540).max(720),
       gravityY: z.number().int().min(1).max(4000)
     })
@@ -80,7 +83,7 @@ const SideScrollingRuntimePlanSchema = z.strictObject({
     bounds: z.strictObject({
       x: z.literal(0),
       y: z.literal(0),
-      width: z.number().int().min(961).max(1280),
+      width: z.number().int().min(961).max(SIDE_SCROLLING_WORLD_BOUNDS.maxWorldWidth),
       height: z.number().int().min(540).max(720)
     })
   }),
@@ -92,7 +95,7 @@ const SideScrollingRuntimePlanSchema = z.strictObject({
   player: z.strictObject({
     entityId: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/),
     spawn: z.strictObject({
-      x: z.number().int().min(0).max(1280),
+      x: z.number().int().min(0).max(SIDE_SCROLLING_WORLD_BOUNDS.maxWorldWidth),
       y: z.number().int().min(0).max(720)
     }),
     speedPxPerSec: z.number().int().min(1).max(1000),
@@ -110,7 +113,7 @@ const SideScrollingRuntimePlanSchema = z.strictObject({
       kind: z.enum(['platform', 'ground', 'slope']),
       x: z.number().int().min(0).max(20000),
       y: z.number().int().min(0).max(20000),
-      width: z.number().int().min(16).max(2000),
+      width: z.number().int().min(16).max(SIDE_SCROLLING_WORLD_BOUNDS.maxWorldWidth),
       height: z.number().int().min(8).max(400)
     })
   ).min(1),
@@ -137,8 +140,8 @@ const SideScrollingRuntimePlanSchema = z.strictObject({
       id: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/),
       enemyTypeId: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/),
       trigger: z.enum(['enter_segment', 'reach_x']),
-      triggerX: z.number().int().min(0).max(1280),
-      spawnX: z.number().int().min(0).max(1280),
+      triggerX: z.number().int().min(0).max(SIDE_SCROLLING_WORLD_BOUNDS.maxWorldWidth),
+      spawnX: z.number().int().min(0).max(SIDE_SCROLLING_WORLD_BOUNDS.maxWorldWidth),
       count: z.number().int().min(1).max(20)
     })
   ).min(1),
@@ -146,14 +149,14 @@ const SideScrollingRuntimePlanSchema = z.strictObject({
     z.strictObject({
       id: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/),
       kind: z.enum(['health', 'score', 'weapon']),
-      x: z.number().int().min(0).max(1280),
+      x: z.number().int().min(0).max(SIDE_SCROLLING_WORLD_BOUNDS.maxWorldWidth),
       y: z.number().int().min(0).max(720)
     })
   ).default([]),
   winCondition: z.discriminatedUnion('kind', [
     z.strictObject({
       kind: z.literal('reach_exit'),
-      targetX: z.number().int().min(1).max(1280)
+      targetX: z.number().int().min(1).max(SIDE_SCROLLING_WORLD_BOUNDS.maxWorldWidth)
     }),
     z.strictObject({
       kind: z.literal('enemy_cleared'),
@@ -217,7 +220,7 @@ const RuntimePlanSchema = z.strictObject({
 });
 
 const TemplateParamsSchema = z.strictObject({
-  template_id: z.enum(['collector_v1', 'dodger_v1', 'shooter_v1', 'side_scrolling_run_and_gun.v1']),
+  template_id: z.enum(RUNTIME_TEMPLATE_MANIFEST_IDS),
   params: z.record(z.string(), z.unknown())
 });
 
@@ -242,12 +245,12 @@ export const NormalizedGameIrSchema = z.strictObject({
     language: z.enum(['zh', 'en'])
   }),
   game: z.strictObject({
-    genre: z.enum(['collector', 'dodger', 'shooter', 'side_scrolling_run_and_gun']),
+    genre: z.enum(RAW_DSL_GAME_GENRES),
     camera: z.enum(['top_down', 'side_view']),
     difficulty: z.enum(['easy', 'normal'])
   }),
   world: z.strictObject({
-    width: z.number().int().min(640).max(1280),
+    width: z.number().int().min(640).max(SIDE_SCROLLING_WORLD_BOUNDS.maxWorldWidth),
     height: z.number().int().min(360).max(720)
   }),
   runtime_requirements: RuntimeRequirementsSchema,
@@ -268,6 +271,14 @@ export const NormalizedGameIrSchema = z.strictObject({
       code: 'custom',
       path: ['template_params', 'template_id'],
       message: `template_id must match genre: expected ${expectedTemplateIdByGenre[value.game.genre]}`
+    });
+  }
+
+  if (value.game.genre !== 'side_scrolling_run_and_gun' && value.world.width > topDownWorldMaxWidth) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['world', 'width'],
+      message: `non-side-scrolling runtime worlds must stay at or below ${topDownWorldMaxWidth}`
     });
   }
 

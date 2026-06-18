@@ -7,6 +7,7 @@ export type RawDslPromptContext = {
   language: 'zh' | 'en';
   brief: GameBrief;
   selected_contract: unknown;
+  runtime_generation_context?: DslGenerationContext;
   allowed_enums: {
     genres: SupportedGameGenre[];
     cameras: Array<GameBrief['camera']>;
@@ -39,6 +40,18 @@ export type RawDslPromptContext = {
   spawn_generation_guidance: string[];
   difficulty_runtime_guidance: string[];
   enemy_wave_runtime_guidance: string[];
+};
+
+export type DslGenerationContext = {
+  normalizedGenre: string;
+  profileVersion: string;
+  dslProfile: string;
+  irProfile: string;
+  runtimeTemplate: string;
+  supportedCapabilities: string[];
+  deferredCapabilities: string[];
+  requiredCapabilities: string[];
+  schema: unknown;
 };
 
 export type BuildRawDslPromptContextParams = {

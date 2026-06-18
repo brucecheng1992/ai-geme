@@ -19,6 +19,7 @@ import {
   buildDslValidationReport,
   buildGameDslArtifact,
   checkPhaserRuntimeCapabilities,
+  findRuntimeGenreCapability,
   validateAndNormalizeRawGameDsl,
   validateGameDslArtifact,
   withDslValidationSourceArtifact,
@@ -791,7 +792,23 @@ function normalizeLanguage(language: string): DslLanguage {
 }
 
 function toQaGenre(genre: RawGameDsl['game']['genre']): QaGenre | undefined {
-  return genre === 'collector' || genre === 'dodger' || genre === 'shooter' || genre === 'side_scrolling_run_and_gun' ? genre : undefined;
+  const runtimeGenre = runtimeGenreByRawGenre(genre);
+  const templateDir = findRuntimeGenreCapability(runtimeGenre)?.templateDir;
+  return isQaGenre(templateDir) ? templateDir : undefined;
+}
+
+function runtimeGenreByRawGenre(genre: RawGameDsl['game']['genre']): string {
+  if (genre === 'shooter') {
+    return 'top_down_shooter';
+  }
+  if (genre === 'dodger') {
+    return 'dodger_collector';
+  }
+  return genre;
+}
+
+function isQaGenre(value: unknown): value is QaGenre {
+  return value === 'collector' || value === 'dodger' || value === 'shooter' || value === 'side_scrolling_run_and_gun';
 }
 
 async function pathExists(path: string): Promise<boolean> {

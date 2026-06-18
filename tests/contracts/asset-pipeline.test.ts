@@ -95,6 +95,36 @@ describe('Asset pipeline contracts', () => {
     );
   });
 
+  it('uses the side-scrolling viewport size for background assets when world width scrolls beyond one screen', () => {
+    const rawDsl = createSideScrollingRunAndGunRawDsl();
+    rawDsl.world.width = 2600;
+    rawDsl.level.segments = [
+      { id: 'segment_intro', startX: 0, endX: 800 },
+      { id: 'segment_mid', startX: 800, endX: 1800 },
+      { id: 'segment_final', startX: 1800, endX: 2600 }
+    ];
+    rawDsl.level.terrain = [{ ...rawDsl.level.terrain[0], width: 2600 }, rawDsl.level.terrain[1]];
+    rawDsl.level.spawns = [
+      rawDsl.level.spawns[0],
+      { ...rawDsl.level.spawns[1], x: 1600 },
+      { id: 'spawn_final_drone', enemyType: 'drone_type', trigger: 'reach_x', x: 2350, count: 4 }
+    ];
+    rawDsl.objectives = { ...rawDsl.objectives, win: { type: 'reach_exit', target: 2550 } };
+
+    const normalized = validateAndNormalizeRawGameDsl(rawDsl);
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const plan = buildAssetPlanFromIr(projectId, normalized.ir);
+    expect(plan.items.find((item) => item.id === 'background_main')).toMatchObject({
+      role: 'background',
+      view: 'side_view',
+      size: { w: 960, h: 540 }
+    });
+  });
+
   it('derives tank semantic constraints for tank shooter briefs', () => {
     const normalized = validateAndNormalizeRawGameDsl(createTankShooterRawDsl());
     expect(normalized.ok).toBe(true);

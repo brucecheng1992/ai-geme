@@ -7,6 +7,7 @@ import type { RawGameDsl } from './schemas/raw-game-dsl-v0.1.schema.js';
 import { buildGameSemanticModel } from './semantic/semantic-model-derivation.js';
 import { buildShooterVisualParams } from './template-visual-params.js';
 import { validateRawGameDsl } from './dsl-validator.js';
+import { findRuntimeGenreCapability, type RuntimeTemplateManifestId } from './runtime-capabilities.js';
 import { DslValidationError, type ValidateAndNormalizeResult } from './validation.types.js';
 
 const contracts = {
@@ -21,6 +22,13 @@ const templateIds = {
   dodger: 'dodger_v1',
   shooter: 'shooter_v1',
   side_scrolling_run_and_gun: 'side_scrolling_run_and_gun.v1'
+} as const;
+
+const runtimeGenreByRawGenre = {
+  collector: undefined,
+  dodger: 'dodger_collector',
+  shooter: 'top_down_shooter',
+  side_scrolling_run_and_gun: 'side_scrolling_run_and_gun'
 } as const;
 
 export function validateAndNormalizeRawGameDsl(input: unknown): ValidateAndNormalizeResult {
@@ -96,7 +104,7 @@ function buildNormalizedGameIr(raw: RawGameDsl) {
     runtime_plan: buildRuntimePlan(raw),
     semanticModel: buildGameSemanticModel(raw),
     template_params: {
-      template_id: templateIds[raw.game.genre],
+      template_id: templateIdForRawGenre(raw.game.genre),
       params: buildTemplateParams(raw)
     },
     telemetry_contract: {
@@ -205,6 +213,7 @@ function buildSideScrollingRunAndGunPlan(raw: RawGameDsl) {
   const fireAction = raw.player.actions.find((action) => action.type === 'shoot_projectile');
   const projectileEntity = raw.entities.find((entity) => entity.kind === 'projectile' && entity.id === fireAction?.spawns);
   const projectileSpec = raw.projectiles?.find((projectile) => projectile.label === projectileEntity?.label) ?? raw.projectiles?.[0];
+  const enemyProjectileSpec = selectEnemyProjectileSpec(raw);
   const platformForSpawn = selectPlayerSpawnPlatform(level?.terrain ?? [], raw.world.height);
   const playerSpawn = {
     x: Math.min(120, Math.max(0, raw.world.width - 64)),
@@ -274,10 +283,10 @@ function buildSideScrollingRunAndGunPlan(raw: RawGameDsl) {
         speedPxPerSec: enemyType.movement.speed_px_per_sec ?? 0
       },
       firing: {
-        projectileEntityId: projectileEntity?.id ?? fireAction?.spawns ?? 'projectile',
+        projectileEntityId: enemyProjectileSpec?.id ?? projectileEntity?.id ?? fireAction?.spawns ?? 'projectile',
         cooldownMs: 1400,
-        speedPxPerSec: Math.max(180, Math.round(projectileSpeed * 0.6)),
-        damage: Math.max(1, projectileDamage),
+        speedPxPerSec: enemyProjectileSpec?.speed_px_per_sec ?? Math.max(180, Math.round(projectileSpeed * 0.6)),
+        damage: enemyProjectileSpec?.damage ?? Math.max(1, projectileDamage),
         rangePx: 520
       }
     })),
@@ -321,12 +330,28 @@ function totalSideScrollingEnemyCount(raw: RawGameDsl): number {
   return Math.max(1, spawnCount);
 }
 
+function selectEnemyProjectileSpec(raw: RawGameDsl): NonNullable<RawGameDsl['projectiles']>[number] | undefined {
+  const enemyProjectileRefs = new Set(
+    raw.rules.collisions
+      .filter((collision) => collision.type === 'projectile_hit' && collision.target === raw.player.id)
+      .map((collision) => collision.source)
+  );
+
+  return raw.projectiles?.find((projectile) => enemyProjectileRefs.has(projectile.id));
+}
+
 function buildRequiredCapabilities(raw: RawGameDsl): string[] {
   if (raw.game.genre !== 'side_scrolling_run_and_gun') {
     return [];
   }
 
-  return [...sideScrollingRunAndGunContract.required_runtime_capabilities];
+  return [...(findRuntimeGenreCapability('side_scrolling_run_and_gun')?.requiredCapabilities ?? sideScrollingRunAndGunContract.required_runtime_capabilities)];
+}
+
+function templateIdForRawGenre(genre: RawGameDsl['game']['genre']): RuntimeTemplateManifestId {
+  const runtimeGenre = runtimeGenreByRawGenre[genre];
+  const templateId = runtimeGenre === undefined ? undefined : findRuntimeGenreCapability(runtimeGenre)?.runtimeTemplateManifestId;
+  return templateId ?? templateIds[genre];
 }
 
 function buildTemplateParams(raw: RawGameDsl): Record<string, unknown> {

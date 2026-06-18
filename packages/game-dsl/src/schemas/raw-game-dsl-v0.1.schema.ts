@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { RAW_DSL_GAME_GENRES, SIDE_SCROLLING_WORLD_BOUNDS } from '../runtime-capabilities.js';
 import { GameSemanticModelSchema } from '../semantic/semantic-model.schema.js';
 
 export const DslIdSchema = z.string().regex(/^[a-z][a-z0-9_]{1,39}$/);
@@ -32,7 +33,8 @@ const forbiddenTerms = [
 ];
 
 const copyrightedRunAndGunTerms = ['contra', '魂斗罗'];
-const sideScrollingRunAndGunViewport = { width: 960, height: 540 } as const;
+const topDownWorldMaxWidth = 1280;
+const sideScrollingRunAndGunViewport = { width: SIDE_SCROLLING_WORLD_BOUNDS.viewportWidth, height: SIDE_SCROLLING_WORLD_BOUNDS.viewportHeight } as const;
 
 function findForbiddenDslValue(value: unknown, path: Array<string | number> = []): string | null {
   if (typeof value === 'string') {
@@ -258,7 +260,7 @@ const LevelTerrainSchema = z.strictObject({
   kind: z.enum(['platform', 'ground', 'slope']),
   x: z.number().int().min(0).max(20000),
   y: z.number().int().min(0).max(20000),
-  width: z.number().int().min(16).max(2000),
+  width: z.number().int().min(16).max(SIDE_SCROLLING_WORLD_BOUNDS.maxWorldWidth),
   height: z.number().int().min(8).max(400)
 });
 
@@ -359,13 +361,13 @@ export const RawGameDslSchema = z.strictObject({
     language: z.enum(['zh', 'en'])
   }),
   game: z.strictObject({
-    genre: z.enum(['collector', 'dodger', 'shooter', 'side_scrolling_run_and_gun']),
+    genre: z.enum(RAW_DSL_GAME_GENRES),
     camera: z.enum(['top_down', 'side_view']),
     difficulty: z.enum(['easy', 'normal']),
     target_play_time_sec: z.number().int().min(30).max(120)
   }),
   world: z.strictObject({
-    width: z.number().int().min(640).max(1280),
+    width: z.number().int().min(640).max(SIDE_SCROLLING_WORLD_BOUNDS.maxWorldWidth),
     height: z.number().int().min(360).max(720),
     visual_theme: z.string().min(1).max(80),
     coordinateSystem: z.enum(['top_down_2d', 'side_view_2d']).optional(),
@@ -401,6 +403,14 @@ export const RawGameDslSchema = z.strictObject({
   if (value.game.genre === 'side_scrolling_run_and_gun') {
     addSideScrollingRunAndGunIssues(value, ctx);
   } else {
+    if (value.world.width > topDownWorldMaxWidth) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['world', 'width'],
+        message: `non-side-scrolling runtime worlds must stay at or below ${topDownWorldMaxWidth}`
+      });
+    }
+
     for (const [path, child] of [
       ['camera', value.camera],
       ['projectiles', value.projectiles],

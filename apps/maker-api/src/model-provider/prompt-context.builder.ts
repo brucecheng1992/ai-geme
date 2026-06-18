@@ -2,8 +2,8 @@ import collectorContract from '../../../../packages/game-dsl/src/contracts/colle
 import dodgerContract from '../../../../packages/game-dsl/src/contracts/dodger.contract.json' with { type: 'json' };
 import shooterContract from '../../../../packages/game-dsl/src/contracts/shooter.contract.json' with { type: 'json' };
 import sideScrollingRunAndGunContract from '../../../../packages/game-dsl/src/contracts/side_scrolling_run_and_gun.contract.json' with { type: 'json' };
-import type { RawGameDsl } from '../../../../packages/game-dsl/src/index.js';
-import type { BuildRawDslPromptContextParams, RawDslPromptContext, SupportedGameGenre } from './prompt-context.types.js';
+import { findRuntimeGenreCapability, type RawGameDsl, type RuntimeGenreCapability } from '../../../../packages/game-dsl/src/index.js';
+import type { BuildRawDslPromptContextParams, DslGenerationContext, RawDslPromptContext, SupportedGameGenre } from './prompt-context.types.js';
 
 const selectedContracts: Record<SupportedGameGenre, unknown> = {
   collector: collectorContract,
@@ -313,6 +313,7 @@ export function buildRawDslPromptContext(params: BuildRawDslPromptContextParams)
     language: params.language,
     brief: params.brief,
     selected_contract: selectedContracts[params.brief.genre],
+    ...buildRuntimeGenerationContext(params.brief.genre),
     allowed_enums: {
       genres: ['collector', 'dodger', 'shooter', 'side_scrolling_run_and_gun'],
       cameras: ['top_down', 'side_view'],
@@ -371,6 +372,7 @@ export function buildRawDslPromptContext(params: BuildRawDslPromptContextParams)
       'Collision effects only support type and optional value. Do not add target inside effects.',
       'Objectives support type and optional target only. Do not add duration_sec.',
       'Do not output runtime_plan or template_params fields in Raw Game DSL.',
+      'For projectile_hit collisions, source and target may reference player, entities, or projectiles specs; player.actions[].spawns must still reference a projectile entity from entities.',
       'For shooter in P0, include one primary projectile entity and one primary enemy entity that form the required fire-hit-clear loop.',
       'For shooter in P0, use enemy_cleared or reachable target_score as win type. Do not use survive_duration for shooter.',
       'If shooter uses target_score instead, target must be less than or equal to the primary enemy projectile_hit score_add value multiplied by the primary enemy count.',
@@ -403,6 +405,51 @@ export function buildRawDslPromptContext(params: BuildRawDslPromptContextParams)
     difficulty_runtime_guidance: buildDifficultyRuntimeGuidance(params.brief.genre),
     enemy_wave_runtime_guidance: buildEnemyWaveRuntimeGuidance(params.brief.genre)
   };
+}
+
+function buildRuntimeGenerationContext(genre: SupportedGameGenre): { runtime_generation_context?: DslGenerationContext } {
+  const capability = findRuntimeGenreCapability(normalizedRuntimeGenreForBriefGenre(genre));
+  if (!isExecutableGenerationProfile(capability)) {
+    return {};
+  }
+
+  return {
+    runtime_generation_context: {
+      normalizedGenre: capability.genre,
+      profileVersion: capability.version,
+      dslProfile: capability.dslProfile,
+      irProfile: capability.irProfile,
+      runtimeTemplate: capability.runtimeTemplate,
+      supportedCapabilities: [...capability.implementedCapabilities],
+      deferredCapabilities: deferredCapabilitiesForRuntimeGenre(capability.genre),
+      requiredCapabilities: [...capability.requiredCapabilities],
+      schema: selectedContracts[genre]
+    }
+  };
+}
+
+function normalizedRuntimeGenreForBriefGenre(genre: SupportedGameGenre): string {
+  if (genre === 'shooter') {
+    return 'top_down_shooter';
+  }
+  if (genre === 'dodger') {
+    return 'dodger_collector';
+  }
+  return genre;
+}
+
+function isExecutableGenerationProfile(
+  capability: RuntimeGenreCapability | undefined
+): capability is RuntimeGenreCapability & Required<Pick<RuntimeGenreCapability, 'dslProfile' | 'irProfile' | 'runtimeTemplate'>> {
+  return capability?.status === 'supported' && capability.dslProfile !== undefined && capability.irProfile !== undefined && capability.runtimeTemplate !== undefined;
+}
+
+function deferredCapabilitiesForRuntimeGenre(genre: string): string[] {
+  if (genre !== 'side_scrolling_run_and_gun') {
+    return [];
+  }
+
+  return ['bosses', 'weapon_pickups', 'screen_shake', 'audio_event_binding', 'multi_phase_attacks', 'eight_direction_shooting'];
 }
 
 function buildEnemyWaveRuntimeGuidance(genre: SupportedGameGenre): string[] {
@@ -439,9 +486,11 @@ function buildDifficultyRuntimeGuidance(genre: SupportedGameGenre): string[] {
 function buildSpawnGenerationGuidance(genre: SupportedGameGenre): string[] {
   if (genre === 'side_scrolling_run_and_gun') {
     return [
+      'Treat world.width as side-scrolling level length, not viewport width; it may exceed the 960px viewport when the user asks for a scrolling stage.',
       'Use level.spawns for side-view enemy spawn triggers; each spawn references enemyTypes by enemyType.',
       'Do not output entity.spawn for side_scrolling_run_and_gun.',
-      'Use level.terrain with platform or ground entries so terrain collision is explicit in the DSL.'
+      'Use level.terrain with platform or ground entries so terrain collision is explicit in the DSL.',
+      'Keep level segments, terrain, spawns, pickups, and reach_exit targets inside world.width.'
     ];
   }
 

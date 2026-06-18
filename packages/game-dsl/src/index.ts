@@ -197,10 +197,23 @@ export {
 export {
   describeRuntimeGenreCapability,
   findRuntimeGenreCapability,
+  findRuntimeGenreCapabilityByTemplateManifestId,
   isRuntimeGenreExecutable,
+  listSupportedRuntimeGenres,
+  listSupportedRuntimeTemplateDirs,
+  RAW_DSL_GAME_GENRES,
   RUNTIME_GENRE_CAPABILITIES,
+  RuntimeGenreRegistry,
+  RUNTIME_GENRE_REGISTRY_VERSION,
+  RUNTIME_TEMPLATE_DIRS,
+  RUNTIME_TEMPLATE_MANIFEST_IDS,
   RUNTIME_SUPPORT_STATUSES,
+  SIDE_SCROLLING_WORLD_BOUNDS,
+  type RawDslGameGenre,
+  type RuntimeGeneratedTemplateArtifact,
   type RuntimeGenreCapability,
+  type RuntimeTemplateDir,
+  type RuntimeTemplateManifestId,
   type RuntimeSupportStatus
 } from './runtime-capabilities.js';
 export {
