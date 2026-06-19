@@ -52,6 +52,105 @@ GameBrief v0.2
 - The frozen reference regression preserves 5 platforms, 3 waves, 1 pickup, win target 3800 and real `enemy.fired`.
 - Final build, Step33 render checks, Step34 amendment regressions, Step36 regressions and capability-owned QA pass.
 
+## Compatibility & Cutover Check
+
+Global rule added during Step37: a schema or producer artifact passing validation is not enough to mark a Step complete. Every Step that changes a producer contract must name its downstream consumers, compatibility disposition, authority artifact, legacy strategy, fail-closed policy, runtime evidence and rollback path.
+
+Disposition vocabulary:
+
+```ts
+type CompatibilityDisposition =
+  | "LOSSLESS_COMPATIBLE"
+  | "ADAPTER_REQUIRED"
+  | "NEW_CONSUMER_REQUIRED"
+  | "LEGACY_FORBIDDEN";
+```
+
+Step37 current disposition: `NEW_CONSUMER_REQUIRED`.
+
+| Check | Step37 answer |
+| --- | --- |
+| Producer change | `GameBrief v0.2`, `GenerationScopePlan`, generation path receipt, capability readiness/resolution/runtime/gap/cutover reports, Scene IR authority/coverage reports and final closure report were added or changed. |
+| Consumer list | Brief ingress, provider projection, generation pipeline, capability resolver, DSL normalizer, compiler, Scene IR builder, runtime template/loader, Workbench evidence client, QA and final closure evaluator. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED` for open/long play-time and `capability_composed_v1`; `ADAPTER_REQUIRED` only for short v0.2 intents that can be losslessly projected into Raw DSL v0.1 during transition; `LEGACY_FORBIDDEN` for silent fixed-template fallback after a capability gap. |
+| Authority | Play-time intent authority is `GameBrief v0.2`; actual path authority is `generation_path_receipt.json`; gameplay domain authority is `scene_ir_authority_report.json`; future active runtime authority must be exact capability lock plus runtime system manifest. |
+| Legacy strategy | Current production may still run explicit `legacy_template_v1`; it remains auditable and rollbackable, but cannot be treated as the Step37 target path. |
+| Failure policy | If no consumer can preserve the new semantics, the run must fail closed with explicit evidence such as `LEGACY_DSL_NONREPRESENTABLE`, `BLOCKED_CAPABILITY_GAP` or final closure `blocked`, instead of shortening play time or deleting gameplay. |
+| Evidence | Required evidence is same-run active path receipt, exact lock, runtime manifest, module load receipt, capability-owned telemetry such as real `enemy.fired`, capability QA, build, parity and rollback reports. Current evidence shows these are not yet active. |
+| Rollback | Rollback must create a new explicitly authorized legacy run with lineage to the source run and preserved evidence; it must not rewrite the original run or drop new semantics in place. |
+
+Current diagnostic note:
+
+- `proj_20260619_122107_9840` proved `GameBrief v0.2` can produce `play_time_intent` range `480..720`, but Raw DSL v0.1 cannot consume it. Commit 1 supersedes the earlier `FALLBACK_UNSUPPORTED` wording with `LEGACY_DSL_NONREPRESENTABLE`.
+- `proj_20260619_122635_e351` produced `game_dsl.json`, but `generation_path_receipt.json` recorded `selectedPath: legacy_template_v1`; the DSL source remained Raw DSL v0.1 with `target_play_time_sec: 120`, so this is not a completed `capability_composed_v1` cutover.
+
+## Production Realization Stages
+
+Step37 continues after A-F. Do not open Step38 for this work.
+
+### 37.G — Active Capability DSL Generation
+
+Implement model-facing `CapabilityGameDslDraft v1`, trusted `CanonicalGameDsl v0.2`, composed schema identity, progression planning and artifact separation:
+
+- model output: `capability-game-dsl-draft.raw.json`;
+- trusted authority: `canonical-game-dsl-v0.2.json`;
+- schema evidence: `composed-game-dsl-schema.json`;
+- normalization evidence: `game-dsl-normalization-report.json`;
+- legacy artifacts: `legacy-raw-game-dsl-v0.1.raw.json` and `legacy-game-dsl-v1.json`.
+
+Model drafts must not fabricate registry snapshot hashes, exact locks, package versions, runtime manifest hashes or trusted artifact refs.
+
+### 37.H — Capability IR and Runtime Manifest Consumption
+
+Complete only the reference `side_scrolling_run_and_gun.v1` capability set first. Required output:
+
+- `resolved-capability-graph.json`;
+- `gameplay-capability-lock.json`;
+- `capability-ir.json`;
+- `runtime-plan.generated.json`;
+- `runtime-system-manifest.json`;
+- `runtime-module-load-receipt.json`.
+
+The runtime manifest must derive deterministically from the exact lock, and the runtime loader must prove that loaded module order, version and hash match the manifest and lock.
+
+### 37.I — Runtime Evidence, Canary and Parity
+
+The same run must prove that enemy firing is capability-owned:
+
+- exact lock contains the enemy firing package;
+- runtime manifest contains the enemy firing module;
+- runtime loader loads the module;
+- Scene IR has a reachable enemy wave;
+- enemy enters firing state and creates a projectile;
+- runtime emits real `enemy.fired`;
+- QA captures the real event with run, lock, manifest, module, capability id and version.
+
+Fixture emits, QA harness injected events, manifest-only producers, unreachable scenes and copied legacy telemetry do not satisfy evidence.
+
+### 37.J — Default Cutover and Final Closure
+
+Run canary first with `CAPABILITY_COMPOSED_V1_ENABLED=true` and `CAPABILITY_COMPOSED_V1_DEFAULT=false`. Compare legacy and capability runs for gameplay semantics, Scene IR coverage, runtime plan, objectives, runtime events, build, QA and rollback.
+
+Only after canary, parity and rollback pass may `CAPABILITY_COMPOSED_V1_DEFAULT=true` become the default. If the capability path is not ready and legacy was not explicitly authorized, the pipeline must fail closed with `CAPABILITY_COMPOSED_PATH_NOT_READY`.
+
+## Recommended Production Implementation Sequence
+
+1. `feat(game-dsl): classify legacy DSL representability`
+   - Mark Raw Game DSL v0.1 as legacy.
+   - Add `LegacyRepresentabilityResult`.
+   - Test range, endless and unspecified as nonrepresentable.
+   - Correct failure code and event stage so representability blocks are not model failures.
+2. `feat(game-dsl): add capability-backed DSL draft contract`
+   - Add `CapabilityGameDslDraft v1`, composed schema identity, progression plan, segment duration targets, arbitrary script prohibition and contract tests.
+3. `feat(game-dsl): add canonical capability game DSL`
+   - Add Canonical Game DSL v0.2, trusted brief/lock/schema bindings, draft to canonical normalizer and raw vs authoritative artifact separation.
+4. `feat(compiler): compile canonical capability DSL into runtime plans`
+   - Add Capability IR, Runtime Plan, Scene IR authority, progression segment realization and runtime manifest.
+5. `test(runtime): prove active capability-composed gameplay realization`
+   - Prove active exact lock, active runtime manifest, real `enemy.fired`, capability-owned QA, build pass and same-run evidence identity.
+6. `feat(pipeline): make capability-composed generation the default`
+   - Execute only after canary, parity and rollback evidence all pass.
+
 ## Execution Phases
 
 ### Phase A — P0 Contract Repair
@@ -214,7 +313,7 @@ Validation result:
 Review gate:
 
 - Oracle first Phase A review: P0 none; P1 found mixed v0.2 + legacy duration could collapse a range and provider prompt used a misleading nested shape; P2 requested Raw DSL legacy projection tests.
-- Follow-up fix: mixed v0.2 fields now fail closed, prompt uses one-of examples and forbids `target_play_time_sec`, long/endless/unspecified v0.2 intents return `FALLBACK_UNSUPPORTED` before legacy Raw DSL model invocation, and short v0.2 target projection is covered.
+- Follow-up fix: mixed v0.2 fields now fail closed, prompt uses one-of examples and forbids `target_play_time_sec`, long/endless/unspecified v0.2 intents originally returned `FALLBACK_UNSUPPORTED` before legacy Raw DSL model invocation, and short v0.2 target projection is covered. Commit 1 supersedes that failure code with `LEGACY_DSL_NONREPRESENTABLE`.
 - Oracle follow-up review: P0/P1/P2 none; P3 suggested optional endless/unspecified tests, which were added and verified.
 
 ### 2. Phase B Direct Scene IR Bug Repair
@@ -656,3 +755,62 @@ Review gate:
 - Oracle follow-up review: P0/P1/P3 none; P2 found validation freshness still depended on an unbounded caller-supplied `maxValidationAgeMs`.
 - P2 fix: `STEP37_FINAL_MAX_VALIDATION_AGE_MS` caps the window at 24h, and over-wide caller windows now fail with `STEP37_FINAL_VALIDATION_STALE`.
 - Oracle final follow-up review: P0/P1/P2/P3 none; remaining P2/P3 are closed and Phase F final closure gate is approved.
+
+### 10. 37.G Commit 1 — Legacy DSL Representability Classification
+
+Completed time: 2026-06-19
+
+Completed content:
+
+- Added repository-global `Compatibility & Cutover` rule in `AGENTS.md`.
+- Recorded Step37 37.G-J production realization stages and the six-commit implementation sequence.
+- Marked Raw Game DSL v0.1 as a legacy bounded dialect with exported min/max target play-time constants.
+- Added `LegacyRepresentabilityResult`, `CompatibilityDisposition` and `classifyLegacyRawGameDslRepresentability`.
+- Classified v0.1 briefs as `LOSSLESS_COMPATIBLE`, short v0.2 target intents as `ADAPTER_REQUIRED`, and long target/range/endless/unspecified v0.2 intents as `NEW_CONSUMER_REQUIRED`.
+- Replaced provider-side `FALLBACK_UNSUPPORTED` for legacy play-time loss with `LEGACY_DSL_NONREPRESENTABLE`.
+- Extended `generation_path_receipt.json` so blocked preconditions can record `selectedPath: blocked`, `targetPath`, `legacyRepresentable` and `blocker` without writing `modelFailureCode`.
+- Changed the pipeline event for legacy nonrepresentability from `model.failed` to `dsl.blocked_precondition`.
+- Added a dedicated DSL precondition blocked artifact index path so artifact index and acceptance report use `dsl_precondition_blocked_*` reasons instead of `model_generation_failed_*`.
+
+Compatibility & Cutover:
+
+| Check | Commit 1 answer |
+| --- | --- |
+| Producer change | Raw DSL v0.1 legacy constants, representability classifier, provider failure code, generation path receipt fields and artifact-index skip reasons. |
+| Consumer list | Provider legacy projection, generation pipeline failure handler, generation path receipt parser, artifact index, acceptance report, Workbench evidence and tests. |
+| Compatibility type | `LOSSLESS_COMPATIBLE` for existing v0.1 briefs, `ADAPTER_REQUIRED` for short v0.2 target intents, `NEW_CONSUMER_REQUIRED` for long target/range/endless/unspecified. |
+| Authority | `GameBrief v0.2` remains play-time authority; `generation_path_receipt.json` is actual path/blocker authority. |
+| Legacy strategy | Legacy Raw DSL v0.1 remains available only when representable; nonrepresentable intents block instead of shortening to 120 seconds. |
+| Failure policy | Nonrepresentable legacy projection writes `LEGACY_DSL_NONREPRESENTABLE`, `selectedPath: blocked`, `legacyRepresentable: false` and `dsl.blocked_precondition`. |
+| Evidence | Provider, receipt, artifact-index, acceptance and pipeline tests prove the blocked path is not reported as model failure. |
+| Rollback | No rollback behavior changed in this commit; legacy rollback remains governed by Phase E/F authorization and lineage rules. |
+
+Phase result:
+
+- Commit 1 is implemented and verified.
+- Step37 remains open: no CapabilityGameDslDraft, Canonical Game DSL v0.2, active exact lock, runtime manifest, active module load receipt, real capability-owned `enemy.fired`, canary, parity, rollback or default cutover has been implemented in this commit.
+- Current next step is 37.G Commit 2: add the capability-backed DSL draft contract.
+
+Validation:
+
+```bash
+npx vitest run tests/contracts/legacy-raw-game-dsl-representability.test.ts tests/contracts/generation-path-receipt.test.ts tests/workspace/game-dsl-provider.test.ts tests/workspace/generation-pipeline.service.test.ts tests/workspace/pipeline-artifact-index.test.ts
+npm run typecheck:root
+git diff --check
+git diff --no-index --check -- /dev/null AGENTS.md
+git diff --no-index --check -- /dev/null packages/game-dsl/src/schemas/legacy-raw-game-dsl-representability.ts
+git diff --no-index --check -- /dev/null tests/contracts/legacy-raw-game-dsl-representability.test.ts
+```
+
+Validation result:
+
+- Commit 1 focused contract/workspace suite passed: 5 files / 120 tests.
+- `npm run typecheck:root` passed.
+- `git diff --check` passed.
+- New-file no-index whitespace checks for `AGENTS.md`, `legacy-raw-game-dsl-representability.ts` and `legacy-raw-game-dsl-representability.test.ts` passed.
+
+Review gate:
+
+- Oracle first Commit 1 review: P0 none; P1 found `LEGACY_DSL_NONREPRESENTABLE` still reused `model_generation_failed_*` artifact-index / acceptance reasons; P2 found pipeline tests did not cover artifact index / acceptance report and the Phase A history still exposed old `FALLBACK_UNSUPPORTED` wording without supersession.
+- Follow-up fix: added `buildDslPreconditionBlockedPipelineArtifactIndex`, changed the pipeline to write `dsl_precondition_blocked_*` reasons, added artifact index and acceptance report assertions, and marked the old Phase A wording superseded by `LEGACY_DSL_NONREPRESENTABLE`.
+- Oracle follow-up review: P0/P1/P2/P3 none; Commit 1 approved for closure.

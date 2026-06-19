@@ -3,6 +3,11 @@ import { z } from 'zod';
 import { RAW_DSL_GAME_GENRES, SIDE_SCROLLING_WORLD_BOUNDS } from '../runtime-capabilities.js';
 import { GameSemanticModelSchema } from '../semantic/semantic-model.schema.js';
 
+export const RAW_GAME_DSL_V01_DIALECT = 'game-dsl-v0.1' as const;
+export const RAW_GAME_DSL_V01_CONTRACT_STATUS = 'legacy' as const;
+export const RAW_GAME_DSL_V01_TARGET_PLAY_TIME_MIN_SEC = 30 as const;
+export const RAW_GAME_DSL_V01_TARGET_PLAY_TIME_MAX_SEC = 120 as const;
+
 export const DslIdSchema = z.string().regex(/^[a-z][a-z0-9_]{1,39}$/);
 
 const forbiddenKeys = new Set([
@@ -443,7 +448,7 @@ const UiSchema = z.strictObject({
 
 /** Raw DSL 只允许表达引擎无关的玩法语义，不能包含 runtime API 或任意脚本。 */
 export const RawGameDslSchema = z.strictObject({
-  dsl_version: z.literal('game-dsl-v0.1'),
+  dsl_version: z.literal(RAW_GAME_DSL_V01_DIALECT),
   metadata: z.strictObject({
     title: z.string().min(1).max(80),
     description: z.string().max(300),
@@ -453,7 +458,7 @@ export const RawGameDslSchema = z.strictObject({
     genre: z.enum(RAW_DSL_GAME_GENRES),
     camera: z.enum(['top_down', 'side_view']),
     difficulty: z.enum(['easy', 'normal']),
-    target_play_time_sec: z.number().int().min(30).max(120)
+    target_play_time_sec: z.number().int().min(RAW_GAME_DSL_V01_TARGET_PLAY_TIME_MIN_SEC).max(RAW_GAME_DSL_V01_TARGET_PLAY_TIME_MAX_SEC)
   }),
   world: z.strictObject({
     width: z.number().int().min(640).max(SIDE_SCROLLING_WORLD_BOUNDS.maxWorldWidth),

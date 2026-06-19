@@ -862,6 +862,59 @@ describe('GenerationPipelineService failure states', () => {
     await expect(runStore.readEvents(runId)).resolves.toEqual(expect.arrayContaining([expect.objectContaining({ type: 'model.failed' })]));
   });
 
+  it('records legacy DSL nonrepresentability as a DSL precondition block, not a model failure', async () => {
+    const pipeline = createPipeline({
+      modelProvider: {
+        async generateGameBrief() {
+          return {
+            ok: true,
+            value: {
+              brief_version: 'game-brief-v0.1',
+              schema_version: '0.2',
+              title: 'Long Mission',
+              genre: 'collector',
+              camera: 'top_down',
+              core_loop: ['move', 'collect', 'win'],
+              difficulty: 'normal',
+              play_time_intent: { mode: 'range', min_sec: 480, max_sec: 720 }
+            },
+            rawText: '{}',
+            rawOutputPath: '/tmp/game-brief.raw.json'
+          };
+        },
+        async generateRawGameDsl() {
+          return {
+            ok: false,
+            code: 'LEGACY_DSL_NONREPRESENTABLE',
+            message: 'Raw Game DSL v0.1 cannot preserve the requested play-time intent.',
+            issues: ['legacy_representability: RANGE_PLAY_TIME_NOT_REPRESENTABLE']
+          };
+        }
+      }
+    });
+
+    await expect(runPipeline(pipeline)).resolves.toBe('FAILED');
+    const receipt = await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_path_receipt.json'), 'utf8');
+    expect(receipt).toContain('"selectedPath": "blocked"');
+    expect(receipt).toContain('"targetPath": "capability_composed_v1"');
+    expect(receipt).toContain('"legacyRepresentable": false');
+    expect(receipt).toContain('"blocker": "CAPABILITY_COMPOSED_PATH_NOT_ACTIVE"');
+    expect(receipt).not.toContain('modelFailureCode');
+
+    const artifactIndex = await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_artifact_index.json'), 'utf8');
+    expect(artifactIndex).toContain('dsl_precondition_blocked_before_dsl');
+    expect(artifactIndex).toContain('dsl_precondition_blocked_before_compile');
+    expect(artifactIndex).not.toContain('model_generation_failed');
+
+    const acceptanceReport = await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_acceptance_report.json'), 'utf8');
+    expect(acceptanceReport).toContain('dsl_precondition_blocked_before_dsl');
+    expect(acceptanceReport).not.toContain('model_generation_failed');
+
+    const events = await runStore.readEvents(runId);
+    expect(events).toEqual(expect.arrayContaining([expect.objectContaining({ type: 'dsl.blocked_precondition' })]));
+    expect(events).not.toEqual(expect.arrayContaining([expect.objectContaining({ type: 'model.failed' })]));
+  });
+
   it('maps missing dist/index.html to PREVIEW_ARTIFACT_MISSING', async () => {
     const pipeline = createPipeline({
       compiler: { compile: compileWithoutDist },

@@ -454,8 +454,9 @@ describe('GameDslProviderService', () => {
 
     expect(result).toMatchObject({
       ok: false,
-      code: 'FALLBACK_UNSUPPORTED',
-      message: 'Raw Game DSL v0.1 cannot represent the requested play-time intent.'
+      code: 'LEGACY_DSL_NONREPRESENTABLE',
+      message: 'Raw Game DSL v0.1 cannot preserve the requested play-time intent.',
+      issues: expect.arrayContaining(['legacy_representability: RANGE_PLAY_TIME_NOT_REPRESENTABLE'])
     });
     expect(calls).toEqual([]);
   });
@@ -474,7 +475,8 @@ describe('GameDslProviderService', () => {
 
     expect(result).toMatchObject({
       ok: false,
-      code: 'FALLBACK_UNSUPPORTED'
+      code: 'LEGACY_DSL_NONREPRESENTABLE',
+      issues: expect.arrayContaining([`legacy_representability: ${mode === 'endless' ? 'ENDLESS_PLAY_TIME_NOT_REPRESENTABLE' : 'UNSPECIFIED_PLAY_TIME_NOT_REPRESENTABLE'}`])
     });
     expect(calls).toEqual([]);
   });

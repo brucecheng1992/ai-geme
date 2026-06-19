@@ -82,4 +82,28 @@ describe('Step 37 generation path receipt', () => {
       modelFailureCode: 'MODEL_SCHEMA_VALIDATION_FAILED'
     });
   });
+
+  it('records legacy DSL nonrepresentability as a blocked precondition instead of a model failure', () => {
+    const receipt = buildGenerationPathReceipt({
+      projectId: 'proj_20260619_path_receipt',
+      runId: 'run_20260619_legacy_nonrepresentable',
+      selectedPath: 'blocked',
+      targetPath: 'capability_composed_v1',
+      dslSource: 'not_generated',
+      selectionReason: 'DSL generation blocked before legacy Raw DSL v0.1: LEGACY_DSL_NONREPRESENTABLE',
+      legacyRepresentable: false,
+      blocker: 'CAPABILITY_COMPOSED_PATH_NOT_ACTIVE',
+      capabilityReadiness: 'blocked'
+    });
+
+    expect(GenerationPathReceiptSchema.parse(receipt)).toMatchObject({
+      selectedPath: 'blocked',
+      targetPath: 'capability_composed_v1',
+      dslSource: 'not_generated',
+      legacyRepresentable: false,
+      blocker: 'CAPABILITY_COMPOSED_PATH_NOT_ACTIVE',
+      capabilityReadiness: 'blocked'
+    });
+    expect(receipt).not.toHaveProperty('modelFailureCode');
+  });
 });

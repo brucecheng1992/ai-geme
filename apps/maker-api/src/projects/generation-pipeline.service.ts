@@ -31,6 +31,7 @@ import {
   buildGameDslArtifact,
   checkPhaserRuntimeCapabilities,
   findRuntimeGenreCapability,
+  LEGACY_DSL_NONREPRESENTABLE,
   validateAndNormalizeRawGameDsl,
   validateGameDslArtifact,
   withDslValidationSourceArtifact,
@@ -64,6 +65,7 @@ import { GenerationInputReportSchema, buildGenerationInputReport, type Generatio
 import { buildPipelineAcceptanceReport, writePipelineAcceptanceReport } from './pipeline-acceptance-report.js';
 import {
   buildCompileFailedPipelineArtifactIndex,
+  buildDslPreconditionBlockedPipelineArtifactIndex,
   buildInvalidDslPipelineArtifactIndex,
   buildModelGenerationFailedPipelineArtifactIndex,
   buildUnsupportedIntentPipelineArtifactIndex,
@@ -584,6 +586,11 @@ export class GenerationPipelineService {
       return await this.writeDeterministicFallback(input, failure);
     }
 
+    if (!failure.ok && failure.code === LEGACY_DSL_NONREPRESENTABLE) {
+      await this.failLegacyDslPrecondition(input, failure.message, failure.issues);
+      return { ok: false, status: 'FAILED' };
+    }
+
     const reason = failure.ok ? 'unknown' : `${failure.code}: ${failure.message}`;
     await this.failModelGeneration(input, `Model generation failed: ${reason}`, failure.ok ? 'UNKNOWN_MODEL_FAILURE' : failure.code);
     return { ok: false, status: 'FAILED' };
@@ -609,6 +616,26 @@ export class GenerationPipelineService {
     await this.writeModelGenerationFailedPipelineArtifactIndex(input);
     await this.setStatus(input.projectId, input.runId, 'FAILED', 'dsl-generation', 'FAILED');
     await this.appendEvent(input.runId, 'model.failed', message);
+  }
+
+  private async failLegacyDslPrecondition(input: GenerationPipelineInput, message: string, issues: string[] = []): Promise<void> {
+    const issueSummary = issues.length === 0 ? message : `${message}: ${issues.join('; ')}`;
+    await this.writeGenerationPathReceipt(input, {
+      selectedPath: 'blocked',
+      targetPath: 'capability_composed_v1',
+      dslSource: 'not_generated',
+      selectionReason: `DSL generation blocked before legacy Raw DSL v0.1: ${LEGACY_DSL_NONREPRESENTABLE}: ${issueSummary}`,
+      legacyRepresentable: false,
+      blocker: 'CAPABILITY_COMPOSED_PATH_NOT_ACTIVE',
+      capabilityReadiness: 'blocked',
+      artifactRefs: [
+        { artifactKind: 'generation_input_report', path: 'generation_input_report.json' },
+        { artifactKind: 'intent_plan', path: 'intent_plan.json' }
+      ]
+    });
+    await this.writeDslPreconditionBlockedPipelineArtifactIndex(input);
+    await this.setStatus(input.projectId, input.runId, 'FAILED', 'dsl-generation', 'FAILED');
+    await this.appendEvent(input.runId, 'dsl.blocked_precondition', `${LEGACY_DSL_NONREPRESENTABLE}: ${issueSummary}`);
   }
 
   private async writeDeterministicFallback(input: GenerationPipelineInput, failure: GameDslProviderResult<unknown>): Promise<RawDslGenerationResult> {
@@ -921,6 +948,16 @@ export class GenerationPipelineService {
 
   private async writeModelGenerationFailedPipelineArtifactIndex(input: GenerationPipelineInput): Promise<void> {
     const index = buildModelGenerationFailedPipelineArtifactIndex({ projectId: input.projectId, runId: input.runId });
+    await this.writePipelineAcceptanceReport(input, index, {
+      dslValidation: {
+        valid: false
+      }
+    });
+    await writePipelineArtifactIndex(this.workspace.getModelOutputPath(input.projectId, input.runId, 'pipeline_artifact_index.json'), index);
+  }
+
+  private async writeDslPreconditionBlockedPipelineArtifactIndex(input: GenerationPipelineInput): Promise<void> {
+    const index = buildDslPreconditionBlockedPipelineArtifactIndex({ projectId: input.projectId, runId: input.runId });
     await this.writePipelineAcceptanceReport(input, index, {
       dslValidation: {
         valid: false

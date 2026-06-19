@@ -419,6 +419,35 @@ export function buildUnsupportedIntentPipelineArtifactIndex(input: { projectId: 
 }
 
 export function buildModelGenerationFailedPipelineArtifactIndex(input: { projectId: string; runId: string }): PipelineArtifactIndex {
+  return buildPreDslBlockedPipelineArtifactIndex({
+    ...input,
+    reasonPrefix: 'model_generation_failed',
+    previewDirectory: 'model_generation_failed'
+  });
+}
+
+export function buildDslPreconditionBlockedPipelineArtifactIndex(input: { projectId: string; runId: string }): PipelineArtifactIndex {
+  return buildPreDslBlockedPipelineArtifactIndex({
+    ...input,
+    reasonPrefix: 'dsl_precondition_blocked',
+    previewDirectory: 'dsl_precondition_blocked'
+  });
+}
+
+function buildPreDslBlockedPipelineArtifactIndex(input: {
+  projectId: string;
+  runId: string;
+  reasonPrefix: 'model_generation_failed' | 'dsl_precondition_blocked';
+  previewDirectory: string;
+}): PipelineArtifactIndex {
+  const beforeDsl = `${input.reasonPrefix}_before_dsl`;
+  const beforeDslValidation = `${input.reasonPrefix}_before_dsl_validation`;
+  const beforeConsumption = `${input.reasonPrefix}_before_consumption_audit`;
+  const beforeCompile = `${input.reasonPrefix}_before_compile`;
+  const beforeRuntimeCapability = `${input.reasonPrefix}_before_runtime_capability`;
+  const beforeBuild = `${input.reasonPrefix}_before_build`;
+  const beforeQa = `${input.reasonPrefix}_before_qa`;
+
   return parseIndex(input.projectId, input.runId, [
     artifact('generationInputReport', 'prompt', 'model-output', 'generation_input_report.json', 'present', true, 'generation', 'json'),
     artifact('generationPathReceipt', 'runtime', 'model-output', 'generation_path_receipt.json', 'present', true, 'generation', 'json'),
@@ -434,28 +463,28 @@ export function buildModelGenerationFailedPipelineArtifactIndex(input: { project
     artifact('shadowCapabilityQaPlan', 'runtime', 'model-output', 'shadow_capability_qa_plan.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
     artifact('shadowCapabilityQaReport', 'runtime', 'model-output', 'shadow_capability_qa_report.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
     artifact('intentPlan', 'prompt', 'model-output', 'intent_plan.json', 'present', true, 'generation', 'json'),
-    artifact('gameDsl', 'dsl', 'model-output', 'game_dsl.json', 'skipped', true, 'generation', 'json', 'model_generation_failed_before_dsl'),
-    artifact('gameDslCandidate', 'dsl', 'model-output', 'game_dsl.candidate.json', 'skipped', false, 'generation', 'json', 'model_generation_failed_before_dsl'),
-    artifact('dslValidationReport', 'validation', 'model-output', 'dsl_validation_report.json', 'skipped', true, 'generation', 'json', 'model_generation_failed_before_dsl_validation'),
-    artifact('dslConsumptionReport', 'validation', 'model-output', 'dsl_consumption_report.json', 'skipped', true, 'dsl-consumption', 'json', 'model_generation_failed_before_consumption_audit'),
-    skippedGeneratedArtifact('sceneIr', 'model_generation_failed_before_compile'),
-    skippedGeneratedArtifact('sceneIrAuthorityReport', 'model_generation_failed_before_compile'),
-    skippedGeneratedArtifact('sceneIrCoverageReport', 'model_generation_failed_before_compile'),
-    skippedGeneratedArtifact('runtimeSceneBindingReport', 'model_generation_failed_before_compile'),
-    artifact('runtimeCapabilityReport', 'runtime', 'model-output', 'runtime_capability_report.json', 'skipped', true, 'runtime-capability', 'json', 'model_generation_failed_before_runtime_capability'),
-    skippedGeneratedArtifact('assetIntentManifest', 'model_generation_failed_before_compile'),
-    skippedGeneratedArtifact('assetPlan', 'model_generation_failed_before_compile'),
-    skippedGeneratedArtifact('publicAssetManifest', 'model_generation_failed_before_compile'),
-    artifact('phaserPreviewManifest', 'preview', 'generated-project', 'model_generation_failed/src/asset-manifest.generated.json', 'skipped', true, 'compiler', 'json', 'model_generation_failed_before_compile'),
-    skippedGeneratedArtifact('assetResolutionReport', 'model_generation_failed_before_compile'),
-    skippedGeneratedArtifact('assetPipelineReport', 'model_generation_failed_before_compile'),
-    skippedGeneratedArtifact('assetLibraryUsageReport', 'model_generation_failed_before_compile'),
-    skippedGeneratedArtifact('assetBindingTraceReport', 'model_generation_failed_before_compile'),
-    skippedGeneratedArtifact('semanticExtractionTraceReport', 'model_generation_failed_before_compile'),
-    skippedGeneratedArtifact('semanticModelReport', 'model_generation_failed_before_compile'),
-    artifact('buildLog', 'build', 'build-log', `${input.runId}.log`, 'skipped', false, 'build', 'log', 'model_generation_failed_before_build'),
-    artifact('qaReport', 'qa', 'qa-report', `${input.runId}.json`, 'skipped', false, 'qa', 'json', 'model_generation_failed_before_qa'),
-    artifact('renderFidelityReport', 'qa', 'model-output', 'render_fidelity_report.json', 'skipped', false, 'qa', 'json', 'model_generation_failed_before_qa'),
+    artifact('gameDsl', 'dsl', 'model-output', 'game_dsl.json', 'skipped', true, 'generation', 'json', beforeDsl),
+    artifact('gameDslCandidate', 'dsl', 'model-output', 'game_dsl.candidate.json', 'skipped', false, 'generation', 'json', beforeDsl),
+    artifact('dslValidationReport', 'validation', 'model-output', 'dsl_validation_report.json', 'skipped', true, 'generation', 'json', beforeDslValidation),
+    artifact('dslConsumptionReport', 'validation', 'model-output', 'dsl_consumption_report.json', 'skipped', true, 'dsl-consumption', 'json', beforeConsumption),
+    skippedGeneratedArtifact('sceneIr', beforeCompile),
+    skippedGeneratedArtifact('sceneIrAuthorityReport', beforeCompile),
+    skippedGeneratedArtifact('sceneIrCoverageReport', beforeCompile),
+    skippedGeneratedArtifact('runtimeSceneBindingReport', beforeCompile),
+    artifact('runtimeCapabilityReport', 'runtime', 'model-output', 'runtime_capability_report.json', 'skipped', true, 'runtime-capability', 'json', beforeRuntimeCapability),
+    skippedGeneratedArtifact('assetIntentManifest', beforeCompile),
+    skippedGeneratedArtifact('assetPlan', beforeCompile),
+    skippedGeneratedArtifact('publicAssetManifest', beforeCompile),
+    artifact('phaserPreviewManifest', 'preview', 'generated-project', `${input.previewDirectory}/src/asset-manifest.generated.json`, 'skipped', true, 'compiler', 'json', beforeCompile),
+    skippedGeneratedArtifact('assetResolutionReport', beforeCompile),
+    skippedGeneratedArtifact('assetPipelineReport', beforeCompile),
+    skippedGeneratedArtifact('assetLibraryUsageReport', beforeCompile),
+    skippedGeneratedArtifact('assetBindingTraceReport', beforeCompile),
+    skippedGeneratedArtifact('semanticExtractionTraceReport', beforeCompile),
+    skippedGeneratedArtifact('semanticModelReport', beforeCompile),
+    artifact('buildLog', 'build', 'build-log', `${input.runId}.log`, 'skipped', false, 'build', 'log', beforeBuild),
+    artifact('qaReport', 'qa', 'qa-report', `${input.runId}.json`, 'skipped', false, 'qa', 'json', beforeQa),
+    artifact('renderFidelityReport', 'qa', 'model-output', 'render_fidelity_report.json', 'skipped', false, 'qa', 'json', beforeQa),
     artifact('pipelineAcceptanceReport', 'index', 'model-output', 'pipeline_acceptance_report.json', 'present', true, 'pipeline-acceptance', 'json'),
     artifact('pipelineArtifactIndex', 'index', 'model-output', 'pipeline_artifact_index.json', 'present', true, 'pipeline-artifact-index', 'json')
   ]);

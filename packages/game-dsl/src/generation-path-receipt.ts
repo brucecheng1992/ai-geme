@@ -18,11 +18,15 @@ export const GenerationPathReceiptSchema = z.strictObject({
     'fail_closed_runtime_unsupported',
     'fail_closed_compile_failed',
     'fail_closed_model_unavailable',
-    'fail_closed_model_generation_failed'
+    'fail_closed_model_generation_failed',
+    'blocked'
   ]),
+  targetPath: z.enum(['legacy_template_v1', 'capability_composed_v1']).optional(),
   dslSource: z.enum(['model_provider', 'deterministic_local_fallback', 'not_generated']),
   selectionReason: z.string().min(1),
   modelFailureCode: z.string().min(1).optional(),
+  legacyRepresentable: z.boolean().optional(),
+  blocker: z.string().min(1).optional(),
   profileId: z.string().min(1).optional(),
   defaultPathForSupportedProfiles: z.literal('capability_composed_v1'),
   legacyPathPolicy: z.strictObject({
@@ -45,9 +49,12 @@ export function buildGenerationPathReceipt(input: {
   projectId: string;
   runId: string;
   selectedPath: GenerationPathReceipt['selectedPath'];
+  targetPath?: GenerationPathReceipt['targetPath'];
   dslSource: GenerationPathReceipt['dslSource'];
   selectionReason: string;
   modelFailureCode?: string;
+  legacyRepresentable?: boolean;
+  blocker?: string;
   profileId?: string;
   capabilityReadiness?: GenerationPathReceipt['capabilityReadiness'];
   artifactRefs?: GenerationPathReceipt['artifactRefs'];
@@ -58,9 +65,12 @@ export function buildGenerationPathReceipt(input: {
     projectId: input.projectId,
     runId: input.runId,
     selectedPath: input.selectedPath,
+    ...(input.targetPath === undefined ? {} : { targetPath: input.targetPath }),
     dslSource: input.dslSource,
     selectionReason: input.selectionReason,
     ...(input.modelFailureCode === undefined ? {} : { modelFailureCode: input.modelFailureCode }),
+    ...(input.legacyRepresentable === undefined ? {} : { legacyRepresentable: input.legacyRepresentable }),
+    ...(input.blocker === undefined ? {} : { blocker: input.blocker }),
     ...(input.profileId === undefined ? {} : { profileId: input.profileId }),
     defaultPathForSupportedProfiles: 'capability_composed_v1',
     legacyPathPolicy: {

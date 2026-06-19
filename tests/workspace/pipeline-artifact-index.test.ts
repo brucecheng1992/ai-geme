@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   PipelineArtifactIndexSchema,
+  buildDslPreconditionBlockedPipelineArtifactIndex,
   buildInvalidDslPipelineArtifactIndex,
   buildValidPipelineArtifactIndex,
   writePipelineArtifactIndex
@@ -314,6 +315,17 @@ describe('Pipeline artifact index contract', () => {
         expect.objectContaining({ id: 'qaReport', status: 'skipped', reason: 'dsl_validation_failed_before_qa' })
       ])
     );
+  });
+
+  it('uses DSL precondition blocked reasons separately from model generation failures', () => {
+    const index = buildDslPreconditionBlockedPipelineArtifactIndex({ projectId, runId });
+    const serialized = JSON.stringify(index);
+
+    expect(PipelineArtifactIndexSchema.parse(index)).toEqual(index);
+    expect(serialized).toContain('dsl_precondition_blocked_before_dsl');
+    expect(serialized).toContain('dsl_precondition_blocked_before_compile');
+    expect(serialized).toContain('dsl_precondition_blocked/src/asset-manifest.generated.json');
+    expect(serialized).not.toContain('model_generation_failed');
   });
 
   it('writes a parseable index file with a stable trailing newline', async () => {

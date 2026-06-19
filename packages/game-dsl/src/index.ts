@@ -18,6 +18,13 @@ export {
   type GameBriefIngressResult
 } from './schemas/game-brief-ingress.js';
 export {
+  LEGACY_DSL_NONREPRESENTABLE,
+  classifyLegacyRawGameDslRepresentability,
+  type CompatibilityDisposition,
+  type LegacyRepresentabilityReason,
+  type LegacyRepresentabilityResult
+} from './schemas/legacy-raw-game-dsl-representability.js';
+export {
   GenerationScopePlanSchema,
   buildGenerationScopePlan,
   type GenerationScopePlan
@@ -104,7 +111,14 @@ export {
   type Step37FinalValidationReceipt,
   type Step37ReferenceRegressionSummary
 } from './step37-final-closure.js';
-export { RawGameDslSchema, type RawGameDsl } from './schemas/raw-game-dsl-v0.1.schema.js';
+export {
+  RAW_GAME_DSL_V01_CONTRACT_STATUS,
+  RAW_GAME_DSL_V01_DIALECT,
+  RAW_GAME_DSL_V01_TARGET_PLAY_TIME_MAX_SEC,
+  RAW_GAME_DSL_V01_TARGET_PLAY_TIME_MIN_SEC,
+  RawGameDslSchema,
+  type RawGameDsl
+} from './schemas/raw-game-dsl-v0.1.schema.js';
 export { NormalizedGameIrSchema, type NormalizedGameIr } from './schemas/normalized-game-ir-v0.1.schema.js';
 export {
   buildDslConsumptionReport,

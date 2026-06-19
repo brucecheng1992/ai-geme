@@ -4,7 +4,9 @@ import type { ZodIssue, ZodType } from 'zod';
 import {
   GAME_BRIEF_V02_SCHEMA_VERSION,
   GameBriefIngressValidationError,
+  LEGACY_DSL_NONREPRESENTABLE,
   RawGameDslSchema,
+  classifyLegacyRawGameDslRepresentability,
   parseAndNormalizeGameBrief,
   toLegacyTargetPlayTimeSec,
   type GameBrief,
@@ -31,7 +33,7 @@ type GenerateRawGameDslParams = GenerateGameBriefParams & {
 
 type SchemaValidationFailure = {
   ok: false;
-  code: 'MODEL_SCHEMA_VALIDATION_FAILED' | 'FALLBACK_UNSUPPORTED';
+  code: 'MODEL_SCHEMA_VALIDATION_FAILED' | typeof LEGACY_DSL_NONREPRESENTABLE;
   message: string;
   rawText?: string;
   rawOutputPath?: string;
@@ -460,35 +462,22 @@ function formatIngressIssues(source: string, issues: readonly ZodIssue[]): strin
 }
 
 function toLegacyRawDslBrief(brief: ProviderGameBrief): GameDslProviderResult<GameBrief> {
-  if (!isGameBriefV02(brief)) {
-    return { ok: true, value: brief, rawText: '', rawOutputPath: '' };
-  }
-
-  const targetPlayTimeSec = toLegacyTargetPlayTimeSec(brief.play_time_intent);
-  if (targetPlayTimeSec === null) {
+  const representability = classifyLegacyRawGameDslRepresentability(brief);
+  if (!representability.representable) {
     return {
       ok: false,
-      code: 'FALLBACK_UNSUPPORTED',
-      message: 'Raw Game DSL v0.1 requires a target play-time projection.',
-      issues: ['play_time_intent: endless and unspecified modes require the capability-composed DSL path before Raw DSL generation']
-    };
-  }
-  if (targetPlayTimeSec > 120) {
-    return {
-      ok: false,
-      code: 'FALLBACK_UNSUPPORTED',
-      message: 'Raw Game DSL v0.1 cannot represent the requested play-time intent.',
-      issues: [`play_time_intent: representative target ${targetPlayTimeSec} exceeds the Raw Game DSL v0.1 maximum of 120 seconds`]
+      code: LEGACY_DSL_NONREPRESENTABLE,
+      message: 'Raw Game DSL v0.1 cannot preserve the requested play-time intent.',
+      issues: [
+        `legacy_representability: ${representability.reason}`,
+        ...representability.issues
+      ]
     };
   }
 
-  const { schema_version: _schemaVersion, play_time_intent: _playTimeIntent, ...legacyBrief } = brief;
   return {
     ok: true,
-    value: {
-      ...legacyBrief,
-      target_play_time_sec: targetPlayTimeSec
-    },
+    value: representability.projectedBrief,
     rawText: '',
     rawOutputPath: ''
   };
