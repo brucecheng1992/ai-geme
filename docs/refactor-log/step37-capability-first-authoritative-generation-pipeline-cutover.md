@@ -937,3 +937,66 @@ Review gate:
 - Oracle follow-up review: P0/P1/P3 none; residual P2 found `game_dsl_normalization_report.reportHash` was not recomputed by the schema.
 - Residual P2 fix: normalization report schema now recomputes deterministic report hash, and contract tests reject stale `reportHash`.
 - Oracle final Commit 3 review: P0/P1/P2/P3 none; residual P2 is closed and Commit 3 is approved for closure.
+
+### 13. 37.H Commit 4 — Canonical Capability Runtime Compilation
+
+Completed time: 2026-06-19
+
+Completed content:
+
+- Added `compileCanonicalCapabilityDslToRuntimePlan` as the canonical v0.2 downstream compiler boundary.
+- Added `capability-ir.json`, `runtime-plan.generated.json` and `runtime-system-manifest.json` output refs.
+- Added `capability_runtime_plan.v0.2` with realized progression segments, runtime system summaries and gameplay ids.
+- Compiled canonical DSL into `CapabilityDrivenGameIr` without reading raw model draft output.
+- Built runtime system manifest from exact lock packages using universal composition mode and `authoritativeConfig: capability_ir`.
+- Added Scene IR authority report where every gameplay domain has a single owner: `canonical_game_dsl_v0.2_runtime_plan`.
+- Added compiler report with blocked/compiled status, source hashes, output refs and deterministic hash.
+- Added tests proving successful compilation, existing Phaser runtime loader plan consumption, exact lock/profile mismatch blocking, nested canonical capability ref blocking and runtime manifest/lock owner parity.
+
+Compatibility & Cutover:
+
+| Check | Commit 4 answer |
+| --- | --- |
+| Producer change | New canonical compilation report, Capability IR, Runtime Plan and Runtime System Manifest producer functions. |
+| Consumer list | Existing Phaser runtime loader plan builder, future runtime module loader, Scene IR renderer, QA planner, Workbench artifact index and final closure evaluator. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`; legacy runtime template does not consume canonical v0.2, Capability IR or runtime manifest directly. |
+| Authority | `canonical-game-dsl-v0.2.json` remains semantic authority; `runtime-plan.generated.json` becomes derived gameplay runtime authority; `runtime-system-manifest.json` is derived from the exact lock. |
+| Legacy strategy | No legacy path mutation. Legacy artifacts remain comparison/rollback-only. |
+| Failure policy | Invalid canonical DSL, invalid/stale lock, profile/runtime mismatch, capability-set mismatch, unsupported runtime family, invalid manifest or invalid runtime plan block compilation. |
+| Evidence | Contract tests prove generated IR and manifest are consumable by the existing loader planner and that manifest capability owners match the exact lock. No runtime modules are actually loaded in this commit. |
+| Rollback | No production path changes exist to roll back. Later rollback must use explicit legacy authorization and lineage. |
+
+Phase result:
+
+- Commit 4 is implemented and verified as canonical compilation and manifest generation only.
+- Step37 remains open: no real runtime module load receipt, real capability-owned `enemy.fired`, capability-owned QA, build pass, canary, parity, rollback or default cutover has been implemented in this commit.
+- Current next step is 37.I Commit 5: prove active capability-composed gameplay realization.
+
+Validation:
+
+```bash
+npx vitest run tests/contracts/canonical-capability-runtime-compiler.test.ts
+npm run typecheck:root
+git diff --check
+git diff --no-index --check -- /dev/null packages/game-dsl/src/canonical-capability-runtime-compiler.ts
+git diff --no-index --check -- /dev/null tests/contracts/canonical-capability-runtime-compiler.test.ts
+```
+
+Validation result:
+
+- Commit 4 canonical runtime compiler suite passed: 1 file / 9 tests.
+- `npm run typecheck:root` passed.
+- `git diff --check` passed.
+- New-file no-index whitespace checks for `canonical-capability-runtime-compiler.ts` and `canonical-capability-runtime-compiler.test.ts` passed.
+
+Review gate:
+
+- Oracle first Commit 4 review: P0/P3 none; P1 found exact lock `packages[*].capabilityId` was not checked against `capabilityIds`, and wave compilation hardcoded `spawn.static.v1`; P2 found compilation report hash/status invariants were not schema-enforced and runtime plan/manifest builders could throw before blocked report handling.
+- Follow-up fix: exact lock packages must match locked capability ids; wave rules are derived from canonical wave spawn capabilities and missing spawn capability blocks; compilation report schema recomputes hash and enforces compiled/blocked output invariants; runtime plan and manifest builders now return payloads for outer `safeParse` fail-closed handling.
+- Oracle follow-up review: P0/P3 none; residual P1 found canonical source `capability_lock_hash` was not checked against the exact lock and duplicate package owners could bypass set comparison; residual P2 found compiled reports could omit source hashes and runtime plan `planHash` was not recomputed.
+- Residual fix: compiler now requires canonical source lock hash to match the exact lock; package owner parity rejects duplicates and missing/extra packages; compiled reports require source hashes; runtime plan schema recomputes `planHash`; report hash calculation strips undefined fields instead of throwing.
+- Oracle second follow-up review: P0/P2/P3 none; residual P1 found runtime system ids dropped capability version suffixes and could collide across `*.v1` / `*.v2`.
+- Residual P1 fix: runtime system ids now preserve capability version suffixes, and contract tests prove `spawn.static.v1` and `spawn.static.v2` compile to distinct loader-consumable modules.
+- Oracle third follow-up review: P0/P2/P3 none; residual P1 found Capability IR output ids still dropped capability version suffixes and could collide across multi-version capabilities.
+- Residual P1 fix: derived Capability IR `entityComponents`, `rules` and `goals` output ids now preserve full capability ids, and versioned spawn tests assert IR rule ids remain unique.
+- Oracle final Commit 4 review: P0/P1/P2/P3 none; residual P1 is closed and Commit 4 is approved for closure.

@@ -143,6 +143,21 @@ export {
   type Step37ReferenceRegressionSummary
 } from './step37-final-closure.js';
 export {
+  CANONICAL_CAPABILITY_COMPILATION_REPORT_KIND,
+  CANONICAL_CAPABILITY_COMPILATION_REPORT_SCHEMA_VERSION,
+  CAPABILITY_IR_PATH,
+  CAPABILITY_RUNTIME_PLAN_KIND,
+  CAPABILITY_RUNTIME_PLAN_PATH,
+  CAPABILITY_RUNTIME_PLAN_SCHEMA_VERSION,
+  RUNTIME_SYSTEM_MANIFEST_PATH,
+  CanonicalCapabilityCompilationReportSchema,
+  CapabilityRuntimePlanSchema,
+  compileCanonicalCapabilityDslToRuntimePlan,
+  type CanonicalCapabilityCompilationReport,
+  type CapabilityRuntimePlan,
+  type CompileCanonicalCapabilityDslResult
+} from './canonical-capability-runtime-compiler.js';
+export {
   RAW_GAME_DSL_V01_CONTRACT_STATUS,
   RAW_GAME_DSL_V01_DIALECT,
   RAW_GAME_DSL_V01_TARGET_PLAY_TIME_MAX_SEC,
