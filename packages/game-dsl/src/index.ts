@@ -158,6 +158,30 @@ export {
   type CompileCanonicalCapabilityDslResult
 } from './canonical-capability-runtime-compiler.js';
 export {
+  ACTIVE_CAPABILITY_COMPOSED_GAMEPLAY_REALIZATION_REPORT_KIND,
+  ACTIVE_CAPABILITY_COMPOSED_GAMEPLAY_REALIZATION_REPORT_SCHEMA_VERSION,
+  CAPABILITY_OWNED_TELEMETRY_EVIDENCE_KIND,
+  CAPABILITY_OWNED_TELEMETRY_EVIDENCE_SCHEMA_VERSION,
+  CAPABILITY_PATH_BUILD_REPORT_KIND,
+  CAPABILITY_PATH_BUILD_REPORT_SCHEMA_VERSION,
+  RUNTIME_MODULE_LOAD_RECEIPT_KIND,
+  RUNTIME_MODULE_LOAD_RECEIPT_SCHEMA_VERSION,
+  ActiveCapabilityComposedGameplayRealizationReportSchema,
+  CapabilityOwnedTelemetryEvidenceSchema,
+  CapabilityPathBuildReportSchema,
+  RuntimeModuleLifecycleEventSchema,
+  RuntimeModuleLoadReceiptSchema,
+  buildActiveCapabilityComposedGameplayRealizationReport,
+  buildCapabilityOwnedTelemetryEvidence,
+  buildCapabilityPathBuildReport,
+  buildRuntimeModuleLoadReceipt,
+  type ActiveCapabilityComposedGameplayRealizationReport,
+  type CapabilityOwnedTelemetryEvidence,
+  type CapabilityPathBuildReport,
+  type RuntimeModuleLifecycleEvent,
+  type RuntimeModuleLoadReceipt
+} from './active-capability-runtime-evidence.js';
+export {
   RAW_GAME_DSL_V01_CONTRACT_STATUS,
   RAW_GAME_DSL_V01_DIALECT,
   RAW_GAME_DSL_V01_TARGET_PLAY_TIME_MAX_SEC,

@@ -1000,3 +1000,65 @@ Review gate:
 - Oracle third follow-up review: P0/P2/P3 none; residual P1 found Capability IR output ids still dropped capability version suffixes and could collide across multi-version capabilities.
 - Residual P1 fix: derived Capability IR `entityComponents`, `rules` and `goals` output ids now preserve full capability ids, and versioned spawn tests assert IR rule ids remain unique.
 - Oracle final Commit 4 review: P0/P1/P2/P3 none; residual P1 is closed and Commit 4 is approved for closure.
+
+### 14. 37.I Commit 5 — Active Capability-composed Gameplay Realization Evidence
+
+Completed time: 2026-06-19
+
+Completed content:
+
+- Added `active_capability_composed_gameplay_realization_report.v0.1` for same-run active capability-composed runtime evidence.
+- Added `runtime_module_load_receipt.v0.1` recording active module load order, versions, lifecycle hooks and teardown.
+- Added `capability_owned_telemetry_evidence.v0.1` requiring `enemy.fired` to come from a loaded runtime module with a reachable update-loop trigger.
+- Added `capability_path_build_report.v0.1` binding build status to the same active run, exact lock, runtime manifest, runtime plan and loader plan identity.
+- Added fail-closed realization checks for generation path receipt, exact lock hash, runtime manifest ownership, runtime module load receipt, enemy firing evidence, capability QA, build and same-run identity.
+- Added an active reference contract test that compiles canonical v0.2 DSL, builds the runtime loader plan, runs `createPhaserRuntimeModuleSession`, emits `enemy.fired` from `system.combat.projectile.v1` during `update`, captures module teardown, binds QA to the real telemetry evidence hash, and records build pass evidence.
+- Added negative tests proving `enemy.fired` evidence blocks without a reachable runtime update trigger and final realization blocks when capability QA is not bound to the real telemetry evidence.
+
+Compatibility & Cutover:
+
+| Check | Commit 5 answer |
+| --- | --- |
+| Producer change | New active runtime evidence producers: runtime module load receipt, capability-owned telemetry evidence, capability path build report and active gameplay realization report. |
+| Consumer list | Final closure evaluator, Workbench evidence client, cutover gate, capability-owned QA reader, runtime audit tooling and future artifact index writers. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`; legacy templates and shadow runtime reports do not express active module lifecycle, reachable trigger or same-run build/QA evidence. |
+| Authority | Exact capability lock remains capability authority; runtime manifest is derived from that lock; runtime plan is gameplay runtime authority; module load receipt and telemetry evidence are runtime truth for active consumption. |
+| Legacy strategy | No legacy path mutation and no default switch. Legacy remains explicit rollback/comparison only. |
+| Failure policy | Non-capability selected path, stale hash, identity mismatch, missing lifecycle hook, missing update trigger, unloaded producer, unbound QA, failed build or manifest/lock mismatch blocks final active realization. |
+| Evidence | Contract tests prove a real in-process runtime module session emits `enemy.fired` and QA consumes that telemetry evidence. This is active reference evidence, not production default canary completion. |
+| Rollback | No production default was changed. Rollback remains governed by Phase E/F explicit legacy authorization and lineage. |
+
+Phase result:
+
+- Commit 5 active runtime evidence implementation is verified locally.
+- Step37 remains open: production canary, parity, rollback and default cutover are still not executed.
+- Current next step is 37.J Commit 6 only after real canary, parity and rollback evidence all pass.
+
+Validation:
+
+```bash
+npx vitest run tests/contracts/active-capability-runtime-evidence.test.ts
+npx vitest run tests/contracts/active-capability-runtime-evidence.test.ts tests/contracts/canonical-capability-runtime-compiler.test.ts tests/contracts/phaser-runtime-loader.test.ts
+npm run typecheck:root
+git diff --check
+git diff --no-index --check -- /dev/null packages/game-dsl/src/active-capability-runtime-evidence.ts
+git diff --no-index --check -- /dev/null tests/contracts/active-capability-runtime-evidence.test.ts
+```
+
+Validation result:
+
+- Commit 5 active runtime evidence suite passed: 1 file / 8 tests.
+- Related runtime compiler and loader regression gate passed: 3 files / 27 tests.
+- `npm run typecheck:root` passed.
+- `git diff --check` passed.
+- New-file no-index whitespace checks for `active-capability-runtime-evidence.ts` and `active-capability-runtime-evidence.test.ts` produced no whitespace output.
+
+Review gate:
+
+- Oracle first Commit 5 review: P0/P3 none; P1 found final realization did not bind `telemetryEvidence.moduleLoadReceiptHash` to the current module load receipt and did not bind manifest systems to exact lock package version/hash; P2 found schema-level invariants and lifecycle ordering were too weak; P3 found validation counts in docs lagged behind the executed gate.
+- Follow-up fix: final realization now blocks cross-receipt `enemy.fired` splicing; runtime module load entries record exact package version/hash; manifest package refs, lifecycle completeness/order, passed-report invariants and evidenceRefs coverage are enforced; docs validation counts were updated.
+- Oracle second Commit 5 review: P0/P3 none; residual P1 found loader plan hash was self-trusted and manifest/receipt capability mismatch was only indirectly blocked; residual P2 found `evidenceRefs` hash consistency was not schema-enforced.
+- Residual fix: active evidence now recomputes loader plan hash, checks loader plan against manifest systems, directly blocks manifest/receipt capability mismatch and rejects passed reports whose evidenceRefs hashes do not match report fields.
+- Oracle third Commit 5 review: P0/P1/P3 none; residual P2 found module load receipt did not fail when loader plan omitted a manifest system.
+- Residual P2 fix: module load receipt now checks manifest-to-loader-plan reverse coverage and fails with `loader_plan_manifest_system_not_loaded:<systemId>`.
+- Oracle final Commit 5 review: P0/P1/P2/P3 none; residual P2 is closed and Commit 5 is approved for closure.
