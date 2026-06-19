@@ -814,3 +814,64 @@ Review gate:
 - Oracle first Commit 1 review: P0 none; P1 found `LEGACY_DSL_NONREPRESENTABLE` still reused `model_generation_failed_*` artifact-index / acceptance reasons; P2 found pipeline tests did not cover artifact index / acceptance report and the Phase A history still exposed old `FALLBACK_UNSUPPORTED` wording without supersession.
 - Follow-up fix: added `buildDslPreconditionBlockedPipelineArtifactIndex`, changed the pipeline to write `dsl_precondition_blocked_*` reasons, added artifact index and acceptance report assertions, and marked the old Phase A wording superseded by `LEGACY_DSL_NONREPRESENTABLE`.
 - Oracle follow-up review: P0/P1/P2/P3 none; Commit 1 approved for closure.
+
+### 11. 37.G Commit 2 — Capability-backed DSL Draft Contract
+
+Completed time: 2026-06-19
+
+Completed content:
+
+- Added `CapabilityGameDslDraft v1` as the model-owned draft contract at `capability-game-dsl-draft.raw.json`.
+- Added draft support for play-time intent, progression segments, duration targets, scenes, entities, behaviors, waves, pickups, objectives, boss phases and capability-owned config.
+- Preserved long/range play-time semantics by requiring range `play_time_intent` to match `progression.estimated_total_sec`; the reference fixture preserves `480..720` instead of collapsing to `120`.
+- Added system-owned composed schema identity with sorted capability ids and deterministic hash verification.
+- Reused declarative JSON guards for capability config, trigger and condition payloads so arbitrary script-like keys remain forbidden.
+- Added draft-level trusted evidence guards so model output cannot claim exact locks, registry snapshots, package versions, runtime manifests, module load receipts, QA/build/canary/parity/rollback/default-cutover status or trusted artifact refs.
+- Added local reference validation for scene segment/entity refs, behavior owners, wave segment/enemy refs, pickup refs and boss refs before canonical normalization.
+- Added contract tests covering reference run-and-gun draft shape, 3 waves, 1 pickup, win target 3800, boss phases, forbidden script keys, forbidden trusted evidence, undeclared capability refs, duplicate capabilities, disconnected local refs and composed schema identity determinism.
+
+Compatibility & Cutover:
+
+| Check | Commit 2 answer |
+| --- | --- |
+| Producer change | New `CapabilityGameDslDraft v1` model-output artifact and system-owned `composed_game_dsl_schema` identity contract. |
+| Consumer list | Future composed-schema prompt builder, draft parser, trusted draft-to-canonical normalizer, capability compiler and final closure evidence index. No runtime consumer is wired in this commit. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`; Raw Game DSL v0.1 cannot consume this artifact, and this commit intentionally adds no legacy adapter. |
+| Authority | Draft is only candidate model intent. It is not authoritative gameplay output; Commit 3 canonical DSL must become authority after binding trusted brief, lock and schema evidence. |
+| Legacy strategy | Legacy artifacts remain separate. This commit does not modify `legacy_template_v1` or authorize legacy fallback. |
+| Failure policy | Draft parse failures, trusted-evidence claims, unsafe declarative keys, undeclared capability refs and disconnected local refs fail closed at schema parse time. |
+| Evidence | Contract tests prove parse acceptance and rejection behavior. No active runtime, QA, canary, parity, rollback or default-cutover evidence is produced by this commit. |
+| Rollback | No production path changes exist to roll back. Later cutover rollback must still create explicit legacy runs with lineage and preserved evidence. |
+
+Phase result:
+
+- Commit 2 is implemented and verified as a model draft contract only.
+- Step37 remains open: no Canonical Game DSL v0.2, trusted draft-to-canonical normalizer, active exact lock, runtime manifest, module load receipt, real capability-owned `enemy.fired`, canary, parity, rollback or default cutover has been implemented in this commit.
+- Current next step is 37.G Commit 3: add the canonical capability Game DSL v0.2 and trusted draft-to-canonical normalizer.
+
+Validation:
+
+```bash
+npx vitest run tests/contracts/capability-game-dsl-draft-v1.test.ts
+npm run typecheck:root
+git diff --check
+git diff --no-index --check -- /dev/null packages/game-dsl/src/schemas/capability-game-dsl-draft-v1.schema.ts
+git diff --no-index --check -- /dev/null tests/contracts/capability-game-dsl-draft-v1.test.ts
+```
+
+Validation result:
+
+- Commit 2 draft contract suite passed: 1 file / 11 tests.
+- `npm run typecheck:root` passed.
+- `git diff --check` passed.
+- New-file no-index whitespace checks for `capability-game-dsl-draft-v1.schema.ts` and `capability-game-dsl-draft-v1.test.ts` passed.
+
+Review gate:
+
+- Oracle first Commit 2 review: P0 none; P1 found draft `metadata` still allowed active/cutover evidence claims and Step37 docs had not recorded the new producer contract; P2 found composed schema identity parsed regex-only hashes and local segment/entity refs were not validated.
+- Follow-up fix: metadata is now a strict no-evidence object; forbidden evidence keys include active runtime, canary, parity, rollback, QA/build and default-cutover claims; composed schema identity rechecks deterministic hash; draft parser validates local refs before canonical normalization; Step37 docs now record Commit 2 Compatibility & Cutover.
+- Oracle follow-up review: P0/P3 none; residual P1 found combined keys such as `activeRuntimeEvidence`, `canaryReady`, `buildStatus`, `qaStatus` and `moduleLoadStatus` could bypass exact forbidden-key matching; residual P2 found `capability_configs[*].applies_to[*]` was still an unchecked local reference.
+- Residual fix: forbidden evidence detection now blocks exact keys, evidence/cutover substrings and active/status-style key combinations; `capability_configs.applies_to` refs are validated against declared entities and covered by contract tests.
+- Oracle second follow-up review: P0/P2/P3 none; residual P1 found space-separated keys such as `runtime manifest hash`, `capability lock hash` and `trusted artifact refs` could bypass normalization.
+- Residual P1 fix: evidence-key normalization now removes every non-alphanumeric separator before matching, and contract tests cover space-separated trusted evidence keys.
+- Oracle final Commit 2 review: P0/P1/P2/P3 none; residual P1 is closed and Commit 2 is approved for closure.

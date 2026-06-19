@@ -25,6 +25,19 @@ export {
   type LegacyRepresentabilityResult
 } from './schemas/legacy-raw-game-dsl-representability.js';
 export {
+  CAPABILITY_GAME_DSL_DRAFT_ARTIFACT_KIND,
+  CAPABILITY_GAME_DSL_DRAFT_RAW_PATH,
+  CAPABILITY_GAME_DSL_DRAFT_SCHEMA_VERSION,
+  COMPOSED_GAME_DSL_SCHEMA_ARTIFACT_KIND,
+  COMPOSED_GAME_DSL_SCHEMA_VERSION,
+  CapabilityGameDslDraftComposedSchemaIdentitySchema,
+  CapabilityGameDslDraftV1Schema,
+  buildCapabilityGameDslDraftComposedSchemaIdentity,
+  findForbiddenCapabilityGameDslDraftEvidenceKeyPath,
+  type CapabilityGameDslDraftComposedSchemaIdentity,
+  type CapabilityGameDslDraftV1
+} from './schemas/capability-game-dsl-draft-v1.schema.js';
+export {
   GenerationScopePlanSchema,
   buildGenerationScopePlan,
   type GenerationScopePlan
