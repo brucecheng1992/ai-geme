@@ -38,6 +38,24 @@ export {
   type CapabilityGameDslDraftV1
 } from './schemas/capability-game-dsl-draft-v1.schema.js';
 export {
+  CANONICAL_GAME_DSL_V02_ARTIFACT_KIND,
+  CANONICAL_GAME_DSL_V02_PATH,
+  CANONICAL_GAME_DSL_V02_SCHEMA_VERSION,
+  GAME_DSL_NORMALIZATION_REPORT_KIND,
+  GAME_DSL_NORMALIZATION_REPORT_PATH,
+  GAME_DSL_NORMALIZATION_REPORT_SCHEMA_VERSION,
+  LEGACY_GAME_DSL_V1_DIALECT,
+  LEGACY_GAME_DSL_V1_PATH,
+  LEGACY_RAW_GAME_DSL_V01_RAW_PATH,
+  CanonicalGameDslV02Schema,
+  GameDslNormalizationReportSchema,
+  normalizeCapabilityGameDslDraftToCanonicalV02,
+  type CanonicalGameDslV02,
+  type GameDslNormalizationIssue,
+  type GameDslNormalizationReport,
+  type NormalizeCapabilityGameDslDraftToCanonicalV02Result
+} from './schemas/game-dsl-v0.2.schema.js';
+export {
   GenerationScopePlanSchema,
   buildGenerationScopePlan,
   type GenerationScopePlan

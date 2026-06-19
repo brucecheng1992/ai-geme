@@ -875,3 +875,65 @@ Review gate:
 - Oracle second follow-up review: P0/P2/P3 none; residual P1 found space-separated keys such as `runtime manifest hash`, `capability lock hash` and `trusted artifact refs` could bypass normalization.
 - Residual P1 fix: evidence-key normalization now removes every non-alphanumeric separator before matching, and contract tests cover space-separated trusted evidence keys.
 - Oracle final Commit 2 review: P0/P1/P2/P3 none; residual P1 is closed and Commit 2 is approved for closure.
+
+### 12. 37.G Commit 3 — Canonical Capability Game DSL
+
+Completed time: 2026-06-19
+
+Completed content:
+
+- Added `CanonicalGameDsl v0.2` as the trusted authoritative DSL artifact at `canonical-game-dsl-v0.2.json`.
+- Added `game_dsl_normalization_report.v0.2` at `game-dsl-normalization-report.json`.
+- Added trusted source binding fields for `game_brief_hash`, `profile_resolution_hash`, `capability_lock_hash`, `composed_schema_hash` and `draft_hash`.
+- Added `normalizeCapabilityGameDslDraftToCanonicalV02` to parse `CapabilityGameDslDraft v1`, exact `gameplay_capability_lock`, and composed schema identity before canonical output is allowed.
+- Required draft profile, exact lock profile and composed schema profile to match.
+- Required draft capability ids, exact lock capability ids and composed schema capability ids to match as the canonical authority boundary.
+- Recomputed exact lock hash before trusting it.
+- Preserved `play_time_intent` range `480..720` and progression duration targets in canonical output.
+- Carried model-authored behaviors/configs into canonical `systems` without producing Runtime Plan or runtime manifest.
+- Separated raw model artifact, authoritative canonical artifact and legacy artifacts in the normalization report.
+- Added contract tests proving canonical normalization success, raw/authoritative/legacy artifact separation, capability-set blocking, profile/hash blocking and deterministic report hashes.
+
+Compatibility & Cutover:
+
+| Check | Commit 3 answer |
+| --- | --- |
+| Producer change | New authoritative `CanonicalGameDsl v0.2` and `game_dsl_normalization_report.v0.2` artifacts. |
+| Consumer list | Future capability IR compiler, runtime plan compiler, Scene IR authority builder, runtime manifest builder, Workbench artifact index and final closure evaluator. No runtime consumer is wired in this commit. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`; legacy Raw DSL and legacy normalized `game-dsl.v1` are explicitly separate artifacts and cannot consume canonical v0.2 directly. |
+| Authority | `canonical-game-dsl-v0.2.json` becomes authoritative gameplay DSL only after trusted normalizer binds brief, profile resolution, exact lock, composed schema and raw draft hashes. Raw draft remains candidate input. |
+| Legacy strategy | Legacy artifacts are named as `legacy-raw-game-dsl-v0.1.raw.json` and `legacy-game-dsl-v1.json`; this commit does not route active generation to either one. |
+| Failure policy | Invalid draft, invalid lock, invalid composed schema, profile mismatch, stale lock hash or capability-set mismatch blocks normalization and omits canonical artifact hash. |
+| Evidence | Contract tests prove normalization and fail-closed source binding. No active runtime, QA, canary, parity, rollback or default-cutover evidence is produced by this commit. |
+| Rollback | No production path changes exist to roll back. Later rollback must still create explicit legacy runs rather than rewriting canonical artifacts. |
+
+Phase result:
+
+- Commit 3 is implemented and verified as a canonical DSL contract and trusted normalizer only.
+- Step37 remains open: no Capability IR compiler, Runtime Plan, runtime manifest, module load receipt, real capability-owned `enemy.fired`, canary, parity, rollback or default cutover has been implemented in this commit.
+- Current next step is 37.H Commit 4: compile canonical capability DSL into Runtime Plans.
+
+Validation:
+
+```bash
+npx vitest run tests/contracts/game-dsl-v0.2.test.ts
+npm run typecheck:root
+git diff --check
+git diff --no-index --check -- /dev/null packages/game-dsl/src/schemas/game-dsl-v0.2.schema.ts
+git diff --no-index --check -- /dev/null tests/contracts/game-dsl-v0.2.test.ts
+```
+
+Validation result:
+
+- Commit 3 canonical DSL contract suite passed: 1 file / 7 tests.
+- `npm run typecheck:root` passed.
+- `git diff --check` passed.
+- New-file no-index whitespace checks for `game-dsl-v0.2.schema.ts` and `game-dsl-v0.2.test.ts` passed.
+
+Review gate:
+
+- Oracle first Commit 3 review: P0/P3 none; P1 found canonical `systems` dropped `capability_configs[*].applies_to`, and normalization report schema did not bind `status` to authoritative hash presence; P2 found canonical schema invalid could throw before blocked report and exact lock packages were not checked against `capabilityIds`.
+- Follow-up fix: canonical config-derived systems now preserve `applies_to_entity_ids`; normalization report schema enforces normalized-with-hash and blocked-without-hash; canonical payload construction now lets outer `safeParse` produce blocked reports; exact lock packages must match locked capability ids.
+- Oracle follow-up review: P0/P1/P3 none; residual P2 found `game_dsl_normalization_report.reportHash` was not recomputed by the schema.
+- Residual P2 fix: normalization report schema now recomputes deterministic report hash, and contract tests reject stale `reportHash`.
+- Oracle final Commit 3 review: P0/P1/P2/P3 none; residual P2 is closed and Commit 3 is approved for closure.
