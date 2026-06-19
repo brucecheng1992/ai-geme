@@ -65,12 +65,26 @@ describe('Pipeline artifact index contract', () => {
     });
     expect(index.artifacts.map((artifact) => artifact.id)).toEqual([
       'generationInputReport',
+      'generationPathReceipt',
+      'capabilityRegistrySnapshot',
+      'generationCapabilityReadinessReport',
+      'generationCapabilityResolutionReport',
+      'shadowGameplayCapabilityLock',
+      'generationCapabilityRuntimeReport',
+      'generationCapabilityGapReport',
+      'generationCapabilityCutoverReport',
+      'shadowRuntimeSystemManifest',
+      'shadowRuntimeLoaderReport',
+      'shadowCapabilityQaPlan',
+      'shadowCapabilityQaReport',
       'intentPlan',
       'gameDsl',
       'gameDslCandidate',
       'dslValidationReport',
       'dslConsumptionReport',
       'sceneIr',
+      'sceneIrAuthorityReport',
+      'sceneIrCoverageReport',
       'runtimeSceneBindingReport',
       'runtimeCapabilityReport',
       'assetIntentManifest',
@@ -92,11 +106,91 @@ describe('Pipeline artifact index contract', () => {
     expect(index.artifacts).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: 'generationInputReport', status: 'present', artifactRoot: 'model-output', path: 'generation_input_report.json' }),
+        expect.objectContaining({ id: 'generationPathReceipt', status: 'present', artifactRoot: 'model-output', path: 'generation_path_receipt.json', role: 'runtime' }),
+        expect.objectContaining({ id: 'capabilityRegistrySnapshot', status: 'present', artifactRoot: 'model-output', path: 'capability_registry_snapshot.json', role: 'runtime' }),
+        expect.objectContaining({
+          id: 'generationCapabilityReadinessReport',
+          status: 'present',
+          artifactRoot: 'model-output',
+          path: 'generation_capability_readiness_report.json',
+          role: 'runtime'
+        }),
+        expect.objectContaining({
+          id: 'generationCapabilityResolutionReport',
+          status: 'present',
+          artifactRoot: 'model-output',
+          path: 'generation_capability_resolution_report.json',
+          role: 'runtime',
+          producedBy: 'capability-resolution'
+        }),
+        expect.objectContaining({
+          id: 'shadowGameplayCapabilityLock',
+          status: 'skipped',
+          artifactRoot: 'model-output',
+          path: 'shadow_gameplay_capability_lock.json',
+          role: 'runtime',
+          required: false,
+          producedBy: 'capability-resolution'
+        }),
+        expect.objectContaining({
+          id: 'generationCapabilityRuntimeReport',
+          status: 'present',
+          artifactRoot: 'model-output',
+          path: 'generation_capability_runtime_report.json',
+          role: 'runtime',
+          producedBy: 'capability-runtime'
+        }),
+        expect.objectContaining({
+          id: 'generationCapabilityGapReport',
+          status: 'present',
+          artifactRoot: 'model-output',
+          path: 'generation_capability_gap_report.json',
+          role: 'runtime',
+          producedBy: 'capability-gap'
+        }),
+        expect.objectContaining({
+          id: 'generationCapabilityCutoverReport',
+          status: 'present',
+          artifactRoot: 'model-output',
+          path: 'generation_capability_cutover_report.json',
+          role: 'runtime',
+          producedBy: 'capability-cutover'
+        }),
+        expect.objectContaining({
+          id: 'shadowRuntimeSystemManifest',
+          status: 'skipped',
+          path: 'shadow_phaser_runtime_system_manifest.json',
+          required: false,
+          producedBy: 'capability-runtime'
+        }),
+        expect.objectContaining({
+          id: 'shadowRuntimeLoaderReport',
+          status: 'skipped',
+          path: 'shadow_phaser_runtime_loader_report.json',
+          required: false,
+          producedBy: 'capability-runtime'
+        }),
+        expect.objectContaining({
+          id: 'shadowCapabilityQaPlan',
+          status: 'skipped',
+          path: 'shadow_capability_qa_plan.json',
+          required: false,
+          producedBy: 'capability-runtime'
+        }),
+        expect.objectContaining({
+          id: 'shadowCapabilityQaReport',
+          status: 'skipped',
+          path: 'shadow_capability_qa_report.json',
+          required: false,
+          producedBy: 'capability-runtime'
+        }),
         expect.objectContaining({ id: 'intentPlan', status: 'present', artifactRoot: 'model-output', path: 'intent_plan.json' }),
         expect.objectContaining({ id: 'gameDsl', status: 'present', artifactRoot: 'model-output', path: 'game_dsl.json' }),
         expect.objectContaining({ id: 'gameDslCandidate', status: 'skipped', reason: 'valid_dsl_path_uses_game_dsl_json' }),
         expect.objectContaining({ id: 'dslConsumptionReport', status: 'present', artifactRoot: 'model-output', path: 'dsl_consumption_report.json', producedBy: 'dsl-consumption' }),
         expect.objectContaining({ id: 'sceneIr', status: 'skipped', required: false, artifactRoot: 'generated-project', path: 'game.scene.ir.json', role: 'runtime' }),
+        expect.objectContaining({ id: 'sceneIrAuthorityReport', status: 'skipped', required: false, artifactRoot: 'generated-project', path: 'scene_ir_authority_report.json', role: 'runtime' }),
+        expect.objectContaining({ id: 'sceneIrCoverageReport', status: 'skipped', required: false, artifactRoot: 'generated-project', path: 'scene_ir_coverage_report.json', role: 'runtime' }),
         expect.objectContaining({ id: 'runtimeSceneBindingReport', status: 'skipped', required: false, artifactRoot: 'generated-project', path: 'runtime_scene_binding_report.json', role: 'runtime' }),
         expect.objectContaining({ id: 'assetIntentManifest', status: 'present', artifactRoot: 'generated-project', path: 'asset_intent_manifest.json' }),
         expect.objectContaining({ id: 'publicAssetManifest', status: 'present', artifactRoot: 'generated-project', path: 'public/asset_manifest.json' }),
@@ -126,6 +220,8 @@ describe('Pipeline artifact index contract', () => {
       runId,
       compileFiles: [
         'game.scene.ir.json',
+        'scene_ir_authority_report.json',
+        'scene_ir_coverage_report.json',
         'runtime_scene_binding_report.json',
         'asset_intent_manifest.json',
         'asset_plan.json',
@@ -151,6 +247,24 @@ describe('Pipeline artifact index contract', () => {
           producedBy: 'compiler'
         }),
         expect.objectContaining({
+          id: 'sceneIrAuthorityReport',
+          role: 'runtime',
+          artifactRoot: 'generated-project',
+          path: 'scene_ir_authority_report.json',
+          status: 'present',
+          required: true,
+          producedBy: 'compiler'
+        }),
+        expect.objectContaining({
+          id: 'sceneIrCoverageReport',
+          role: 'runtime',
+          artifactRoot: 'generated-project',
+          path: 'scene_ir_coverage_report.json',
+          status: 'present',
+          required: true,
+          producedBy: 'compiler'
+        }),
+        expect.objectContaining({
           id: 'runtimeSceneBindingReport',
           role: 'runtime',
           artifactRoot: 'generated-project',
@@ -170,10 +284,24 @@ describe('Pipeline artifact index contract', () => {
       expect.arrayContaining([
         expect.objectContaining({ id: 'gameDsl', status: 'skipped', reason: 'invalid_dsl_path_uses_game_dsl_candidate_json' }),
         expect.objectContaining({ id: 'generationInputReport', status: 'present', path: 'generation_input_report.json' }),
+        expect.objectContaining({ id: 'generationPathReceipt', status: 'present', path: 'generation_path_receipt.json' }),
+        expect.objectContaining({ id: 'capabilityRegistrySnapshot', status: 'present', path: 'capability_registry_snapshot.json' }),
+        expect.objectContaining({ id: 'generationCapabilityReadinessReport', status: 'present', path: 'generation_capability_readiness_report.json' }),
+        expect.objectContaining({ id: 'generationCapabilityResolutionReport', status: 'present', path: 'generation_capability_resolution_report.json' }),
+        expect.objectContaining({ id: 'shadowGameplayCapabilityLock', status: 'skipped', path: 'shadow_gameplay_capability_lock.json' }),
+        expect.objectContaining({ id: 'generationCapabilityRuntimeReport', status: 'present', path: 'generation_capability_runtime_report.json' }),
+        expect.objectContaining({ id: 'generationCapabilityGapReport', status: 'present', path: 'generation_capability_gap_report.json' }),
+        expect.objectContaining({ id: 'generationCapabilityCutoverReport', status: 'present', path: 'generation_capability_cutover_report.json' }),
+        expect.objectContaining({ id: 'shadowRuntimeSystemManifest', status: 'skipped', path: 'shadow_phaser_runtime_system_manifest.json' }),
+        expect.objectContaining({ id: 'shadowRuntimeLoaderReport', status: 'skipped', path: 'shadow_phaser_runtime_loader_report.json' }),
+        expect.objectContaining({ id: 'shadowCapabilityQaPlan', status: 'skipped', path: 'shadow_capability_qa_plan.json' }),
+        expect.objectContaining({ id: 'shadowCapabilityQaReport', status: 'skipped', path: 'shadow_capability_qa_report.json' }),
         expect.objectContaining({ id: 'gameDslCandidate', status: 'present', path: 'game_dsl.candidate.json' }),
         expect.objectContaining({ id: 'dslValidationReport', status: 'present', path: 'dsl_validation_report.json' }),
         expect.objectContaining({ id: 'dslConsumptionReport', status: 'skipped', reason: 'dsl_validation_failed_before_consumption_audit' }),
         expect.objectContaining({ id: 'sceneIr', status: 'skipped', reason: 'dsl_validation_failed_before_compile', role: 'runtime' }),
+        expect.objectContaining({ id: 'sceneIrAuthorityReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile', role: 'runtime' }),
+        expect.objectContaining({ id: 'sceneIrCoverageReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile', role: 'runtime' }),
         expect.objectContaining({ id: 'runtimeSceneBindingReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile', role: 'runtime' }),
         expect.objectContaining({ id: 'assetIntentManifest', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),
         expect.objectContaining({ id: 'assetPipelineReport', status: 'skipped', reason: 'dsl_validation_failed_before_compile' }),

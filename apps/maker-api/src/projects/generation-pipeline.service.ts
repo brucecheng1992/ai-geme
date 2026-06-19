@@ -22,6 +22,12 @@ import {
   buildDslValidationReport,
   DslConsumptionReportSchema,
   SceneIrSchema,
+  buildGenerationCapabilityCutoverReport,
+  buildGenerationCapabilityGapReport,
+  buildGenerationCapabilityRuntimeShadow,
+  buildGenerationCapabilityResolutionShadow,
+  buildGenerationCapabilityPreflight,
+  buildGenerationPathReceipt,
   buildGameDslArtifact,
   checkPhaserRuntimeCapabilities,
   findRuntimeGenreCapability,
@@ -29,6 +35,10 @@ import {
   validateGameDslArtifact,
   withDslValidationSourceArtifact,
   type DslValidationReport,
+  type GenerationCapabilityRuntimeShadowArtifacts,
+  type GenerationCapabilityResolutionShadowArtifacts,
+  type GenerationCapabilityPreflightArtifacts,
+  type GenerationCapabilityGapReport,
   type GameDslArtifact,
   type RuntimeCapabilityReport
 } from '../../../../packages/game-dsl/src/index.js';
@@ -52,7 +62,15 @@ import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
 import { createDeterministicRawGameDsl } from './deterministic-game-dsl.js';
 import { GenerationInputReportSchema, buildGenerationInputReport, type GenerationInputReport } from './generation-input-report.js';
 import { buildPipelineAcceptanceReport, writePipelineAcceptanceReport } from './pipeline-acceptance-report.js';
-import { buildInvalidDslPipelineArtifactIndex, buildUnsupportedIntentPipelineArtifactIndex, buildValidPipelineArtifactIndex, writePipelineArtifactIndex, type PipelineArtifactIndex } from './pipeline-artifact-index.js';
+import {
+  buildCompileFailedPipelineArtifactIndex,
+  buildInvalidDslPipelineArtifactIndex,
+  buildModelGenerationFailedPipelineArtifactIndex,
+  buildUnsupportedIntentPipelineArtifactIndex,
+  buildValidPipelineArtifactIndex,
+  writePipelineArtifactIndex,
+  type PipelineArtifactIndex
+} from './pipeline-artifact-index.js';
 import { ProjectStoreService } from './project-store.service.js';
 import type { JobEventRecord, ProjectStatus } from './project-state.types.js';
 import { RunStoreService } from './run-store.service.js';
@@ -70,7 +88,8 @@ type DslProvider = Pick<GameDslProviderService, 'generateGameBrief' | 'generateR
 type RuntimeCompiler = Pick<TemplateCompilerService, 'compile'>;
 type RuntimeBuilder = Pick<ViteBuildRunnerService, 'build'>;
 type RuntimeQaRunner = Pick<PlaywrightQaRunnerService, 'run'>;
-type RawDslGenerationResult = { ok: true; artifact: GameDslArtifact; brief?: unknown } | { ok: false; status: ProjectStatus };
+type DslSource = 'model_provider' | 'deterministic_local_fallback';
+type RawDslGenerationResult = { ok: true; artifact: GameDslArtifact; dslSource: DslSource; brief?: unknown } | { ok: false; status: ProjectStatus };
 type QaPipelineResult =
   | { kind: 'report'; report: QaReport; assetSemanticRepair: QaAssetSemanticRepairReport }
   | { kind: 'status'; status: ProjectStatus; report: QaReport; assetSemanticRepair: QaAssetSemanticRepairReport };
@@ -118,7 +137,7 @@ export class GenerationPipelineService {
     const normalized = validateAndNormalizeRawGameDsl(rawDsl);
 
     if (!normalized.ok) {
-      await this.writeRawDslNormalizationFailureArtifacts(input, generated.artifact, normalized.issues);
+      await this.writeRawDslNormalizationFailureArtifacts(input, generated.artifact, normalized.issues, generated.dslSource);
       await this.setStatus(input.projectId, input.runId, 'DSL_VALIDATION_FAILED', 'dsl-validation', 'FAILED');
       await this.appendEvent(input.runId, 'dsl.validation.failed', normalized.issues.map((issue) => issue.message).join('; '));
       return 'DSL_VALIDATION_FAILED';
@@ -131,7 +150,7 @@ export class GenerationPipelineService {
     await this.writeDslConsumptionReport(input, rawDsl, normalized.ir);
     await this.appendEvent(input.runId, 'ir.generated', 'Normalized IR generated from validated DSL.');
 
-    const compiled = await this.compileProject(input, rawDsl, normalized.ir, generated.brief);
+    const compiled = await this.compileProject(input, rawDsl, normalized.ir, generated.dslSource, generated.brief);
     if (!compiled.ok) {
       return compiled.status;
     }
@@ -156,6 +175,14 @@ export class GenerationPipelineService {
     const language = normalizeLanguage(input.language);
     const intentPlan = buildIntentPlan({ idea: input.idea, language });
     await this.writeIntentPlan(input, intentPlan);
+    await this.writeGenerationCapabilityPreflightArtifacts(
+      input,
+      buildGenerationCapabilityPreflight({
+        projectId: input.projectId,
+        runId: input.runId,
+        normalizedGenre: intentPlan.normalizedGenre
+      })
+    );
     await this.appendEvent(input.runId, 'intent.planned', `Intent normalized to ${intentPlan.normalizedGenre}.`);
 
     if (intentPlan.runtimeDslSupport === 'unsupported') {
@@ -188,12 +215,12 @@ export class GenerationPipelineService {
 
       if (raw.ok) {
         await this.writeModelGeneratedRawDsl(input, raw.value);
-        const artifact = await this.writeValidatedGameDslArtifact(input, raw.value, intentPlan);
+        const artifact = await this.writeValidatedGameDslArtifact(input, raw.value, intentPlan, 'model_provider');
         if (!artifact.ok) {
           return { ok: false, status: 'DSL_VALIDATION_FAILED' };
         }
         await this.setStatus(input.projectId, input.runId, 'DSL_GENERATED', 'dsl-generation', 'DONE');
-        return { ok: true, artifact: artifact.value, brief: brief.value };
+        return { ok: true, artifact: artifact.value, dslSource: 'model_provider', brief: brief.value };
       }
 
       return await this.handleModelGenerationFailure(input, raw);
@@ -202,10 +229,29 @@ export class GenerationPipelineService {
     return await this.handleModelGenerationFailure(input, brief);
   }
 
-  private async compileProject(input: GenerationPipelineInput, rawDsl: RawGameDsl, ir: NormalizedGameIr, brief?: unknown): Promise<RuntimeCompileSuccess | { ok: false; status: ProjectStatus }> {
+  private async compileProject(
+    input: GenerationPipelineInput,
+    rawDsl: RawGameDsl,
+    ir: NormalizedGameIr,
+    dslSource: DslSource,
+    brief?: unknown
+  ): Promise<RuntimeCompileSuccess | { ok: false; status: ProjectStatus }> {
     await this.setStatus(input.projectId, input.runId, 'RUNTIME_CHECKING', 'project-generation', 'RUNNING');
     const runtimeGate = checkPhaserRuntimeCapabilities(ir);
     if (!runtimeGate.ok) {
+      await this.writeGenerationPathReceipt(input, {
+        selectedPath: 'fail_closed_runtime_unsupported',
+        dslSource,
+        selectionReason: `Runtime capability gate blocked generation: ${runtimeGate.unsupportedCapabilities.map((item) => item.capability).join(', ')}.`,
+        profileId: ir.template_params.template_id,
+        capabilityReadiness: 'blocked',
+        artifactRefs: [
+          { artifactKind: 'game_dsl', path: 'game_dsl.json' },
+          { artifactKind: 'dsl_consumption_report', path: 'dsl_consumption_report.json' },
+          { artifactKind: 'runtime_capability_report', path: 'runtime_capability_report.json' }
+        ]
+      });
+      await this.writeCompileFailedPipelineArtifactIndex(input, 'runtime_unsupported_before_compile');
       await this.setStatus(input.projectId, input.runId, 'RUNTIME_UNSUPPORTED', 'project-generation', 'FAILED');
       await this.appendEvent(
         input.runId,
@@ -227,12 +273,38 @@ export class GenerationPipelineService {
         semanticTraceContext: { originalPrompt: input.idea, brief }
       });
     } catch (error) {
+      await this.writeGenerationPathReceipt(input, {
+        selectedPath: 'fail_closed_compile_failed',
+        dslSource,
+        selectionReason: errorMessage(error, 'Project generation failed before build.'),
+        profileId: ir.template_params.template_id,
+        capabilityReadiness: 'not_evaluated',
+        artifactRefs: [
+          { artifactKind: 'game_dsl', path: 'game_dsl.json' },
+          { artifactKind: 'dsl_consumption_report', path: 'dsl_consumption_report.json' },
+          { artifactKind: 'runtime_capability_report', path: 'runtime_capability_report.json' }
+        ]
+      });
+      await this.writeCompileFailedPipelineArtifactIndex(input, 'compiler_failed_before_compile_artifacts');
       await this.setStatus(input.projectId, input.runId, 'BUILD_FAILED', 'project-generation', 'FAILED');
       await this.appendEvent(input.runId, 'build.failed', errorMessage(error, 'Project generation failed before build.'));
       return { ok: false, status: 'BUILD_FAILED' };
     }
 
     if (!compiled.ok) {
+      await this.writeGenerationPathReceipt(input, {
+        selectedPath: 'fail_closed_runtime_unsupported',
+        dslSource,
+        selectionReason: `Compiler rejected runtime capabilities: ${compiled.unsupportedCapabilities.map((item) => item.capability).join(', ')}.`,
+        profileId: ir.template_params.template_id,
+        capabilityReadiness: 'blocked',
+        artifactRefs: [
+          { artifactKind: 'game_dsl', path: 'game_dsl.json' },
+          { artifactKind: 'dsl_consumption_report', path: 'dsl_consumption_report.json' },
+          { artifactKind: 'runtime_capability_report', path: 'runtime_capability_report.json' }
+        ]
+      });
+      await this.writeCompileFailedPipelineArtifactIndex(input, 'runtime_unsupported_before_compile');
       await this.setStatus(input.projectId, input.runId, 'RUNTIME_UNSUPPORTED', 'project-generation', 'FAILED');
       await this.appendEvent(
         input.runId,
@@ -243,6 +315,19 @@ export class GenerationPipelineService {
     }
 
     await this.setStatus(input.projectId, input.runId, 'COMPILED', 'project-generation', 'DONE');
+    await this.writeGenerationPathReceipt(input, {
+      selectedPath: 'legacy_template_v1',
+      dslSource,
+      selectionReason: 'Legacy template path is the actual compiled path until capability_composed_v1 cutover gates pass.',
+      profileId: ir.template_params.template_id,
+      capabilityReadiness: 'not_evaluated',
+      artifactRefs: [
+        ...(dslSource === 'deterministic_local_fallback' ? [{ artifactKind: 'raw_game_dsl_fallback', path: 'raw-game-dsl.raw.json' }] : []),
+        { artifactKind: 'game_dsl', path: 'game_dsl.json' },
+        { artifactKind: 'dsl_consumption_report', path: 'dsl_consumption_report.json' },
+        { artifactKind: 'runtime_capability_report', path: 'runtime_capability_report.json' }
+      ]
+    });
     await this.writeValidPipelineArtifactIndex(input, compiled);
     await this.appendEvent(input.runId, 'project.generated', `Phaser/Vite project generated at ${compiled.outputDir}.`);
     return compiled;
@@ -500,16 +585,28 @@ export class GenerationPipelineService {
     }
 
     const reason = failure.ok ? 'unknown' : `${failure.code}: ${failure.message}`;
-    await this.failModelGeneration(input, `Model generation failed: ${reason}`);
+    await this.failModelGeneration(input, `Model generation failed: ${reason}`, failure.ok ? 'UNKNOWN_MODEL_FAILURE' : failure.code);
     return { ok: false, status: 'FAILED' };
   }
 
   private async failThrownModelGeneration(input: GenerationPipelineInput, error: unknown): Promise<RawDslGenerationResult> {
-    await this.failModelGeneration(input, `Model generation threw: ${errorMessage(error, 'unknown error')}`);
+    await this.failModelGeneration(input, `Model generation threw: ${errorMessage(error, 'unknown error')}`, 'PROVIDER_THROWN');
     return { ok: false, status: 'FAILED' };
   }
 
-  private async failModelGeneration(input: GenerationPipelineInput, message: string): Promise<void> {
+  private async failModelGeneration(input: GenerationPipelineInput, message: string, modelFailureCode: string): Promise<void> {
+    await this.writeGenerationPathReceipt(input, {
+      selectedPath: 'fail_closed_model_generation_failed',
+      dslSource: 'not_generated',
+      selectionReason: message,
+      modelFailureCode,
+      capabilityReadiness: 'not_evaluated',
+      artifactRefs: [
+        { artifactKind: 'generation_input_report', path: 'generation_input_report.json' },
+        { artifactKind: 'intent_plan', path: 'intent_plan.json' }
+      ]
+    });
+    await this.writeModelGenerationFailedPipelineArtifactIndex(input);
     await this.setStatus(input.projectId, input.runId, 'FAILED', 'dsl-generation', 'FAILED');
     await this.appendEvent(input.runId, 'model.failed', message);
   }
@@ -522,19 +619,20 @@ export class GenerationPipelineService {
     await mkdir(dirname(outputPath), { recursive: true });
     await writeFile(outputPath, `${JSON.stringify(fallback, null, 2)}\n`, 'utf8');
     const intentPlan = buildIntentPlan({ idea: input.idea, language: normalizeLanguage(input.language) });
-    const artifact = await this.writeValidatedGameDslArtifact(input, fallback, intentPlan);
+    const artifact = await this.writeValidatedGameDslArtifact(input, fallback, intentPlan, 'deterministic_local_fallback');
     if (!artifact.ok) {
       return { ok: false, status: 'DSL_VALIDATION_FAILED' };
     }
     await this.setStatus(input.projectId, input.runId, 'DSL_GENERATED', 'dsl-generation', 'DONE');
     await this.appendEvent(input.runId, 'model.fallback', `Using deterministic local DSL fallback because model generation failed: ${reason}`);
-    return { ok: true, artifact: artifact.value };
+    return { ok: true, artifact: artifact.value, dslSource: 'deterministic_local_fallback' };
   }
 
   private async writeValidatedGameDslArtifact(
     input: GenerationPipelineInput,
     rawDsl: RawGameDsl,
-    intentPlan: IntentPlan
+    intentPlan: IntentPlan,
+    dslSource: DslSource
   ): Promise<{ ok: true; value: GameDslArtifact } | { ok: false }> {
     await this.setStatus(input.projectId, input.runId, 'DSL_VALIDATING', 'dsl-validation', 'RUNNING');
     const candidate = buildGameDslArtifact({ rawDsl, runId: input.runId, intentPlan });
@@ -544,6 +642,16 @@ export class GenerationPipelineService {
       const report = withDslValidationSourceArtifact(validation.report, 'game_dsl.candidate.json');
       await this.writeDslValidationReport(input, report);
       await this.writeGameDslCandidate(input, validation.candidate);
+      await this.writeGenerationPathReceipt(input, {
+        selectedPath: 'fail_closed_invalid_dsl',
+        dslSource,
+        selectionReason: 'DSL candidate validation failed before runtime generation.',
+        capabilityReadiness: 'not_evaluated',
+        artifactRefs: [
+          { artifactKind: 'game_dsl_candidate', path: 'game_dsl.candidate.json' },
+          { artifactKind: 'dsl_validation_report', path: 'dsl_validation_report.json' }
+        ]
+      });
       await this.writeInvalidDslPipelineArtifactIndex(input);
       await this.setStatus(input.projectId, input.runId, 'DSL_VALIDATION_FAILED', 'dsl-validation', 'FAILED');
       await this.appendEvent(input.runId, 'dsl.validation.failed', report.errors.map((issue) => `${issue.path}: ${issue.message}`).join('; '));
@@ -592,6 +700,104 @@ export class GenerationPipelineService {
     await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   }
 
+  private async writeGenerationCapabilityPreflightArtifacts(
+    input: GenerationPipelineInput,
+    artifacts: GenerationCapabilityPreflightArtifacts
+  ): Promise<void> {
+    await this.writeModelOutputJson(input, 'capability_registry_snapshot.json', artifacts.registrySnapshot);
+    await this.writeModelOutputJson(input, 'generation_capability_readiness_report.json', artifacts.readinessReport);
+    const resolutionArtifacts = buildGenerationCapabilityResolutionShadow({
+      projectId: input.projectId,
+      runId: input.runId,
+      normalizedGenre: artifacts.readinessReport.normalizedGenre,
+      registrySnapshot: artifacts.registrySnapshot,
+      readinessReport: artifacts.readinessReport
+    });
+    await this.writeGenerationCapabilityResolutionShadowArtifacts(input, resolutionArtifacts);
+    const runtimeArtifacts = buildGenerationCapabilityRuntimeShadow({
+      projectId: input.projectId,
+      runId: input.runId,
+      normalizedGenre: resolutionArtifacts.resolutionReport.normalizedGenre,
+      resolutionReport: resolutionArtifacts.resolutionReport
+    });
+    await this.writeGenerationCapabilityRuntimeShadowArtifacts(input, runtimeArtifacts);
+    const gapReport = buildGenerationCapabilityGapReport({
+      projectId: input.projectId,
+      runId: input.runId,
+      normalizedGenre: artifacts.readinessReport.normalizedGenre,
+      readinessReport: artifacts.readinessReport,
+      resolutionReport: resolutionArtifacts.resolutionReport,
+      runtimeReport: runtimeArtifacts.runtimeReport
+    });
+    await this.writeGenerationCapabilityGapReport(input, gapReport);
+    await this.writeModelOutputJson(
+      input,
+      'generation_capability_cutover_report.json',
+      buildGenerationCapabilityCutoverReport({
+        projectId: input.projectId,
+        runId: input.runId,
+        normalizedGenre: artifacts.readinessReport.normalizedGenre,
+        gapReport,
+        runtimeReport: runtimeArtifacts.runtimeReport
+      })
+    );
+  }
+
+  private async writeGenerationCapabilityResolutionShadowArtifacts(
+    input: GenerationPipelineInput,
+    artifacts: GenerationCapabilityResolutionShadowArtifacts
+  ): Promise<void> {
+    await this.writeModelOutputJson(input, 'generation_capability_resolution_report.json', artifacts.resolutionReport);
+    if (artifacts.shadowGameplayCapabilityLock !== undefined) {
+      await this.writeModelOutputJson(input, 'shadow_gameplay_capability_lock.json', artifacts.shadowGameplayCapabilityLock);
+    }
+  }
+
+  private async writeGenerationCapabilityRuntimeShadowArtifacts(
+    input: GenerationPipelineInput,
+    artifacts: GenerationCapabilityRuntimeShadowArtifacts
+  ): Promise<void> {
+    await this.writeModelOutputJson(input, 'generation_capability_runtime_report.json', artifacts.runtimeReport);
+    if (artifacts.shadowRuntimeSystemManifest !== undefined) {
+      await this.writeModelOutputJson(input, 'shadow_phaser_runtime_system_manifest.json', artifacts.shadowRuntimeSystemManifest);
+    }
+    if (artifacts.shadowRuntimeLoaderReport !== undefined) {
+      await this.writeModelOutputJson(input, 'shadow_phaser_runtime_loader_report.json', artifacts.shadowRuntimeLoaderReport);
+    }
+    if (artifacts.shadowCapabilityQaPlan !== undefined) {
+      await this.writeModelOutputJson(input, 'shadow_capability_qa_plan.json', artifacts.shadowCapabilityQaPlan);
+    }
+    if (artifacts.shadowCapabilityQaReport !== undefined) {
+      await this.writeModelOutputJson(input, 'shadow_capability_qa_report.json', artifacts.shadowCapabilityQaReport);
+    }
+  }
+
+  private async writeGenerationCapabilityGapReport(input: GenerationPipelineInput, report: GenerationCapabilityGapReport): Promise<void> {
+    await this.writeModelOutputJson(input, 'generation_capability_gap_report.json', report);
+  }
+
+  private async writeGenerationPathReceipt(
+    input: GenerationPipelineInput,
+    receiptInput: Omit<Parameters<typeof buildGenerationPathReceipt>[0], 'projectId' | 'runId'>
+  ): Promise<void> {
+    const outputPath = this.workspace.getModelOutputPath(input.projectId, input.runId, 'generation_path_receipt.json');
+    const receipt = buildGenerationPathReceipt({
+      projectId: input.projectId,
+      runId: input.runId,
+      ...receiptInput
+    });
+
+    await mkdir(dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
+  }
+
+  private async writeModelOutputJson(input: GenerationPipelineInput, filename: string, value: unknown): Promise<void> {
+    const outputPath = this.workspace.getModelOutputPath(input.projectId, input.runId, filename);
+
+    await mkdir(dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+  }
+
   private async writeDslConsumptionReport(input: GenerationPipelineInput, rawDsl: RawGameDsl, ir: NormalizedGameIr): Promise<void> {
     const outputPath = this.workspace.getModelOutputPath(input.projectId, input.runId, 'dsl_consumption_report.json');
     const report = buildDslConsumptionReport({ projectId: input.projectId, runId: input.runId, rawDsl, ir });
@@ -602,13 +808,24 @@ export class GenerationPipelineService {
 
   private async writeUnsupportedIntentArtifacts(input: GenerationPipelineInput, intentPlan: IntentPlan): Promise<void> {
     await this.writeRuntimeCapabilityReport(input, buildUnsupportedRuntimeCapabilityReport({ runId: input.runId, intentPlan }));
+    await this.writeGenerationPathReceipt(input, {
+      selectedPath: 'fail_closed_unsupported_intent',
+      dslSource: 'not_generated',
+      selectionReason: `Intent ${intentPlan.normalizedGenre} is not supported by the current runtime.`,
+      capabilityReadiness: 'blocked',
+      artifactRefs: [
+        { artifactKind: 'intent_plan', path: 'intent_plan.json' },
+        { artifactKind: 'runtime_capability_report', path: 'runtime_capability_report.json' }
+      ]
+    });
     await this.writeUnsupportedIntentPipelineArtifactIndex(input);
   }
 
   private async writeRawDslNormalizationFailureArtifacts(
     input: GenerationPipelineInput,
     artifact: GameDslArtifact,
-    issues: Array<{ code: string; path: string; message: string }>
+    issues: Array<{ code: string; path: string; message: string }>,
+    dslSource: DslSource
   ): Promise<void> {
     await this.writeRuntimeCapabilityReport(input, buildRuntimeCapabilityReport({ runId: input.runId, validatedDsl: artifact }));
     await this.writeDslValidationReport(
@@ -629,6 +846,17 @@ export class GenerationPipelineService {
         requiredCapabilities: artifact.requiredCapabilities
       })
     );
+    await this.writeGenerationPathReceipt(input, {
+      selectedPath: 'fail_closed_invalid_dsl',
+      dslSource,
+      selectionReason: 'Validated Game DSL artifact failed normalization before runtime generation.',
+      capabilityReadiness: 'not_evaluated',
+      artifactRefs: [
+        { artifactKind: 'game_dsl', path: 'game_dsl.json' },
+        { artifactKind: 'dsl_validation_report', path: 'dsl_validation_report.json' },
+        { artifactKind: 'runtime_capability_report', path: 'runtime_capability_report.json' }
+      ]
+    });
     await this.writeInvalidDslPipelineArtifactIndex(input);
   }
 
@@ -688,6 +916,22 @@ export class GenerationPipelineService {
         valid: false
       }
     });
+    await writePipelineArtifactIndex(this.workspace.getModelOutputPath(input.projectId, input.runId, 'pipeline_artifact_index.json'), index);
+  }
+
+  private async writeModelGenerationFailedPipelineArtifactIndex(input: GenerationPipelineInput): Promise<void> {
+    const index = buildModelGenerationFailedPipelineArtifactIndex({ projectId: input.projectId, runId: input.runId });
+    await this.writePipelineAcceptanceReport(input, index, {
+      dslValidation: {
+        valid: false
+      }
+    });
+    await writePipelineArtifactIndex(this.workspace.getModelOutputPath(input.projectId, input.runId, 'pipeline_artifact_index.json'), index);
+  }
+
+  private async writeCompileFailedPipelineArtifactIndex(input: GenerationPipelineInput, reason: string): Promise<void> {
+    const index = buildCompileFailedPipelineArtifactIndex({ projectId: input.projectId, runId: input.runId, reason });
+    await this.writePipelineAcceptanceReport(input, index);
     await writePipelineArtifactIndex(this.workspace.getModelOutputPath(input.projectId, input.runId, 'pipeline_artifact_index.json'), index);
   }
 

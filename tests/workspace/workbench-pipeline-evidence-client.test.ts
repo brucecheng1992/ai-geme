@@ -20,9 +20,24 @@ describe('Workbench pipeline evidence client', () => {
       projectId: 'proj_20260615_evidence',
       runId: 'run_20260615_evidence'
     });
-    expect(group(view, 'Prompt / Provenance')?.artifacts.map((artifact) => artifact.id)).toEqual(['generationInputReport', 'intentPlan']);
+    expect(group(view, 'Prompt / Provenance')?.artifacts.map((artifact) => artifact.id)).toEqual(['generationInputReport', 'generationPathReceipt', 'intentPlan']);
     expect(group(view, 'DSL')?.artifacts.map((artifact) => artifact.id)).toEqual(['gameDsl', 'gameDslCandidate', 'dslValidationReport', 'dslConsumptionReport']);
-    expect(group(view, 'Runtime')?.artifacts.map((artifact) => artifact.id)).toEqual(['runtimeCapabilityReport', 'sceneIr', 'runtimeSceneBindingReport']);
+    expect(group(view, 'Runtime')?.artifacts.map((artifact) => artifact.id)).toEqual([
+      'capabilityRegistrySnapshot',
+      'generationCapabilityReadinessReport',
+      'generationCapabilityResolutionReport',
+      'shadowGameplayCapabilityLock',
+      'generationCapabilityRuntimeReport',
+      'generationCapabilityGapReport',
+      'generationCapabilityCutoverReport',
+      'shadowRuntimeSystemManifest',
+      'shadowRuntimeLoaderReport',
+      'shadowCapabilityQaPlan',
+      'shadowCapabilityQaReport',
+      'runtimeCapabilityReport',
+      'sceneIr',
+      'runtimeSceneBindingReport'
+    ]);
     expect(group(view, 'Assets')?.artifacts.map((artifact) => artifact.id)).toEqual([
       'assetIntentManifest',
       'assetPlan',
@@ -202,6 +217,18 @@ function makeIndex(): PipelineArtifactIndex {
     runId: 'run_20260615_evidence',
     artifacts: [
       artifact('generationInputReport', 'prompt', 'model-output', 'generation_input_report.json', 'present', true, 'generation', 'json'),
+      artifact('generationPathReceipt', 'runtime', 'model-output', 'generation_path_receipt.json', 'present', true, 'generation', 'json'),
+      artifact('capabilityRegistrySnapshot', 'runtime', 'model-output', 'capability_registry_snapshot.json', 'present', true, 'capability-readiness', 'json'),
+      artifact('generationCapabilityReadinessReport', 'runtime', 'model-output', 'generation_capability_readiness_report.json', 'present', true, 'capability-readiness', 'json'),
+      artifact('generationCapabilityResolutionReport', 'runtime', 'model-output', 'generation_capability_resolution_report.json', 'present', true, 'capability-resolution', 'json'),
+      artifact('shadowGameplayCapabilityLock', 'runtime', 'model-output', 'shadow_gameplay_capability_lock.json', 'skipped', false, 'capability-resolution', 'json', 'capability_resolution_shadow_lock_not_resolved'),
+      artifact('generationCapabilityRuntimeReport', 'runtime', 'model-output', 'generation_capability_runtime_report.json', 'present', true, 'capability-runtime', 'json'),
+      artifact('generationCapabilityGapReport', 'runtime', 'model-output', 'generation_capability_gap_report.json', 'present', true, 'capability-gap', 'json'),
+      artifact('generationCapabilityCutoverReport', 'runtime', 'model-output', 'generation_capability_cutover_report.json', 'present', true, 'capability-cutover', 'json'),
+      artifact('shadowRuntimeSystemManifest', 'runtime', 'model-output', 'shadow_phaser_runtime_system_manifest.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
+      artifact('shadowRuntimeLoaderReport', 'runtime', 'model-output', 'shadow_phaser_runtime_loader_report.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
+      artifact('shadowCapabilityQaPlan', 'runtime', 'model-output', 'shadow_capability_qa_plan.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
+      artifact('shadowCapabilityQaReport', 'runtime', 'model-output', 'shadow_capability_qa_report.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
       artifact('intentPlan', 'prompt', 'model-output', 'intent_plan.json', 'present', true, 'generation', 'json'),
       artifact('gameDsl', 'dsl', 'model-output', 'game_dsl.json', 'present', true, 'generation', 'json'),
       artifact('gameDslCandidate', 'dsl', 'model-output', 'game_dsl.candidate.json', 'skipped', false, 'generation', 'json', 'valid_dsl_path_uses_game_dsl_json'),

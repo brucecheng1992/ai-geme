@@ -81,6 +81,14 @@ const SceneIrEnemyInstanceSchema = z.strictObject({
   provenanceRef: z.string().min(1)
 });
 
+const SceneIrPickupSchema = z.strictObject({
+  runtimeId: z.string().min(1),
+  kind: z.enum(['health', 'score', 'weapon']),
+  x: z.number().int(),
+  y: z.number().int(),
+  provenanceRef: z.string().min(1)
+});
+
 const SceneIrGoalSchema = z.strictObject({
   runtimeId: z.string().min(1),
   kind: z.enum(['reach', 'destroy', 'collect', 'survive', 'enemy_cleared']),
@@ -99,6 +107,7 @@ const SceneIrSceneSchema = z.strictObject({
   platforms: z.array(SceneIrPlatformSchema).min(1),
   player: SceneIrPlayerSchema,
   enemyInstances: z.array(SceneIrEnemyInstanceSchema),
+  pickups: z.array(SceneIrPickupSchema).default([]),
   goals: z.array(SceneIrGoalSchema).min(1)
 });
 
@@ -113,6 +122,50 @@ export const SceneIrSchema = z.strictObject({
 });
 
 export type SceneIr = z.infer<typeof SceneIrSchema>;
+export type SceneIrScene = SceneIr['scenes'][number];
+export type SceneDomain =
+  | 'terrain'
+  | 'spawns'
+  | 'pickups'
+  | 'objectives'
+  | 'camera_gameplay_bounds'
+  | 'presentation'
+  | 'background'
+  | 'lighting'
+  | 'decorations'
+  | 'asset_bindings';
+
+export type SceneIrAuthorityReport = {
+  schemaVersion: 'step37.scene-ir-authority-report.v1';
+  runId: string;
+  decision: 'runtime_plan_authoritative' | 'runtime_plan_with_dsl_overlay';
+  domainOwnership: Record<SceneDomain, string>;
+  conflicts: string[];
+  diagnostics: string[];
+};
+
+export type SceneIrCoverageReport = {
+  schemaVersion: 'step37.scene-ir-coverage-report.v1';
+  runId: string;
+  status: 'PASS' | 'FAIL';
+  terrain: SceneIrCoverageDomainReport;
+  waves: SceneIrCoverageDomainReport;
+  pickups: SceneIrCoverageDomainReport;
+  objectives: SceneIrCoverageDomainReport;
+  semanticChecks: {
+    winTargetPreserved: boolean;
+    noRequiredWaveDropped: boolean;
+    noRequiredPickupDropped: boolean;
+    noProtectedDomainClearedByOverlay: boolean;
+  };
+  diagnostics: string[];
+};
+
+type SceneIrCoverageDomainReport = {
+  runtimePlanCount: number;
+  mappedCount: number;
+  missingSourceIds: string[];
+};
 
 type BuildSceneIrInput = {
   projectId: string;
@@ -133,110 +186,129 @@ export function buildSceneIr(input: BuildSceneIrInput): SceneIr {
     provenance[runtimeId] = value;
     return runtimeId;
   };
-  const sideScrolling = input.ir.runtime_plan.side_scrolling;
-  const scene = input.rawDsl?.scenes?.[0];
-  const sceneIr = scene === undefined
-    ? buildRuntimePlanDerivedScene(input, addProvenance)
-    : buildDslAuthoredScene(input, addProvenance);
+  const sceneOverlay = input.rawDsl?.scenes?.[0];
+  const sceneIr = applyV01SceneOverlay(buildRuntimePlanDerivedScene(input, addProvenance), sceneOverlay, addProvenance);
 
   return SceneIrSchema.parse({
     schemaVersion: 'step33.scene-ir.v1',
     projectId: input.projectId,
     runId: input.runId,
     runtimeProfile: 'side_scrolling_run_and_gun.v1',
-    source: scene === undefined ? 'runtime_plan_derived' : 'dsl_scene_contract',
+    source: 'runtime_plan_derived',
     scenes: [sceneIr],
     provenance
   });
 }
 
-function buildDslAuthoredScene(input: BuildSceneIrInput, addProvenance: (runtimeId: string, value: ProvenanceInput) => string): SceneIr['scenes'][number] {
-  const scene = input.rawDsl?.scenes?.[0];
-  const sideScrolling = input.ir.runtime_plan.side_scrolling;
-  if (scene === undefined || sideScrolling === undefined || input.rawDsl === undefined) {
-    throw new Error('DSL-authored Scene IR requires side_scrolling runtime plan and Raw DSL scenes.');
-  }
-
-  const enemyTypeIndex = new Map(input.rawDsl.enemyTypes?.map((enemyType, index) => [enemyType.id, { enemyType, index }]));
-
+export function buildSceneIrAuthorityReport(input: { runId: string; sceneIr: SceneIr }): SceneIrAuthorityReport {
+  const hasDslOverlay = Object.values(input.sceneIr.provenance).some((entry) => entry.source === 'dsl' && entry.dslPath.startsWith('/scenes/'));
   return {
-    id: scene.id,
-    world: toWorld(sideScrolling),
-    camera: sideScrolling.camera,
-    backgrounds: scene.backgroundLayers.map((layer, index) => {
-      const runtimeId = `background.${layer.id}`;
-      return {
-        runtimeId,
-        role: layer.role,
-        assetIntentRef: layer.assetIntentRef,
-        parallax: layer.parallax,
-        repeatX: layer.repeatX,
-        fixedToCamera: layer.fixedToCamera,
-        opacity: layer.opacity,
-        depth: layer.depth,
-        provenanceRef: addProvenance(runtimeId, { source: 'dsl', dslPath: `/scenes/0/backgroundLayers/${index}` })
-      };
-    }),
-    platforms: scene.platforms.map((platform, index) => {
-      const runtimeId = `platform.${platform.id}`;
-      return {
-        runtimeId,
-        kind: platform.shape === 'slope' ? 'slope' : platform.tags?.includes('ground') ? 'ground' : 'platform',
-        x: platform.x,
-        y: platform.y,
-        width: platform.width,
-        height: platform.height,
-        shape: platform.shape,
-        materialRef: platform.materialRef,
-        visualAssetIntentRef: platform.visualAssetIntentRef,
-        collider: { runtimeId: `collider.${platform.id}`, enabled: platform.collision.enabled, oneWay: platform.collision.oneWay },
-        provenanceRef: addProvenance(runtimeId, { source: 'dsl', dslPath: `/scenes/0/platforms/${index}` })
-      };
-    }),
-    player: {
-      runtimeId: 'entity.player',
-      prefabRef: 'player.run_and_gun.v1',
-      x: scene.playerSpawn.x,
-      y: scene.playerSpawn.y,
-      visualAssetIntentRef: input.rawDsl.player.visual?.assetIntentRef,
-      provenanceRef: addProvenance('entity.player', { source: 'dsl', dslPath: '/scenes/0/playerSpawn', relatedDslPaths: ['/player', '/player/visual'] })
+    schemaVersion: 'step37.scene-ir-authority-report.v1',
+    runId: input.runId,
+    decision: hasDslOverlay ? 'runtime_plan_with_dsl_overlay' : 'runtime_plan_authoritative',
+    domainOwnership: {
+      terrain: 'runtime_plan',
+      spawns: 'runtime_plan',
+      pickups: 'runtime_plan',
+      objectives: 'runtime_plan',
+      camera_gameplay_bounds: 'runtime_plan',
+      presentation: hasDslOverlay ? 'normalized_dsl_scene_overlay' : 'runtime_plan',
+      background: hasDslOverlay ? 'normalized_dsl_scene_overlay' : 'runtime_plan',
+      lighting: hasDslOverlay ? 'normalized_dsl_scene_overlay' : 'runtime_plan',
+      decorations: hasDslOverlay ? 'normalized_dsl_scene_overlay' : 'runtime_plan',
+      asset_bindings: 'step33_asset_binding'
     },
-    enemyInstances: scene.enemyInstances.map((instance, index) => {
-      const enemy = enemyTypeIndex.get(instance.archetypeRef);
-      const runtimeId = sceneEnemyRuntimeId(instance.id);
-      return {
-        runtimeId,
-        archetypeRef: instance.archetypeRef,
-        prefabRef: `enemy.${instance.archetypeRef}.v1`,
-        x: instance.x,
-        y: instance.y,
-        spawnRule: instance.spawnRule,
-        behaviorRef: enemy?.enemyType.behaviorRef,
-        visualAssetIntentRef: enemy?.enemyType.visual?.assetIntentRef,
-        colliderRef: enemy?.enemyType.colliderRef,
-        provenanceRef: addProvenance(runtimeId, {
-          source: 'dsl',
-          dslPath: `/scenes/0/enemyInstances/${index}`,
-          relatedDslPaths: enemy === undefined ? undefined : [`/enemyTypes/${enemy.index}`]
-        })
-      };
-    }),
-    goals: [
-      {
-        runtimeId: `goal.${scene.goal.id}`,
-        kind: scene.goal.kind,
-        entityRef: scene.goal.entityRef,
-        x: scene.goal.x,
-        y: scene.goal.y,
-        visualAssetIntentRef: scene.goal.visualAssetIntentRef,
-        provenanceRef: addProvenance(`goal.${scene.goal.id}`, { source: 'dsl', dslPath: '/scenes/0/goal', relatedDslPaths: ['/objectives/win'] })
-      }
-    ]
+    conflicts: [],
+    diagnostics: []
   };
 }
 
-function sceneEnemyRuntimeId(instanceId: string): string {
-  return `entity.enemy.${instanceId}`;
+export function buildSceneIrCoverageReport(input: { runId: string; ir: NormalizedGameIr; sceneIr: SceneIr }): SceneIrCoverageReport {
+  const sideScrolling = input.ir.runtime_plan.side_scrolling;
+  if (sideScrolling === undefined) {
+    throw new Error('Scene IR coverage currently requires side_scrolling runtime plan.');
+  }
+
+  const scene = input.sceneIr.scenes[0];
+  const terrain = coverageFor(
+    sideScrolling.platforms.map((platform) => platform.id),
+    scene.platforms.map((platform) => stripRuntimePrefix(platform.runtimeId, 'platform.'))
+  );
+  const waves = coverageFor(
+    sideScrolling.waves.map((wave) => wave.id),
+    scene.enemyInstances.map((enemy) => stripRuntimePrefix(enemy.runtimeId, 'spawn.'))
+  );
+  const pickups = coverageFor(
+    sideScrolling.pickups.map((pickup) => pickup.id),
+    scene.pickups.map((pickup) => stripRuntimePrefix(pickup.runtimeId, 'pickup.'))
+  );
+  const objectives = {
+    runtimePlanCount: 1,
+    mappedCount: scene.goals.length > 0 ? 1 : 0,
+    missingSourceIds: scene.goals.length > 0 ? [] : ['winCondition']
+  };
+  let winTargetPreserved = true;
+  if (sideScrolling.winCondition.kind === 'reach_exit') {
+    const targetX = sideScrolling.winCondition.targetX;
+    winTargetPreserved = scene.goals.some((goal) => goal.kind === 'reach' && goal.x === targetX);
+  }
+  const semanticChecks = {
+    winTargetPreserved,
+    noRequiredWaveDropped: waves.missingSourceIds.length === 0,
+    noRequiredPickupDropped: pickups.missingSourceIds.length === 0,
+    noProtectedDomainClearedByOverlay: terrain.missingSourceIds.length === 0 && objectives.missingSourceIds.length === 0
+  };
+  const diagnostics = [
+    ...terrain.missingSourceIds.map((id) => `SCENE_IR_TERRAIN_MAPPING_MISSING:${id}`),
+    ...waves.missingSourceIds.map((id) => `SCENE_IR_WAVE_MAPPING_MISSING:${id}`),
+    ...pickups.missingSourceIds.map((id) => `SCENE_IR_PICKUP_MAPPING_MISSING:${id}`),
+    ...objectives.missingSourceIds.map((id) => `SCENE_IR_OBJECTIVE_MAPPING_MISSING:${id}`),
+    ...(winTargetPreserved ? [] : ['SCENE_IR_WIN_TARGET_CHANGED'])
+  ];
+
+  return {
+    schemaVersion: 'step37.scene-ir-coverage-report.v1',
+    runId: input.runId,
+    status: diagnostics.length === 0 ? 'PASS' : 'FAIL',
+    terrain,
+    waves,
+    pickups,
+    objectives,
+    semanticChecks,
+    diagnostics
+  };
+}
+
+function applyV01SceneOverlay(
+  base: SceneIrScene,
+  sceneOverlay: NonNullable<RawGameDsl['scenes']>[number] | undefined,
+  addProvenance: (runtimeId: string, value: ProvenanceInput) => string
+): SceneIrScene {
+  if (sceneOverlay === undefined) {
+    return base;
+  }
+
+  return {
+    ...base,
+    id: sceneOverlay.id,
+    backgrounds:
+      sceneOverlay.backgroundLayers.length === 0
+        ? base.backgrounds
+        : sceneOverlay.backgroundLayers.map((layer, index) => {
+            const runtimeId = `background.${layer.id}`;
+            return {
+              runtimeId,
+              role: layer.role,
+              assetIntentRef: layer.assetIntentRef,
+              parallax: layer.parallax,
+              repeatX: layer.repeatX,
+              fixedToCamera: layer.fixedToCamera,
+              opacity: layer.opacity,
+              depth: layer.depth,
+              provenanceRef: addProvenance(runtimeId, { source: 'dsl', dslPath: `/scenes/0/backgroundLayers/${index}` })
+            };
+          })
+  };
 }
 
 function buildRuntimePlanDerivedScene(input: BuildSceneIrInput, addProvenance: (runtimeId: string, value: ProvenanceInput) => string): SceneIr['scenes'][number] {
@@ -280,8 +352,9 @@ function buildRuntimePlanDerivedScene(input: BuildSceneIrInput, addProvenance: (
         shape: platform.kind === 'slope' ? 'slope' : 'rectangle',
         collider: { runtimeId: `collider.${platform.id}`, enabled: true },
         provenanceRef: addProvenance(runtimeId, {
-          source: terrain === undefined ? 'runtime_plan' : 'dsl',
-          dslPath: terrain === undefined ? `/runtime_plan/side_scrolling/platforms/${index}` : `/level/terrain/${terrain}`
+          source: 'runtime_plan',
+          dslPath: `/runtime_plan/side_scrolling/platforms/${index}`,
+          relatedDslPaths: terrain === undefined ? undefined : [`/level/terrain/${terrain}`]
         })
       };
     }),
@@ -292,9 +365,11 @@ function buildRuntimePlanDerivedScene(input: BuildSceneIrInput, addProvenance: (
       y: sideScrolling.player.spawn.y,
       visualAssetIntentRef: input.rawDsl?.player.visual?.assetIntentRef,
       provenanceRef: addProvenance('entity.player', {
-        source: input.rawDsl === undefined ? 'runtime_plan' : 'dsl',
-        dslPath: input.rawDsl === undefined ? '/runtime_plan/side_scrolling/player' : '/player',
-        relatedDslPaths: input.rawDsl?.player.visual === undefined ? undefined : ['/player/visual']
+        source: 'runtime_plan',
+        dslPath: '/runtime_plan/side_scrolling/player',
+        relatedDslPaths: input.rawDsl === undefined
+          ? undefined
+          : ['/player', ...(input.rawDsl.player.visual === undefined ? [] : ['/player/visual'])]
       })
     },
     enemyInstances: sideScrolling.waves.map((wave, index) => {
@@ -309,13 +384,41 @@ function buildRuntimePlanDerivedScene(input: BuildSceneIrInput, addProvenance: (
         count: wave.count,
         spawnRule: wave.id,
         provenanceRef: addProvenance(runtimeId, {
-          source: spawn === undefined ? 'runtime_plan' : 'dsl',
-          dslPath: spawn === undefined ? `/runtime_plan/side_scrolling/waves/${index}` : `/level/spawns/${spawn}`
+          source: 'runtime_plan',
+          dslPath: `/runtime_plan/side_scrolling/waves/${index}`,
+          relatedDslPaths: spawn === undefined ? undefined : [`/level/spawns/${spawn}`]
+        })
+      };
+    }),
+    pickups: sideScrolling.pickups.map((pickup, index) => {
+      const runtimeId = `pickup.${pickup.id}`;
+      return {
+        runtimeId,
+        kind: pickup.kind,
+        x: pickup.x,
+        y: pickup.y,
+        provenanceRef: addProvenance(runtimeId, {
+          source: 'runtime_plan',
+          dslPath: `/runtime_plan/side_scrolling/pickups/${index}`
         })
       };
     }),
     goals: [runtimePlanGoal(sideScrolling, addProvenance, input.rawDsl !== undefined)]
   };
+}
+
+function coverageFor(requiredIds: readonly string[], mappedIds: readonly string[]): SceneIrCoverageDomainReport {
+  const mapped = new Set(mappedIds);
+  const missingSourceIds = requiredIds.filter((id) => !mapped.has(id));
+  return {
+    runtimePlanCount: requiredIds.length,
+    mappedCount: requiredIds.length - missingSourceIds.length,
+    missingSourceIds
+  };
+}
+
+function stripRuntimePrefix(value: string, prefix: string): string {
+  return value.startsWith(prefix) ? value.slice(prefix.length) : value;
 }
 
 function toWorld(sideScrolling: NonNullable<NormalizedGameIr['runtime_plan']['side_scrolling']>): SceneIr['scenes'][number]['world'] {
@@ -332,9 +435,11 @@ function runtimePlanGoal(
   addProvenance: (runtimeId: string, value: ProvenanceInput) => string,
   hasRawDsl: boolean
 ): SceneIr['scenes'][number]['goals'][number] {
-  const provenance: ProvenanceInput = hasRawDsl
-    ? { source: 'dsl', dslPath: '/objectives/win' }
-    : { source: 'runtime_plan', dslPath: '/runtime_plan/side_scrolling/winCondition' };
+  const provenance: ProvenanceInput = {
+    source: 'runtime_plan',
+    dslPath: '/runtime_plan/side_scrolling/winCondition',
+    relatedDslPaths: hasRawDsl ? ['/objectives/win'] : undefined
+  };
 
   if (sideScrolling.winCondition.kind === 'reach_exit') {
     const runtimeId = 'goal.reach_exit';

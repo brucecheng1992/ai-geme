@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 import { SceneIrSchema, type SceneIr } from '../../../../packages/game-dsl/src/index.js';
 
-const RuntimeSceneBindingKindSchema = z.enum(['background', 'platform', 'player', 'enemy', 'goal']);
+const RuntimeSceneBindingKindSchema = z.enum(['background', 'platform', 'player', 'enemy', 'pickup', 'goal']);
 const RuntimeSceneBindingStatusSchema = z.enum(['bound', 'unbound']);
 
 const RuntimeSceneBindingSchema = z.strictObject({
@@ -33,6 +33,7 @@ export const RuntimeSceneBindingReportSchema = z.strictObject({
     backgroundCount: z.number().int().min(0),
     platformCount: z.number().int().min(0),
     enemyInstanceCount: z.number().int().min(0),
+    pickupCount: z.number().int().min(0),
     goalCount: z.number().int().min(0),
     boundCount: z.number().int().min(0),
     unboundCount: z.number().int().min(0)
@@ -101,6 +102,7 @@ function parseReport(projectId: string, runId: string, sceneIr: SceneIr, binding
       backgroundCount: scene.backgrounds.length,
       platformCount: scene.platforms.length,
       enemyInstanceCount: scene.enemyInstances.length,
+      pickupCount: scene.pickups.length,
       goalCount: scene.goals.length,
       boundCount: bindings.length - unboundCount,
       unboundCount
@@ -116,6 +118,7 @@ function expectedBindings(sceneIr: SceneIr): RuntimeSceneBinding[] {
     ...scene.platforms.map((platform) => binding(sceneIr, 'platform', platform.runtimeId, platform.runtimeId, platform.provenanceRef)),
     binding(sceneIr, 'player', scene.player.runtimeId, scene.player.runtimeId, scene.player.provenanceRef),
     ...scene.enemyInstances.map((enemy) => binding(sceneIr, 'enemy', enemy.runtimeId, enemy.runtimeId, enemy.provenanceRef)),
+    ...scene.pickups.map((pickup) => binding(sceneIr, 'pickup', pickup.runtimeId, pickup.runtimeId, pickup.provenanceRef)),
     ...scene.goals.map((goal) => {
       const supported = goal.kind === 'reach' || goal.kind === 'enemy_cleared';
       return binding(

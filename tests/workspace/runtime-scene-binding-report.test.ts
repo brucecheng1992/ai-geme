@@ -19,9 +19,10 @@ describe('Runtime scene binding report', () => {
         backgroundCount: 1,
         platformCount: 1,
         enemyInstanceCount: 1,
+        pickupCount: 1,
         goalCount: 1,
         boundCount: 0,
-        unboundCount: 5
+        unboundCount: 6
       },
       bindings: expect.arrayContaining([
         expect.objectContaining({ sceneRuntimeId: 'entity.player', runtimeInstanceId: null, status: 'unbound', reason: 'runtime_observation_pending' })
@@ -41,6 +42,7 @@ describe('Runtime scene binding report', () => {
             { kind: 'platform', sceneRuntimeId: 'platform.ground', runtimeInstanceId: 'platform.ground', source: 'dsl', sourceDslPath: '/scenes/0/platforms/0', status: 'bound' },
             { kind: 'player', sceneRuntimeId: 'entity.player', runtimeInstanceId: 'entity.player', source: 'dsl', sourceDslPath: '/scenes/0/playerSpawn', status: 'bound' },
             { kind: 'enemy', sceneRuntimeId: 'entity.enemy.scout', runtimeInstanceId: 'entity.enemy.scout', source: 'dsl', sourceDslPath: '/scenes/0/enemyInstances/0', status: 'bound' },
+            { kind: 'pickup', sceneRuntimeId: 'pickup.medkit', runtimeInstanceId: 'pickup.medkit', source: 'runtime_plan', sourceDslPath: '/runtime_plan/side_scrolling/pickups/0', status: 'bound' },
             { kind: 'goal', sceneRuntimeId: 'goal.exit', runtimeInstanceId: 'goal.exit', source: 'dsl', sourceDslPath: '/scenes/0/goal', status: 'bound' }
           ]
         }
@@ -49,7 +51,7 @@ describe('Runtime scene binding report', () => {
 
     expect(observed).toMatchObject({
       status: 'pass',
-      summary: { boundCount: 5, unboundCount: 0 },
+      summary: { boundCount: 6, unboundCount: 0 },
       bindings: expect.arrayContaining([
         expect.objectContaining({ sceneRuntimeId: 'entity.player', runtimeInstanceId: 'entity.player', status: 'bound' })
       ])
@@ -94,6 +96,7 @@ function createSceneIr(): SceneIr {
             provenanceRef: 'entity.enemy.scout'
           }
         ],
+        pickups: [{ runtimeId: 'pickup.medkit', kind: 'health', x: 760, y: 456, provenanceRef: 'pickup.medkit' }],
         goals: [{ runtimeId: 'goal.exit', kind: 'reach', x: 1200, y: 460, provenanceRef: 'goal.exit' }]
       }
     ],
@@ -102,6 +105,7 @@ function createSceneIr(): SceneIr {
       'platform.ground': { source: 'dsl', dslPath: '/scenes/0/platforms/0' },
       'entity.player': { source: 'dsl', dslPath: '/scenes/0/playerSpawn' },
       'entity.enemy.scout': { source: 'dsl', dslPath: '/scenes/0/enemyInstances/0' },
+      'pickup.medkit': { source: 'runtime_plan', dslPath: '/runtime_plan/side_scrolling/pickups/0' },
       'goal.exit': { source: 'dsl', dslPath: '/scenes/0/goal' }
     }
   };

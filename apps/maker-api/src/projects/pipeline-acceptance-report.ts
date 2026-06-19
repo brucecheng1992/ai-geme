@@ -25,6 +25,7 @@ export const PipelineAcceptanceCheckSchema = z.strictObject({
     'dsl_artifact',
     'dsl_consumption',
     'scene_ir',
+    'required_artifacts',
     'runtime_scene_binding',
     'runtime_capability',
     'asset_intent_resolution',
@@ -146,12 +147,26 @@ type BuildPipelineAcceptanceReportInput = {
 
 const ARTIFACT_ORDER = [
   'generationInputReport',
+  'generationPathReceipt',
+  'capabilityRegistrySnapshot',
+  'generationCapabilityReadinessReport',
+  'generationCapabilityResolutionReport',
+  'shadowGameplayCapabilityLock',
+  'generationCapabilityRuntimeReport',
+  'generationCapabilityGapReport',
+  'generationCapabilityCutoverReport',
+  'shadowRuntimeSystemManifest',
+  'shadowRuntimeLoaderReport',
+  'shadowCapabilityQaPlan',
+  'shadowCapabilityQaReport',
   'intentPlan',
   'gameDsl',
   'gameDslCandidate',
   'dslValidationReport',
   'dslConsumptionReport',
   'sceneIr',
+  'sceneIrAuthorityReport',
+  'sceneIrCoverageReport',
   'runtimeSceneBindingReport',
   'runtimeCapabilityReport',
   'assetIntentManifest',
@@ -177,6 +192,7 @@ export function buildPipelineAcceptanceReport(input: BuildPipelineAcceptanceRepo
     buildDslArtifactCheck(input, artifacts),
     buildDslConsumptionCheck(input, artifacts.get('dslConsumptionReport')),
     buildSceneIrCheck(artifacts.get('sceneIr')),
+    buildRequiredArtifactsCheck(input.artifactIndex.artifacts),
     buildRuntimeSceneBindingCheck(input, artifacts.get('runtimeSceneBindingReport')),
     buildRuntimeCapabilityCheck(input, artifacts.get('runtimeCapabilityReport')),
     buildAssetIntentResolutionCheck(input, artifacts),
@@ -483,6 +499,36 @@ function buildSceneIrCheck(artifact: PipelineArtifactRef | undefined): PipelineA
   return buildArtifactCheck('scene_ir', 'runtime', artifact?.required === true, artifact);
 }
 
+function buildRequiredArtifactsCheck(artifacts: PipelineArtifactRef[]): PipelineAcceptanceCheck {
+  const requiredArtifacts = sortArtifactsForAcceptance(artifacts.filter((artifact) => artifact.required));
+  const unresolved = requiredArtifacts.filter((artifact) => artifact.status !== 'present');
+  const evidenceRefs = requiredArtifacts.map(toEvidenceRef);
+
+  if (unresolved.length > 0) {
+    return {
+      id: 'required_artifacts',
+      category: 'artifacts',
+      status: 'fail',
+      required: true,
+      artifactId: 'pipelineArtifactIndex',
+      artifactPath: 'pipeline_artifact_index.json',
+      reason: `pipeline_artifact_index has ${unresolved.length} required artifact ref(s) not present: ${unresolved.map((artifact) => artifact.id).join(', ')}.`,
+      evidenceRefs
+    };
+  }
+
+  return {
+    id: 'required_artifacts',
+    category: 'artifacts',
+    status: 'pass',
+    required: true,
+    artifactId: 'pipelineArtifactIndex',
+    artifactPath: 'pipeline_artifact_index.json',
+    reason: 'pipeline_artifact_index has all required artifact refs present.',
+    evidenceRefs
+  };
+}
+
 function buildRuntimeSceneBindingCheck(input: BuildPipelineAcceptanceReportInput, artifact: PipelineArtifactRef | undefined): PipelineAcceptanceCheck {
   const artifactCheck = buildArtifactCheck('runtime_scene_binding', 'runtime', artifact?.required === true, artifact);
   if (artifactCheck.status !== 'pass') {
@@ -660,6 +706,15 @@ function buildCheckedArtifacts(artifacts: PipelineArtifactRef[]): PipelineAccept
           }
         ];
   });
+}
+
+function sortArtifactsForAcceptance(artifacts: PipelineArtifactRef[]): PipelineArtifactRef[] {
+  return [...artifacts].sort((left, right) => artifactOrderRank(left.id) - artifactOrderRank(right.id) || left.id.localeCompare(right.id));
+}
+
+function artifactOrderRank(id: PipelineArtifactRef['id']): number {
+  const index = ARTIFACT_ORDER.findIndex((candidate) => candidate === id);
+  return index === -1 ? Number.MAX_SAFE_INTEGER : index;
 }
 
 function deriveOverallStatus(checks: PipelineAcceptanceCheck[]): PipelineAcceptanceReport['overallStatus'] {

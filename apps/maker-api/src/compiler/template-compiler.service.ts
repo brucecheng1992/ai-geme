@@ -7,6 +7,8 @@ import { writeAssetArtifacts } from '../../../../packages/asset-pipeline/src/ind
 import {
   buildSemanticExtractionTraceReport,
   buildSemanticModelReport,
+  buildSceneIrAuthorityReport,
+  buildSceneIrCoverageReport,
   buildSceneIr,
   checkPhaserRuntimeCapabilities,
   findRuntimeGenreCapabilityByTemplateManifestId,
@@ -84,7 +86,7 @@ export class TemplateCompilerService {
       ...(generatedTemplateArtifacts.has('sceneIr') && sceneIr !== undefined ? [`${genre}/src/scene-ir.generated.json`] : []),
       ...(generatedTemplateArtifacts.has('liveEditRegistry') ? [`${genre}/src/live-edit-registry.generated.json`] : []),
       `${genre}/src/template-params.generated.json`,
-      ...(sceneIr === undefined ? [] : ['game.scene.ir.json', 'runtime_scene_binding_report.json'])
+      ...(sceneIr === undefined ? [] : ['game.scene.ir.json', 'scene_ir_authority_report.json', 'scene_ir_coverage_report.json', 'runtime_scene_binding_report.json'])
     ];
 
     await rm(outputDir, { recursive: true, force: true });
@@ -103,6 +105,16 @@ export class TemplateCompilerService {
     await writeFile(join(outputDir, 'game.ir.json'), `${JSON.stringify(ir, null, 2)}\n`, 'utf8');
     if (sceneIr !== undefined) {
       await writeFile(join(outputDir, 'game.scene.ir.json'), `${JSON.stringify(sceneIr, null, 2)}\n`, 'utf8');
+      await writeFile(
+        join(outputDir, 'scene_ir_authority_report.json'),
+        `${JSON.stringify(buildSceneIrAuthorityReport({ runId: input.runId, sceneIr }), null, 2)}\n`,
+        'utf8'
+      );
+      await writeFile(
+        join(outputDir, 'scene_ir_coverage_report.json'),
+        `${JSON.stringify(buildSceneIrCoverageReport({ runId: input.runId, ir, sceneIr }), null, 2)}\n`,
+        'utf8'
+      );
       if (generatedTemplateArtifacts.has('sceneIr')) {
         await writeFile(join(outputDir, `${genre}`, 'src', 'scene-ir.generated.json'), `${JSON.stringify(sceneIr, null, 2)}\n`, 'utf8');
       }

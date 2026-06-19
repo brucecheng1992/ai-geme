@@ -1,4 +1,109 @@
 export { GameBriefSchema, type GameBrief } from './schemas/game-brief-v0.1.schema.js';
+export {
+  DurationSecondsSchema,
+  GAME_BRIEF_V02_SCHEMA_VERSION,
+  GameBriefV02Schema,
+  PlayTimeIntentSchema,
+  getPlanningUpperBoundSec,
+  getRepresentativePlayTimeSec,
+  toLegacyTargetPlayTimeSec,
+  type DurationSeconds,
+  type GameBriefV02,
+  type PlayTimeIntent
+} from './schemas/game-brief-v0.2.schema.js';
+export { migrateGameBriefV01ToV02 } from './schemas/game-brief-migration.js';
+export {
+  GameBriefIngressValidationError,
+  parseAndNormalizeGameBrief,
+  type GameBriefIngressResult
+} from './schemas/game-brief-ingress.js';
+export {
+  GenerationScopePlanSchema,
+  buildGenerationScopePlan,
+  type GenerationScopePlan
+} from './generation-scope-plan.js';
+export {
+  GENERATION_PATH_RECEIPT_KIND,
+  GENERATION_PATH_RECEIPT_SCHEMA_VERSION,
+  GenerationPathReceiptSchema,
+  buildGenerationPathReceipt,
+  type GenerationPathReceipt
+} from './generation-path-receipt.js';
+export {
+  GENERATION_CAPABILITY_READINESS_REPORT_KIND,
+  GENERATION_CAPABILITY_READINESS_REPORT_SCHEMA_VERSION,
+  GenerationCapabilityReadinessReportSchema,
+  buildGenerationCapabilityPreflight,
+  type GenerationCapabilityPreflightArtifacts,
+  type GenerationCapabilityReadinessReport
+} from './generation-capability-readiness.js';
+export {
+  GENERATION_CAPABILITY_RESOLUTION_REPORT_KIND,
+  GENERATION_CAPABILITY_RESOLUTION_REPORT_SCHEMA_VERSION,
+  SHADOW_GAMEPLAY_CAPABILITY_LOCK_PATH,
+  GenerationCapabilityResolutionReportSchema,
+  buildGenerationCapabilityResolutionShadow,
+  type GenerationCapabilityResolutionReport,
+  type GenerationCapabilityResolutionShadowArtifacts
+} from './generation-capability-resolution.js';
+export {
+  GENERATION_CAPABILITY_RUNTIME_REPORT_KIND,
+  GENERATION_CAPABILITY_RUNTIME_REPORT_SCHEMA_VERSION,
+  SHADOW_CAPABILITY_QA_PLAN_PATH,
+  SHADOW_CAPABILITY_QA_REPORT_PATH,
+  SHADOW_PHASER_RUNTIME_LOADER_REPORT_PATH,
+  SHADOW_PHASER_RUNTIME_SYSTEM_MANIFEST_PATH,
+  GenerationCapabilityRuntimeReportSchema,
+  buildGenerationCapabilityRuntimeShadow,
+  type GenerationCapabilityRuntimeReport,
+  type GenerationCapabilityRuntimeShadowArtifacts
+} from './generation-capability-runtime.js';
+export {
+  GENERATION_CAPABILITY_GAP_REPORT_KIND,
+  GENERATION_CAPABILITY_GAP_REPORT_PATH,
+  GENERATION_CAPABILITY_GAP_REPORT_SCHEMA_VERSION,
+  GenerationCapabilityGapReportSchema,
+  buildGenerationCapabilityGapReport,
+  type GenerationCapabilityGapReport
+} from './generation-capability-gap.js';
+export {
+  GENERATION_CAPABILITY_CUTOVER_REPORT_KIND,
+  GENERATION_CAPABILITY_CUTOVER_REPORT_PATH,
+  GENERATION_CAPABILITY_CUTOVER_REPORT_SCHEMA_VERSION,
+  GENERATION_CAPABILITY_ROLLBACK_DRILL_KIND,
+  GENERATION_CAPABILITY_ROLLBACK_DRILL_SCHEMA_VERSION,
+  LEGACY_EXECUTION_AUTHORIZATION_SCHEMA_VERSION,
+  GenerationCapabilityCutoverReportSchema,
+  GenerationCapabilityRollbackDrillReportSchema,
+  LegacyExecutionAuthorizationSchema,
+  buildGenerationCapabilityCutoverReport,
+  buildGenerationCapabilityRollbackDrillReport,
+  type GenerationCapabilityCutoverReport,
+  type GenerationCapabilityRollbackDrillReport,
+  type LegacyExecutionAuthorization
+} from './generation-capability-cutover.js';
+export {
+  STEP37_FINAL_ACCEPTANCE_IDS,
+  STEP37_FINAL_ACCEPTANCE_EVIDENCE_REQUIREMENTS,
+  STEP37_FINAL_CLOSURE_REPORT_KIND,
+  STEP37_FINAL_CLOSURE_SCHEMA_VERSION,
+  STEP37_FINAL_MAX_VALIDATION_AGE_MS,
+  STEP37_FINAL_REQUIRED_EVIDENCE_KINDS,
+  STEP37_FINAL_REQUIRED_VALIDATION_COMMANDS,
+  buildStep37FinalClosureReport,
+  buildStep37FinalOracleGate,
+  buildStep37FinalValidationReceipt,
+  type Step37FinalAcceptanceCheck,
+  type Step37FinalAcceptanceId,
+  type Step37FinalClosureIssue,
+  type Step37FinalClosureReport,
+  type Step37FinalEvidenceKind,
+  type Step37FinalEvidenceRef,
+  type Step37FinalOracleGate,
+  type Step37FinalRequiredValidationCommand,
+  type Step37FinalValidationReceipt,
+  type Step37ReferenceRegressionSummary
+} from './step37-final-closure.js';
 export { RawGameDslSchema, type RawGameDsl } from './schemas/raw-game-dsl-v0.1.schema.js';
 export { NormalizedGameIrSchema, type NormalizedGameIr } from './schemas/normalized-game-ir-v0.1.schema.js';
 export {
@@ -10,7 +115,16 @@ export {
   type DslConsumptionReport,
   type DslConsumptionStatus
 } from './dsl-consumption-report.js';
-export { buildSceneIr, SceneIrSchema, type SceneIr } from './scene-ir.js';
+export {
+  buildSceneIr,
+  buildSceneIrAuthorityReport,
+  buildSceneIrCoverageReport,
+  SceneIrSchema,
+  type SceneDomain,
+  type SceneIr,
+  type SceneIrAuthorityReport,
+  type SceneIrCoverageReport
+} from './scene-ir.js';
 export {
   EntitySemanticProfileSchema,
   GameSemanticModelSchema,

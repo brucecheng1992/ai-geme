@@ -31,9 +31,30 @@ export type PipelineEvidenceView =
     };
 
 const GROUPS: Array<{ id: string; title: string; artifactIds: string[] }> = [
-  { id: 'prompt', title: 'Prompt / Provenance', artifactIds: ['generationInputReport', 'intentPlan', 'promptOptimizationReport', 'optimizedPrompt'] },
+  { id: 'prompt', title: 'Prompt / Provenance', artifactIds: ['generationInputReport', 'generationPathReceipt', 'intentPlan', 'promptOptimizationReport', 'optimizedPrompt'] },
   { id: 'dsl', title: 'DSL', artifactIds: ['gameDsl', 'gameDslCandidate', 'dslValidationReport', 'dslConsumptionReport'] },
-  { id: 'runtime', title: 'Runtime', artifactIds: ['runtimeCapabilityReport', 'sceneIr', 'runtimeSceneBindingReport'] },
+  {
+    id: 'runtime',
+    title: 'Runtime',
+    artifactIds: [
+      'capabilityRegistrySnapshot',
+      'generationCapabilityReadinessReport',
+      'generationCapabilityResolutionReport',
+      'shadowGameplayCapabilityLock',
+      'generationCapabilityRuntimeReport',
+      'generationCapabilityGapReport',
+      'generationCapabilityCutoverReport',
+      'shadowRuntimeSystemManifest',
+      'shadowRuntimeLoaderReport',
+      'shadowCapabilityQaPlan',
+      'shadowCapabilityQaReport',
+      'runtimeCapabilityReport',
+      'sceneIr',
+      'sceneIrAuthorityReport',
+      'sceneIrCoverageReport',
+      'runtimeSceneBindingReport'
+    ]
+  },
   { id: 'assets', title: 'Assets', artifactIds: ['assetIntentManifest', 'assetPlan', 'publicAssetManifest', 'phaserPreviewManifest', 'assetResolutionReport', 'assetPipelineReport', 'assetLibraryUsageReport', 'assetBindingTraceReport'] },
   { id: 'build-qa', title: 'Build / QA / Preview', artifactIds: ['buildLog', 'qaReport', 'renderFidelityReport', 'pipelineAcceptanceReport', 'pipelineArtifactIndex'] }
 ];

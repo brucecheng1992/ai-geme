@@ -26,7 +26,9 @@ describe('Pipeline acceptance report contract', () => {
         'shooter/src/asset-manifest.generated.json',
         'asset_pipeline_report.json',
         'asset_library_usage_report.json',
-        'asset_binding_trace_report.json'
+        'asset_binding_trace_report.json',
+        'semantic_extraction_trace_report.json',
+        'semantic_model_report.json'
       ],
       buildLogPresent: true,
       qaReportPresent: true,
@@ -79,6 +81,7 @@ describe('Pipeline acceptance report contract', () => {
       'dsl_artifact',
       'dsl_consumption',
       'scene_ir',
+      'required_artifacts',
       'runtime_scene_binding',
       'runtime_capability',
       'asset_intent_resolution',
@@ -95,8 +98,22 @@ describe('Pipeline acceptance report contract', () => {
     expect(first.checkedArtifacts).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ artifactId: 'generationInputReport', artifactPath: 'generation_input_report.json' }),
+        expect.objectContaining({ artifactId: 'generationPathReceipt', artifactPath: 'generation_path_receipt.json' }),
+        expect.objectContaining({ artifactId: 'capabilityRegistrySnapshot', artifactPath: 'capability_registry_snapshot.json' }),
+        expect.objectContaining({ artifactId: 'generationCapabilityReadinessReport', artifactPath: 'generation_capability_readiness_report.json' }),
+        expect.objectContaining({ artifactId: 'generationCapabilityResolutionReport', artifactPath: 'generation_capability_resolution_report.json' }),
+        expect.objectContaining({ artifactId: 'shadowGameplayCapabilityLock', artifactPath: 'shadow_gameplay_capability_lock.json', status: 'skipped', required: false }),
+        expect.objectContaining({ artifactId: 'generationCapabilityRuntimeReport', artifactPath: 'generation_capability_runtime_report.json' }),
+        expect.objectContaining({ artifactId: 'generationCapabilityGapReport', artifactPath: 'generation_capability_gap_report.json' }),
+        expect.objectContaining({ artifactId: 'generationCapabilityCutoverReport', artifactPath: 'generation_capability_cutover_report.json' }),
+        expect.objectContaining({ artifactId: 'shadowRuntimeSystemManifest', artifactPath: 'shadow_phaser_runtime_system_manifest.json', status: 'skipped', required: false }),
+        expect.objectContaining({ artifactId: 'shadowRuntimeLoaderReport', artifactPath: 'shadow_phaser_runtime_loader_report.json', status: 'skipped', required: false }),
+        expect.objectContaining({ artifactId: 'shadowCapabilityQaPlan', artifactPath: 'shadow_capability_qa_plan.json', status: 'skipped', required: false }),
+        expect.objectContaining({ artifactId: 'shadowCapabilityQaReport', artifactPath: 'shadow_capability_qa_report.json', status: 'skipped', required: false }),
         expect.objectContaining({ artifactId: 'dslConsumptionReport', artifactPath: 'dsl_consumption_report.json' }),
         expect.objectContaining({ artifactId: 'sceneIr', artifactPath: 'game.scene.ir.json', status: 'skipped', required: false }),
+        expect.objectContaining({ artifactId: 'sceneIrAuthorityReport', artifactPath: 'scene_ir_authority_report.json', status: 'skipped', required: false }),
+        expect.objectContaining({ artifactId: 'sceneIrCoverageReport', artifactPath: 'scene_ir_coverage_report.json', status: 'skipped', required: false }),
         expect.objectContaining({ artifactId: 'runtimeSceneBindingReport', artifactPath: 'runtime_scene_binding_report.json', status: 'skipped', required: false }),
         expect.objectContaining({ artifactId: 'assetIntentManifest', artifactPath: 'asset_intent_manifest.json' }),
         expect.objectContaining({ artifactId: 'pipelineAcceptanceReport', artifactPath: 'pipeline_acceptance_report.json' })
@@ -174,7 +191,16 @@ describe('Pipeline acceptance report contract', () => {
       artifactIndex: buildValidPipelineArtifactIndex({
         projectId,
         runId,
-        compileFiles: ['asset_intent_manifest.json', 'asset_plan.json', 'asset_resolution_report.json', 'asset_pipeline_report.json', 'asset_library_usage_report.json', 'asset_binding_trace_report.json'],
+        compileFiles: [
+          'asset_intent_manifest.json',
+          'asset_plan.json',
+          'asset_resolution_report.json',
+          'asset_pipeline_report.json',
+          'asset_library_usage_report.json',
+          'asset_binding_trace_report.json',
+          'semantic_extraction_trace_report.json',
+          'semantic_model_report.json'
+        ],
         buildLogPresent: false,
         qaReportPresent: false
       }),
@@ -208,7 +234,9 @@ describe('Pipeline acceptance report contract', () => {
           'shooter/src/asset-manifest.generated.json',
           'asset_pipeline_report.json',
           'asset_library_usage_report.json',
-          'asset_binding_trace_report.json'
+          'asset_binding_trace_report.json',
+          'semantic_extraction_trace_report.json',
+          'semantic_model_report.json'
         ],
         buildLogPresent: true,
         qaReportPresent: true
@@ -247,7 +275,9 @@ describe('Pipeline acceptance report contract', () => {
           'shooter/src/asset-manifest.generated.json',
           'asset_pipeline_report.json',
           'asset_library_usage_report.json',
-          'asset_binding_trace_report.json'
+          'asset_binding_trace_report.json',
+          'semantic_extraction_trace_report.json',
+          'semantic_model_report.json'
         ],
         buildLogPresent: true,
         qaReportPresent: true
@@ -289,7 +319,9 @@ describe('Pipeline acceptance report contract', () => {
           'shooter/src/asset-manifest.generated.json',
           'asset_pipeline_report.json',
           'asset_library_usage_report.json',
-          'asset_binding_trace_report.json'
+          'asset_binding_trace_report.json',
+          'semantic_extraction_trace_report.json',
+          'semantic_model_report.json'
         ],
         buildLogPresent: true,
         qaReportPresent: true
@@ -329,6 +361,8 @@ describe('Pipeline acceptance report contract', () => {
       runId,
       compileFiles: [
         'game.scene.ir.json',
+        'scene_ir_authority_report.json',
+        'scene_ir_coverage_report.json',
         'runtime_scene_binding_report.json',
         'asset_plan.json',
         'asset_intent_manifest.json',
@@ -337,7 +371,9 @@ describe('Pipeline acceptance report contract', () => {
         'side_scrolling_run_and_gun/src/asset-manifest.generated.json',
         'asset_pipeline_report.json',
         'asset_library_usage_report.json',
-        'asset_binding_trace_report.json'
+        'asset_binding_trace_report.json',
+        'semantic_extraction_trace_report.json',
+        'semantic_model_report.json'
       ],
       buildLogPresent: true,
       qaReportPresent: true,
@@ -405,7 +441,9 @@ describe('Pipeline acceptance report contract', () => {
           'shooter/src/asset-manifest.generated.json',
           'asset_pipeline_report.json',
           'asset_library_usage_report.json',
-          'asset_binding_trace_report.json'
+          'asset_binding_trace_report.json',
+          'semantic_extraction_trace_report.json',
+          'semantic_model_report.json'
         ],
         buildLogPresent: true,
         qaReportPresent: true,
@@ -448,7 +486,9 @@ describe('Pipeline acceptance report contract', () => {
           'shooter/src/asset-manifest.generated.json',
           'asset_pipeline_report.json',
           'asset_library_usage_report.json',
-          'asset_binding_trace_report.json'
+          'asset_binding_trace_report.json',
+          'semantic_extraction_trace_report.json',
+          'semantic_model_report.json'
         ],
         buildLogPresent: true,
         qaReportPresent: true,
@@ -489,6 +529,8 @@ describe('Pipeline acceptance report contract', () => {
         runId,
         compileFiles: [
           'game.scene.ir.json',
+          'scene_ir_authority_report.json',
+          'scene_ir_coverage_report.json',
           'runtime_scene_binding_report.json',
           'asset_intent_manifest.json',
           'asset_plan.json',
@@ -497,7 +539,9 @@ describe('Pipeline acceptance report contract', () => {
           'side_scrolling_run_and_gun/src/asset-manifest.generated.json',
           'asset_pipeline_report.json',
           'asset_library_usage_report.json',
-          'asset_binding_trace_report.json'
+          'asset_binding_trace_report.json',
+          'semantic_extraction_trace_report.json',
+          'semantic_model_report.json'
         ],
         buildLogPresent: true,
         qaReportPresent: true
@@ -525,6 +569,57 @@ describe('Pipeline acceptance report contract', () => {
     });
   });
 
+  it('fails a side-scrolling run when required Scene IR authority artifacts are missing', () => {
+    const report = buildPipelineAcceptanceReport({
+      projectId,
+      runId,
+      artifactIndex: buildValidPipelineArtifactIndex({
+        projectId,
+        runId,
+        compileFiles: [
+          'game.scene.ir.json',
+          'runtime_scene_binding_report.json',
+          'asset_intent_manifest.json',
+          'asset_plan.json',
+          'public/asset_manifest.json',
+          'asset_resolution_report.json',
+          'side_scrolling_run_and_gun/src/asset-manifest.generated.json',
+          'asset_pipeline_report.json',
+          'asset_library_usage_report.json',
+          'asset_binding_trace_report.json',
+          'semantic_extraction_trace_report.json',
+          'semantic_model_report.json'
+        ],
+        buildLogPresent: true,
+        qaReportPresent: true
+      }),
+      dslValidation: { valid: true, sourceArtifact: 'game_dsl.json' },
+      dslConsumption: { ignoredAuthoritativeCount: 0, coverageRatio: 1 },
+      assetIntentResolution: { coreRequiredFallbackCount: 0, requestRequiredFallbackCount: 0, optionalFallbackCount: 0 },
+      runtimeSceneBinding: { status: 'pass', unboundCount: 0 },
+      generationInput: { projectId, runId, source: 'manual' },
+      runtimeCapability: { status: 'supported' },
+      assetLibraryUsage: { status: 'pass' },
+      assetBindingTrace: { status: 'pass' }
+    });
+
+    expect(report).toMatchObject({
+      overallStatus: 'fail',
+      previewable: false,
+      checkedArtifacts: expect.arrayContaining([
+        expect.objectContaining({ artifactId: 'sceneIrAuthorityReport', status: 'missing', required: true }),
+        expect.objectContaining({ artifactId: 'sceneIrCoverageReport', status: 'missing', required: true })
+      ]),
+      checks: expect.arrayContaining([
+        expect.objectContaining({
+          id: 'required_artifacts',
+          status: 'fail',
+          reason: 'pipeline_artifact_index has 2 required artifact ref(s) not present: sceneIrAuthorityReport, sceneIrCoverageReport.'
+        })
+      ])
+    });
+  });
+
   it('fails a present asset binding trace ref when report status is fail or unavailable', () => {
     const index = buildValidPipelineArtifactIndex({
       projectId,
@@ -536,7 +631,9 @@ describe('Pipeline acceptance report contract', () => {
         'shooter/src/asset-manifest.generated.json',
         'asset_pipeline_report.json',
         'asset_library_usage_report.json',
-        'asset_binding_trace_report.json'
+        'asset_binding_trace_report.json',
+        'semantic_extraction_trace_report.json',
+        'semantic_model_report.json'
       ],
       buildLogPresent: true,
       qaReportPresent: true

@@ -51,6 +51,14 @@ type SceneIrEnemyInstance = {
   provenanceRef: string;
 };
 
+type SceneIrPickup = {
+  runtimeId: string;
+  kind: 'health' | 'score' | 'weapon';
+  x: number;
+  y: number;
+  provenanceRef: string;
+};
+
 type SceneIrGoal = {
   runtimeId: string;
   kind: 'reach' | 'destroy' | 'collect' | 'survive' | 'enemy_cleared';
@@ -72,6 +80,7 @@ type SceneIrScene = {
   platforms: SceneIrPlatform[];
   player: SceneIrPlayer;
   enemyInstances: SceneIrEnemyInstance[];
+  pickups?: SceneIrPickup[];
   goals: SceneIrGoal[];
 };
 
@@ -85,7 +94,7 @@ export type SideScrollingSceneIr = {
   provenance: Record<string, SceneIrProvenance>;
 };
 
-export type RuntimeSceneBindingKind = 'background' | 'platform' | 'player' | 'enemy' | 'goal';
+export type RuntimeSceneBindingKind = 'background' | 'platform' | 'player' | 'enemy' | 'pickup' | 'goal';
 
 export type RuntimeSceneBinding = {
   kind: RuntimeSceneBindingKind;
@@ -103,6 +112,7 @@ export type SideScrollingRuntimeSceneBindingState = {
     backgroundCount: number;
     platformCount: number;
     enemyInstanceCount: number;
+    pickupCount: number;
     goalCount: number;
     boundCount: number;
     unboundCount: number;
@@ -116,6 +126,7 @@ export function resolveSideScrollingRuntimeSliceWithSceneIr(
 ): { plan: SideScrollingRuntimeSlice; bindingState: SideScrollingRuntimeSceneBindingState } {
   const base = resolveSideScrollingRuntimeSlice(runtimePlan);
   const scene = sceneIr.scenes[0];
+  const pickups = scene.pickups ?? [];
   const enemyDefinitions = base.enemyDefinitions.length > 0 ? base.enemyDefinitions : [];
   const waves = scene.enemyInstances.map((enemy) => ({
     id: enemy.runtimeId,
@@ -170,6 +181,12 @@ export function resolveSideScrollingRuntimeSliceWithSceneIr(
         spawn: { x: scene.player.x, y: scene.player.y }
       },
       waves,
+      pickups: pickups.map((pickup) => ({
+        id: pickup.runtimeId,
+        kind: pickup.kind,
+        x: pickup.x,
+        y: pickup.y
+      })),
       goals,
       winCondition: resolveWinCondition(sceneIr, scene, base)
     },
@@ -225,11 +242,13 @@ function unsupportedBindingCount(bindings: RuntimeSceneBinding[]): number {
 
 function buildBindingState(sceneIr: SideScrollingSceneIr): SideScrollingRuntimeSceneBindingState {
   const scene = sceneIr.scenes[0];
+  const pickups = scene.pickups ?? [];
   const bindings: RuntimeSceneBinding[] = [
     ...scene.backgrounds.map((background) => binding(sceneIr, 'background', background.runtimeId, background.runtimeId, background.provenanceRef)),
     ...scene.platforms.map((platform) => binding(sceneIr, 'platform', platform.runtimeId, platform.runtimeId, platform.provenanceRef)),
     binding(sceneIr, 'player', scene.player.runtimeId, scene.player.runtimeId, scene.player.provenanceRef),
     ...scene.enemyInstances.map((enemy) => binding(sceneIr, 'enemy', enemy.runtimeId, enemy.runtimeId, enemy.provenanceRef)),
+    ...pickups.map((pickup) => binding(sceneIr, 'pickup', pickup.runtimeId, pickup.runtimeId, pickup.provenanceRef)),
     ...scene.goals.map((goal) =>
       binding(sceneIr, 'goal', goal.runtimeId, sceneGoalRuntimeInstanceId(goal), goal.provenanceRef, sceneGoalBindingStatus(goal), sceneGoalBindingReason(goal))
     )
@@ -241,6 +260,7 @@ function buildBindingState(sceneIr: SideScrollingSceneIr): SideScrollingRuntimeS
       backgroundCount: scene.backgrounds.length,
       platformCount: scene.platforms.length,
       enemyInstanceCount: scene.enemyInstances.length,
+      pickupCount: pickups.length,
       goalCount: scene.goals.length,
       boundCount: supportedBindingCount(bindings),
       unboundCount: unsupportedBindingCount(bindings)

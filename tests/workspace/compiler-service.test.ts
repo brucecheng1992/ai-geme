@@ -292,9 +292,22 @@ describe('Compiler + Build + Preview services', () => {
     const runtimeSceneBindingReport = JSON.parse(await readFile(join(result.outputDir, 'runtime_scene_binding_report.json'), 'utf8')) as {
       reportVersion?: string;
       status?: string;
-      summary?: { backgroundCount?: number; platformCount?: number; enemyInstanceCount?: number; goalCount?: number; unboundCount?: number };
+      summary?: { backgroundCount?: number; platformCount?: number; enemyInstanceCount?: number; pickupCount?: number; goalCount?: number; unboundCount?: number };
       bindings?: Array<{ kind?: string; sceneRuntimeId?: string; runtimeInstanceId?: string; sourceDslPath?: string; status?: string }>;
       sourceArtifacts?: Record<string, string>;
+    };
+    const sceneIrAuthorityReport = JSON.parse(await readFile(join(result.outputDir, 'scene_ir_authority_report.json'), 'utf8')) as {
+      schemaVersion?: string;
+      decision?: string;
+      domainOwnership?: Record<string, string>;
+    };
+    const sceneIrCoverageReport = JSON.parse(await readFile(join(result.outputDir, 'scene_ir_coverage_report.json'), 'utf8')) as {
+      schemaVersion?: string;
+      status?: string;
+      terrain?: { runtimePlanCount?: number; mappedCount?: number };
+      waves?: { runtimePlanCount?: number; mappedCount?: number };
+      pickups?: { runtimePlanCount?: number; mappedCount?: number };
+      objectives?: { runtimePlanCount?: number; mappedCount?: number };
     };
     const sideScrollingIntentManifest = AssetIntentManifestSchema.parse(JSON.parse(await readFile(join(result.outputDir, 'asset_intent_manifest.json'), 'utf8')));
     expect(sceneIr).toMatchObject({
@@ -314,6 +327,7 @@ describe('Compiler + Build + Preview services', () => {
         backgroundCount: sceneIr.scenes[0].backgrounds.length,
         platformCount: sceneIr.scenes[0].platforms.length,
         enemyInstanceCount: sceneIr.scenes[0].enemyInstances.length,
+        pickupCount: sceneIr.scenes[0].pickups.length,
         goalCount: sceneIr.scenes[0].goals.length,
         boundCount: 0,
         unboundCount:
@@ -321,13 +335,34 @@ describe('Compiler + Build + Preview services', () => {
           sceneIr.scenes[0].platforms.length +
           1 +
           sceneIr.scenes[0].enemyInstances.length +
+          sceneIr.scenes[0].pickups.length +
           sceneIr.scenes[0].goals.length
       },
       bindings: expect.arrayContaining([
         expect.objectContaining({ kind: 'player', sceneRuntimeId: 'entity.player', runtimeInstanceId: null, status: 'unbound', reason: 'runtime_observation_pending' }),
         expect.objectContaining({ kind: 'platform', sceneRuntimeId: sceneIr.scenes[0].platforms[0].runtimeId, status: 'unbound' }),
+        expect.objectContaining({ kind: 'pickup', sceneRuntimeId: sceneIr.scenes[0].pickups[0].runtimeId, status: 'unbound' }),
         expect.objectContaining({ kind: 'goal', sceneRuntimeId: sceneIr.scenes[0].goals[0].runtimeId, status: 'unbound' })
       ])
+    });
+    expect(sceneIrAuthorityReport).toMatchObject({
+      schemaVersion: 'step37.scene-ir-authority-report.v1',
+      decision: 'runtime_plan_authoritative',
+      domainOwnership: expect.objectContaining({
+        terrain: 'runtime_plan',
+        spawns: 'runtime_plan',
+        pickups: 'runtime_plan',
+        objectives: 'runtime_plan',
+        camera_gameplay_bounds: 'runtime_plan'
+      })
+    });
+    expect(sceneIrCoverageReport).toMatchObject({
+      schemaVersion: 'step37.scene-ir-coverage-report.v1',
+      status: 'PASS',
+      terrain: { runtimePlanCount: sceneIr.scenes[0].platforms.length, mappedCount: sceneIr.scenes[0].platforms.length },
+      waves: { runtimePlanCount: sceneIr.scenes[0].enemyInstances.length, mappedCount: sceneIr.scenes[0].enemyInstances.length },
+      pickups: { runtimePlanCount: sceneIr.scenes[0].pickups.length, mappedCount: sceneIr.scenes[0].pickups.length },
+      objectives: { runtimePlanCount: 1, mappedCount: 1 }
     });
     expect(sideScrollingIntentManifest.sourceArtifacts).toEqual({ assetPlan: 'asset_plan.json', sceneIr: 'game.scene.ir.json' });
     await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/template-params.generated.json'), 'utf8')).resolves.toContain('"assetLabels"');
@@ -345,6 +380,8 @@ describe('Compiler + Build + Preview services', () => {
     expect(result.files).toContain('side_scrolling_run_and_gun/src/live-edit-registry.generated.json');
     expect(result.files).toContain('side_scrolling_run_and_gun/src/asset-manifest.generated.json');
     expect(result.files).toContain('game.scene.ir.json');
+    expect(result.files).toContain('scene_ir_authority_report.json');
+    expect(result.files).toContain('scene_ir_coverage_report.json');
     expect(result.files).toContain('runtime_scene_binding_report.json');
     expect(result.files).toContain('asset_intent_manifest.json');
   });

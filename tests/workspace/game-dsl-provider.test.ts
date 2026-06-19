@@ -11,6 +11,7 @@ import {
   validateAndNormalizeRawGameDsl,
   validateGameDslArtifact,
   type GameBrief,
+  type GameBriefV02,
   type GameDslArtifact
 } from '../../packages/game-dsl/src/index.js';
 import { createCollectorRawDsl, createDodgerRawDsl, createShooterRawDsl, createSideScrollingRunAndGunRawDsl } from '../contracts/fixtures.js';
@@ -23,6 +24,17 @@ const brief: GameBrief = {
   core_loop: ['Move around the arena.', 'Collect enough gems to win.'],
   difficulty: 'easy',
   target_play_time_sec: 60
+};
+
+const briefV02: GameBriefV02 = {
+  brief_version: 'game-brief-v0.1',
+  schema_version: '0.2',
+  title: 'Gem Run',
+  genre: 'collector',
+  camera: 'top_down',
+  core_loop: ['Move around the arena.', 'Collect enough gems to win.'],
+  difficulty: 'easy',
+  play_time_intent: { mode: 'range', min_sec: 480, max_sec: 720 }
 };
 
 const shooterBrief: GameBrief = {
@@ -292,24 +304,34 @@ describe('buildIntentPlan', () => {
 });
 
 describe('GameDslProviderService', () => {
-  it('generates a schema-validated Game Brief from model JSON', async () => {
+  it('generates a schema-validated Game Brief v0.2 from model JSON without duration clamping instructions', async () => {
     const calls: JsonChatParams[] = [];
-    const service = new GameDslProviderService(createModelClient(success(brief), calls));
+    const service = new GameDslProviderService(createModelClient(success(briefV02), calls));
 
     await expect(service.generateGameBrief(requestBase)).resolves.toMatchObject({
       ok: true,
-      value: brief,
+      value: briefV02,
       rawOutputPath: '/tmp/model-output.json'
     });
     expect(calls[0]?.user).toMatchObject({
-      required_fields: ['brief_version', 'title', 'genre', 'camera', 'core_loop', 'difficulty', 'target_play_time_sec'],
+      required_fields: ['brief_version', 'schema_version', 'title', 'genre', 'camera', 'core_loop', 'difficulty', 'play_time_intent'],
       exact_output_shape: {
-        brief_version: 'game-brief-v0.1',
+        schema_version: '0.2',
         camera: 'top_down | side_view'
       },
+      play_time_intent_examples: expect.arrayContaining([
+        { mode: 'range', min_sec: 480, max_sec: 720 }
+      ]),
       intent_plan: expect.objectContaining({ normalizedGenre: 'dodger_collector' }),
-      forbidden_fields: expect.arrayContaining(['player_character', 'mechanics', 'background_music'])
+      forbidden_fields: expect.arrayContaining(['player_character', 'mechanics', 'background_music', 'target_play_time_sec'])
     });
+    expect(calls[0]?.user).not.toMatchObject({
+      exact_output_shape: {
+        play_time_intent: expect.objectContaining({ target: expect.anything(), range: expect.anything() })
+      }
+    });
+    expect(JSON.stringify(calls[0]?.user)).not.toContain('target_play_time_sec_range');
+    expect(JSON.stringify(calls[0]?.user)).not.toContain('integer from 30 to 120');
   });
 
   it('normalizes top-down shooter aliases into the current executable brief genre', async () => {
@@ -422,6 +444,60 @@ describe('GameDslProviderService', () => {
       brief,
       selected_contract: { genre: 'collector' }
     });
+  });
+
+  it('blocks long v0.2 play-time intent before invoking legacy Raw DSL v0.1 generation', async () => {
+    const calls: JsonChatParams[] = [];
+    const service = new GameDslProviderService(createModelClient(success(createCollectorRawDsl()), calls));
+
+    const result = await service.generateRawGameDsl({ ...requestBase, brief: briefV02 });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'FALLBACK_UNSUPPORTED',
+      message: 'Raw Game DSL v0.1 cannot represent the requested play-time intent.'
+    });
+    expect(calls).toEqual([]);
+  });
+
+  it.each(['endless', 'unspecified'] as const)('blocks %s v0.2 play-time intent before legacy Raw DSL v0.1 generation', async (mode) => {
+    const calls: JsonChatParams[] = [];
+    const service = new GameDslProviderService(createModelClient(success(createCollectorRawDsl()), calls));
+
+    const result = await service.generateRawGameDsl({
+      ...requestBase,
+      brief: {
+        ...briefV02,
+        play_time_intent: { mode }
+      }
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'FALLBACK_UNSUPPORTED'
+    });
+    expect(calls).toEqual([]);
+  });
+
+  it('projects short v0.2 target intent into the legacy Raw DSL prompt without changing canonical brief shape', async () => {
+    const calls: JsonChatParams[] = [];
+    const rawDsl = createCollectorRawDsl();
+    const shortBrief: GameBriefV02 = {
+      ...briefV02,
+      play_time_intent: { mode: 'target', target_sec: 60 }
+    };
+    const service = new GameDslProviderService(createModelClient(success(rawDsl), calls));
+
+    await expect(service.generateRawGameDsl({ ...requestBase, brief: shortBrief })).resolves.toMatchObject({
+      ok: true,
+      value: rawDsl
+    });
+    expect(calls[0]?.user).toMatchObject({
+      brief: {
+        target_play_time_sec: 60
+      }
+    });
+    expect(shortBrief).not.toHaveProperty('target_play_time_sec');
   });
 
   it.each(['做一个魂斗罗式横版射击游戏', '魂斗罗一样的跑枪游戏', '横版跑枪打外星人'])(

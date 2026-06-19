@@ -156,8 +156,99 @@ describe('GenerationPipelineService failure states', () => {
 
     await expect(runPipeline(pipeline, { idea: '横版跑枪', language: 'zh' })).resolves.toBe('PLAYABLE');
 
+    const generationPathReceipt = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_path_receipt.json'), 'utf8'));
+    const capabilityReadiness = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_capability_readiness_report.json'), 'utf8'));
+    const capabilityResolution = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_capability_resolution_report.json'), 'utf8'));
+    const capabilityRuntime = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_capability_runtime_report.json'), 'utf8'));
+    const capabilityGap = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_capability_gap_report.json'), 'utf8'));
+    const capabilityCutover = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_capability_cutover_report.json'), 'utf8'));
     const runtimeSceneBindingReport = JSON.parse(await readFile(join(workspace.getGeneratedProjectDir(projectId), 'runtime_scene_binding_report.json'), 'utf8'));
     const acceptance = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_acceptance_report.json'), 'utf8'));
+    expect(generationPathReceipt).toMatchObject({
+      artifactKind: 'generation_path_receipt',
+      projectId,
+      runId,
+      selectedPath: 'legacy_template_v1',
+      dslSource: 'model_provider',
+      defaultPathForSupportedProfiles: 'capability_composed_v1',
+      capabilityReadiness: 'not_evaluated'
+    });
+    expect(capabilityReadiness).toMatchObject({
+      artifactKind: 'generation_capability_readiness_report',
+      profileResolution: {
+        profileId: 'side_scrolling_run_and_gun.v1',
+        runtimeExecutable: true,
+        profileSupportStatus: 'legacy_runtime_supported'
+      },
+      targetDefaultPath: 'capability_composed_v1',
+      selectedDefaultPath: 'legacy_template_v1',
+      capabilityPathReadiness: 'blocked',
+      exactLockStatus: 'not_attempted_requirements_incomplete'
+    });
+    expect(capabilityReadiness.blockers).toContain('incomplete_capability:telemetry.gameplay_events.v1');
+    expect(capabilityResolution).toMatchObject({
+      artifactKind: 'generation_capability_resolution_report',
+      selectedPath: 'legacy_template_v1',
+      targetPath: 'capability_composed_v1',
+      shadowMode: true,
+      activeLockWritten: false,
+      candidatePackagePolicy: 'approved_installed_packages_only',
+      resolverAttempt: 'skipped_readiness_blocked',
+      resolutionStatus: 'blocked',
+      exactLockStatus: 'not_attempted_requirements_incomplete'
+    });
+    expect(capabilityResolution.registrySnapshotHash).toBe(capabilityReadiness.registrySnapshotHash);
+    expect(capabilityResolution.readinessReportHash).toBe(capabilityReadiness.reportHash);
+    expect(capabilityRuntime).toMatchObject({
+      artifactKind: 'generation_capability_runtime_report',
+      selectedPath: 'legacy_template_v1',
+      targetPath: 'capability_composed_v1',
+      shadowMode: true,
+      activeRuntimeManifestWritten: false,
+      activeCapabilityQaWritten: false,
+      runtimeManifestStatus: 'not_attempted_no_shadow_lock',
+      runtimeLoaderStatus: 'not_attempted',
+      capabilityQaPlanStatus: 'not_attempted',
+      capabilityQaReportStatus: 'not_attempted',
+      runtimeEvidenceStatus: 'not_attempted'
+    });
+    expect(capabilityRuntime.resolutionReportHash).toBe(capabilityResolution.reportHash);
+    expect(capabilityGap).toMatchObject({
+      artifactKind: 'generation_capability_gap_report',
+      selectedPath: 'legacy_template_v1',
+      targetPath: 'capability_composed_v1',
+      shadowMode: true,
+      capabilityPathGate: 'blocked_before_provider',
+      gapStatus: 'required_capability_gap',
+      providerInvocationPolicy: 'block_capability_provider_until_exact_lock',
+      step36EscalationStatus: 'eligible_blocked_gap',
+      productionMutation: {
+        activeRegistryMutation: false,
+        activeExactLockMutation: false,
+        fixedTemplateFallbackOnGap: false
+      }
+    });
+    expect(capabilityGap.missingRequiredCapabilityIds).toContain('telemetry.gameplay_events.v1');
+    expect(capabilityGap.readinessReportHash).toBe(capabilityReadiness.reportHash);
+    expect(capabilityGap.resolutionReportHash).toBe(capabilityResolution.reportHash);
+    expect(capabilityGap.runtimeReportHash).toBe(capabilityRuntime.reportHash);
+    expect(capabilityCutover).toMatchObject({
+      artifactKind: 'generation_capability_cutover_report',
+      activeSelectedPath: 'legacy_template_v1',
+      targetPath: 'capability_composed_v1',
+      defaultCutoverAllowed: false,
+      activePathMutation: false,
+      shadowOutputMutation: false,
+      cutoverStage: 'blocked_by_gap',
+      candidateCanaryStatus: 'not_started_gap_blocked',
+      parityStatus: 'not_comparable_gap_blocked',
+      rollbackDrillStatus: 'not_started_gap_blocked',
+      blockers: ['capability_gap_not_resolved']
+    });
+    expect(capabilityCutover.gapReportHash).toBe(capabilityGap.reportHash);
+    expect(capabilityCutover.runtimeReportHash).toBe(capabilityRuntime.reportHash);
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'shadow_gameplay_capability_lock.json'), 'utf8')).rejects.toThrow();
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'shadow_phaser_runtime_system_manifest.json'), 'utf8')).rejects.toThrow();
     expect(runtimeSceneBindingReport).toMatchObject({
       reportVersion: 'runtime-scene-binding-report.v1',
       projectId,
@@ -187,6 +278,8 @@ describe('GenerationPipelineService failure states', () => {
 
     await expect(runPipeline(pipeline)).resolves.toBe('BUILD_FAILED');
     await expect(projectStore.readProject(projectId)).resolves.toMatchObject({ status: 'BUILD_FAILED' });
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'generation_path_receipt.json'), 'utf8')).resolves.toContain('"selectedPath": "fail_closed_compile_failed"');
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_artifact_index.json'), 'utf8')).resolves.toContain('"generationPathReceipt"');
     await expect(runStore.readEvents(runId)).resolves.toEqual(expect.arrayContaining([expect.objectContaining({ type: 'build.failed' })]));
   });
 
@@ -225,6 +318,8 @@ describe('GenerationPipelineService failure states', () => {
     expect(buildRuns).toBe(0);
     expect(qaRuns).toBe(0);
     await expect(projectStore.readProject(projectId)).resolves.toMatchObject({ status: 'RUNTIME_UNSUPPORTED' });
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'generation_path_receipt.json'), 'utf8')).resolves.toContain('"selectedPath": "fail_closed_runtime_unsupported"');
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_artifact_index.json'), 'utf8')).resolves.toContain('"generationPathReceipt"');
     await expect(runStore.readEvents(runId)).resolves.toEqual(
       expect.arrayContaining([expect.objectContaining({ type: 'runtime.unsupported', message: expect.stringContaining('side_view_camera') })])
     );
@@ -242,6 +337,12 @@ describe('GenerationPipelineService failure states', () => {
 
     await expect(runPipeline(pipeline)).resolves.toBe('PLAYABLE');
     await expect(projectStore.readProject(projectId)).resolves.toMatchObject({ status: 'PLAYABLE' });
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'generation_path_receipt.json'), 'utf8')).resolves.toContain(
+      '"dslSource": "deterministic_local_fallback"'
+    );
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'generation_path_receipt.json'), 'utf8')).resolves.toContain(
+      '"raw_game_dsl_fallback"'
+    );
     await expect(runStore.readEvents(runId)).resolves.toEqual(expect.arrayContaining([expect.objectContaining({ type: 'model.fallback' })]));
   });
 
@@ -479,6 +580,15 @@ describe('GenerationPipelineService failure states', () => {
       artifacts: expect.arrayContaining([
         expect.objectContaining({ id: 'gameDsl', status: 'present', path: 'game_dsl.json' }),
         expect.objectContaining({ id: 'generationInputReport', status: 'present', path: 'generation_input_report.json' }),
+        expect.objectContaining({ id: 'generationCapabilityResolutionReport', status: 'present', path: 'generation_capability_resolution_report.json' }),
+        expect.objectContaining({ id: 'shadowGameplayCapabilityLock', status: 'skipped', path: 'shadow_gameplay_capability_lock.json' }),
+        expect.objectContaining({ id: 'generationCapabilityRuntimeReport', status: 'present', path: 'generation_capability_runtime_report.json' }),
+        expect.objectContaining({ id: 'generationCapabilityGapReport', status: 'present', path: 'generation_capability_gap_report.json' }),
+        expect.objectContaining({ id: 'generationCapabilityCutoverReport', status: 'present', path: 'generation_capability_cutover_report.json' }),
+        expect.objectContaining({ id: 'shadowRuntimeSystemManifest', status: 'skipped', path: 'shadow_phaser_runtime_system_manifest.json' }),
+        expect.objectContaining({ id: 'shadowRuntimeLoaderReport', status: 'skipped', path: 'shadow_phaser_runtime_loader_report.json' }),
+        expect.objectContaining({ id: 'shadowCapabilityQaPlan', status: 'skipped', path: 'shadow_capability_qa_plan.json' }),
+        expect.objectContaining({ id: 'shadowCapabilityQaReport', status: 'skipped', path: 'shadow_capability_qa_report.json' }),
         expect.objectContaining({ id: 'dslValidationReport', status: 'present', path: 'dsl_validation_report.json' }),
         expect.objectContaining({ id: 'runtimeCapabilityReport', status: 'present', path: 'runtime_capability_report.json' }),
         expect.objectContaining({ id: 'assetPlan', status: 'present', path: 'asset_plan.json' }),
@@ -609,7 +719,7 @@ describe('GenerationPipelineService failure states', () => {
       }
     });
     Object.defineProperty(pipeline, 'generateRawDsl', {
-      value: async () => ({ ok: true, artifact }),
+      value: async () => ({ ok: true, artifact, dslSource: 'model_provider' }),
       configurable: true
     });
 
@@ -618,8 +728,13 @@ describe('GenerationPipelineService failure states', () => {
     await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_acceptance_report.json'), 'utf8')).resolves.toContain('"overallStatus": "fail"');
 
     const validationReport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'dsl_validation_report.json'), 'utf8'));
+    const generationPathReceipt = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_path_receipt.json'), 'utf8'));
     const index = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_artifact_index.json'), 'utf8'));
     const acceptance = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_acceptance_report.json'), 'utf8'));
+    expect(generationPathReceipt).toMatchObject({
+      selectedPath: 'fail_closed_invalid_dsl',
+      dslSource: 'model_provider'
+    });
     expect(validationReport).toMatchObject({
       sourceArtifact: 'game_dsl.json',
       status: 'invalid',
@@ -737,6 +852,13 @@ describe('GenerationPipelineService failure states', () => {
 
     await expect(runPipeline(pipeline)).resolves.toBe('FAILED');
     await expect(projectStore.readProject(projectId)).resolves.toMatchObject({ status: 'FAILED' });
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'generation_path_receipt.json'), 'utf8')).resolves.toContain(
+      '"selectedPath": "fail_closed_model_generation_failed"'
+    );
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'generation_path_receipt.json'), 'utf8')).resolves.toContain(
+      '"modelFailureCode": "MODEL_SCHEMA_VALIDATION_FAILED"'
+    );
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_artifact_index.json'), 'utf8')).resolves.toContain('"generationPathReceipt"');
     await expect(runStore.readEvents(runId)).resolves.toEqual(expect.arrayContaining([expect.objectContaining({ type: 'model.failed' })]));
   });
 
@@ -1378,6 +1500,11 @@ describe('GenerationPipelineService failure states', () => {
     await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'dsl_consumption_report.json'), 'utf8')).rejects.toThrow();
 
     const runtimeCapabilityReport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'runtime_capability_report.json'), 'utf8'));
+    const capabilityReadiness = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_capability_readiness_report.json'), 'utf8'));
+    const capabilityResolution = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_capability_resolution_report.json'), 'utf8'));
+    const capabilityRuntime = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_capability_runtime_report.json'), 'utf8'));
+    const capabilityGap = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_capability_gap_report.json'), 'utf8'));
+    const capabilityCutover = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_capability_cutover_report.json'), 'utf8'));
     expect(runtimeCapabilityReport).toMatchObject({
       artifactKind: 'runtime_capability_report',
       schemaVersion: 'runtime_capability_report.v1',
@@ -1391,6 +1518,44 @@ describe('GenerationPipelineService failure states', () => {
       ]),
       liveEditCapabilities: { hot: [], assetSwap: [], warmRestart: [], rebuildRequired: [] }
     });
+    expect(capabilityReadiness).toMatchObject({
+      normalizedGenre: input.normalizedGenre,
+      selectedDefaultPath: 'fail_closed_unsupported_intent',
+      capabilityPathReadiness: 'blocked'
+    });
+    expect(capabilityResolution).toMatchObject({
+      normalizedGenre: input.normalizedGenre,
+      selectedPath: 'fail_closed_unsupported_intent',
+      resolverAttempt: 'skipped_unsupported_intent',
+      resolutionStatus: 'blocked',
+      exactLockStatus: 'not_applicable_unsupported_intent',
+      activeLockWritten: false
+    });
+    expect(capabilityRuntime).toMatchObject({
+      normalizedGenre: input.normalizedGenre,
+      selectedPath: 'fail_closed_unsupported_intent',
+      runtimeManifestStatus: 'not_attempted_no_shadow_lock',
+      runtimeLoaderStatus: 'not_attempted',
+      capabilityQaPlanStatus: 'not_attempted',
+      capabilityQaReportStatus: 'not_attempted',
+      runtimeEvidenceStatus: 'not_attempted'
+    });
+    expect(capabilityGap).toMatchObject({
+      normalizedGenre: input.normalizedGenre,
+      selectedPath: 'fail_closed_unsupported_intent',
+      capabilityPathGate: 'unsupported_intent_fail_closed',
+      gapStatus: 'unsupported_intent',
+      providerInvocationPolicy: 'unsupported_intent_not_sent_to_provider',
+      step36EscalationStatus: 'not_applicable_unsupported_intent'
+    });
+    expect(capabilityCutover).toMatchObject({
+      normalizedGenre: input.normalizedGenre,
+      activeSelectedPath: 'fail_closed_unsupported_intent',
+      cutoverStage: 'blocked_by_gap',
+      candidateCanaryStatus: 'not_started_gap_blocked',
+      parityStatus: 'not_comparable_gap_blocked',
+      defaultCutoverAllowed: false
+    });
 
     const index = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_artifact_index.json'), 'utf8'));
     const acceptance = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_acceptance_report.json'), 'utf8'));
@@ -1400,6 +1565,17 @@ describe('GenerationPipelineService failure states', () => {
       runId,
       artifacts: expect.arrayContaining([
         expect.objectContaining({ id: 'intentPlan', status: 'present', path: 'intent_plan.json' }),
+        expect.objectContaining({ id: 'capabilityRegistrySnapshot', status: 'present', path: 'capability_registry_snapshot.json' }),
+        expect.objectContaining({ id: 'generationCapabilityReadinessReport', status: 'present', path: 'generation_capability_readiness_report.json' }),
+        expect.objectContaining({ id: 'generationCapabilityResolutionReport', status: 'present', path: 'generation_capability_resolution_report.json' }),
+        expect.objectContaining({ id: 'shadowGameplayCapabilityLock', status: 'skipped', path: 'shadow_gameplay_capability_lock.json' }),
+        expect.objectContaining({ id: 'generationCapabilityRuntimeReport', status: 'present', path: 'generation_capability_runtime_report.json' }),
+        expect.objectContaining({ id: 'generationCapabilityGapReport', status: 'present', path: 'generation_capability_gap_report.json' }),
+        expect.objectContaining({ id: 'generationCapabilityCutoverReport', status: 'present', path: 'generation_capability_cutover_report.json' }),
+        expect.objectContaining({ id: 'shadowRuntimeSystemManifest', status: 'skipped', path: 'shadow_phaser_runtime_system_manifest.json' }),
+        expect.objectContaining({ id: 'shadowRuntimeLoaderReport', status: 'skipped', path: 'shadow_phaser_runtime_loader_report.json' }),
+        expect.objectContaining({ id: 'shadowCapabilityQaPlan', status: 'skipped', path: 'shadow_capability_qa_plan.json' }),
+        expect.objectContaining({ id: 'shadowCapabilityQaReport', status: 'skipped', path: 'shadow_capability_qa_report.json' }),
         expect.objectContaining({ id: 'runtimeCapabilityReport', status: 'present', path: 'runtime_capability_report.json' }),
         expect.objectContaining({ id: 'gameDsl', status: 'skipped', reason: 'runtime_unsupported_before_dsl_generation' }),
         expect.objectContaining({ id: 'dslValidationReport', status: 'skipped', reason: 'runtime_unsupported_before_dsl_validation' }),
@@ -1446,6 +1622,8 @@ describe('GenerationPipelineService failure states', () => {
     await writePassingAssetArtifacts(buildAssetPlanFromIr(projectId, input.ir));
     await writeAssetLibraryUsageReportFixture();
     await writeAssetBindingTraceReportFixture();
+    await writeTextFile(join(workspace.getGeneratedProjectDir(projectId), 'semantic_extraction_trace_report.json'), '{}');
+    await writeTextFile(join(workspace.getGeneratedProjectDir(projectId), 'semantic_model_report.json'), '{}');
     return compileResult([
       'asset_intent_manifest.json',
       'asset_plan.json',
@@ -1455,6 +1633,8 @@ describe('GenerationPipelineService failure states', () => {
       'asset_pipeline_report.json',
       'asset_library_usage_report.json',
       'asset_binding_trace_report.json',
+      'semantic_extraction_trace_report.json',
+      'semantic_model_report.json',
       'pipeline_artifact_index.json'
     ]);
   }
@@ -1740,6 +1920,7 @@ describe('GenerationPipelineService failure states', () => {
         ...scene.platforms.map((platform) => binding('platform', platform.runtimeId, platform.provenanceRef)),
         binding('player', scene.player.runtimeId, scene.player.provenanceRef),
         ...scene.enemyInstances.map((enemy) => binding('enemy', enemy.runtimeId, enemy.provenanceRef)),
+        ...scene.pickups.map((pickup) => binding('pickup', pickup.runtimeId, pickup.provenanceRef)),
         ...scene.goals.map((goal) => binding('goal', goal.runtimeId, goal.provenanceRef))
       ]
     };

@@ -11,10 +11,24 @@ export const PipelineArtifactRefSchema = z.strictObject({
     'gameDsl',
     'intentPlan',
     'generationInputReport',
+    'generationPathReceipt',
+    'capabilityRegistrySnapshot',
+    'generationCapabilityReadinessReport',
+    'generationCapabilityResolutionReport',
+    'shadowGameplayCapabilityLock',
+    'generationCapabilityRuntimeReport',
+    'generationCapabilityGapReport',
+    'generationCapabilityCutoverReport',
+    'shadowRuntimeSystemManifest',
+    'shadowRuntimeLoaderReport',
+    'shadowCapabilityQaPlan',
+    'shadowCapabilityQaReport',
     'gameDslCandidate',
     'dslValidationReport',
     'dslConsumptionReport',
     'sceneIr',
+    'sceneIrAuthorityReport',
+    'sceneIrCoverageReport',
     'runtimeSceneBindingReport',
     'runtimeCapabilityReport',
     'assetIntentManifest',
@@ -40,6 +54,11 @@ export const PipelineArtifactRefSchema = z.strictObject({
   required: z.boolean(),
   producedBy: z.enum([
     'generation',
+    'capability-readiness',
+    'capability-resolution',
+    'capability-runtime',
+    'capability-gap',
+    'capability-cutover',
     'dsl-consumption',
     'compiler',
     'asset-pipeline',
@@ -88,6 +107,8 @@ const GENERATED_ARTIFACTS = {
   assetLibraryUsageReport: 'asset_library_usage_report.json',
   assetBindingTraceReport: 'asset_binding_trace_report.json',
   sceneIr: 'game.scene.ir.json',
+  sceneIrAuthorityReport: 'scene_ir_authority_report.json',
+  sceneIrCoverageReport: 'scene_ir_coverage_report.json',
   runtimeSceneBindingReport: 'runtime_scene_binding_report.json',
   semanticExtractionTraceReport: 'semantic_extraction_trace_report.json',
   semanticModelReport: 'semantic_model_report.json'
@@ -100,6 +121,11 @@ export function buildValidPipelineArtifactIndex(input: {
   buildLogPresent?: boolean;
   qaReportPresent?: boolean;
   renderFidelityReportPresent?: boolean;
+  shadowCapabilityLockPresent?: boolean;
+  shadowRuntimeSystemManifestPresent?: boolean;
+  shadowRuntimeLoaderReportPresent?: boolean;
+  shadowCapabilityQaPlanPresent?: boolean;
+  shadowCapabilityQaReportPresent?: boolean;
 }): PipelineArtifactIndex {
   const compileFiles = new Set(input.compileFiles);
   const sideScrollingCompile = input.compileFiles.some((file) => file.startsWith('side_scrolling_run_and_gun/'));
@@ -109,6 +135,68 @@ export function buildValidPipelineArtifactIndex(input: {
 
   return parseIndex(input.projectId, input.runId, [
     artifact('generationInputReport', 'prompt', 'model-output', 'generation_input_report.json', 'present', true, 'generation', 'json'),
+    artifact('generationPathReceipt', 'runtime', 'model-output', 'generation_path_receipt.json', 'present', true, 'generation', 'json'),
+    artifact('capabilityRegistrySnapshot', 'runtime', 'model-output', 'capability_registry_snapshot.json', 'present', true, 'capability-readiness', 'json'),
+    artifact('generationCapabilityReadinessReport', 'runtime', 'model-output', 'generation_capability_readiness_report.json', 'present', true, 'capability-readiness', 'json'),
+    artifact('generationCapabilityResolutionReport', 'runtime', 'model-output', 'generation_capability_resolution_report.json', 'present', true, 'capability-resolution', 'json'),
+    artifact(
+      'shadowGameplayCapabilityLock',
+      'runtime',
+      'model-output',
+      'shadow_gameplay_capability_lock.json',
+      input.shadowCapabilityLockPresent === true ? 'present' : 'skipped',
+      false,
+      'capability-resolution',
+      'json',
+      input.shadowCapabilityLockPresent === true ? undefined : 'capability_resolution_shadow_lock_not_resolved'
+    ),
+    artifact('generationCapabilityRuntimeReport', 'runtime', 'model-output', 'generation_capability_runtime_report.json', 'present', true, 'capability-runtime', 'json'),
+    artifact('generationCapabilityGapReport', 'runtime', 'model-output', 'generation_capability_gap_report.json', 'present', true, 'capability-gap', 'json'),
+    artifact('generationCapabilityCutoverReport', 'runtime', 'model-output', 'generation_capability_cutover_report.json', 'present', true, 'capability-cutover', 'json'),
+    artifact(
+      'shadowRuntimeSystemManifest',
+      'runtime',
+      'model-output',
+      'shadow_phaser_runtime_system_manifest.json',
+      input.shadowRuntimeSystemManifestPresent === true ? 'present' : 'skipped',
+      false,
+      'capability-runtime',
+      'json',
+      input.shadowRuntimeSystemManifestPresent === true ? undefined : 'capability_runtime_shadow_artifact_not_resolved'
+    ),
+    artifact(
+      'shadowRuntimeLoaderReport',
+      'runtime',
+      'model-output',
+      'shadow_phaser_runtime_loader_report.json',
+      input.shadowRuntimeLoaderReportPresent === true ? 'present' : 'skipped',
+      false,
+      'capability-runtime',
+      'json',
+      input.shadowRuntimeLoaderReportPresent === true ? undefined : 'capability_runtime_shadow_artifact_not_resolved'
+    ),
+    artifact(
+      'shadowCapabilityQaPlan',
+      'runtime',
+      'model-output',
+      'shadow_capability_qa_plan.json',
+      input.shadowCapabilityQaPlanPresent === true ? 'present' : 'skipped',
+      false,
+      'capability-runtime',
+      'json',
+      input.shadowCapabilityQaPlanPresent === true ? undefined : 'capability_runtime_shadow_artifact_not_resolved'
+    ),
+    artifact(
+      'shadowCapabilityQaReport',
+      'runtime',
+      'model-output',
+      'shadow_capability_qa_report.json',
+      input.shadowCapabilityQaReportPresent === true ? 'present' : 'skipped',
+      false,
+      'capability-runtime',
+      'json',
+      input.shadowCapabilityQaReportPresent === true ? undefined : 'capability_runtime_shadow_artifact_not_resolved'
+    ),
     artifact('intentPlan', 'prompt', 'model-output', 'intent_plan.json', 'present', true, 'generation', 'json'),
     artifact('gameDsl', 'dsl', 'model-output', 'game_dsl.json', 'present', true, 'generation', 'json'),
     artifact('gameDslCandidate', 'dsl', 'model-output', 'game_dsl.candidate.json', 'skipped', false, 'generation', 'json', 'valid_dsl_path_uses_game_dsl_json'),
@@ -128,6 +216,36 @@ export function buildValidPipelineArtifactIndex(input: {
           ? undefined
           : 'compile_files_missing_sceneIr'
         : 'scene_ir_currently_side_scrolling_only'
+    ),
+    artifact(
+      'sceneIrAuthorityReport',
+      'runtime',
+      'generated-project',
+      GENERATED_ARTIFACTS.sceneIrAuthorityReport,
+      sideScrollingCompile ? (compileFiles.has(GENERATED_ARTIFACTS.sceneIrAuthorityReport) ? 'present' : 'missing') : 'skipped',
+      sideScrollingCompile,
+      'compiler',
+      'json',
+      sideScrollingCompile
+        ? compileFiles.has(GENERATED_ARTIFACTS.sceneIrAuthorityReport)
+          ? undefined
+          : 'compile_files_missing_sceneIrAuthorityReport'
+        : 'scene_ir_authority_currently_side_scrolling_only'
+    ),
+    artifact(
+      'sceneIrCoverageReport',
+      'runtime',
+      'generated-project',
+      GENERATED_ARTIFACTS.sceneIrCoverageReport,
+      sideScrollingCompile ? (compileFiles.has(GENERATED_ARTIFACTS.sceneIrCoverageReport) ? 'present' : 'missing') : 'skipped',
+      sideScrollingCompile,
+      'compiler',
+      'json',
+      sideScrollingCompile
+        ? compileFiles.has(GENERATED_ARTIFACTS.sceneIrCoverageReport)
+          ? undefined
+          : 'compile_files_missing_sceneIrCoverageReport'
+        : 'scene_ir_coverage_currently_side_scrolling_only'
     ),
     artifact(
       'runtimeSceneBindingReport',
@@ -187,6 +305,18 @@ export function buildInvalidDslPipelineArtifactIndex(input: { projectId: string;
   const sourceArtifact = input.sourceArtifact ?? 'game_dsl.candidate.json';
   return parseIndex(input.projectId, input.runId, [
     artifact('generationInputReport', 'prompt', 'model-output', 'generation_input_report.json', 'present', true, 'generation', 'json'),
+    artifact('generationPathReceipt', 'runtime', 'model-output', 'generation_path_receipt.json', 'present', true, 'generation', 'json'),
+    artifact('capabilityRegistrySnapshot', 'runtime', 'model-output', 'capability_registry_snapshot.json', 'present', true, 'capability-readiness', 'json'),
+    artifact('generationCapabilityReadinessReport', 'runtime', 'model-output', 'generation_capability_readiness_report.json', 'present', true, 'capability-readiness', 'json'),
+    artifact('generationCapabilityResolutionReport', 'runtime', 'model-output', 'generation_capability_resolution_report.json', 'present', true, 'capability-resolution', 'json'),
+    artifact('shadowGameplayCapabilityLock', 'runtime', 'model-output', 'shadow_gameplay_capability_lock.json', 'skipped', false, 'capability-resolution', 'json', 'capability_resolution_shadow_lock_not_resolved'),
+    artifact('generationCapabilityRuntimeReport', 'runtime', 'model-output', 'generation_capability_runtime_report.json', 'present', true, 'capability-runtime', 'json'),
+    artifact('generationCapabilityGapReport', 'runtime', 'model-output', 'generation_capability_gap_report.json', 'present', true, 'capability-gap', 'json'),
+    artifact('generationCapabilityCutoverReport', 'runtime', 'model-output', 'generation_capability_cutover_report.json', 'present', true, 'capability-cutover', 'json'),
+    artifact('shadowRuntimeSystemManifest', 'runtime', 'model-output', 'shadow_phaser_runtime_system_manifest.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
+    artifact('shadowRuntimeLoaderReport', 'runtime', 'model-output', 'shadow_phaser_runtime_loader_report.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
+    artifact('shadowCapabilityQaPlan', 'runtime', 'model-output', 'shadow_capability_qa_plan.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
+    artifact('shadowCapabilityQaReport', 'runtime', 'model-output', 'shadow_capability_qa_report.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
     artifact('intentPlan', 'prompt', 'model-output', 'intent_plan.json', 'present', true, 'generation', 'json'),
     artifact(
       'gameDsl',
@@ -213,6 +343,8 @@ export function buildInvalidDslPipelineArtifactIndex(input: { projectId: string;
     artifact('dslValidationReport', 'validation', 'model-output', 'dsl_validation_report.json', 'present', true, 'generation', 'json'),
     artifact('dslConsumptionReport', 'validation', 'model-output', 'dsl_consumption_report.json', 'skipped', true, 'dsl-consumption', 'json', 'dsl_validation_failed_before_consumption_audit'),
     skippedGeneratedArtifact('sceneIr'),
+    skippedGeneratedArtifact('sceneIrAuthorityReport'),
+    skippedGeneratedArtifact('sceneIrCoverageReport'),
     skippedGeneratedArtifact('runtimeSceneBindingReport'),
     artifact(
       'runtimeCapabilityReport',
@@ -246,12 +378,26 @@ export function buildInvalidDslPipelineArtifactIndex(input: { projectId: string;
 export function buildUnsupportedIntentPipelineArtifactIndex(input: { projectId: string; runId: string; normalizedGenre: string }): PipelineArtifactIndex {
   return parseIndex(input.projectId, input.runId, [
     artifact('generationInputReport', 'prompt', 'model-output', 'generation_input_report.json', 'present', true, 'generation', 'json'),
+    artifact('generationPathReceipt', 'runtime', 'model-output', 'generation_path_receipt.json', 'present', true, 'generation', 'json'),
+    artifact('capabilityRegistrySnapshot', 'runtime', 'model-output', 'capability_registry_snapshot.json', 'present', true, 'capability-readiness', 'json'),
+    artifact('generationCapabilityReadinessReport', 'runtime', 'model-output', 'generation_capability_readiness_report.json', 'present', true, 'capability-readiness', 'json'),
+    artifact('generationCapabilityResolutionReport', 'runtime', 'model-output', 'generation_capability_resolution_report.json', 'present', true, 'capability-resolution', 'json'),
+    artifact('shadowGameplayCapabilityLock', 'runtime', 'model-output', 'shadow_gameplay_capability_lock.json', 'skipped', false, 'capability-resolution', 'json', 'capability_resolution_shadow_lock_not_resolved'),
+    artifact('generationCapabilityRuntimeReport', 'runtime', 'model-output', 'generation_capability_runtime_report.json', 'present', true, 'capability-runtime', 'json'),
+    artifact('generationCapabilityGapReport', 'runtime', 'model-output', 'generation_capability_gap_report.json', 'present', true, 'capability-gap', 'json'),
+    artifact('generationCapabilityCutoverReport', 'runtime', 'model-output', 'generation_capability_cutover_report.json', 'present', true, 'capability-cutover', 'json'),
+    artifact('shadowRuntimeSystemManifest', 'runtime', 'model-output', 'shadow_phaser_runtime_system_manifest.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
+    artifact('shadowRuntimeLoaderReport', 'runtime', 'model-output', 'shadow_phaser_runtime_loader_report.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
+    artifact('shadowCapabilityQaPlan', 'runtime', 'model-output', 'shadow_capability_qa_plan.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
+    artifact('shadowCapabilityQaReport', 'runtime', 'model-output', 'shadow_capability_qa_report.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
     artifact('intentPlan', 'prompt', 'model-output', 'intent_plan.json', 'present', true, 'generation', 'json'),
     artifact('gameDsl', 'dsl', 'model-output', 'game_dsl.json', 'skipped', true, 'generation', 'json', 'runtime_unsupported_before_dsl_generation'),
     artifact('gameDslCandidate', 'dsl', 'model-output', 'game_dsl.candidate.json', 'skipped', false, 'generation', 'json', 'runtime_unsupported_before_dsl_generation'),
     artifact('dslValidationReport', 'validation', 'model-output', 'dsl_validation_report.json', 'skipped', true, 'generation', 'json', 'runtime_unsupported_before_dsl_validation'),
     artifact('dslConsumptionReport', 'validation', 'model-output', 'dsl_consumption_report.json', 'skipped', true, 'dsl-consumption', 'json', 'runtime_unsupported_before_consumption_audit'),
     skippedGeneratedArtifact('sceneIr', 'runtime_unsupported_before_compile'),
+    skippedGeneratedArtifact('sceneIrAuthorityReport', 'runtime_unsupported_before_compile'),
+    skippedGeneratedArtifact('sceneIrCoverageReport', 'runtime_unsupported_before_compile'),
     skippedGeneratedArtifact('runtimeSceneBindingReport', 'runtime_unsupported_before_compile'),
     artifact('runtimeCapabilityReport', 'runtime', 'model-output', 'runtime_capability_report.json', 'present', true, 'runtime-capability', 'json'),
     skippedGeneratedArtifact('assetIntentManifest', 'runtime_unsupported_before_compile'),
@@ -267,6 +413,92 @@ export function buildUnsupportedIntentPipelineArtifactIndex(input: { projectId: 
     artifact('buildLog', 'build', 'build-log', `${input.runId}.log`, 'skipped', false, 'build', 'log', 'runtime_unsupported_before_build'),
     artifact('qaReport', 'qa', 'qa-report', `${input.runId}.json`, 'skipped', false, 'qa', 'json', 'runtime_unsupported_before_qa'),
     artifact('renderFidelityReport', 'qa', 'model-output', 'render_fidelity_report.json', 'skipped', false, 'qa', 'json', 'runtime_unsupported_before_qa'),
+    artifact('pipelineAcceptanceReport', 'index', 'model-output', 'pipeline_acceptance_report.json', 'present', true, 'pipeline-acceptance', 'json'),
+    artifact('pipelineArtifactIndex', 'index', 'model-output', 'pipeline_artifact_index.json', 'present', true, 'pipeline-artifact-index', 'json')
+  ]);
+}
+
+export function buildModelGenerationFailedPipelineArtifactIndex(input: { projectId: string; runId: string }): PipelineArtifactIndex {
+  return parseIndex(input.projectId, input.runId, [
+    artifact('generationInputReport', 'prompt', 'model-output', 'generation_input_report.json', 'present', true, 'generation', 'json'),
+    artifact('generationPathReceipt', 'runtime', 'model-output', 'generation_path_receipt.json', 'present', true, 'generation', 'json'),
+    artifact('capabilityRegistrySnapshot', 'runtime', 'model-output', 'capability_registry_snapshot.json', 'present', true, 'capability-readiness', 'json'),
+    artifact('generationCapabilityReadinessReport', 'runtime', 'model-output', 'generation_capability_readiness_report.json', 'present', true, 'capability-readiness', 'json'),
+    artifact('generationCapabilityResolutionReport', 'runtime', 'model-output', 'generation_capability_resolution_report.json', 'present', true, 'capability-resolution', 'json'),
+    artifact('shadowGameplayCapabilityLock', 'runtime', 'model-output', 'shadow_gameplay_capability_lock.json', 'skipped', false, 'capability-resolution', 'json', 'capability_resolution_shadow_lock_not_resolved'),
+    artifact('generationCapabilityRuntimeReport', 'runtime', 'model-output', 'generation_capability_runtime_report.json', 'present', true, 'capability-runtime', 'json'),
+    artifact('generationCapabilityGapReport', 'runtime', 'model-output', 'generation_capability_gap_report.json', 'present', true, 'capability-gap', 'json'),
+    artifact('generationCapabilityCutoverReport', 'runtime', 'model-output', 'generation_capability_cutover_report.json', 'present', true, 'capability-cutover', 'json'),
+    artifact('shadowRuntimeSystemManifest', 'runtime', 'model-output', 'shadow_phaser_runtime_system_manifest.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
+    artifact('shadowRuntimeLoaderReport', 'runtime', 'model-output', 'shadow_phaser_runtime_loader_report.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
+    artifact('shadowCapabilityQaPlan', 'runtime', 'model-output', 'shadow_capability_qa_plan.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
+    artifact('shadowCapabilityQaReport', 'runtime', 'model-output', 'shadow_capability_qa_report.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
+    artifact('intentPlan', 'prompt', 'model-output', 'intent_plan.json', 'present', true, 'generation', 'json'),
+    artifact('gameDsl', 'dsl', 'model-output', 'game_dsl.json', 'skipped', true, 'generation', 'json', 'model_generation_failed_before_dsl'),
+    artifact('gameDslCandidate', 'dsl', 'model-output', 'game_dsl.candidate.json', 'skipped', false, 'generation', 'json', 'model_generation_failed_before_dsl'),
+    artifact('dslValidationReport', 'validation', 'model-output', 'dsl_validation_report.json', 'skipped', true, 'generation', 'json', 'model_generation_failed_before_dsl_validation'),
+    artifact('dslConsumptionReport', 'validation', 'model-output', 'dsl_consumption_report.json', 'skipped', true, 'dsl-consumption', 'json', 'model_generation_failed_before_consumption_audit'),
+    skippedGeneratedArtifact('sceneIr', 'model_generation_failed_before_compile'),
+    skippedGeneratedArtifact('sceneIrAuthorityReport', 'model_generation_failed_before_compile'),
+    skippedGeneratedArtifact('sceneIrCoverageReport', 'model_generation_failed_before_compile'),
+    skippedGeneratedArtifact('runtimeSceneBindingReport', 'model_generation_failed_before_compile'),
+    artifact('runtimeCapabilityReport', 'runtime', 'model-output', 'runtime_capability_report.json', 'skipped', true, 'runtime-capability', 'json', 'model_generation_failed_before_runtime_capability'),
+    skippedGeneratedArtifact('assetIntentManifest', 'model_generation_failed_before_compile'),
+    skippedGeneratedArtifact('assetPlan', 'model_generation_failed_before_compile'),
+    skippedGeneratedArtifact('publicAssetManifest', 'model_generation_failed_before_compile'),
+    artifact('phaserPreviewManifest', 'preview', 'generated-project', 'model_generation_failed/src/asset-manifest.generated.json', 'skipped', true, 'compiler', 'json', 'model_generation_failed_before_compile'),
+    skippedGeneratedArtifact('assetResolutionReport', 'model_generation_failed_before_compile'),
+    skippedGeneratedArtifact('assetPipelineReport', 'model_generation_failed_before_compile'),
+    skippedGeneratedArtifact('assetLibraryUsageReport', 'model_generation_failed_before_compile'),
+    skippedGeneratedArtifact('assetBindingTraceReport', 'model_generation_failed_before_compile'),
+    skippedGeneratedArtifact('semanticExtractionTraceReport', 'model_generation_failed_before_compile'),
+    skippedGeneratedArtifact('semanticModelReport', 'model_generation_failed_before_compile'),
+    artifact('buildLog', 'build', 'build-log', `${input.runId}.log`, 'skipped', false, 'build', 'log', 'model_generation_failed_before_build'),
+    artifact('qaReport', 'qa', 'qa-report', `${input.runId}.json`, 'skipped', false, 'qa', 'json', 'model_generation_failed_before_qa'),
+    artifact('renderFidelityReport', 'qa', 'model-output', 'render_fidelity_report.json', 'skipped', false, 'qa', 'json', 'model_generation_failed_before_qa'),
+    artifact('pipelineAcceptanceReport', 'index', 'model-output', 'pipeline_acceptance_report.json', 'present', true, 'pipeline-acceptance', 'json'),
+    artifact('pipelineArtifactIndex', 'index', 'model-output', 'pipeline_artifact_index.json', 'present', true, 'pipeline-artifact-index', 'json')
+  ]);
+}
+
+export function buildCompileFailedPipelineArtifactIndex(input: { projectId: string; runId: string; reason: string }): PipelineArtifactIndex {
+  return parseIndex(input.projectId, input.runId, [
+    artifact('generationInputReport', 'prompt', 'model-output', 'generation_input_report.json', 'present', true, 'generation', 'json'),
+    artifact('generationPathReceipt', 'runtime', 'model-output', 'generation_path_receipt.json', 'present', true, 'generation', 'json'),
+    artifact('capabilityRegistrySnapshot', 'runtime', 'model-output', 'capability_registry_snapshot.json', 'present', true, 'capability-readiness', 'json'),
+    artifact('generationCapabilityReadinessReport', 'runtime', 'model-output', 'generation_capability_readiness_report.json', 'present', true, 'capability-readiness', 'json'),
+    artifact('generationCapabilityResolutionReport', 'runtime', 'model-output', 'generation_capability_resolution_report.json', 'present', true, 'capability-resolution', 'json'),
+    artifact('shadowGameplayCapabilityLock', 'runtime', 'model-output', 'shadow_gameplay_capability_lock.json', 'skipped', false, 'capability-resolution', 'json', 'capability_resolution_shadow_lock_not_resolved'),
+    artifact('generationCapabilityRuntimeReport', 'runtime', 'model-output', 'generation_capability_runtime_report.json', 'present', true, 'capability-runtime', 'json'),
+    artifact('generationCapabilityGapReport', 'runtime', 'model-output', 'generation_capability_gap_report.json', 'present', true, 'capability-gap', 'json'),
+    artifact('generationCapabilityCutoverReport', 'runtime', 'model-output', 'generation_capability_cutover_report.json', 'present', true, 'capability-cutover', 'json'),
+    artifact('shadowRuntimeSystemManifest', 'runtime', 'model-output', 'shadow_phaser_runtime_system_manifest.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
+    artifact('shadowRuntimeLoaderReport', 'runtime', 'model-output', 'shadow_phaser_runtime_loader_report.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
+    artifact('shadowCapabilityQaPlan', 'runtime', 'model-output', 'shadow_capability_qa_plan.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
+    artifact('shadowCapabilityQaReport', 'runtime', 'model-output', 'shadow_capability_qa_report.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
+    artifact('intentPlan', 'prompt', 'model-output', 'intent_plan.json', 'present', true, 'generation', 'json'),
+    artifact('gameDsl', 'dsl', 'model-output', 'game_dsl.json', 'present', true, 'generation', 'json'),
+    artifact('gameDslCandidate', 'dsl', 'model-output', 'game_dsl.candidate.json', 'skipped', false, 'generation', 'json', 'valid_dsl_path_uses_game_dsl_json'),
+    artifact('dslValidationReport', 'validation', 'model-output', 'dsl_validation_report.json', 'present', true, 'generation', 'json'),
+    artifact('dslConsumptionReport', 'validation', 'model-output', 'dsl_consumption_report.json', 'present', true, 'dsl-consumption', 'json'),
+    skippedGeneratedArtifact('sceneIr', input.reason),
+    skippedGeneratedArtifact('sceneIrAuthorityReport', input.reason),
+    skippedGeneratedArtifact('sceneIrCoverageReport', input.reason),
+    skippedGeneratedArtifact('runtimeSceneBindingReport', input.reason),
+    artifact('runtimeCapabilityReport', 'runtime', 'model-output', 'runtime_capability_report.json', 'present', true, 'runtime-capability', 'json'),
+    skippedGeneratedArtifact('assetIntentManifest', input.reason),
+    skippedGeneratedArtifact('assetPlan', input.reason),
+    skippedGeneratedArtifact('publicAssetManifest', input.reason),
+    artifact('phaserPreviewManifest', 'preview', 'generated-project', 'compile_failed/src/asset-manifest.generated.json', 'skipped', true, 'compiler', 'json', input.reason),
+    skippedGeneratedArtifact('assetResolutionReport', input.reason),
+    skippedGeneratedArtifact('assetPipelineReport', input.reason),
+    skippedGeneratedArtifact('assetLibraryUsageReport', input.reason),
+    skippedGeneratedArtifact('assetBindingTraceReport', input.reason),
+    skippedGeneratedArtifact('semanticExtractionTraceReport', input.reason),
+    skippedGeneratedArtifact('semanticModelReport', input.reason),
+    artifact('buildLog', 'build', 'build-log', `${input.runId}.log`, 'skipped', false, 'build', 'log', `${input.reason}_before_build`),
+    artifact('qaReport', 'qa', 'qa-report', `${input.runId}.json`, 'skipped', false, 'qa', 'json', `${input.reason}_before_qa`),
+    artifact('renderFidelityReport', 'qa', 'model-output', 'render_fidelity_report.json', 'skipped', false, 'qa', 'json', `${input.reason}_before_qa`),
     artifact('pipelineAcceptanceReport', 'index', 'model-output', 'pipeline_acceptance_report.json', 'present', true, 'pipeline-acceptance', 'json'),
     artifact('pipelineArtifactIndex', 'index', 'model-output', 'pipeline_artifact_index.json', 'present', true, 'pipeline-artifact-index', 'json')
   ]);
@@ -315,7 +547,7 @@ function skippedGeneratedArtifact(id: keyof typeof GENERATED_ARTIFACTS, reason =
 }
 
 function roleForGeneratedArtifact(id: keyof typeof GENERATED_ARTIFACTS): ArtifactInput['role'] {
-  return id === 'sceneIr' || id === 'runtimeSceneBindingReport' ? 'runtime' : 'asset';
+  return id === 'sceneIr' || id === 'sceneIrAuthorityReport' || id === 'sceneIrCoverageReport' || id === 'runtimeSceneBindingReport' ? 'runtime' : 'asset';
 }
 
 function producedByForGeneratedArtifact(id: keyof typeof GENERATED_ARTIFACTS): ArtifactInput['producedBy'] {

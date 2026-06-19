@@ -126,10 +126,24 @@ describe('Pipeline golden trace', () => {
     expect(trace.index.artifacts).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: 'generationInputReport', status: 'present', path: 'generation_input_report.json' }),
+        expect.objectContaining({ id: 'generationPathReceipt', status: 'present', path: 'generation_path_receipt.json' }),
+        expect.objectContaining({ id: 'capabilityRegistrySnapshot', status: 'present', path: 'capability_registry_snapshot.json' }),
+        expect.objectContaining({ id: 'generationCapabilityReadinessReport', status: 'present', path: 'generation_capability_readiness_report.json' }),
+        expect.objectContaining({ id: 'generationCapabilityResolutionReport', status: 'present', path: 'generation_capability_resolution_report.json' }),
+        expect.objectContaining({ id: 'shadowGameplayCapabilityLock', status: 'skipped', path: 'shadow_gameplay_capability_lock.json' }),
+        expect.objectContaining({ id: 'generationCapabilityRuntimeReport', status: 'present', path: 'generation_capability_runtime_report.json' }),
+        expect.objectContaining({ id: 'generationCapabilityGapReport', status: 'present', path: 'generation_capability_gap_report.json' }),
+        expect.objectContaining({ id: 'generationCapabilityCutoverReport', status: 'present', path: 'generation_capability_cutover_report.json' }),
+        expect.objectContaining({ id: 'shadowRuntimeSystemManifest', status: 'skipped', path: 'shadow_phaser_runtime_system_manifest.json' }),
+        expect.objectContaining({ id: 'shadowRuntimeLoaderReport', status: 'skipped', path: 'shadow_phaser_runtime_loader_report.json' }),
+        expect.objectContaining({ id: 'shadowCapabilityQaPlan', status: 'skipped', path: 'shadow_capability_qa_plan.json' }),
+        expect.objectContaining({ id: 'shadowCapabilityQaReport', status: 'skipped', path: 'shadow_capability_qa_report.json' }),
         expect.objectContaining({ id: 'gameDsl', status: 'present', path: 'game_dsl.json' }),
         expect.objectContaining({ id: 'dslValidationReport', status: 'present', path: 'dsl_validation_report.json' }),
         expect.objectContaining({ id: 'dslConsumptionReport', status: 'present', path: 'dsl_consumption_report.json' }),
         expect.objectContaining({ id: 'sceneIr', status: 'skipped', path: 'game.scene.ir.json', required: false }),
+        expect.objectContaining({ id: 'sceneIrAuthorityReport', status: 'skipped', path: 'scene_ir_authority_report.json', required: false }),
+        expect.objectContaining({ id: 'sceneIrCoverageReport', status: 'skipped', path: 'scene_ir_coverage_report.json', required: false }),
         expect.objectContaining({ id: 'runtimeSceneBindingReport', status: 'skipped', path: 'runtime_scene_binding_report.json', required: false }),
         expect.objectContaining({ id: 'runtimeCapabilityReport', status: 'present', path: 'runtime_capability_report.json' }),
         expect.objectContaining({ id: 'assetIntentManifest', status: 'present', path: 'asset_intent_manifest.json' }),
@@ -164,6 +178,7 @@ describe('Pipeline golden trace', () => {
       'dsl_artifact',
       'dsl_consumption',
       'scene_ir',
+      'required_artifacts',
       'runtime_scene_binding',
       'runtime_capability',
       'asset_intent_resolution',
@@ -187,11 +202,15 @@ describe('Pipeline golden trace', () => {
     await expect(trace.service.getPipelineArtifacts('proj_other', trace.generated.run_id)).rejects.toThrow('run does not belong to project');
     await expect(trace.service.getPipelineAcceptance('proj_other', trace.generated.run_id)).rejects.toThrow('run does not belong to project');
 
-    expect(group(trace.evidenceView, 'Prompt / Provenance')?.artifacts.map((artifact) => artifact.id)).toContain('generationInputReport');
+    expect(group(trace.evidenceView, 'Prompt / Provenance')?.artifacts.map((artifact) => artifact.id)).toEqual(
+      expect.arrayContaining(['generationInputReport', 'generationPathReceipt'])
+    );
     expect(group(trace.evidenceView, 'DSL')?.artifacts.map((artifact) => artifact.id)).toEqual(
       expect.arrayContaining(['gameDsl', 'dslValidationReport', 'dslConsumptionReport'])
     );
-    expect(group(trace.evidenceView, 'Runtime')?.artifacts.map((artifact) => artifact.id)).toEqual(expect.arrayContaining(['runtimeCapabilityReport', 'sceneIr', 'runtimeSceneBindingReport']));
+    expect(group(trace.evidenceView, 'Runtime')?.artifacts.map((artifact) => artifact.id)).toEqual(
+      expect.arrayContaining(['capabilityRegistrySnapshot', 'generationCapabilityReadinessReport', 'runtimeCapabilityReport', 'sceneIr', 'runtimeSceneBindingReport'])
+    );
     expect(group(trace.evidenceView, 'Assets')?.artifacts.map((artifact) => artifact.id)).toEqual(
       expect.arrayContaining(['assetIntentManifest', 'assetPlan', 'publicAssetManifest', 'phaserPreviewManifest', 'assetResolutionReport', 'assetPipelineReport', 'assetLibraryUsageReport', 'assetBindingTraceReport'])
     );
@@ -236,6 +255,18 @@ describe('Pipeline golden trace', () => {
     expect(trace.index.artifacts).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: 'generationInputReport', status: 'present', path: 'generation_input_report.json' }),
+        expect.objectContaining({ id: 'generationPathReceipt', status: 'present', path: 'generation_path_receipt.json' }),
+        expect.objectContaining({ id: 'capabilityRegistrySnapshot', status: 'present', path: 'capability_registry_snapshot.json' }),
+        expect.objectContaining({ id: 'generationCapabilityReadinessReport', status: 'present', path: 'generation_capability_readiness_report.json' }),
+        expect.objectContaining({ id: 'generationCapabilityResolutionReport', status: 'present', path: 'generation_capability_resolution_report.json' }),
+        expect.objectContaining({ id: 'shadowGameplayCapabilityLock', status: 'skipped', path: 'shadow_gameplay_capability_lock.json' }),
+        expect.objectContaining({ id: 'generationCapabilityRuntimeReport', status: 'present', path: 'generation_capability_runtime_report.json' }),
+        expect.objectContaining({ id: 'generationCapabilityGapReport', status: 'present', path: 'generation_capability_gap_report.json' }),
+        expect.objectContaining({ id: 'generationCapabilityCutoverReport', status: 'present', path: 'generation_capability_cutover_report.json' }),
+        expect.objectContaining({ id: 'shadowRuntimeSystemManifest', status: 'skipped', path: 'shadow_phaser_runtime_system_manifest.json' }),
+        expect.objectContaining({ id: 'shadowRuntimeLoaderReport', status: 'skipped', path: 'shadow_phaser_runtime_loader_report.json' }),
+        expect.objectContaining({ id: 'shadowCapabilityQaPlan', status: 'skipped', path: 'shadow_capability_qa_plan.json' }),
+        expect.objectContaining({ id: 'shadowCapabilityQaReport', status: 'skipped', path: 'shadow_capability_qa_report.json' }),
         expect.objectContaining({ id: 'gameDslCandidate', status: 'present', path: 'game_dsl.candidate.json' }),
         expect.objectContaining({ id: 'dslValidationReport', status: 'present', path: 'dsl_validation_report.json' }),
         expect.objectContaining({ id: 'dslConsumptionReport', status: 'skipped', reason: 'dsl_validation_failed_before_consumption_audit' }),
@@ -576,7 +607,28 @@ async function writeAssetPipelineArtifacts(workspace: LocalWorkspaceService, pro
     'utf8'
   );
 
-  const compileFiles = ['asset_intent_manifest.json', 'asset_plan.json', 'public/asset_manifest.json', 'asset_resolution_report.json', 'shooter/src/asset-manifest.generated.json', ...assetFiles, 'asset_pipeline_report.json'];
+  await writeFile(
+    join(outputDir, 'semantic_extraction_trace_report.json'),
+    `${JSON.stringify({ reportVersion: 'semantic-extraction-trace-report.v1', projectId, runId }, null, 2)}\n`,
+    'utf8'
+  );
+  await writeFile(
+    join(outputDir, 'semantic_model_report.json'),
+    `${JSON.stringify({ reportVersion: 'semantic-model-report.v1', projectId, runId }, null, 2)}\n`,
+    'utf8'
+  );
+
+  const compileFiles = [
+    'asset_intent_manifest.json',
+    'asset_plan.json',
+    'public/asset_manifest.json',
+    'asset_resolution_report.json',
+    'shooter/src/asset-manifest.generated.json',
+    ...assetFiles,
+    'asset_pipeline_report.json',
+    'semantic_extraction_trace_report.json',
+    'semantic_model_report.json'
+  ];
   await writeAssetPipelineReport({ projectId, templateId: 'shooter_v1', genre: 'shooter', outputDir, compileFiles });
   await writeAssetLibraryUsageReport({
     projectId,

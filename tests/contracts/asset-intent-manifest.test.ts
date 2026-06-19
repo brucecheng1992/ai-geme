@@ -22,7 +22,6 @@ describe('Step 33 asset intent manifest', () => {
     const manifest = buildAssetIntentManifest({ projectId, plan, sceneIr });
     const playerIntent = manifest.intents.find((intent) => intent.assetPlanId === 'player');
     const tilesetIntent = manifest.intents.find((intent) => intent.assetPlanId === 'tileset');
-    const bridgeIntent = manifest.intents.find((intent) => intent.id === 'tile.snow-bridge');
 
     expect(AssetIntentManifestSchema.parse(manifest)).toEqual(manifest);
     expect(manifest).toMatchObject({
@@ -30,9 +29,9 @@ describe('Step 33 asset intent manifest', () => {
       projectId,
       sourceArtifacts: { assetPlan: 'asset_plan.json', sceneIr: 'game.scene.ir.json' },
       summary: {
-        total: 10,
-        coreRequired: 2,
-        requestRequired: 8,
+        total: 7,
+        coreRequired: 4,
+        requestRequired: 3,
         optional: 0,
         fallbackAllowed: 0,
         cacheKeyVersion: 'asset-intent-cache-v0.1'
@@ -43,7 +42,7 @@ describe('Step 33 asset intent manifest', () => {
       assetPlanId: 'player',
       role: 'player_sprite',
       requiredLevel: 'request_required',
-      sourceDslPaths: expect.arrayContaining(['/scenes/0/playerSpawn', '/player/visual']),
+      sourceDslPaths: expect.arrayContaining(['/player', '/player/visual']),
       fallbackPolicy: { allowed: false, reason: 'not_allowed_for_request_required' },
       cacheKey: {
         version: 'asset-intent-cache-v0.1',
@@ -53,9 +52,9 @@ describe('Step 33 asset intent manifest', () => {
     });
     expect(playerIntent?.cacheKey.intentHash).toMatch(/^[a-f0-9]{64}$/);
     expect(tilesetIntent).toMatchObject({
-      id: 'tile_snow_metal_ground',
+      id: 'tileset',
       role: 'terrain_tileset',
-      requiredLevel: 'request_required',
+      requiredLevel: 'core_required',
       tiling: { repeatX: true }
     });
     expect(manifest.intents.map((intent) => intent.id)).toEqual(
@@ -63,15 +62,13 @@ describe('Step 33 asset intent manifest', () => {
         'scene_night_sky',
         'scene.city-skyline',
         'player_red_runner',
-        'enemy_mech_drone',
-        'enemy.mech-elite',
-        'tile_snow_metal_ground',
-        'tile.snow-bridge',
-        'goal_exit_beacon'
+        'enemy',
+        'projectile',
+        'tileset',
+        'pickup'
       ])
     );
-    expect(manifest.intents.filter((intent) => intent.id === 'tile.snow-bridge')).toHaveLength(1);
-    expect(bridgeIntent?.sourceDslPaths).toEqual(expect.arrayContaining(['/scenes/0/platforms/1', '/scenes/0/platforms/2']));
+    expect(manifest.intents.map((intent) => intent.id)).not.toEqual(expect.arrayContaining(['tile.snow-bridge', 'enemy_mech_drone', 'goal_exit_beacon']));
   });
 
   it('counts request-required Scene visual refs missing from resolution as blocking fallback', () => {
@@ -119,7 +116,7 @@ describe('Step 33 asset intent manifest', () => {
 
     expect(summarizeAssetIntentResolutionFallbacks({ manifest: intentManifest, resolutionReport })).toEqual({
       coreRequiredFallbackCount: 0,
-      requestRequiredFallbackCount: 4,
+      requestRequiredFallbackCount: 1,
       optionalFallbackCount: 0
     });
   });

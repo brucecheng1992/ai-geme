@@ -3,6 +3,7 @@ import {
   findRuntimeGenreCapability,
   isRuntimeGenreExecutable,
   type GameBrief,
+  type GameBriefV02,
   type RuntimeSupportStatus
 } from '../../../../packages/game-dsl/src/index.js';
 
@@ -104,7 +105,7 @@ function buildRuntimeProfile(
   };
 }
 
-export function normalizeBriefWithIntentPlan(brief: GameBrief, plan: IntentPlan): GameBrief {
+export function normalizeBriefWithIntentPlan<T extends GameBrief | GameBriefV02>(brief: T, plan: IntentPlan): T {
   if (plan.normalizedGenre === 'side_scrolling_run_and_gun') {
     return {
       ...brief,
@@ -116,7 +117,7 @@ export function normalizeBriefWithIntentPlan(brief: GameBrief, plan: IntentPlan)
         'Jump across terrain while avoiding enemy fire.',
         'Shoot generic enemies and reach the exit.'
       ]
-    };
+    } as T;
   }
 
   if (plan.normalizedGenre === 'top_down_shooter') {
@@ -125,7 +126,7 @@ export function normalizeBriefWithIntentPlan(brief: GameBrief, plan: IntentPlan)
       genre: 'shooter',
       camera: 'top_down',
       core_loop: ['Move in a top-down arena.', 'Fire projectiles at generic enemies.', 'Clear enemies to win.']
-    };
+    } as T;
   }
 
   return brief;
