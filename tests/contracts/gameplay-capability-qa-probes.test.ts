@@ -1,0 +1,458 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  buildAmendmentVerificationReport,
+  buildCapabilityRuntimeQaPlan,
+  evaluateCapabilityQaReport,
+  resolveGameplayCapabilityGraph,
+  validateGameplayCapabilityPackage,
+  type CapabilityQaProbeDescriptor,
+  type GameplayCapabilityPackageContract
+} from '../../packages/game-dsl/src/index.js';
+
+describe('Capability-owned runtime QA probes', () => {
+  it('rejects probes that are not owned by their capability package', () => {
+    const report = validateGameplayCapabilityPackage(
+      createPackage('movement.run_jump.v1', {
+        probes: [createProbe('other.capability.v1.qa.required', 'other.capability.v1', 'movement.run_jump.v1.system')]
+      })
+    );
+
+    expect(report.status).toBe('invalid');
+    expect(report.issues).toEqual(expect.arrayContaining([expect.objectContaining({ code: 'PACKAGE_SCHEMA_INVALID' })]));
+  });
+
+  it('keeps supported packages incomplete when required probes are missing', () => {
+    const report = validateGameplayCapabilityPackage(
+      createPackage('movement.run_jump.v1', {
+        probes: [createProbe('movement.run_jump.v1.qa.optional', 'movement.run_jump.v1', 'movement.run_jump.v1.system', { severity: 'optional' })]
+      })
+    );
+
+    expect(report.status).toBe('invalid');
+    expect(report.supportEligible).toBe(false);
+    expect(report.completeness).toBe('RUNTIME_WITHOUT_QA');
+  });
+
+  it('requires probe prerequisites before package support can be derived', () => {
+    const probe = createProbe('movement.run_jump.v1.qa.required', 'movement.run_jump.v1', 'movement.run_jump.v1.system');
+    const report = validateGameplayCapabilityPackage(
+      createPackage('movement.run_jump.v1', {
+        probes: [{ ...probe, prerequisites: [] }]
+      })
+    );
+
+    expect(report.status).toBe('invalid');
+    expect(report.supportEligible).toBe(false);
+  });
+
+  it('composes deterministic profile QA plans from capability probes, profile scenarios, render refs, and amendment refs', () => {
+    const packages = [createPackage('movement.run_jump.v1'), createPackage('camera.side_follow.v1')];
+    const lock = createLock(packages, ['camera.side_follow.v1', 'movement.run_jump.v1']);
+    const first = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: lock,
+      packages,
+      profileScenarios: [createProfileScenario()],
+      step33RenderFidelityEvidenceRefs: ['render_fidelity_report.json'],
+      step34AmendmentVerificationRefs: ['amendment_verification_report.json']
+    });
+    const second = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: lock,
+      packages: [...packages].reverse(),
+      profileScenarios: [createProfileScenario()],
+      step33RenderFidelityEvidenceRefs: ['render_fidelity_report.json'],
+      step34AmendmentVerificationRefs: ['amendment_verification_report.json']
+    });
+
+    expect(first.status).toBe('ready');
+    expect(first.planHash).toBe(second.planHash);
+    expect(first.requiredProbes.map((probe) => probe.capabilityId)).toEqual(['camera.side_follow.v1', 'movement.run_jump.v1']);
+    expect(first.profileScenarioProbes.map((probe) => probe.id)).toEqual(['side_scrolling_run_and_gun.v1.qa.destroy_target']);
+    expect(first.step33RenderFidelityEvidenceRefs).toEqual(['render_fidelity_report.json']);
+    expect(first.step34AmendmentVerificationRefs).toEqual(['amendment_verification_report.json']);
+  });
+
+  it('detects duplicate conflicting QA actions across composed probes', () => {
+    const sharedAction = 'shared.qa.action';
+    const movement = createPackage('movement.run_jump.v1', {
+      probes: [createProbe('movement.run_jump.v1.qa.required', 'movement.run_jump.v1', 'movement.run_jump.v1.system', { actionId: sharedAction, actionTarget: 'player' })]
+    });
+    const camera = createPackage('camera.side_follow.v1', {
+      probes: [createProbe('camera.side_follow.v1.qa.required', 'camera.side_follow.v1', 'camera.side_follow.v1.system', { actionId: sharedAction, actionTarget: 'camera' })]
+    });
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock([movement, camera], ['movement.run_jump.v1', 'camera.side_follow.v1']),
+      packages: [movement, camera]
+    });
+
+    expect(plan.status).toBe('blocked');
+    expect(plan.diagnostics).toEqual(expect.arrayContaining([expect.objectContaining({ code: 'QA_ACTION_CONFLICT', actionId: sharedAction })]));
+  });
+
+  it('validates runtime observation refs against the owning package runtime systems', () => {
+    const movement = createPackage('movement.run_jump.v1', {
+      probes: [createProbe('movement.run_jump.v1.qa.required', 'movement.run_jump.v1', 'movement.run_jump.v1.missing_system')]
+    });
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock([movement], ['movement.run_jump.v1']),
+      packages: [movement]
+    });
+
+    expect(plan.status).toBe('blocked');
+    expect(plan.diagnostics).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'RUNTIME_OBSERVATION_REF_INVALID', capabilityId: 'movement.run_jump.v1' })])
+    );
+  });
+
+  it('builds amendment before/after verification from Step34 expected effects', () => {
+    const report = buildAmendmentVerificationReport({
+      operationId: 'op_jump_height',
+      expectedEffects: [
+        {
+          kind: 'property_changed',
+          target: { scope: 'component', role: 'player' },
+          property: 'jumpVelocity',
+          comparison: 'increased'
+        }
+      ],
+      beforeObservations: { jumpVelocity: 420 },
+      afterObservations: { jumpVelocity: 504 }
+    });
+
+    expect(report.status).toBe('passed');
+    expect(report.checks).toEqual([expect.objectContaining({ effectKind: 'property_changed', ref: 'jumpVelocity', status: 'passed' })]);
+  });
+
+  it('does not let runtime event expected effects pass with minimum count zero and no observation', () => {
+    const report = buildAmendmentVerificationReport({
+      operationId: 'op_add_pickup_rule',
+      expectedEffects: [{ kind: 'runtime_event', eventName: 'pickup_collected', minimumCount: 0 }],
+      beforeObservations: {},
+      afterObservations: {},
+      runtimeEventCounts: {}
+    });
+
+    expect(report.status).toBe('failed');
+    expect(report.checks).toEqual([expect.objectContaining({ effectKind: 'runtime_event', ref: 'pickup_collected', status: 'failed', after: 0 })]);
+  });
+
+  it('fails QA reports for blocked plans even when external probe results claim success', () => {
+    const sharedAction = 'shared.qa.action';
+    const movement = createPackage('movement.run_jump.v1', {
+      probes: [createProbe('movement.run_jump.v1.qa.required', 'movement.run_jump.v1', 'movement.run_jump.v1.system', { actionId: sharedAction, actionTarget: 'player' })]
+    });
+    const camera = createPackage('camera.side_follow.v1', {
+      probes: [createProbe('camera.side_follow.v1.qa.required', 'camera.side_follow.v1', 'camera.side_follow.v1.system', { actionId: sharedAction, actionTarget: 'camera' })]
+    });
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock([movement, camera], ['movement.run_jump.v1', 'camera.side_follow.v1']),
+      packages: [movement, camera]
+    });
+    const report = evaluateCapabilityQaReport({
+      plan,
+      probeResults: plan.requiredProbes.map((probe) => ({
+        probeId: probe.id,
+        status: 'passed',
+        assertionResults: probe.assertions.map((assertion) => ({ assertionId: assertion.id, status: 'passed' }))
+      }))
+    });
+
+    expect(plan.status).toBe('blocked');
+    expect(report.status).toBe('failed');
+    expect(report.planStatus).toBe('blocked');
+  });
+
+  it('requires required profile scenario probe results before the QA report can pass', () => {
+    const movement = createPackage('movement.run_jump.v1');
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock([movement], ['movement.run_jump.v1']),
+      packages: [movement],
+      profileScenarios: [createProfileScenario()]
+    });
+    const report = evaluateCapabilityQaReport({
+      plan,
+      probeResults: [{ probeId: 'movement.run_jump.v1.qa.required', status: 'passed', assertionResults: passedAssertionsFor(plan, 'movement.run_jump.v1.qa.required') }]
+    });
+
+    expect(plan.status).toBe('ready');
+    expect(report.status).toBe('failed');
+    expect(report.missingRequiredProbeIds).toEqual(['side_scrolling_run_and_gun.v1.qa.destroy_target']);
+  });
+
+  it('blocks malformed profile scenarios before external results can mark them passed', () => {
+    const movement = createPackage('movement.run_jump.v1');
+    const malformedScenario = { ...createProfileScenario(), prerequisites: [], actions: [] };
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock([movement], ['movement.run_jump.v1']),
+      packages: [movement],
+      profileScenarios: [malformedScenario]
+    });
+    const report = evaluateCapabilityQaReport({
+      plan,
+      probeResults: [
+        { probeId: 'movement.run_jump.v1.qa.required', status: 'passed', assertionResults: passedAssertionsFor(plan, 'movement.run_jump.v1.qa.required') },
+        {
+          probeId: 'side_scrolling_run_and_gun.v1.qa.destroy_target',
+          status: 'passed',
+          assertionResults: [{ assertionId: 'side_scrolling_run_and_gun.v1.qa.destroy_target.assertion', status: 'passed' }]
+        }
+      ]
+    });
+
+    expect(plan.status).toBe('blocked');
+    expect(plan.diagnostics).toEqual(expect.arrayContaining([expect.objectContaining({ code: 'PROFILE_SCENARIO_INVALID' })]));
+    expect(report.status).toBe('failed');
+  });
+
+  it('validates profile scenario runtime observation refs against selected locked packages', () => {
+    const movement = createPackage('movement.run_jump.v1');
+    const invalidRuntimeRefScenario = {
+      ...createProfileScenario(),
+      observations: [
+        {
+          ...createProfileScenario().observations[0],
+          runtimeSystemId: 'missing.runtime_system'
+        }
+      ]
+    };
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock([movement], ['movement.run_jump.v1']),
+      packages: [movement],
+      profileScenarios: [invalidRuntimeRefScenario]
+    });
+    const report = evaluateCapabilityQaReport({
+      plan,
+      probeResults: [
+        { probeId: 'movement.run_jump.v1.qa.required', status: 'passed', assertionResults: passedAssertionsFor(plan, 'movement.run_jump.v1.qa.required') },
+        {
+          probeId: 'side_scrolling_run_and_gun.v1.qa.destroy_target',
+          status: 'passed',
+          assertionResults: [{ assertionId: 'side_scrolling_run_and_gun.v1.qa.destroy_target.assertion', status: 'passed' }]
+        }
+      ]
+    });
+
+    expect(plan.status).toBe('blocked');
+    expect(plan.diagnostics).toEqual(expect.arrayContaining([expect.objectContaining({ code: 'RUNTIME_OBSERVATION_REF_INVALID' })]));
+    expect(report.status).toBe('failed');
+  });
+
+  it('blocks duplicate probe IDs across package and profile scenario probes', () => {
+    const movement = createPackage('movement.run_jump.v1');
+    const duplicateIdScenario = {
+      ...createProfileScenario(),
+      id: 'movement.run_jump.v1.qa.required',
+      observations: [
+        {
+          ...createProfileScenario().observations[0],
+          runtimeSystemId: 'movement.run_jump.v1.system'
+        }
+      ]
+    };
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock([movement], ['movement.run_jump.v1']),
+      packages: [movement],
+      profileScenarios: [duplicateIdScenario]
+    });
+    const report = evaluateCapabilityQaReport({
+      plan,
+      probeResults: [
+        {
+          probeId: 'movement.run_jump.v1.qa.required',
+          status: 'passed',
+          assertionResults: [
+            ...passedAssertionsFor(plan, 'movement.run_jump.v1.qa.required'),
+            { assertionId: 'side_scrolling_run_and_gun.v1.qa.destroy_target.assertion', status: 'passed' as const }
+          ]
+        }
+      ]
+    });
+
+    expect(plan.status).toBe('blocked');
+    expect(plan.diagnostics).toEqual(expect.arrayContaining([expect.objectContaining({ code: 'QA_PROBE_ID_CONFLICT', probeId: 'movement.run_jump.v1.qa.required' })]));
+    expect(report.status).toBe('failed');
+  });
+
+  it('lets optional probe failures remain visible without masking required pass or fail status', () => {
+    const movement = createPackage('movement.run_jump.v1', {
+      probes: [
+        createProbe('movement.run_jump.v1.qa.required', 'movement.run_jump.v1', 'movement.run_jump.v1.system'),
+        createProbe('movement.run_jump.v1.qa.optional', 'movement.run_jump.v1', 'movement.run_jump.v1.system', { severity: 'optional' })
+      ]
+    });
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock([movement], ['movement.run_jump.v1']),
+      packages: [movement]
+    });
+    const optionalFailure = evaluateCapabilityQaReport({
+      plan,
+      probeResults: [
+        { probeId: 'movement.run_jump.v1.qa.required', status: 'passed', assertionResults: passedAssertionsFor(plan, 'movement.run_jump.v1.qa.required') },
+        { probeId: 'movement.run_jump.v1.qa.optional', status: 'failed', assertionResults: failedAssertionsFor(plan, 'movement.run_jump.v1.qa.optional') }
+      ]
+    });
+    const requiredFailure = evaluateCapabilityQaReport({
+      plan,
+      probeResults: [
+        { probeId: 'movement.run_jump.v1.qa.required', status: 'failed', assertionResults: failedAssertionsFor(plan, 'movement.run_jump.v1.qa.required') },
+        { probeId: 'movement.run_jump.v1.qa.optional', status: 'passed', assertionResults: passedAssertionsFor(plan, 'movement.run_jump.v1.qa.optional') }
+      ]
+    });
+    const missingAssertionResults = evaluateCapabilityQaReport({
+      plan,
+      probeResults: [{ probeId: 'movement.run_jump.v1.qa.required', status: 'passed' }]
+    });
+
+    expect(optionalFailure.status).toBe('passed_with_optional_failures');
+    expect(optionalFailure.failedOptionalProbeIds).toEqual(['movement.run_jump.v1.qa.optional']);
+    expect(requiredFailure.status).toBe('failed');
+    expect(requiredFailure.missingRequiredProbeIds).toEqual(['movement.run_jump.v1.qa.required']);
+    expect(missingAssertionResults.status).toBe('failed');
+  });
+});
+
+function createLock(packages: readonly GameplayCapabilityPackageContract[], requestedCapabilities: readonly string[]) {
+  const report = resolveGameplayCapabilityGraph({
+    requestedCapabilities,
+    packages,
+    runtimeFamily: 'phaser_2d_action_arcade.v1'
+  });
+  if (report.lock === undefined) {
+    throw new Error(`expected lock, got diagnostics ${JSON.stringify(report.diagnostics)}`);
+  }
+  return report.lock;
+}
+
+function createPackage(
+  id: string,
+  input: {
+    probes?: GameplayCapabilityPackageContract['qa']['probes'];
+  } = {}
+): GameplayCapabilityPackageContract {
+  const ownedPath = `/entities/components/${id}`;
+  return {
+    manifest: {
+      id,
+      packageVersion: '1.0.0',
+      capabilityVersion: 'v1',
+      status: 'supported',
+      description: `${id} capability package.`,
+      owners: ['gameplay-platform'],
+      runtimeFamilies: ['phaser_2d_action_arcade.v1'],
+      contractVersion: 'gameplay-capability-package.v1'
+    },
+    dsl: {
+      schemaFragmentId: `${id}.schema`,
+      ownedPaths: [ownedPath],
+      normalizerId: `${id}.normalizer`,
+      migrations: []
+    },
+    ir: {
+      compilerId: `${id}.ir`,
+      ownedNodeKinds: [`component.${id.replace(/\.v1$/, '')}`]
+    },
+    runtime: {
+      families: ['phaser_2d_action_arcade.v1'],
+      systems: [{ id: `${id}.system`, version: 'v1', phase: 'gameplay', dependencies: [] }]
+    },
+    amendments: {
+      supportedOperations: [{ operation: `SetComponentProperty:${id}`, executionPolicy: 'hot_runtime_patch' }],
+      compilerId: `${id}.amendments`
+    },
+    patch: {
+      descriptors: [{ id: `${id}.patch`, policy: 'hot_runtime_patch', ownedPaths: [ownedPath] }]
+    },
+    qa: {
+      probes: input.probes ?? [createProbe(`${id}.qa.required`, id, `${id}.system`)],
+      requiredEvidence: [{ id: `${id}.evidence.runtime`, artifactKind: 'capability_qa_report', required: true }]
+    },
+    render: {
+      assetRoles: [],
+      sceneBindings: [],
+      fallbackPolicy: 'not_applicable'
+    },
+    dependencies: [],
+    optionalDependencies: [],
+    conflictsWith: [],
+    provides: [{ id: `${id}.service`, version: 'v1' }],
+    defaults: {},
+    diagnostics: {}
+  } as GameplayCapabilityPackageContract;
+}
+
+function createProbe(
+  id: string,
+  capabilityId: string,
+  runtimeSystemId: string,
+  input: {
+    severity?: 'required' | 'optional';
+    actionId?: string;
+    actionTarget?: string;
+  } = {}
+): CapabilityQaProbeDescriptor {
+  return {
+    id,
+    capabilityId,
+    severity: input.severity ?? 'required',
+    prerequisites: ['runtime scene started'],
+    actions: [
+      {
+        id: input.actionId ?? `${id}.action`,
+        kind: 'input',
+        target: input.actionTarget ?? 'player',
+        parameters: { control: 'right', durationMs: 240 }
+      }
+    ],
+    observations: [{ id: `${id}.observation`, kind: 'position_delta', runtimeSystemId, ref: 'player.x' }],
+    assertions: [{ id: `${id}.assertion`, observationId: `${id}.observation`, comparator: 'increased', message: 'player x increased' }]
+  };
+}
+
+function createProfileScenario() {
+  return {
+    id: 'side_scrolling_run_and_gun.v1.qa.destroy_target',
+    severity: 'required' as const,
+    prerequisites: ['enemy target spawned'],
+    actions: [{ id: 'side_scrolling_run_and_gun.v1.qa.destroy_target.action', kind: 'runtime_event' as const, target: 'weapon.fire', parameters: {} }],
+    observations: [
+      {
+        id: 'side_scrolling_run_and_gun.v1.qa.destroy_target.observation',
+        kind: 'runtime_event' as const,
+        runtimeSystemId: 'movement.run_jump.v1.system',
+        ref: 'enemy_defeated'
+      }
+    ],
+    assertions: [
+      {
+        id: 'side_scrolling_run_and_gun.v1.qa.destroy_target.assertion',
+        observationId: 'side_scrolling_run_and_gun.v1.qa.destroy_target.observation',
+        comparator: 'minimum_count' as const,
+        expected: 1,
+        message: 'enemy defeat event observed'
+      }
+    ]
+  };
+}
+
+function passedAssertionsFor(plan: ReturnType<typeof buildCapabilityRuntimeQaPlan>, probeId: string) {
+  return assertionResultsFor(plan, probeId, 'passed');
+}
+
+function failedAssertionsFor(plan: ReturnType<typeof buildCapabilityRuntimeQaPlan>, probeId: string) {
+  return assertionResultsFor(plan, probeId, 'failed');
+}
+
+function assertionResultsFor(plan: ReturnType<typeof buildCapabilityRuntimeQaPlan>, probeId: string, status: 'passed' | 'failed') {
+  const probe = [...plan.requiredProbes, ...plan.optionalProbes].find((entry) => entry.id === probeId);
+  return probe?.assertions.map((assertion) => ({ assertionId: assertion.id, status })) ?? [];
+}

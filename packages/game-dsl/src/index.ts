@@ -37,6 +37,8 @@ export {
 export * from './resolver-v2/index.js';
 export * from './live-editing/index.js';
 export * from './amendments/index.js';
+export * from './gameplay-capabilities/index.js';
+export * from './capability-synthesis/index.js';
 export {
   buildSemanticIndex,
   createFixBlankPreviewRepairHandler,
