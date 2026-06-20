@@ -4,13 +4,80 @@
   "storageGate": {
     "sseOssStatus": "PASS_AES256",
     "bucketWormStatus": "PASS_LOCKED_365_DAYS",
-    "ramLeastPrivilegeStatus": "BLOCKED_MISSING_BUILDER_ROLE",
-    "actiontrailOssDataEventsStatus": "BLOCKED_NO_SLS_TRAIL",
+    "stsAssumeRoleStatus": "PASS",
+    "sourceIdentityStatus": "PASS",
+    "ossVersionedObjectAccess": "PASS",
+    "ossRoundTripSha256Status": "PASS",
+    "ossObjectSha256": "sha256:c67b1616fd7ed4e90c323c06e293e47af495acdfca7d01ac0d369f2473badcad",
+    "authoritativeObjectVersionId": "CAEQTxiBgMDPz7yY9xkiIDg4Y2NjNDdlNGE5NDQ0N2NhZGUxMmMzZjAzZGEyYTA0",
+    "previousVersionIdStatus": "INVALID_NOT_FOUND_SUPERSEDED",
+    "slsQueryPermissionStatus": "PASS",
+    "actiontrailRoleSessionAudit": "PASS",
+    "actiontrailObjectDataEventAudit": "NOT_VERIFIED",
+    "preflightResult": "PARTIAL_PASS_BLOCKED_OBJECT_DATA_EVENT_AUDIT",
     "historicalEvidencePreservation": "FAILED_SOURCE_MISSING",
     "evidenceLossException": "PENDING",
     "storageTechnicalVerification": "PENDING",
     "newBuildResult": "NOT_STARTED_BLOCKED",
+    "artifactSha256": "NOT_GENERATED",
+    "deploymentPerformed": "NO",
     "commit6Gate": "BLOCKED"
+  },
+  "ossPreflight": {
+    "objectSha256": "sha256:c67b1616fd7ed4e90c323c06e293e47af495acdfca7d01ac0d369f2473badcad",
+    "authoritativeObjectVersionId": "CAEQTxiBgMDPz7yY9xkiIDg4Y2NjNDdlNGE5NDQ0N2NhZGUxMmMzZjAzZGEyYTA0",
+    "previousVersionIdCorrection": {
+      "status": "INVALID_NOT_FOUND_SUPERSEDED",
+      "oldRecordMustBeRetained": true,
+      "notInVersionList": true,
+      "callError": "Invalid version id specified",
+      "authoritativeObjectVersionId": "CAEQTxiBgMDPz7yY9xkiIDg4Y2NjNDdlNGE5NDQ0N2NhZGUxMmMzZjAzZGEyYTA0",
+      "authoritativeVersionIdScope": "ONLY_AUTHORITATIVE_VERSION_ID_FOR_THIS_PREFLIGHT_OBJECT",
+      "versioningRule": "EACH_SUCCESSFUL_UPLOAD_IN_VERSIONED_BUCKET_GETS_UNIQUE_VERSION_ID"
+    },
+    "requestIdCapture": {
+      "status": "PENDING",
+      "operations": [
+        "PutObject",
+        "HeadObject",
+        "GetObject",
+        "ListObjectVersions"
+      ]
+    },
+    "auditCorrelation": {
+      "status": "PENDING",
+      "waitBeforeRequery": "UP_TO_APPROX_10_MINUTES",
+      "queryTimeRange": "EXPANDED_AROUND_OSS_OPERATION_WINDOW",
+      "queryEventNames": [
+        "PutObject",
+        "GetObject",
+        "HeadObject",
+        "ListObjectVersions",
+        "GetBucketVersions"
+      ],
+      "correlationFields": [
+        "event.requestId",
+        "event.eventName",
+        "event.userIdentity",
+        "event.resourceName",
+        "event.referencedResources",
+        "event.acsRegion",
+        "event.eventTime"
+      ],
+      "objectKeyAsSoleCriterionAllowed": false,
+      "getBucketVersionsAcceptance": "REQUEST_ID_BUCKET_REGION_ROLE_SESSION_MATCH_REQUIRED"
+    },
+    "dataEventSelectorCheckIfStillMissing": {
+      "serviceName": "Oss",
+      "readWriteType": "All",
+      "eventNames": [
+        "PutObject",
+        "GetObject",
+        "HeadObject",
+        "ListObjectVersions"
+      ],
+      "resourceArn": "acs:oss:cn-shanghai:1213873316001482:bucket/together-game"
+    }
   },
   "originalFailureEvidence": {
     "fileName": "trusted-build-failure-manifest.json",
@@ -65,15 +132,17 @@
   },
   "remainingActions": [
     {
-      "action": "CREATE_EVIDENCE_WRITER_RAM_ROLE",
-      "roleName": "ai-game-maker-evidence-writer",
-      "authentication": "STS_ASSUME_ROLE_ONLY",
-      "longTermAccessKeyAllowed": false,
-      "sourceIdentityRequired": "<build-run-id>",
-      "status": "BLOCKED_MISSING_BUILDER_ROLE"
+      "action": "EXTRACT_OSS_REQUEST_IDS_FROM_PREFLIGHT_RESPONSES",
+      "operations": [
+        "PutObject",
+        "HeadObject",
+        "GetObject",
+        "ListObjectVersions"
+      ],
+      "status": "PENDING"
     },
     {
-      "action": "CREATE_ACTIONTRAIL_OSS_DATA_EVENT_TRAIL",
+      "action": "CORRELATE_ACTIONTRAIL_OBJECT_DATA_EVENTS",
       "trailName": "ai-game-maker-evidence-audit",
       "deliveryTarget": "SLS_LOGSTORE",
       "bucketScope": "together-game",
@@ -82,10 +151,36 @@
         "PutObject",
         "GetObject",
         "HeadObject",
-        "ListObjectVersions"
+        "ListObjectVersions",
+        "GetBucketVersions"
       ],
       "costImpact": "SLS_STORAGE_AND_QUERY_COSTS_APPLY",
-      "status": "BLOCKED_NO_SLS_TRAIL"
+      "status": "BLOCKED_OBJECT_DATA_EVENT_AUDIT_NOT_VERIFIED"
+    },
+    {
+      "action": "VERIFY_ACTIONTRAIL_DATA_EVENT_SELECTOR_IF_EVENTS_STILL_MISSING",
+      "requiredSelector": {
+        "serviceName": "Oss",
+        "readWriteType": "All",
+        "eventNames": [
+          "PutObject",
+          "GetObject",
+          "HeadObject",
+          "ListObjectVersions"
+        ],
+        "resourceArn": "acs:oss:cn-shanghai:1213873316001482:bucket/together-game"
+      },
+      "status": "PENDING_IF_OBJECT_DATA_EVENTS_NOT_FOUND"
+    },
+    {
+      "action": "UPLOAD_PREFLIGHT_MANIFEST_AFTER_AUDIT_CORRELATION",
+      "status": "PENDING_OBJECT_DATA_EVENT_CORRELATION"
+    },
+    {
+      "action": "MOVE_SLS_READ_PERMISSION_TO_EVIDENCE_AUDITOR_ROLE",
+      "currentRole": "AGMEvidenceWriterSLSRead20260621",
+      "targetRole": "evidence-auditor",
+      "status": "RECOMMENDED_SEPARATION_OF_DUTIES"
     },
     {
       "action": "APPROVE_EVIDENCE_LOSS_EXCEPTION",
@@ -100,6 +195,7 @@
   ],
   "compensatingControlsRequired": [
     "Dedicated STS-based evidence writer role",
+    "Dedicated SLS evidence auditor role",
     "ActionTrail OSS data event audit enabled",
     "SSE-OSS AES256 enabled",
     "BucketWorm locked for 365 days",
