@@ -1,0 +1,118 @@
+{
+  "recordType": "EVIDENCE_LOSS_RECORD",
+  "recordPurpose": "Document missing historical evidence source files as evidence loss, without reconstructing or substituting the original manifests.",
+  "storageGate": {
+    "sseOssStatus": "PASS_AES256",
+    "bucketWormStatus": "PASS_LOCKED_365_DAYS",
+    "ramLeastPrivilegeStatus": "BLOCKED_MISSING_BUILDER_ROLE",
+    "actiontrailOssDataEventsStatus": "BLOCKED_NO_SLS_TRAIL",
+    "historicalEvidencePreservation": "FAILED_SOURCE_MISSING",
+    "evidenceLossException": "PENDING",
+    "storageTechnicalVerification": "PENDING",
+    "newBuildResult": "NOT_STARTED_BLOCKED",
+    "commit6Gate": "BLOCKED"
+  },
+  "originalFailureEvidence": {
+    "fileName": "trusted-build-failure-manifest.json",
+    "expectedDigest": {
+      "algorithm": "sha256",
+      "value": "b4504d3754f398b3b2899815c0a5b55040613c4ba7ea7b0befbc3832bf077d93"
+    },
+    "originalPath": "/tmp/ai-game-maker-trusted-build-.../trusted-build-failure-manifest.json",
+    "originalPathPrecision": "PARTIAL_PATH_PATTERN_ONLY",
+    "status": "SOURCE_FILE_NOT_FOUND",
+    "mayReconstructAsOriginal": false
+  },
+  "diagnosticEvidence": {
+    "fileName": "25_diagnostic-result-manifest.json",
+    "expectedDigest": {
+      "algorithm": "sha256",
+      "value": "42e8627c6e0731de3fbc74ced98103e0eecc35c324991b1e817b41c3c59757fc"
+    },
+    "originalPath": "/tmp/ai-game-maker-diagnostic-.../25_diagnostic-result-manifest.json",
+    "originalPathPrecision": "PARTIAL_PATH_PATTERN_ONLY",
+    "status": "SOURCE_FILE_NOT_FOUND",
+    "mayReconstructAsOriginal": false
+  },
+  "searchScope": [
+    "/tmp",
+    "/var/folders",
+    "Documents",
+    "Desktop",
+    "Downloads"
+  ],
+  "reconstructionAttempted": false,
+  "originalEvidenceReconstructionAuthorized": false,
+  "substituteOriginalManifestAllowed": false,
+  "oldCandidateDisposition": "FAILED_NON_RELEASABLE",
+  "oldReleaseDisposition": "ABORTED_NO_ARTIFACT",
+  "historicalEvidencePreservation": "FAILED_SOURCE_MISSING",
+  "evidenceLossException": {
+    "status": "PENDING",
+    "decisionName": "EVIDENCE_LOSS_EXCEPTION_DECISION",
+    "decisionMaker": "Bruce",
+    "approvalRequired": true,
+    "approvalScope": "ONE_TIME_EVIDENCE_LOSS_EXCEPTION",
+    "decision": "PENDING",
+    "historicalEvidenceStatus": "FAILED_SOURCE_MISSING",
+    "originalEvidenceReconstructionAuthorized": "NO",
+    "oldCandidateUsableForRelease": "NO",
+    "oldCandidateDisposition": "FAILED_NON_RELEASABLE",
+    "oldReleaseUsableForRelease": "NO",
+    "exceptionScope": "ONLY_THE_TWO_MISSING_MANIFESTS_FROM_THE_FAILED_AND_DIAGNOSTIC_RUNS",
+    "recommendedDecision": "AUTHORIZE_NEW_RUN_AFTER_STORAGE_CONTROLS_PASS",
+    "commit6Gate": "BLOCKED"
+  },
+  "remainingActions": [
+    {
+      "action": "CREATE_EVIDENCE_WRITER_RAM_ROLE",
+      "roleName": "ai-game-maker-evidence-writer",
+      "authentication": "STS_ASSUME_ROLE_ONLY",
+      "longTermAccessKeyAllowed": false,
+      "sourceIdentityRequired": "<build-run-id>",
+      "status": "BLOCKED_MISSING_BUILDER_ROLE"
+    },
+    {
+      "action": "CREATE_ACTIONTRAIL_OSS_DATA_EVENT_TRAIL",
+      "trailName": "ai-game-maker-evidence-audit",
+      "deliveryTarget": "SLS_LOGSTORE",
+      "bucketScope": "together-game",
+      "retentionDays": 365,
+      "minimumVerifiedEvents": [
+        "PutObject",
+        "GetObject",
+        "HeadObject",
+        "ListObjectVersions"
+      ],
+      "costImpact": "SLS_STORAGE_AND_QUERY_COSTS_APPLY",
+      "status": "BLOCKED_NO_SLS_TRAIL"
+    },
+    {
+      "action": "APPROVE_EVIDENCE_LOSS_EXCEPTION",
+      "decisionMaker": "Bruce",
+      "scope": "ONLY_THE_TWO_MISSING_MANIFESTS_FROM_THE_FAILED_AND_DIAGNOSTIC_RUNS",
+      "status": "PENDING"
+    },
+    {
+      "action": "AUTHORIZE_NEW_TRUSTED_RELEASE_BUILD",
+      "status": "BLOCKED_UNTIL_CLOUD_PREFLIGHT_AND_BRUCE_APPROVAL"
+    }
+  ],
+  "compensatingControlsRequired": [
+    "Dedicated STS-based evidence writer role",
+    "ActionTrail OSS data event audit enabled",
+    "SSE-OSS AES256 enabled",
+    "BucketWorm locked for 365 days",
+    "Future evidence uploaded directly to OSS before each gate completes",
+    "Local /tmp is never treated as authoritative evidence storage",
+    "Upload, download and dual SHA-256 verification required",
+    "Object Version ID and audit event ID recorded"
+  ],
+  "historicalSourceCommit": {
+    "commit": "9171900",
+    "disposition": "HISTORICAL_DIAGNOSTIC_SOURCE_COMMIT_ONLY"
+  },
+  "localGovernanceCommitEffect": "FORMS_NEW_SOURCE_COMMIT_ONLY",
+  "newBuildResult": "NOT_STARTED_BLOCKED",
+  "nextReleaseBuildRequirement": "CLOUD_PREFLIGHT_AND_BRUCE_APPROVAL_REQUIRED"
+}
