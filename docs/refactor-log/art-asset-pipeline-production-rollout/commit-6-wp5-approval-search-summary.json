@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "commit_6_wp5_approval_search_summary.v0.1",
+  "summaryId": "commit6-wp5-approval-search-summary-wp5_20260621T201832Z_455a4bd0",
+  "createdAt": "2026-06-21T20:18:32Z",
+  "wp5VerificationRunId": "wp5_20260621T201832Z_455a4bd0",
+  "searchScope": "git-tracked repository evidence",
+  "commandsExecuted": [
+    "git grep -n -i approvalId",
+    "git grep -n -i approverPrincipal",
+    "git grep -n -i approvedBaseline",
+    "git grep -n -i approvedRollbackTarget",
+    "git grep -n -i approvedCanaryScope",
+    "git grep -n -i safeRollbackAuthorization",
+    "git grep -n -i rollbackDrillAuthorization",
+    "git grep -n -i verificationEnvironment",
+    "git grep -n -i evidence-writer"
+  ],
+  "candidateClassesFound": [
+    {
+      "class": "SCHEMA_OR_TEMPLATE",
+      "acceptedAsApproval": false,
+      "reason": "Schemas and templates are not authority-issued approval records."
+    },
+    {
+      "class": "VALIDATOR_TEST_FIXTURE",
+      "acceptedAsApproval": false,
+      "reason": "Test fixtures are explicitly disallowed as approval evidence."
+    },
+    {
+      "class": "BLOCKED_GOVERNANCE_RECORD",
+      "acceptedAsApproval": false,
+      "reason": "Existing records state NOT_APPROVED, REVIEW_REQUIRED, MISSING, or BLOCKED."
+    },
+    {
+      "class": "HISTORICAL_EVIDENCE_WRITER_RECEIPT",
+      "acceptedAsApproval": false,
+      "reason": "Prior WP1-WP4 evidence-writer receipts do not authorize this WP5 run, verification drill, or WP5 WORM upload."
+    }
+  ],
+  "validIndependentApprovalRecordsFound": [],
+  "approvalVerification": {
+    "deploymentRunbookApproval": "REVIEW_REQUIRED",
+    "rollbackRunbookApproval": "REVIEW_REQUIRED",
+    "sliParityCriteriaApproval": "REVIEW_REQUIRED",
+    "approvedBaseline": "NOT_APPROVED",
+    "approvedRollbackTarget": "NOT_APPROVED",
+    "approvedCanaryScope": "NOT_APPROVED",
+    "safeRollbackAuthorization": "NOT_APPROVED",
+    "rollbackDrillAuthorization": "NOT_APPROVED",
+    "verificationEnvironmentAuthorization": "NOT_APPROVED",
+    "evidenceWriterSessionAuthorization": "NOT_APPROVED"
+  },
+  "separationOfDutiesCheck": "NOT_EVALUABLE_NO_APPROVAL_RECORD",
+  "approvalAgentSelfApprovalAttempted": "NO",
+  "authorizedVerificationDrillAllowed": false,
+  "authorizedVerificationDrillPerformed": "NO",
+  "receiptStatus": {
+    "deploy": "MISSING",
+    "canary": "MISSING",
+    "rollback": "MISSING"
+  },
+  "conclusion": "NO_VALID_INDEPENDENT_APPROVAL_FOUND",
+  "workPackage5": "BLOCKED_GOVERNANCE_REQUIREMENT_AMBIGUITY",
+  "releaseAuthorization": false,
+  "workPackage6": "NOT_STARTED_BLOCKED"
+}

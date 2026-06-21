@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "commit_6_wp5_authority_decision_request.v0.1",
+  "requestId": "commit6-wp5-authority-decision-request-wp5_20260621T201832Z_455a4bd0",
+  "createdAt": "2026-06-21T20:18:32Z",
+  "status": "REQUESTED",
+  "wp5VerificationRunId": "wp5_20260621T201832Z_455a4bd0",
+  "startingGovernanceCommit": "455a4bd041afe8b6385444bd2dd7ef8b035deb1d",
+  "releaseSourceCommit": "81f92081da94cface172267fed6b2835922e35e7",
+  "wp4BuildRunId": "build_20260621T163428Z_7cc8af61",
+  "artifactUri": "oss://together-game/ai-game-maker/release-evidence/trusted-build-artifacts/build_20260621T163428Z_7cc8af61/sha256-7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f/ai-game-maker-workbench-release_20260621T163428Z_7cc8af61.tar.gz",
+  "artifactSha256": "sha256:7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f",
+  "governanceRequirementCycleCheck": "UNKNOWN_REQUIRES_AUTHORITY_DECISION",
+  "currentAmbiguity": {
+    "wp5PassRequiresReceipts": true,
+    "receiptGenerationAuthorityBeforeWp5Pass": "UNKNOWN",
+    "releaseAuthorizationRequiresWp5Pass": true,
+    "cycleCannotBeExcludedFromRepositoryEvidence": true
+  },
+  "authorityDecisionNeeded": [
+    "APPROVED_ISOLATED_OR_NON_PRODUCTION_VERIFICATION_ENVIRONMENT",
+    "ACCEPTABLE_DEPLOY_RECEIPT_SOURCE",
+    "ACCEPTABLE_CANARY_RECEIPT_SOURCE",
+    "ACCEPTABLE_ROLLBACK_RECEIPT_SOURCE",
+    "ROLE_ALLOWED_TO_AUTHORIZE_VERIFICATION_DRILL",
+    "ROLE_ALLOWED_TO_EXECUTE_VERIFICATION_DRILL",
+    "WHETHER_ACTUAL_ROLLBACK_IS_REQUIRED_FOR_WP5",
+    "BOUNDARY_BETWEEN_VERIFICATION_DEPLOYMENT_AND_PRODUCTION_DEPLOYMENT",
+    "EVIDENCE_WRITER_SESSION_AUTHORIZATION_SOURCE"
+  ],
+  "constraints": {
+    "codexMayNotApprove": true,
+    "rootMayNotBypass": true,
+    "productionEnvironmentMayNotBeUsedForWp5Receipts": true,
+    "chatPromptApprovalIsNotAccepted": true,
+    "releaseAuthorizationRemainsFalse": true,
+    "commit6GateRemainsBlocked": true
+  },
+  "requiredDecisionRecordFields": [
+    "authoritySystem",
+    "authorityRecordId",
+    "decision",
+    "approverPrincipal",
+    "approverRole",
+    "executorPrincipal",
+    "separationOfDutiesCheck",
+    "approvedEnvironment",
+    "allowedOperations",
+    "boundReleaseSourceCommit",
+    "boundWp4BuildRunId",
+    "boundArtifactSha256",
+    "issuedAt",
+    "expiresAt",
+    "revocationStatus",
+    "signatureOrProviderVerification",
+    "evidenceUri",
+    "evidenceSha256"
+  ],
+  "currentDecision": "NOT_AVAILABLE",
+  "workPackage5": "BLOCKED_GOVERNANCE_REQUIREMENT_AMBIGUITY",
+  "authorizedVerificationDrillPerformed": "NO",
+  "releaseAuthorization": false,
+  "workPackage6": "NOT_STARTED_BLOCKED"
+}
