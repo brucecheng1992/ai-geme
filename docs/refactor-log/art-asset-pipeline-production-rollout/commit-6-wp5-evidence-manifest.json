@@ -1,0 +1,124 @@
+{
+  "schemaVersion": "commit_6_wp5_evidence_manifest.v0.1",
+  "manifestId": "commit6-wp5-evidence-wp5_20260621T190716Z_d969e49b",
+  "verificationRunId": "wp5_20260621T190716Z_d969e49b",
+  "releaseSourceCommit": "81f92081da94cface172267fed6b2835922e35e7",
+  "buildRunId": "build_20260621T163428Z_7cc8af61",
+  "artifactDigest": "sha256:7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f",
+  "wp5ControlCommit": "971e5a52dc706f89b03ab0b83a12ff3080957491",
+  "sourceImpactAssessment": {
+    "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-source-impact-assessment.json",
+    "sha256": "sha256:865788531160be3d411d3ff97e26449a48ec82bf8d3d86281e48f5ce8afc7453",
+    "classification": "CONTROL_PLANE_ONLY",
+    "wp4RerunRequired": false
+  },
+  "gapMatrix": {
+    "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-gap-matrix.json",
+    "sha256": "sha256:00f606a5311112373fc1820b73a446223e624d2ea9c8c31a6bcd3ceee046d7b5"
+  },
+  "deploymentRunbook": {
+    "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-deployment-runbook.md",
+    "documentVersion": "commit-6-deployment-runbook.v0.1",
+    "status": "REVIEW_REQUIRED",
+    "sha256": "sha256:c93f458916b88b0964fb52b8ef5a21f0ad9ad2ee9403a80a67e191121067d9f8"
+  },
+  "rollbackRunbook": {
+    "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-rollback-runbook.md",
+    "documentVersion": "commit-6-rollback-runbook.v0.1",
+    "status": "REVIEW_REQUIRED",
+    "sha256": "sha256:f1b88f109554dc7158035bf48a3daecde529f83502709f9b67b60fa4c4beee3a"
+  },
+  "sliParityCriteria": {
+    "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-sli-parity-criteria.json",
+    "documentVersion": "commit-6-sli-parity-criteria.v0.1",
+    "status": "REVIEW_REQUIRED",
+    "sha256": "sha256:bc905e93d0fb8c0a00511701126147acf6e3b546d9a5345c9a4cca8b55e592e6"
+  },
+  "approvalEvidenceSchema": {
+    "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-approval-evidence.schema.json",
+    "sha256": "sha256:8f0fdfddf50e94d8882c1511430ec479fa16cc94a981d5107609a4df902160db"
+  },
+  "approvalRequestTemplate": {
+    "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-approval-request-template.json",
+    "sha256": "sha256:23eab45db7de5c211dac7974b0791fcd4c879739249b6fe43481b683636775cc"
+  },
+  "validator": {
+    "path": "scripts/commit-6-readiness-validator.ts",
+    "validatorVersion": "commit-6-readiness-validator.v0.1",
+    "validatorCommit": "971e5a52dc706f89b03ab0b83a12ff3080957491",
+    "sha256": "sha256:04c40f3df3f251ddd0e9810a4fd8cd792e97866c67a71c58acc80b61f39b0f50",
+    "testCommand": "npx vitest run tests/contracts/commit-6-readiness-validator.test.ts",
+    "testResult": "PASS_19_TESTS"
+  },
+  "validatorInput": {
+    "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-validator-input.json",
+    "sha256": "sha256:a753a6945a18411891b4d3069e9120cbafb620c421e71e72bde94bd9f25b5064"
+  },
+  "validatorResult": {
+    "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-validator-result.json",
+    "sha256": "sha256:fccdc7a96d43f4819f956c6fed3e5f214d8e378790e311bfbc90498a9e881df3",
+    "result": "BLOCKED",
+    "exitCode": 1,
+    "reasonCodes": [
+      "DEPLOYMENT_RUNBOOK_NOT_APPROVED",
+      "ROLLBACK_RUNBOOK_NOT_APPROVED",
+      "SLI_PARITY_CRITERIA_NOT_APPROVED",
+      "SLI_PARITY_BASELINE_NOT_APPROVED",
+      "APPROVEDBASELINE_NOT_APPROVED",
+      "APPROVEDROLLBACKTARGET_NOT_APPROVED",
+      "APPROVEDCANARYSCOPE_NOT_APPROVED",
+      "SAFEROLLBACKAUTHORIZATION_NOT_APPROVED",
+      "ROLLBACKDRILLAUTHORIZATION_NOT_APPROVED",
+      "CANARY_SCOPE_OR_RECEIPT_NOT_READY",
+      "ROLLBACK_TARGET_OR_RECEIPT_NOT_READY",
+      "DEPLOY_RECEIPT_MISSING",
+      "CANARY_RECEIPT_MISSING",
+      "ROLLBACK_RECEIPT_MISSING",
+      "SLI_VERIFICATION_NOT_PASS",
+      "PARITY_VERIFICATION_NOT_PASS"
+    ]
+  },
+  "approvalEvidence": {
+    "approvedBaseline": "NOT_APPROVED",
+    "approvedRollbackTarget": "NOT_APPROVED",
+    "approvedCanaryScope": "NOT_APPROVED",
+    "safeRollbackAuthorization": "NOT_APPROVED",
+    "rollbackDrillAuthorization": "NOT_APPROVED"
+  },
+  "platformReceipts": {
+    "deployReceipt": "MISSING",
+    "canaryReceipt": "MISSING",
+    "rollbackReceipt": "MISSING",
+    "authorizedVerificationDrillPerformed": "NO",
+    "productionDeploymentPerformed": "NO"
+  },
+  "wormEvidence": {
+    "policyRequiresWormPreservation": true,
+    "status": "NOT_UPLOADED_BLOCKED",
+    "blocker": "BLOCKED_NO_ACTIVE_APPROVED_EVIDENCE_WRITER_SESSION",
+    "localAliyunCli": "NOT_AVAILABLE",
+    "approvedEvidenceWriterSession": "NOT_AVAILABLE",
+    "objectUri": "NOT_GENERATED",
+    "versionId": "NOT_GENERATED",
+    "putObjectRequestId": "NOT_AVAILABLE",
+    "headObjectRequestId": "NOT_AVAILABLE",
+    "getObjectRequestId": "NOT_AVAILABLE",
+    "roundTripVerification": "NOT_RUN",
+    "slsCorrelation": "NOT_RUN"
+  },
+  "unresolvedBlockers": [
+    "DEPLOYMENT_RUNBOOK_REVIEW_REQUIRED",
+    "ROLLBACK_RUNBOOK_REVIEW_REQUIRED",
+    "SLI_PARITY_CRITERIA_REVIEW_REQUIRED",
+    "APPROVED_BASELINE_MISSING",
+    "APPROVED_ROLLBACK_TARGET_MISSING",
+    "APPROVED_CANARY_SCOPE_MISSING",
+    "SAFE_ROLLBACK_AUTHORIZATION_MISSING",
+    "ROLLBACK_DRILL_AUTHORIZATION_MISSING",
+    "DEPLOY_RECEIPT_MISSING",
+    "CANARY_RECEIPT_MISSING",
+    "ROLLBACK_RECEIPT_MISSING",
+    "WP5_WORM_EVIDENCE_UPLOAD_BLOCKED"
+  ],
+  "finalWp5State": "BLOCKED_TECHNICAL_VERIFICATION_REQUIRED"
+}

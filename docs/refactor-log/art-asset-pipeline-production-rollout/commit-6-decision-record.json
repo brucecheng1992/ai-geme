@@ -1,9 +1,13 @@
 {
-  "schema": "commit_6_decision_record.v0.1",
+  "schema": "commit_6_decision_record.v0.2",
   "recordName": "COMMIT_6_DECISION_RECORD",
-  "recordedAt": "2026-06-21T18:47:40Z",
-  "decisionScope": "WP5_INDEPENDENT_ADMISSION",
-  "governanceBaseCommit": "7025570168bcbe206a00e416f9024c6cb4300710",
+  "recordedAt": "2026-06-21T19:16:26Z",
+  "decisionScope": "WP5_TECHNICAL_VERIFICATION",
+  "previousDecisionRecordSha256": "sha256:0b2af28caabe39d8fc5dd3fb0182757a9cb3692785d1c4c8267cd852cde92de6",
+  "currentDecisionRecordSha256": "RECORDED_EXTERNALLY_TO_AVOID_SELF_REFERENCE",
+  "startingGovernanceCommit": "d969e49b1409705d3da92f0b1582305c0bd275cc",
+  "wp5ControlCommit": "971e5a52dc706f89b03ab0b83a12ff3080957491",
+  "wp5VerificationRunId": "wp5_20260621T190716Z_d969e49b",
   "sourceCommit": "81f92081da94cface172267fed6b2835922e35e7",
   "buildRunId": "build_20260621T163428Z_7cc8af61",
   "buildAttemptId": "attempt_20260621T163428Z_7cc8af61",
@@ -11,6 +15,12 @@
   "releaseId": "release_20260621T163428Z_7cc8af61",
   "workspaceId": "workspace_20260621T163428Z_7cc8af61",
   "artifactSha256": "sha256:7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f",
+  "sourceImpact": {
+    "classification": "CONTROL_PLANE_ONLY",
+    "wp4RerunRequired": false,
+    "assessmentPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-source-impact-assessment.json",
+    "assessmentSha256": "sha256:865788531160be3d411d3ff97e26449a48ec82bf8d3d86281e48f5ce8afc7453"
+  },
   "releaseEvidence": {
     "releaseArtifact": {
       "objectUri": "oss://together-game/ai-game-maker/release-evidence/trusted-build-artifacts/build_20260621T163428Z_7cc8af61/sha256-7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f/ai-game-maker-workbench-release_20260621T163428Z_7cc8af61.tar.gz",
@@ -34,159 +44,125 @@
       "status": "PASS_9_OF_9_WITH_REQUEST_ID_CORRECTION"
     }
   },
-  "checkedSources": [
-    {
-      "path": "docs/refactor-log/art-asset-pipeline-production-rollout/artifact-storage-policy.md",
-      "purpose": "WP4 evidence, storage controls, and current gate state"
+  "wp5ControlAssets": {
+    "gapMatrix": {
+      "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-gap-matrix.json",
+      "sha256": "sha256:00f606a5311112373fc1820b73a446223e624d2ea9c8c31a6bcd3ceee046d7b5"
     },
-    {
-      "path": "docs/refactor-log/art-asset-pipeline-production-rollout/evidence-loss-record.json",
-      "purpose": "WORM receipts, SLS correlation, release identity, and remaining actions"
+    "deploymentRunbook": {
+      "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-deployment-runbook.md",
+      "documentVersion": "commit-6-deployment-runbook.v0.1",
+      "status": "REVIEW_REQUIRED",
+      "sha256": "sha256:c93f458916b88b0964fb52b8ef5a21f0ad9ad2ee9403a80a67e191121067d9f8"
     },
-    {
-      "path": "docs/refactor-log/art-asset-pipeline-production-rollout/step-14a-production-rollout-gate.md",
-      "purpose": "controlled rollout guard and rollback policy"
+    "rollbackRunbook": {
+      "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-rollback-runbook.md",
+      "documentVersion": "commit-6-rollback-runbook.v0.1",
+      "status": "REVIEW_REQUIRED",
+      "sha256": "sha256:f1b88f109554dc7158035bf48a3daecde529f83502709f9b67b60fa4c4beee3a"
     },
-    {
-      "path": "docs/refactor-log/art-asset-pipeline-production-rollout/step-14b-controlled-rollout.md",
-      "purpose": "non-default rollout helper validation record"
+    "sliParityCriteria": {
+      "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-sli-parity-criteria.json",
+      "documentVersion": "commit-6-sli-parity-criteria.v0.1",
+      "status": "REVIEW_REQUIRED",
+      "sha256": "sha256:bc905e93d0fb8c0a00511701126147acf6e3b546d9a5345c9a4cca8b55e592e6"
     },
-    {
-      "path": "docs/refactor-log/art-asset-pipeline-production-rollout/validation-and-ci-matrix.md",
-      "purpose": "available validation matrix"
+    "approvalEvidenceSchema": {
+      "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-approval-evidence.schema.json",
+      "sha256": "sha256:8f0fdfddf50e94d8882c1511430ec479fa16cc94a981d5107609a4df902160db"
     },
-    {
-      "path": "package.json",
-      "purpose": "available npm scripts and absence of deploy command"
+    "approvalRequestTemplate": {
+      "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-approval-request-template.json",
+      "sha256": "sha256:23eab45db7de5c211dac7974b0791fcd4c879739249b6fe43481b683636775cc"
     }
-  ],
-  "decisionItems": [
-    {
-      "id": 1,
-      "name": "Deployment runbook location",
-      "status": "BLOCKED_NOT_FOUND_VERSIONED_RUNBOOK",
-      "finding": "No versioned Commit 6 deployment runbook bound to this release ID and artifact digest was found. Existing npm scripts do not expose a deploy command."
-    },
-    {
-      "id": 2,
-      "name": "Rollback runbook location",
-      "status": "BLOCKED_NOT_COMMIT6_BOUND",
-      "finding": "Existing Step 14 rollback notes cover disabling the non-default feature flag, but no Commit 6 rollback runbook with precise trigger, target, validation, and escalation path is approved for this release."
-    },
-    {
-      "id": 3,
-      "name": "Gate Input Manifest location",
-      "status": "PASS_WORM_VERIFIED",
-      "finding": "The Gate Input Manifest has a WORM OSS URI, Version ID, SHA-256 digest, readback verification, and 9/9 SLS correlation with a recorded Request ID correction."
-    },
-    {
-      "id": 4,
-      "name": "Gate validator required in candidate repository",
-      "status": "TECHNICAL_VERIFICATION_REQUIRED",
-      "finding": "No Commit 6 gate validator that consumes the Gate Input Manifest and validates the final readiness predicates was identified in the candidate repository."
-    },
-    {
-      "id": 5,
-      "name": "SLI and parity criteria may be externally versioned",
-      "status": "BLOCKED_NOT_VERSIONED_FOR_COMMIT6",
-      "finding": "Repository docs list categories such as availability, error rate, latency, functional parity, rendering parity, build/runtime health, and rollback health, but no immutable external criteria binding was found for this release."
-    },
-    {
-      "id": 6,
-      "name": "Runtime evidence sufficient without repository changes",
-      "status": "INCONCLUSIVE",
-      "finding": "WP4 build and test evidence is valid for the artifact, but Commit 6 runtime readiness still lacks deployment, canary, observability, rollback, and parity evidence."
-    },
-    {
-      "id": 7,
-      "name": "Existing build/deploy/rollback platform capability verified",
-      "status": "TECHNICAL_VERIFICATION_REQUIRED",
-      "finding": "Build capability is evidenced by WP4. Deploy, canary, exact digest deployment, active pointer atomicity, health monitoring, rollback, rollback receipt, and deployment audit logging are not evidenced by real receipts."
-    },
-    {
-      "id": 8,
-      "name": "Approved baseline",
-      "status": "BLOCKED_NOT_APPROVED",
-      "finding": "No approved baseline release ID, immutable artifact digest, and verification evidence reference was found."
-    },
-    {
-      "id": 9,
-      "name": "Approved rollback target",
-      "status": "BLOCKED_NOT_APPROVED",
-      "finding": "No approved rollback target release ID, immutable artifact digest, and verified recoverability evidence was found."
-    },
-    {
-      "id": 10,
-      "name": "Approved canary scope",
-      "status": "BLOCKED_NOT_APPROVED",
-      "finding": "No canary scope was approved with environment, cluster, traffic percentage, cohort, start condition, observation window, abort thresholds, and rollback trigger."
-    },
-    {
-      "id": 11,
-      "name": "Safety rollback authorized",
-      "status": "BLOCKED_NOT_AUTHORIZED",
-      "finding": "No explicit safety rollback authorization was found for this release."
-    },
-    {
-      "id": 12,
-      "name": "Planned rollback drill authorized",
-      "status": "BLOCKED_NOT_AUTHORIZED",
-      "finding": "No planned rollback drill authorization was found for this release."
-    },
-    {
-      "id": 13,
-      "name": "Repository changes required",
-      "status": "TECHNICAL_VERIFICATION_REQUIRED",
-      "finding": "A deploy/runbook/validator owner decision is required before determining the exact repository changes. At minimum, the current repository does not contain a Commit 6 gate validator or release-bound runbook reference."
-    },
-    {
-      "id": 14,
-      "name": "Exact required changes",
-      "status": "NOT_DETERMINED",
-      "finding": "Exact changes cannot be safely listed until deployment runbook, rollback target, canary scope, SLI/parity criteria, and validator ownership are approved."
-    },
-    {
-      "id": 15,
-      "name": "Final Commit 6 readiness decision",
-      "status": "BLOCKED",
-      "finding": "WP5 does not pass. Commit 6 runtime readiness remains technical-verification required; WP6, final gate, and deployment remain blocked."
-    }
-  ],
-  "platformCapabilityEvidence": {
-    "buildCapability": "PASS_WP4_TRUSTED_BUILD",
-    "deployCapability": "TECHNICAL_VERIFICATION_REQUIRED_NO_REAL_RECEIPT",
-    "canaryCapability": "TECHNICAL_VERIFICATION_REQUIRED_NO_REAL_RECEIPT",
-    "rollbackCapability": "TECHNICAL_VERIFICATION_REQUIRED_NO_REAL_RECEIPT",
-    "immutableArtifactResolution": "PASS_FOR_WORM_STORAGE_ONLY_NOT_DEPLOYMENT_RESOLUTION",
-    "exactDigestDeployment": "TECHNICAL_VERIFICATION_REQUIRED_NO_REAL_RECEIPT",
-    "auditLogging": "PASS_FOR_WORM_OBJECTS_ONLY_DEPLOYMENT_AUDIT_NOT_VERIFIED",
-    "healthMonitoring": "TECHNICAL_VERIFICATION_REQUIRED_NO_REAL_RECEIPT",
-    "rollbackReceipt": "TECHNICAL_VERIFICATION_REQUIRED_NO_REAL_RECEIPT",
-    "activePointerAtomicity": "TECHNICAL_VERIFICATION_REQUIRED_NO_REAL_RECEIPT"
   },
-  "requiredApprovalsAndEvidence": {
-    "approvedBaseline": "MISSING",
-    "approvedRollbackTarget": "MISSING",
-    "approvedCanaryScope": "MISSING",
-    "safetyRollbackAuthorization": "MISSING",
-    "plannedRollbackDrillAuthorization": "MISSING",
-    "versionedDeploymentRunbook": "MISSING",
-    "versionedRollbackRunbook": "MISSING",
-    "versionedSliParityCriteria": "MISSING",
-    "commit6GateValidator": "MISSING_OR_UNVERIFIED"
+  "validator": {
+    "path": "scripts/commit-6-readiness-validator.ts",
+    "version": "commit-6-readiness-validator.v0.1",
+    "sha256": "sha256:04c40f3df3f251ddd0e9810a4fd8cd792e97866c67a71c58acc80b61f39b0f50",
+    "testCommand": "npx vitest run tests/contracts/commit-6-readiness-validator.test.ts",
+    "testResult": "PASS_19_TESTS",
+    "realInputPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-validator-input.json",
+    "realInputSha256": "sha256:a753a6945a18411891b4d3069e9120cbafb620c421e71e72bde94bd9f25b5064",
+    "realInputResultPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-validator-result.json",
+    "realInputResultSha256": "sha256:fccdc7a96d43f4819f956c6fed3e5f214d8e378790e311bfbc90498a9e881df3",
+    "realInputResult": "BLOCKED",
+    "realInputExitCode": 1,
+    "reasonCodes": [
+      "DEPLOYMENT_RUNBOOK_NOT_APPROVED",
+      "ROLLBACK_RUNBOOK_NOT_APPROVED",
+      "SLI_PARITY_CRITERIA_NOT_APPROVED",
+      "SLI_PARITY_BASELINE_NOT_APPROVED",
+      "APPROVEDBASELINE_NOT_APPROVED",
+      "APPROVEDROLLBACKTARGET_NOT_APPROVED",
+      "APPROVEDCANARYSCOPE_NOT_APPROVED",
+      "SAFEROLLBACKAUTHORIZATION_NOT_APPROVED",
+      "ROLLBACKDRILLAUTHORIZATION_NOT_APPROVED",
+      "CANARY_SCOPE_OR_RECEIPT_NOT_READY",
+      "ROLLBACK_TARGET_OR_RECEIPT_NOT_READY",
+      "DEPLOY_RECEIPT_MISSING",
+      "CANARY_RECEIPT_MISSING",
+      "ROLLBACK_RECEIPT_MISSING",
+      "SLI_VERIFICATION_NOT_PASS",
+      "PARITY_VERIFICATION_NOT_PASS"
+    ]
+  },
+  "approvalSummary": {
+    "approvedBaseline": "NOT_APPROVED",
+    "approvedRollbackTarget": "NOT_APPROVED",
+    "approvedCanaryScope": "NOT_APPROVED",
+    "safeRollbackAuthorization": "NOT_APPROVED",
+    "rollbackDrillAuthorization": "NOT_APPROVED"
+  },
+  "receiptSummary": {
+    "deployReceipt": "MISSING",
+    "canaryReceipt": "MISSING",
+    "rollbackReceipt": "MISSING",
+    "authorizedVerificationDrillPerformed": "NO",
+    "productionDeploymentPerformed": "NO"
+  },
+  "sliVerification": "NOT_APPROVED",
+  "parityVerification": "NOT_APPROVED",
+  "wp5EvidenceManifest": {
+    "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-evidence-manifest.json",
+    "sha256": "sha256:5c38ee0f266c48d175c7a45c25eaa8a6b86ad46a843cbaec9ebf8f3a7edb8874",
+    "wormStatus": "NOT_UPLOADED_BLOCKED",
+    "wormBlocker": "BLOCKED_NO_ACTIVE_APPROVED_EVIDENCE_WRITER_SESSION",
+    "wp5EvidenceUri": "NOT_GENERATED",
+    "wp5EvidenceVersionId": "NOT_GENERATED",
+    "roundTripVerification": "NOT_RUN",
+    "slsCorrelation": "NOT_RUN"
   },
   "admissionOutcome": {
     "workPackage5": "BLOCKED_TECHNICAL_VERIFICATION_REQUIRED",
     "commit6RuntimeReadiness": "TECHNICAL_VERIFICATION_REQUIRED",
     "releaseAuthorization": false,
+    "commit6Ready": false,
     "workPackage6": "NOT_STARTED_BLOCKED",
     "commit6Gate": "BLOCKED_PENDING_WP5_TECHNICAL_VERIFICATION",
-    "deploymentPerformed": false
+    "deploymentPerformed": false,
+    "productionDeploymentPerformed": "NO"
   },
-  "nextActions": [
-    "Produce or reference immutable deployment and rollback runbooks bound to release_20260621T163428Z_7cc8af61 and sha256:7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f.",
-    "Approve baseline, rollback target, canary scope, safety rollback, and rollback drill with explicit release IDs and artifact digests.",
-    "Verify deploy, canary, exact digest deployment, health monitoring, rollback receipt, active pointer atomicity, and deployment audit logging with real receipts.",
-    "Define or bind the Commit 6 gate validator that consumes the Gate Input Manifest and final readiness evidence."
-  ]
+  "remainingBlockers": [
+    "DEPLOYMENT_RUNBOOK_REVIEW_REQUIRED",
+    "ROLLBACK_RUNBOOK_REVIEW_REQUIRED",
+    "SLI_PARITY_CRITERIA_REVIEW_REQUIRED",
+    "APPROVED_BASELINE_MISSING",
+    "APPROVED_ROLLBACK_TARGET_MISSING",
+    "APPROVED_CANARY_SCOPE_MISSING",
+    "SAFE_ROLLBACK_AUTHORIZATION_MISSING",
+    "ROLLBACK_DRILL_AUTHORIZATION_MISSING",
+    "DEPLOY_RECEIPT_MISSING",
+    "CANARY_RECEIPT_MISSING",
+    "ROLLBACK_RECEIPT_MISSING",
+    "WP5_WORM_EVIDENCE_UPLOAD_BLOCKED"
+  ],
+  "forbiddenActionsNotPerformed": {
+    "wp6Started": false,
+    "commit6FinalGateExecuted": false,
+    "releaseAuthorizationGranted": false,
+    "productionDeploymentPerformed": false,
+    "productionCanaryStarted": false,
+    "rollbackDrillPerformed": false
+  }
 }

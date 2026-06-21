@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "commit_6_wp5_source_impact_assessment.v0.1",
+  "verificationRunId": "wp5_20260621T190716Z_d969e49b",
+  "releaseSourceCommit": "81f92081da94cface172267fed6b2835922e35e7",
+  "assessmentResult": "CONTROL_PLANE_ONLY",
+  "wp4RerunRequired": false,
+  "assessmentBasis": [
+    "No runtime package source was changed.",
+    "No package.json or package-lock.json dependency graph was changed.",
+    "No build configuration was changed.",
+    "No release artifact input was regenerated.",
+    "Added files are governance docs, machine-readable criteria/templates, a validator script, and validator tests."
+  ],
+  "controlPlaneFiles": [
+    "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-approval-evidence.schema.json",
+    "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-approval-request-template.json",
+    "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-deployment-runbook.md",
+    "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-rollback-runbook.md",
+    "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-sli-parity-criteria.json",
+    "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-gap-matrix.json",
+    "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-validator-input.json",
+    "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-validator-result.json",
+    "scripts/commit-6-readiness-validator.ts",
+    "tests/contracts/commit-6-readiness-validator.test.ts"
+  ],
+  "releaseSourceImpactingFiles": [],
+  "blockedIfChangedLater": [
+    "runtime source",
+    "package.json",
+    "package-lock.json",
+    "build configuration",
+    "release artifact packaging input",
+    "production runtime configuration"
+  ]
+}

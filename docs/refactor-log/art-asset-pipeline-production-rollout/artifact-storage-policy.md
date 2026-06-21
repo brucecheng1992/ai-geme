@@ -330,15 +330,34 @@ SLS_CORRELATION_RESOURCE_EVENT_SOURCE_IDENTITY_FIELD=FAIL_MISSING
 RELEASE_AUTHORIZATION=false
 WORK_PACKAGE_5=BLOCKED_TECHNICAL_VERIFICATION_REQUIRED
 COMMIT_6_DECISION_RECORD=docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-decision-record.json
-COMMIT_6_DECISION_RECORD_SHA256=sha256:0b2af28caabe39d8fc5dd3fb0182757a9cb3692785d1c4c8267cd852cde92de6
+COMMIT_6_DECISION_RECORD_PREVIOUS_SHA256=sha256:0b2af28caabe39d8fc5dd3fb0182757a9cb3692785d1c4c8267cd852cde92de6
+COMMIT_6_DECISION_RECORD_SHA256=sha256:e3fa32637cde8f776085fc791cc12c474935c35efc171b09682a3f95b9adc4ec
 COMMIT_6_RUNTIME_READINESS=TECHNICAL_VERIFICATION_REQUIRED
 APPROVED_BASELINE=NOT_APPROVED
 APPROVED_ROLLBACK_TARGET=NOT_APPROVED
 APPROVED_CANARY_SCOPE=NOT_APPROVED
-VERSIONED_DEPLOYMENT_RUNBOOK=NOT_FOUND
-COMMIT6_ROLLBACK_RUNBOOK=NOT_BOUND_TO_RELEASE
-COMMIT6_GATE_VALIDATOR=NOT_FOUND_OR_UNVERIFIED
+WP5_VERIFICATION_RUN_ID=wp5_20260621T190716Z_d969e49b
+WP5_CONTROL_COMMIT=971e5a52dc706f89b03ab0b83a12ff3080957491
+VERSIONED_DEPLOYMENT_RUNBOOK=CREATED_REVIEW_REQUIRED
+DEPLOYMENT_RUNBOOK_PATH=docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-deployment-runbook.md
+DEPLOYMENT_RUNBOOK_SHA256=sha256:c93f458916b88b0964fb52b8ef5a21f0ad9ad2ee9403a80a67e191121067d9f8
+COMMIT6_ROLLBACK_RUNBOOK=CREATED_REVIEW_REQUIRED
+ROLLBACK_RUNBOOK_PATH=docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-rollback-runbook.md
+ROLLBACK_RUNBOOK_SHA256=sha256:f1b88f109554dc7158035bf48a3daecde529f83502709f9b67b60fa4c4beee3a
+SLI_PARITY_CRITERIA=CREATED_REVIEW_REQUIRED
+SLI_PARITY_CRITERIA_PATH=docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-sli-parity-criteria.json
+SLI_PARITY_CRITERIA_SHA256=sha256:bc905e93d0fb8c0a00511701126147acf6e3b546d9a5345c9a4cca8b55e592e6
+COMMIT6_GATE_VALIDATOR=IMPLEMENTED_TESTED_REAL_INPUT_BLOCKED
+GATE_VALIDATOR_PATH=scripts/commit-6-readiness-validator.ts
+GATE_VALIDATOR_SHA256=sha256:04c40f3df3f251ddd0e9810a4fd8cd792e97866c67a71c58acc80b61f39b0f50
+GATE_VALIDATOR_TEST_RESULT=PASS_19_TESTS
+GATE_VALIDATOR_REAL_INPUT_RESULT=BLOCKED
+GATE_VALIDATOR_EXIT_CODE=1
 DEPLOY_CANARY_ROLLBACK_PLATFORM_RECEIPTS=NOT_VERIFIED
+WP5_EVIDENCE_MANIFEST_PATH=docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-evidence-manifest.json
+WP5_EVIDENCE_MANIFEST_SHA256=sha256:5c38ee0f266c48d175c7a45c25eaa8a6b86ad46a843cbaec9ebf8f3a7edb8874
+WP5_WORM_EVIDENCE_STATUS=NOT_UPLOADED_BLOCKED
+WP5_WORM_EVIDENCE_BLOCKER=BLOCKED_NO_ACTIVE_APPROVED_EVIDENCE_WRITER_SESSION
 WORK_PACKAGE_6=NOT_STARTED_BLOCKED
 DEPLOYMENT_PERFORMED=NO
 COMMIT_6_GATE=BLOCKED_PENDING_WP5_TECHNICAL_VERIFICATION
@@ -346,7 +365,9 @@ COMMIT_6_GATE=BLOCKED_PENDING_WP5_TECHNICAL_VERIFICATION
 
 The dependency validation blockers from the previous WP4 run were remediated in `81f92081da94cface172267fed6b2835922e35e7`. The rerun produced a release artifact, Gate Input Manifest, and provenance file, and each object was uploaded through the evidence-writer role with versioned OSS readback. A later root-account Cloud Shell session completed the SLS correlation and uploaded the correlation JSON to WORM OSS. The final correlation applies an explicit Request ID correction for `gateInputManifestPutObject`: the previously recorded `6A381D23216A4F363748B7E9` returned zero hits in both the authoritative and trail-level projects, while an object-key SLS query found the same Gate Input Manifest `PutObject` with expected temporary access-key hash under `6A381D23216A4F36374B87E9`.
 
-WP5 independent admission produced `docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-decision-record.json`. The Gate Input Manifest is WORM verified, but Commit 6 runtime readiness remains `TECHNICAL_VERIFICATION_REQUIRED`: no versioned deployment runbook, Commit 6-bound rollback runbook, gate validator, approved baseline, approved rollback target, approved canary scope, safety rollback authorization, rollback drill authorization, or real deploy/canary/rollback platform receipts were found. WP6, release authorization, deployment, and Commit 6 gate remain blocked.
+WP5 independent admission first produced `docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-decision-record.json` at `sha256:0b2af28caabe39d8fc5dd3fb0182757a9cb3692785d1c4c8267cd852cde92de6`. This revision preserves that digest as the previous version and records the current decision record digest externally as `sha256:e3fa32637cde8f776085fc791cc12c474935c35efc171b09682a3f95b9adc4ec` to avoid self-referential hashing.
+
+WP5 technical assets are now created: the deployment runbook, rollback runbook, SLI/parity criteria, approval schema/template, gap matrix, and fail-closed validator are versioned in this repository, and the validator tests passed. The real WP5 validator input remains `BLOCKED` because the runbooks and criteria still require external review, all Commit 6 approvals remain `NOT_APPROVED`, no real deploy/canary/rollback platform receipts exist, and no active approved evidence-writer session was available for WORM upload of the WP5 evidence manifest. WP6, release authorization, deployment, and Commit 6 gate remain blocked.
 
 Evidence writer role constraints:
 
