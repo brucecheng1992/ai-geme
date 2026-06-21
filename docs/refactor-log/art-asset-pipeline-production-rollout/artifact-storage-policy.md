@@ -71,14 +71,48 @@ PREVIOUS_VERSION_ID_STATUS=INVALID_NOT_FOUND_SUPERSEDED
 
 SLS_QUERY_PERMISSION_STATUS=PASS
 ACTIONTRAIL_ROLE_SESSION_AUDIT=PASS
-ACTIONTRAIL_OBJECT_DATA_EVENT_AUDIT=NOT_VERIFIED
-PREFLIGHT_RESULT=PARTIAL_PASS_BLOCKED_OBJECT_DATA_EVENT_AUDIT
+ACTIONTRAIL_OBJECT_DATA_EVENT_AUDIT=PASS_WITH_APPROVED_COMPENSATING_CORRELATION
+SOURCE_IDENTITY_AUDIT=PASS_WITH_APPROVED_COMPENSATING_CORRELATION
+RESOURCE_EVENT_SOURCE_IDENTITY_FIELD=FAIL_MISSING
+
+DIAGNOSTIC_EVIDENCE_UPLOAD=PASS
+DIAGNOSTIC_EVIDENCE_WORM_PRESERVATION=PASS
+DIAGNOSTIC_EVIDENCE_DOWNLOAD_VERIFICATION=PASS
+DIAGNOSTIC_EVIDENCE_OBJECT_URI=oss://together-game/ai-game-maker/release-evidence/diagnostics/source-identity/preflight_20260620T201848Z_3eccf398/sha256-69e0239ee8f51e9e9074d52a89088944b59bbff4aed66cb0a3b939e572e6411d/source-identity-propagation-diagnostic-20260621T104744Z-921f7ccb.json
+DIAGNOSTIC_EVIDENCE_VERSION_ID=CAEQTxiBgICRo5an9xkiIDU4Yjg2OTI1Y2VkNDQ0ODRiYzYwZjNtYWY0ZTU2MTMw
+DIAGNOSTIC_EVIDENCE_SHA256=sha256:69e0239ee8f51e9e9074d52a89088944b59bbff4aed66cb0a3b939e572e6411d
+DIAGNOSTIC_EVIDENCE_PUTOBJECT_REQUEST_ID=6A37C1509BFB6E38305BBC35
+DIAGNOSTIC_EVIDENCE_HEADOBJECT_REQUEST_ID=6A37C1500475283734E1167F
+DIAGNOSTIC_EVIDENCE_GETOBJECT_REQUEST_ID=6A37C150498ADD3237BF2A29
+DIAGNOSTIC_EVIDENCE_SOURCE_IDENTITY=evidence_preservation_20260621T104744Z_921f7ccb
+PROVIDER_TICKET_ID=00AWWPRR6J
+PROVIDER_TICKET_STATUS=PENDING_RESPONSE
+
+PREFLIGHT_MANIFEST_STATUS=GENERATED_UPLOADED_WORM_VERIFIED
+PREFLIGHT_RESULT=PASS_WITH_APPROVED_COMPENSATING_CORRELATION
+PREFLIGHT_MANIFEST_URI=oss://together-game/ai-game-maker/release-evidence/preflight-manifests/preflight_20260620T201848Z_3eccf398/sha256-4b6700091f7ee368c14224a38067e4fed20d64887d844f1b9a93d78337df5322/evidence-storage-preflight-manifest-20260621T122718Z-a207f737.json
+PREFLIGHT_MANIFEST_VERSION_ID=CAEQTxiBgIDPvyg9xkjIGV1Y2RhZWUxNDhmODRkNzI5MzY4N2FiODE0ZTRiYTI1
+PREFLIGHT_MANIFEST_SHA256=sha256:4b6700091f7ee368c14224a38067e4fed20d64887d844f1b9a93d78337df5322
+PREFLIGHT_MANIFEST_PUTOBJECT_REQUEST_ID=6A37D8A69B18ED3536745776
+PREFLIGHT_MANIFEST_HEADOBJECT_REQUEST_ID=6A37D8A69B18ED3536925776
+PREFLIGHT_MANIFEST_GETOBJECT_REQUEST_ID=6A37D8A6A1570F3933D8EE6B
+PREFLIGHT_MANIFEST_SOURCE_IDENTITY=preflight_manifest_20260621T122718Z_a207f737
+PREFLIGHT_MANIFEST_ASSUME_ROLE_REQUEST_ID=593E05DD-1C91-58EE-ACD0-C72F3DCF19ED
+PREFLIGHT_MANIFEST_ACCESS_KEY_ID_SHA256=sha256:86c7cc1d97857e3ce3244846844254abc03c2129bd6aeeb3c1d386c065b3741f
+PREFLIGHT_MANIFEST_UPLOAD_RECEIPT_SHA256=sha256:789a84c59c7628801bdf404019b36dc2e8f58de3e7f36d123f8dd411b0475d0f
+SLS_PREFLIGHT_MANIFEST_CORRELATION_SHA256=sha256:02e23c40a6ff0933c1a565f97d08173c6055985b4d0d894782e272995397743a
+SLS_PREFLIGHT_MANIFEST_AUDIT=PASS
+SLS_PREFLIGHT_MANIFEST_ACCESS_KEY_HASH_MATCH=PASS
+SLS_PREFLIGHT_MANIFEST_RESOURCE_EVENT_SOURCE_IDENTITY=FAIL_MISSING
 
 HISTORICAL_EVIDENCE_PRESERVATION=FAILED_SOURCE_MISSING
-EVIDENCE_LOSS_EXCEPTION=PENDING
+EVIDENCE_LOSS_EXCEPTION=APPROVED_ONE_TIME
+EVIDENCE_LOSS_EXCEPTION_DECISION=APPROVE_ONE_TIME_HISTORICAL_EVIDENCE_LOSS
+EVIDENCE_LOSS_EXCEPTION_APPROVED_AT=2026-06-21T12:40:54Z
 
-STORAGE_TECHNICAL_VERIFICATION=PENDING
-NEW_BUILD_RESULT=NOT_STARTED_BLOCKED
+STORAGE_TECHNICAL_VERIFICATION=PASS_WITH_APPROVED_EXCEPTION
+RELEASE_AUTHORIZATION=false
+NEW_BUILD_RESULT=NOT_STARTED_READY_FOR_WORK_PACKAGE_4
 ARTIFACT_SHA256=NOT_GENERATED
 DEPLOYMENT_PERFORMED=NO
 COMMIT_6_GATE=BLOCKED
@@ -108,25 +142,22 @@ OLD_CANDIDATE_DISPOSITION=FAILED_NON_RELEASABLE
 
 Required gate sequence:
 
-1. Commit the local governance documents and `evidence-loss-record.json`. This creates a new `SOURCE_COMMIT` only and does not clear any cloud gate.
-2. A cloud administrator allows the build principal to assume the evidence writer role through STS temporary credentials. The RAM role itself must not use a long-term AccessKey.
-3. The build role session sets `SourceIdentity=<build-run-id>` for audit traceability.
-4. Complete preflight verification for upload, read, version query, denied deletion, and request ID capture.
-5. Correlate OSS request IDs to ActionTrail object data events in SLS after waiting up to approximately 10 minutes and expanding the query time range.
-6. Generate and upload the preflight manifest after object data event correlation is complete.
-7. Bruce approves the one-time evidence loss exception.
-8. Authorize a brand-new trusted release build.
+1. Preserve the failed source-identity diagnostic record in WORM OSS and audit its `PutObject`, `HeadObject`, and `GetObject` events.
+2. Generate `evidence-storage-preflight-manifest.json`, upload it through `ai-game-maker-evidence-writer` STS credentials, verify versioned readback, and audit its `PutObject`, `HeadObject`, and `GetObject` events.
+3. Commit the local governance documents and `evidence-loss-record.json`. This creates a new `SOURCE_COMMIT` only and does not clear the release gate.
+4. Bruce approved the one-time historical evidence loss exception using the exact phrase `APPROVE_ONE_TIME_HISTORICAL_EVIDENCE_LOSS`.
+5. A brand-new trusted release build may start only from the governance commit created after this policy change.
 
 Observed blockers:
 
-- STS AssumeRole and `SourceIdentity` passed for the current OSS preflight, but this is only identity evidence. It does not clear the storage gate until object data events are correlated and the preflight manifest is uploaded.
+- STS AssumeRole and `SourceIdentity` passed for the current OSS preflight, and the diagnostic/preflight manifest objects were preserved in WORM OSS with SLS audit correlation.
+- OSS resource events still omit `userIdentity.sessionContext.sourceIdentity`; this is accepted only under `APPROVE_COMPENSATING_CORRELATION`, with Alibaba support ticket `00AWWPRR6J` pending provider response.
 - OSS versioned object access and round-trip SHA-256 passed for `sha256:c67b1616fd7ed4e90c323c06e293e47af495acdfca7d01ac0d369f2473badcad`.
 - The previous wrong Version ID record must stay in the history as a correction event. It was not present in the version list, and calls using it returned `Invalid version id specified`; `CAEQTxiBgMDPz7yY9xkiIDg4Y2NjNDdlNGE5NDQ0N2NhZGUxMmMzZjAzZGEyYTA0` is the only authoritative Version ID for this preflight object.
-- SLS query permission and ActionTrail role session audit passed, but ActionTrail object data event audit is still `NOT_VERIFIED`.
-- If object data events remain missing after the wait window, inspect the Trail data event selector. The Trail existing and being enabled is not sufficient proof that the selector is active for this bucket and event set.
+- SLS query permission, ActionTrail role session audit, diagnostic object data event audit, and preflight manifest object data event audit passed for observed `PutObject`, `HeadObject`, and `GetObject` operations.
 - `AGMEvidenceWriterSLSRead20260621` is narrow enough for preflight Logstore reads, but it should move under a separate evidence-auditor role so the evidence writer does not verify its own audit logs.
 - The expected local evidence source files were not found under `/tmp`, `/var/folders`, `/Users/dahufa/Documents`, `/Users/dahufa/Desktop`, or `/Users/dahufa/Downloads`. Historical evidence preservation failed because the source files are missing.
-- The historical `9171900` commit remains valid only as the source commit for historical diagnostics. A new release build must use a new Git commit after this policy change is committed, or this policy change must be reverted before the build.
+- The historical `9171900` commit remains valid only as the source commit for historical diagnostics. A new release build must use a new Git commit after this policy change is committed.
 
 Historical evidence loss:
 
@@ -134,7 +165,9 @@ Historical evidence loss:
 ORIGINAL_FAILURE_EVIDENCE_STATUS=MISSING
 DIAGNOSTIC_EVIDENCE_STATUS=MISSING
 HISTORICAL_EVIDENCE_PRESERVATION=FAILED_SOURCE_MISSING
-EVIDENCE_LOSS_EXCEPTION=PENDING
+EVIDENCE_LOSS_EXCEPTION=APPROVED_ONE_TIME
+EVIDENCE_LOSS_EXCEPTION_DECISION=APPROVE_ONE_TIME_HISTORICAL_EVIDENCE_LOSS
+EVIDENCE_LOSS_EXCEPTION_APPROVED_AT=2026-06-21T12:40:54Z
 ORIGINAL_EVIDENCE_RECONSTRUCTION_AUTHORIZED=NO
 OLD_CANDIDATE_USABLE_FOR_RELEASE=NO
 OLD_CANDIDATE_DISPOSITION=FAILED_NON_RELEASABLE
@@ -146,7 +179,9 @@ Evidence loss exception decision record:
 ```txt
 DECISION_NAME=EVIDENCE_LOSS_EXCEPTION_DECISION
 DECISION_MAKER=Bruce
-DECISION=PENDING
+DECISION=APPROVE_ONE_TIME_HISTORICAL_EVIDENCE_LOSS
+DECISION_STATUS=APPROVED_ONE_TIME
+DECISION_RECORDED_AT=2026-06-21T12:40:54Z
 HISTORICAL_EVIDENCE_STATUS=FAILED_SOURCE_MISSING
 ORIGINAL_EVIDENCE_RECONSTRUCTION_AUTHORIZED=NO
 OLD_CANDIDATE_USABLE_FOR_RELEASE=NO
@@ -190,14 +225,17 @@ ResourceArn=acs:oss:cn-shanghai:1213873316001482:bucket/together-game
 Trusted release build authorization:
 
 ```txt
-PREFLIGHT_RESULT=PARTIAL_PASS_BLOCKED_OBJECT_DATA_EVENT_AUDIT
-STORAGE_TECHNICAL_VERIFICATION=PENDING
+PREFLIGHT_RESULT=PASS_WITH_APPROVED_COMPENSATING_CORRELATION
+STORAGE_TECHNICAL_VERIFICATION=PASS_WITH_APPROVED_EXCEPTION
 HISTORICAL_EVIDENCE_PRESERVATION=FAILED_SOURCE_MISSING
-EVIDENCE_LOSS_EXCEPTION=PENDING
-NEW_BUILD_RESULT=NOT_STARTED_BLOCKED
+EVIDENCE_LOSS_EXCEPTION=APPROVED_ONE_TIME
+EVIDENCE_LOSS_EXCEPTION_DECISION=APPROVE_ONE_TIME_HISTORICAL_EVIDENCE_LOSS
+WORK_PACKAGE_3=PASS
+NEW_BUILD_RESULT=NOT_STARTED_READY_FOR_WORK_PACKAGE_4
 ARTIFACT_SHA256=NOT_GENERATED
 DEPLOYMENT_PERFORMED=NO
-NEW_TRUSTED_BUILD_AUTHORIZATION=BLOCKED_UNTIL_CLOUD_PREFLIGHT_AND_BRUCE_APPROVAL
+RELEASE_AUTHORIZATION=false
+NEW_TRUSTED_BUILD_AUTHORIZATION=READY_TO_START_WORK_PACKAGE_4_FROM_NEW_GOVERNANCE_COMMIT
 COMMIT_6_GATE=BLOCKED
 ```
 

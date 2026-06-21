@@ -13,12 +13,18 @@
     "previousVersionIdStatus": "INVALID_NOT_FOUND_SUPERSEDED",
     "slsQueryPermissionStatus": "PASS",
     "actiontrailRoleSessionAudit": "PASS",
-    "actiontrailObjectDataEventAudit": "NOT_VERIFIED",
-    "preflightResult": "PARTIAL_PASS_BLOCKED_OBJECT_DATA_EVENT_AUDIT",
+    "actiontrailObjectDataEventAudit": "PASS_WITH_APPROVED_COMPENSATING_CORRELATION",
+    "sourceIdentityAudit": "PASS_WITH_APPROVED_COMPENSATING_CORRELATION",
+    "resourceEventSourceIdentityField": "FAIL_MISSING",
+    "preflightManifestStatus": "GENERATED_UPLOADED_WORM_VERIFIED",
+    "preflightResult": "PASS_WITH_APPROVED_COMPENSATING_CORRELATION",
     "historicalEvidencePreservation": "FAILED_SOURCE_MISSING",
-    "evidenceLossException": "PENDING",
-    "storageTechnicalVerification": "PENDING",
-    "newBuildResult": "NOT_STARTED_BLOCKED",
+    "evidenceLossException": "APPROVED_ONE_TIME",
+    "evidenceLossExceptionDecision": "APPROVE_ONE_TIME_HISTORICAL_EVIDENCE_LOSS",
+    "evidenceLossExceptionApprovedAt": "2026-06-21T12:40:54Z",
+    "storageTechnicalVerification": "PASS_WITH_APPROVED_EXCEPTION",
+    "releaseAuthorization": false,
+    "newBuildResult": "NOT_STARTED_READY_FOR_WORK_PACKAGE_4",
     "artifactSha256": "NOT_GENERATED",
     "deploymentPerformed": "NO",
     "commit6Gate": "BLOCKED"
@@ -115,12 +121,15 @@
   "oldReleaseDisposition": "ABORTED_NO_ARTIFACT",
   "historicalEvidencePreservation": "FAILED_SOURCE_MISSING",
   "evidenceLossException": {
-    "status": "PENDING",
+    "status": "APPROVED_ONE_TIME",
     "decisionName": "EVIDENCE_LOSS_EXCEPTION_DECISION",
     "decisionMaker": "Bruce",
     "approvalRequired": true,
     "approvalScope": "ONE_TIME_EVIDENCE_LOSS_EXCEPTION",
-    "decision": "PENDING",
+    "decision": "APPROVE_ONE_TIME_HISTORICAL_EVIDENCE_LOSS",
+    "decisionStatus": "APPROVED_ONE_TIME",
+    "approvedAt": "2026-06-21T12:40:54Z",
+    "approvalPhrase": "APPROVE_ONE_TIME_HISTORICAL_EVIDENCE_LOSS",
     "historicalEvidenceStatus": "FAILED_SOURCE_MISSING",
     "originalEvidenceReconstructionAuthorized": "NO",
     "oldCandidateUsableForRelease": "NO",
@@ -129,6 +138,69 @@
     "exceptionScope": "ONLY_THE_TWO_MISSING_MANIFESTS_FROM_THE_FAILED_AND_DIAGNOSTIC_RUNS",
     "recommendedDecision": "AUTHORIZE_NEW_RUN_AFTER_STORAGE_CONTROLS_PASS",
     "commit6Gate": "BLOCKED"
+  },
+  "commit6WorkPackageEvidence": {
+    "workPackage1": {
+      "status": "PASS",
+      "failedDiagnosticManifestStatus": "GENERATED_STAGING_ONLY_AND_WORM_PRESERVED",
+      "failedDiagnosticManifestSha256": "sha256:69e0239ee8f51e9e9074d52a89088944b59bbff4aed66cb0a3b939e572e6411d",
+      "diagnosticEvidenceUpload": "PASS",
+      "diagnosticEvidenceDownloadVerification": "PASS",
+      "diagnosticEvidenceWormPreservation": "PASS",
+      "diagnosticEvidenceObjectUri": "oss://together-game/ai-game-maker/release-evidence/diagnostics/source-identity/preflight_20260620T201848Z_3eccf398/sha256-69e0239ee8f51e9e9074d52a89088944b59bbff4aed66cb0a3b939e572e6411d/source-identity-propagation-diagnostic-20260621T104744Z-921f7ccb.json",
+      "diagnosticEvidenceVersionId": "CAEQTxiBgICRo5an9xkiIDU4Yjg2OTI1Y2VkNDQ0ODRiYzYwZjNtYWY0ZTU2MTMw",
+      "diagnosticEvidencePutObjectRequestId": "6A37C1509BFB6E38305BBC35",
+      "diagnosticEvidenceHeadObjectRequestId": "6A37C1500475283734E1167F",
+      "diagnosticEvidenceGetObjectRequestId": "6A37C150498ADD3237BF2A29",
+      "diagnosticEvidenceSourceIdentity": "evidence_preservation_20260621T104744Z_921f7ccb",
+      "sourceIdentityAudit": "PASS_WITH_APPROVED_COMPENSATING_CORRELATION",
+      "resourceEventSourceIdentityField": "FAIL_MISSING",
+      "stsToOssSessionCorrelation": "PASS",
+      "identitySessionTraceability": "PASS_BY_ACCESS_KEY_HASH_CORRELATION",
+      "providerTicket": {
+        "ticketId": "00AWWPRR6J",
+        "status": "PENDING_RESPONSE",
+        "createRequestId": "CE267C21-01A2-5BD5-AE31-8000F5CE716B",
+        "readBackRequestId": "A166ED3B-08E5-5B6F-80C4-3D0C21719585"
+      }
+    },
+    "workPackage2": {
+      "status": "PASS",
+      "preflightManifestStatus": "GENERATED_UPLOADED_WORM_VERIFIED",
+      "preflightResult": "PASS_WITH_APPROVED_COMPENSATING_CORRELATION",
+      "releaseAuthorization": false,
+      "commit6Gate": "BLOCKED",
+      "manifestSha256": "sha256:4b6700091f7ee368c14224a38067e4fed20d64887d844f1b9a93d78337df5322",
+      "manifestObjectUri": "oss://together-game/ai-game-maker/release-evidence/preflight-manifests/preflight_20260620T201848Z_3eccf398/sha256-4b6700091f7ee368c14224a38067e4fed20d64887d844f1b9a93d78337df5322/evidence-storage-preflight-manifest-20260621T122718Z-a207f737.json",
+      "manifestVersionId": "CAEQTxiBgIDPvyg9xkjIGV1Y2RhZWUxNDhmODRkNzI5MzY4N2FiODE0ZTRiYTI1",
+      "manifestPutObjectRequestId": "6A37D8A69B18ED3536745776",
+      "manifestHeadObjectRequestId": "6A37D8A69B18ED3536925776",
+      "manifestGetObjectRequestId": "6A37D8A6A1570F3933D8EE6B",
+      "manifestSourceIdentity": "preflight_manifest_20260621T122718Z_a207f737",
+      "manifestAssumeRoleRequestId": "593E05DD-1C91-58EE-ACD0-C72F3DCF19ED",
+      "manifestRoleSessionArn": "acs:ram::1213873316001482:role/ai-game-maker-evidence-writer/preflight_manifest_20260621T122718Z_a207f737",
+      "manifestTemporaryAccessKeyIdSha256": "sha256:86c7cc1d97857e3ce3244846844254abc03c2129bd6aeeb3c1d386c065b3741f",
+      "manifestUploadReceiptSha256": "sha256:789a84c59c7628801bdf404019b36dc2e8f58de3e7f36d123f8dd411b0475d0f",
+      "slsCorrelationSha256": "sha256:02e23c40a6ff0933c1a565f97d08173c6055985b4d0d894782e272995397743a",
+      "slsProject": "actiontrail-log-1213873316001482-cn-shanghai",
+      "slsLogstore": "actiontrail_ai-game-maker-evidence-audit",
+      "slsAllFound": true,
+      "slsAllAccessKeyHashesMatchAssumeRole": true,
+      "slsPutObjectAudit": "PASS",
+      "slsHeadObjectAudit": "PASS",
+      "slsGetObjectAudit": "PASS",
+      "resourceEventSourceIdentityField": "FAIL_MISSING"
+    },
+    "workPackage3": {
+      "status": "PASS",
+      "evidenceLossException": "APPROVED_ONE_TIME",
+      "evidenceLossExceptionDecision": "APPROVE_ONE_TIME_HISTORICAL_EVIDENCE_LOSS",
+      "approvedAt": "2026-06-21T12:40:54Z",
+      "releaseAuthorization": false,
+      "commit6Gate": "BLOCKED",
+      "workPackage4": "READY_TO_START_FROM_NEW_GOVERNANCE_COMMIT",
+      "workPackages5To6": "NOT_STARTED_BLOCKED"
+    }
   },
   "remainingActions": [
     {
@@ -139,7 +211,7 @@
         "GetObject",
         "ListObjectVersions"
       ],
-      "status": "PENDING"
+      "status": "PASS_FOR_DIAGNOSTIC_AND_PREFLIGHT_MANIFEST_OBJECTS"
     },
     {
       "action": "CORRELATE_ACTIONTRAIL_OBJECT_DATA_EVENTS",
@@ -155,7 +227,7 @@
         "GetBucketVersions"
       ],
       "costImpact": "SLS_STORAGE_AND_QUERY_COSTS_APPLY",
-      "status": "BLOCKED_OBJECT_DATA_EVENT_AUDIT_NOT_VERIFIED"
+      "status": "PASS_WITH_APPROVED_COMPENSATING_CORRELATION_FOR_OBSERVED_OBJECT_OPERATIONS"
     },
     {
       "action": "VERIFY_ACTIONTRAIL_DATA_EVENT_SELECTOR_IF_EVENTS_STILL_MISSING",
@@ -186,11 +258,13 @@
       "action": "APPROVE_EVIDENCE_LOSS_EXCEPTION",
       "decisionMaker": "Bruce",
       "scope": "ONLY_THE_TWO_MISSING_MANIFESTS_FROM_THE_FAILED_AND_DIAGNOSTIC_RUNS",
-      "status": "PENDING"
+      "requiredApprovalPhrase": "APPROVE_ONE_TIME_HISTORICAL_EVIDENCE_LOSS",
+      "approvalRecordedAt": "2026-06-21T12:40:54Z",
+      "status": "PASS"
     },
     {
       "action": "AUTHORIZE_NEW_TRUSTED_RELEASE_BUILD",
-      "status": "BLOCKED_UNTIL_CLOUD_PREFLIGHT_AND_BRUCE_APPROVAL"
+      "status": "READY_TO_START_WORK_PACKAGE_4_FROM_NEW_GOVERNANCE_COMMIT"
     }
   ],
   "compensatingControlsRequired": [
@@ -209,6 +283,6 @@
     "disposition": "HISTORICAL_DIAGNOSTIC_SOURCE_COMMIT_ONLY"
   },
   "localGovernanceCommitEffect": "FORMS_NEW_SOURCE_COMMIT_ONLY",
-  "newBuildResult": "NOT_STARTED_BLOCKED",
-  "nextReleaseBuildRequirement": "CLOUD_PREFLIGHT_AND_BRUCE_APPROVAL_REQUIRED"
+  "newBuildResult": "NOT_STARTED_READY_FOR_WORK_PACKAGE_4",
+  "nextReleaseBuildRequirement": "WORK_PACKAGE_4_TRUSTED_RELEASE_BUILD_REQUIRED"
 }
