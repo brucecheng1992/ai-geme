@@ -24,20 +24,27 @@
     "evidenceLossExceptionApprovedAt": "2026-06-21T12:40:54Z",
     "storageTechnicalVerification": "PASS_WITH_APPROVED_EXCEPTION",
     "releaseAuthorization": false,
-    "workPackage4": "FAILED_DEPENDENCY_VALIDATION",
-    "newBuildResult": "FAILED_DEPENDENCY_VALIDATION",
-    "newBuildRunId": "build_20260621T124054Z_6c7c9a73",
-    "newBuildAttemptId": "attempt_20260621T124054Z_6c7c9a73",
-    "newCandidateId": "candidate_20260621T124054Z_6c7c9a73",
-    "newReleaseId": "release_20260621T124054Z_6c7c9a73",
-    "sourceCommit": "20ca4c7a22e515bdf11c81d2947cad9caa4634e6",
+    "workPackage4": "BLOCKED_SLS_CORRELATION_INCOMPLETE",
+    "newBuildResult": "BLOCKED_SLS_CORRELATION_INCOMPLETE",
+    "newBuildRunId": "build_20260621T163428Z_7cc8af61",
+    "newBuildAttemptId": "attempt_20260621T163428Z_7cc8af61",
+    "newCandidateId": "candidate_20260621T163428Z_7cc8af61",
+    "newReleaseId": "release_20260621T163428Z_7cc8af61",
+    "sourceCommit": "81f92081da94cface172267fed6b2835922e35e7",
+    "previousFailedWorkPackage4": "FAILED_DEPENDENCY_VALIDATION",
+    "previousFailedBuildRunId": "build_20260621T124054Z_6c7c9a73",
+    "previousFailedSourceCommit": "20ca4c7a22e515bdf11c81d2947cad9caa4634e6",
     "trustedBuildFailureManifestStatus": "GENERATED_UPLOADED_WORM_VERIFIED",
     "trustedBuildFailureManifestSha256": "sha256:14a6adf64e8029187555f601527ba1d98a57304c9fdfc58a8680446c598f4936",
     "trustedBuildFailureManifestVersionId": "CAEQTxiBgMD3xLyp9xkiIGIzNTMwMDM1MTY2NTQ4NzhoDBIMTQxNWQ3MWI4MmFI",
     "trustedBuildFailureManifestSlsCorrelation": "PASS",
-    "artifactSha256": "NOT_GENERATED",
-    "gateInputManifestStatus": "NOT_GENERATED",
-    "provenanceStatus": "NOT_GENERATED",
+    "artifactSha256": "sha256:7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f",
+    "gateInputManifestStatus": "GENERATED_UPLOADED_WORM_VERIFIED_PENDING_SLS_CORRELATION",
+    "gateInputManifestSha256": "sha256:3104bcf40cd1d468c47420e771eefe7cee398d28584c7e2f90e148b174c063d4",
+    "provenanceStatus": "GENERATED_UPLOADED_WORM_VERIFIED_PENDING_SLS_CORRELATION",
+    "provenanceSha256": "sha256:dd3f7550a41f4a57f0f10fdf7c9249929c4a38ef502047fc58858abdb5aebae8",
+    "slsCorrelation": "BLOCKED_8_OF_9_BEFORE_CLOUDSHELL_EXPIRY",
+    "cloudShellContinuation": "BLOCKED_NOPERMISSION_AFTER_EXPIRY",
     "deploymentPerformed": "NO",
     "commit6Gate": "BLOCKED"
   },
@@ -281,6 +288,104 @@
       "releaseAuthorization": false,
       "deploymentPerformed": "NO",
       "commit6Gate": "BLOCKED"
+    },
+    "workPackage4DependencyRemediationRerun": {
+      "status": "BLOCKED_SLS_CORRELATION_INCOMPLETE",
+      "failureStage": "SLS_CORRELATION",
+      "sourceCommit": "81f92081da94cface172267fed6b2835922e35e7",
+      "buildRunId": "build_20260621T163428Z_7cc8af61",
+      "attemptId": "attempt_20260621T163428Z_7cc8af61",
+      "candidateId": "candidate_20260621T163428Z_7cc8af61",
+      "releaseId": "release_20260621T163428Z_7cc8af61",
+      "workspaceId": "workspace_20260621T163428Z_7cc8af61",
+      "dependencyInstall": "PASS_NPM_CI_IGNORE_SCRIPTS",
+      "dependencyAudit": {
+        "command": "npm audit --audit-level=critical --json",
+        "exitCode": 0,
+        "result": "PASS_ZERO_CRITICAL",
+        "vulnerabilityCounts": {
+          "critical": 0,
+          "total": 5
+        },
+        "remediation": "vitest upgraded to ^3.2.6 without npm audit fix --force"
+      },
+      "localDoctor": {
+        "command": "npm run maker:doctor",
+        "exitCode": 0,
+        "result": "PASS",
+        "previousPort5173Blocker": "CLEARED_STALE_LOCAL_VITE_PROCESS"
+      },
+      "verification": {
+        "npmCiIgnoreScripts": "PASS",
+        "metadataValidate": "PASS",
+        "typecheck": "PASS",
+        "makerWorkbenchBuild": "PASS",
+        "testSuite": "PASS",
+        "metadataRuntimeExport": "PASS_AFTER_CORRECTED_ARGS",
+        "metadataRuntimeExportCorrectCommand": "npm --silent run metadata:export-runtime -- --dir tests/fixtures/art-library-small-v0.1/metadata --json",
+        "packageJsonSyntax": "PASS",
+        "packageLockJsonSyntax": "PASS",
+        "gitDiffCheckBeforeSourceCommit": "PASS",
+        "sensitiveScanPackageFiles": "PASS_NO_ACTUAL_SECRETS"
+      },
+      "evidenceUpload": {
+        "status": "PARTIAL_PASS_OBJECTS_UPLOADED_AND_VERSIONED_READBACK_VERIFIED",
+        "assumeRoleRequestId": "229343A6-DAFA-5B2B-A260-9A7C45F2BCDE",
+        "roleSessionArn": "acs:ram::1213873316001482:role/ai-game-maker-evidence-writer/wp4succ_7cc8af61",
+        "temporaryAccessKeyIdSha256": "sha256:284852a587240642b787577de5cb05472443c259a90b99035258c962d00516b6",
+        "uploadReceiptPath": "/home/shell/wp4-success-20260621T163428Z-7cc8af61/wp4-success-evidence-upload-receipt-20260621T163428Z-7cc8af61.json",
+        "uploadReceiptSha256": "sha256:b2008755e309a45d680535b616883189beb89ad7729d613fc8a4d7b832279af4",
+        "objects": [
+          {
+            "label": "releaseArtifact",
+            "objectUri": "oss://together-game/ai-game-maker/release-evidence/trusted-build-artifacts/build_20260621T163428Z_7cc8af61/sha256-7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f/ai-game-maker-workbench-release_20260621T163428Z_7cc8af61.tar.gz",
+            "versionId": "CAEQTXiBgMDt0.Os9xkiIGI4MGU1NDdiYmM2YjQwMzE4MDhmYTU3NGFlNzRlNDE3",
+            "sizeBytes": 150853,
+            "sha256": "sha256:7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f",
+            "putObjectRequestId": "6A381D235A6CA3383548332E",
+            "headObjectRequestId": "6A381D235A6CA338357E332E",
+            "getObjectRequestId": "6A381D23216A4F36372587E9"
+          },
+          {
+            "label": "gateInputManifest",
+            "objectUri": "oss://together-game/ai-game-maker/release-evidence/gate-input-manifests/build_20260621T163428Z_7cc8af61/sha256-3104bcf40cd1d468c47420e771eefe7cee398d28584c7e2f90e148b174c063d4/gate-input-manifest-20260621T163428Z-7cc8af61.json",
+            "versionId": "CAEQTXiBgIC4100s9xkiIDBiZGQ3YzczWU40DRjODg5MzYxOTQyZWUwODA4OTgz",
+            "sizeBytes": 4483,
+            "sha256": "sha256:3104bcf40cd1d468c47420e771eefe7cee398d28584c7e2f90e148b174c063d4",
+            "putObjectRequestId": "6A381D23216A4F363748B7E9",
+            "headObjectRequestId": "6A381D23216A4F36375B87E9",
+            "getObjectRequestId": "6A381D24A1570F3539BF7A3D"
+          },
+          {
+            "label": "provenance",
+            "objectUri": "oss://together-game/ai-game-maker/release-evidence/provenance/build_20260621T163428Z_7cc8af61/sha256-dd3f7550a41f4a57f0f10fdf7c9249929c4a38ef502047fc58858abdb5aebae8/trusted-build-provenance-20260621T163428Z-7cc8af61.json",
+            "versionId": "CAEQTXiBgMCJ1eOs9xkiIDIxNDZiNGRlZDK5ZjRkOTlhNDI5NDIyZmJiZDZlNTUy",
+            "sizeBytes": 3105,
+            "sha256": "sha256:dd3f7550a41f4a57f0f10fdf7c9249929c4a38ef502047fc58858abdb5aebae8",
+            "putObjectRequestId": "6A381D24A1570F3539DB7A3D",
+            "headObjectRequestId": "6A381D24A1570F3539F47A3D",
+            "getObjectRequestId": "6A381D249902C03933735A43"
+          }
+        ]
+      },
+      "slsCorrelation": {
+        "status": "BLOCKED_8_OF_9_BEFORE_CLOUDSHELL_EXPIRY",
+        "project": "actiontrail-log-1213873316001482-cn-shanghai",
+        "logstore": "actiontrail_ai-game-maker-evidence-audit",
+        "readerCallerArn": "acs:ram::1213873316001482:user/ai-game-maker-build-operator",
+        "expectedRequestIdCount": 9,
+        "observedFoundCountBeforeExpiry": 8,
+        "missingRequestLabel": "UNKNOWN_NOT_PRINTED_BEFORE_CLOUDSHELL_EXPIRY",
+        "slsCorrelationJsonStatus": "NOT_GENERATED_DUE_TO_CLOUDSHELL_EXPIRY",
+        "cloudShellContinuation": "BLOCKED_NOPERMISSION_AFTER_EXPIRY",
+        "writerRoleSelfAuditAttempt": "PARTIAL_OR_PENDING_ALL_REQUEST_IDS_MISSING_WITH_WRITER_STS_SLS_QUERY",
+        "formalPassAllowed": false
+      },
+      "releaseAuthorization": false,
+      "deploymentPerformed": "NO",
+      "workPackage5": "NOT_STARTED_BLOCKED",
+      "workPackage6": "NOT_STARTED_BLOCKED",
+      "commit6Gate": "BLOCKED"
     }
   },
   "remainingActions": [
@@ -311,6 +416,15 @@
       "status": "PASS_WITH_APPROVED_COMPENSATING_CORRELATION_FOR_OBSERVED_OBJECT_OPERATIONS"
     },
     {
+      "action": "COMPLETE_WP4_RERUN_SLS_CORRELATION",
+      "buildRunId": "build_20260621T163428Z_7cc8af61",
+      "expectedRequestIdCount": 9,
+      "observedFoundCountBeforeExpiry": 8,
+      "project": "actiontrail-log-1213873316001482-cn-shanghai",
+      "logstore": "actiontrail_ai-game-maker-evidence-audit",
+      "status": "REQUIRED_BEFORE_WORK_PACKAGE_4_PASS"
+    },
+    {
       "action": "VERIFY_ACTIONTRAIL_DATA_EVENT_SELECTOR_IF_EVENTS_STILL_MISSING",
       "requiredSelector": {
         "serviceName": "Oss",
@@ -327,7 +441,7 @@
     },
     {
       "action": "UPLOAD_PREFLIGHT_MANIFEST_AFTER_AUDIT_CORRELATION",
-      "status": "PENDING_OBJECT_DATA_EVENT_CORRELATION"
+      "status": "SUPERSEDED_BY_UPLOADED_WP4_RERUN_GATE_INPUT_MANIFEST_PENDING_SLS_CORRELATION"
     },
     {
       "action": "MOVE_SLS_READ_PERMISSION_TO_EVIDENCE_AUDITOR_ROLE",
@@ -345,11 +459,11 @@
     },
     {
       "action": "AUTHORIZE_NEW_TRUSTED_RELEASE_BUILD",
-      "status": "FAILED_DEPENDENCY_VALIDATION_IN_WORK_PACKAGE_4"
+      "status": "BLOCKED_SLS_CORRELATION_INCOMPLETE_IN_WORK_PACKAGE_4_RERUN"
     },
     {
       "action": "RERUN_WORK_PACKAGE_4_AFTER_DEPENDENCY_REMEDIATION",
-      "status": "REQUIRED_BEFORE_WORK_PACKAGE_5"
+      "status": "ATTEMPTED_AND_BLOCKED_SLS_CORRELATION_INCOMPLETE"
     }
   ],
   "compensatingControlsRequired": [
@@ -368,6 +482,6 @@
     "disposition": "HISTORICAL_DIAGNOSTIC_SOURCE_COMMIT_ONLY"
   },
   "localGovernanceCommitEffect": "FORMS_NEW_SOURCE_COMMIT_ONLY",
-  "newBuildResult": "FAILED_DEPENDENCY_VALIDATION",
-  "nextReleaseBuildRequirement": "REMEDIATE_DEPENDENCY_VALIDATION_AND_RERUN_WORK_PACKAGE_4_FROM_CLEAN_SOURCE_COMMIT"
+  "newBuildResult": "BLOCKED_SLS_CORRELATION_INCOMPLETE",
+  "nextReleaseBuildRequirement": "COMPLETE_WP4_RERUN_SLS_CORRELATION_FROM_AUTHORIZED_READ_ENVIRONMENT_BEFORE_WORK_PACKAGE_5"
 }
