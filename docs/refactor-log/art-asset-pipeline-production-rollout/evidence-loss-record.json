@@ -24,8 +24,20 @@
     "evidenceLossExceptionApprovedAt": "2026-06-21T12:40:54Z",
     "storageTechnicalVerification": "PASS_WITH_APPROVED_EXCEPTION",
     "releaseAuthorization": false,
-    "newBuildResult": "NOT_STARTED_READY_FOR_WORK_PACKAGE_4",
+    "workPackage4": "FAILED_DEPENDENCY_VALIDATION",
+    "newBuildResult": "FAILED_DEPENDENCY_VALIDATION",
+    "newBuildRunId": "build_20260621T124054Z_6c7c9a73",
+    "newBuildAttemptId": "attempt_20260621T124054Z_6c7c9a73",
+    "newCandidateId": "candidate_20260621T124054Z_6c7c9a73",
+    "newReleaseId": "release_20260621T124054Z_6c7c9a73",
+    "sourceCommit": "20ca4c7a22e515bdf11c81d2947cad9caa4634e6",
+    "trustedBuildFailureManifestStatus": "GENERATED_UPLOADED_WORM_VERIFIED",
+    "trustedBuildFailureManifestSha256": "sha256:14a6adf64e8029187555f601527ba1d98a57304c9fdfc58a8680446c598f4936",
+    "trustedBuildFailureManifestVersionId": "CAEQTxiBgMD3xLyp9xkiIGIzNTMwMDM1MTY2NTQ4NzhoDBIMTQxNWQ3MWI4MmFI",
+    "trustedBuildFailureManifestSlsCorrelation": "PASS",
     "artifactSha256": "NOT_GENERATED",
+    "gateInputManifestStatus": "NOT_GENERATED",
+    "provenanceStatus": "NOT_GENERATED",
     "deploymentPerformed": "NO",
     "commit6Gate": "BLOCKED"
   },
@@ -198,8 +210,77 @@
       "approvedAt": "2026-06-21T12:40:54Z",
       "releaseAuthorization": false,
       "commit6Gate": "BLOCKED",
-      "workPackage4": "READY_TO_START_FROM_NEW_GOVERNANCE_COMMIT",
+      "workPackage4": "STARTED_AND_FAILED_DEPENDENCY_VALIDATION",
       "workPackages5To6": "NOT_STARTED_BLOCKED"
+    },
+    "workPackage4": {
+      "status": "FAILED",
+      "failureStage": "DEPENDENCY_VALIDATION",
+      "sourceCommit": "20ca4c7a22e515bdf11c81d2947cad9caa4634e6",
+      "buildRunId": "build_20260621T124054Z_6c7c9a73",
+      "attemptId": "attempt_20260621T124054Z_6c7c9a73",
+      "candidateId": "candidate_20260621T124054Z_6c7c9a73",
+      "releaseId": "release_20260621T124054Z_6c7c9a73",
+      "workspaceId": "workspace_20260621T124054Z_6c7c9a73",
+      "dependencyInstall": "PASS_NPM_CI_IGNORE_SCRIPTS",
+      "dependencyAudit": {
+        "command": "npm audit --audit-level=critical --json",
+        "exitCode": 1,
+        "result": "FAIL",
+        "vulnerabilityCounts": {
+          "info": 0,
+          "low": 0,
+          "moderate": 3,
+          "high": 4,
+          "critical": 1,
+          "total": 8
+        },
+        "criticalPackage": "vitest",
+        "criticalAdvisory": "When Vitest UI server is listening, arbitrary file can be read and executed"
+      },
+      "localDoctor": {
+        "command": "npm run maker:doctor",
+        "exitCode": 1,
+        "result": "FAIL_REVIEW_REQUIRED",
+        "failure": "maker-workbench port 5173 is already in use"
+      },
+      "trustedBuildFailureManifest": {
+        "status": "GENERATED_UPLOADED_WORM_VERIFIED",
+        "objectUri": "oss://together-game/ai-game-maker/release-evidence/trusted-build-failures/build_20260621T124054Z_6c7c9a73/sha256-14a6adf64e8029187555f601527ba1d98a57304c9fdfc58a8680446c598f4936/trusted-release-build-failure-manifest-20260621T124054Z-6c7c9a73.json",
+        "versionId": "CAEQTxiBgMD3xLyp9xkiIGIzNTMwMDM1MTY2NTQ4NzhoDBIMTQxNWQ3MWI4MmFI",
+        "sizeBytes": 4240,
+        "sha256": "sha256:14a6adf64e8029187555f601527ba1d98a57304c9fdfc58a8680446c598f4936",
+        "putObjectRequestId": "6A37E6FB3D93F035314938A9",
+        "headObjectRequestId": "6A37E6FB3D93F035318B38A9",
+        "getObjectRequestId": "6A37E6FB9902C03432C9B1A0",
+        "downloadedSha256": "sha256:14a6adf64e8029187555f601527ba1d98a57304c9fdfc58a8680446c598f4936",
+        "roundTripVerification": "PASS",
+        "assumeRoleRequestId": "6325D843-54BD-53E8-A5C4-97C43F46FADA",
+        "roleSessionArn": "acs:ram::1213873316001482:role/ai-game-maker-evidence-writer/wp4fail_6c7c9a73",
+        "sourceIdentity": "wp4_failure_20260621T124054Z_6c7c9a73",
+        "temporaryAccessKeyIdSha256": "sha256:429761cfbdf5e5933a4e4c3a30733ef57c40107c409459270183bd6d815d9fe7",
+        "uploadReceiptSha256": "sha256:6ad1a7f64532ce0a11a1bb80e18d90a3aebd6682bd77ee4a3c38f3976d8b2385"
+      },
+      "slsCorrelation": {
+        "status": "PASS",
+        "project": "actiontrail-log-1213873316001482-cn-shanghai",
+        "logstore": "actiontrail_ai-game-maker-evidence-audit",
+        "sha256": "sha256:3959a6bb293cd67bfa03c0c98eabff0dbe67c222573abc3666e86134f926b6ed",
+        "allFound": true,
+        "allAccessKeyHashesMatchAssumeRole": true,
+        "putObjectAudit": "PASS",
+        "headObjectAudit": "PASS",
+        "getObjectAudit": "PASS",
+        "resourceEventSessionContextSourceIdentity": "FAIL_MISSING"
+      },
+      "artifactSha256": "NOT_GENERATED",
+      "gateInputManifestStatus": "NOT_GENERATED",
+      "provenanceStatus": "NOT_GENERATED",
+      "workPackage5": "NOT_STARTED_BLOCKED",
+      "workPackage6": "NOT_STARTED_BLOCKED",
+      "releaseAuthorization": false,
+      "deploymentPerformed": "NO",
+      "commit6Gate": "BLOCKED"
     }
   },
   "remainingActions": [
@@ -264,7 +345,11 @@
     },
     {
       "action": "AUTHORIZE_NEW_TRUSTED_RELEASE_BUILD",
-      "status": "READY_TO_START_WORK_PACKAGE_4_FROM_NEW_GOVERNANCE_COMMIT"
+      "status": "FAILED_DEPENDENCY_VALIDATION_IN_WORK_PACKAGE_4"
+    },
+    {
+      "action": "RERUN_WORK_PACKAGE_4_AFTER_DEPENDENCY_REMEDIATION",
+      "status": "REQUIRED_BEFORE_WORK_PACKAGE_5"
     }
   ],
   "compensatingControlsRequired": [
@@ -283,6 +368,6 @@
     "disposition": "HISTORICAL_DIAGNOSTIC_SOURCE_COMMIT_ONLY"
   },
   "localGovernanceCommitEffect": "FORMS_NEW_SOURCE_COMMIT_ONLY",
-  "newBuildResult": "NOT_STARTED_READY_FOR_WORK_PACKAGE_4",
-  "nextReleaseBuildRequirement": "WORK_PACKAGE_4_TRUSTED_RELEASE_BUILD_REQUIRED"
+  "newBuildResult": "FAILED_DEPENDENCY_VALIDATION",
+  "nextReleaseBuildRequirement": "REMEDIATE_DEPENDENCY_VALIDATION_AND_RERUN_WORK_PACKAGE_4_FROM_CLEAN_SOURCE_COMMIT"
 }
