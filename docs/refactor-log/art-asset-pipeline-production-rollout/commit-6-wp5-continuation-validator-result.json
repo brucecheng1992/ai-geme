@@ -1,0 +1,198 @@
+{
+  "schemaVersion": "commit_6_readiness_validator_result.v0.1",
+  "validatorVersion": "commit-6-readiness-validator.v0.1",
+  "validatorCommit": "971e5a52dc706f89b03ab0b83a12ff3080957491",
+  "verificationRunId": "wp5_20260621T194849Z_32ee14ca",
+  "evaluatedAt": "2026-06-21T19:48:49Z",
+  "releaseSourceCommit": "81f92081da94cface172267fed6b2835922e35e7",
+  "buildRunId": "build_20260621T163428Z_7cc8af61",
+  "artifactDigest": "sha256:7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f",
+  "result": "BLOCKED",
+  "exitCode": 1,
+  "checks": [
+    {
+      "id": "release_source_commit",
+      "status": "PASS",
+      "message": "release_source_commit expected 81f92081da94cface172267fed6b2835922e35e7 but received 81f92081da94cface172267fed6b2835922e35e7."
+    },
+    {
+      "id": "build_run_id",
+      "status": "PASS",
+      "message": "build_run_id expected build_20260621T163428Z_7cc8af61 but received build_20260621T163428Z_7cc8af61."
+    },
+    {
+      "id": "artifact_digest",
+      "status": "PASS",
+      "message": "artifact_digest expected sha256:7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f but received sha256:7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f."
+    },
+    {
+      "id": "wp4_status",
+      "status": "PASS",
+      "message": "WP4 status is PASS_WITH_APPROVED_COMPENSATING_CORRELATION."
+    },
+    {
+      "id": "wp4_sls_correlation",
+      "status": "PASS",
+      "message": "WP4 SLS correlation is PASS_9_OF_9_WITH_REQUEST_ID_CORRECTION."
+    },
+    {
+      "id": "source_impact_classification",
+      "status": "PASS",
+      "message": "Source impact is control-plane only."
+    },
+    {
+      "id": "deployment_runbook",
+      "status": "BLOCKED",
+      "reasonCode": "DEPLOYMENT_RUNBOOK_NOT_APPROVED",
+      "message": "deployment_runbook status is REVIEW_REQUIRED."
+    },
+    {
+      "id": "rollback_runbook",
+      "status": "BLOCKED",
+      "reasonCode": "ROLLBACK_RUNBOOK_NOT_APPROVED",
+      "message": "rollback_runbook status is REVIEW_REQUIRED."
+    },
+    {
+      "id": "sli_parity_criteria",
+      "status": "BLOCKED",
+      "reasonCode": "SLI_PARITY_CRITERIA_NOT_APPROVED",
+      "message": "sli_parity_criteria status is REVIEW_REQUIRED."
+    },
+    {
+      "id": "sli_parity_baseline_status",
+      "status": "BLOCKED",
+      "reasonCode": "SLI_PARITY_BASELINE_NOT_APPROVED",
+      "message": "SLI/parity baseline status is NOT_APPROVED."
+    },
+    {
+      "id": "approvedBaseline",
+      "status": "BLOCKED",
+      "reasonCode": "APPROVEDBASELINE_NOT_APPROVED",
+      "message": "approvedBaseline approval status is NOT_APPROVED."
+    },
+    {
+      "id": "approvedRollbackTarget",
+      "status": "BLOCKED",
+      "reasonCode": "APPROVEDROLLBACKTARGET_NOT_APPROVED",
+      "message": "approvedRollbackTarget approval status is NOT_APPROVED."
+    },
+    {
+      "id": "approvedCanaryScope",
+      "status": "BLOCKED",
+      "reasonCode": "APPROVEDCANARYSCOPE_NOT_APPROVED",
+      "message": "approvedCanaryScope approval status is NOT_APPROVED."
+    },
+    {
+      "id": "safeRollbackAuthorization",
+      "status": "BLOCKED",
+      "reasonCode": "SAFEROLLBACKAUTHORIZATION_NOT_APPROVED",
+      "message": "safeRollbackAuthorization approval status is NOT_APPROVED."
+    },
+    {
+      "id": "rollbackDrillAuthorization",
+      "status": "BLOCKED",
+      "reasonCode": "ROLLBACKDRILLAUTHORIZATION_NOT_APPROVED",
+      "message": "rollbackDrillAuthorization approval status is NOT_APPROVED."
+    },
+    {
+      "id": "canary_scope_limit",
+      "status": "BLOCKED",
+      "reasonCode": "CANARY_SCOPE_OR_RECEIPT_NOT_READY",
+      "message": "Canary scope limit cannot be evaluated until approval and receipt are verified."
+    },
+    {
+      "id": "rollback_target_binding",
+      "status": "BLOCKED",
+      "reasonCode": "ROLLBACK_TARGET_OR_RECEIPT_NOT_READY",
+      "message": "Rollback target binding cannot be evaluated until approval and receipt are verified."
+    },
+    {
+      "id": "deploy_receipt",
+      "status": "BLOCKED",
+      "reasonCode": "DEPLOY_RECEIPT_MISSING",
+      "message": "deploy receipt status is MISSING."
+    },
+    {
+      "id": "canary_receipt",
+      "status": "BLOCKED",
+      "reasonCode": "CANARY_RECEIPT_MISSING",
+      "message": "canary receipt status is MISSING."
+    },
+    {
+      "id": "rollback_receipt",
+      "status": "BLOCKED",
+      "reasonCode": "ROLLBACK_RECEIPT_MISSING",
+      "message": "rollback receipt status is MISSING."
+    },
+    {
+      "id": "sli_verification",
+      "status": "BLOCKED",
+      "reasonCode": "SLI_VERIFICATION_NOT_PASS",
+      "message": "sli_verification status is NOT_APPROVED."
+    },
+    {
+      "id": "parity_verification",
+      "status": "BLOCKED",
+      "reasonCode": "PARITY_VERIFICATION_NOT_PASS",
+      "message": "parity_verification status is NOT_APPROVED."
+    },
+    {
+      "id": "production_deployment_not_performed",
+      "status": "PASS",
+      "message": "Production deployment must not be performed during WP5."
+    }
+  ],
+  "reasonCodes": [
+    "DEPLOYMENT_RUNBOOK_NOT_APPROVED",
+    "ROLLBACK_RUNBOOK_NOT_APPROVED",
+    "SLI_PARITY_CRITERIA_NOT_APPROVED",
+    "SLI_PARITY_BASELINE_NOT_APPROVED",
+    "APPROVEDBASELINE_NOT_APPROVED",
+    "APPROVEDROLLBACKTARGET_NOT_APPROVED",
+    "APPROVEDCANARYSCOPE_NOT_APPROVED",
+    "SAFEROLLBACKAUTHORIZATION_NOT_APPROVED",
+    "ROLLBACKDRILLAUTHORIZATION_NOT_APPROVED",
+    "CANARY_SCOPE_OR_RECEIPT_NOT_READY",
+    "ROLLBACK_TARGET_OR_RECEIPT_NOT_READY",
+    "DEPLOY_RECEIPT_MISSING",
+    "CANARY_RECEIPT_MISSING",
+    "ROLLBACK_RECEIPT_MISSING",
+    "SLI_VERIFICATION_NOT_PASS",
+    "PARITY_VERIFICATION_NOT_PASS"
+  ],
+  "missingEvidence": [
+    "DEPLOYMENT_RUNBOOK_NOT_APPROVED",
+    "ROLLBACK_RUNBOOK_NOT_APPROVED",
+    "SLI_PARITY_CRITERIA_NOT_APPROVED",
+    "SLI_PARITY_BASELINE_NOT_APPROVED",
+    "APPROVEDBASELINE_NOT_APPROVED",
+    "APPROVEDROLLBACKTARGET_NOT_APPROVED",
+    "APPROVEDCANARYSCOPE_NOT_APPROVED",
+    "SAFEROLLBACKAUTHORIZATION_NOT_APPROVED",
+    "ROLLBACKDRILLAUTHORIZATION_NOT_APPROVED",
+    "CANARY_SCOPE_OR_RECEIPT_NOT_READY",
+    "ROLLBACK_TARGET_OR_RECEIPT_NOT_READY",
+    "DEPLOY_RECEIPT_MISSING",
+    "CANARY_RECEIPT_MISSING",
+    "ROLLBACK_RECEIPT_MISSING",
+    "SLI_VERIFICATION_NOT_PASS",
+    "PARITY_VERIFICATION_NOT_PASS"
+  ],
+  "invalidEvidence": [],
+  "approvalSummary": {
+    "approvedBaseline": "NOT_APPROVED",
+    "approvedRollbackTarget": "NOT_APPROVED",
+    "approvedCanaryScope": "NOT_APPROVED",
+    "safeRollbackAuthorization": "NOT_APPROVED",
+    "rollbackDrillAuthorization": "NOT_APPROVED"
+  },
+  "receiptSummary": {
+    "deploy": "MISSING",
+    "canary": "MISSING",
+    "rollback": "MISSING"
+  },
+  "sourceImpactClassification": "CONTROL_PLANE_ONLY",
+  "productionDeploymentAuthorized": false,
+  "releaseAuthorization": false,
+  "commit6GateAuthorized": false
+}

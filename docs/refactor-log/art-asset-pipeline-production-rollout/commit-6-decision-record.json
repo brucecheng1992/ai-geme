@@ -1,13 +1,25 @@
 {
-  "schema": "commit_6_decision_record.v0.2",
+  "schema": "commit_6_decision_record.v0.3",
   "recordName": "COMMIT_6_DECISION_RECORD",
-  "recordedAt": "2026-06-21T19:16:26Z",
-  "decisionScope": "WP5_TECHNICAL_VERIFICATION",
-  "previousDecisionRecordSha256": "sha256:0b2af28caabe39d8fc5dd3fb0182757a9cb3692785d1c4c8267cd852cde92de6",
+  "recordedAt": "2026-06-21T19:48:49Z",
+  "decisionScope": "WP5_TECHNICAL_VERIFICATION_CONTINUATION",
+  "previousDecisionRecordSha256": "sha256:e3fa32637cde8f776085fc791cc12c474935c35efc171b09682a3f95b9adc4ec",
+  "decisionRecordDigestChain": [
+    "sha256:0b2af28caabe39d8fc5dd3fb0182757a9cb3692785d1c4c8267cd852cde92de6",
+    "sha256:e3fa32637cde8f776085fc791cc12c474935c35efc171b09682a3f95b9adc4ec"
+  ],
   "currentDecisionRecordSha256": "RECORDED_EXTERNALLY_TO_AVOID_SELF_REFERENCE",
-  "startingGovernanceCommit": "d969e49b1409705d3da92f0b1582305c0bd275cc",
+  "startingGovernanceCommit": "32ee14ca5fd27b5e7d80888deb56f7a2c56cb832",
   "wp5ControlCommit": "971e5a52dc706f89b03ab0b83a12ff3080957491",
-  "wp5VerificationRunId": "wp5_20260621T190716Z_d969e49b",
+  "wp5VerificationRunId": "wp5_20260621T194849Z_32ee14ca",
+  "previousWp5VerificationRun": {
+    "verificationRunId": "wp5_20260621T190716Z_d969e49b",
+    "decisionRecordSha256": "sha256:e3fa32637cde8f776085fc791cc12c474935c35efc171b09682a3f95b9adc4ec",
+    "localWp5EvidencePath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-evidence-manifest.json",
+    "localWp5EvidenceSha256": "sha256:5c38ee0f266c48d175c7a45c25eaa8a6b86ad46a843cbaec9ebf8f3a7edb8874",
+    "result": "BLOCKED_TECHNICAL_VERIFICATION_REQUIRED",
+    "oldRunOutputsPreserved": true
+  },
   "sourceCommit": "81f92081da94cface172267fed6b2835922e35e7",
   "buildRunId": "build_20260621T163428Z_7cc8af61",
   "buildAttemptId": "attempt_20260621T163428Z_7cc8af61",
@@ -19,7 +31,12 @@
     "classification": "CONTROL_PLANE_ONLY",
     "wp4RerunRequired": false,
     "assessmentPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-source-impact-assessment.json",
-    "assessmentSha256": "sha256:865788531160be3d411d3ff97e26449a48ec82bf8d3d86281e48f5ce8afc7453"
+    "assessmentSha256": "sha256:865788531160be3d411d3ff97e26449a48ec82bf8d3d86281e48f5ce8afc7453",
+    "continuationAssessment": {
+      "diffCommand": "git diff --name-status 81f92081da94cface172267fed6b2835922e35e7..HEAD",
+      "releaseImpactingFilesChangedAfterSourceCommit": [],
+      "classification": "CONTROL_PLANE_ONLY"
+    }
   },
   "releaseEvidence": {
     "releaseArtifact": {
@@ -67,6 +84,11 @@
       "status": "REVIEW_REQUIRED",
       "sha256": "sha256:bc905e93d0fb8c0a00511701126147acf6e3b546d9a5345c9a4cca8b55e592e6"
     },
+    "approvalRequest": {
+      "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-approval-request.json",
+      "status": "GENERATED_NOT_APPROVED",
+      "sha256": "sha256:e3e903fda64f3ed4d0989f027b5fce50f6f374d27a6c027e3565a986eaaaa96e"
+    },
     "approvalEvidenceSchema": {
       "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-approval-evidence.schema.json",
       "sha256": "sha256:8f0fdfddf50e94d8882c1511430ec479fa16cc94a981d5107609a4df902160db"
@@ -82,10 +104,10 @@
     "sha256": "sha256:04c40f3df3f251ddd0e9810a4fd8cd792e97866c67a71c58acc80b61f39b0f50",
     "testCommand": "npx vitest run tests/contracts/commit-6-readiness-validator.test.ts",
     "testResult": "PASS_19_TESTS",
-    "realInputPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-validator-input.json",
-    "realInputSha256": "sha256:a753a6945a18411891b4d3069e9120cbafb620c421e71e72bde94bd9f25b5064",
-    "realInputResultPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-validator-result.json",
-    "realInputResultSha256": "sha256:fccdc7a96d43f4819f956c6fed3e5f214d8e378790e311bfbc90498a9e881df3",
+    "realInputPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-continuation-validator-input.json",
+    "realInputSha256": "sha256:84856bedcb72f5f230db390af1d30b3588ceac0885a460f9ef0d3dc1ac7431c5",
+    "realInputResultPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-continuation-validator-result.json",
+    "realInputResultSha256": "sha256:87bcc6aaf1ce52b947c7ffc55f771fcb64cb453439431c4ec2c5a483ea4920d1",
     "realInputResult": "BLOCKED",
     "realInputExitCode": 1,
     "reasonCodes": [
@@ -112,7 +134,8 @@
     "approvedRollbackTarget": "NOT_APPROVED",
     "approvedCanaryScope": "NOT_APPROVED",
     "safeRollbackAuthorization": "NOT_APPROVED",
-    "rollbackDrillAuthorization": "NOT_APPROVED"
+    "rollbackDrillAuthorization": "NOT_APPROVED",
+    "approvalRequestStatus": "GENERATED_NOT_APPROVED"
   },
   "receiptSummary": {
     "deployReceipt": "MISSING",
@@ -123,15 +146,42 @@
   },
   "sliVerification": "NOT_APPROVED",
   "parityVerification": "NOT_APPROVED",
-  "wp5EvidenceManifest": {
-    "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-evidence-manifest.json",
-    "sha256": "sha256:5c38ee0f266c48d175c7a45c25eaa8a6b86ad46a843cbaec9ebf8f3a7edb8874",
-    "wormStatus": "NOT_UPLOADED_BLOCKED",
-    "wormBlocker": "BLOCKED_NO_ACTIVE_APPROVED_EVIDENCE_WRITER_SESSION",
-    "wp5EvidenceUri": "NOT_GENERATED",
-    "wp5EvidenceVersionId": "NOT_GENERATED",
+  "localEvidenceDigestResolution": {
+    "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-local-evidence-digest-resolution.json",
+    "sha256": "sha256:492f15dfda0ffabd1b7ce6541db399a2946adc1eca042ebf8b9cfa1d3a058e22",
+    "status": "PASS_LOCAL_DIGEST_IDENTIFIED"
+  },
+  "wp5Evidence": {
+    "blockedEvidenceManifest": {
+      "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-blocked-evidence-manifest.json",
+      "sha256": "sha256:0d01b076f5b63176d21d4bfca7e5dacb5b485ade83ac84d3bc1ae559367ff55b",
+      "status": "GENERATED_LOCAL_BLOCKED"
+    },
+    "localWp5EvidencePath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-evidence-manifest.json",
+    "localWp5EvidenceSha256": "sha256:5c38ee0f266c48d175c7a45c25eaa8a6b86ad46a843cbaec9ebf8f3a7edb8874",
+    "localWp5EvidenceKind": "OLD_RUN_LOCAL_BLOCKED_EVIDENCE_MANIFEST",
+    "wp5WormEvidenceUri": "NOT_GENERATED",
+    "wp5WormEvidenceSha256": "NOT_GENERATED",
+    "wp5WormEvidenceVersionId": "NOT_GENERATED",
+    "wp5WormUpload": "NOT_PERFORMED",
+    "wp5WormEvidenceBlocker": "BLOCKED_EVIDENCE_WRITER_SESSION_REQUIRED",
+    "localAliyunCliStatus": "NOT_FOUND",
     "roundTripVerification": "NOT_RUN",
     "slsCorrelation": "NOT_RUN"
+  },
+  "sourceIdentityAndAudit": {
+    "wp4CompensatingCorrelation": "PASS_WITH_APPROVED_COMPENSATING_CORRELATION",
+    "wp5SourceIdentityCompensatingCorrelation": "NOT_APPROVED_FOR_WP5",
+    "wp5SlsCorrelation": "NOT_RUN",
+    "formalWp5PassAllowed": false
+  },
+  "providerTicket": {
+    "ticketId": "00AWWPRR6J",
+    "status": "NOT_RECHECKED"
+  },
+  "governanceRequirementCycleCheck": {
+    "status": "UNKNOWN_REQUIRES_AUTHORITY_DECISION",
+    "approvalRequestPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-approval-request.json"
   },
   "admissionOutcome": {
     "workPackage5": "BLOCKED_TECHNICAL_VERIFICATION_REQUIRED",
@@ -155,7 +205,12 @@
     "DEPLOY_RECEIPT_MISSING",
     "CANARY_RECEIPT_MISSING",
     "ROLLBACK_RECEIPT_MISSING",
-    "WP5_WORM_EVIDENCE_UPLOAD_BLOCKED"
+    "SLI_VERIFICATION_NOT_PASS",
+    "PARITY_VERIFICATION_NOT_PASS",
+    "WP5_WORM_EVIDENCE_UPLOAD_NOT_PERFORMED",
+    "WP5_SOURCE_IDENTITY_COMPENSATING_CORRELATION_NOT_APPROVED",
+    "PROVIDER_TICKET_STATUS_NOT_RECHECKED",
+    "GOVERNANCE_REQUIREMENT_CYCLE_CHECK_UNKNOWN"
   ],
   "forbiddenActionsNotPerformed": {
     "wp6Started": false,

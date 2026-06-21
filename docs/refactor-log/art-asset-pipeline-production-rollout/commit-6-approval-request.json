@@ -1,0 +1,129 @@
+{
+  "schemaVersion": "commit_6_approval_request.v0.1",
+  "requestId": "commit6-approval-request-wp5_20260621T194849Z_32ee14ca",
+  "requestStatus": "REQUESTED_NOT_APPROVED",
+  "createdAt": "2026-06-21T19:48:49Z",
+  "wp5VerificationRunId": "wp5_20260621T194849Z_32ee14ca",
+  "previousWp5VerificationRunId": "wp5_20260621T190716Z_d969e49b",
+  "releaseSourceCommit": "81f92081da94cface172267fed6b2835922e35e7",
+  "buildRunId": "build_20260621T163428Z_7cc8af61",
+  "candidateId": "candidate_20260621T163428Z_7cc8af61",
+  "releaseId": "release_20260621T163428Z_7cc8af61",
+  "artifactDigest": "sha256:7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f",
+  "artifactUri": "oss://together-game/ai-game-maker/release-evidence/trusted-build-artifacts/build_20260621T163428Z_7cc8af61/sha256-7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f/ai-game-maker-workbench-release_20260621T163428Z_7cc8af61.tar.gz",
+  "boundEvidence": {
+    "gateInputManifestSha256": "sha256:3104bcf40cd1d468c47420e771eefe7cee398d28584c7e2f90e148b174c063d4",
+    "provenanceSha256": "sha256:dd3f7550a41f4a57f0f10fdf7c9249929c4a38ef502047fc58858abdb5aebae8",
+    "wp4SlsCorrelationSha256": "sha256:a95337d12d61dd4bc85a4cb8e3254ed5f9e0559fa711d0fd57cf1caadb83aa24"
+  },
+  "requestedApprovals": [
+    {
+      "approvalType": "DEPLOYMENT_RUNBOOK_APPROVAL",
+      "currentStatus": "REVIEW_REQUIRED_NOT_APPROVED",
+      "targetDocument": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-deployment-runbook.md",
+      "targetDocumentVersion": "commit-6-deployment-runbook.v0.1",
+      "targetDocumentSha256": "sha256:c93f458916b88b0964fb52b8ef5a21f0ad9ad2ee9403a80a67e191121067d9f8",
+      "requiredBefore": "WP5_PASS"
+    },
+    {
+      "approvalType": "ROLLBACK_RUNBOOK_APPROVAL",
+      "currentStatus": "REVIEW_REQUIRED_NOT_APPROVED",
+      "targetDocument": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-rollback-runbook.md",
+      "targetDocumentVersion": "commit-6-rollback-runbook.v0.1",
+      "targetDocumentSha256": "sha256:f1b88f109554dc7158035bf48a3daecde529f83502709f9b67b60fa4c4beee3a",
+      "requiredBefore": "WP5_PASS"
+    },
+    {
+      "approvalType": "SLI_PARITY_CRITERIA_APPROVAL",
+      "currentStatus": "REVIEW_REQUIRED_NOT_APPROVED",
+      "targetDocument": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-sli-parity-criteria.json",
+      "targetDocumentVersion": "commit-6-sli-parity-criteria.v0.1",
+      "targetDocumentSha256": "sha256:bc905e93d0fb8c0a00511701126147acf6e3b546d9a5345c9a4cca8b55e592e6",
+      "requiredBefore": "WP5_PASS"
+    },
+    {
+      "approvalType": "APPROVED_BASELINE",
+      "currentStatus": "NOT_APPROVED",
+      "requiredBinding": [
+        "baselineId",
+        "baselineDataVersion",
+        "metricsSource",
+        "observationPeriod",
+        "baselineDigest",
+        "approvalScope",
+        "boundArtifactDigest"
+      ],
+      "requiredBefore": "WP5_PASS"
+    },
+    {
+      "approvalType": "APPROVED_ROLLBACK_TARGET",
+      "currentStatus": "NOT_APPROVED",
+      "requiredBinding": [
+        "rollbackReleaseOrVersion",
+        "artifactUri",
+        "artifactDigest",
+        "provenance",
+        "compatibilityStatus",
+        "deployabilityStatus"
+      ],
+      "requiredBefore": "WP5_PASS"
+    },
+    {
+      "approvalType": "APPROVED_CANARY_SCOPE",
+      "currentStatus": "NOT_APPROVED",
+      "requiredBinding": [
+        "account",
+        "region",
+        "clusterOrEnvironment",
+        "service",
+        "namespace",
+        "trafficPercentageOrScope",
+        "duration",
+        "allowedOperations",
+        "abortLimits"
+      ],
+      "requiredBefore": "WP5_PASS"
+    },
+    {
+      "approvalType": "SAFE_ROLLBACK_AUTHORIZATION",
+      "currentStatus": "NOT_APPROVED",
+      "requiredBinding": [
+        "rollbackScope",
+        "rollbackTarget",
+        "allowedTrigger",
+        "executionRole",
+        "expiry"
+      ],
+      "requiredBefore": "WP5_PASS"
+    },
+    {
+      "approvalType": "ROLLBACK_DRILL_AUTHORIZATION",
+      "currentStatus": "NOT_APPROVED",
+      "requiredBinding": [
+        "drillEnvironment",
+        "drillScope",
+        "rollbackTarget",
+        "executionRole",
+        "expiry"
+      ],
+      "requiredBefore": "WP5_PASS"
+    }
+  ],
+  "platformReceiptDecisionRequest": {
+    "status": "REQUESTED",
+    "currentFinding": "No approved non-production verification environment, canary scope, rollback target, or acceptable platform receipt authority was found in repository evidence.",
+    "decisionNeeded": [
+      "APPROVED_NON_PRODUCTION_VERIFICATION_ENVIRONMENT",
+      "ACCEPTABLE_DEPLOY_RECEIPT_SOURCE",
+      "ACCEPTABLE_CANARY_RECEIPT_SOURCE",
+      "ACCEPTABLE_ROLLBACK_RECEIPT_SOURCE",
+      "AUTHORIZED_ACTOR_OR_ROLE_FOR_RECEIPT_GENERATION"
+    ],
+    "cycleCheck": "UNKNOWN_REQUIRES_AUTHORITY_DECISION",
+    "productionDeploymentAuthorized": false
+  },
+  "nonApprovalNotice": "This request package is not approval evidence. WP5 remains blocked until the required approvals are issued by the proper external authority and bound to authoritative records or immutable evidence.",
+  "releaseAuthorization": false,
+  "commit6Gate": "BLOCKED",
+  "workPackage6": "NOT_STARTED_BLOCKED"
+}

@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "commit_6_readiness_validator_input.v0.1",
+  "verificationRunId": "wp5_20260621T194849Z_32ee14ca",
+  "releaseSourceCommit": "81f92081da94cface172267fed6b2835922e35e7",
+  "buildRunId": "build_20260621T163428Z_7cc8af61",
+  "artifactDigest": "sha256:7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f",
+  "wp4Status": "PASS_WITH_APPROVED_COMPENSATING_CORRELATION",
+  "wp4SlsCorrelation": "PASS_9_OF_9_WITH_REQUEST_ID_CORRECTION",
+  "sourceImpactClassification": "CONTROL_PLANE_ONLY",
+  "deploymentRunbook": {
+    "status": "REVIEW_REQUIRED",
+    "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-deployment-runbook.md",
+    "documentVersion": "commit-6-deployment-runbook.v0.1",
+    "sha256": "sha256:c93f458916b88b0964fb52b8ef5a21f0ad9ad2ee9403a80a67e191121067d9f8",
+    "boundSourceCommit": "81f92081da94cface172267fed6b2835922e35e7",
+    "boundBuildRunId": "build_20260621T163428Z_7cc8af61",
+    "artifactDigest": "sha256:7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f"
+  },
+  "rollbackRunbook": {
+    "status": "REVIEW_REQUIRED",
+    "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-rollback-runbook.md",
+    "documentVersion": "commit-6-rollback-runbook.v0.1",
+    "sha256": "sha256:f1b88f109554dc7158035bf48a3daecde529f83502709f9b67b60fa4c4beee3a",
+    "boundSourceCommit": "81f92081da94cface172267fed6b2835922e35e7",
+    "boundBuildRunId": "build_20260621T163428Z_7cc8af61",
+    "artifactDigest": "sha256:7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f"
+  },
+  "sliParityCriteria": {
+    "status": "REVIEW_REQUIRED",
+    "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-sli-parity-criteria.json",
+    "documentVersion": "commit-6-sli-parity-criteria.v0.1",
+    "sha256": "sha256:bc905e93d0fb8c0a00511701126147acf6e3b546d9a5345c9a4cca8b55e592e6",
+    "boundSourceCommit": "81f92081da94cface172267fed6b2835922e35e7",
+    "boundBuildRunId": "build_20260621T163428Z_7cc8af61",
+    "artifactDigest": "sha256:7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f",
+    "baselineStatus": "NOT_APPROVED"
+  },
+  "approvals": {
+    "approvedBaseline": {
+      "status": "NOT_APPROVED"
+    },
+    "approvedRollbackTarget": {
+      "status": "NOT_APPROVED"
+    },
+    "approvedCanaryScope": {
+      "status": "NOT_APPROVED"
+    },
+    "safeRollbackAuthorization": {
+      "status": "NOT_APPROVED"
+    },
+    "rollbackDrillAuthorization": {
+      "status": "NOT_APPROVED"
+    }
+  },
+  "receipts": {
+    "deploy": {
+      "status": "MISSING",
+      "source": "UNKNOWN"
+    },
+    "canary": {
+      "status": "MISSING",
+      "source": "UNKNOWN"
+    },
+    "rollback": {
+      "status": "MISSING",
+      "source": "UNKNOWN"
+    }
+  },
+  "sliVerification": "NOT_APPROVED",
+  "parityVerification": "NOT_APPROVED",
+  "productionDeploymentPerformed": false
+}

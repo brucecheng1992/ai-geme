@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "commit_6_wp5_local_evidence_digest_resolution.v0.1",
+  "resolutionId": "commit6-wp5-local-evidence-digest-resolution-wp5_20260621T194849Z_32ee14ca",
+  "verificationRunId": "wp5_20260621T194849Z_32ee14ca",
+  "resolvedAt": "2026-06-21T19:48:49Z",
+  "startingGovernanceCommit": "32ee14ca5fd27b5e7d80888deb56f7a2c56cb832",
+  "oldVerificationRunId": "wp5_20260621T190716Z_d969e49b",
+  "oldClaimedSha256": "sha256:5c38ee0f266c48d175c7a45c25eaa8a6b86ad46a843cbaec9ebf8f3a7edb8874",
+  "resolutionResult": "PASS_LOCAL_DIGEST_IDENTIFIED",
+  "localWp5EvidencePath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-evidence-manifest.json",
+  "localWp5EvidenceSha256": "sha256:5c38ee0f266c48d175c7a45c25eaa8a6b86ad46a843cbaec9ebf8f3a7edb8874",
+  "localWp5EvidenceKind": "OLD_RUN_LOCAL_BLOCKED_EVIDENCE_MANIFEST",
+  "oldManifestSummary": {
+    "schemaVersion": "commit_6_wp5_evidence_manifest.v0.1",
+    "manifestId": "commit6-wp5-evidence-wp5_20260621T190716Z_d969e49b",
+    "verificationRunId": "wp5_20260621T190716Z_d969e49b",
+    "validatorResult": "BLOCKED",
+    "finalWp5State": "BLOCKED_TECHNICAL_VERIFICATION_REQUIRED",
+    "wormStatus": "NOT_UPLOADED_BLOCKED"
+  },
+  "semanticCorrection": {
+    "previousAmbiguity": "WP5_EVIDENCE_URI=NOT_GENERATED was listed near WP5_EVIDENCE_SHA256, which could be misread as a WORM object digest.",
+    "correctMeaning": "sha256:5c38ee0f266c48d175c7a45c25eaa8a6b86ad46a843cbaec9ebf8f3a7edb8874 is only the old local blocked evidence manifest digest.",
+    "wormEvidenceUri": "NOT_GENERATED",
+    "wormEvidenceSha256": "NOT_GENERATED",
+    "wormEvidenceVersionId": "NOT_GENERATED"
+  },
+  "delayedArchival": {
+    "suitableForDelayedArchival": "REVIEW_REQUIRED_APPROVED_EVIDENCE_WRITER_SESSION_REQUIRED",
+    "performed": false,
+    "blocker": "BLOCKED_EVIDENCE_WRITER_SESSION_REQUIRED",
+    "releaseAuthorization": false
+  },
+  "forbiddenInterpretations": [
+    "DO_NOT_TREAT_LOCAL_SHA_AS_WORM_OBJECT_SHA",
+    "DO_NOT_MARK_WP5_PASS_FROM_OLD_BLOCKED_MANIFEST",
+    "DO_NOT_REWRITE_OLD_WP5_RUN_OUTPUTS"
+  ]
+}
