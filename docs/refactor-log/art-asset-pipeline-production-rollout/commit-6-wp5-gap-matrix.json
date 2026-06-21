@@ -1,0 +1,121 @@
+{
+  "schemaVersion": "commit_6_wp5_gap_matrix.v0.1",
+  "matrixId": "commit6-wp5-gap-matrix-wp5_20260621T190716Z_d969e49b",
+  "verificationRunId": "wp5_20260621T190716Z_d969e49b",
+  "releaseSourceCommit": "81f92081da94cface172267fed6b2835922e35e7",
+  "buildRunId": "build_20260621T163428Z_7cc8af61",
+  "artifactDigest": "sha256:7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f",
+  "sourceImpactClassification": "CONTROL_PLANE_ONLY",
+  "entries": [
+    {
+      "requirement": "Versioned deployment runbook",
+      "authoritativeSource": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-deployment-runbook.md",
+      "currentState": "CREATED_REVIEW_REQUIRED",
+      "requiredEvidence": "Approved versioned runbook bound to release source commit, build run, artifact digest, platform target, and operation role.",
+      "responsibleApprovalRole": "REQUIRES_EXTERNAL_APPROVAL",
+      "automationStatus": "DOCUMENTED_NOT_EXECUTED",
+      "sourceImpactClassification": "CONTROL_PLANE_ONLY",
+      "blocker": "RUNBOOK_REVIEW_REQUIRED",
+      "plannedAction": "External release/operations owner must approve exact platform target and execution role before any platform operation."
+    },
+    {
+      "requirement": "Commit 6 rollback runbook",
+      "authoritativeSource": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-rollback-runbook.md",
+      "currentState": "CREATED_REVIEW_REQUIRED",
+      "requiredEvidence": "Approved rollback target, rollback validation, trigger policy, escalation path, and independent rollback/drill authorization.",
+      "responsibleApprovalRole": "REQUIRES_EXTERNAL_APPROVAL",
+      "automationStatus": "DOCUMENTED_NOT_EXECUTED",
+      "sourceImpactClassification": "CONTROL_PLANE_ONLY",
+      "blocker": "ROLLBACK_TARGET_NOT_APPROVED",
+      "plannedAction": "External approval must bind rollback target release, artifact digest, provenance, and deployability."
+    },
+    {
+      "requirement": "Versioned SLI/parity criteria",
+      "authoritativeSource": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-sli-parity-criteria.json",
+      "currentState": "CREATED_REVIEW_REQUIRED",
+      "requiredEvidence": "Approved thresholds, measurement windows, query sources, parity datasets, pass/abort/rollback rules, and expiry.",
+      "responsibleApprovalRole": "REQUIRES_EXTERNAL_APPROVAL",
+      "automationStatus": "MACHINE_READABLE_NOT_APPROVED",
+      "sourceImpactClassification": "CONTROL_PLANE_ONLY",
+      "blocker": "SLI_PARITY_CRITERIA_NOT_APPROVED",
+      "plannedAction": "Bind approved SLI/parity thresholds from an authoritative SLO/baseline/approval source."
+    },
+    {
+      "requirement": "Commit 6 gate validator",
+      "authoritativeSource": "scripts/commit-6-readiness-validator.ts",
+      "currentState": "IMPLEMENTED_WITH_FAIL_CLOSED_TESTS",
+      "requiredEvidence": "Validator test pass and production-input validator output showing PASS only when all mandatory approvals and platform receipts are valid.",
+      "responsibleApprovalRole": "NOT_APPLICABLE_AUTOMATION",
+      "automationStatus": "IMPLEMENTED",
+      "sourceImpactClassification": "CONTROL_PLANE_ONLY",
+      "blocker": "REAL_INPUT_EXPECTED_TO_BLOCK_UNTIL_APPROVALS_AND_RECEIPTS_EXIST",
+      "plannedAction": "Run validator against current real input and preserve the blocked output."
+    },
+    {
+      "requirement": "Approved baseline",
+      "authoritativeSource": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-approval-request-template.json",
+      "currentState": "NOT_APPROVED",
+      "requiredEvidence": "Approval record with baseline ID, data version, metrics source, observation period, baseline digest, and scope.",
+      "responsibleApprovalRole": "REQUIRES_EXTERNAL_APPROVAL",
+      "automationStatus": "SCHEMA_AND_TEMPLATE_ONLY",
+      "sourceImpactClassification": "CONTROL_PLANE_ONLY",
+      "blocker": "APPROVED_BASELINE_MISSING",
+      "plannedAction": "Obtain a verifiable approval record from the proper release governance authority."
+    },
+    {
+      "requirement": "Approved rollback target",
+      "authoritativeSource": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-approval-request-template.json",
+      "currentState": "NOT_APPROVED",
+      "requiredEvidence": "Approval record binding rollback release/version, artifact URI, digest, provenance, compatibility, and deployability.",
+      "responsibleApprovalRole": "REQUIRES_EXTERNAL_APPROVAL",
+      "automationStatus": "SCHEMA_AND_TEMPLATE_ONLY",
+      "sourceImpactClassification": "CONTROL_PLANE_ONLY",
+      "blocker": "APPROVED_ROLLBACK_TARGET_MISSING",
+      "plannedAction": "Obtain a verifiable rollback target approval from the proper release governance authority."
+    },
+    {
+      "requirement": "Approved canary scope",
+      "authoritativeSource": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-approval-request-template.json",
+      "currentState": "NOT_APPROVED",
+      "requiredEvidence": "Approval record binding account, region, environment, service, namespace, traffic scope, duration, allowed operations, and abort limits.",
+      "responsibleApprovalRole": "REQUIRES_EXTERNAL_APPROVAL",
+      "automationStatus": "SCHEMA_AND_TEMPLATE_ONLY",
+      "sourceImpactClassification": "CONTROL_PLANE_ONLY",
+      "blocker": "APPROVED_CANARY_SCOPE_MISSING",
+      "plannedAction": "Obtain a verifiable canary scope approval before any verification drill."
+    },
+    {
+      "requirement": "Safe rollback authorization",
+      "authoritativeSource": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-approval-request-template.json",
+      "currentState": "NOT_APPROVED",
+      "requiredEvidence": "Unexpired independent authorization that permits rollback execution in the approved scope.",
+      "responsibleApprovalRole": "REQUIRES_EXTERNAL_APPROVAL",
+      "automationStatus": "SCHEMA_AND_TEMPLATE_ONLY",
+      "sourceImpactClassification": "CONTROL_PLANE_ONLY",
+      "blocker": "SAFE_ROLLBACK_AUTHORIZATION_MISSING",
+      "plannedAction": "Obtain explicit rollback authorization; do not infer it from runbook completion."
+    },
+    {
+      "requirement": "Rollback drill authorization",
+      "authoritativeSource": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-approval-request-template.json",
+      "currentState": "NOT_APPROVED",
+      "requiredEvidence": "Unexpired independent authorization for a rollback drill in the approved non-production scope.",
+      "responsibleApprovalRole": "REQUIRES_EXTERNAL_APPROVAL",
+      "automationStatus": "SCHEMA_AND_TEMPLATE_ONLY",
+      "sourceImpactClassification": "CONTROL_PLANE_ONLY",
+      "blocker": "ROLLBACK_DRILL_AUTHORIZATION_MISSING",
+      "plannedAction": "Obtain explicit rollback drill authorization before any drill."
+    },
+    {
+      "requirement": "Deploy, canary, and rollback platform receipts",
+      "authoritativeSource": "PLATFORM_NATIVE_RECEIPTS",
+      "currentState": "MISSING_NOT_AUTHORIZED_TO_EXECUTE",
+      "requiredEvidence": "Provider/platform-generated operation IDs bound to current artifact digest, approved environment, actor principal, timestamps, final status, and audit metadata.",
+      "responsibleApprovalRole": "REQUIRES_EXTERNAL_APPROVAL_AND_PLATFORM_ROLE",
+      "automationStatus": "NOT_EXECUTED",
+      "sourceImpactClassification": "CONTROL_PLANE_ONLY",
+      "blocker": "PLATFORM_RECEIPTS_MISSING",
+      "plannedAction": "Run only after all approvals, runbooks, criteria, caller identity, and scope checks pass."
+    }
+  ]
+}

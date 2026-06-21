@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "commit_6_approval_evidence.schema.v0.1",
+  "title": "Commit 6 Approval Evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "approvalId",
+    "approvalType",
+    "decision",
+    "approverPrincipal",
+    "approverRole",
+    "separationOfDutiesCheck",
+    "approvedScope",
+    "boundSourceCommit",
+    "boundBuildRunId",
+    "boundArtifactDigest",
+    "boundEnvironment",
+    "issuedAt",
+    "expiresAt",
+    "conditions",
+    "evidenceReference",
+    "revocationStatus",
+    "verificationBinding"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "commit_6_approval_evidence.v0.1" },
+    "approvalId": { "type": "string", "minLength": 1 },
+    "approvalType": {
+      "enum": [
+        "APPROVED_BASELINE",
+        "APPROVED_ROLLBACK_TARGET",
+        "APPROVED_CANARY_SCOPE",
+        "SAFE_ROLLBACK_AUTHORIZATION",
+        "ROLLBACK_DRILL_AUTHORIZATION"
+      ]
+    },
+    "decision": { "enum": ["APPROVE", "REJECT", "REVOKE"] },
+    "approverPrincipal": { "type": "string", "minLength": 1 },
+    "approverRole": { "type": "string", "minLength": 1 },
+    "separationOfDutiesCheck": { "enum": ["PASS", "FAIL"] },
+    "approvedScope": { "type": "object" },
+    "boundSourceCommit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "boundBuildRunId": { "type": "string", "minLength": 1 },
+    "boundArtifactDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "boundEnvironment": { "type": "string", "minLength": 1 },
+    "issuedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "conditions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "evidenceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "idOrUri"],
+      "properties": {
+        "kind": { "enum": ["AUTHORITATIVE_SYSTEM_RECORD", "WORM_OBJECT", "SIGNED_DOCUMENT"] },
+        "idOrUri": { "type": "string", "minLength": 1 },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    },
+    "revocationStatus": { "enum": ["NOT_REVOKED", "REVOKED", "UNKNOWN"] },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "valueReference": { "type": "string", "minLength": 1 }
+      }
+    },
+    "verificationBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["releaseId", "candidateId", "wp5VerificationRunId"],
+      "properties": {
+        "releaseId": { "type": "string", "minLength": 1 },
+        "candidateId": { "type": "string", "minLength": 1 },
+        "wp5VerificationRunId": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

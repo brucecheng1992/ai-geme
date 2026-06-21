@@ -1,0 +1,103 @@
+{
+  "schemaVersion": "commit_6_approval_request_template.v0.1",
+  "templateStatus": "REVIEW_REQUIRED",
+  "wp5VerificationRunId": "wp5_20260621T190716Z_d969e49b",
+  "releaseSourceCommit": "81f92081da94cface172267fed6b2835922e35e7",
+  "buildRunId": "build_20260621T163428Z_7cc8af61",
+  "candidateId": "candidate_20260621T163428Z_7cc8af61",
+  "releaseId": "release_20260621T163428Z_7cc8af61",
+  "artifactDigest": "sha256:7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f",
+  "requiredApprovalTypes": [
+    {
+      "approvalType": "APPROVED_BASELINE",
+      "currentStatus": "NOT_APPROVED",
+      "requiredBinding": [
+        "baselineId",
+        "baselineDataVersion",
+        "metricsSource",
+        "observationPeriod",
+        "baselineDigest",
+        "approvalScope"
+      ]
+    },
+    {
+      "approvalType": "APPROVED_ROLLBACK_TARGET",
+      "currentStatus": "NOT_APPROVED",
+      "requiredBinding": [
+        "rollbackReleaseOrVersion",
+        "artifactUri",
+        "artifactDigest",
+        "provenance",
+        "compatibilityStatus",
+        "deployabilityStatus"
+      ]
+    },
+    {
+      "approvalType": "APPROVED_CANARY_SCOPE",
+      "currentStatus": "NOT_APPROVED",
+      "requiredBinding": [
+        "account",
+        "region",
+        "clusterOrEnvironment",
+        "service",
+        "namespace",
+        "trafficPercentageOrScope",
+        "duration",
+        "allowedOperations",
+        "abortLimits"
+      ]
+    },
+    {
+      "approvalType": "SAFE_ROLLBACK_AUTHORIZATION",
+      "currentStatus": "NOT_APPROVED",
+      "requiredBinding": [
+        "rollbackScope",
+        "rollbackTarget",
+        "allowedTrigger",
+        "executionRole",
+        "expiry"
+      ]
+    },
+    {
+      "approvalType": "ROLLBACK_DRILL_AUTHORIZATION",
+      "currentStatus": "NOT_APPROVED",
+      "requiredBinding": [
+        "drillEnvironment",
+        "drillScope",
+        "rollbackTarget",
+        "executionRole",
+        "expiry"
+      ]
+    }
+  ],
+  "approvalEvidenceTemplate": {
+    "schemaVersion": "commit_6_approval_evidence.v0.1",
+    "approvalId": "REQUIRES_AUTHORITY_RECORD_ID",
+    "approvalType": "APPROVED_BASELINE",
+    "decision": "APPROVE",
+    "approverPrincipal": "REQUIRES_EXTERNAL_APPROVER",
+    "approverRole": "REQUIRES_EXTERNAL_APPROVER_ROLE",
+    "separationOfDutiesCheck": "PASS",
+    "approvedScope": {
+      "scopeStatus": "REQUIRES_EXTERNAL_APPROVAL"
+    },
+    "boundSourceCommit": "81f92081da94cface172267fed6b2835922e35e7",
+    "boundBuildRunId": "build_20260621T163428Z_7cc8af61",
+    "boundArtifactDigest": "sha256:7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f",
+    "boundEnvironment": "REQUIRES_EXTERNAL_APPROVAL",
+    "issuedAt": "REQUIRES_AUTHORITY_TIMESTAMP",
+    "expiresAt": "REQUIRES_AUTHORITY_TIMESTAMP",
+    "conditions": [],
+    "evidenceReference": {
+      "kind": "AUTHORITATIVE_SYSTEM_RECORD",
+      "idOrUri": "REQUIRES_AUTHORITY_RECORD_ID"
+    },
+    "revocationStatus": "NOT_REVOKED",
+    "verificationBinding": {
+      "releaseId": "release_20260621T163428Z_7cc8af61",
+      "candidateId": "candidate_20260621T163428Z_7cc8af61",
+      "wp5VerificationRunId": "wp5_20260621T190716Z_d969e49b"
+    }
+  },
+  "nonApprovalNotice": "This template is not an approval and must not be used as approval evidence until populated by the proper external authority and bound to an authoritative system record, signature, or immutable evidence URI."
+}
