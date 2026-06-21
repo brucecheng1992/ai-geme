@@ -1,0 +1,192 @@
+{
+  "schema": "commit_6_decision_record.v0.1",
+  "recordName": "COMMIT_6_DECISION_RECORD",
+  "recordedAt": "2026-06-21T18:47:40Z",
+  "decisionScope": "WP5_INDEPENDENT_ADMISSION",
+  "governanceBaseCommit": "7025570168bcbe206a00e416f9024c6cb4300710",
+  "sourceCommit": "81f92081da94cface172267fed6b2835922e35e7",
+  "buildRunId": "build_20260621T163428Z_7cc8af61",
+  "buildAttemptId": "attempt_20260621T163428Z_7cc8af61",
+  "candidateId": "candidate_20260621T163428Z_7cc8af61",
+  "releaseId": "release_20260621T163428Z_7cc8af61",
+  "workspaceId": "workspace_20260621T163428Z_7cc8af61",
+  "artifactSha256": "sha256:7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f",
+  "releaseEvidence": {
+    "releaseArtifact": {
+      "objectUri": "oss://together-game/ai-game-maker/release-evidence/trusted-build-artifacts/build_20260621T163428Z_7cc8af61/sha256-7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f/ai-game-maker-workbench-release_20260621T163428Z_7cc8af61.tar.gz",
+      "versionId": "CAEQTXiBgMDt0.Os9xkiIGI4MGU1NDdiYmM2YjQwMzE4MDhmYTU3NGFlNzRlNDE3",
+      "sha256": "sha256:7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f"
+    },
+    "gateInputManifest": {
+      "objectUri": "oss://together-game/ai-game-maker/release-evidence/gate-input-manifests/build_20260621T163428Z_7cc8af61/sha256-3104bcf40cd1d468c47420e771eefe7cee398d28584c7e2f90e148b174c063d4/gate-input-manifest-20260621T163428Z-7cc8af61.json",
+      "versionId": "CAEQTXiBgIC4100s9xkiIDBiZGQ3YzczWU40DRjODg5MzYxOTQyZWUwODA4OTgz",
+      "sha256": "sha256:3104bcf40cd1d468c47420e771eefe7cee398d28584c7e2f90e148b174c063d4"
+    },
+    "provenance": {
+      "objectUri": "oss://together-game/ai-game-maker/release-evidence/provenance/build_20260621T163428Z_7cc8af61/sha256-dd3f7550a41f4a57f0f10fdf7c9249929c4a38ef502047fc58858abdb5aebae8/trusted-build-provenance-20260621T163428Z-7cc8af61.json",
+      "versionId": "CAEQTXiBgMCJ1eOs9xkiIDIxNDZiNGRlZDK5ZjRkOTlhNDI5NDIyZmJiZDZlNTUy",
+      "sha256": "sha256:dd3f7550a41f4a57f0f10fdf7c9249929c4a38ef502047fc58858abdb5aebae8"
+    },
+    "slsCorrelation": {
+      "objectUri": "oss://together-game/ai-game-maker/release-evidence/sls-correlations/build_20260621T163428Z_7cc8af61/sha256-a95337d12d61dd4bc85a4cb8e3254ed5f9e0559fa711d0fd57cf1caadb83aa24/wp4-success-sls-correlation-20260621T163428Z-7cc8af61.json",
+      "versionId": "CAEQTXiBgIDPrdOt9xkiIDI2Njc5M2MyNmFhNzQ2YWNiMzczYjFmMDI0MzkWYzVk",
+      "sha256": "sha256:a95337d12d61dd4bc85a4cb8e3254ed5f9e0559fa711d0fd57cf1caadb83aa24",
+      "status": "PASS_9_OF_9_WITH_REQUEST_ID_CORRECTION"
+    }
+  },
+  "checkedSources": [
+    {
+      "path": "docs/refactor-log/art-asset-pipeline-production-rollout/artifact-storage-policy.md",
+      "purpose": "WP4 evidence, storage controls, and current gate state"
+    },
+    {
+      "path": "docs/refactor-log/art-asset-pipeline-production-rollout/evidence-loss-record.json",
+      "purpose": "WORM receipts, SLS correlation, release identity, and remaining actions"
+    },
+    {
+      "path": "docs/refactor-log/art-asset-pipeline-production-rollout/step-14a-production-rollout-gate.md",
+      "purpose": "controlled rollout guard and rollback policy"
+    },
+    {
+      "path": "docs/refactor-log/art-asset-pipeline-production-rollout/step-14b-controlled-rollout.md",
+      "purpose": "non-default rollout helper validation record"
+    },
+    {
+      "path": "docs/refactor-log/art-asset-pipeline-production-rollout/validation-and-ci-matrix.md",
+      "purpose": "available validation matrix"
+    },
+    {
+      "path": "package.json",
+      "purpose": "available npm scripts and absence of deploy command"
+    }
+  ],
+  "decisionItems": [
+    {
+      "id": 1,
+      "name": "Deployment runbook location",
+      "status": "BLOCKED_NOT_FOUND_VERSIONED_RUNBOOK",
+      "finding": "No versioned Commit 6 deployment runbook bound to this release ID and artifact digest was found. Existing npm scripts do not expose a deploy command."
+    },
+    {
+      "id": 2,
+      "name": "Rollback runbook location",
+      "status": "BLOCKED_NOT_COMMIT6_BOUND",
+      "finding": "Existing Step 14 rollback notes cover disabling the non-default feature flag, but no Commit 6 rollback runbook with precise trigger, target, validation, and escalation path is approved for this release."
+    },
+    {
+      "id": 3,
+      "name": "Gate Input Manifest location",
+      "status": "PASS_WORM_VERIFIED",
+      "finding": "The Gate Input Manifest has a WORM OSS URI, Version ID, SHA-256 digest, readback verification, and 9/9 SLS correlation with a recorded Request ID correction."
+    },
+    {
+      "id": 4,
+      "name": "Gate validator required in candidate repository",
+      "status": "TECHNICAL_VERIFICATION_REQUIRED",
+      "finding": "No Commit 6 gate validator that consumes the Gate Input Manifest and validates the final readiness predicates was identified in the candidate repository."
+    },
+    {
+      "id": 5,
+      "name": "SLI and parity criteria may be externally versioned",
+      "status": "BLOCKED_NOT_VERSIONED_FOR_COMMIT6",
+      "finding": "Repository docs list categories such as availability, error rate, latency, functional parity, rendering parity, build/runtime health, and rollback health, but no immutable external criteria binding was found for this release."
+    },
+    {
+      "id": 6,
+      "name": "Runtime evidence sufficient without repository changes",
+      "status": "INCONCLUSIVE",
+      "finding": "WP4 build and test evidence is valid for the artifact, but Commit 6 runtime readiness still lacks deployment, canary, observability, rollback, and parity evidence."
+    },
+    {
+      "id": 7,
+      "name": "Existing build/deploy/rollback platform capability verified",
+      "status": "TECHNICAL_VERIFICATION_REQUIRED",
+      "finding": "Build capability is evidenced by WP4. Deploy, canary, exact digest deployment, active pointer atomicity, health monitoring, rollback, rollback receipt, and deployment audit logging are not evidenced by real receipts."
+    },
+    {
+      "id": 8,
+      "name": "Approved baseline",
+      "status": "BLOCKED_NOT_APPROVED",
+      "finding": "No approved baseline release ID, immutable artifact digest, and verification evidence reference was found."
+    },
+    {
+      "id": 9,
+      "name": "Approved rollback target",
+      "status": "BLOCKED_NOT_APPROVED",
+      "finding": "No approved rollback target release ID, immutable artifact digest, and verified recoverability evidence was found."
+    },
+    {
+      "id": 10,
+      "name": "Approved canary scope",
+      "status": "BLOCKED_NOT_APPROVED",
+      "finding": "No canary scope was approved with environment, cluster, traffic percentage, cohort, start condition, observation window, abort thresholds, and rollback trigger."
+    },
+    {
+      "id": 11,
+      "name": "Safety rollback authorized",
+      "status": "BLOCKED_NOT_AUTHORIZED",
+      "finding": "No explicit safety rollback authorization was found for this release."
+    },
+    {
+      "id": 12,
+      "name": "Planned rollback drill authorized",
+      "status": "BLOCKED_NOT_AUTHORIZED",
+      "finding": "No planned rollback drill authorization was found for this release."
+    },
+    {
+      "id": 13,
+      "name": "Repository changes required",
+      "status": "TECHNICAL_VERIFICATION_REQUIRED",
+      "finding": "A deploy/runbook/validator owner decision is required before determining the exact repository changes. At minimum, the current repository does not contain a Commit 6 gate validator or release-bound runbook reference."
+    },
+    {
+      "id": 14,
+      "name": "Exact required changes",
+      "status": "NOT_DETERMINED",
+      "finding": "Exact changes cannot be safely listed until deployment runbook, rollback target, canary scope, SLI/parity criteria, and validator ownership are approved."
+    },
+    {
+      "id": 15,
+      "name": "Final Commit 6 readiness decision",
+      "status": "BLOCKED",
+      "finding": "WP5 does not pass. Commit 6 runtime readiness remains technical-verification required; WP6, final gate, and deployment remain blocked."
+    }
+  ],
+  "platformCapabilityEvidence": {
+    "buildCapability": "PASS_WP4_TRUSTED_BUILD",
+    "deployCapability": "TECHNICAL_VERIFICATION_REQUIRED_NO_REAL_RECEIPT",
+    "canaryCapability": "TECHNICAL_VERIFICATION_REQUIRED_NO_REAL_RECEIPT",
+    "rollbackCapability": "TECHNICAL_VERIFICATION_REQUIRED_NO_REAL_RECEIPT",
+    "immutableArtifactResolution": "PASS_FOR_WORM_STORAGE_ONLY_NOT_DEPLOYMENT_RESOLUTION",
+    "exactDigestDeployment": "TECHNICAL_VERIFICATION_REQUIRED_NO_REAL_RECEIPT",
+    "auditLogging": "PASS_FOR_WORM_OBJECTS_ONLY_DEPLOYMENT_AUDIT_NOT_VERIFIED",
+    "healthMonitoring": "TECHNICAL_VERIFICATION_REQUIRED_NO_REAL_RECEIPT",
+    "rollbackReceipt": "TECHNICAL_VERIFICATION_REQUIRED_NO_REAL_RECEIPT",
+    "activePointerAtomicity": "TECHNICAL_VERIFICATION_REQUIRED_NO_REAL_RECEIPT"
+  },
+  "requiredApprovalsAndEvidence": {
+    "approvedBaseline": "MISSING",
+    "approvedRollbackTarget": "MISSING",
+    "approvedCanaryScope": "MISSING",
+    "safetyRollbackAuthorization": "MISSING",
+    "plannedRollbackDrillAuthorization": "MISSING",
+    "versionedDeploymentRunbook": "MISSING",
+    "versionedRollbackRunbook": "MISSING",
+    "versionedSliParityCriteria": "MISSING",
+    "commit6GateValidator": "MISSING_OR_UNVERIFIED"
+  },
+  "admissionOutcome": {
+    "workPackage5": "BLOCKED_TECHNICAL_VERIFICATION_REQUIRED",
+    "commit6RuntimeReadiness": "TECHNICAL_VERIFICATION_REQUIRED",
+    "releaseAuthorization": false,
+    "workPackage6": "NOT_STARTED_BLOCKED",
+    "commit6Gate": "BLOCKED_PENDING_WP5_TECHNICAL_VERIFICATION",
+    "deploymentPerformed": false
+  },
+  "nextActions": [
+    "Produce or reference immutable deployment and rollback runbooks bound to release_20260621T163428Z_7cc8af61 and sha256:7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f.",
+    "Approve baseline, rollback target, canary scope, safety rollback, and rollback drill with explicit release IDs and artifact digests.",
+    "Verify deploy, canary, exact digest deployment, health monitoring, rollback receipt, active pointer atomicity, and deployment audit logging with real receipts.",
+    "Define or bind the Commit 6 gate validator that consumes the Gate Input Manifest and final readiness evidence."
+  ]
+}

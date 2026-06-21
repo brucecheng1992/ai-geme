@@ -25,7 +25,14 @@
     "storageTechnicalVerification": "PASS_WITH_APPROVED_EXCEPTION",
     "releaseAuthorization": false,
     "workPackage4": "PASS_WITH_APPROVED_COMPENSATING_CORRELATION",
-    "newBuildResult": "WP4_PASS_PENDING_WP5_WP6_AND_APPROVAL",
+    "workPackage5": "BLOCKED_TECHNICAL_VERIFICATION_REQUIRED",
+    "commit6DecisionRecord": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-decision-record.json",
+    "commit6DecisionRecordSha256": "sha256:0b2af28caabe39d8fc5dd3fb0182757a9cb3692785d1c4c8267cd852cde92de6",
+    "commit6RuntimeReadiness": "TECHNICAL_VERIFICATION_REQUIRED",
+    "approvedBaseline": "NOT_APPROVED",
+    "approvedRollbackTarget": "NOT_APPROVED",
+    "approvedCanaryScope": "NOT_APPROVED",
+    "newBuildResult": "WP5_BLOCKED_TECHNICAL_VERIFICATION_REQUIRED",
     "newBuildRunId": "build_20260621T163428Z_7cc8af61",
     "newBuildAttemptId": "attempt_20260621T163428Z_7cc8af61",
     "newCandidateId": "candidate_20260621T163428Z_7cc8af61",
@@ -49,7 +56,7 @@
     "slsCorrelationObjectUri": "oss://together-game/ai-game-maker/release-evidence/sls-correlations/build_20260621T163428Z_7cc8af61/sha256-a95337d12d61dd4bc85a4cb8e3254ed5f9e0559fa711d0fd57cf1caadb83aa24/wp4-success-sls-correlation-20260621T163428Z-7cc8af61.json",
     "slsCorrelationVersionId": "CAEQTXiBgIDPrdOt9xkiIDI2Njc5M2MyNmFhNzQ2YWNiMzczYjFmMDI0MzkWYzVk",
     "deploymentPerformed": "NO",
-    "commit6Gate": "BLOCKED_PENDING_WP5_WP6_AND_APPROVAL"
+    "commit6Gate": "BLOCKED_PENDING_WP5_TECHNICAL_VERIFICATION"
   },
   "ossPreflight": {
     "objectSha256": "sha256:c67b1616fd7ed4e90c323c06e293e47af495acdfca7d01ac0d369f2473badcad",
@@ -409,10 +416,36 @@
       },
       "releaseAuthorization": false,
       "deploymentPerformed": "NO",
-      "workPackage5": "NOT_STARTED_BLOCKED",
+      "workPackage5": "BLOCKED_TECHNICAL_VERIFICATION_REQUIRED",
+      "commit6DecisionRecord": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-decision-record.json",
+      "commit6DecisionRecordSha256": "sha256:0b2af28caabe39d8fc5dd3fb0182757a9cb3692785d1c4c8267cd852cde92de6",
+      "commit6RuntimeReadiness": "TECHNICAL_VERIFICATION_REQUIRED",
       "workPackage6": "NOT_STARTED_BLOCKED",
-      "commit6Gate": "BLOCKED_PENDING_WP5_WP6_AND_APPROVAL"
+      "commit6Gate": "BLOCKED_PENDING_WP5_TECHNICAL_VERIFICATION"
     }
+  },
+  "commit6DecisionRecord": {
+    "status": "GENERATED",
+    "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-decision-record.json",
+    "sha256": "sha256:0b2af28caabe39d8fc5dd3fb0182757a9cb3692785d1c4c8267cd852cde92de6",
+    "workPackage5": "BLOCKED_TECHNICAL_VERIFICATION_REQUIRED",
+    "commit6RuntimeReadiness": "TECHNICAL_VERIFICATION_REQUIRED",
+    "finalCommit6ReadinessDecision": "BLOCKED",
+    "releaseAuthorization": false,
+    "deploymentPerformed": "NO",
+    "commit6Gate": "BLOCKED_PENDING_WP5_TECHNICAL_VERIFICATION",
+    "blockedItems": [
+      "VERSIONED_DEPLOYMENT_RUNBOOK_MISSING",
+      "COMMIT6_ROLLBACK_RUNBOOK_NOT_BOUND",
+      "COMMIT6_GATE_VALIDATOR_MISSING_OR_UNVERIFIED",
+      "VERSIONED_SLI_PARITY_CRITERIA_MISSING",
+      "DEPLOY_CANARY_ROLLBACK_PLATFORM_RECEIPTS_MISSING",
+      "APPROVED_BASELINE_MISSING",
+      "APPROVED_ROLLBACK_TARGET_MISSING",
+      "APPROVED_CANARY_SCOPE_MISSING",
+      "SAFETY_ROLLBACK_AUTHORIZATION_MISSING",
+      "PLANNED_ROLLBACK_DRILL_AUTHORIZATION_MISSING"
+    ]
   },
   "remainingActions": [
     {
@@ -495,7 +528,23 @@
     },
     {
       "action": "START_WORK_PACKAGE_5",
-      "status": "NOT_STARTED_REQUIRES_EXPLICIT_NEXT_STEP_AUTHORIZATION"
+      "status": "COMPLETE_BLOCKED_TECHNICAL_VERIFICATION_REQUIRED"
+    },
+    {
+      "action": "OBTAIN_COMMIT6_DEPLOYMENT_AND_ROLLBACK_RUNBOOKS",
+      "status": "REQUIRED_BEFORE_WP5_PASS"
+    },
+    {
+      "action": "APPROVE_COMMIT6_BASELINE_ROLLBACK_TARGET_AND_CANARY_SCOPE",
+      "status": "REQUIRED_BEFORE_WP5_PASS"
+    },
+    {
+      "action": "VERIFY_COMMIT6_DEPLOY_CANARY_ROLLBACK_PLATFORM_RECEIPTS",
+      "status": "REQUIRED_BEFORE_WP5_PASS"
+    },
+    {
+      "action": "START_WORK_PACKAGE_6",
+      "status": "NOT_STARTED_BLOCKED_BY_WP5"
     }
   ],
   "compensatingControlsRequired": [
@@ -514,6 +563,6 @@
     "disposition": "HISTORICAL_DIAGNOSTIC_SOURCE_COMMIT_ONLY"
   },
   "localGovernanceCommitEffect": "FORMS_NEW_SOURCE_COMMIT_ONLY",
-  "newBuildResult": "WP4_PASS_PENDING_WP5_WP6_AND_APPROVAL",
-  "nextReleaseBuildRequirement": "START_WORK_PACKAGE_5_ONLY_AFTER_EXPLICIT_AUTHORIZATION"
+  "newBuildResult": "WP5_BLOCKED_TECHNICAL_VERIFICATION_REQUIRED",
+  "nextReleaseBuildRequirement": "RESOLVE_WP5_TECHNICAL_VERIFICATION_BEFORE_WP6_OR_COMMIT6_GATE"
 }

@@ -328,13 +328,25 @@ SLS_CORRELATION_DOWNLOADED_SHA256=sha256:a95337d12d61dd4bc85a4cb8e3254ed5f9e0559
 SLS_CORRELATION_UPLOAD_AUTH_MODE=ROOT_ACCOUNT_DIRECT_APPROVED_BY_CURRENT_TASK
 SLS_CORRELATION_RESOURCE_EVENT_SOURCE_IDENTITY_FIELD=FAIL_MISSING
 RELEASE_AUTHORIZATION=false
-WORK_PACKAGE_5=NOT_STARTED_BLOCKED
+WORK_PACKAGE_5=BLOCKED_TECHNICAL_VERIFICATION_REQUIRED
+COMMIT_6_DECISION_RECORD=docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-decision-record.json
+COMMIT_6_DECISION_RECORD_SHA256=sha256:0b2af28caabe39d8fc5dd3fb0182757a9cb3692785d1c4c8267cd852cde92de6
+COMMIT_6_RUNTIME_READINESS=TECHNICAL_VERIFICATION_REQUIRED
+APPROVED_BASELINE=NOT_APPROVED
+APPROVED_ROLLBACK_TARGET=NOT_APPROVED
+APPROVED_CANARY_SCOPE=NOT_APPROVED
+VERSIONED_DEPLOYMENT_RUNBOOK=NOT_FOUND
+COMMIT6_ROLLBACK_RUNBOOK=NOT_BOUND_TO_RELEASE
+COMMIT6_GATE_VALIDATOR=NOT_FOUND_OR_UNVERIFIED
+DEPLOY_CANARY_ROLLBACK_PLATFORM_RECEIPTS=NOT_VERIFIED
 WORK_PACKAGE_6=NOT_STARTED_BLOCKED
 DEPLOYMENT_PERFORMED=NO
-COMMIT_6_GATE=BLOCKED_PENDING_WP5_WP6_AND_APPROVAL
+COMMIT_6_GATE=BLOCKED_PENDING_WP5_TECHNICAL_VERIFICATION
 ```
 
-The dependency validation blockers from the previous WP4 run were remediated in `81f92081da94cface172267fed6b2835922e35e7`. The rerun produced a release artifact, Gate Input Manifest, and provenance file, and each object was uploaded through the evidence-writer role with versioned OSS readback. A later root-account Cloud Shell session completed the SLS correlation and uploaded the correlation JSON to WORM OSS. The final correlation applies an explicit Request ID correction for `gateInputManifestPutObject`: the previously recorded `6A381D23216A4F363748B7E9` returned zero hits in both the authoritative and trail-level projects, while an object-key SLS query found the same Gate Input Manifest `PutObject` with expected temporary access-key hash under `6A381D23216A4F36374B87E9`. WP5, WP6, release authorization, and Commit 6 remain blocked.
+The dependency validation blockers from the previous WP4 run were remediated in `81f92081da94cface172267fed6b2835922e35e7`. The rerun produced a release artifact, Gate Input Manifest, and provenance file, and each object was uploaded through the evidence-writer role with versioned OSS readback. A later root-account Cloud Shell session completed the SLS correlation and uploaded the correlation JSON to WORM OSS. The final correlation applies an explicit Request ID correction for `gateInputManifestPutObject`: the previously recorded `6A381D23216A4F363748B7E9` returned zero hits in both the authoritative and trail-level projects, while an object-key SLS query found the same Gate Input Manifest `PutObject` with expected temporary access-key hash under `6A381D23216A4F36374B87E9`.
+
+WP5 independent admission produced `docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-decision-record.json`. The Gate Input Manifest is WORM verified, but Commit 6 runtime readiness remains `TECHNICAL_VERIFICATION_REQUIRED`: no versioned deployment runbook, Commit 6-bound rollback runbook, gate validator, approved baseline, approved rollback target, approved canary scope, safety rollback authorization, rollback drill authorization, or real deploy/canary/rollback platform receipts were found. WP6, release authorization, deployment, and Commit 6 gate remain blocked.
 
 Evidence writer role constraints:
 
