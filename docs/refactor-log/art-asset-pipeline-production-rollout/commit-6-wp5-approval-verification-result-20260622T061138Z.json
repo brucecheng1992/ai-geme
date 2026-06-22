@@ -53,10 +53,44 @@
       "class": "USER_PROMPT",
       "acceptedAsApproval": false,
       "reason": "The prompt is not an authority system record and lacks approvalId, authorityRecordId, approverPrincipal, scope, digest binding, expiry, revocation, and signature/provider verification."
+    },
+    {
+      "class": "PENDING_EXTERNAL_SIGNATURE_APPROVAL_RECORD",
+      "acceptedAsApproval": false,
+      "reason": "The generated approval records are pending external signature and have decision PENDING, recordStatus PENDING_EXTERNAL_SIGNATURE, no authorityRecordId, no approverPrincipal, and no verifiable signature/provider record."
+    }
+  ],
+  "pendingExternalSignatureRecordsFound": [
+    {
+      "approvalType": "WP5_AUTHORITY_DECISION",
+      "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-authority-decision-approval.json",
+      "sha256": "sha256:726155c66c87c8b077ec9f8681879a57cd89c4cf4af50f5146706ff3f2070a04",
+      "recordStatus": "PENDING_EXTERNAL_SIGNATURE",
+      "decision": "PENDING",
+      "acceptedAsApproval": false
+    },
+    {
+      "approvalType": "WP5_RELEASE_SRE_AUTHORIZATION",
+      "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-release-sre-approval.json",
+      "sha256": "sha256:374a260d8885fdabaa7d5f674d3f76175758e25cf4bec283d24b146ff42dbb8e",
+      "recordStatus": "PENDING_EXTERNAL_SIGNATURE",
+      "decision": "PENDING",
+      "acceptedAsApproval": false
+    },
+    {
+      "approvalType": "WP5_SECURITY_COMPLIANCE_AUTHORIZATION",
+      "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-security-compliance-approval.json",
+      "sha256": "sha256:635de910214bda26a12e3890a1f86b63972ea4b20977da7c409947c009226bfe",
+      "recordStatus": "PENDING_EXTERNAL_SIGNATURE",
+      "decision": "PENDING",
+      "acceptedAsApproval": false
     }
   ],
   "validIndependentApprovalRecordsFound": [],
   "approvalVerification": {
+    "authorityDecisionApproval": "PENDING",
+    "releaseSreApproval": "PENDING",
+    "securityComplianceApproval": "PENDING",
     "deploymentRunbookApproval": "REVIEW_REQUIRED",
     "rollbackRunbookApproval": "REVIEW_REQUIRED",
     "sliParityCriteriaApproval": "REVIEW_REQUIRED",
@@ -69,7 +103,7 @@
     "evidenceWriterSessionAuthorization": "NOT_APPROVED",
     "wp5SourceIdentityOrCompensatingCorrelationApproval": "NOT_APPROVED"
   },
-  "separationOfDutiesCheck": "NOT_EVALUABLE_NO_APPROVAL_RECORD",
+  "separationOfDutiesCheck": "NOT_EVALUABLE",
   "approvalAgentSelfApprovalAttempted": "NO",
   "authorizedVerificationDrillAllowed": false,
   "authorizedVerificationDrillPerformed": "NO",

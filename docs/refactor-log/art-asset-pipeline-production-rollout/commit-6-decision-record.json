@@ -116,10 +116,43 @@
     "approvalVerificationResult": {
       "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-approval-verification-result-20260622T061138Z.json",
       "status": "NO_VALID_INDEPENDENT_APPROVAL_FOUND",
-      "sha256": "sha256:3ce52794b55435ad6e8b59288b0666559679d00d9ef54d99a0f37d0a04c2c3ef"
+      "sha256": "sha256:041026a41d15f42d8354a5681bda797ee286305b3e2649cdc600d840585de268"
+    },
+    "approvalPackageManifest": {
+      "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-approval-package-manifest.json",
+      "status": "PENDING_EXTERNAL_SIGNATURE",
+      "sha256": "sha256:dccf15cf59f03faa19af03319183d31572f4e4c38f4d3b0f1d057498547cdf41"
+    },
+    "authorityDecisionApproval": {
+      "jsonPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-authority-decision-approval.json",
+      "jsonSha256": "sha256:726155c66c87c8b077ec9f8681879a57cd89c4cf4af50f5146706ff3f2070a04",
+      "markdownPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-authority-decision-approval.md",
+      "markdownSha256": "sha256:15c3c4366990dd02b9dbc531d4cec36e434ca00993ede79a919b832a480fb4bb",
+      "recordStatus": "PENDING_EXTERNAL_SIGNATURE",
+      "decision": "PENDING"
+    },
+    "releaseSreApproval": {
+      "jsonPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-release-sre-approval.json",
+      "jsonSha256": "sha256:374a260d8885fdabaa7d5f674d3f76175758e25cf4bec283d24b146ff42dbb8e",
+      "markdownPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-release-sre-approval.md",
+      "markdownSha256": "sha256:f00041f625b54eb1650811fb6e64180fcad9ce09ce9ae63681c07bc1fc3faa7f",
+      "recordStatus": "PENDING_EXTERNAL_SIGNATURE",
+      "decision": "PENDING"
+    },
+    "securityComplianceApproval": {
+      "jsonPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-security-compliance-approval.json",
+      "jsonSha256": "sha256:635de910214bda26a12e3890a1f86b63972ea4b20977da7c409947c009226bfe",
+      "markdownPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-security-compliance-approval.md",
+      "markdownSha256": "sha256:914f7e69505ef6ffb343c8e3974fb69c07dd29a51313bbd9cb7eea0247d1926e",
+      "recordStatus": "PENDING_EXTERNAL_SIGNATURE",
+      "decision": "PENDING"
     }
   },
   "approvalSummary": {
+    "authorityDecisionApproval": "PENDING",
+    "releaseSreApproval": "PENDING",
+    "securityComplianceApproval": "PENDING",
+    "independentApprovalStatus": "NO_VALID_INDEPENDENT_APPROVAL_FOUND",
     "approvalAgentSelfApprovalAttempted": "NO",
     "executorPrincipal": "NOT_AVAILABLE",
     "approverPrincipal": "NOT_AVAILABLE",
@@ -188,7 +221,7 @@
   "wp5Evidence": {
     "blockedEvidenceManifest": {
       "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-blocked-evidence-manifest-20260622T061138Z.json",
-      "sha256": "sha256:7a7081e3a9ddeefef8c76b4eb1d9f716ae9e07961717141d174736ba1bbc24c4",
+      "sha256": "sha256:7d69e8b14106649780a5e8df3b5a381a39cba12b1fede828e7573d37c15a4da3",
       "status": "GENERATED_LOCAL_BLOCKED"
     },
     "wp5WormUpload": "NOT_PERFORMED",
@@ -230,6 +263,9 @@
   "remainingBlockers": [
     "GOVERNANCE_REQUIREMENT_CYCLE_CHECK_UNKNOWN",
     "NO_VALID_INDEPENDENT_APPROVAL_FOUND",
+    "AUTHORITY_DECISION_APPROVAL_PENDING_EXTERNAL_SIGNATURE",
+    "RELEASE_SRE_APPROVAL_PENDING_EXTERNAL_SIGNATURE",
+    "SECURITY_COMPLIANCE_APPROVAL_PENDING_EXTERNAL_SIGNATURE",
     "VERIFICATION_ENVIRONMENT_AUTHORIZATION_NOT_APPROVED",
     "DEPLOYMENT_RUNBOOK_REVIEW_REQUIRED",
     "ROLLBACK_RUNBOOK_REVIEW_REQUIRED",

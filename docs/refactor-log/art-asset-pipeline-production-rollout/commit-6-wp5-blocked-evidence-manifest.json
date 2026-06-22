@@ -43,7 +43,7 @@
   "independentApprovalStatus": "NO_VALID_INDEPENDENT_APPROVAL_FOUND",
   "approvalVerification": {
     "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-approval-verification-result-20260622T061138Z.json",
-    "sha256": "sha256:3ce52794b55435ad6e8b59288b0666559679d00d9ef54d99a0f37d0a04c2c3ef"
+    "sha256": "sha256:041026a41d15f42d8354a5681bda797ee286305b3e2649cdc600d840585de268"
   },
   "deploymentRunbook": {
     "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-deployment-runbook.md",
@@ -125,10 +125,21 @@
     "approvalTemplatePath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-approval-request-template.json",
     "approvalTemplateSha256": "sha256:dc39f694ecfb6014718a723a407ee5a0cafd8e5aa1b8a0fca2185c2511ea78d7",
     "approvalSearchSummaryPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-approval-search-summary-20260622T061138Z.json",
-    "approvalSearchSummarySha256": "sha256:ecc588b37096a43bc54146cf990a81094f8d0058d6b9c8c7fbfeb7574b904efd",
+    "approvalSearchSummarySha256": "sha256:bd707748e6dc3196d702bf51d4d453569c62ce514f018144a922adc56810be53",
+    "approvalPackageManifestPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-approval-package-manifest.json",
+    "approvalPackageManifestSha256": "sha256:dccf15cf59f03faa19af03319183d31572f4e4c38f4d3b0f1d057498547cdf41",
+    "authorityDecisionApprovalPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-authority-decision-approval.json",
+    "authorityDecisionApprovalSha256": "sha256:726155c66c87c8b077ec9f8681879a57cd89c4cf4af50f5146706ff3f2070a04",
+    "releaseSreApprovalPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-release-sre-approval.json",
+    "releaseSreApprovalSha256": "sha256:374a260d8885fdabaa7d5f674d3f76175758e25cf4bec283d24b146ff42dbb8e",
+    "securityComplianceApprovalPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-security-compliance-approval.json",
+    "securityComplianceApprovalSha256": "sha256:635de910214bda26a12e3890a1f86b63972ea4b20977da7c409947c009226bfe",
+    "authorityDecisionApproval": "PENDING",
+    "releaseSreApproval": "PENDING",
+    "securityComplianceApproval": "PENDING",
     "validIndependentApprovalRecordsFound": 0,
     "approvalAgentSelfApprovalAttempted": "NO",
-    "separationOfDutiesCheck": "NOT_EVALUABLE_NO_APPROVAL_RECORD"
+    "separationOfDutiesCheck": "NOT_EVALUABLE"
   },
   "verificationEnvironmentAuthorization": "NOT_APPROVED",
   "evidenceWriterAuthorization": "NOT_APPROVED",
@@ -197,6 +208,9 @@
   "unresolvedBlockers": [
     "GOVERNANCE_REQUIREMENT_CYCLE_CHECK_UNKNOWN",
     "NO_VALID_INDEPENDENT_APPROVAL_FOUND",
+    "AUTHORITY_DECISION_APPROVAL_PENDING_EXTERNAL_SIGNATURE",
+    "RELEASE_SRE_APPROVAL_PENDING_EXTERNAL_SIGNATURE",
+    "SECURITY_COMPLIANCE_APPROVAL_PENDING_EXTERNAL_SIGNATURE",
     "VERIFICATION_ENVIRONMENT_AUTHORIZATION_NOT_APPROVED",
     "DEPLOYMENT_RUNBOOK_REVIEW_REQUIRED",
     "ROLLBACK_RUNBOOK_REVIEW_REQUIRED",
@@ -242,6 +256,13 @@
     "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-continuation-validator-input-20260622T061138Z.json",
     "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-continuation-validator-result.json",
     "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-continuation-validator-result-20260622T061138Z.json",
+    "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-authority-decision-approval.json",
+    "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-authority-decision-approval.md",
+    "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-release-sre-approval.json",
+    "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-release-sre-approval.md",
+    "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-security-compliance-approval.json",
+    "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-security-compliance-approval.md",
+    "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-approval-package-manifest.json",
     "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-blocked-evidence-manifest.json",
     "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-blocked-evidence-manifest-20260622T061138Z.json"
   ],

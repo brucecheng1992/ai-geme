@@ -1,0 +1,143 @@
+{
+  "schemaVersion": "commit_6_wp5_security_compliance_approval.v0.1",
+  "documentVersion": "commit-6-wp5-security-compliance-approval.v0.1",
+  "approvalId": "commit6-wp5-security-compliance-approval-wp5_20260622T061138Z_62d86211",
+  "approvalType": "WP5_SECURITY_COMPLIANCE_AUTHORIZATION",
+  "recordStatus": "PENDING_EXTERNAL_SIGNATURE",
+  "decision": "PENDING",
+  "createdAt": "2026-06-22T07:16:16Z",
+  "authoritySystem": "PENDING_EXTERNAL_AUTHORITY_SYSTEM",
+  "authorityRecordId": "PENDING_EXTERNAL_RECORD_ID",
+  "approverPrincipal": "PENDING_SECURITY_COMPLIANCE_APPROVER",
+  "approverRole": "SECURITY_COMPLIANCE_AUTHORITY",
+  "executorPrincipal": "PENDING_PLATFORM_VERIFICATION_OPERATOR",
+  "separationOfDutiesCheck": "NOT_EVALUABLE",
+  "approvalAgentSelfApprovalAttempted": "NO",
+  "approvedScope": {
+    "scopeStatus": "PENDING_EXTERNAL_SIGNATURE",
+    "evidenceWriterSessionAuthorization": "NOT_APPROVED",
+    "blockedEvidenceWormRetention": "PENDING",
+    "successEvidenceWormRetention": "PENDING",
+    "wp5SlsCorrelationRequirement": "PENDING",
+    "wp5SourceIdentityRequirement": "PENDING",
+    "wp5SourceIdentityCompensatingCorrelation": "PENDING",
+    "providerTicketHandling": "PENDING"
+  },
+  "boundReleaseSourceCommit": "81f92081da94cface172267fed6b2835922e35e7",
+  "boundWp4BuildRunId": "build_20260621T163428Z_7cc8af61",
+  "boundWp5VerificationRunId": "wp5_20260622T061138Z_62d86211",
+  "boundArtifactUri": "oss://together-game/ai-game-maker/release-evidence/trusted-build-artifacts/build_20260621T163428Z_7cc8af61/sha256-7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f/ai-game-maker-workbench-release_20260621T163428Z_7cc8af61.tar.gz",
+  "boundArtifactSha256": "sha256:7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f",
+  "candidateArtifactUri": "oss://together-game/ai-game-maker/release-evidence/trusted-build-artifacts/build_20260621T163428Z_7cc8af61/sha256-7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f/ai-game-maker-workbench-release_20260621T163428Z_7cc8af61.tar.gz",
+  "candidateArtifactSha256": "sha256:7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f",
+  "candidateProvenanceUri": "oss://together-game/ai-game-maker/release-evidence/provenance/build_20260621T163428Z_7cc8af61/sha256-dd3f7550a41f4a57f0f10fdf7c9249929c4a38ef502047fc58858abdb5aebae8/trusted-build-provenance-20260621T163428Z-7cc8af61.json",
+  "candidateProvenanceSha256": "sha256:dd3f7550a41f4a57f0f10fdf7c9249929c4a38ef502047fc58858abdb5aebae8",
+  "boundRunbookDigests": {
+    "deploymentRunbookPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-deployment-runbook.md",
+    "deploymentRunbookSha256": "sha256:c93f458916b88b0964fb52b8ef5a21f0ad9ad2ee9403a80a67e191121067d9f8",
+    "rollbackRunbookPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-rollback-runbook.md",
+    "rollbackRunbookSha256": "sha256:f1b88f109554dc7158035bf48a3daecde529f83502709f9b67b60fa4c4beee3a"
+  },
+  "boundCriteriaDigest": {
+    "sliParityCriteriaPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-sli-parity-criteria.json",
+    "sliParityCriteriaSha256": "sha256:bc905e93d0fb8c0a00511701126147acf6e3b546d9a5345c9a4cca8b55e592e6"
+  },
+  "boundEnvironment": {
+    "authorization": "NOT_APPROVED",
+    "cloudAccountId": "REQUIRES_EXTERNAL_APPROVAL",
+    "region": "REQUIRES_EXTERNAL_APPROVAL",
+    "environmentName": "REQUIRES_EXTERNAL_APPROVAL",
+    "platform": "REQUIRES_EXTERNAL_APPROVAL",
+    "cluster": "REQUIRES_EXTERNAL_APPROVAL",
+    "namespace": "REQUIRES_EXTERNAL_APPROVAL",
+    "service": "REQUIRES_EXTERNAL_APPROVAL",
+    "vpcOrNetworkBoundary": "REQUIRES_EXTERNAL_APPROVAL",
+    "dataBoundary": "REQUIRES_EXTERNAL_APPROVAL",
+    "secretSource": "REQUIRES_EXTERNAL_APPROVAL",
+    "observabilitySource": "REQUIRES_EXTERNAL_APPROVAL",
+    "verificationOperatorRole": "REQUIRES_EXTERNAL_APPROVAL"
+  },
+  "evidenceWriterSession": {
+    "authorization": "NOT_APPROVED",
+    "suggestedRoleName": "ai-game-maker-evidence-writer",
+    "roleSessionName": "wp5-wp5_20260622T061138Z_62d86211",
+    "sessionDuration": "3600_SECONDS",
+    "allowedBucket": "together-game",
+    "allowedPrefix": "ai-game-maker/release-evidence/wp5/wp5_20260622T061138Z_62d86211/",
+    "allowedActions": [
+      "PutObject",
+      "HeadObject",
+      "GetObject"
+    ],
+    "deniedActions": [
+      "DeleteObject",
+      "DeleteObjectVersion",
+      "ModifyBucketPolicy",
+      "ModifyWormPolicy",
+      "WriteOtherRunPrefix",
+      "ManageRam",
+      "ModifyAuditConfiguration"
+    ]
+  },
+  "wormRetentionDecision": {
+    "blockedEvidenceWormRequired": true,
+    "successEvidenceWormRequired": true,
+    "blockedPathTemplate": "release-evidence/wp5/blocked/wp5_20260622T061138Z_62d86211/sha256-<digest>/",
+    "successPathTemplate": "release-evidence/wp5/success/wp5_20260622T061138Z_62d86211/sha256-<digest>/",
+    "delayedBlockedEvidenceArchivalAllowed": "PENDING_EXTERNAL_SIGNATURE"
+  },
+  "sourceIdentityDecision": {
+    "nativeSourceIdentityRequired": true,
+    "runScopedOneTimeCompensatingCorrelation": "PENDING_EXTERNAL_SIGNATURE",
+    "wp4CompensatingCorrelationReusableForWp5": false,
+    "stsSessionSourceIdentity": "NOT_RUN",
+    "resourceEventSourceIdentity": "NOT_RUN",
+    "slsCorrelation": "NOT_RUN",
+    "sourceIdentityCompensatingCorrelation": "NOT_APPROVED_FOR_WP5"
+  },
+  "providerTicket": {
+    "providerTicketId": "00AWWPRR6J",
+    "providerTicketStatus": "NOT_RECHECKED",
+    "requiredReviewer": "PENDING_CLOUD_PLATFORM_OWNER_OR_SECURITY_COMPLIANCE_AUTHORITY"
+  },
+  "allowedOperations": {
+    "wp5EvidenceUpload": "PENDING_EXTERNAL_SIGNATURE",
+    "headObject": "PENDING_EXTERNAL_SIGNATURE",
+    "getObject": "PENDING_EXTERNAL_SIGNATURE",
+    "deleteObject": "PROHIBITED",
+    "modifyWormPolicy": "PROHIBITED",
+    "modifyAuditConfiguration": "PROHIBITED",
+    "productionTrafficMutation": "PROHIBITED"
+  },
+  "conditions": [
+    "The evidence-writer session must be approved before any WP5 WORM upload.",
+    "Root, personal credentials, expired tokens, and unapproved roles are not valid evidence-writer authorities.",
+    "Native SourceIdentity is required unless Security/Compliance explicitly approves a WP5-scoped compensating correlation.",
+    "WP4 compensating correlation approval does not apply to WP5."
+  ],
+  "issuedAt": "PENDING_EXTERNAL_TIMESTAMP",
+  "expiresAt": "PENDING_EXTERNAL_TIMESTAMP",
+  "revocationStatus": "PENDING_EXTERNAL_SIGNATURE",
+  "signatureAlgorithm": "PENDING_EXTERNAL_SIGNATURE",
+  "signatureOrProviderVerification": "PENDING_EXTERNAL_SIGNATURE_OR_PROVIDER_RECORD",
+  "evidenceUri": "PENDING_EXTERNAL_EVIDENCE_URI",
+  "evidenceSha256": "PENDING_EXTERNAL_EVIDENCE_SHA256",
+  "currentExecutionState": {
+    "authorityDecisionApproval": "PENDING",
+    "releaseSreApproval": "PENDING",
+    "securityComplianceApproval": "PENDING",
+    "evidenceWriterSessionAuthorization": "NOT_APPROVED",
+    "wp5WormUpload": "NOT_PERFORMED",
+    "wp5WormEvidenceUri": "NOT_GENERATED",
+    "wp5WormEvidenceSha256": "NOT_GENERATED",
+    "wp5SlsCorrelation": "NOT_RUN",
+    "wp5ResourceEventSourceIdentity": "NOT_RUN",
+    "workPackage5": "BLOCKED_GOVERNANCE_REQUIREMENT_AMBIGUITY",
+    "workPackage6": "NOT_STARTED_BLOCKED",
+    "releaseAuthorization": false,
+    "commit6Ready": false,
+    "commit6Gate": "BLOCKED_PENDING_WP5_TECHNICAL_VERIFICATION",
+    "productionDeploymentPerformed": "NO",
+    "deploymentPerformed": "NO"
+  }
+}
