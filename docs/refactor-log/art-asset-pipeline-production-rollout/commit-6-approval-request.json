@@ -1,18 +1,18 @@
 {
-  "schemaVersion": "commit_6_approval_request.v0.2",
-  "requestVersion": "commit-6-approval-request.v0.2",
-  "requestId": "commit6-approval-request-wp5_20260621T201832Z_455a4bd0",
-  "createdAt": "2026-06-21T20:18:32Z",
+  "schemaVersion": "commit_6_approval_request.v0.3",
+  "requestVersion": "commit-6-approval-request.v0.3",
+  "requestId": "commit6-approval-request-wp5_20260622T050507Z_83147653",
+  "createdAt": "2026-06-22T05:05:07Z",
   "status": "REQUESTED",
   "requestStatus": "REQUESTED",
   "previousApprovalRequest": {
-    "requestId": "commit6-approval-request-wp5_20260621T194849Z_32ee14ca",
+    "requestId": "commit6-approval-request-wp5_20260621T201832Z_455a4bd0",
     "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-approval-request.json",
-    "sha256": "sha256:e3e903fda64f3ed4d0989f027b5fce50f6f374d27a6c027e3565a986eaaaa96e",
+    "sha256": "sha256:80657961094aa3b7b71966208b8e028fba46f65b41bbd9a449120a8feaa60115",
     "status": "REQUESTED_NOT_APPROVED"
   },
-  "wp5VerificationRunId": "wp5_20260621T201832Z_455a4bd0",
-  "previousWp5VerificationRunId": "wp5_20260621T194849Z_32ee14ca",
+  "wp5VerificationRunId": "wp5_20260622T050507Z_83147653",
+  "previousWp5VerificationRunId": "wp5_20260621T201832Z_455a4bd0",
   "releaseSourceCommit": "81f92081da94cface172267fed6b2835922e35e7",
   "wp4BuildRunId": "build_20260621T163428Z_7cc8af61",
   "candidateId": "candidate_20260621T163428Z_7cc8af61",
@@ -28,6 +28,19 @@
   "sliParityCriteriaPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-sli-parity-criteria.json",
   "sliParityCriteriaVersion": "commit-6-sli-parity-criteria.v0.1",
   "sliParityCriteriaSha256": "sha256:bc905e93d0fb8c0a00511701126147acf6e3b546d9a5345c9a4cca8b55e592e6",
+  "requestedApprovals": [
+    "DEPLOYMENT_RUNBOOK_APPROVAL",
+    "ROLLBACK_RUNBOOK_APPROVAL",
+    "SLI_PARITY_CRITERIA_APPROVAL",
+    "APPROVED_BASELINE",
+    "APPROVED_ROLLBACK_TARGET",
+    "APPROVED_CANARY_SCOPE",
+    "SAFE_ROLLBACK_AUTHORIZATION",
+    "ROLLBACK_DRILL_AUTHORIZATION",
+    "VERIFICATION_ENVIRONMENT_AUTHORIZATION",
+    "EVIDENCE_WRITER_SESSION_AUTHORIZATION",
+    "WP5_SOURCE_IDENTITY_OR_COMPENSATING_CORRELATION_APPROVAL"
+  ],
   "requestedBaseline": "REQUIRES_AUTHORITY_DECISION",
   "requestedRollbackTarget": "REQUIRES_AUTHORITY_DECISION",
   "requestedCanaryScope": "REQUIRES_AUTHORITY_DECISION",
@@ -35,7 +48,8 @@
   "requestedSafeRollbackAuthorization": "REQUIRES_AUTHORITY_DECISION",
   "requestedRollbackDrillAuthorization": "REQUIRES_AUTHORITY_DECISION",
   "requestedEvidenceWriterAuthorization": "REQUIRES_AUTHORITY_DECISION",
-  "requestedOperations": [
+  "requestedSourceIdentityDecision": "REQUIRES_AUTHORITY_DECISION_FOR_WP5",
+  "allowedOperationsRequested": [
     "NON_PRODUCTION_VERIFICATION_PREFLIGHT",
     "NON_PRODUCTION_VERIFICATION_DEPLOY",
     "NON_PRODUCTION_VERIFICATION_CANARY",
@@ -49,17 +63,19 @@
     "REQUIRES_AUTHORITY_POLICY_SLI_PARITY_APPROVER",
     "REQUIRES_AUTHORITY_POLICY_SECURITY_OR_EVIDENCE_APPROVER"
   ],
+  "executorPrincipal": "NOT_AVAILABLE_IN_LOCAL_REPO_CONTEXT",
   "separationOfDutiesRequirements": {
     "executorMayApprove": false,
     "approverPrincipalMustDifferFromExecutorPrincipal": true,
     "approverPrincipalMustDifferFromGitCommitAuthorUnlessPolicyExplicitlyAllows": true,
     "rootOrCloudShellCallerIsNotApprovalAuthority": true,
-    "codexMayNotSelfApprove": true
+    "codexMayNotSelfApprove": true,
+    "userChatPromptIsNotAuthorityApproval": true
   },
   "riskSummary": [
-    "WP5 currently requires platform deploy, canary, rollback receipts, and SLI/parity evidence before readiness can pass.",
-    "Repository evidence does not identify an approved non-production verification environment or authority for generating those receipts.",
-    "Using production or root credentials to create receipts would violate the current governance boundary."
+    "WP5 requires independently approved platform deploy, canary, rollback receipts, and SLI/parity evidence before readiness can pass.",
+    "Repository evidence still does not identify an approved non-production verification environment or authority for generating those receipts.",
+    "Using production, root, Cloud Shell, or Codex-generated records to create approvals would violate the current governance boundary."
   ],
   "abortConditions": [
     "Any approval record is missing, expired, revoked, out of scope, or unverifiable.",
@@ -67,13 +83,15 @@
     "The target is production or not explicitly isolated for verification.",
     "The artifact digest differs from sha256:7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f.",
     "The rollback target is not independently approved and verifiable.",
-    "Any provider receipt lacks operation ID, request ID, actor principal, environment, artifact digest, or final status."
+    "Any provider receipt lacks operation ID, request ID where available, actor principal, environment, artifact digest, or final status."
   ],
   "evidenceRequirements": {
     "approvalRecords": [
       "approvalId",
       "approvalType",
       "decision",
+      "authoritySystem",
+      "authorityRecordId",
       "approverPrincipal",
       "approverRole",
       "executorPrincipal",
@@ -89,27 +107,32 @@
       "issuedAt",
       "expiresAt",
       "revocationStatus",
-      "authoritySystem",
-      "authorityRecordId",
       "signatureOrProviderVerification",
       "evidenceUri",
       "evidenceSha256"
     ],
     "platformReceipts": [
       "provider",
+      "platform",
       "account",
       "region",
       "environment",
       "resource",
+      "service",
       "operationType",
-      "operationIdOrRequestId",
+      "operationId",
+      "requestIdIfAvailable",
       "actorPrincipal",
-      "artifactDigest",
+      "actorRole",
+      "artifactUri",
+      "artifactSha256",
       "targetScope",
       "startTime",
       "completionTime",
       "finalStatus",
-      "providerGeneratedMetadata"
+      "providerGeneratedMetadata",
+      "exportedAt",
+      "receiptSha256"
     ],
     "wormEvidence": [
       "objectUri",
@@ -172,6 +195,11 @@
       "approvalType": "EVIDENCE_WRITER_SESSION_AUTHORIZATION",
       "currentStatus": "NOT_APPROVED",
       "requiredBinding": "REQUIRES_AUTHORITY_DECISION"
+    },
+    {
+      "approvalType": "WP5_SOURCE_IDENTITY_OR_COMPENSATING_CORRELATION_APPROVAL",
+      "currentStatus": "NOT_APPROVED",
+      "requiredBinding": "REQUIRES_AUTHORITY_DECISION_FOR_WP5"
     }
   ],
   "expiresAt": "REQUIRES_AUTHORITY_DECISION",
