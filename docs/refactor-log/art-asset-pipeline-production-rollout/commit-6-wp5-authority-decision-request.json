@@ -1,17 +1,17 @@
 {
-  "schemaVersion": "commit_6_wp5_authority_decision_request.v0.2",
-  "requestVersion": "commit-6-wp5-authority-decision-request.v0.2",
-  "requestId": "commit6-wp5-authority-decision-request-wp5_20260622T050507Z_83147653",
-  "createdAt": "2026-06-22T05:05:07Z",
+  "schemaVersion": "commit_6_wp5_authority_decision_request.v0.3",
+  "requestVersion": "commit-6-wp5-authority-decision-request.v0.3",
+  "requestId": "commit6-wp5-authority-decision-request-wp5_20260622T061138Z_62d86211",
+  "createdAt": "2026-06-22T06:11:38Z",
   "status": "REQUESTED",
   "previousAuthorityDecisionRequest": {
-    "requestId": "commit6-wp5-authority-decision-request-wp5_20260621T201832Z_455a4bd0",
+    "requestId": "commit6-wp5-authority-decision-request-wp5_20260622T050507Z_83147653",
     "path": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-authority-decision-request.json",
-    "sha256": "sha256:14389c19578612784a0fde252636c71f3b165325cefd29e6ce3fedf6300dba5e",
+    "sha256": "sha256:e87b88c80ee1f20b46b1669972cb996f09deddc8617c065374d1fe2274571550",
     "status": "REQUESTED_NOT_APPROVED"
   },
-  "wp5VerificationRunId": "wp5_20260622T050507Z_83147653",
-  "actualStartingGovernanceCommit": "83147653f755d045a860ef5f36e98a6feb62f4f7",
+  "wp5VerificationRunId": "wp5_20260622T061138Z_62d86211",
+  "actualStartingGovernanceCommit": "62d862113738c65ffd7da36ea0f1cc6b6c0a4fc0",
   "minimumGovernanceBaseline": "455a4bd041afe8b6385444bd2dd7ef8b035deb1d",
   "releaseSourceCommit": "81f92081da94cface172267fed6b2835922e35e7",
   "wp4BuildRunId": "build_20260621T163428Z_7cc8af61",
@@ -89,11 +89,13 @@
     "WP5_WORM_UPLOAD_NOT_PERFORMED",
     "WP5_SOURCE_IDENTITY_COMPENSATING_CORRELATION_NOT_APPROVED"
   ],
-  "currentDecision": "NOT_AVAILABLE",
+  "currentDecision": "REVIEW_REQUIRED_NOT_APPROVED",
   "authorizedVerificationDrillPerformed": "NO",
   "releaseAuthorization": false,
   "commit6Ready": false,
   "commit6Gate": "BLOCKED_PENDING_WP5_TECHNICAL_VERIFICATION",
   "workPackage5": "BLOCKED_GOVERNANCE_REQUIREMENT_AMBIGUITY",
-  "workPackage6": "NOT_STARTED_BLOCKED"
+  "workPackage6": "NOT_STARTED_BLOCKED",
+  "authorityDecisionRecordPath": "docs/refactor-log/art-asset-pipeline-production-rollout/commit-6-wp5-authority-decision-record.json",
+  "authorityDecisionRecordSha256": "sha256:a223a4ce965b0ead15cf35073b34da1a9df83348e4a211f47335cfd2a2db4406"
 }

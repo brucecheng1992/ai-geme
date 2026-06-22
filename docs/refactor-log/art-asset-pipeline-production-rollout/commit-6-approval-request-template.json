@@ -1,7 +1,7 @@
 {
-  "schemaVersion": "commit_6_approval_request_template.v0.1",
+  "schemaVersion": "commit_6_approval_request_template.v0.2",
   "templateStatus": "REVIEW_REQUIRED",
-  "wp5VerificationRunId": "wp5_20260621T190716Z_d969e49b",
+  "wp5VerificationRunId": "wp5_20260622T061138Z_62d86211",
   "releaseSourceCommit": "81f92081da94cface172267fed6b2835922e35e7",
   "buildRunId": "build_20260621T163428Z_7cc8af61",
   "candidateId": "candidate_20260621T163428Z_7cc8af61",
@@ -96,7 +96,7 @@
     "verificationBinding": {
       "releaseId": "release_20260621T163428Z_7cc8af61",
       "candidateId": "candidate_20260621T163428Z_7cc8af61",
-      "wp5VerificationRunId": "wp5_20260621T190716Z_d969e49b"
+      "wp5VerificationRunId": "wp5_20260622T061138Z_62d86211"
     }
   },
   "nonApprovalNotice": "This template is not an approval and must not be used as approval evidence until populated by the proper external authority and bound to an authoritative system record, signature, or immutable evidence URI."

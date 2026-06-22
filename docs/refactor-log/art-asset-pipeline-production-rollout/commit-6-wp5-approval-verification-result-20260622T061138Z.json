@@ -1,11 +1,10 @@
 {
   "schemaVersion": "commit_6_wp5_approval_verification_result.v0.1",
-  "summaryId": "commit6-wp5-approval-search-summary-wp5_20260622T061138Z_62d86211",
+  "resultId": "commit6-wp5-approval-verification-wp5_20260622T061138Z_62d86211",
   "createdAt": "2026-06-22T06:11:38Z",
   "wp5VerificationRunId": "wp5_20260622T061138Z_62d86211",
-  "actualStartingGovernanceCommit": "62d862113738c65ffd7da36ea0f1cc6b6c0a4fc0",
-  "resultId": "commit6-wp5-approval-verification-wp5_20260622T061138Z_62d86211",
   "previousWp5VerificationRunId": "wp5_20260622T050507Z_83147653",
+  "actualStartingGovernanceCommit": "62d862113738c65ffd7da36ea0f1cc6b6c0a4fc0",
   "releaseSourceCommit": "81f92081da94cface172267fed6b2835922e35e7",
   "wp4BuildRunId": "build_20260621T163428Z_7cc8af61",
   "candidateArtifactUri": "oss://together-game/ai-game-maker/release-evidence/trusted-build-artifacts/build_20260621T163428Z_7cc8af61/sha256-7fa8a2e85ad65d37efead3875a0ff4bcac40810a30350d90dae1ded8e2f7fa2f/ai-game-maker-workbench-release_20260621T163428Z_7cc8af61.tar.gz",
