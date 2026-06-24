@@ -244,6 +244,95 @@ describe('Modular Phaser runtime system loader', () => {
     });
   });
 
+  it('fires a player-owned straight single projectile from the installed default weapon state', async () => {
+    const { loaderPlan } = compileDefaultWeaponRuntimeFixture();
+    const weaponModule = createDefaultStraightSingleWeaponRuntimeModule();
+    const session = createPhaserRuntimeModuleSession({ plan: loaderPlan, modules: createSessionModules(loaderPlan, weaponModule) });
+
+    await session.installAll();
+
+    const fireResult = weaponModule.fire({
+      ownerEntityId: 'player',
+      action: 'shoot_projectile',
+      origin: { x: 128, y: 256 },
+      nowMs: 1000
+    });
+
+    expect(fireResult).toEqual({
+      status: 'fired',
+      projectileSpawns: [
+        {
+          id: 'weapon_default_straight_single_player_1000_0',
+          owner: 'player',
+          sourceCapabilityId: DEFAULT_WEAPON_CAPABILITY_ID,
+          weaponSlot: 'primary',
+          pattern: 'straight',
+          projectileCount: 1,
+          firedAtMs: 1000,
+          position: { x: 128, y: 256 },
+          trajectory: { kind: 'straight', vx: 1, vy: 0 }
+        }
+      ],
+      telemetryEvents: [
+        {
+          type: 'player.fired',
+          payload: {
+            owner: 'player',
+            weaponSlot: 'primary',
+            sourceCapabilityId: DEFAULT_WEAPON_CAPABILITY_ID
+          }
+        },
+        {
+          type: 'projectile.spawned',
+          payload: {
+            projectileId: 'weapon_default_straight_single_player_1000_0',
+            owner: 'player',
+            sourceCapabilityId: DEFAULT_WEAPON_CAPABILITY_ID,
+            pattern: 'straight',
+            projectileCount: 1
+          }
+        }
+      ]
+    });
+  });
+
+  it('blocks default straight single firing unless the installed player primary action matches', async () => {
+    const { loaderPlan } = compileDefaultWeaponRuntimeFixture();
+    const weaponModule = createDefaultStraightSingleWeaponRuntimeModule();
+    const session = createPhaserRuntimeModuleSession({ plan: loaderPlan, modules: createSessionModules(loaderPlan, weaponModule) });
+
+    expect(weaponModule.fire({ ownerEntityId: 'player', action: 'shoot_projectile', origin: { x: 0, y: 0 }, nowMs: 0 })).toEqual({
+      status: 'blocked',
+      reason: 'not_installed',
+      projectileSpawns: [],
+      telemetryEvents: []
+    });
+
+    await session.installAll();
+
+    expect(weaponModule.fire({ ownerEntityId: 'rifle_soldier', action: 'shoot_projectile', origin: { x: 0, y: 0 }, nowMs: 1 })).toEqual({
+      status: 'blocked',
+      reason: 'owner_mismatch',
+      projectileSpawns: [],
+      telemetryEvents: []
+    });
+    expect(weaponModule.fire({ ownerEntityId: 'player', action: 'charge_shot', origin: { x: 0, y: 0 }, nowMs: 2 })).toEqual({
+      status: 'blocked',
+      reason: 'action_mismatch',
+      projectileSpawns: [],
+      telemetryEvents: []
+    });
+
+    expect(weaponModule.fire({ ownerEntityId: 'player', action: 'shoot_projectile', origin: { x: 32, y: 48 }, nowMs: 3 })).toMatchObject({
+      status: 'fired',
+      projectileSpawns: [
+        {
+          id: 'weapon_default_straight_single_player_3_0'
+        }
+      ]
+    });
+  });
+
   it.each([
     {
       name: 'wrong artifactKind',

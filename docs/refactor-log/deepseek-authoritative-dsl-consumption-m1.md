@@ -1547,3 +1547,102 @@ Next authorization gate:
   - non-blocking reminder: `schema_expressible` is based on the generic `capability_configs` plus safe declarative JSON path, not rapid-fire-specific field semantics; any compiler/runtime evidence must be a separate consumer-evidence iteration.
   - Oracle also confirmed `git diff --check`: pass.
   - next action: precise staging, cached diff check, commit one reviewed diff without push.
+
+## 30. CONTINUOUS-M3-DEFAULT-WEAPON-RUNTIME-BEHAVIOR-PREREQ-001
+
+- status: ORACLE_PASSED_AWAITING_COMMIT.
+- iteration_id: `CONTINUOUS-M3-DEFAULT-WEAPON-RUNTIME-BEHAVIOR-PREREQ-001`
+- dependency decision:
+  - Previous QA-observation scope freeze found no capability-owned default weapon fire/projectile behavior boundary.
+  - Existing side-scrolling template `fire()` telemetry remains legacy/template evidence and cannot be used to claim `weapon.default_straight_single.v1` `qa_observed`.
+  - This is an enabling checkpoint only; it must not set `qa_observed=true` or `completeSupported=true`.
+- capability_gap: `weapon.default_straight_single.v1` has schema, normalization, compiler, and runtime-consumer evidence, but the runtime module did not expose a capability-owned action boundary that can later be observed by QA.
+- affected requirement:
+  - `R014`: Initial weapon is straight single shot.
+- affected cluster: `M3`
+- objective: add a minimal capability-owned primary fire behavior boundary to the default straight single weapon runtime module, producing deterministic player-owned straight single projectile spawn observations from the installed compiled artifact state.
+- prerequisites:
+  - Default weapon runtime-consumer checkpoint committed as `6cfc53ed`.
+  - Loop plan recovery checkpoint committed as `ce80c0af`.
+  - Worktree clean before implementation.
+  - Oracle scope-freeze review cleared the prerequisite memo with no P0/P1/P2 findings.
+- file lock:
+  - `packages/game-dsl/src/gameplay-capabilities/default-straight-single-weapon-runtime-module.ts`
+  - `tests/contracts/phaser-runtime-loader.test.ts`
+  - `docs/refactor-log/deepseek-authoritative-dsl-consumption-m1.md`
+- acceptance assertions:
+  - After `installAll()`, `createDefaultStraightSingleWeaponRuntimeModule().fire(...)` consumes installed `weapon.default_straight_single.compiled.v1` state.
+  - A matching player `shoot_projectile` action produces exactly one player-owned `primary` straight projectile spawn with deterministic trajectory `{ kind: "straight", vx: 1, vy: 0 }`.
+  - The behavior emits capability-owned `player.fired` and `projectile.spawned` observation payloads that reference `weapon.default_straight_single.v1`.
+  - Uninstalled, wrong-owner, and wrong-action attempts fail closed with no projectile spawns or telemetry events.
+  - Blocked fire attempts do not consume projectile sequence IDs.
+  - Support evidence remains unchanged: `qa_observed=false`, `completeSupported=false`.
+- expected failing tests:
+  - Add `tests/contracts/phaser-runtime-loader.test.ts` coverage for installed default weapon firing and fail-closed non-matching fire attempts.
+- expected support-evidence change:
+  - none.
+  - `weapon.default_straight_single.v1` remains `qa_observed=false` and `completeSupported=false`.
+- targeted tests:
+  - `npx vitest run tests/contracts/phaser-runtime-loader.test.ts`
+  - `npx vitest run tests/contracts/phaser-runtime-loader.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts`
+- regression tests:
+  - `npx vitest run tests/contracts/gameplay-capability-registry.test.ts`
+  - `npm run typecheck:root`
+  - `git diff --check`
+- stop conditions:
+  - Any need to mark `qa_observed=true`.
+  - Any need to modify registry support evidence.
+  - Any need to connect legacy/template `SideScrollingRunAndGunScene.fire()` as authoritative capability evidence.
+  - Any need to implement spread, rapid-fire, replacement, death reset, M2 QA, provider behavior, browser QA, production cutover, or push.
+- RED result:
+  - `npx vitest run tests/contracts/phaser-runtime-loader.test.ts`: failed, 1 failed / 20 passed.
+  - failure signature: `weaponModule.fire is not a function`.
+  - Follow-up RED for sequence stability failed because blocked attempts consumed projectile sequence IDs (`_2` instead of `_0`).
+- implementation:
+  - `packages/game-dsl/src/gameplay-capabilities/default-straight-single-weapon-runtime-module.ts` adds typed `fire(input)` to the default weapon runtime module.
+  - `fire(input)` only succeeds when installed state exists, `ownerEntityId` matches the compiled player owner, and `action` matches compiled `shoot_projectile`.
+  - Successful fire returns a deterministic single projectile spawn and two observation events: `player.fired` and `projectile.spawned`.
+  - Blocked fire returns structured `not_installed`, `owner_mismatch`, or `action_mismatch` with no spawns or telemetry and does not consume projectile sequence IDs.
+  - `tests/contracts/phaser-runtime-loader.test.ts` covers the positive fire behavior and fail-closed blocked behavior.
+  - No registry, support evidence, provider path, template runtime, browser QA, M2 QA, spread/rapid/replacement/death-reset behavior, or push changed.
+- support evidence:
+
+| capability id | registered | classification | schema_expressible | normalized | compiled | runtime_consumed | qa_observed | complete_supported |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `weapon.default_straight_single.v1` | true | `DEFERRED` | true | true | true | true | false | false |
+
+- Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | `createDefaultStraightSingleWeaponRuntimeModule()` adds an additive `fire(input)` runtime action boundary that emits typed default-weapon projectile spawn observations from the already installed compiled artifact state. |
+| Consumer list | `tests/contracts/phaser-runtime-loader.test.ts` reads the new behavior directly; future capability-owned QA can consume the returned projectile spawn and telemetry observation payloads. Existing `createPhaserRuntimeModuleSession` consumers continue to use `install`, `snapshot`, and `dispose`. |
+| Compatibility type | `LOSSLESS_COMPATIBLE`: the runtime module API is additive for this specific module and does not rewrite compiled artifact, loader, session, or support-report semantics. |
+| Authority | `weapon.default_straight_single.compiled.v1` remains the authoritative compiled behavior source; the default weapon runtime module is the behavior boundary; `GameplayCapabilityRegistry` remains the support-evidence authority. |
+| Legacy strategy | Legacy/template `SideScrollingRunAndGunScene.fire()` remains separate and is forbidden as evidence for this checkpoint. |
+| Failure policy | Invalid compiled configs still fail closed at install; uninstalled, wrong owner, or wrong action fire attempts return blocked results with no projectile spawn or telemetry; `qa_observed` remains false until a real QA probe observes this boundary. |
+| Evidence | The RED/GREEN runtime-loader tests prove installed compiled state can produce one player-owned straight primary projectile observation and that blocked attempts cannot spoof behavior or consume sequence IDs. Support/report tests prove the profile still reports `qa_observed=false`. |
+| Rollback | Reverting this iteration removes only the `fire(input)` action boundary and its focused tests; compiled artifact, loader install behavior, support evidence, and legacy/template runtime remain unchanged. |
+
+- validation result:
+  - `npx vitest run tests/contracts/phaser-runtime-loader.test.ts`: pass, 1 file / 22 tests.
+  - `npx vitest run tests/contracts/phaser-runtime-loader.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts`: pass, 3 files / 45 tests.
+  - `npx vitest run tests/contracts/gameplay-capability-registry.test.ts`: pass, 1 file / 9 tests.
+  - `npm run typecheck:root`: pass.
+  - `git diff --check`: pass.
+- support summary after local validation:
+  - requirements: 60
+  - required capabilities: 59
+  - registered capabilities: 17
+  - complete supported: 0
+  - legacy-backed capabilities: 7
+  - `weapon.default_straight_single.v1`: `qa_observed=false`, `completeSupported=false`.
+- Oracle review:
+  - status: PASS.
+  - agent: `019efbce-0f08-7bd0-85e4-f745d9d6eb7c`
+  - result: clear.
+  - findings: no P0/P1/P2/P3 findings.
+  - loop compliance: confirmed this checkpoint is only `runtime_behavior_prerequisite`; it does not claim `qa_observed`, does not modify registry/support evidence, keeps `completeSupportedCount=0`, and does not advance `replacement_rule`, `death_reset`, or M2 QA.
+  - evidence review: RED/GREEN runtime-loader tests, support/report regression, registry regression, root typecheck, and diff-check are sufficient for the prerequisite checkpoint and not for `qa_observed`.
+  - Compatibility & Cutover: confirmed complete.
+  - commit readiness: approved for one atomic local commit without push.

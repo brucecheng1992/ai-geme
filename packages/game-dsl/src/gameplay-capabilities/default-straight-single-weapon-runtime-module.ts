@@ -31,19 +31,153 @@ export type DefaultStraightSingleWeaponRuntimeState = {
 
 export type DefaultStraightSingleWeaponRuntimeSnapshot = DefaultStraightSingleWeaponRuntimeState | { installed: false };
 
-export function createDefaultStraightSingleWeaponRuntimeModule(): PhaserRuntimeSystemModule {
+export type DefaultStraightSingleWeaponFireInput = {
+  ownerEntityId: string;
+  action: string;
+  origin: {
+    x: number;
+    y: number;
+  };
+  nowMs: number;
+};
+
+export type DefaultStraightSingleWeaponProjectileSpawn = {
+  id: string;
+  owner: 'player';
+  sourceCapabilityId: typeof DEFAULT_STRAIGHT_SINGLE_WEAPON_CAPABILITY_ID;
+  weaponSlot: 'primary';
+  pattern: 'straight';
+  projectileCount: 1;
+  firedAtMs: number;
+  position: {
+    x: number;
+    y: number;
+  };
+  trajectory: {
+    kind: 'straight';
+    vx: 1;
+    vy: 0;
+  };
+};
+
+export type DefaultStraightSingleWeaponTelemetryEvent =
+  | {
+      type: 'player.fired';
+      payload: {
+        owner: 'player';
+        weaponSlot: 'primary';
+        sourceCapabilityId: typeof DEFAULT_STRAIGHT_SINGLE_WEAPON_CAPABILITY_ID;
+      };
+    }
+  | {
+      type: 'projectile.spawned';
+      payload: {
+        projectileId: string;
+        owner: 'player';
+        sourceCapabilityId: typeof DEFAULT_STRAIGHT_SINGLE_WEAPON_CAPABILITY_ID;
+        pattern: 'straight';
+        projectileCount: 1;
+      };
+    };
+
+export type DefaultStraightSingleWeaponFireResult =
+  | {
+      status: 'fired';
+      projectileSpawns: [DefaultStraightSingleWeaponProjectileSpawn];
+      telemetryEvents: [DefaultStraightSingleWeaponTelemetryEvent, DefaultStraightSingleWeaponTelemetryEvent];
+    }
+  | {
+      status: 'blocked';
+      reason: 'not_installed' | 'owner_mismatch' | 'action_mismatch';
+      projectileSpawns: [];
+      telemetryEvents: [];
+    };
+
+export type DefaultStraightSingleWeaponRuntimeModule = PhaserRuntimeSystemModule & {
+  fire: (input: DefaultStraightSingleWeaponFireInput) => DefaultStraightSingleWeaponFireResult;
+};
+
+export function createDefaultStraightSingleWeaponRuntimeModule(): DefaultStraightSingleWeaponRuntimeModule {
   let state: DefaultStraightSingleWeaponRuntimeState | undefined;
+  let fireSequence = 0;
 
   return {
     id: DEFAULT_STRAIGHT_SINGLE_WEAPON_RUNTIME_SYSTEM_ID,
     install: (_context, config) => {
       state = interpretDefaultStraightSingleWeaponConfig(config);
+      fireSequence = 0;
+    },
+    fire: (input) => {
+      const result = fireDefaultStraightSingleWeapon(state, input, fireSequence);
+      if (result.status === 'fired') {
+        fireSequence += 1;
+      }
+      return result;
     },
     snapshot: () => snapshotDefaultStraightSingleWeaponRuntimeState(state),
     dispose: () => {
       state = undefined;
+      fireSequence = 0;
     }
   };
+}
+
+function fireDefaultStraightSingleWeapon(
+  state: DefaultStraightSingleWeaponRuntimeState | undefined,
+  input: DefaultStraightSingleWeaponFireInput,
+  sequence: number
+): DefaultStraightSingleWeaponFireResult {
+  if (state === undefined) {
+    return blockedFire('not_installed');
+  }
+  if (input.ownerEntityId !== state.owner.entityId) {
+    return blockedFire('owner_mismatch');
+  }
+  if (input.action !== state.fireAction) {
+    return blockedFire('action_mismatch');
+  }
+
+  const projectileId = `weapon_default_straight_single_${state.owner.entityId}_${input.nowMs}_${sequence}`;
+  const projectileSpawn: DefaultStraightSingleWeaponProjectileSpawn = {
+    id: projectileId,
+    owner: state.owner.entityId,
+    sourceCapabilityId: DEFAULT_STRAIGHT_SINGLE_WEAPON_CAPABILITY_ID,
+    weaponSlot: state.loadout.slot,
+    pattern: state.projectilePattern.kind,
+    projectileCount: state.projectilePattern.projectileCount,
+    firedAtMs: input.nowMs,
+    position: { ...input.origin },
+    trajectory: { kind: 'straight', vx: 1, vy: 0 }
+  };
+
+  return {
+    status: 'fired',
+    projectileSpawns: [projectileSpawn],
+    telemetryEvents: [
+      {
+        type: 'player.fired',
+        payload: {
+          owner: state.owner.entityId,
+          weaponSlot: state.loadout.slot,
+          sourceCapabilityId: DEFAULT_STRAIGHT_SINGLE_WEAPON_CAPABILITY_ID
+        }
+      },
+      {
+        type: 'projectile.spawned',
+        payload: {
+          projectileId,
+          owner: state.owner.entityId,
+          sourceCapabilityId: DEFAULT_STRAIGHT_SINGLE_WEAPON_CAPABILITY_ID,
+          pattern: state.projectilePattern.kind,
+          projectileCount: state.projectilePattern.projectileCount
+        }
+      }
+    ]
+  };
+}
+
+function blockedFire(reason: Extract<DefaultStraightSingleWeaponFireResult, { status: 'blocked' }>['reason']): DefaultStraightSingleWeaponFireResult {
+  return { status: 'blocked', reason, projectileSpawns: [], telemetryEvents: [] };
 }
 
 function interpretDefaultStraightSingleWeaponConfig(config: DeclarativeJsonObject): DefaultStraightSingleWeaponRuntimeState {
