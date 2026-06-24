@@ -1189,3 +1189,94 @@ Next authorization gate:
   - P3: ledger review status still said `AWAITING_REVIEW`; remediated by updating this iteration to `ORACLE_PASSED_AWAITING_COMMIT`.
   - residual caveat: runtime loader readiness and `bound_pending_qa` binding entries are runtime-consumption evidence only; QA observation, runtime module session lifecycle receipt, damage timing behavior, and complete support remain false/out of scope.
   - next action: precise staging, cached diff check, commit one reviewed diff without push.
+
+## 26. CONTINUOUS-M3-WEAPON-LIFECYCLE-REGISTRATION-001
+
+- status: ORACLE_PASSED_AWAITING_COMMIT.
+- iteration_id: `CONTINUOUS-M3-WEAPON-LIFECYCLE-REGISTRATION-001`
+- capability_gap: M3 weapon/loadout lifecycle capability IDs are required by the fixed target profile but are still absent from `GameplayCapabilityRegistry`, so support reports them as unregistered `UNSUPPORTED`.
+- affected requirements:
+  - `R014`: Initial weapon is straight single shot.
+  - `R015`: Player can pick up spread shot.
+  - `R016`: Player can pick up rapid-fire shot.
+  - `R017`: New weapon pickup replaces current weapon.
+  - `R018`: Death restores initial weapon.
+- affected cluster: `M3`
+- objective: register the five target-profile weapon lifecycle capability IDs as explicitly deferred/incomplete so downstream reports can distinguish known gaps from unknown unsupported IDs.
+- prerequisites:
+  - M2 runtime-consumption checkpoints committed through `393d0ae`.
+  - Worktree clean before this iteration.
+- file lock:
+  - `packages/game-dsl/src/gameplay-capabilities/registry.ts`
+  - `tests/contracts/deepseek-authoritative-dsl-support.test.ts`
+  - `docs/refactor-log/deepseek-authoritative-dsl-consumption-m1.md`
+- acceptance assertions:
+  - `weapon.default_straight_single.v1`, `weapon.spread_shot.v1`, `weapon.rapid_fire.v1`, `weapon.replacement_rule.v1`, and `weapon.death_reset.v1` are present in `GameplayCapabilityRegistry`.
+  - Target-profile support reports all five capabilities as `registered=true`, `classification=DEFERRED`, `completeSupported=false`, and `legacyBacked=false`.
+  - All five evidence dimensions remain false for this iteration.
+  - `completeSupportedCount` remains 0.
+- expected failing tests:
+  - Add a DeepSeek support assertion that the five M3 weapon lifecycle capability IDs are registered but have no support evidence yet.
+  - Update the stable registry ID assertion to include the five new weapon IDs.
+- expected support-evidence change:
+  - Five weapon lifecycle capability IDs move from unregistered `UNSUPPORTED` to registered `DEFERRED`.
+  - No `schema_expressible`, `normalized`, `compiled`, `runtime_consumed`, or `qa_observed` evidence is claimed.
+- targeted tests:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts`
+- regression tests:
+  - `npx vitest run tests/contracts/gameplay-capability-registry.test.ts tests/contracts/dsl-consumption-report.test.ts`
+  - `npm run typecheck:root`
+  - `git diff --check`
+- stop conditions:
+  - Any need to edit outside the file lock.
+  - Any need to claim schema, normalizer, compiler, runtime loader, QA, weapon behavior, pickup behavior, death reset behavior, provider, production cutover, or fallback support.
+- RED result:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts`: failed, 2 failed / 12 passed.
+  - failure signature: the five M3 weapon lifecycle capability IDs were still `registered=false`, `classification=UNSUPPORTED`, and absent from the stable registry ID list.
+- implementation:
+  - `packages/game-dsl/src/gameplay-capabilities/registry.ts` registers the five M3 weapon lifecycle capability IDs as `planned` entries for `side_scrolling_run_and_gun.v1`.
+  - `tests/contracts/deepseek-authoritative-dsl-support.test.ts` asserts the five IDs are registered as `DEFERRED` while all five evidence dimensions remain false.
+  - No schema, normalizer, compiler, runtime loader, QA, weapon behavior, pickup behavior, death reset behavior, provider, production cutover, or fallback behavior changed.
+- support evidence:
+
+| capability id | registered | classification | schema_expressible | normalized | compiled | runtime_consumed | qa_observed | complete_supported |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `weapon.death_reset.v1` | true | `DEFERRED` | false | false | false | false | false | false |
+| `weapon.default_straight_single.v1` | true | `DEFERRED` | false | false | false | false | false | false |
+| `weapon.rapid_fire.v1` | true | `DEFERRED` | false | false | false | false | false | false |
+| `weapon.replacement_rule.v1` | true | `DEFERRED` | false | false | false | false | false | false |
+| `weapon.spread_shot.v1` | true | `DEFERRED` | false | false | false | false | false | false |
+
+- target profile summary after implementation:
+  - requirements: 60
+  - clusters: 15
+  - required capabilities: 59
+  - registered capabilities: 17
+  - complete-supported capabilities: 0
+  - legacy-backed capabilities: 7
+- Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | `GameplayCapabilityRegistry` now contains five M3 weapon lifecycle capability descriptors as `planned` entries. |
+| Consumer list | `buildDeepSeekRunAndGunValidationProfileSupportSummary` and `buildDslConsumptionReport` read the registry entries and report these weapon IDs as known, deferred, incomplete capabilities. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: the registry can now name the weapon lifecycle semantics, but no schema, normalizer, compiler, runtime, or QA consumer preserves or executes those semantics yet. |
+| Authority | `DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1` remains the requirement authority; `GameplayCapabilityRegistry` is only the inventory/support-evidence authority for this iteration. |
+| Legacy strategy | No legacy weapon behavior, projectile behavior, pickup behavior, or fallback template is used to claim support. |
+| Failure policy | All five capabilities keep every evidence dimension false and `completeSupported=false`; gates requiring schema, compiler, runtime, QA, or complete support must continue to fail closed. |
+| Evidence | The updated support test and live support summary prove the five IDs are read by target-profile support as `registered=true`/`DEFERRED` with no support evidence. |
+| Rollback | Reverting this iteration removes only the registry inventory entries and returns the five weapon lifecycle IDs to unregistered `UNSUPPORTED`; no runtime artifacts or DSL semantics are rewritten. |
+
+- validation result:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts`: pass, 1 file / 14 tests.
+  - `npx vitest run tests/contracts/gameplay-capability-registry.test.ts tests/contracts/dsl-consumption-report.test.ts`: pass, 2 files / 13 tests.
+  - `npm run typecheck:root`: pass.
+  - `git diff --check`: pass.
+  - `git diff --name-only`: exactly the file lock.
+- Oracle review:
+  - status: PASS.
+  - reviewed fingerprint: `c8f81dc7553b76e7bb0f4c26ef284c2813243db2fa191a46dd961ca8efc54a71`
+  - findings: P0/P1/P2 none.
+  - P3: ledger review status still said `AWAITING_REVIEW`; remediated by updating this iteration to `ORACLE_PASSED_AWAITING_COMMIT`.
+  - residual caveat: this iteration converts unknown M3 weapon IDs into known `DEFERRED` inventory gaps only; schema, runtime, QA, weapon behavior, pickup behavior, death reset behavior, and complete support remain false/out of scope.
+  - next action: precise staging, cached diff check, commit one reviewed diff without push.

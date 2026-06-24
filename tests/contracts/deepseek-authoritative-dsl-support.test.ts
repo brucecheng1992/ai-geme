@@ -207,6 +207,34 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
     });
   });
 
+  it('registers M3 weapon lifecycle capabilities as deferred without support evidence', () => {
+    const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
+    const capabilities = new Map(support.capabilities.map((capability) => [capability.capabilityId, capability]));
+
+    for (const capabilityId of [
+      'weapon.death_reset.v1',
+      'weapon.default_straight_single.v1',
+      'weapon.rapid_fire.v1',
+      'weapon.replacement_rule.v1',
+      'weapon.spread_shot.v1'
+    ]) {
+      expect(capabilities.get(capabilityId)).toMatchObject({
+        registered: true,
+        classification: 'DEFERRED',
+        completeSupported: false,
+        legacyBacked: false,
+        evidenceDimensions: {
+          schema_expressible: false,
+          normalized: false,
+          compiled: false,
+          runtime_consumed: false,
+          qa_observed: false
+        },
+        missingEvidenceDimensions: ['schema_expressible', 'normalized', 'compiled', 'runtime_consumed', 'qa_observed']
+      });
+    }
+  });
+
   it('shows missing support dimensions in the DSL consumption report', () => {
     const normalized = validateAndNormalizeRawGameDsl(createSideScrollingRunAndGunRawDsl());
     expect(normalized.ok).toBe(true);
@@ -294,7 +322,12 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       'spawn.enemy_wave.v1',
       'spawn.static.v1',
       'telemetry.gameplay_events.v1',
-      'weapon.cooldown.v1'
+      'weapon.cooldown.v1',
+      'weapon.death_reset.v1',
+      'weapon.default_straight_single.v1',
+      'weapon.rapid_fire.v1',
+      'weapon.replacement_rule.v1',
+      'weapon.spread_shot.v1'
     ]);
     expect(RuntimeGenreRegistry.find((entry) => entry.genre === 'side_scrolling_run_and_gun')?.requiredCapabilities).toEqual([
       'side_view_camera',
