@@ -282,6 +282,11 @@ const canonicalCompilerEvidence: GameplayCapabilityEvidence = {
   irCompiler: true
 };
 
+const canonicalRuntimeLoaderEvidence: GameplayCapabilityEvidence = {
+  ...canonicalCompilerEvidence,
+  runtimeModule: true
+};
+
 const contractCompilerEvidence: GameplayCapabilityEvidence = {
   ...contractSeedEvidence,
   normalizer: true,
@@ -307,7 +312,7 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [phaser2dActionArcade],
     ['side_scrolling_run_and_gun.v1'],
     [],
-    canonicalCompilerEvidence
+    canonicalRuntimeLoaderEvidence
   ),
   runtimeBacked('combat.projectile.v1', 'combat', 'Projectile combat', [topDownActionArcade, phaser2dActionArcade], ['shooter.v1', 'side_scrolling_run_and_gun.v1'], [
     'projectile_combat',
@@ -327,7 +332,7 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [phaser2dActionArcade],
     ['side_scrolling_run_and_gun.v1'],
     [],
-    canonicalCompilerEvidence
+    canonicalRuntimeLoaderEvidence
   ),
   runtimeBacked('movement.run_jump.v1', 'movement', 'Run and jump controller', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1', 'side_scrolling_platformer.v1'], [
     'run_jump_controller'
