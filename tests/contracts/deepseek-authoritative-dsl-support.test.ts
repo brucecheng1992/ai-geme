@@ -187,6 +187,26 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
     }
   });
 
+  it('reports M2 damage invulnerability normalization evidence without compiler or runtime completion', () => {
+    const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
+    const capabilities = new Map(support.capabilities.map((capability) => [capability.capabilityId, capability]));
+
+    expect(capabilities.get('health.damage_invulnerability.v1')).toMatchObject({
+      registered: true,
+      classification: 'CONTRACT_SEEDED',
+      completeSupported: false,
+      legacyBacked: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: false,
+        runtime_consumed: false,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['compiled', 'runtime_consumed', 'qa_observed']
+    });
+  });
+
   it('shows missing support dimensions in the DSL consumption report', () => {
     const normalized = validateAndNormalizeRawGameDsl(createSideScrollingRunAndGunRawDsl());
     expect(normalized.ok).toBe(true);

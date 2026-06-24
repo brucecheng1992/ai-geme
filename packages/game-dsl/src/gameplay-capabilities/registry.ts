@@ -282,6 +282,11 @@ const canonicalCompilerEvidence: GameplayCapabilityEvidence = {
   irCompiler: true
 };
 
+const contractNormalizationEvidence: GameplayCapabilityEvidence = {
+  ...contractSeedEvidence,
+  normalizer: true
+};
+
 const noVerifiedQa: GameplayCapabilityQaEvidence = { requiredProbeIds: [], requiredProbesVerified: false };
 
 const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
@@ -339,9 +344,15 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     'restart_loop',
     'checkpoint_or_lives_system'
   ]),
-  contractSeeded('health.damage_invulnerability.v1', 'health', 'Damage and invulnerability window', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], [
-    'player_health'
-  ]),
+  contractSeeded(
+    'health.damage_invulnerability.v1',
+    'health',
+    'Damage and invulnerability window',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    ['player_health'],
+    contractNormalizationEvidence
+  ),
   contractSeeded('weapon.cooldown.v1', 'weapon', 'Weapon cooldown', [topDownActionArcade, phaser2dActionArcade], ['shooter.v1', 'side_scrolling_run_and_gun.v1'], []),
   contractSeeded('goal.destroy_target.v1', 'goal', 'Destroy target goal', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),
   contractSeeded('scene.parallax_background.v1', 'scene', 'Parallax background scene layers', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),
@@ -575,9 +586,10 @@ function contractSeeded(
   label: string,
   runtimeFamilies: string[],
   profiles: string[],
-  legacyRuntimeCapabilities: string[]
+  legacyRuntimeCapabilities: string[],
+  evidence: GameplayCapabilityEvidence = contractSeedEvidence
 ): GameplayCapabilityDescriptor {
-  return descriptor({ id, domain, label, runtimeFamilies, profiles, legacyRuntimeCapabilities, status: 'contract_seeded', evidence: contractSeedEvidence });
+  return descriptor({ id, domain, label, runtimeFamilies, profiles, legacyRuntimeCapabilities, status: 'contract_seeded', evidence });
 }
 
 function planned(

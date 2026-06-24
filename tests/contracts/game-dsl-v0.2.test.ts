@@ -141,6 +141,63 @@ describe('Canonical Game DSL v0.2 normalization', () => {
     expect(result.normalizationReport.issues).toEqual([]);
   });
 
+  it('normalizes M2 damage invulnerability config into canonical systems', () => {
+    const fixture = createFixture();
+    const capabilityIds = [...fixture.draft.capabilities, 'health.damage_invulnerability.v1'].sort();
+    const draft = {
+      ...fixture.draft,
+      capabilities: capabilityIds,
+      entities: fixture.draft.entities.map((entity) =>
+        entity.id === 'player'
+          ? {
+              ...entity,
+              capability_refs: [...new Set([...(entity.capability_refs ?? []), 'health.damage_invulnerability.v1'])].sort()
+            }
+          : entity
+      ),
+      capability_configs: [
+        ...fixture.draft.capability_configs,
+        {
+          id: 'damage_invulnerability_window',
+          capability_id: 'health.damage_invulnerability.v1',
+          applies_to: ['player'],
+          config: { trigger: 'player.damaged', duration_ms: 1200, ignores_damage_sources: ['enemy_projectile', 'hazard', 'enemy_contact'] }
+        }
+      ]
+    };
+    const capabilityLock = createCapabilityLock({ capabilityIds });
+    const result = normalizeCapabilityGameDslDraftToCanonicalV02({
+      ...fixture,
+      draft,
+      capabilityLock,
+      composedSchemaIdentity: buildCapabilityGameDslDraftComposedSchemaIdentity({
+        profileId: draft.profile.id,
+        capabilityIds
+      })
+    });
+
+    expect(result.status).toBe('normalized');
+    if (result.status !== 'normalized') {
+      throw new Error('expected damage invulnerability normalization to pass');
+    }
+
+    expect(result.canonicalDsl.entities.find((entity) => entity.id === 'player')?.capability_ids).toContain('health.damage_invulnerability.v1');
+    expect(result.canonicalDsl.systems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'config_damage_invulnerability_window',
+          capability_id: 'health.damage_invulnerability.v1',
+          source_kind: 'capability_config',
+          applies_to_entity_ids: ['player'],
+          source_draft_id: 'damage_invulnerability_window',
+          config: { trigger: 'player.damaged', duration_ms: 1200, ignores_damage_sources: ['enemy_projectile', 'hazard', 'enemy_contact'] }
+        })
+      ])
+    );
+    expect(result.normalizationReport.status).toBe('normalized');
+    expect(result.normalizationReport.issues).toEqual([]);
+  });
+
   it('fails closed when draft, lock and composed schema capability sets diverge', () => {
     const fixture = createFixture();
     const result = normalizeCapabilityGameDslDraftToCanonicalV02({

@@ -716,7 +716,7 @@ Next authorization gate:
 ## 21. Continuous M2 Action-State Compiler 001
 
 - iteration id: `CONTINUOUS-M2-ACTION-STATE-COMPILER-001`
-- status: ORACLE_PASSED_AWAITING_COMMIT
+- status: LOCAL_COMMITTED_NO_PUSH
 - mode: IMPLEMENT_NO_PUSH
 - capability gap: `movement.crouch.v1` and `combat.airborne_fire.v1` now have schema and normalization evidence, but still report no compiler evidence even though canonical action-state systems can be projected into runtime-plan and runtime-manifest compiler artifacts.
 - affected requirements:
@@ -804,4 +804,101 @@ Next authorization gate:
   - findings: P0/P1/P2 none.
   - P3: ledger status still said `SCOPE_FROZEN_AWAITING_RED`; remediated by updating this iteration to `ORACLE_PASSED_AWAITING_COMMIT`.
   - P3: the compiler test proves artifact projection into runtime plan, capability IR, and manifest entries, not runtime loader readiness; accepted for this iteration because `runtime_consumed`, `qa_observed`, and `completeSupported` remain false.
+- exact commit-gate Oracle review:
+  - status: PASS
+  - reviewed fingerprint: `884d952c2374d481546cedc6a169fc280b556305e69553095a23abf67ac77ff2`
+  - findings: P0/P1/P2/P3 none.
+- commit:
+  - `68f0817f3d508246e35ddc862fdf556039b72dd8`
+  - subject: `feat(game-dsl): compile action-state capability artifacts`
+  - push: not performed.
+- next action: return to Phase A and freeze the next dependency-ready gap from live target-profile support.
+
+## 22. Continuous M2 Damage Invulnerability Normalization 001
+
+- iteration id: `CONTINUOUS-M2-DAMAGE-INVULNERABILITY-NORMALIZATION-001`
+- status: ORACLE_PASSED_AWAITING_COMMIT
+- mode: IMPLEMENT_NO_PUSH
+- capability gap: `health.damage_invulnerability.v1` is contract-seeded with `schema_expressible=true`, but still reports no normalization evidence for the authoritative draft/canonical DSL path.
+- affected requirement:
+  - `R013`: Player becomes briefly invulnerable after damage.
+- affected cluster: `M2`
+- objective: prove damage-invulnerability config is normalized into canonical systems and update support evidence for only the `normalized` dimension without claiming compiler, runtime, QA, or complete support.
+- prerequisites:
+  - M2 action-state compiler checkpoint committed as `68f0817f3d508246e35ddc862fdf556039b72dd8`.
+  - Worktree clean before this iteration.
+- file lock:
+  - `packages/game-dsl/src/gameplay-capabilities/registry.ts`
+  - `tests/contracts/deepseek-authoritative-dsl-support.test.ts`
+  - `tests/contracts/game-dsl-v0.2.test.ts`
+  - `docs/refactor-log/deepseek-authoritative-dsl-consumption-m1.md`
+- acceptance assertions:
+  - A capability draft may declare `health.damage_invulnerability.v1` in `capabilities`, player `capability_refs`, and `capability_configs`.
+  - `normalizeCapabilityGameDslDraftToCanonicalV02` preserves the invulnerability config as a canonical `system` with deterministic `source_draft_id`, `applies_to_entity_ids`, and declarative config payload.
+  - Target-profile support reports `normalized=true` for `health.damage_invulnerability.v1`.
+  - `compiled`, `runtime_consumed`, `qa_observed`, and `completeSupported` remain false.
+  - No compiler, runtime module, QA probe, provider, production cutover, or fixed-template fallback changes.
+- expected failing tests:
+  - Add a DeepSeek support assertion for `health.damage_invulnerability.v1` normalized evidence while remaining incomplete.
+  - Add a focused normalization contract in `tests/contracts/game-dsl-v0.2.test.ts` for invulnerability config preservation.
+- expected support-evidence change:
+  - `health.damage_invulnerability.v1`: `normalized=false` -> `normalized=true`.
+  - `compiled`, `runtime_consumed`, and `qa_observed` remain false.
+- targeted tests:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/game-dsl-v0.2.test.ts`
+- regression tests:
+  - `npx vitest run tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/dsl-consumption-report.test.ts`
+  - `npm run typecheck:root`
+  - `git diff --check`
+- stop conditions:
+  - Any need to edit outside the file lock.
+  - Any need to claim compiler/runtime/QA/complete support.
+  - Any provider, production cutover, or fixed-template fallback change.
+- RED result:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/game-dsl-v0.2.test.ts`: failed, 1 failed / 21 passed.
+  - failure signature: `health.damage_invulnerability.v1` was `CONTRACT_SEEDED` with `schema_expressible=true`, but still reported `normalized=false`.
+  - same RED run also proved the new canonical normalization consumer test already passed, so the remaining gap was support evidence alignment with an existing authoritative consumer.
+- implementation:
+  - `tests/contracts/game-dsl-v0.2.test.ts` adds a normalization contract proving a draft invulnerability capability config is preserved as a canonical `system`.
+  - `packages/game-dsl/src/gameplay-capabilities/registry.ts` adds `contractNormalizationEvidence` and applies `normalizer=true` only to `health.damage_invulnerability.v1`.
+  - `tests/contracts/deepseek-authoritative-dsl-support.test.ts` asserts `health.damage_invulnerability.v1` has `normalized=true` while keeping `compiled=false`, `runtime_consumed=false`, `qa_observed=false`, and `completeSupported=false`.
+  - No compiler, runtime module, QA probe, provider, production cutover, or fallback behavior changed.
+- support evidence:
+
+| capability id | registered | classification | schema_expressible | normalized | compiled | runtime_consumed | qa_observed | complete_supported |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `health.damage_invulnerability.v1` | true | `CONTRACT_SEEDED` | true | true | false | false | false | false |
+
+- target profile summary after implementation:
+  - requirements: 60
+  - clusters: 15
+  - required capabilities: 59
+  - registered capabilities: 12
+  - complete-supported capabilities: 0
+  - legacy-backed capabilities: 7
+- Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | `GameplayCapabilityRegistry` support evidence for `health.damage_invulnerability.v1` changes from schema-only to `normalized=true`; `tests/contracts/game-dsl-v0.2.test.ts` adds canonical normalization evidence for its draft `capability_configs`. |
+| Consumer list | `CapabilityGameDslDraftV1Schema` accepts the invulnerability config, `normalizeCapabilityGameDslDraftToCanonicalV02` maps it into canonical `systems`, `buildDeepSeekRunAndGunValidationProfileSupportSummary` and `buildDslConsumptionReport` read the updated support evidence, and the DeepSeek support contract tests assert the dimensions. |
+| Compatibility type | `LOSSLESS_COMPATIBLE` for authoritative draft/canonical consumers because the invulnerability config payload is preserved without rewriting semantics; compiler/runtime/QA remain explicitly incomplete. |
+| Authority | `CapabilityGameDslDraftV1Schema` and `CanonicalGameDslV02Schema` are the schema authorities for the normalized invulnerability config; `GameplayCapabilityRegistry` remains the support-evidence authority. |
+| Legacy strategy | Legacy player-health behavior is not used as authoritative invulnerability evidence; this capability remains non-runtime-complete until real compiler/runtime/QA consumers are added. |
+| Failure policy | The capability keeps `completeSupported=false` and still reports missing `compiled`, `runtime_consumed`, and `qa_observed`; any downstream gate requiring complete support must continue to fail closed. |
+| Evidence | The new normalization test constructs a trusted draft/lock/composed-schema tuple with invulnerability config and asserts canonical `systems` preserve the capability ID, applies-to entity, source draft ID, and config payload. |
+| Rollback | Reverting this iteration returns the support dimension to schema-only and removes only the focused normalization contract; runtime behavior and generated artifacts remain unchanged. |
+
+- validation result:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/game-dsl-v0.2.test.ts`: pass, 2 files / 22 tests.
+  - `npx vitest run tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/dsl-consumption-report.test.ts`: pass, 3 files / 16 tests.
+  - `npm run typecheck:root`: pass.
+  - `git diff --check`: pass.
+  - `git diff --name-only`: exactly the file lock.
+- Oracle review:
+  - status: PASS
+  - reviewed fingerprint: `53dd466673766ddf4c78f7552ea972ac0b561f6a3bcf6f82a70015f678e74c20`
+  - findings: P0/P1/P2 none.
+  - P3: ledger status still said `SCOPE_FROZEN_AWAITING_RED`; remediated by updating this iteration to `ORACLE_PASSED_AWAITING_COMMIT`.
+  - residual caveat: this iteration proves authoritative draft to canonical normalization and support evidence alignment, not compiler/runtime/QA consumption; accepted because those dimensions remain false.
 - next action: precise staging, cached diff check, commit one reviewed diff without push.
