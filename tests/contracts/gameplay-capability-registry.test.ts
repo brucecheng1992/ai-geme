@@ -6,6 +6,7 @@ import {
   createGameplayCapabilityRegistry,
   findGameplayCapability,
   GameplayCapabilityRegistry,
+  deriveGameplayCapabilitySupportEvidenceDimensions,
   isCompleteSupportedGameplayCapability,
   isRuntimeGenreExecutable,
   listGameplayProfileRuntimeStatuses,
@@ -132,6 +133,33 @@ describe('Gameplay capability registry', () => {
     expect(inventory.artifactKind).toBe('capability_inventory_report');
     expect(inventory.completeSupportedCapabilityIds).toEqual([]);
     expect(inventory.incompleteRuntimeBackedCapabilityIds).toEqual(inventory.runtimeBackedCapabilityIds);
+  });
+
+  it('scopes default straight weapon runtime evidence without completing M3 weapon support', () => {
+    const defaultWeapon = findGameplayCapability('weapon.default_straight_single.v1');
+
+    if (defaultWeapon === undefined) {
+      throw new Error('Expected weapon.default_straight_single.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(defaultWeapon)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(isCompleteSupportedGameplayCapability(defaultWeapon)).toBe(false);
+
+    for (const capabilityId of ['weapon.spread_shot.v1', 'weapon.rapid_fire.v1', 'weapon.replacement_rule.v1', 'weapon.death_reset.v1']) {
+      const capability = findGameplayCapability(capabilityId);
+      if (capability === undefined) {
+        throw new Error(`Expected ${capabilityId} in registry.`);
+      }
+      expect(deriveGameplayCapabilitySupportEvidenceDimensions(capability)).toMatchObject({
+        runtime_consumed: false,
+        qa_observed: false
+      });
+    }
   });
 
   it('derives profile runtime status from RuntimeGenreRegistry instead of a second supported list', () => {

@@ -3,12 +3,21 @@ import { describe, expect, it } from 'vitest';
 import {
   acknowledgePhaserRuntimePatch,
   buildPhaserRuntimeSystemLoaderPlan,
+  compileCanonicalCapabilityDslToRuntimePlan,
+  createDefaultStraightSingleWeaponRuntimeModule,
   createPhaserRuntimeModuleSession,
   observePhaserRuntimeBindingReport,
+  type CanonicalGameDslV02,
   type CapabilityDrivenGameIr,
+  type GameplayCapabilityLock,
+  type PhaserRuntimeLoaderPlan,
   type PhaserRuntimeSystemManifest,
   type PhaserRuntimeSystemModule
 } from '../../packages/game-dsl/src/index.js';
+import type { DeclarativeJsonValue } from '../../packages/game-dsl/src/gameplay-capabilities/declarative-json.js';
+import { hashStableJson } from '../../packages/game-dsl/src/gameplay-capabilities/stable-json.js';
+
+type DeclarativeJsonObject = { [key: string]: DeclarativeJsonValue };
 
 describe('Modular Phaser runtime system loader', () => {
   it('builds a deterministic dependency and phase ordered loader plan', () => {
@@ -211,13 +220,325 @@ describe('Modular Phaser runtime system loader', () => {
     expect(calls.slice(-4)).toEqual(['dispose:system.camera_follow', 'dispose:system.run_jump', 'dispose:system.input', 'dispose:system.gravity']);
     expect(() => session.update(16)).toThrow('Runtime module session is already disposed.');
   });
+
+  it('installs default straight single weapon compiler artifact as interpreted runtime state', async () => {
+    const { loaderPlan } = compileDefaultWeaponRuntimeFixture();
+    const weaponModule = createDefaultStraightSingleWeaponRuntimeModule();
+    const session = createPhaserRuntimeModuleSession({ plan: loaderPlan, modules: createSessionModules(loaderPlan, weaponModule) });
+
+    expect(session.snapshot()[DEFAULT_WEAPON_SYSTEM_ID]).toEqual({ installed: false });
+
+    await session.installAll();
+
+    expect(session.snapshot()[DEFAULT_WEAPON_SYSTEM_ID]).toEqual({
+      installed: true,
+      owner: { entityId: 'player', role: 'player' },
+      loadout: { slot: 'primary', equipPolicy: 'initial_spawn' },
+      projectilePattern: { kind: 'straight', projectileCount: 1 },
+      fireAction: 'shoot_projectile',
+      provenance: {
+        artifactKind: DEFAULT_WEAPON_ARTIFACT_KIND,
+        canonicalSystemId: 'config_default_straight_single_weapon',
+        sourceDraftId: 'default_straight_single_weapon'
+      }
+    });
+  });
+
+  it.each([
+    {
+      name: 'wrong artifactKind',
+      config: { ...DEFAULT_WEAPON_COMPILED_CONFIG, artifactKind: 'weapon.spread_shot.compiled.v1' }
+    },
+    {
+      name: 'generic config aggregation object',
+      config: {
+        canonicalDslPath: 'canonical-game-dsl.v0.2.json',
+        systemSourceIds: ['config_default_straight_single_weapon'],
+        configSourceIds: ['default_straight_single_weapon']
+      }
+    },
+    {
+      name: 'missing required field',
+      config: withoutKey(DEFAULT_WEAPON_COMPILED_CONFIG, 'fireAction')
+    },
+    {
+      name: 'non-player owner',
+      config: { ...DEFAULT_WEAPON_COMPILED_CONFIG, owner: { entityId: 'rifle_soldier', role: 'enemy' } }
+    },
+    {
+      name: 'non-straight pattern',
+      config: { ...DEFAULT_WEAPON_COMPILED_CONFIG, projectilePattern: { kind: 'spread', projectileCount: 1 } }
+    },
+    {
+      name: 'multiple projectiles',
+      config: { ...DEFAULT_WEAPON_COMPILED_CONFIG, projectilePattern: { kind: 'straight', projectileCount: 2 } }
+    },
+    {
+      name: 'wrong fire action',
+      config: { ...DEFAULT_WEAPON_COMPILED_CONFIG, fireAction: 'charge_shot' }
+    }
+  ] satisfies Array<{ name: string; config: DeclarativeJsonObject }>)('fails closed before installing default weapon runtime state for $name', async ({ config }) => {
+    const { loaderPlan } = compileDefaultWeaponRuntimeFixture();
+    const weaponModule = createDefaultStraightSingleWeaponRuntimeModule();
+    const session = createPhaserRuntimeModuleSession({
+      plan: withDefaultWeaponConfig(loaderPlan, config),
+      modules: createSessionModules(loaderPlan, weaponModule)
+    });
+
+    await expect(session.installAll()).rejects.toThrow('Default straight single weapon runtime config invalid');
+    expect(snapshotModule(weaponModule)).toEqual({ installed: false });
+  });
+
+  it('fails closed when the default weapon runtime module is missing from the session module map', async () => {
+    const { loaderPlan } = compileDefaultWeaponRuntimeFixture();
+    const session = createPhaserRuntimeModuleSession({ plan: loaderPlan, modules: createSessionModules(loaderPlan, undefined) });
+
+    await expect(session.installAll()).rejects.toThrow(`Runtime module ${DEFAULT_WEAPON_SYSTEM_ID} is missing from the active session.`);
+  });
+
+  it('does not install default weapon runtime state when only the loader plan exists', () => {
+    const { loaderPlan } = compileDefaultWeaponRuntimeFixture();
+    const weaponModule = createDefaultStraightSingleWeaponRuntimeModule();
+    const session = createPhaserRuntimeModuleSession({ plan: loaderPlan, modules: createSessionModules(loaderPlan, weaponModule) });
+
+    expect(loaderPlan.loadOrder.find((entry) => entry.systemId === DEFAULT_WEAPON_SYSTEM_ID)?.config).toMatchObject({
+      artifactKind: DEFAULT_WEAPON_ARTIFACT_KIND
+    });
+    expect(session.snapshot()[DEFAULT_WEAPON_SYSTEM_ID]).toEqual({ installed: false });
+  });
 });
+
+const DEFAULT_WEAPON_CAPABILITY_ID = 'weapon.default_straight_single.v1';
+const DEFAULT_WEAPON_SYSTEM_ID = `system.${DEFAULT_WEAPON_CAPABILITY_ID}`;
+const DEFAULT_WEAPON_ARTIFACT_KIND = 'weapon.default_straight_single.compiled.v1';
+const DEFAULT_WEAPON_COMPILED_CONFIG = {
+  artifactKind: DEFAULT_WEAPON_ARTIFACT_KIND,
+  source: {
+    canonicalSystemId: 'config_default_straight_single_weapon',
+    sourceDraftId: 'default_straight_single_weapon'
+  },
+  owner: { entityId: 'player', role: 'player' },
+  loadout: { slot: 'primary', equipPolicy: 'initial_spawn' },
+  projectilePattern: { kind: 'straight', projectileCount: 1 },
+  fireAction: 'shoot_projectile'
+} satisfies DeclarativeJsonObject;
 
 function createLoaderInput() {
   return {
     gameIr: createGameIr(),
     manifest: createManifest(),
     capabilityLock: createCapabilityLock()
+  };
+}
+
+function compileDefaultWeaponRuntimeFixture(): { loaderPlan: PhaserRuntimeLoaderPlan } {
+  const compilerFixture = createDefaultWeaponCompilerFixture();
+  const compiled = compileCanonicalCapabilityDslToRuntimePlan(compilerFixture);
+  if (compiled.status !== 'compiled') {
+    throw new Error(`Expected default weapon compiler fixture to compile, got ${compiled.status}`);
+  }
+  const loader = buildPhaserRuntimeSystemLoaderPlan({
+    gameIr: compiled.capabilityIr,
+    manifest: compiled.runtimeSystemManifest,
+    capabilityLock: {
+      ref: 'gameplay_capability_lock.json',
+      hash: compilerFixture.capabilityLock.lockHash,
+      capabilityIds: compilerFixture.capabilityLock.capabilityIds
+    }
+  });
+  if (loader.status !== 'ready' || loader.plan === undefined) {
+    throw new Error(`Expected default weapon runtime loader fixture to be ready, got ${loader.status}`);
+  }
+  return { loaderPlan: loader.plan };
+}
+
+function createSessionModules(
+  plan: PhaserRuntimeLoaderPlan,
+  weaponModule: PhaserRuntimeSystemModule | undefined
+): Record<string, PhaserRuntimeSystemModule> {
+  return Object.fromEntries(
+    plan.loadOrder
+      .filter((entry) => entry.systemId !== DEFAULT_WEAPON_SYSTEM_ID || weaponModule !== undefined)
+      .map((entry): [string, PhaserRuntimeSystemModule] => [
+        entry.systemId,
+        entry.systemId === DEFAULT_WEAPON_SYSTEM_ID
+          ? weaponModule!
+          : {
+              id: entry.systemId,
+              snapshot: () => ({ installed: true })
+            }
+      ])
+  );
+}
+
+function withDefaultWeaponConfig(plan: PhaserRuntimeLoaderPlan, config: DeclarativeJsonObject): PhaserRuntimeLoaderPlan {
+  return {
+    ...plan,
+    loadOrder: plan.loadOrder.map((entry) =>
+      entry.systemId === DEFAULT_WEAPON_SYSTEM_ID
+        ? {
+            ...entry,
+            config,
+            configHash: hashStableJson(config)
+          }
+        : entry
+    )
+  };
+}
+
+function withoutKey<T extends DeclarativeJsonObject>(input: T, key: keyof T): DeclarativeJsonObject {
+  const { [key]: _removed, ...rest } = input;
+  return rest;
+}
+
+function snapshotModule(module: PhaserRuntimeSystemModule): DeclarativeJsonObject {
+  if (module.snapshot === undefined) {
+    throw new Error(`Runtime module ${module.id} does not expose a snapshot.`);
+  }
+  return module.snapshot();
+}
+
+function createDefaultWeaponCompilerFixture() {
+  const capabilityIds = [...createCompilerCapabilityIds(), DEFAULT_WEAPON_CAPABILITY_ID].sort();
+  const capabilityLock = createGameplayCapabilityLock(capabilityIds);
+  const canonicalDsl = createCanonicalDsl(capabilityLock);
+  return {
+    capabilityLock,
+    canonicalDsl: {
+      ...canonicalDsl,
+      entities: canonicalDsl.entities.map((entity) =>
+        entity.id === 'player'
+          ? {
+              ...entity,
+              capability_ids: [...new Set([...entity.capability_ids, DEFAULT_WEAPON_CAPABILITY_ID])].sort()
+            }
+          : entity
+      ),
+      systems: [
+        ...canonicalDsl.systems,
+        {
+          id: 'config_default_straight_single_weapon',
+          capability_id: DEFAULT_WEAPON_CAPABILITY_ID,
+          source_kind: 'capability_config',
+          applies_to_entity_ids: ['player'],
+          source_draft_id: 'default_straight_single_weapon',
+          config: { slot: 'primary', pattern: 'straight', projectile_count: 1, fire_action: 'shoot_projectile' }
+        }
+      ]
+    }
+  };
+}
+
+function createCompilerCapabilityIds(): string[] {
+  return [
+    'combat.projectile.v1',
+    'goal.destroy_target.v1',
+    'movement.run_jump.v1',
+    'pickup.drop_collect.v1',
+    'spawn.static.v1',
+    'telemetry.gameplay_events.v1'
+  ];
+}
+
+function createGameplayCapabilityLock(capabilityIds: string[]): GameplayCapabilityLock {
+  const payload = {
+    artifactKind: 'gameplay_capability_lock' as const,
+    schemaVersion: 'gameplay_capability_lock.v0.1' as const,
+    profileId: 'side_scrolling_run_and_gun.v1',
+    runtimeFamily: 'phaser_2d_action_arcade.v1',
+    capabilityIds,
+    packages: capabilityIds.map((capabilityId) => ({
+      capabilityId,
+      packageVersion: '1.0.0',
+      packageHash: `fnv1a_${capabilityId.replace(/[^a-z0-9]/g, '').slice(0, 8).padEnd(8, '0')}`
+    }))
+  };
+  return { ...payload, lockHash: hashStableJson(payload) };
+}
+
+function createCanonicalDsl(capabilityLock: GameplayCapabilityLock): CanonicalGameDslV02 {
+  return {
+    artifactKind: 'canonical_game_dsl',
+    schema_version: 'game-dsl.v0.2',
+    projectId: 'proj_20260625_weapon_runtime',
+    runId: 'run_20260625_weapon_runtime',
+    source: {
+      game_brief_hash: 'fnv1a_game_brief',
+      profile_resolution_hash: 'fnv1a_profile_resolution',
+      capability_lock_hash: capabilityLock.lockHash,
+      composed_schema_hash: 'fnv1a_composed_schema',
+      draft_hash: 'fnv1a_draft'
+    },
+    profile: { id: 'side_scrolling_run_and_gun.v1', runtime_family: 'phaser_2d_action_arcade.v1' },
+    capability_ids: capabilityLock.capabilityIds,
+    play_time_intent: { mode: 'range', min_sec: 480, max_sec: 720 },
+    progression: {
+      estimated_total_sec: { min_sec: 480, max_sec: 720 },
+      segments: [
+        { id: 'approach', order: 0, duration_target_sec: { min_sec: 160, max_sec: 240 }, capability_ids: ['movement.run_jump.v1', 'spawn.static.v1'] },
+        { id: 'base_assault', order: 1, duration_target_sec: { min_sec: 160, max_sec: 240 }, capability_ids: ['combat.projectile.v1', 'pickup.drop_collect.v1'] },
+        { id: 'core_boss', order: 2, duration_target_sec: { min_sec: 160, max_sec: 240 }, capability_ids: ['goal.destroy_target.v1', 'telemetry.gameplay_events.v1'] }
+      ]
+    },
+    scenes: [{ id: 'main_scene', segment_ids: ['approach', 'base_assault', 'core_boss'], entity_ids: ['player', 'rifle_soldier'], capability_ids: [] }],
+    entities: [
+      { id: 'player', role: 'player', tags: [], capability_ids: ['movement.run_jump.v1', 'combat.projectile.v1'] },
+      { id: 'rifle_soldier', role: 'enemy', tags: [], capability_ids: ['combat.projectile.v1'] },
+      { id: 'weapon_pickup', role: 'pickup', tags: [], capability_ids: ['pickup.drop_collect.v1'] },
+      { id: 'energy_core', role: 'boss', tags: [], capability_ids: ['goal.destroy_target.v1'] }
+    ],
+    systems: [
+      {
+        id: 'behavior_enemy_fires',
+        capability_id: 'combat.projectile.v1',
+        source_kind: 'behavior',
+        owner_entity_id: 'rifle_soldier',
+        source_draft_id: 'enemy_fires',
+        trigger: { event: 'player.in_range' },
+        config: { projectile_entity_id: 'enemy_projectile' }
+      },
+      {
+        id: 'config_movement_config',
+        capability_id: 'movement.run_jump.v1',
+        source_kind: 'capability_config',
+        applies_to_entity_ids: ['player'],
+        source_draft_id: 'movement_config',
+        config: { move_speed: 260, jump_velocity: 520 }
+      }
+    ],
+    objectives: [
+      {
+        id: 'score_target',
+        kind: 'target_score',
+        target: { score: 3800 },
+        success_condition: { event: 'score.reached', target_score: 3800 },
+        capability_ids: ['goal.destroy_target.v1']
+      }
+    ],
+    waves: [
+      { id: 'wave_approach', segment_id: 'approach', enemy_entity_id: 'rifle_soldier', count: 4, spawn: { x: 720, y: 492 }, capability_ids: ['spawn.static.v1'] },
+      { id: 'wave_mid', segment_id: 'base_assault', enemy_entity_id: 'rifle_soldier', count: 6, spawn: { x: 1500, y: 492 }, capability_ids: ['spawn.static.v1'] },
+      { id: 'wave_core', segment_id: 'core_boss', enemy_entity_id: 'rifle_soldier', count: 5, spawn: { x: 2780, y: 492 }, capability_ids: ['spawn.static.v1'] }
+    ],
+    pickups: [
+      {
+        id: 'spread_pickup',
+        segment_id: 'base_assault',
+        pickup_entity_id: 'weapon_pickup',
+        count: 1,
+        spawn: { x: 1880, y: 440 },
+        capability_ids: ['pickup.drop_collect.v1']
+      }
+    ],
+    bosses: [
+      {
+        id: 'energy_core_boss',
+        boss_entity_id: 'energy_core',
+        segment_ids: ['core_boss'],
+        phases: [{ id: 'core_phase_one', order: 0, health_threshold_pct: 100, pattern: { attack: 'slow_burst' }, capability_ids: ['combat.projectile.v1'] }]
+      }
+    ],
+    metadata: { title: 'Default weapon runtime consumer test', tags: [] }
   };
 }
 

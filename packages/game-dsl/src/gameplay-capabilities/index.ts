@@ -3,6 +3,7 @@ export * from './package-contract.js';
 export * from './capability-dsl.js';
 export * from './capability-ir.js';
 export * from './phaser-runtime-loader.js';
+export * from './default-straight-single-weapon-runtime-module.js';
 export * from './profile-recipe-compiler.js';
 export * from './capability-lock.js';
 export * from './capability-resolver.js';

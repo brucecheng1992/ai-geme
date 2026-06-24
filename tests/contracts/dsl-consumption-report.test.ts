@@ -149,7 +149,7 @@ describe('Step 33 DSL consumption report', () => {
     );
   });
 
-  it('surfaces default weapon compiler evidence and normalized M3 weapon evidence in target profile support', () => {
+  it('surfaces default weapon runtime consumer evidence and normalized M3 weapon evidence in target profile support', () => {
     const normalized = validateAndNormalizeRawGameDsl(createSideScrollingRunAndGunRawDsl());
     expect(normalized.ok).toBe(true);
     if (!normalized.ok) {
@@ -171,10 +171,10 @@ describe('Step 33 DSL consumption report', () => {
         schema_expressible: true,
         normalized: true,
         compiled: true,
-        runtime_consumed: false,
+        runtime_consumed: true,
         qa_observed: false
       },
-      missingEvidenceDimensions: ['runtime_consumed', 'qa_observed']
+      missingEvidenceDimensions: ['qa_observed']
     });
     expect(capabilities.get('weapon.spread_shot.v1')).toMatchObject({
       classification: 'DEFERRED',
