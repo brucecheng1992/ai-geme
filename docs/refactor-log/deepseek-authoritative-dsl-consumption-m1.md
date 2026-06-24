@@ -614,7 +614,7 @@ Next authorization gate:
 ## 20. Continuous M2 Action-State Normalization 001
 
 - iteration id: `CONTINUOUS-M2-ACTION-STATE-NORMALIZATION-001`
-- status: ORACLE_PASSED_AWAITING_COMMIT
+- status: LOCAL_COMMITTED_NO_PUSH
 - mode: IMPLEMENT_NO_PUSH
 - capability gap: `movement.crouch.v1` and `combat.airborne_fire.v1` are registered but still report no schema or normalization evidence, even though the authoritative draft/canonical DSL path can represent capability-specific action-state configs without runtime execution.
 - affected requirements:
@@ -703,4 +703,105 @@ Next authorization gate:
   - findings: P0/P1/P2 none.
   - P3: ledger status still said `SCOPE_FROZEN_AWAITING_RED`; remediated by updating this iteration to `ORACLE_PASSED_AWAITING_COMMIT`.
   - P3: the normalizer test proves generic capability config acceptance and preservation for these two IDs, not capability-specific runtime semantics; accepted for this iteration because compiler, runtime, QA, and `completeSupported` remain false.
+- exact commit-gate Oracle review:
+  - status: PASS
+  - reviewed fingerprint: `da41acb6c033404b45968e5c049c9dab9a958602d7850b7c1c4a9a4148f45ed5`
+  - findings: P0/P1/P2/P3 none.
+- commit:
+  - `9fb71d4ded72a19cbd864cad2792de41185d1f81`
+  - subject: `feat(game-dsl): normalize action-state capability configs`
+  - push: not performed.
+- next action: return to Phase A and freeze the next dependency-ready gap from live target-profile support.
+
+## 21. Continuous M2 Action-State Compiler 001
+
+- iteration id: `CONTINUOUS-M2-ACTION-STATE-COMPILER-001`
+- status: ORACLE_PASSED_AWAITING_COMMIT
+- mode: IMPLEMENT_NO_PUSH
+- capability gap: `movement.crouch.v1` and `combat.airborne_fire.v1` now have schema and normalization evidence, but still report no compiler evidence even though canonical action-state systems can be projected into runtime-plan and runtime-manifest compiler artifacts.
+- affected requirements:
+  - `R010`: Player can crouch.
+  - `R012`: Player can shoot while airborne.
+  - Guarded M2 requirements: `R008`, `R009`, `R011`, `R013` must not be promoted to complete support by this iteration.
+- affected cluster: `M2`
+- objective: prove canonical action-state systems for crouch and airborne fire compile into capability runtime-plan/manifest artifacts, and update support evidence for only the `compiled` dimension without claiming runtime consumption or QA observation.
+- prerequisites:
+  - M2 action-state normalization checkpoint committed as `9fb71d4ded72a19cbd864cad2792de41185d1f81`.
+  - Worktree clean before this iteration.
+- file lock:
+  - `packages/game-dsl/src/gameplay-capabilities/registry.ts`
+  - `tests/contracts/deepseek-authoritative-dsl-support.test.ts`
+  - `tests/contracts/canonical-capability-runtime-compiler.test.ts`
+  - `docs/refactor-log/deepseek-authoritative-dsl-consumption-m1.md`
+- acceptance assertions:
+  - A canonical DSL with `movement.crouch.v1` and `combat.airborne_fire.v1` in the exact capability lock compiles successfully.
+  - The runtime plan includes runtime systems for both action-state capabilities with their canonical config source IDs and player applies-to binding.
+  - The runtime system manifest includes both action-state capability IDs as compiler artifacts.
+  - Target-profile support reports `compiled=true` in addition to prior schema and normalization evidence.
+  - `runtime_consumed`, `qa_observed`, and `completeSupported` remain false.
+- expected failing tests:
+  - Update `tests/contracts/deepseek-authoritative-dsl-support.test.ts` so the two action-state capabilities must expose compiler evidence while remaining runtime/QA incomplete.
+  - Add a focused compiler contract in `tests/contracts/canonical-capability-runtime-compiler.test.ts` for action-state runtime-plan/manifest projection.
+- expected support-evidence change:
+  - `movement.crouch.v1`: `compiled=false` -> `compiled=true`.
+  - `combat.airborne_fire.v1`: `compiled=false` -> `compiled=true`.
+  - `runtime_consumed` and `qa_observed` remain false.
+- targeted tests:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/canonical-capability-runtime-compiler.test.ts`
+- regression tests:
+  - `npx vitest run tests/contracts/game-dsl-v0.2.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/dsl-consumption-report.test.ts`
+  - `npm run typecheck:root`
+  - `git diff --check`
+- stop conditions:
+  - Any need to edit outside the file lock.
+  - Any need to claim runtime module load, QA observation, or complete support.
+  - Any provider, production cutover, or fixed-template fallback change.
+- RED result:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/canonical-capability-runtime-compiler.test.ts`: failed, 1 failed / 21 passed.
+  - failure signature: `movement.crouch.v1` and `combat.airborne_fire.v1` already had schema and normalization evidence, but still reported `compiled=false`.
+  - same RED run also proved the new compiler artifact projection test already passed, so the remaining gap was support evidence alignment with an existing compiler consumer.
+- implementation:
+  - `tests/contracts/canonical-capability-runtime-compiler.test.ts` adds a compiler contract proving canonical action-state systems project into runtime-plan systems, capability IR config source IDs, and runtime-system manifest entries.
+  - `packages/game-dsl/src/gameplay-capabilities/registry.ts` renames the partial evidence constant to `canonicalCompilerEvidence` and applies `irCompiler=true` only to `movement.crouch.v1` and `combat.airborne_fire.v1`.
+  - `tests/contracts/deepseek-authoritative-dsl-support.test.ts` now requires both action-state capabilities to expose `compiled=true` while keeping `runtime_consumed=false`, `qa_observed=false`, and `completeSupported=false`.
+  - No runtime module load, runtime loader readiness, QA probe, provider, production cutover, or fallback behavior changed.
+- support evidence:
+
+| capability id | registered | classification | schema_expressible | normalized | compiled | runtime_consumed | qa_observed | complete_supported |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `movement.crouch.v1` | true | `DEFERRED` | true | true | true | false | false | false |
+| `combat.airborne_fire.v1` | true | `DEFERRED` | true | true | true | false | false | false |
+
+- target profile summary after implementation:
+  - requirements: 60
+  - clusters: 15
+  - required capabilities: 59
+  - registered capabilities: 12
+  - complete-supported capabilities: 0
+  - legacy-backed capabilities: 7
+- Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | `GameplayCapabilityRegistry` support evidence for `movement.crouch.v1` and `combat.airborne_fire.v1` changes to include `compiled=true`; `tests/contracts/canonical-capability-runtime-compiler.test.ts` adds compiler artifact evidence for their canonical systems. |
+| Consumer list | `compileCanonicalCapabilityDslToRuntimePlan` reads canonical action-state systems and emits runtime-plan systems, capability IR runtime system configs, and runtime-system manifest entries; `buildDeepSeekRunAndGunValidationProfileSupportSummary` and `buildDslConsumptionReport` read the updated support evidence. |
+| Compatibility type | `LOSSLESS_COMPATIBLE` for canonical compiler artifacts because capability IDs, source draft IDs, applies-to entity IDs, and manifest entries are preserved without rewriting semantics; runtime execution remains incomplete. |
+| Authority | `CanonicalGameDslV02Schema` is the canonical system authority; `compileCanonicalCapabilityDslToRuntimePlan` is the compiler evidence authority; `GameplayCapabilityRegistry` is the support-evidence authority. |
+| Legacy strategy | No legacy runtime alias, loader readiness, or template fallback is used to claim compiler evidence. |
+| Failure policy | Both capabilities keep `completeSupported=false` and still report missing `runtime_consumed` and `qa_observed`; any gate requiring complete support must continue to fail closed. |
+| Evidence | The new compiler test constructs a canonical DSL and exact capability lock containing both action-state IDs, then asserts runtime-plan, capability IR, and runtime-system manifest artifacts include the expected action-state system entries. |
+| Rollback | Reverting this iteration removes only the compiler evidence assertion and returns `compiled=false`; normalized canonical action-state config support from the previous checkpoint remains intact. |
+
+- validation result:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/canonical-capability-runtime-compiler.test.ts`: pass, 2 files / 22 tests.
+  - `npx vitest run tests/contracts/game-dsl-v0.2.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/dsl-consumption-report.test.ts`: pass, 4 files / 24 tests.
+  - `npm run typecheck:root`: pass.
+  - `git diff --check`: pass.
+  - `git diff --name-only`: exactly the file lock.
+- Oracle review:
+  - status: PASS
+  - reviewed fingerprint: `51bcd1b2a05374be5f6ad3531e173b779e8de5a420e2ce5179e7938f688fd4b9`
+  - findings: P0/P1/P2 none.
+  - P3: ledger status still said `SCOPE_FROZEN_AWAITING_RED`; remediated by updating this iteration to `ORACLE_PASSED_AWAITING_COMMIT`.
+  - P3: the compiler test proves artifact projection into runtime plan, capability IR, and manifest entries, not runtime loader readiness; accepted for this iteration because `runtime_consumed`, `qa_observed`, and `completeSupported` remain false.
 - next action: precise staging, cached diff check, commit one reviewed diff without push.

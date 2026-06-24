@@ -64,6 +64,96 @@ describe('Canonical capability DSL runtime compiler', () => {
     expect(loader.plan?.loadOrder.map((entry) => entry.capabilityId).sort()).toEqual(fixture.capabilityLock.capabilityIds);
   });
 
+  it('compiles M2 action-state canonical systems into runtime-plan and manifest artifacts', () => {
+    const fixture = createFixture();
+    const actionStateCapabilityIds = ['combat.airborne_fire.v1', 'movement.crouch.v1'];
+    const capabilityIds = [...fixture.capabilityLock.capabilityIds, ...actionStateCapabilityIds].sort();
+    const capabilityLock = createCapabilityLock({ capabilityIds });
+    const canonicalDsl = {
+      ...fixture.canonicalDsl,
+      source: { ...fixture.canonicalDsl.source, capability_lock_hash: capabilityLock.lockHash },
+      capability_ids: capabilityIds,
+      entities: fixture.canonicalDsl.entities.map((entity) =>
+        entity.id === 'player'
+          ? {
+              ...entity,
+              capability_ids: [...new Set([...entity.capability_ids, ...actionStateCapabilityIds])].sort()
+            }
+          : entity
+      ),
+      systems: [
+        ...fixture.canonicalDsl.systems,
+        {
+          id: 'config_airborne_fire_permission',
+          capability_id: 'combat.airborne_fire.v1',
+          source_kind: 'capability_config',
+          applies_to_entity_ids: ['player'],
+          source_draft_id: 'airborne_fire_permission',
+          config: { allowed_when: ['jumping', 'falling'], fire_action: 'shoot_projectile' }
+        },
+        {
+          id: 'config_crouch_action_state',
+          capability_id: 'movement.crouch.v1',
+          source_kind: 'capability_config',
+          applies_to_entity_ids: ['player'],
+          source_draft_id: 'crouch_action_state',
+          config: { input: 'down', posture: 'crouch', height_scale: 0.58 }
+        }
+      ]
+    };
+    const result = compileCanonicalCapabilityDslToRuntimePlan({ canonicalDsl, capabilityLock });
+
+    expect(result.status).toBe('compiled');
+    if (result.status !== 'compiled') {
+      throw new Error('expected action-state compiler fixture to pass');
+    }
+
+    expect(result.runtimePlan.runtimeSystems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'system.combat.airborne_fire.v1',
+          capabilityId: 'combat.airborne_fire.v1',
+          configSourceIds: ['airborne_fire_permission'],
+          appliesToEntityIds: ['player']
+        }),
+        expect.objectContaining({
+          id: 'system.movement.crouch.v1',
+          capabilityId: 'movement.crouch.v1',
+          configSourceIds: ['crouch_action_state'],
+          appliesToEntityIds: ['player']
+        })
+      ])
+    );
+    expect(result.capabilityIr.runtimeSystemConfigs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'system.combat.airborne_fire.v1',
+          capabilityId: 'combat.airborne_fire.v1',
+          config: expect.objectContaining({ systemSourceIds: ['config_airborne_fire_permission'] })
+        }),
+        expect.objectContaining({
+          id: 'system.movement.crouch.v1',
+          capabilityId: 'movement.crouch.v1',
+          config: expect.objectContaining({ systemSourceIds: ['config_crouch_action_state'] })
+        })
+      ])
+    );
+    expect(result.runtimeSystemManifest.systems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'system.combat.airborne_fire.v1',
+          capabilityId: 'combat.airborne_fire.v1',
+          authoritativeConfig: 'capability_ir'
+        }),
+        expect.objectContaining({
+          id: 'system.movement.crouch.v1',
+          capabilityId: 'movement.crouch.v1',
+          authoritativeConfig: 'capability_ir'
+        })
+      ])
+    );
+  });
+
   it('fails closed when exact lock hash or profile binding drifts', () => {
     const fixture = createFixture();
     const staleLock = compileCanonicalCapabilityDslToRuntimePlan({
@@ -294,8 +384,8 @@ function createCapabilityIds(): string[] {
   ];
 }
 
-function createCapabilityLock(input: { profileId?: string } = {}) {
-  const capabilityIds = createCapabilityIds();
+function createCapabilityLock(input: { profileId?: string; capabilityIds?: string[] } = {}) {
+  const capabilityIds = input.capabilityIds ?? createCapabilityIds();
   const payload = {
     artifactKind: 'gameplay_capability_lock',
     schemaVersion: 'gameplay_capability_lock.v0.1',

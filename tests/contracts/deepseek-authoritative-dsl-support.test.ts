@@ -178,11 +178,11 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
         evidenceDimensions: {
           schema_expressible: true,
           normalized: true,
-          compiled: false,
+          compiled: true,
           runtime_consumed: false,
           qa_observed: false
         },
-        missingEvidenceDimensions: ['compiled', 'runtime_consumed', 'qa_observed']
+        missingEvidenceDimensions: ['runtime_consumed', 'qa_observed']
       });
     }
   });
