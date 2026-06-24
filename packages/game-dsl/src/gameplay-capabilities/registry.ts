@@ -10,6 +10,20 @@ export const GAMEPLAY_CAPABILITY_INVENTORY_REPORT_KIND = 'capability_inventory_r
 export const GAMEPLAY_CAPABILITY_INVENTORY_REPORT_SCHEMA_VERSION = 'capability_inventory_report.v0.1';
 
 export const GAMEPLAY_CAPABILITY_SUPPORT_STATUSES = ['complete_supported', 'runtime_backed', 'contract_seeded', 'planned', 'blocked'] as const;
+export const GAMEPLAY_CAPABILITY_SUPPORT_EVIDENCE_DIMENSIONS = [
+  'schema_expressible',
+  'normalized',
+  'compiled',
+  'runtime_consumed',
+  'qa_observed'
+] as const;
+export const GAMEPLAY_CAPABILITY_DERIVED_SUPPORT_CLASSIFICATIONS = [
+  'COMPLETE_SUPPORTED',
+  'CONDITIONAL_LEGACY_BACKED',
+  'UNSUPPORTED',
+  'DEFERRED',
+  'CONTRACT_SEEDED'
+] as const;
 export const GAMEPLAY_CAPABILITY_DOMAINS = [
   'asset',
   'audio',
@@ -61,6 +75,16 @@ export const GameplayCapabilityEvidenceSchema = z.strictObject({
   renderContract: z.boolean()
 });
 
+export const GameplayCapabilitySupportEvidenceDimensionsSchema = z.strictObject({
+  schema_expressible: z.boolean(),
+  normalized: z.boolean(),
+  compiled: z.boolean(),
+  runtime_consumed: z.boolean(),
+  qa_observed: z.boolean()
+});
+
+export const GameplayCapabilityDerivedSupportClassificationSchema = z.enum(GAMEPLAY_CAPABILITY_DERIVED_SUPPORT_CLASSIFICATIONS);
+
 export const GameplayCapabilityQaEvidenceSchema = z.strictObject({
   requiredProbeIds: z.array(z.string().min(1)).max(40),
   requiredProbesVerified: z.boolean()
@@ -104,6 +128,15 @@ export const GameplayCapabilityDescriptorSchema = z
       return;
     }
 
+    const supportEvidence = deriveGameplayCapabilitySupportEvidenceDimensions(descriptor);
+    for (const dimension of getMissingGameplayCapabilitySupportEvidenceDimensions(supportEvidence)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['evidence'],
+        message: `complete_supported capability requires ${dimension} support evidence.`
+      });
+    }
+
     for (const key of CompleteSupportedEvidenceKeys) {
       if (!descriptor.evidence[key]) {
         ctx.addIssue({
@@ -130,6 +163,9 @@ export const GameplayCapabilityDescriptorSchema = z
   });
 
 export type GameplayCapabilitySupportStatus = z.infer<typeof GameplayCapabilityStatusSchema>;
+export type GameplayCapabilitySupportEvidenceDimension = (typeof GAMEPLAY_CAPABILITY_SUPPORT_EVIDENCE_DIMENSIONS)[number];
+export type GameplayCapabilitySupportEvidenceDimensions = z.infer<typeof GameplayCapabilitySupportEvidenceDimensionsSchema>;
+export type GameplayCapabilityDerivedSupportClassification = z.infer<typeof GameplayCapabilityDerivedSupportClassificationSchema>;
 export type GameplayCapabilityDomain = z.infer<typeof GameplayCapabilityDomainSchema>;
 export type GameplayCapabilityEvidence = z.infer<typeof GameplayCapabilityEvidenceSchema>;
 export type GameplayCapabilityQaEvidence = z.infer<typeof GameplayCapabilityQaEvidenceSchema>;
@@ -173,10 +209,22 @@ export type GameplayCapabilityInventoryReport = {
   capabilityCount: number;
   statusCounts: Record<GameplayCapabilitySupportStatus, number>;
   domainCounts: Record<GameplayCapabilityDomain, number>;
+  derivedClassificationCounts: Record<GameplayCapabilityDerivedSupportClassification, number>;
   completeSupportedCapabilityIds: string[];
   runtimeBackedCapabilityIds: string[];
   incompleteRuntimeBackedCapabilityIds: string[];
   blockedCapabilityIds: string[];
+  supportEvidence: GameplayCapabilityInventorySupportEvidence[];
+};
+
+export type GameplayCapabilityInventorySupportEvidence = {
+  capabilityId: string;
+  declaredStatus: GameplayCapabilitySupportStatus;
+  derivedClassification: GameplayCapabilityDerivedSupportClassification;
+  evidenceDimensions: GameplayCapabilitySupportEvidenceDimensions;
+  missingEvidenceDimensions: GameplayCapabilitySupportEvidenceDimension[];
+  completeSupported: boolean;
+  legacyBacked: boolean;
 };
 
 export type GameplayProfileRuntimeStatus = {
@@ -375,7 +423,7 @@ export function findGameplayCapability(id: string, registry: GameplayCapabilityR
 }
 
 export function isCompleteSupportedGameplayCapability(capability: GameplayCapabilityDescriptor): boolean {
-  return capability.status === 'complete_supported';
+  return isCompleteSupportedEvidenceDimensions(deriveGameplayCapabilitySupportEvidenceDimensions(capability));
 }
 
 export function listCompleteSupportedGameplayCapabilities(registry: GameplayCapabilityRegistry = GameplayCapabilityRegistry): GameplayCapabilityDescriptor[] {
@@ -403,6 +451,7 @@ export function buildGameplayCapabilityRegistrySnapshot(registry: GameplayCapabi
 export function buildGameplayCapabilityInventoryReport(registry: GameplayCapabilityRegistry = GameplayCapabilityRegistry): GameplayCapabilityInventoryReport {
   const entries = [...registry.entries].sort(compareCapabilities);
   const runtimeBackedCapabilityIds = entries.filter((entry) => entry.status === 'runtime_backed').map((entry) => entry.id);
+  const supportEvidence = entries.map(buildGameplayCapabilityInventorySupportEvidence);
 
   return {
     artifactKind: GAMEPLAY_CAPABILITY_INVENTORY_REPORT_KIND,
@@ -411,10 +460,12 @@ export function buildGameplayCapabilityInventoryReport(registry: GameplayCapabil
     capabilityCount: entries.length,
     statusCounts: countCapabilitiesByStatus(entries),
     domainCounts: countCapabilitiesByDomain(entries),
+    derivedClassificationCounts: countCapabilitiesByDerivedClassification(entries),
     completeSupportedCapabilityIds: entries.filter(isCompleteSupportedGameplayCapability).map((entry) => entry.id),
     runtimeBackedCapabilityIds,
     incompleteRuntimeBackedCapabilityIds: runtimeBackedCapabilityIds,
-    blockedCapabilityIds: entries.filter((entry) => entry.status === 'blocked').map((entry) => entry.id)
+    blockedCapabilityIds: entries.filter((entry) => entry.status === 'blocked').map((entry) => entry.id),
+    supportEvidence
   };
 }
 
@@ -565,6 +616,87 @@ function buildLegacyAliasOwnerMap(entries: readonly GameplayCapabilityDescriptor
     }
   }
   return ownerByAlias;
+}
+
+export function deriveGameplayCapabilitySupportEvidenceDimensions(capability: unknown): GameplayCapabilitySupportEvidenceDimensions {
+  const capabilityRecord = isRecord(capability) ? capability : {};
+  const evidence = isRecord(capabilityRecord.evidence) ? capabilityRecord.evidence : {};
+  const qa = isRecord(capabilityRecord.qa) ? capabilityRecord.qa : {};
+
+  return {
+    schema_expressible: evidence.dslSchema === true,
+    normalized: evidence.normalizer === true,
+    compiled: evidence.irCompiler === true,
+    runtime_consumed: evidence.runtimeModule === true,
+    qa_observed:
+      evidence.amendmentOperations === true &&
+      evidence.capabilityOwnedQa === true &&
+      evidence.artifactEvidence === true &&
+      evidence.renderContract === true &&
+      Array.isArray(qa.requiredProbeIds) &&
+      qa.requiredProbeIds.length > 0 &&
+      qa.requiredProbesVerified === true
+  };
+}
+
+export function isCompleteSupportedEvidenceDimensions(evidence: unknown): evidence is GameplayCapabilitySupportEvidenceDimensions {
+  const parsed = GameplayCapabilitySupportEvidenceDimensionsSchema.safeParse(evidence);
+  return parsed.success && GAMEPLAY_CAPABILITY_SUPPORT_EVIDENCE_DIMENSIONS.every((dimension) => parsed.data[dimension]);
+}
+
+export function getMissingGameplayCapabilitySupportEvidenceDimensions(input: unknown): GameplayCapabilitySupportEvidenceDimension[] {
+  const evidence = GameplayCapabilitySupportEvidenceDimensionsSchema.safeParse(input).success
+    ? GameplayCapabilitySupportEvidenceDimensionsSchema.parse(input)
+    : deriveGameplayCapabilitySupportEvidenceDimensions(input);
+
+  return GAMEPLAY_CAPABILITY_SUPPORT_EVIDENCE_DIMENSIONS.filter((dimension) => !evidence[dimension]);
+}
+
+export function deriveGameplayCapabilitySupportClassification(
+  capability: GameplayCapabilityDescriptor
+): GameplayCapabilityDerivedSupportClassification {
+  if (isCompleteSupportedGameplayCapability(capability)) {
+    return 'COMPLETE_SUPPORTED';
+  }
+  if (capability.status === 'runtime_backed') {
+    return 'CONDITIONAL_LEGACY_BACKED';
+  }
+  if (capability.status === 'contract_seeded') {
+    return 'CONTRACT_SEEDED';
+  }
+  if (capability.status === 'planned') {
+    return 'DEFERRED';
+  }
+  return 'UNSUPPORTED';
+}
+
+function buildGameplayCapabilityInventorySupportEvidence(capability: GameplayCapabilityDescriptor): GameplayCapabilityInventorySupportEvidence {
+  const evidenceDimensions = deriveGameplayCapabilitySupportEvidenceDimensions(capability);
+  return {
+    capabilityId: capability.id,
+    declaredStatus: capability.status,
+    derivedClassification: deriveGameplayCapabilitySupportClassification(capability),
+    evidenceDimensions,
+    missingEvidenceDimensions: getMissingGameplayCapabilitySupportEvidenceDimensions(evidenceDimensions),
+    completeSupported: isCompleteSupportedEvidenceDimensions(evidenceDimensions),
+    legacyBacked: capability.status === 'runtime_backed'
+  };
+}
+
+function countCapabilitiesByDerivedClassification(
+  entries: readonly GameplayCapabilityDescriptor[]
+): Record<GameplayCapabilityDerivedSupportClassification, number> {
+  return GAMEPLAY_CAPABILITY_DERIVED_SUPPORT_CLASSIFICATIONS.reduce(
+    (counts, classification) => ({
+      ...counts,
+      [classification]: entries.filter((entry) => deriveGameplayCapabilitySupportClassification(entry) === classification).length
+    }),
+    {} as Record<GameplayCapabilityDerivedSupportClassification, number>
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function buildKnownRuntimeProfileIds(runtimeGenres: readonly RuntimeGenreCapability[]): Set<string> {

@@ -195,10 +195,28 @@ export {
   DslConsumptionEntrySchema,
   DslConsumptionReportSchema,
   DslConsumptionStatusSchema,
+  DslConsumptionTargetProfileSupportSchema,
   type DslConsumptionEntry,
   type DslConsumptionReport,
-  type DslConsumptionStatus
+  type DslConsumptionStatus,
+  type DslConsumptionTargetProfileSupport
 } from './dsl-consumption-report.js';
+export {
+  DEEPSEEK_RUN_AND_GUN_FIXED_PROMPT_CHARACTER_COUNT,
+  DEEPSEEK_RUN_AND_GUN_FIXED_PROMPT_SHA256,
+  DEEPSEEK_RUN_AND_GUN_FIXED_USER_VALIDATION_PROMPT,
+  DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1,
+  DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1_ID,
+  DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1_VERSION,
+  buildDeepSeekRunAndGunValidationProfileSupportSummary,
+  type DeepSeekRunAndGunCapabilityCluster,
+  type DeepSeekRunAndGunProfileCapabilitySupport,
+  type DeepSeekRunAndGunProfileSupportSummary,
+  type DeepSeekRunAndGunRequirement,
+  type DeepSeekRunAndGunRequirementCompletionState,
+  type DeepSeekRunAndGunTargetProfile,
+  type DeepSeekRunAndGunVerificationClass
+} from './deepseek-run-and-gun-validation-profile-v1.js';
 export {
   buildSceneIr,
   buildSceneIrAuthorityReport,
