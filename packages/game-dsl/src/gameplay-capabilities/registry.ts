@@ -293,6 +293,11 @@ const contractCompilerEvidence: GameplayCapabilityEvidence = {
   irCompiler: true
 };
 
+const contractRuntimeLoaderEvidence: GameplayCapabilityEvidence = {
+  ...contractCompilerEvidence,
+  runtimeModule: true
+};
+
 const noVerifiedQa: GameplayCapabilityQaEvidence = { requiredProbeIds: [], requiredProbesVerified: false };
 
 const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
@@ -357,7 +362,7 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [phaser2dActionArcade],
     ['side_scrolling_run_and_gun.v1'],
     ['player_health'],
-    contractCompilerEvidence
+    contractRuntimeLoaderEvidence
   ),
   contractSeeded('weapon.cooldown.v1', 'weapon', 'Weapon cooldown', [topDownActionArcade, phaser2dActionArcade], ['shooter.v1', 'side_scrolling_run_and_gun.v1'], []),
   contractSeeded('goal.destroy_target.v1', 'goal', 'Destroy target goal', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),

@@ -1098,3 +1098,94 @@ Next authorization gate:
   - P3: ledger status still said `LOCAL_VALIDATED_AWAITING_ORACLE`; remediated by updating this iteration to `ORACLE_PASSED_AWAITING_COMMIT`.
   - residual caveat: runtime loader readiness and `bound_pending_qa` binding entries are runtime-consumption evidence only; QA observation, runtime module session lifecycle receipt, and complete support remain false/out of scope.
   - next action: precise staging, cached diff check, commit one reviewed diff without push.
+
+## 25. CONTINUOUS-M2-HEALTH-RUNTIME-BINDING-001
+
+- status: ORACLE_PASSED_AWAITING_COMMIT.
+- iteration_id: `CONTINUOUS-M2-HEALTH-RUNTIME-BINDING-001`
+- capability_gap: M2 damage-invulnerability canonical systems compile to runtime artifacts, but target-profile support still does not record runtime loader consumption for `health.damage_invulnerability.v1`.
+- affected requirement:
+  - `R013`: Player becomes briefly invulnerable after damage.
+- affected cluster: `M2`
+- objective: prove the Phaser runtime loader reads the compiled damage-invulnerability artifact and emits loader/binding entries for the health capability system, then update support evidence only for the `runtime_consumed` dimension.
+- prerequisites:
+  - M2 damage-invulnerability compiler checkpoint committed as `b61fd320eb78ddae97f9aca1e2bed26dd47225f1`.
+  - Worktree clean before this iteration.
+- file lock:
+  - `packages/game-dsl/src/gameplay-capabilities/registry.ts`
+  - `tests/contracts/deepseek-authoritative-dsl-support.test.ts`
+  - `tests/contracts/canonical-capability-runtime-compiler.test.ts`
+  - `docs/refactor-log/deepseek-authoritative-dsl-consumption-m1.md`
+- acceptance assertions:
+  - A canonical DSL with `health.damage_invulnerability.v1` in the exact capability lock compiles successfully.
+  - `buildPhaserRuntimeSystemLoaderPlan` reads the compiled capability IR plus runtime-system manifest and returns `status=ready`.
+  - The runtime plan keeps the damage-invulnerability system with canonical config source ID and player applies-to binding.
+  - The runtime loader plan includes the damage-invulnerability system with module config/config hash derived from the compiled capability IR.
+  - The capability runtime binding report includes the damage-invulnerability module with `status=bound_pending_qa`.
+  - Target-profile support reports `runtime_consumed=true` for the health capability.
+  - `qa_observed` and `completeSupported` remain false.
+- expected failing tests:
+  - Update the DeepSeek support assertion for `health.damage_invulnerability.v1` to require `runtime_consumed=true` while remaining QA incomplete.
+  - Extend the focused health compiler contract to assert runtime loader readiness and binding-report entry for the health system.
+- expected support-evidence change:
+  - `health.damage_invulnerability.v1`: `runtime_consumed=false` -> `runtime_consumed=true`.
+  - `qa_observed` and `completeSupported` remain false.
+- targeted tests:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/canonical-capability-runtime-compiler.test.ts`
+- regression tests:
+  - `npx vitest run tests/contracts/game-dsl-v0.2.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/phaser-runtime-loader.test.ts tests/contracts/dsl-consumption-report.test.ts`
+  - `npm run typecheck:root`
+  - `git diff --check`
+- stop conditions:
+  - Any need to edit outside the file lock.
+  - Any need to claim QA probe observation, runtime module session lifecycle events, damage timing behavior, browser QA, complete support, or production cutover.
+  - Any provider, fixed-template fallback, weapon lifecycle, broader player lifecycle, boss, or D8+ DeepSeek path change.
+- RED result:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/canonical-capability-runtime-compiler.test.ts`: failed, 1 failed / 23 passed.
+  - failure signature: `health.damage_invulnerability.v1` still reported `runtime_consumed=false` and missing `runtime_consumed`.
+  - same RED run proved the new loader/binding assertions already passed, so the remaining gap was support evidence alignment with an existing runtime-loader consumer.
+- implementation:
+  - `tests/contracts/canonical-capability-runtime-compiler.test.ts` extends the M2 damage-invulnerability contract to call `buildPhaserRuntimeSystemLoaderPlan` on the compiled capability IR and runtime-system manifest.
+  - The loader assertion now requires `status=ready`, a load-order entry for the health system, and a binding-report module entry with `status=bound_pending_qa`.
+  - `packages/game-dsl/src/gameplay-capabilities/registry.ts` introduces `contractRuntimeLoaderEvidence` and applies `runtimeModule=true` only to `health.damage_invulnerability.v1`.
+  - `tests/contracts/deepseek-authoritative-dsl-support.test.ts` now requires the health capability to expose `runtime_consumed=true` while keeping `qa_observed=false` and `completeSupported=false`.
+  - No QA probe observation, runtime module session lifecycle receipt, damage timing behavior, browser QA, provider path, production cutover, player lifecycle, boss, or fallback behavior changed.
+- support evidence:
+
+| capability id | registered | classification | schema_expressible | normalized | compiled | runtime_consumed | qa_observed | complete_supported |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `health.damage_invulnerability.v1` | true | `CONTRACT_SEEDED` | true | true | true | true | false | false |
+
+- target profile summary after implementation:
+  - requirements: 60
+  - clusters: 15
+  - required capabilities: 59
+  - registered capabilities: 12
+  - complete-supported capabilities: 0
+  - legacy-backed capabilities: 7
+- Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | `GameplayCapabilityRegistry` support evidence for `health.damage_invulnerability.v1` changes to include `runtimeModule=true`; the health compiler contract now asserts runtime-loader and binding-report consumption for the health system. |
+| Consumer list | `compileCanonicalCapabilityDslToRuntimePlan` emits capability IR and runtime-system manifest entries; `buildPhaserRuntimeSystemLoaderPlan` reads those compiled artifacts and emits loader-plan plus binding-report entries; `buildDeepSeekRunAndGunValidationProfileSupportSummary` and `buildDslConsumptionReport` read the updated support evidence. |
+| Compatibility type | `LOSSLESS_COMPATIBLE` for runtime-loader consumption because capability ID, system ID, config source ID, config hash, and binding-report module ownership are preserved without rewriting semantics; QA and damage timing behavior remain incomplete. |
+| Authority | `CanonicalGameDslV02Schema` is the canonical damage-invulnerability authority; `compileCanonicalCapabilityDslToRuntimePlan` is the compiler artifact authority; `buildPhaserRuntimeSystemLoaderPlan` is the runtime-loader consumption authority; `GameplayCapabilityRegistry` is the support-evidence authority. |
+| Legacy strategy | Legacy player-health behavior is not used to claim damage-invulnerability support; the new evidence comes only from canonical compiler output read by the Phaser runtime loader. |
+| Failure policy | The capability keeps `completeSupported=false` and still reports missing `qa_observed`; any gate requiring complete support must continue to fail closed. |
+| Evidence | The updated contract test compiles a canonical damage-invulnerability system, passes the compiled IR and manifest to `buildPhaserRuntimeSystemLoaderPlan`, and asserts loader-plan plus `bound_pending_qa` binding-report entries for the health module. |
+| Rollback | Reverting this iteration removes only the runtime-loader evidence assertion and returns the capability to `runtime_consumed=false`; compiler and normalization evidence from earlier checkpoints remain intact. |
+
+- validation result:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/canonical-capability-runtime-compiler.test.ts`: pass, 2 files / 24 tests.
+  - `npx vitest run tests/contracts/game-dsl-v0.2.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/phaser-runtime-loader.test.ts tests/contracts/dsl-consumption-report.test.ts`: pass, 4 files / 32 tests.
+  - `npm run typecheck:root`: pass.
+  - `git diff --check`: pass.
+  - `git diff --name-only`: exactly the file lock.
+- Oracle review:
+  - status: PASS.
+  - reviewed fingerprint: `712ae09507e920ecefb8b724590edabfb5c809180c66fdc379eec758962c5172`
+  - findings: P0/P1/P2 none.
+  - P3: ledger review status still said `AWAITING_REVIEW`; remediated by updating this iteration to `ORACLE_PASSED_AWAITING_COMMIT`.
+  - residual caveat: runtime loader readiness and `bound_pending_qa` binding entries are runtime-consumption evidence only; QA observation, runtime module session lifecycle receipt, damage timing behavior, and complete support remain false/out of scope.
+  - next action: precise staging, cached diff check, commit one reviewed diff without push.

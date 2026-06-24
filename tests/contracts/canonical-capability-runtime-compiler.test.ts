@@ -257,6 +257,36 @@ describe('Canonical capability DSL runtime compiler', () => {
         })
       ])
     );
+
+    const loader = buildPhaserRuntimeSystemLoaderPlan({
+      gameIr: result.capabilityIr,
+      manifest: result.runtimeSystemManifest,
+      capabilityLock: {
+        ref: 'gameplay_capability_lock.json',
+        hash: capabilityLock.lockHash,
+        capabilityIds
+      }
+    });
+    expect(loader.status).toBe('ready');
+    expect(loader.plan?.loadOrder).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          systemId: 'system.health.damage_invulnerability.v1',
+          capabilityId: 'health.damage_invulnerability.v1',
+          config: expect.objectContaining({ systemSourceIds: ['config_damage_invulnerability_window'] })
+        })
+      ])
+    );
+    expect(loader.bindingReport).toMatchObject({
+      status: 'bound_pending_qa',
+      modules: expect.arrayContaining([
+        expect.objectContaining({
+          systemId: 'system.health.damage_invulnerability.v1',
+          capabilityId: 'health.damage_invulnerability.v1',
+          status: 'bound_pending_qa'
+        })
+      ])
+    });
   });
 
   it('fails closed when exact lock hash or profile binding drifts', () => {

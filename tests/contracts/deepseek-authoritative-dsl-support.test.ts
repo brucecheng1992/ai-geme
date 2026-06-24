@@ -187,7 +187,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
     }
   });
 
-  it('reports M2 damage invulnerability compiler evidence without runtime completion', () => {
+  it('reports M2 damage invulnerability runtime loader evidence without QA completion', () => {
     const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
     const capabilities = new Map(support.capabilities.map((capability) => [capability.capabilityId, capability]));
 
@@ -200,10 +200,10 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
         schema_expressible: true,
         normalized: true,
         compiled: true,
-        runtime_consumed: false,
+        runtime_consumed: true,
         qa_observed: false
       },
-      missingEvidenceDimensions: ['runtime_consumed', 'qa_observed']
+      missingEvidenceDimensions: ['qa_observed']
     });
   });
 
