@@ -275,6 +275,12 @@ const contractSeedEvidence: GameplayCapabilityEvidence = {
   artifactEvidence: true
 };
 
+const canonicalNormalizationEvidence: GameplayCapabilityEvidence = {
+  ...falseEvidence,
+  dslSchema: true,
+  normalizer: true
+};
+
 const noVerifiedQa: GameplayCapabilityQaEvidence = { requiredProbeIds: [], requiredProbesVerified: false };
 
 const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
@@ -287,7 +293,15 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
   contractSeeded('metadata.fixed_prompt_binding.v1', 'metadata', 'Fixed prompt metadata binding', [phaser2dActionArcade], [
     'side_scrolling_run_and_gun.v1'
   ], []),
-  planned('combat.airborne_fire.v1', 'combat', 'Airborne fire permission', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),
+  planned(
+    'combat.airborne_fire.v1',
+    'combat',
+    'Airborne fire permission',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    canonicalNormalizationEvidence
+  ),
   runtimeBacked('combat.projectile.v1', 'combat', 'Projectile combat', [topDownActionArcade, phaser2dActionArcade], ['shooter.v1', 'side_scrolling_run_and_gun.v1'], [
     'projectile_combat',
     'multi_direction_shooting'
@@ -299,7 +313,15 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
   runtimeBacked('physics.gravity_platformer.v1', 'physics', 'Gravity platformer physics', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1', 'side_scrolling_platformer.v1'], [
     'gravity_platformer_physics'
   ]),
-  planned('movement.crouch.v1', 'movement', 'Crouch action state', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),
+  planned(
+    'movement.crouch.v1',
+    'movement',
+    'Crouch action state',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    canonicalNormalizationEvidence
+  ),
   runtimeBacked('movement.run_jump.v1', 'movement', 'Run and jump controller', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1', 'side_scrolling_platformer.v1'], [
     'run_jump_controller'
   ]),
@@ -563,9 +585,10 @@ function planned(
   label: string,
   runtimeFamilies: string[],
   profiles: string[],
-  legacyRuntimeCapabilities: string[]
+  legacyRuntimeCapabilities: string[],
+  evidence: GameplayCapabilityEvidence = falseEvidence
 ): GameplayCapabilityDescriptor {
-  return descriptor({ id, domain, label, runtimeFamilies, profiles, legacyRuntimeCapabilities, status: 'planned', evidence: falseEvidence });
+  return descriptor({ id, domain, label, runtimeFamilies, profiles, legacyRuntimeCapabilities, status: 'planned', evidence });
 }
 
 function descriptor(input: {

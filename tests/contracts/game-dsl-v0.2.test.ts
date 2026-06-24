@@ -67,6 +67,80 @@ describe('Canonical Game DSL v0.2 normalization', () => {
     });
   });
 
+  it('normalizes M2 action-state capability configs into canonical systems', () => {
+    const fixture = createFixture();
+    const actionStateCapabilityIds = ['combat.airborne_fire.v1', 'movement.crouch.v1'];
+    const capabilityIds = [...fixture.draft.capabilities, ...actionStateCapabilityIds].sort();
+    const draft = {
+      ...fixture.draft,
+      capabilities: capabilityIds,
+      entities: fixture.draft.entities.map((entity) =>
+        entity.id === 'player'
+          ? {
+              ...entity,
+              capability_refs: [...new Set([...(entity.capability_refs ?? []), ...actionStateCapabilityIds])].sort()
+            }
+          : entity
+      ),
+      capability_configs: [
+        ...fixture.draft.capability_configs,
+        {
+          id: 'airborne_fire_permission',
+          capability_id: 'combat.airborne_fire.v1',
+          applies_to: ['player'],
+          config: { allowed_when: ['jumping', 'falling'], fire_action: 'shoot_projectile' }
+        },
+        {
+          id: 'crouch_action_state',
+          capability_id: 'movement.crouch.v1',
+          applies_to: ['player'],
+          config: { input: 'down', posture: 'crouch', height_scale: 0.58 }
+        }
+      ]
+    };
+    const capabilityLock = createCapabilityLock({ capabilityIds });
+    const result = normalizeCapabilityGameDslDraftToCanonicalV02({
+      ...fixture,
+      draft,
+      capabilityLock,
+      composedSchemaIdentity: buildCapabilityGameDslDraftComposedSchemaIdentity({
+        profileId: draft.profile.id,
+        capabilityIds
+      })
+    });
+
+    expect(result.status).toBe('normalized');
+    if (result.status !== 'normalized') {
+      throw new Error('expected action-state normalization to pass');
+    }
+
+    expect(result.canonicalDsl.entities.find((entity) => entity.id === 'player')?.capability_ids).toEqual(
+      expect.arrayContaining(actionStateCapabilityIds)
+    );
+    expect(result.canonicalDsl.systems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'config_airborne_fire_permission',
+          capability_id: 'combat.airborne_fire.v1',
+          source_kind: 'capability_config',
+          applies_to_entity_ids: ['player'],
+          source_draft_id: 'airborne_fire_permission',
+          config: { allowed_when: ['jumping', 'falling'], fire_action: 'shoot_projectile' }
+        }),
+        expect.objectContaining({
+          id: 'config_crouch_action_state',
+          capability_id: 'movement.crouch.v1',
+          source_kind: 'capability_config',
+          applies_to_entity_ids: ['player'],
+          source_draft_id: 'crouch_action_state',
+          config: { input: 'down', posture: 'crouch', height_scale: 0.58 }
+        })
+      ])
+    );
+    expect(result.normalizationReport.status).toBe('normalized');
+    expect(result.normalizationReport.issues).toEqual([]);
+  });
+
   it('fails closed when draft, lock and composed schema capability sets diverge', () => {
     const fixture = createFixture();
     const result = normalizeCapabilityGameDslDraftToCanonicalV02({
@@ -195,8 +269,8 @@ function createCapabilityIds(): string[] {
   return ['combat.projectile.v1', 'goal.destroy_target.v1', 'movement.run_jump.v1', 'pickup.drop_collect.v1', 'telemetry.gameplay_events.v1'];
 }
 
-function createCapabilityLock(input: { profileId?: string } = {}) {
-  const capabilityIds = createCapabilityIds();
+function createCapabilityLock(input: { profileId?: string; capabilityIds?: string[] } = {}) {
+  const capabilityIds = input.capabilityIds ?? createCapabilityIds();
   const payload = {
     artifactKind: 'gameplay_capability_lock',
     schemaVersion: 'gameplay_capability_lock.v0.1',

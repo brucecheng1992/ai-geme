@@ -509,7 +509,7 @@ Next authorization gate:
 ## 19. Continuous M1 Profile Metadata Registry 001
 
 - iteration id: `CONTINUOUS-M1-PROFILE-METADATA-REGISTRY-001`
-- status: ORACLE_PASSED_AWAITING_COMMIT
+- status: LOCAL_COMMITTED_NO_PUSH
 - mode: IMPLEMENT_NO_PUSH
 - capability gap: target profile cluster `M1` references `profile.deepseek_run_and_gun_validation.v1` and `metadata.fixed_prompt_binding.v1`, but live support summary still reports both as unknown `UNSUPPORTED`.
 - affected requirements:
@@ -601,4 +601,106 @@ Next authorization gate:
   - reviewed fingerprint: `61f40a096e6f9822a16cad2bc9a32b1bd875e57a8bf06bdd9136079cf7455abd`
   - findings: P0/P1/P2/P3 none.
   - residual caveat: none.
+- exact commit-gate Oracle review:
+  - status: PASS
+  - reviewed fingerprint: `80f0eb34ab622cf924a7bd9f8c06a4c216ce9ea0f708016232896bccbf0cff22`
+  - findings: P0/P1/P2/P3 none.
+- commit:
+  - `51298669ea33b5c4cb07ddd7fa747a9e1f951add`
+  - subject: `feat(game-dsl): seed profile metadata capability gaps`
+  - push: not performed.
+- next action: return to Phase A and freeze the next dependency-ready gap from live target-profile support.
+
+## 20. Continuous M2 Action-State Normalization 001
+
+- iteration id: `CONTINUOUS-M2-ACTION-STATE-NORMALIZATION-001`
+- status: ORACLE_PASSED_AWAITING_COMMIT
+- mode: IMPLEMENT_NO_PUSH
+- capability gap: `movement.crouch.v1` and `combat.airborne_fire.v1` are registered but still report no schema or normalization evidence, even though the authoritative draft/canonical DSL path can represent capability-specific action-state configs without runtime execution.
+- affected requirements:
+  - `R010`: Player can crouch.
+  - `R012`: Player can shoot while airborne.
+  - Guarded M2 requirements: `R008`, `R009`, `R011`, `R013` must not be promoted to complete support by this iteration.
+- affected cluster: `M2`
+- objective: prove M2 crouch and airborne-fire action-state configs are schema-expressible and normalized into canonical systems, and update support evidence for only those dimensions without claiming compiler, runtime, or QA completion.
+- prerequisites:
+  - M2 action-state registry checkpoint committed as `397df79e6fc53dc95a66b54d4306490f024b5a37`.
+  - M1 profile metadata registry checkpoint committed as `51298669ea33b5c4cb07ddd7fa747a9e1f951add`.
+  - Worktree clean before this iteration.
+- file lock:
+  - `packages/game-dsl/src/gameplay-capabilities/registry.ts`
+  - `tests/contracts/deepseek-authoritative-dsl-support.test.ts`
+  - `tests/contracts/game-dsl-v0.2.test.ts`
+  - `docs/refactor-log/deepseek-authoritative-dsl-consumption-m1.md`
+- acceptance assertions:
+  - A capability draft may declare `movement.crouch.v1` and `combat.airborne_fire.v1` in `capabilities`, player `capability_refs`, and `capability_configs`.
+  - `normalizeCapabilityGameDslDraftToCanonicalV02` preserves those action-state configs as canonical `systems` with deterministic `source_draft_id`, `applies_to_entity_ids`, and declarative config payloads.
+  - Target-profile support reports `schema_expressible=true` and `normalized=true` for `movement.crouch.v1` and `combat.airborne_fire.v1`.
+  - `compiled`, `runtime_consumed`, `qa_observed`, and `completeSupported` remain false for both capabilities.
+  - No compiler, runtime module, QA probe, provider, production cutover, or fixed-template fallback changes.
+- expected failing tests:
+  - Update `tests/contracts/deepseek-authoritative-dsl-support.test.ts` so the two action-state capabilities must expose schema and normalization evidence while remaining incomplete.
+  - Add a focused normalization contract in `tests/contracts/game-dsl-v0.2.test.ts` for action-state capability config preservation.
+- expected support-evidence change:
+  - `movement.crouch.v1`: `schema_expressible=false`, `normalized=false` -> `schema_expressible=true`, `normalized=true`.
+  - `combat.airborne_fire.v1`: `schema_expressible=false`, `normalized=false` -> `schema_expressible=true`, `normalized=true`.
+  - `compiled`, `runtime_consumed`, and `qa_observed` remain false.
+- targeted tests:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/game-dsl-v0.2.test.ts`
+- regression tests:
+  - `npx vitest run tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/dsl-consumption-report.test.ts`
+  - `npm run typecheck:root`
+  - `git diff --check`
+- stop conditions:
+  - Any need to edit outside the file lock.
+  - Any need to claim compiler/runtime/QA support for the action-state capabilities.
+  - Any runtime, provider, production cutover, or fixed-template fallback change.
+- RED result:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/game-dsl-v0.2.test.ts`: failed, 1 failed / 19 passed.
+  - failure signature: `movement.crouch.v1` and `combat.airborne_fire.v1` were registered `DEFERRED`, but still reported `schema_expressible=false` and `normalized=false`.
+  - same RED run also proved the new canonical normalization consumer test already passed, so the remaining gap was support evidence alignment with an existing authoritative consumer.
+- implementation:
+  - `tests/contracts/game-dsl-v0.2.test.ts` adds a normalization contract proving draft `capability_configs` for `movement.crouch.v1` and `combat.airborne_fire.v1` are preserved as canonical `systems`.
+  - `packages/game-dsl/src/gameplay-capabilities/registry.ts` adds `canonicalNormalizationEvidence` and applies it only to the two M2 action-state descriptors.
+  - `tests/contracts/deepseek-authoritative-dsl-support.test.ts` now requires both capabilities to expose `schema_expressible=true` and `normalized=true`, while keeping `compiled=false`, `runtime_consumed=false`, `qa_observed=false`, and `completeSupported=false`.
+  - No compiler, runtime module, QA probe, provider, production cutover, or fallback behavior changed.
+- support evidence:
+
+| capability id | registered | classification | schema_expressible | normalized | compiled | runtime_consumed | qa_observed | complete_supported |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `movement.crouch.v1` | true | `DEFERRED` | true | true | false | false | false | false |
+| `combat.airborne_fire.v1` | true | `DEFERRED` | true | true | false | false | false | false |
+
+- target profile summary after implementation:
+  - requirements: 60
+  - clusters: 15
+  - required capabilities: 59
+  - registered capabilities: 12
+  - complete-supported capabilities: 0
+  - legacy-backed capabilities: 7
+- Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | `GameplayCapabilityRegistry` support evidence for `movement.crouch.v1` and `combat.airborne_fire.v1` changes from no dimensions to `schema_expressible=true` and `normalized=true`; `tests/contracts/game-dsl-v0.2.test.ts` adds canonical normalization evidence for their draft `capability_configs`. |
+| Consumer list | `CapabilityGameDslDraftV1Schema` accepts the declared capability configs, `normalizeCapabilityGameDslDraftToCanonicalV02` maps them into canonical `systems`, `buildDeepSeekRunAndGunValidationProfileSupportSummary` and `buildDslConsumptionReport` read the updated support evidence, and the DeepSeek support contract tests assert the dimensions. |
+| Compatibility type | `LOSSLESS_COMPATIBLE` for authoritative draft/canonical consumers because config payloads are preserved without rewriting semantics; compiler/runtime/QA remain explicitly incomplete. |
+| Authority | `CapabilityGameDslDraftV1Schema` and `CanonicalGameDslV02Schema` are the schema authorities for the normalized action-state configs; `GameplayCapabilityRegistry` remains the support-evidence authority. |
+| Legacy strategy | Legacy fixed-template execution is not used as evidence for crouch or airborne fire; these capabilities remain non-runtime-complete until a real compiler/runtime/QA consumer is added. |
+| Failure policy | The capabilities keep `completeSupported=false` and still report missing `compiled`, `runtime_consumed`, and `qa_observed`; any downstream gate requiring complete support must continue to fail closed. |
+| Evidence | The new normalization test constructs a trusted draft/lock/composed-schema tuple with action-state configs and asserts canonical `systems` preserve the capability IDs, applies-to entity, source draft IDs, and config payloads. |
+| Rollback | Reverting this iteration returns the support dimensions to the previous deferred no-evidence state and removes only the focused normalization contract; runtime behavior and generated artifacts remain unchanged. |
+
+- validation result:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/game-dsl-v0.2.test.ts`: pass, 2 files / 20 tests.
+  - `npx vitest run tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/dsl-consumption-report.test.ts`: pass, 3 files / 16 tests.
+  - `npm run typecheck:root`: pass.
+  - `git diff --check`: pass.
+  - `git diff --name-only`: exactly the file lock.
+- Oracle review:
+  - status: PASS
+  - reviewed fingerprint: `8433a54b28aa105379b48cee26fc214ffc1ea30d1173533cf0705bc142e4c725`
+  - findings: P0/P1/P2 none.
+  - P3: ledger status still said `SCOPE_FROZEN_AWAITING_RED`; remediated by updating this iteration to `ORACLE_PASSED_AWAITING_COMMIT`.
+  - P3: the normalizer test proves generic capability config acceptance and preservation for these two IDs, not capability-specific runtime semantics; accepted for this iteration because compiler, runtime, QA, and `completeSupported` remain false.
 - next action: precise staging, cached diff check, commit one reviewed diff without push.

@@ -165,7 +165,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
     }
   });
 
-  it('registers M2 action-state gaps as deferred rather than unknown or complete_supported', () => {
+  it('reports M2 action-state normalization evidence without runtime completion', () => {
     const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
     const capabilities = new Map(support.capabilities.map((capability) => [capability.capabilityId, capability]));
 
@@ -176,19 +176,13 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
         completeSupported: false,
         legacyBacked: false,
         evidenceDimensions: {
-          schema_expressible: false,
-          normalized: false,
+          schema_expressible: true,
+          normalized: true,
           compiled: false,
           runtime_consumed: false,
           qa_observed: false
         },
-        missingEvidenceDimensions: [
-          'schema_expressible',
-          'normalized',
-          'compiled',
-          'runtime_consumed',
-          'qa_observed'
-        ]
+        missingEvidenceDimensions: ['compiled', 'runtime_consumed', 'qa_observed']
       });
     }
   });
