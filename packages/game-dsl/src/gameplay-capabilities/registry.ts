@@ -282,6 +282,7 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
   ]),
   runtimeBacked('pickup.collectible.v1', 'pickup', 'Collectible pickup', [topDownActionArcade, phaser2dActionArcade], ['collector.v1', 'dodger.v1'], ['collectibles']),
   runtimeBacked('hazard.contact_damage.v1', 'hazard', 'Contact hazard damage', [topDownActionArcade], ['dodger.v1'], ['hazards']),
+  planned('combat.airborne_fire.v1', 'combat', 'Airborne fire permission', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),
   runtimeBacked('combat.projectile.v1', 'combat', 'Projectile combat', [topDownActionArcade, phaser2dActionArcade], ['shooter.v1', 'side_scrolling_run_and_gun.v1'], [
     'projectile_combat',
     'multi_direction_shooting'
@@ -293,6 +294,7 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
   runtimeBacked('physics.gravity_platformer.v1', 'physics', 'Gravity platformer physics', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1', 'side_scrolling_platformer.v1'], [
     'gravity_platformer_physics'
   ]),
+  planned('movement.crouch.v1', 'movement', 'Crouch action state', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),
   runtimeBacked('movement.run_jump.v1', 'movement', 'Run and jump controller', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1', 'side_scrolling_platformer.v1'], [
     'run_jump_controller'
   ]),

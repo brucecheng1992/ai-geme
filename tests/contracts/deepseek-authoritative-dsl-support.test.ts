@@ -142,6 +142,34 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
     expect(support.capabilities.every((capability) => capability.completeSupported === false)).toBe(true);
   });
 
+  it('registers M2 action-state gaps as deferred rather than unknown or complete_supported', () => {
+    const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
+    const capabilities = new Map(support.capabilities.map((capability) => [capability.capabilityId, capability]));
+
+    for (const capabilityId of ['movement.crouch.v1', 'combat.airborne_fire.v1']) {
+      expect(capabilities.get(capabilityId)).toMatchObject({
+        registered: true,
+        classification: 'DEFERRED',
+        completeSupported: false,
+        legacyBacked: false,
+        evidenceDimensions: {
+          schema_expressible: false,
+          normalized: false,
+          compiled: false,
+          runtime_consumed: false,
+          qa_observed: false
+        },
+        missingEvidenceDimensions: [
+          'schema_expressible',
+          'normalized',
+          'compiled',
+          'runtime_consumed',
+          'qa_observed'
+        ]
+      });
+    }
+  });
+
   it('shows missing support dimensions in the DSL consumption report', () => {
     const normalized = validateAndNormalizeRawGameDsl(createSideScrollingRunAndGunRawDsl());
     expect(normalized.ok).toBe(true);
@@ -206,6 +234,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       'camera.vertical_scroll.v1',
       'collision.brick_grid.v1',
       'collision.platform.v1',
+      'combat.airborne_fire.v1',
       'combat.projectile.v1',
       'enemy.chaser_pathfinding.v1',
       'enemy.vertical_shooter_pattern.v1',
@@ -213,6 +242,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       'goal.reach_exit.v1',
       'hazard.contact_damage.v1',
       'health.damage_invulnerability.v1',
+      'movement.crouch.v1',
       'movement.eight_direction.v1',
       'movement.run_jump.v1',
       'movement.tilemap_maze_navigation.v1',

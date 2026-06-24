@@ -415,3 +415,85 @@ Next authorization gate:
   - remaining findings: P0/P1/P2 none; P3 only notes that cached diff checks should be rerun after precise staging.
 - commit policy: auto-commit only after Oracle PASS and staged files exactly match the file lock.
 - next action after commit: return to Phase A and freeze the first implementation iteration for M2 player action-state contract.
+
+## 18. Continuous M2 Action-State Contract 001
+
+- iteration id: `CONTINUOUS-M2-ACTION-STATE-CONTRACT-001`
+- status: LOCAL_VALIDATION_PASSED_AWAITING_ORACLE
+- mode: IMPLEMENT_NO_PUSH
+- capability gap: target profile references `movement.crouch.v1` and `combat.airborne_fire.v1`, but the gameplay capability registry does not yet carry those IDs as explicit planned contracts.
+- affected requirements:
+  - `R010`: Player can crouch.
+  - `R012`: Player can shoot while airborne.
+  - Guarded existing M2 requirements: `R008`, `R009`, `R011`, `R013` must not be promoted to complete support by this iteration.
+- affected cluster: `M2`
+- objective: register the missing M2 action-state capability IDs as incomplete planned capability contracts so support reporting is explicit and fail-closed, without adding runtime behavior or claiming `complete_supported`.
+- prerequisites:
+  - D0 docs checkpoint committed as `5ff1addd83aadbcfbf43fe644ef903da174c3612`.
+  - Worktree clean before this iteration.
+- file lock:
+  - `packages/game-dsl/src/gameplay-capabilities/registry.ts`
+  - `tests/contracts/deepseek-authoritative-dsl-support.test.ts`
+  - `docs/refactor-log/deepseek-authoritative-dsl-consumption-m1.md`
+- acceptance assertions:
+  - `movement.crouch.v1` is registered in `GameplayCapabilityRegistry`.
+  - `combat.airborne_fire.v1` is registered in `GameplayCapabilityRegistry`.
+  - Both capabilities derive `DEFERRED`, not `COMPLETE_SUPPORTED`.
+  - Both capabilities remain `completeSupported=false`.
+  - Both capabilities keep all five support-evidence dimensions incomplete until real schema, normalizer, compiler, runtime, and QA evidence exist.
+  - `DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1` remains at 60 requirements, 15 clusters, and zero complete-supported capabilities.
+- expected failing test:
+  - Add a contract assertion in `tests/contracts/deepseek-authoritative-dsl-support.test.ts` that M2 crouch and airborne-fire capabilities are registered as deferred support.
+- expected support-evidence change:
+  - `registered=true` for `movement.crouch.v1` and `combat.airborne_fire.v1`.
+  - `classification` changes from `UNSUPPORTED` to `DEFERRED`.
+  - `completeSupported` remains false.
+  - `schema_expressible`, `normalized`, `compiled`, `runtime_consumed`, and `qa_observed` remain false.
+- targeted tests:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts`
+- regression tests:
+  - `npx vitest run tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/dsl-consumption-report.test.ts`
+  - `npm run typecheck:root`
+  - `git diff --check`
+- stop conditions:
+  - Any need to edit outside the file lock.
+  - Any pressure to mark M2 or either new capability as `complete_supported` without real downstream consumer and QA evidence.
+  - Any runtime, provider, production cutover, or fixed-template fallback change.
+- RED result:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts`: failed, 1 failed / 10 passed.
+  - failure signature: `movement.crouch.v1` and `combat.airborne_fire.v1` were `registered=false` and `classification=UNSUPPORTED` in target profile support.
+- implementation:
+  - `packages/game-dsl/src/gameplay-capabilities/registry.ts` registers `movement.crouch.v1` and `combat.airborne_fire.v1` as `planned` capability descriptors for `side_scrolling_run_and_gun.v1`.
+  - `tests/contracts/deepseek-authoritative-dsl-support.test.ts` asserts both capabilities are registered, derive `DEFERRED`, and keep all five support-evidence dimensions false.
+  - No schema, normalizer, compiler, runtime, provider, production cutover, or fallback behavior changed.
+- support evidence:
+
+| capability id | registered | classification | schema_expressible | normalized | compiled | runtime_consumed | qa_observed | complete_supported |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `movement.crouch.v1` | true | `DEFERRED` | false | false | false | false | false | false |
+| `combat.airborne_fire.v1` | true | `DEFERRED` | false | false | false | false | false | false |
+
+- Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | `GameplayCapabilityRegistry` gains two planned capability IDs: `movement.crouch.v1` and `combat.airborne_fire.v1`; target profile support output changes those IDs from unknown `UNSUPPORTED` to registered `DEFERRED`. |
+| Consumer list | `buildDeepSeekRunAndGunValidationProfileSupportSummary`, `buildDslConsumptionReport` through `targetProfileSupport`, registry validation, and the DeepSeek support contract tests read the new IDs. No runtime consumer is added. |
+| Compatibility type | `LOSSLESS_COMPATIBLE` for support-report consumers because unknown gaps become explicit deferred gaps without removing or rewriting existing IDs. Runtime gameplay support remains incomplete and is not claimed. |
+| Authority | `GameplayCapabilityRegistry` is the source of truth for the two capability IDs; `DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1` remains the target-profile requirement authority. |
+| Legacy strategy | No legacy runtime alias is attached to either capability; legacy fixed-template behavior cannot satisfy crouch or airborne-fire authoritative support. |
+| Failure policy | Both capabilities keep false evidence dimensions and `completeSupported=false`; downstream reports must continue to show missing schema, normalizer, compiler, runtime, and QA evidence until real consumers exist. |
+| Evidence | The new contract test asserts both IDs are registered as `DEFERRED` with all five evidence dimensions false; target profile complete-supported count remains zero. |
+| Rollback | Reverting this iteration returns the two IDs to unknown `UNSUPPORTED` in support reports without changing runtime behavior or generated artifacts. |
+
+- validation result:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts`: pass, 1 file / 11 tests.
+  - `npx vitest run tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/dsl-consumption-report.test.ts`: pass, 3 files / 16 tests.
+  - `npm run typecheck:root`: pass.
+  - `git diff --check`: pass.
+  - `git diff --name-only`: exactly the file lock.
+- Oracle review:
+  - status: PASS
+  - reviewed fingerprint: `21f2a08df1f6f41a99219efd4c9c6be753a7c6fbfeb13da77493e345fa5539a9`
+  - findings: P0/P1/P2/P3 none.
+- next action: Oracle review exact diff; if PASS, commit one reviewed diff without push.
