@@ -35,9 +35,11 @@ export const GAMEPLAY_CAPABILITY_DOMAINS = [
   'goal',
   'hazard',
   'health',
+  'metadata',
   'movement',
   'physics',
   'pickup',
+  'profile',
   'rules',
   'scene',
   'spawn',
@@ -282,6 +284,9 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
   ]),
   runtimeBacked('pickup.collectible.v1', 'pickup', 'Collectible pickup', [topDownActionArcade, phaser2dActionArcade], ['collector.v1', 'dodger.v1'], ['collectibles']),
   runtimeBacked('hazard.contact_damage.v1', 'hazard', 'Contact hazard damage', [topDownActionArcade], ['dodger.v1'], ['hazards']),
+  contractSeeded('metadata.fixed_prompt_binding.v1', 'metadata', 'Fixed prompt metadata binding', [phaser2dActionArcade], [
+    'side_scrolling_run_and_gun.v1'
+  ], []),
   planned('combat.airborne_fire.v1', 'combat', 'Airborne fire permission', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),
   runtimeBacked('combat.projectile.v1', 'combat', 'Projectile combat', [topDownActionArcade, phaser2dActionArcade], ['shooter.v1', 'side_scrolling_run_and_gun.v1'], [
     'projectile_combat',
@@ -323,6 +328,9 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
   planned('enemy.vertical_shooter_pattern.v1', 'enemy', 'Vertical shooter enemy pattern', [phaser2dActionArcade], ['vertical_shooter.v1'], [
     'vertical_shooter_enemy_patterns'
   ]),
+  contractSeeded('profile.deepseek_run_and_gun_validation.v1', 'profile', 'DeepSeek run-and-gun validation profile binding', [phaser2dActionArcade], [
+    'side_scrolling_run_and_gun.v1'
+  ], []),
   planned('physics.paddle_ball.v1', 'physics', 'Paddle and ball physics', [phaser2dActionArcade], ['breakout.v1'], ['paddle_ball_physics']),
   planned('collision.brick_grid.v1', 'collision', 'Breakout brick collision grid', [phaser2dActionArcade], ['breakout.v1'], ['brick_collision_grid']),
   planned('movement.tilemap_maze_navigation.v1', 'movement', 'Tilemap maze navigation', [phaser2dActionArcade], ['maze_chase.v1'], ['tilemap_maze_navigation']),

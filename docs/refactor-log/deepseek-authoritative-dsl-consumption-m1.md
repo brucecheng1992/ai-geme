@@ -381,7 +381,7 @@ Next authorization gate:
 ## 17. Continuous Loop Decomposition Checkpoint
 
 - iteration id: `CONTINUOUS-20260625-D0-DOCS-CHECKPOINT`
-- status: LOCAL_VALIDATION_PASSED_AWAITING_ORACLE
+- status: LOCAL_COMMITTED_NO_PUSH
 - mode: DOCS_ONLY_NO_PUSH
 - objective: understand the continuous loop, split it into dependency-coherent capability-gap groups, and land the split in durable docs before new implementation begins.
 - plan document: `docs/plans/deepseek-authoritative-dsl-consumption-continuous-loop.md`
@@ -419,7 +419,7 @@ Next authorization gate:
 ## 18. Continuous M2 Action-State Contract 001
 
 - iteration id: `CONTINUOUS-M2-ACTION-STATE-CONTRACT-001`
-- status: LOCAL_VALIDATION_PASSED_AWAITING_ORACLE
+- status: LOCAL_COMMITTED_NO_PUSH
 - mode: IMPLEMENT_NO_PUSH
 - capability gap: target profile references `movement.crouch.v1` and `combat.airborne_fire.v1`, but the gameplay capability registry does not yet carry those IDs as explicit planned contracts.
 - affected requirements:
@@ -496,4 +496,109 @@ Next authorization gate:
   - status: PASS
   - reviewed fingerprint: `21f2a08df1f6f41a99219efd4c9c6be753a7c6fbfeb13da77493e345fa5539a9`
   - findings: P0/P1/P2/P3 none.
-- next action: Oracle review exact diff; if PASS, commit one reviewed diff without push.
+- final Oracle review:
+  - status: PASS
+  - reviewed fingerprint: `c1f83d5a1119db2a1f158e73f30a56404777e14e5a5516cbbe47723e77e91011`
+  - findings: P0/P1/P2/P3 none.
+- commit:
+  - `397df79e6fc53dc95a66b54d4306490f024b5a37`
+  - subject: `feat(game-dsl): register action-state capability gaps`
+  - push: not performed.
+- next action: return to Phase A and freeze the next dependency-ready gap from live target-profile support.
+
+## 19. Continuous M1 Profile Metadata Registry 001
+
+- iteration id: `CONTINUOUS-M1-PROFILE-METADATA-REGISTRY-001`
+- status: ORACLE_PASSED_AWAITING_COMMIT
+- mode: IMPLEMENT_NO_PUSH
+- capability gap: target profile cluster `M1` references `profile.deepseek_run_and_gun_validation.v1` and `metadata.fixed_prompt_binding.v1`, but live support summary still reports both as unknown `UNSUPPORTED`.
+- affected requirements:
+  - `R003`: side-scrolling run-and-gun target-profile binding.
+  - `R005`: fixed game title and prompt-bound metadata binding.
+  - `R006`: single-player target-profile metadata guard.
+- affected cluster: `M1`
+- objective: register the profile and fixed-prompt metadata capability IDs as explicit contract-seeded evidence so the profile-support baseline distinguishes seeded M1 contracts from truly unknown future gaps, without claiming runtime completion.
+- prerequisites:
+  - D0 docs checkpoint committed as `5ff1addd83aadbcfbf43fe644ef903da174c3612`.
+  - M2 action-state registry checkpoint committed as `397df79e6fc53dc95a66b54d4306490f024b5a37`.
+  - Worktree clean before this iteration.
+- file lock:
+  - `packages/game-dsl/src/gameplay-capabilities/registry.ts`
+  - `tests/contracts/deepseek-authoritative-dsl-support.test.ts`
+  - `docs/refactor-log/deepseek-authoritative-dsl-consumption-m1.md`
+- acceptance assertions:
+  - `profile.deepseek_run_and_gun_validation.v1` is registered in `GameplayCapabilityRegistry`.
+  - `metadata.fixed_prompt_binding.v1` is registered in `GameplayCapabilityRegistry`.
+  - Both capabilities derive `CONTRACT_SEEDED`, not `COMPLETE_SUPPORTED`.
+  - Both capabilities remain `completeSupported=false`.
+  - Both capabilities expose `schema_expressible=true` and keep `normalized`, `compiled`, `runtime_consumed`, and `qa_observed` false.
+  - `DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1` remains at 60 requirements, 15 clusters, and zero complete-supported capabilities.
+- expected failing test:
+  - Add a contract assertion in `tests/contracts/deepseek-authoritative-dsl-support.test.ts` that M1 profile and fixed-prompt metadata capability IDs are registered as contract-seeded support.
+- expected support-evidence change:
+  - `registered=true` for `profile.deepseek_run_and_gun_validation.v1` and `metadata.fixed_prompt_binding.v1`.
+  - `classification` changes from `UNSUPPORTED` to `CONTRACT_SEEDED`.
+  - `completeSupported` remains false.
+  - `schema_expressible` becomes true through seeded contract evidence; downstream evidence dimensions remain false.
+- targeted tests:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts`
+- regression tests:
+  - `npx vitest run tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/dsl-consumption-report.test.ts`
+  - `npm run typecheck:root`
+  - `git diff --check`
+- stop conditions:
+  - Any need to edit outside the file lock.
+  - Any pressure to mark either M1 metadata capability as `complete_supported` without all five evidence dimensions.
+  - Any runtime, provider, production cutover, or fixed-template fallback change.
+- RED result:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts`: failed, 1 failed / 11 passed.
+  - failure signature: `metadata.fixed_prompt_binding.v1` and `profile.deepseek_run_and_gun_validation.v1` were `registered=false`, `classification=UNSUPPORTED`, and missing `schema_expressible`.
+- implementation:
+  - `packages/game-dsl/src/gameplay-capabilities/registry.ts` adds `metadata` and `profile` to the capability domain vocabulary.
+  - The registry adds `metadata.fixed_prompt_binding.v1` and `profile.deepseek_run_and_gun_validation.v1` as `contract_seeded` descriptors for `side_scrolling_run_and_gun.v1`.
+  - `tests/contracts/deepseek-authoritative-dsl-support.test.ts` asserts both M1 IDs are registered, derive `CONTRACT_SEEDED`, keep downstream dimensions false, and remain below `complete_supported`.
+  - No normalizer, compiler, runtime, provider, production cutover, or fallback behavior changed.
+- support evidence:
+
+| capability id | registered | classification | schema_expressible | normalized | compiled | runtime_consumed | qa_observed | complete_supported |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `metadata.fixed_prompt_binding.v1` | true | `CONTRACT_SEEDED` | true | false | false | false | false | false |
+| `profile.deepseek_run_and_gun_validation.v1` | true | `CONTRACT_SEEDED` | true | false | false | false | false | false |
+
+- target profile summary after implementation:
+  - requirements: 60
+  - clusters: 15
+  - required capabilities: 59
+  - registered capabilities: 12
+  - complete-supported capabilities: 0
+  - legacy-backed capabilities: 7
+- Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | `GameplayCapabilityRegistry` gains `metadata` and `profile` capability domains plus two contract-seeded IDs: `metadata.fixed_prompt_binding.v1` and `profile.deepseek_run_and_gun_validation.v1`; target-profile support changes those IDs from unknown `UNSUPPORTED` to registered `CONTRACT_SEEDED`. |
+| Consumer list | Registry validation, `buildDeepSeekRunAndGunValidationProfileSupportSummary`, `buildDslConsumptionReport` through `targetProfileSupport`, and the DeepSeek support contract tests read the new domain vocabulary and capability IDs. No runtime consumer is added. |
+| Compatibility type | `LOSSLESS_COMPATIBLE` for support-report consumers because unknown M1 profile gaps become explicit seeded contract gaps without removing or rewriting existing fields. Runtime gameplay support remains incomplete and is not claimed. |
+| Authority | `DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1` remains the target-profile authority; `GameplayCapabilityRegistry` is the support-evidence authority for the new IDs. |
+| Legacy strategy | No legacy runtime alias is attached to either capability; legacy fixed-template execution cannot satisfy profile or fixed-prompt authoritative evidence by itself. |
+| Failure policy | Both capabilities keep `completeSupported=false`; reports continue to expose missing normalizer, compiler, runtime, and QA evidence until those consumers exist. |
+| Evidence | The new contract test asserts both IDs are `CONTRACT_SEEDED` with only `schema_expressible=true`; support-summary evidence confirms complete-supported count remains zero. |
+| Rollback | Reverting this iteration returns the two IDs to unknown `UNSUPPORTED` in target-profile support without changing runtime behavior or generated artifacts. |
+
+- validation result:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts`: pass, 1 file / 12 tests.
+  - `npx vitest run tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/dsl-consumption-report.test.ts`: pass, 3 files / 16 tests.
+  - `npm run typecheck:root`: pass.
+  - `git diff --check`: pass.
+  - `git diff --name-only`: exactly the file lock.
+- Oracle review:
+  - first review: PASS
+  - reviewed fingerprint: `c1d3739a8b8085ec2f350dbfe890a611a5eb23e9f633729355de7eabc7491ddc`
+  - findings: P0/P1/P2 none; P3 noted that the support contract test did not directly assert `requiredCapabilityCount=59`.
+  - remediation: add the missing `requiredCapabilityCount=59` assertion to the existing target-profile support summary contract test and rerun validation before final review.
+- final Oracle review:
+  - status: PASS
+  - reviewed fingerprint: `61f40a096e6f9822a16cad2bc9a32b1bd875e57a8bf06bdd9136079cf7455abd`
+  - findings: P0/P1/P2/P3 none.
+  - residual caveat: none.
+- next action: precise staging, cached diff check, commit one reviewed diff without push.

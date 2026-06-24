@@ -138,8 +138,31 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
     expect(support.summary.completeSupportedCount).toBe(0);
     expect(support.summary.requirementCount).toBe(60);
     expect(support.summary.capabilityClusterCount).toBe(15);
+    expect(support.summary.requiredCapabilityCount).toBe(59);
     expect(support.capabilities.some((capability) => capability.classification === 'CONDITIONAL_LEGACY_BACKED')).toBe(true);
     expect(support.capabilities.every((capability) => capability.completeSupported === false)).toBe(true);
+  });
+
+  it('registers M1 profile metadata contracts as seeded but incomplete support', () => {
+    const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
+    const capabilities = new Map(support.capabilities.map((capability) => [capability.capabilityId, capability]));
+
+    for (const capabilityId of ['metadata.fixed_prompt_binding.v1', 'profile.deepseek_run_and_gun_validation.v1']) {
+      expect(capabilities.get(capabilityId)).toMatchObject({
+        registered: true,
+        classification: 'CONTRACT_SEEDED',
+        completeSupported: false,
+        legacyBacked: false,
+        evidenceDimensions: {
+          schema_expressible: true,
+          normalized: false,
+          compiled: false,
+          runtime_consumed: false,
+          qa_observed: false
+        },
+        missingEvidenceDimensions: ['normalized', 'compiled', 'runtime_consumed', 'qa_observed']
+      });
+    }
   });
 
   it('registers M2 action-state gaps as deferred rather than unknown or complete_supported', () => {
@@ -242,6 +265,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       'goal.reach_exit.v1',
       'hazard.contact_damage.v1',
       'health.damage_invulnerability.v1',
+      'metadata.fixed_prompt_binding.v1',
       'movement.crouch.v1',
       'movement.eight_direction.v1',
       'movement.run_jump.v1',
@@ -250,6 +274,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       'physics.paddle_ball.v1',
       'pickup.collectible.v1',
       'pickup.drop_collect.v1',
+      'profile.deepseek_run_and_gun_validation.v1',
       'rules.restart_loop.v1',
       'scene.parallax_background.v1',
       'spawn.enemy_wave.v1',
