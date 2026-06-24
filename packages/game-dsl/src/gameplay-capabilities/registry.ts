@@ -275,10 +275,14 @@ const contractSeedEvidence: GameplayCapabilityEvidence = {
   artifactEvidence: true
 };
 
-const canonicalCompilerEvidence: GameplayCapabilityEvidence = {
+const canonicalNormalizationEvidence: GameplayCapabilityEvidence = {
   ...falseEvidence,
   dslSchema: true,
-  normalizer: true,
+  normalizer: true
+};
+
+const canonicalCompilerEvidence: GameplayCapabilityEvidence = {
+  ...canonicalNormalizationEvidence,
   irCompiler: true
 };
 
@@ -366,7 +370,15 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
   ),
   contractSeeded('weapon.cooldown.v1', 'weapon', 'Weapon cooldown', [topDownActionArcade, phaser2dActionArcade], ['shooter.v1', 'side_scrolling_run_and_gun.v1'], []),
   planned('weapon.death_reset.v1', 'weapon', 'Weapon reset on death', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),
-  planned('weapon.default_straight_single.v1', 'weapon', 'Default straight single-shot weapon', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),
+  planned(
+    'weapon.default_straight_single.v1',
+    'weapon',
+    'Default straight single-shot weapon',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    canonicalNormalizationEvidence
+  ),
   planned('weapon.rapid_fire.v1', 'weapon', 'Rapid-fire weapon', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),
   planned('weapon.replacement_rule.v1', 'weapon', 'Weapon pickup replacement rule', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),
   planned('weapon.spread_shot.v1', 'weapon', 'Spread-shot weapon', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),

@@ -198,6 +198,63 @@ describe('Canonical Game DSL v0.2 normalization', () => {
     expect(result.normalizationReport.issues).toEqual([]);
   });
 
+  it('normalizes default straight single weapon config into canonical systems', () => {
+    const fixture = createFixture();
+    const capabilityIds = [...fixture.draft.capabilities, 'weapon.default_straight_single.v1'].sort();
+    const draft = {
+      ...fixture.draft,
+      capabilities: capabilityIds,
+      entities: fixture.draft.entities.map((entity) =>
+        entity.id === 'player'
+          ? {
+              ...entity,
+              capability_refs: [...new Set([...(entity.capability_refs ?? []), 'weapon.default_straight_single.v1'])].sort()
+            }
+          : entity
+      ),
+      capability_configs: [
+        ...fixture.draft.capability_configs,
+        {
+          id: 'default_straight_single_weapon',
+          capability_id: 'weapon.default_straight_single.v1',
+          applies_to: ['player'],
+          config: { slot: 'primary', pattern: 'straight', projectile_count: 1, fire_action: 'shoot_projectile' }
+        }
+      ]
+    };
+    const capabilityLock = createCapabilityLock({ capabilityIds });
+    const result = normalizeCapabilityGameDslDraftToCanonicalV02({
+      ...fixture,
+      draft,
+      capabilityLock,
+      composedSchemaIdentity: buildCapabilityGameDslDraftComposedSchemaIdentity({
+        profileId: draft.profile.id,
+        capabilityIds
+      })
+    });
+
+    expect(result.status).toBe('normalized');
+    if (result.status !== 'normalized') {
+      throw new Error('expected default weapon normalization to pass');
+    }
+
+    expect(result.canonicalDsl.entities.find((entity) => entity.id === 'player')?.capability_ids).toContain('weapon.default_straight_single.v1');
+    expect(result.canonicalDsl.systems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'config_default_straight_single_weapon',
+          capability_id: 'weapon.default_straight_single.v1',
+          source_kind: 'capability_config',
+          applies_to_entity_ids: ['player'],
+          source_draft_id: 'default_straight_single_weapon',
+          config: { slot: 'primary', pattern: 'straight', projectile_count: 1, fire_action: 'shoot_projectile' }
+        })
+      ])
+    );
+    expect(result.normalizationReport.status).toBe('normalized');
+    expect(result.normalizationReport.issues).toEqual([]);
+  });
+
   it('fails closed when draft, lock and composed schema capability sets diverge', () => {
     const fixture = createFixture();
     const result = normalizeCapabilityGameDslDraftToCanonicalV02({
