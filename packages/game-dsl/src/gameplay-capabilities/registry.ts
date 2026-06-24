@@ -379,7 +379,15 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     canonicalNormalizationEvidence
   ),
-  planned('weapon.rapid_fire.v1', 'weapon', 'Rapid-fire weapon', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),
+  planned(
+    'weapon.rapid_fire.v1',
+    'weapon',
+    'Rapid-fire weapon',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    canonicalNormalizationEvidence
+  ),
   planned('weapon.replacement_rule.v1', 'weapon', 'Weapon pickup replacement rule', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),
   planned(
     'weapon.spread_shot.v1',

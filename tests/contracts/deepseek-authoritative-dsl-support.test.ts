@@ -247,13 +247,32 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
     });
   });
 
+  it('reports rapid-fire weapon normalization evidence without compiler or runtime support', () => {
+    const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
+    const capabilities = new Map(support.capabilities.map((capability) => [capability.capabilityId, capability]));
+
+    expect(capabilities.get('weapon.rapid_fire.v1')).toMatchObject({
+      registered: true,
+      classification: 'DEFERRED',
+      completeSupported: false,
+      legacyBacked: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: false,
+        runtime_consumed: false,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['compiled', 'runtime_consumed', 'qa_observed']
+    });
+  });
+
   it('keeps remaining M3 weapon lifecycle capabilities deferred without support evidence', () => {
     const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
     const capabilities = new Map(support.capabilities.map((capability) => [capability.capabilityId, capability]));
 
     for (const capabilityId of [
       'weapon.death_reset.v1',
-      'weapon.rapid_fire.v1',
       'weapon.replacement_rule.v1'
     ]) {
       expect(capabilities.get(capabilityId)).toMatchObject({

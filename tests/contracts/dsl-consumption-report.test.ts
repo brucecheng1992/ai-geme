@@ -188,6 +188,18 @@ describe('Step 33 DSL consumption report', () => {
       },
       missingEvidenceDimensions: ['compiled', 'runtime_consumed', 'qa_observed']
     });
+    expect(capabilities.get('weapon.rapid_fire.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: false,
+        runtime_consumed: false,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['compiled', 'runtime_consumed', 'qa_observed']
+    });
   });
 
   it('does not point non-side-scrolling world gravity to side-scrolling runtime refs', () => {

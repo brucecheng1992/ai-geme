@@ -312,6 +312,63 @@ describe('Canonical Game DSL v0.2 normalization', () => {
     expect(result.normalizationReport.issues).toEqual([]);
   });
 
+  it('normalizes rapid-fire weapon config into canonical systems', () => {
+    const fixture = createFixture();
+    const capabilityIds = [...fixture.draft.capabilities, 'weapon.rapid_fire.v1'].sort();
+    const draft = {
+      ...fixture.draft,
+      capabilities: capabilityIds,
+      entities: fixture.draft.entities.map((entity) =>
+        entity.id === 'weapon_pickup'
+          ? {
+              ...entity,
+              capability_refs: [...new Set([...(entity.capability_refs ?? []), 'weapon.rapid_fire.v1'])].sort()
+            }
+          : entity
+      ),
+      capability_configs: [
+        ...fixture.draft.capability_configs,
+        {
+          id: 'rapid_fire_weapon',
+          capability_id: 'weapon.rapid_fire.v1',
+          applies_to: ['weapon_pickup'],
+          config: { slot: 'primary', pattern: 'straight', projectile_count: 1, cooldown_ms: 120, fire_action: 'shoot_projectile' }
+        }
+      ]
+    };
+    const capabilityLock = createCapabilityLock({ capabilityIds });
+    const result = normalizeCapabilityGameDslDraftToCanonicalV02({
+      ...fixture,
+      draft,
+      capabilityLock,
+      composedSchemaIdentity: buildCapabilityGameDslDraftComposedSchemaIdentity({
+        profileId: draft.profile.id,
+        capabilityIds
+      })
+    });
+
+    expect(result.status).toBe('normalized');
+    if (result.status !== 'normalized') {
+      throw new Error('expected rapid-fire weapon normalization to pass');
+    }
+
+    expect(result.canonicalDsl.entities.find((entity) => entity.id === 'weapon_pickup')?.capability_ids).toContain('weapon.rapid_fire.v1');
+    expect(result.canonicalDsl.systems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'config_rapid_fire_weapon',
+          capability_id: 'weapon.rapid_fire.v1',
+          source_kind: 'capability_config',
+          applies_to_entity_ids: ['weapon_pickup'],
+          source_draft_id: 'rapid_fire_weapon',
+          config: { slot: 'primary', pattern: 'straight', projectile_count: 1, cooldown_ms: 120, fire_action: 'shoot_projectile' }
+        })
+      ])
+    );
+    expect(result.normalizationReport.status).toBe('normalized');
+    expect(result.normalizationReport.issues).toEqual([]);
+  });
+
   it('fails closed when draft, lock and composed schema capability sets diverge', () => {
     const fixture = createFixture();
     const result = normalizeCapabilityGameDslDraftToCanonicalV02({
