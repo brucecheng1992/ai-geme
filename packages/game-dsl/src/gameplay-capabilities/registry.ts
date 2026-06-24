@@ -381,7 +381,15 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
   ),
   planned('weapon.rapid_fire.v1', 'weapon', 'Rapid-fire weapon', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),
   planned('weapon.replacement_rule.v1', 'weapon', 'Weapon pickup replacement rule', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),
-  planned('weapon.spread_shot.v1', 'weapon', 'Spread-shot weapon', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),
+  planned(
+    'weapon.spread_shot.v1',
+    'weapon',
+    'Spread-shot weapon',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    canonicalNormalizationEvidence
+  ),
   contractSeeded('goal.destroy_target.v1', 'goal', 'Destroy target goal', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),
   contractSeeded('scene.parallax_background.v1', 'scene', 'Parallax background scene layers', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),
   contractSeeded('asset.sprite_binding.v1', 'asset', 'Sprite asset binding', [topDownActionArcade, phaser2dActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1', 'side_scrolling_run_and_gun.v1'], []),

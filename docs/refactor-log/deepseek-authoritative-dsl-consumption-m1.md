@@ -1363,3 +1363,94 @@ Next authorization gate:
   - P3: `buildDslConsumptionReport` is listed as a consumer in Compatibility & Cutover, but this iteration only regression-tests that file and does not add a focused assertion that default weapon evidence is visible through the DSL consumption report.
   - disposition: accepted as follow-up because `buildDslConsumptionReport` maps the same support summary and adding a focused test would expand this iteration's file lock.
   - next action: precise staging, cached diff check, commit one reviewed diff without push if commit is authorized.
+- commit:
+  - `46de31b1`
+  - subject: `feat(game-dsl): normalize default weapon config`
+  - push: not performed.
+
+## 28. CONTINUOUS-M3-SPREAD-WEAPON-NORMALIZATION-001
+
+- status: ORACLE_PASSED_AWAITING_COMMIT.
+- iteration_id: `CONTINUOUS-M3-SPREAD-WEAPON-NORMALIZATION-001`
+- dependency decision:
+  - M2 `qa_observed` remains out of scope and should not be filled in this iteration.
+  - `weapon.spread_shot.v1` normalization depends only on the existing authoritative draft/canonical `capability_configs` path and the M3 registration checkpoint.
+  - Pickup collection, projectile spread firing behavior, replacement rule, death reset, runtime loader consumption, browser QA, and provider/default cutover are not prerequisites for this schema/normalization slice.
+- capability_gap: `weapon.spread_shot.v1` is registered as a known M3 gap, but target-profile support still reports no schema or normalization evidence even though the authoritative `capability_configs` path can express and normalize a spread-shot weapon config.
+- affected requirement:
+  - `R015`: Player can pick up spread shot.
+- affected cluster: `M3`
+- objective: prove a spread-shot weapon config is schema-expressible and normalized into canonical systems, update support evidence only for `schema_expressible` and `normalized`, and add focused DSL consumption report coverage for normalized M3 weapon evidence.
+- prerequisites:
+  - M3 default weapon normalization checkpoint committed as `46de31b1`.
+  - Worktree clean before this iteration.
+- file lock:
+  - `packages/game-dsl/src/gameplay-capabilities/registry.ts`
+  - `tests/contracts/deepseek-authoritative-dsl-support.test.ts`
+  - `tests/contracts/game-dsl-v0.2.test.ts`
+  - `tests/contracts/dsl-consumption-report.test.ts`
+  - `docs/refactor-log/deepseek-authoritative-dsl-consumption-m1.md`
+- acceptance assertions:
+  - A capability draft may declare `weapon.spread_shot.v1` in `capabilities`, a weapon pickup entity `capability_refs`, and `capability_configs`.
+  - `normalizeCapabilityGameDslDraftToCanonicalV02` preserves the spread-shot config as a canonical `system` with deterministic `source_draft_id`, applies-to weapon pickup entity, and declarative config payload.
+  - Target-profile support reports `schema_expressible=true` and `normalized=true` for `weapon.spread_shot.v1`.
+  - `compiled`, `runtime_consumed`, `qa_observed`, and `completeSupported` remain false.
+  - `buildDslConsumptionReport` exposes default and spread weapon normalized support evidence through `targetProfileSupport`.
+  - Remaining M3 weapon lifecycle capabilities keep their current evidence dimensions.
+- expected failing tests:
+  - Update `tests/contracts/deepseek-authoritative-dsl-support.test.ts` so `weapon.spread_shot.v1` must expose schema and normalization evidence while remaining compiler/runtime/QA incomplete.
+  - Add a focused normalization contract in `tests/contracts/game-dsl-v0.2.test.ts` for spread-shot config preservation.
+  - Add a focused `tests/contracts/dsl-consumption-report.test.ts` assertion for default/spread weapon evidence surfacing through the consumption report.
+- expected support-evidence change:
+  - `weapon.spread_shot.v1`: `schema_expressible=false` -> `true`; `normalized=false` -> `true`.
+  - `compiled`, `runtime_consumed`, `qa_observed`, and `completeSupported` remain false.
+- targeted tests:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/game-dsl-v0.2.test.ts tests/contracts/dsl-consumption-report.test.ts`
+- regression tests:
+  - `npx vitest run tests/contracts/gameplay-capability-registry.test.ts`
+  - `npm run typecheck:root`
+  - `git diff --check`
+- stop conditions:
+  - Any need to edit outside the file lock.
+  - Any need to claim compiler evidence, runtime loader consumption, QA observation, spread firing behavior, pickup collection behavior, replacement behavior, death reset behavior, M2 completion, provider behavior, production cutover, or fallback support.
+- RED result:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/game-dsl-v0.2.test.ts tests/contracts/dsl-consumption-report.test.ts`: failed, 2 failed / 31 passed.
+  - failure signature: `weapon.spread_shot.v1` was registered and deferred, but still reported `schema_expressible=false`, `normalized=false`, and missing both dimensions in both target-profile support and DSL consumption report support.
+  - The new normalization consumer test already passed in the RED run, proving the remaining gap was support evidence alignment with an existing authoritative draft/canonical consumer.
+- implementation:
+  - `tests/contracts/game-dsl-v0.2.test.ts` adds a normalization contract proving a spread-shot weapon config is preserved as a canonical `system` for the weapon pickup entity.
+  - `tests/contracts/deepseek-authoritative-dsl-support.test.ts` now requires `weapon.spread_shot.v1` to expose `schema_expressible=true` and `normalized=true`, while keeping `compiled=false`, `runtime_consumed=false`, `qa_observed=false`, and `completeSupported=false`.
+  - `tests/contracts/dsl-consumption-report.test.ts` adds focused coverage that default and spread weapon normalized evidence surface through `targetProfileSupport`.
+  - `packages/game-dsl/src/gameplay-capabilities/registry.ts` applies existing `canonicalNormalizationEvidence` to `weapon.spread_shot.v1`.
+  - No compiler, runtime loader, QA probe, spread firing behavior, pickup collection behavior, replacement behavior, death reset behavior, M2 support status, provider path, production cutover, or fallback behavior changed.
+- support evidence:
+
+| capability id | registered | classification | schema_expressible | normalized | compiled | runtime_consumed | qa_observed | complete_supported |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `weapon.default_straight_single.v1` | true | `DEFERRED` | true | true | false | false | false | false |
+| `weapon.spread_shot.v1` | true | `DEFERRED` | true | true | false | false | false | false |
+
+- Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | `GameplayCapabilityRegistry` support evidence for `weapon.spread_shot.v1` changes from no evidence to `schema_expressible=true` and `normalized=true`; `tests/contracts/game-dsl-v0.2.test.ts` adds canonical normalization evidence for its draft `capability_configs`. |
+| Consumer list | `CapabilityGameDslDraftV1Schema` accepts the spread-shot config, `normalizeCapabilityGameDslDraftToCanonicalV02` maps it into canonical `systems`, and `buildDeepSeekRunAndGunValidationProfileSupportSummary` / `buildDslConsumptionReport` read the updated support evidence. |
+| Compatibility type | `LOSSLESS_COMPATIBLE` for authoritative draft/canonical consumers because the spread-shot config payload is preserved without rewriting semantics; compiler/runtime/QA remain explicitly incomplete. |
+| Authority | `DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1` remains the requirement authority; `CapabilityGameDslDraftV1Schema` and `CanonicalGameDslV02Schema` are the schema/normalization authorities; `GameplayCapabilityRegistry` is the support-evidence authority. |
+| Legacy strategy | No legacy projectile behavior, weapon behavior, pickup behavior, replacement behavior, death reset behavior, or fallback template is used to claim support. |
+| Failure policy | The capability keeps `completeSupported=false` and still reports missing `compiled`, `runtime_consumed`, and `qa_observed`; any gate requiring those dimensions must continue to fail closed. |
+| Evidence | The new normalization test constructs a trusted draft/lock/composed-schema tuple with the spread-shot config and asserts canonical `systems` preserve the capability ID, applies-to entity, source draft ID, and config payload; the DSL consumption report test asserts support evidence surfaces through the report consumer. |
+| Rollback | Reverting this iteration returns the support dimensions to all-false for `weapon.spread_shot.v1` and removes only focused normalization/report contracts; no runtime artifacts or DSL semantics are rewritten. |
+
+- validation result:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/game-dsl-v0.2.test.ts tests/contracts/dsl-consumption-report.test.ts`: pass, 3 files / 33 tests.
+  - `npx vitest run tests/contracts/gameplay-capability-registry.test.ts`: pass, 1 file / 8 tests.
+  - `npm run typecheck:root`: pass.
+  - `git diff --check`: pass.
+- Oracle review:
+  - status: PASS.
+  - findings: P0/P1/P2/P3 none.
+  - review notes: M2 `qa_observed` remains false, `weapon.spread_shot.v1` remains compiler/runtime/QA incomplete, the normalizer test does not claim pickup collection or spread firing behavior, and the DSL consumption report assertion closes the previous default/spread support evidence surfacing gap.
+  - Oracle also ran `git diff --check`: pass.
+  - next action: precise staging, cached diff check, commit one reviewed diff without push.

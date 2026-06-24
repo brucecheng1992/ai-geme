@@ -149,6 +149,47 @@ describe('Step 33 DSL consumption report', () => {
     );
   });
 
+  it('surfaces normalized M3 weapon evidence in target profile support', () => {
+    const normalized = validateAndNormalizeRawGameDsl(createSideScrollingRunAndGunRawDsl());
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const report = buildDslConsumptionReport({
+      projectId: 'proj_20260625_m3_weapon_support',
+      runId: 'run_20260625_m3_weapon_support',
+      rawDsl: normalized.rawDsl,
+      ir: normalized.ir
+    });
+    const capabilities = new Map(report.targetProfileSupport?.capabilities.map((capability) => [capability.capabilityId, capability]));
+
+    expect(capabilities.get('weapon.default_straight_single.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: false,
+        runtime_consumed: false,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['compiled', 'runtime_consumed', 'qa_observed']
+    });
+    expect(capabilities.get('weapon.spread_shot.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: false,
+        runtime_consumed: false,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['compiled', 'runtime_consumed', 'qa_observed']
+    });
+  });
+
   it('does not point non-side-scrolling world gravity to side-scrolling runtime refs', () => {
     const base = createShooterRawDsl();
     const rawDsl = {

@@ -255,6 +255,63 @@ describe('Canonical Game DSL v0.2 normalization', () => {
     expect(result.normalizationReport.issues).toEqual([]);
   });
 
+  it('normalizes spread-shot weapon config into canonical systems', () => {
+    const fixture = createFixture();
+    const capabilityIds = [...fixture.draft.capabilities, 'weapon.spread_shot.v1'].sort();
+    const draft = {
+      ...fixture.draft,
+      capabilities: capabilityIds,
+      entities: fixture.draft.entities.map((entity) =>
+        entity.id === 'weapon_pickup'
+          ? {
+              ...entity,
+              capability_refs: [...new Set([...(entity.capability_refs ?? []), 'weapon.spread_shot.v1'])].sort()
+            }
+          : entity
+      ),
+      capability_configs: [
+        ...fixture.draft.capability_configs,
+        {
+          id: 'spread_shot_weapon',
+          capability_id: 'weapon.spread_shot.v1',
+          applies_to: ['weapon_pickup'],
+          config: { slot: 'primary', pattern: 'spread', projectile_count: 3, spread_angle_deg: 30, fire_action: 'shoot_projectile' }
+        }
+      ]
+    };
+    const capabilityLock = createCapabilityLock({ capabilityIds });
+    const result = normalizeCapabilityGameDslDraftToCanonicalV02({
+      ...fixture,
+      draft,
+      capabilityLock,
+      composedSchemaIdentity: buildCapabilityGameDslDraftComposedSchemaIdentity({
+        profileId: draft.profile.id,
+        capabilityIds
+      })
+    });
+
+    expect(result.status).toBe('normalized');
+    if (result.status !== 'normalized') {
+      throw new Error('expected spread weapon normalization to pass');
+    }
+
+    expect(result.canonicalDsl.entities.find((entity) => entity.id === 'weapon_pickup')?.capability_ids).toContain('weapon.spread_shot.v1');
+    expect(result.canonicalDsl.systems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'config_spread_shot_weapon',
+          capability_id: 'weapon.spread_shot.v1',
+          source_kind: 'capability_config',
+          applies_to_entity_ids: ['weapon_pickup'],
+          source_draft_id: 'spread_shot_weapon',
+          config: { slot: 'primary', pattern: 'spread', projectile_count: 3, spread_angle_deg: 30, fire_action: 'shoot_projectile' }
+        })
+      ])
+    );
+    expect(result.normalizationReport.status).toBe('normalized');
+    expect(result.normalizationReport.issues).toEqual([]);
+  });
+
   it('fails closed when draft, lock and composed schema capability sets diverge', () => {
     const fixture = createFixture();
     const result = normalizeCapabilityGameDslDraftToCanonicalV02({
