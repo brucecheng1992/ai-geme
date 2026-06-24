@@ -377,7 +377,7 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [phaser2dActionArcade],
     ['side_scrolling_run_and_gun.v1'],
     [],
-    canonicalNormalizationEvidence
+    canonicalCompilerEvidence
   ),
   planned(
     'weapon.rapid_fire.v1',

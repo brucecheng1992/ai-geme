@@ -18,6 +18,7 @@ import {
   type PhaserRuntimeSystemManifest
 } from './gameplay-capabilities/phaser-runtime-loader.js';
 import { hashStableJson } from './gameplay-capabilities/stable-json.js';
+import type { DeclarativeJsonValue } from './gameplay-capabilities/declarative-json.js';
 import type { SceneDomain, SceneIrAuthorityReport } from './scene-ir.js';
 
 export const CAPABILITY_RUNTIME_PLAN_KIND = 'capability_runtime_plan';
@@ -109,6 +110,7 @@ export const CanonicalCapabilityCompilationReportSchema = z.strictObject({
         'LOCK_HASH_MISMATCH',
         'PROFILE_MISMATCH',
         'CAPABILITY_SET_MISMATCH',
+        'CAPABILITY_CONTRACT_INVALID',
         'RUNTIME_FAMILY_UNSUPPORTED',
         'RUNTIME_MANIFEST_INVALID',
         'RUNTIME_PLAN_INVALID'
@@ -325,6 +327,7 @@ function validateCanonicalCompileInputs(dsl: CanonicalGameDslV02, lock: Gameplay
       });
     }
   });
+  issues.push(...validateDefaultStraightSingleWeaponCompileContract(dsl, lockedCapabilities));
   return issues;
 }
 
@@ -337,12 +340,7 @@ function buildCapabilityIr(dsl: CanonicalGameDslV02, lock: GameplayCapabilityLoc
     runtimeSystemConfigs: lock.capabilityIds.map((capabilityId) => ({
       id: runtimeSystemIdForCapability(capabilityId),
       capabilityId,
-      config: {
-        canonicalDslPath: CANONICAL_GAME_DSL_V02_PATH,
-        canonicalDslHash: hashStableJson(dsl),
-        systemSourceIds: dsl.systems.filter((system) => system.capability_id === capabilityId).map((system) => system.id).sort(),
-        progressionSegmentIds: dsl.progression.segments.filter((segment) => segment.capability_ids.includes(capabilityId)).map((segment) => segment.id).sort()
-      }
+      config: runtimeSystemConfigForCapability(dsl, capabilityId)
     })),
     entityComponents: dsl.entities.flatMap((entity) =>
       entity.capability_ids.map((capabilityId) => ({
@@ -375,6 +373,154 @@ function buildCapabilityIr(dsl: CanonicalGameDslV02, lock: GameplayCapabilityLoc
     telemetryPlanRef: 'telemetry_plan.json',
     qaPlanRef: 'capability_qa_plan.json'
   };
+}
+
+const DEFAULT_STRAIGHT_SINGLE_WEAPON_CAPABILITY_ID = 'weapon.default_straight_single.v1';
+const DEFAULT_STRAIGHT_SINGLE_WEAPON_ARTIFACT_KIND = 'weapon.default_straight_single.compiled.v1';
+
+type CanonicalGameplaySystem = CanonicalGameDslV02['systems'][number];
+type CanonicalEntity = CanonicalGameDslV02['entities'][number];
+type CompilationIssue = CanonicalCapabilityCompilationReport['issues'][number];
+
+type DefaultStraightSingleWeaponSource = {
+  system: CanonicalGameplaySystem;
+  owner: CanonicalEntity;
+};
+
+function runtimeSystemConfigForCapability(dsl: CanonicalGameDslV02, capabilityId: string): Record<string, DeclarativeJsonValue> {
+  if (capabilityId === DEFAULT_STRAIGHT_SINGLE_WEAPON_CAPABILITY_ID) {
+    return buildDefaultStraightSingleWeaponRuntimeConfig(dsl);
+  }
+  return {
+    canonicalDslPath: CANONICAL_GAME_DSL_V02_PATH,
+    canonicalDslHash: hashStableJson(dsl),
+    systemSourceIds: dsl.systems.filter((system) => system.capability_id === capabilityId).map((system) => system.id).sort(),
+    progressionSegmentIds: dsl.progression.segments.filter((segment) => segment.capability_ids.includes(capabilityId)).map((segment) => segment.id).sort()
+  };
+}
+
+function validateDefaultStraightSingleWeaponCompileContract(
+  dsl: CanonicalGameDslV02,
+  lockedCapabilities: ReadonlySet<string>
+): CompilationIssue[] {
+  if (!lockedCapabilities.has(DEFAULT_STRAIGHT_SINGLE_WEAPON_CAPABILITY_ID)) {
+    return [];
+  }
+  const parsed = parseDefaultStraightSingleWeaponSource(dsl);
+  return parsed.ok ? [] : parsed.issues;
+}
+
+function buildDefaultStraightSingleWeaponRuntimeConfig(dsl: CanonicalGameDslV02): Record<string, DeclarativeJsonValue> {
+  const parsed = parseDefaultStraightSingleWeaponSource(dsl);
+  if (!parsed.ok) {
+    throw new Error(`Default straight single weapon compiler contract is invalid: ${parsed.issues.map((issue) => issue.message).join('; ')}`);
+  }
+
+  return {
+    artifactKind: DEFAULT_STRAIGHT_SINGLE_WEAPON_ARTIFACT_KIND,
+    source: {
+      canonicalSystemId: parsed.source.system.id,
+      sourceDraftId: parsed.source.system.source_draft_id
+    },
+    owner: {
+      entityId: parsed.source.owner.id,
+      role: parsed.source.owner.role
+    },
+    loadout: {
+      slot: 'primary',
+      equipPolicy: 'initial_spawn'
+    },
+    projectilePattern: {
+      kind: 'straight',
+      projectileCount: 1
+    },
+    fireAction: 'shoot_projectile'
+  };
+}
+
+function parseDefaultStraightSingleWeaponSource(
+  dsl: CanonicalGameDslV02
+): { ok: true; source: DefaultStraightSingleWeaponSource } | { ok: false; issues: CompilationIssue[] } {
+  const systems = dsl.systems.filter((system) => system.capability_id === DEFAULT_STRAIGHT_SINGLE_WEAPON_CAPABILITY_ID);
+  if (systems.length !== 1) {
+    return {
+      ok: false,
+      issues: [
+        {
+          code: 'CAPABILITY_CONTRACT_INVALID',
+          path: `/systems/${DEFAULT_STRAIGHT_SINGLE_WEAPON_CAPABILITY_ID}`,
+          message: `Expected exactly one canonical system for ${DEFAULT_STRAIGHT_SINGLE_WEAPON_CAPABILITY_ID}, found ${systems.length}.`
+        }
+      ]
+    };
+  }
+
+  const system = systems[0];
+  const issues: CompilationIssue[] = [];
+  if (system.source_kind !== 'capability_config') {
+    issues.push({
+      code: 'CAPABILITY_CONTRACT_INVALID',
+      path: `/systems/${system.id}/source_kind`,
+      message: 'Default straight single weapon must compile from a capability_config canonical system.'
+    });
+  }
+  const appliesToEntityIds = system.applies_to_entity_ids ?? [];
+  const owner = appliesToEntityIds.length === 1 ? dsl.entities.find((entity) => entity.id === appliesToEntityIds[0]) : undefined;
+  if (owner === undefined || owner.role !== 'player') {
+    issues.push({
+      code: 'CAPABILITY_CONTRACT_INVALID',
+      path: `/systems/${system.id}/applies_to_entity_ids`,
+      message: 'Default straight single weapon must apply to exactly one player entity.'
+    });
+  } else if (!owner.capability_ids.includes(DEFAULT_STRAIGHT_SINGLE_WEAPON_CAPABILITY_ID)) {
+    issues.push({
+      code: 'CAPABILITY_CONTRACT_INVALID',
+      path: `/entities/${owner.id}/capability_ids`,
+      message: `Default weapon owner ${owner.id} must declare ${DEFAULT_STRAIGHT_SINGLE_WEAPON_CAPABILITY_ID}.`
+    });
+  }
+
+  if (!isRecord(system.config)) {
+    issues.push({
+      code: 'CAPABILITY_CONTRACT_INVALID',
+      path: `/systems/${system.id}/config`,
+      message: 'Default straight single weapon config must be a declarative object.'
+    });
+  } else {
+    if (system.config.slot !== 'primary') {
+      issues.push({
+        code: 'CAPABILITY_CONTRACT_INVALID',
+        path: `/systems/${system.id}/config/slot`,
+        message: 'Default straight single weapon must compile from primary slot config.'
+      });
+    }
+    if (system.config.pattern !== 'straight') {
+      issues.push({
+        code: 'CAPABILITY_CONTRACT_INVALID',
+        path: `/systems/${system.id}/config/pattern`,
+        message: 'Default straight single weapon must compile from straight pattern config.'
+      });
+    }
+    if (system.config.projectile_count !== 1) {
+      issues.push({
+        code: 'CAPABILITY_CONTRACT_INVALID',
+        path: `/systems/${system.id}/config/projectile_count`,
+        message: 'Default straight single weapon must compile from exactly one projectile.'
+      });
+    }
+    if (system.config.fire_action !== 'shoot_projectile') {
+      issues.push({
+        code: 'CAPABILITY_CONTRACT_INVALID',
+        path: `/systems/${system.id}/config/fire_action`,
+        message: 'Default straight single weapon must compile from shoot_projectile fire action.'
+      });
+    }
+  }
+
+  if (issues.length > 0 || owner === undefined) {
+    return { ok: false, issues };
+  }
+  return { ok: true, source: { system, owner } };
 }
 
 function buildRuntimePlanPayload(dsl: CanonicalGameDslV02, lock: GameplayCapabilityLock, canonicalDslHash: string): unknown {
@@ -598,6 +744,10 @@ function sameStringSet(left: readonly string[], right: readonly string[]): boole
 
 function hasDuplicates(values: readonly string[]): boolean {
   return new Set(values).size !== values.length;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function sceneDomains(): SceneDomain[] {

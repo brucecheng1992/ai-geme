@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { hashStableJson } from '../../packages/game-dsl/src/gameplay-capabilities/stable-json.js';
 import {
   CanonicalCapabilityCompilationReportSchema,
+  CanonicalGameDslV02Schema,
   CapabilityRuntimePlanSchema,
   buildPhaserRuntimeSystemLoaderPlan,
   compileCanonicalCapabilityDslToRuntimePlan
@@ -289,6 +290,103 @@ describe('Canonical capability DSL runtime compiler', () => {
     });
   });
 
+  it('compiles default straight single weapon into a capability-specific weapon artifact', () => {
+    const fixture = createDefaultWeaponCompilerFixture();
+    const result = compileCanonicalCapabilityDslToRuntimePlan(fixture);
+
+    expect(result.status).toBe('compiled');
+    if (result.status !== 'compiled') {
+      throw new Error('expected default weapon compiler fixture to pass');
+    }
+
+    const runtimeSystemConfig = result.capabilityIr.runtimeSystemConfigs.find((config) => config.capabilityId === DEFAULT_WEAPON_CAPABILITY_ID);
+    expect(runtimeSystemConfig).toMatchObject({
+      id: 'system.weapon.default_straight_single.v1',
+      capabilityId: DEFAULT_WEAPON_CAPABILITY_ID,
+      config: {
+        artifactKind: 'weapon.default_straight_single.compiled.v1',
+        source: {
+          canonicalSystemId: 'config_default_straight_single_weapon',
+          sourceDraftId: 'default_straight_single_weapon'
+        },
+        owner: { entityId: 'player', role: 'player' },
+        loadout: { slot: 'primary', equipPolicy: 'initial_spawn' },
+        projectilePattern: { kind: 'straight', projectileCount: 1 },
+        fireAction: 'shoot_projectile'
+      }
+    });
+    expect(runtimeSystemConfig?.config).not.toHaveProperty('systemSourceIds');
+    expect(runtimeSystemConfig?.config).not.toHaveProperty('progressionSegmentIds');
+    expect(result.runtimePlan.runtimeSystems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'system.weapon.default_straight_single.v1',
+          capabilityId: DEFAULT_WEAPON_CAPABILITY_ID,
+          configSourceIds: ['default_straight_single_weapon'],
+          appliesToEntityIds: ['player']
+        })
+      ])
+    );
+    expect(result.runtimeSystemManifest.systems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'system.weapon.default_straight_single.v1',
+          capabilityId: DEFAULT_WEAPON_CAPABILITY_ID,
+          authoritativeConfig: 'capability_ir'
+        })
+      ])
+    );
+  });
+
+  it.each([
+    {
+      name: 'missing canonical system',
+      canonicalDsl: () => {
+        const fixture = createDefaultWeaponCompilerFixture();
+        return {
+          ...fixture,
+          canonicalDsl: {
+            ...fixture.canonicalDsl,
+            systems: fixture.canonicalDsl.systems.filter((system) => system.capability_id !== DEFAULT_WEAPON_CAPABILITY_ID)
+          }
+        };
+      },
+      issuePath: '/systems/weapon.default_straight_single.v1'
+    },
+    {
+      name: 'non-straight pattern',
+      canonicalDsl: () => createDefaultWeaponCompilerFixture({ config: { ...DEFAULT_WEAPON_CONFIG, pattern: 'spread' } }),
+      issuePath: '/systems/config_default_straight_single_weapon/config/pattern'
+    },
+    {
+      name: 'multiple projectiles',
+      canonicalDsl: () => createDefaultWeaponCompilerFixture({ config: { ...DEFAULT_WEAPON_CONFIG, projectile_count: 2 } }),
+      issuePath: '/systems/config_default_straight_single_weapon/config/projectile_count'
+    },
+    {
+      name: 'non-player owner',
+      canonicalDsl: () => createDefaultWeaponCompilerFixture({ appliesToEntityIds: ['weapon_pickup'] }),
+      issuePath: '/systems/config_default_straight_single_weapon/applies_to_entity_ids'
+    },
+    {
+      name: 'schema-valid behavior source with matching config shape',
+      canonicalDsl: () => createDefaultWeaponCompilerFixture({ sourceKind: 'behavior' }),
+      issuePath: '/systems/config_default_straight_single_weapon/source_kind'
+    }
+  ])('fails closed for invalid default weapon compiler contract: $name', ({ canonicalDsl, issuePath }) => {
+    const fixture = canonicalDsl();
+    expect(CanonicalGameDslV02Schema.safeParse(fixture.canonicalDsl).success).toBe(true);
+
+    const result = compileCanonicalCapabilityDslToRuntimePlan(fixture);
+
+    expect(result.status).toBe('blocked');
+    expect('capabilityIr' in result).toBe(false);
+    expect(result.compilationReport.outputRefs).toEqual({});
+    expect(result.compilationReport.issues).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'CAPABILITY_CONTRACT_INVALID', path: issuePath })])
+    );
+  });
+
   it('fails closed when exact lock hash or profile binding drifts', () => {
     const fixture = createFixture();
     const staleLock = compileCanonicalCapabilityDslToRuntimePlan({
@@ -500,11 +598,51 @@ describe('Canonical capability DSL runtime compiler', () => {
   });
 });
 
+const DEFAULT_WEAPON_CAPABILITY_ID = 'weapon.default_straight_single.v1';
+const DEFAULT_WEAPON_CONFIG = { slot: 'primary', pattern: 'straight', projectile_count: 1, fire_action: 'shoot_projectile' };
+
 function createFixture() {
   const capabilityLock = createCapabilityLock();
   return {
     canonicalDsl: createCanonicalDsl(capabilityLock),
     capabilityLock
+  };
+}
+
+function createDefaultWeaponCompilerFixture(
+  input: {
+    appliesToEntityIds?: string[];
+    config?: typeof DEFAULT_WEAPON_CONFIG;
+    sourceKind?: 'behavior' | 'capability_config';
+  } = {}
+) {
+  const capabilityIds = [...createCapabilityIds(), DEFAULT_WEAPON_CAPABILITY_ID].sort();
+  const capabilityLock = createCapabilityLock({ capabilityIds });
+  const canonicalDsl = createCanonicalDsl(capabilityLock);
+  return {
+    capabilityLock,
+    canonicalDsl: {
+      ...canonicalDsl,
+      entities: canonicalDsl.entities.map((entity) =>
+        entity.id === 'player'
+          ? {
+              ...entity,
+              capability_ids: [...new Set([...entity.capability_ids, DEFAULT_WEAPON_CAPABILITY_ID])].sort()
+            }
+          : entity
+      ),
+      systems: [
+        ...canonicalDsl.systems,
+        {
+          id: 'config_default_straight_single_weapon',
+          capability_id: DEFAULT_WEAPON_CAPABILITY_ID,
+          source_kind: input.sourceKind ?? 'capability_config',
+          applies_to_entity_ids: input.appliesToEntityIds ?? ['player'],
+          source_draft_id: 'default_straight_single_weapon',
+          config: input.config ?? DEFAULT_WEAPON_CONFIG
+        }
+      ]
+    }
   };
 }
 
