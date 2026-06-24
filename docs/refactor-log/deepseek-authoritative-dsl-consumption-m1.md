@@ -2,19 +2,20 @@
 
 ## 1. Status
 
-- current state: M0.5 scope ledger created; implementation remains not started.
-- current mode: M0.5_DOCS_ONLY_LEDGER_NO_COMMIT.
-- loop id: DEEPSEEK-AUTHORITATIVE-DSL-CONSUMPTION-M0.5.
+- current state: M1 implementation commit exists; M1 Oracle found a ledger-only Compatibility & Cutover blocker.
+- current mode: GOAL_DRIVEN_CONTINUOUS_LOOP_LEDGER_REPAIR_NO_PUSH.
+- loop id: DEEPSEEK-AUTHORITATIVE-DSL-CONSUMPTION-CONTINUOUS.
 - repository baseline:
-  - expected head: `3220c531321d62f2b8826f64a35019d690634f3f`
+  - expected head: `e24c808e1a7a385d23da30b67364ad403da314d2`
   - expected branch: `main`
   - expected worktree: clean
-  - expected ahead/behind: `0 1` for `origin/main...main`
-  - expected subject: `test(scene-ir): cover partial authored scene truncation`
-- implementation authorized: no.
-- commit authorized: no.
+  - expected ahead/behind: `0 2` for `origin/main...main`
+  - expected subject: `feat(game-dsl): define DeepSeek authoritative support profile`
+- implementation authorized: yes, for one dependency-ready capability gap at a time.
+- commit authorized: yes, after local validation and Oracle-reviewed exact diff.
 - production default cutover authorized: no.
-- next authorization gate: explicit M1 implementation prompt.
+- push authorized: no.
+- next authorization gate: continue the same loop after Oracle-reviewed clean checkpoint, or stop on a defined `BLOCKED_*` state.
 
 ## 2. Goal
 
@@ -272,14 +273,16 @@ Compatibility and cutover note:
 | 2026-06-25 | Target profile frozen as `DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1`. | M0.5 user authorization |
 | 2026-06-25 | M0.5 is no-code ledger work only; code, schema, runtime, tests, fixtures, DeepSeek calls, artifacts, stage, commit, and push remain forbidden. | M0.5 prompt |
 | 2026-06-25 | Next required authorization is explicit M1 implementation authorization. | M0.5 prompt |
+| 2026-06-25 | Continuous loop preflight accepted `e24c808e1a7a385d23da30b67364ad403da314d2` on `main` with clean worktree and `origin/main...main` at `0 2`; push remains forbidden. | `DEEPSEEK-AUTHORITATIVE-DSL-CONSUMPTION-CONTINUOUS` preflight |
+| 2026-06-25 | M1 Oracle review found no code-level P0/P2, but blocked M1 closure with P1 because `targetProfileSupport` changed the DSL consumption report field surface without an M1 `Compatibility & Cutover` record. | Oracle review `019efaa9-1473-74c0-aa55-1711d17ea6d3` |
 
 ## 15. Current Next Action
 
-REQUEST_EXPLICIT_COMMIT_REVIEWED_DIFF_AUTHORIZATION
+ORACLE_REVIEW_D0_DOCS_CHECKPOINT
 
 ## 16. M1 Support Vocabulary and Target Profile Contract
 
-- status: LOCAL_VALIDATION_PASSED_AWAITING_ORACLE
+- status: D0_DOCS_CHECKPOINT_ORACLE_PASSED_AWAITING_COMMIT
 - mode: IMPLEMENT_NO_COMMIT
 - objective: machine-freeze M0/M0.5 support vocabulary and `DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1` without implementing new gameplay capability.
 - implementation authorized: yes, for M1 only.
@@ -326,6 +329,25 @@ Consumption report:
 - The field lists target profile capability support dimensions, derived classification, complete_supported result, legacy-backed status, and missing evidence dimensions.
 - Existing raw DSL path consumption status semantics remain unchanged.
 
+M1 Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | `DslConsumptionReportSchema` adds optional field `targetProfileSupport`; `packages/game-dsl/src/deepseek-run-and-gun-validation-profile-v1.ts` adds the frozen target profile and support-summary producer; `packages/game-dsl/src/gameplay-capabilities/registry.ts` adds support-evidence derivation APIs. |
+| Consumer list | `buildDslConsumptionReport`, `DslConsumptionReportSchema`, `tests/contracts/deepseek-authoritative-dsl-support.test.ts`, `tests/contracts/dsl-consumption-report.test.ts`, `tests/contracts/scene-dsl.test.ts`, pipeline readers that parse `dsl_consumption_report.json` through `DslConsumptionReportSchema`. |
+| Compatibility type | `LOSSLESS_COMPATIBLE`: the new report field is optional and additive; existing `entries`, `summary`, `schemaVersion`, and raw DSL consumption status semantics are unchanged. |
+| Authority | `DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1` is the profile authority; `GameplayCapabilityRegistry` is the capability evidence authority; `targetProfileSupport` is derived evidence, not a manual support override. |
+| Legacy strategy | Legacy runtime-backed capabilities remain `CONDITIONAL_LEGACY_BACKED` unless all five support-evidence dimensions are true. Legacy fixed-template execution cannot count as authoritative DeepSeek validation success. |
+| Failure policy | Unknown, malformed, partial, or missing evidence dimensions derive to false; no status string can manually promote a capability to `complete_supported`. Missing consumer evidence keeps capabilities incomplete rather than falling back. |
+| Evidence | `tests/contracts/deepseek-authoritative-dsl-support.test.ts` asserts the fixed profile identity, zero `complete_supported`, missing dimensions, stable ordering, malformed-evidence fail-closed behavior, and `targetProfileSupport` consumption through `buildDslConsumptionReport`; existing DSL report tests still parse the additive field. |
+| Rollback | Reverting M1 removes only the optional report field, support-summary producer, and exports; previous DSL consumption report semantics remain valid because old consumers do not require `targetProfileSupport`. |
+
+Compatibility disposition:
+
+```ts
+const M1_TARGET_PROFILE_SUPPORT_DISPOSITION = "LOSSLESS_COMPATIBLE";
+```
+
 Validation commands and results:
 
 - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts`: pass, 1 file / 10 tests.
@@ -333,6 +355,7 @@ Validation commands and results:
 - `npx vitest run tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/generation-capability-runtime.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/scene-dsl.test.ts`: pass, 5 files / 28 tests.
 - `npm run typecheck:root`: pass.
 - `git diff --check`: pass.
+- `rg -n "M1 Compatibility & Cutover|targetProfileSupport.*LOSSLESS_COMPATIBLE|ORACLE_REVIEW_STATUS: FAIL" docs/refactor-log/deepseek-authoritative-dsl-consumption-m1.md`: initial docs-first failure, exit 1 before this repair.
 
 Diff fingerprint:
 
@@ -342,13 +365,53 @@ Diff fingerprint:
 
 Oracle review:
 
-- status: PENDING
-- findings: PENDING
+- status: FAIL
+- findings:
+  - P1: M1 added `targetProfileSupport` to DSL consumption report evidence without the repository-required M1 `Compatibility & Cutover` section.
+  - P3: ledger baseline drift was non-blocking but must be recorded; current HEAD is `e24c808e1a7a385d23da30b67364ad403da314d2`, branch `main`, worktree clean, `origin/main...main` is `0 2`.
 
 Blockers:
 
-- none currently known.
+- M1 closure remains blocked until this ledger-only repair passes local validation and Oracle review.
 
 Next authorization gate:
 
-- `REQUEST_EXPLICIT_COMMIT_REVIEWED_DIFF_AUTHORIZATION` if Oracle PASS and final fingerprint remains unchanged.
+- `AUTO_COMMIT_REVIEWED_DIFF_AUTHORIZED` for this ledger-only repair if local validation passes, Oracle PASS is received, changed files equal the file lock, and no push is performed.
+
+## 17. Continuous Loop Decomposition Checkpoint
+
+- iteration id: `CONTINUOUS-20260625-D0-DOCS-CHECKPOINT`
+- status: LOCAL_VALIDATION_PASSED_AWAITING_ORACLE
+- mode: DOCS_ONLY_NO_PUSH
+- objective: understand the continuous loop, split it into dependency-coherent capability-gap groups, and land the split in durable docs before new implementation begins.
+- plan document: `docs/plans/deepseek-authoritative-dsl-consumption-continuous-loop.md`
+- canonical ledger: `docs/refactor-log/deepseek-authoritative-dsl-consumption-m1.md`
+- affected clusters: M1 ledger repair plus planning for M2-M15; no production capability evidence changes.
+- file lock:
+  - `docs/refactor-log/deepseek-authoritative-dsl-consumption-m1.md`
+  - `docs/plans/deepseek-authoritative-dsl-consumption-continuous-loop.md`
+- acceptance assertions:
+  - M1 `Compatibility & Cutover` table exists and uses the fixed disposition vocabulary.
+  - Oracle P1 and current preflight facts are recorded.
+  - Continuous loop decomposition is documented before implementation resumes.
+  - The next implementation candidate is identified as M2 player action-state contract, but no production code is changed in D0.
+- expected failing docs check:
+  - `rg -n "M1 Compatibility & Cutover|targetProfileSupport.*LOSSLESS_COMPATIBLE|ORACLE_REVIEW_STATUS: FAIL" docs/refactor-log/deepseek-authoritative-dsl-consumption-m1.md` exited 1 before the repair.
+- validation plan:
+  - `rg -n "M1 Compatibility & Cutover|LOSSLESS_COMPATIBLE|Continuous Loop Decomposition Checkpoint|CONTINUOUS-M2-ACTION-STATE-CONTRACT-001" docs/refactor-log/deepseek-authoritative-dsl-consumption-m1.md docs/plans/deepseek-authoritative-dsl-consumption-continuous-loop.md`
+  - `git diff --check`
+  - changed-file trailing whitespace scan for the two Markdown files.
+- validation result:
+  - `rg -n "M1 Compatibility & Cutover|LOSSLESS_COMPATIBLE|Continuous Loop Decomposition Checkpoint|CONTINUOUS-M2-ACTION-STATE-CONTRACT-001" docs/refactor-log/deepseek-authoritative-dsl-consumption-m1.md docs/plans/deepseek-authoritative-dsl-consumption-continuous-loop.md`: pass.
+  - `git diff --check`: pass, no output.
+  - `git diff --name-only && git ls-files --others --exclude-standard`: changed files are exactly the file lock.
+  - `rg -n "[ \t]+$" docs/refactor-log/deepseek-authoritative-dsl-consumption-m1.md docs/plans/deepseek-authoritative-dsl-consumption-continuous-loop.md`: pass, no trailing whitespace matches.
+- Oracle review:
+  - first review: FAIL
+  - finding: P2, reviewed diff fingerprint omitted the untracked plan file because the first fingerprint used plain `git diff`.
+  - remediation: use a content-inclusive fingerprint that combines tracked ledger diff and a `git diff --no-index` patch for the untracked plan file, then submit Oracle re-review.
+  - second review: PASS
+  - reviewed fingerprint: `c3135509c53b59bd1a49bdb3c57c20825573dc207b616c3198b2192fe9f86469`
+  - remaining findings: P0/P1/P2 none; P3 only notes that cached diff checks should be rerun after precise staging.
+- commit policy: auto-commit only after Oracle PASS and staged files exactly match the file lock.
+- next action after commit: return to Phase A and freeze the first implementation iteration for M2 player action-state contract.
