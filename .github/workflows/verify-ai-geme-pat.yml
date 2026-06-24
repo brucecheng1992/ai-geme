@@ -1,0 +1,29 @@
+name: Verify AI_GEME_PAT
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Verify repository secret
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.AI_GEME_PAT }}
+        run: |
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::Repository Secret AI_GEME_PAT is missing or empty."
+            exit 1
+          fi
+
+          REPOSITORY_NAME="$(gh api "repos/${{ github.repository }}" --jq '.full_name')"
+          echo "Token successfully accessed repository: ${REPOSITORY_NAME}"
