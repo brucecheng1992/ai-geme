@@ -817,7 +817,7 @@ Next authorization gate:
 ## 22. Continuous M2 Damage Invulnerability Normalization 001
 
 - iteration id: `CONTINUOUS-M2-DAMAGE-INVULNERABILITY-NORMALIZATION-001`
-- status: ORACLE_PASSED_AWAITING_COMMIT
+- status: LOCAL_COMMITTED_NO_PUSH
 - mode: IMPLEMENT_NO_PUSH
 - capability gap: `health.damage_invulnerability.v1` is contract-seeded with `schema_expressible=true`, but still reports no normalization evidence for the authoritative draft/canonical DSL path.
 - affected requirement:
@@ -901,4 +901,106 @@ Next authorization gate:
   - findings: P0/P1/P2 none.
   - P3: ledger status still said `SCOPE_FROZEN_AWAITING_RED`; remediated by updating this iteration to `ORACLE_PASSED_AWAITING_COMMIT`.
   - residual caveat: this iteration proves authoritative draft to canonical normalization and support evidence alignment, not compiler/runtime/QA consumption; accepted because those dimensions remain false.
+- exact commit-gate Oracle review:
+  - status: PASS
+  - reviewed fingerprint: `0f1108f18c76ae745364b3e41d3715a6d5ec30df8eeaae149ffa22122f186ecb`
+  - findings: P0/P1/P2/P3 none.
+- commit:
+  - `a077ed69c3b01a1782e2df1b423f59b21fc78546`
+  - subject: `feat(game-dsl): normalize damage invulnerability config`
+  - push: not performed.
+- next action: return to Phase A and freeze the next dependency-ready gap from live target-profile support.
+
+## 23. Continuous M2 Damage Invulnerability Compiler 001
+
+- iteration id: `CONTINUOUS-M2-DAMAGE-INVULNERABILITY-COMPILER-001`
+- status: ORACLE_PASSED_AWAITING_COMMIT
+- mode: IMPLEMENT_NO_PUSH
+- capability gap: `health.damage_invulnerability.v1` has schema and normalization evidence, but no compiler evidence for projection into runtime-plan and runtime-manifest artifacts.
+- affected requirement:
+  - `R013`: Player becomes briefly invulnerable after damage.
+- affected cluster: `M2`
+- objective: prove canonical damage-invulnerability systems compile into capability runtime-plan/manifest artifacts and update support evidence only for the `compiled` dimension.
+- prerequisites:
+  - M2 damage-invulnerability normalization checkpoint committed as `a077ed69c3b01a1782e2df1b423f59b21fc78546`.
+  - Worktree clean before this iteration.
+- file lock:
+  - `packages/game-dsl/src/gameplay-capabilities/registry.ts`
+  - `tests/contracts/deepseek-authoritative-dsl-support.test.ts`
+  - `tests/contracts/canonical-capability-runtime-compiler.test.ts`
+  - `docs/refactor-log/deepseek-authoritative-dsl-consumption-m1.md`
+- acceptance assertions:
+  - A canonical DSL with `health.damage_invulnerability.v1` in the exact capability lock compiles successfully.
+  - The runtime plan includes a runtime system for damage invulnerability with its canonical config source ID and player applies-to binding.
+  - The runtime system manifest includes the damage-invulnerability capability ID as a compiler artifact.
+  - Target-profile support reports `compiled=true`.
+  - `runtime_consumed`, `qa_observed`, and `completeSupported` remain false.
+- expected failing tests:
+  - Update the DeepSeek support assertion for `health.damage_invulnerability.v1` to require compiler evidence while remaining runtime/QA incomplete.
+  - Add a focused compiler contract in `tests/contracts/canonical-capability-runtime-compiler.test.ts` for damage-invulnerability runtime-plan/manifest projection.
+- expected support-evidence change:
+  - `health.damage_invulnerability.v1`: `compiled=false` -> `compiled=true`.
+  - `runtime_consumed` and `qa_observed` remain false.
+- targeted tests:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/canonical-capability-runtime-compiler.test.ts`
+- regression tests:
+  - `npx vitest run tests/contracts/game-dsl-v0.2.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/dsl-consumption-report.test.ts`
+  - `npm run typecheck:root`
+  - `git diff --check`
+- stop conditions:
+  - Any need to edit outside the file lock.
+  - Any need to claim runtime module load, QA observation, or complete support.
+  - Any provider, production cutover, or fixed-template fallback change.
+- RED result:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/canonical-capability-runtime-compiler.test.ts`: failed, 1 failed / 23 passed.
+  - failure signature: `health.damage_invulnerability.v1` already had schema and normalization evidence, but still reported `compiled=false`.
+  - same RED run also proved the new compiler artifact projection test already passed, so the remaining gap was support evidence alignment with an existing compiler consumer.
+- implementation:
+  - `tests/contracts/canonical-capability-runtime-compiler.test.ts` adds a compiler contract proving canonical damage-invulnerability systems project into runtime-plan systems, capability IR config source IDs, and runtime-system manifest entries.
+  - `packages/game-dsl/src/gameplay-capabilities/registry.ts` promotes the health evidence constant to `contractCompilerEvidence` and applies `irCompiler=true` only to `health.damage_invulnerability.v1`.
+  - `tests/contracts/deepseek-authoritative-dsl-support.test.ts` now requires the health capability to expose `compiled=true` while keeping `runtime_consumed=false`, `qa_observed=false`, and `completeSupported=false`.
+  - No runtime module load, runtime loader readiness, QA probe, provider, production cutover, or fallback behavior changed.
+- support evidence:
+
+| capability id | registered | classification | schema_expressible | normalized | compiled | runtime_consumed | qa_observed | complete_supported |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `health.damage_invulnerability.v1` | true | `CONTRACT_SEEDED` | true | true | true | false | false | false |
+
+- target profile summary after implementation:
+  - requirements: 60
+  - clusters: 15
+  - required capabilities: 59
+  - registered capabilities: 12
+  - complete-supported capabilities: 0
+  - legacy-backed capabilities: 7
+- Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | `GameplayCapabilityRegistry` support evidence for `health.damage_invulnerability.v1` changes to include `compiled=true`; `tests/contracts/canonical-capability-runtime-compiler.test.ts` adds compiler artifact evidence for its canonical system. |
+| Consumer list | `compileCanonicalCapabilityDslToRuntimePlan` reads canonical damage-invulnerability systems and emits runtime-plan systems, capability IR runtime system configs, and runtime-system manifest entries; `buildDeepSeekRunAndGunValidationProfileSupportSummary` and `buildDslConsumptionReport` read the updated support evidence. |
+| Compatibility type | `LOSSLESS_COMPATIBLE` for canonical compiler artifacts because capability ID, source draft ID, applies-to entity ID, and manifest entry are preserved without rewriting semantics; runtime execution remains incomplete. |
+| Authority | `CanonicalGameDslV02Schema` is the canonical system authority; `compileCanonicalCapabilityDslToRuntimePlan` is the compiler evidence authority; `GameplayCapabilityRegistry` is the support-evidence authority. |
+| Legacy strategy | Legacy player-health behavior, runtime loader readiness, and template fallback are not used to claim compiler evidence. |
+| Failure policy | The capability keeps `completeSupported=false` and still reports missing `runtime_consumed` and `qa_observed`; any gate requiring complete support must continue to fail closed. |
+| Evidence | The new compiler test constructs a canonical DSL and exact capability lock containing the health capability ID, then asserts runtime-plan, capability IR, and runtime-system manifest artifacts include the expected damage-invulnerability system entry. |
+| Rollback | Reverting this iteration removes only the compiler evidence assertion and returns `compiled=false`; normalized canonical damage-invulnerability config support from the previous checkpoint remains intact. |
+
+- validation result:
+  - `npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/canonical-capability-runtime-compiler.test.ts`: pass, 2 files / 24 tests.
+  - `npx vitest run tests/contracts/game-dsl-v0.2.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/dsl-consumption-report.test.ts`: pass, 4 files / 25 tests.
+  - `npm run typecheck:root`: pass.
+  - `git diff --check`: pass.
+  - `git diff --name-only`: exactly the file lock.
+- Oracle review:
+  - status: FAIL
+  - reviewed fingerprint: `a81a60857bb2bbc94d11bfaff2175b428f533546c89981aececab2d4a3d9d8ac`
+  - P1: health compiler evidence was accidentally recorded under section 21 instead of this current section; remediated by moving the full evidence block into section 23.
+  - P2: DeepSeek support test title still said "without compiler"; remediated by renaming the test.
+- Oracle re-review:
+  - status: PASS
+  - reviewed fingerprint: `d9997ad2634bac2e70babf61078b283e29dbad57fcf1218590c47b936b952d25`
+  - findings: P0/P1/P2 none.
+  - P3: ledger status still said `SCOPE_FROZEN_AWAITING_RED`; remediated by updating this iteration to `ORACLE_PASSED_AWAITING_COMMIT`.
+  - residual caveat: compiler artifact projection is not runtime loader readiness or QA observation; accepted because `runtime_consumed`, `qa_observed`, and `completeSupported` remain false.
 - next action: precise staging, cached diff check, commit one reviewed diff without push.

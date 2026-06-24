@@ -154,6 +154,71 @@ describe('Canonical capability DSL runtime compiler', () => {
     );
   });
 
+  it('compiles M2 damage invulnerability canonical systems into runtime-plan and manifest artifacts', () => {
+    const fixture = createFixture();
+    const capabilityIds = [...fixture.capabilityLock.capabilityIds, 'health.damage_invulnerability.v1'].sort();
+    const capabilityLock = createCapabilityLock({ capabilityIds });
+    const canonicalDsl = {
+      ...fixture.canonicalDsl,
+      source: { ...fixture.canonicalDsl.source, capability_lock_hash: capabilityLock.lockHash },
+      capability_ids: capabilityIds,
+      entities: fixture.canonicalDsl.entities.map((entity) =>
+        entity.id === 'player'
+          ? {
+              ...entity,
+              capability_ids: [...new Set([...entity.capability_ids, 'health.damage_invulnerability.v1'])].sort()
+            }
+          : entity
+      ),
+      systems: [
+        ...fixture.canonicalDsl.systems,
+        {
+          id: 'config_damage_invulnerability_window',
+          capability_id: 'health.damage_invulnerability.v1',
+          source_kind: 'capability_config',
+          applies_to_entity_ids: ['player'],
+          source_draft_id: 'damage_invulnerability_window',
+          config: { trigger: 'player.damaged', duration_ms: 1200, ignores_damage_sources: ['enemy_projectile', 'hazard', 'enemy_contact'] }
+        }
+      ]
+    };
+    const result = compileCanonicalCapabilityDslToRuntimePlan({ canonicalDsl, capabilityLock });
+
+    expect(result.status).toBe('compiled');
+    if (result.status !== 'compiled') {
+      throw new Error('expected damage invulnerability compiler fixture to pass');
+    }
+
+    expect(result.runtimePlan.runtimeSystems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'system.health.damage_invulnerability.v1',
+          capabilityId: 'health.damage_invulnerability.v1',
+          configSourceIds: ['damage_invulnerability_window'],
+          appliesToEntityIds: ['player']
+        })
+      ])
+    );
+    expect(result.capabilityIr.runtimeSystemConfigs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'system.health.damage_invulnerability.v1',
+          capabilityId: 'health.damage_invulnerability.v1',
+          config: expect.objectContaining({ systemSourceIds: ['config_damage_invulnerability_window'] })
+        })
+      ])
+    );
+    expect(result.runtimeSystemManifest.systems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'system.health.damage_invulnerability.v1',
+          capabilityId: 'health.damage_invulnerability.v1',
+          authoritativeConfig: 'capability_ir'
+        })
+      ])
+    );
+  });
+
   it('fails closed when exact lock hash or profile binding drifts', () => {
     const fixture = createFixture();
     const staleLock = compileCanonicalCapabilityDslToRuntimePlan({
