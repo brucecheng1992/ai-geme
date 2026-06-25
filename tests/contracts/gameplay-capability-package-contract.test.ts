@@ -86,6 +86,16 @@ import {
 import {
   HEALTH_DAMAGE_INVULNERABILITY_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/health-damage-invulnerability-runtime-module.js';
+import {
+  PICKUP_COLLECTIBLE_PACKAGE_REQUIRED_EVIDENCE_ID,
+  PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+  createPickupCollectiblePackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/pickup-collectible-package.js';
+import {
+  PICKUP_COLLECTIBLE_COLLECTED_EVENT_TYPE,
+  PICKUP_COLLECTIBLE_RUNTIME_SYSTEM_ID,
+  PICKUP_COLLECTIBLE_STATE_CHANGED_EVENT_TYPE
+} from '../../packages/game-dsl/src/gameplay-capabilities/pickup-collectible-runtime-module.js';
 
 describe('Gameplay capability package contract', () => {
   it('accepts a complete supported package and keeps hashes deterministic', () => {
@@ -383,6 +393,51 @@ describe('Gameplay capability package contract', () => {
         expect.objectContaining({
           id: 'health.damage_invulnerability.v1.window.browser_qa.v1.assertion.damage_blocked',
           observationId: 'health.damage_invulnerability.v1.window.browser_qa.v1.observation.damage_blocked'
+        })
+      ])
+    });
+  });
+
+  it('accepts the pickup collectible package-owned QA contract', () => {
+    const contract = createPickupCollectiblePackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'pickup.collectible.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([PICKUP_COLLECTIBLE_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: PICKUP_COLLECTIBLE_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'pickup.collectible.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: PICKUP_COLLECTIBLE_COLLECTED_EVENT_TYPE,
+          parameters: expect.objectContaining({ action: 'collect', pickupCollected: true, pickupConsumed: true, pickupStateChanged: true })
+        })
+      ],
+      observations: expect.arrayContaining([
+        expect.objectContaining({ runtimeSystemId: PICKUP_COLLECTIBLE_RUNTIME_SYSTEM_ID, ref: PICKUP_COLLECTIBLE_COLLECTED_EVENT_TYPE }),
+        expect.objectContaining({ runtimeSystemId: PICKUP_COLLECTIBLE_RUNTIME_SYSTEM_ID, ref: PICKUP_COLLECTIBLE_STATE_CHANGED_EVENT_TYPE })
+      ]),
+      assertions: expect.arrayContaining([
+        expect.objectContaining({
+          id: 'pickup.collectible.v1.collection.browser_qa.v1.assertion.collected',
+          expected: { pickupCollected: true }
+        }),
+        expect.objectContaining({
+          id: 'pickup.collectible.v1.collection.browser_qa.v1.assertion.state_changed',
+          expected: { pickupConsumed: true, pickupStateChanged: true }
         })
       ])
     });

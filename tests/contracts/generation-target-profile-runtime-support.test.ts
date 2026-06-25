@@ -12,6 +12,7 @@ import {
   MOVEMENT_CROUCH_HEIGHT_SCALE,
   MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
   MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID,
+  PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
   buildCapabilityQaProbeResultsFromRuntimeEvidence,
   buildCapabilityRuntimeQaPlan,
@@ -25,6 +26,7 @@ import {
   createHealthPlayerHealthPointsPackageContract,
   createMovementCrouchPackageContract,
   createMovementRunJumpPackageContract,
+  createPickupCollectiblePackageContract,
   createSpawnStaticPackageContract,
   evaluateCapabilityQaReport,
   resolveGameplayCapabilityGraph
@@ -40,6 +42,7 @@ const movementCapabilityId = 'movement.run_jump.v1';
 const spawnStaticCapabilityId = 'spawn.static.v1';
 const damageInvulnerabilityCapabilityId = 'health.damage_invulnerability.v1';
 const healthCapabilityId = 'health.player_health_points.v1';
+const pickupCapabilityId = 'pickup.collectible.v1';
 
 describe('Step 37 target profile runtime support overlay', () => {
   it('records runtime-observed support without mutating static completeSupported evidence', () => {
@@ -51,6 +54,8 @@ describe('Step 37 target profile runtime support overlay', () => {
       'projectile.spawned',
       'movement.crouch.entered',
       'player.jumped',
+      'pickup.collectible.collected',
+      'pickup.collectible.state_changed',
       'spawn.static.triggered',
       'health.damage_invulnerability.activated',
       'health.damage_invulnerability.blocked',
@@ -69,6 +74,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     const spawnStatic = report.capabilities.find((entry) => entry.capabilityId === spawnStaticCapabilityId);
     const damageInvulnerability = report.capabilities.find((entry) => entry.capabilityId === damageInvulnerabilityCapabilityId);
     const health = report.capabilities.find((entry) => entry.capabilityId === healthCapabilityId);
+    const pickup = report.capabilities.find((entry) => entry.capabilityId === pickupCapabilityId);
 
     expect(GenerationTargetProfileRuntimeSupportReportSchema.parse(report)).toEqual(report);
     expect(report).toMatchObject({
@@ -77,7 +83,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 10,
+      observedCompleteSupportedCount: 11,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
@@ -89,10 +95,11 @@ describe('Step 37 target profile runtime support overlay', () => {
         healthCapabilityId,
         crouchCapabilityId,
         movementCapabilityId,
+        pickupCapabilityId,
         spawnStaticCapabilityId,
         defaultWeaponCapabilityId
       ],
-      blockers: ['target_profile_runtime_support_incomplete:10/59']
+      blockers: ['target_profile_runtime_support_incomplete:11/59']
     });
     expect(camera).toMatchObject({
       capabilityId: cameraCapabilityId,
@@ -204,6 +211,17 @@ describe('Step 37 target profile runtime support overlay', () => {
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
     });
+    expect(pickup).toMatchObject({
+      capabilityId: pickupCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
   });
 
   it('keeps runtime support blocked when the required package QA assertion is missing', () => {
@@ -242,6 +260,8 @@ describe('Step 37 target profile runtime support overlay', () => {
       'projectile.spawned',
       'movement.crouch.entered',
       'player.jumped',
+      'pickup.collectible.collected',
+      'pickup.collectible.state_changed',
       'spawn.static.triggered',
       'health.damage_invulnerability.blocked',
       'health.player_health.current'
@@ -268,7 +288,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 9,
+      observedCompleteSupportedCount: 10,
       targetProfileCompleteSupported: false,
       observedCapabilityIds: [
         cameraCapabilityId,
@@ -278,12 +298,13 @@ describe('Step 37 target profile runtime support overlay', () => {
         healthCapabilityId,
         crouchCapabilityId,
         movementCapabilityId,
+        pickupCapabilityId,
         spawnStaticCapabilityId,
         defaultWeaponCapabilityId
       ],
       blockers: [
         `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:9/59'
+        'target_profile_runtime_support_incomplete:10/59'
       ]
     });
     expect(damageInvulnerability).toMatchObject({
@@ -291,6 +312,63 @@ describe('Step 37 target profile runtime support overlay', () => {
       observedCompleteSupported: false,
       verifiedRequiredProbeIds: [],
       missingRequiredProbeIds: [HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+  });
+
+  it('keeps pickup collectible unverified when collection events lack state evidence', () => {
+    const capabilityQaReport = buildDefaultWeaponQaReport(
+      [
+        'camera.side_follow.active',
+        'collision.platform.grounded',
+        'combat.airborne_fire.fired',
+        'player.fired',
+        'projectile.spawned',
+        'movement.crouch.entered',
+        'player.jumped',
+        'pickup.collectible.collected',
+        'pickup.collectible.state_changed',
+        'spawn.static.triggered',
+        'health.damage_invulnerability.activated',
+        'health.damage_invulnerability.blocked',
+        'health.player_health.current'
+      ],
+      { pickupStateFields: false }
+    );
+    const report = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260625_target_runtime_support',
+      runId: 'run_20260625_pickup_missing_state',
+      capabilityQaReport
+    });
+    const pickup = report.capabilities.find((entry) => entry.capabilityId === pickupCapabilityId);
+
+    expect(capabilityQaReport.requiredResults.find((entry) => entry.probeId === PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: 'pickup.collectible.v1.collection.browser_qa.v1.assertion.collected',
+          status: 'failed'
+        }),
+        expect.objectContaining({
+          assertionId: 'pickup.collectible.v1.collection.browser_qa.v1.assertion.state_changed',
+          status: 'failed'
+        })
+      ])
+    });
+    expect(report).toMatchObject({
+      status: 'blocked_incomplete_target_profile',
+      observedCompleteSupportedCount: 10,
+      targetProfileCompleteSupported: false,
+      blockers: [
+        `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
+        'target_profile_runtime_support_incomplete:10/59'
+      ]
+    });
+    expect(pickup).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID],
       observedEvidenceDimensions: { qa_observed: false }
     });
   });
@@ -305,13 +383,14 @@ describe('Step 37 target profile runtime support overlay', () => {
       `capability_qa_report_missing_required_probe:${HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${MOVEMENT_CROUCH_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${SPAWN_STATIC_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID}`
     ]);
   });
 });
 
-function buildDefaultWeaponQaReport(eventTypes: readonly string[]) {
+function buildDefaultWeaponQaReport(eventTypes: readonly string[], options: { pickupStateFields?: boolean } = {}) {
   const { plan } = buildDefaultWeaponQaPlan();
   const observed = [
     ...(eventTypes.includes('camera.side_follow.active')
@@ -407,6 +486,26 @@ function buildDefaultWeaponQaReport(eventTypes: readonly string[]) {
           }
         ]
       : []),
+    ...(eventTypes.includes('pickup.collectible.collected')
+      ? [
+          {
+            capabilityId: pickupCapabilityId,
+            probeId: PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+            action: 'collect',
+            eventType: 'pickup.collectible.collected',
+            eventTypes,
+            ...(options.pickupStateFields === false
+              ? {}
+              : {
+                  pickupCollected: true,
+                  pickupConsumed: true,
+                  pickupStateChanged: true
+                }),
+            status: 'observed' as const,
+            sourceRef: 'qa_report.capability_runtime'
+          }
+        ]
+      : []),
     ...(eventTypes.includes('player.jumped')
       ? [
           {
@@ -474,6 +573,7 @@ function buildDefaultWeaponQaPlan() {
     createCombatProjectilePackageContract(),
     createMovementCrouchPackageContract(),
     createHealthDamageInvulnerabilityPackageContract(),
+    createPickupCollectiblePackageContract(),
     createMovementRunJumpPackageContract(),
     createSpawnStaticPackageContract(),
     createHealthPlayerHealthPointsPackageContract()
@@ -487,6 +587,7 @@ function buildDefaultWeaponQaPlan() {
       projectileCapabilityId,
       crouchCapabilityId,
       damageInvulnerabilityCapabilityId,
+      pickupCapabilityId,
       movementCapabilityId,
       spawnStaticCapabilityId,
       healthCapabilityId

@@ -3641,3 +3641,151 @@ parent_loop:
 ```
 
 Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `parent_loop_missing_checkpoint_fail_closed_guardrail`; Stage 4 remains running, Step37 remains running, global exit conditions remain false, and Parent Loop Driver must continue with `Stage 4 pickup.collectible package-owned QA slice implementation atomic step`.
+
+## Stage 4 Closure Implementation — pickup.collectible.v1 Package-Owned QA Slice
+
+- checkpoint_id: `stage4_pickup_collectible_package_owned_qa_implementation`.
+- record_type: `candidate_closure_implementation`.
+- implementation_status: `complete`.
+- local_validation_status: `passed`.
+- candidate_status: `ready_for_commit`.
+- oracle_status: `not_submitted`.
+- closure_status: `not_closed`.
+- closure_scope: `atomic_step`.
+- parent_loop_id: `step37`.
+- parent_loop_status: `running`.
+- global_exit_conditions_met: `false`.
+- user_input_required: `false`.
+- next_action: `CONTINUE_PARENT_LOOP`.
+- next_atomic_step: `Stage 4 next unmet package-owned QA checkpoint after pickup.collectible.v1`.
+- scope: Stage 4 `pickup.collectible.v1` package-owned QA implementation only; no Stage 5 exact lock, production default cutover, legacy authoritative path exit, weapon pickup effect promotion, or historical candidate/receipt rewrite is introduced.
+
+Purpose:
+
+- Promote `pickup.collectible.v1` from conditional legacy-backed registry evidence into a side-scrolling package-owned QA slice without static `completeSupported` promotion.
+- Require QA evidence to prove both the collection action and the resulting runtime state: `pickupCollected=true`, `pickupConsumed=true`, and `pickupStateChanged=true`.
+- Preserve weapon effects as separate capabilities; this checkpoint does not close `weapon.spread_shot.v1`, `weapon.rapid_fire.v1`, `weapon.replacement_rule.v1`, or `weapon.death_reset.v1`.
+
+Actual modified paths:
+
+```text
+apps/maker-api/src/projects/generation-pipeline.service.ts
+apps/maker-api/src/qa/playwright-browser-runner.ts
+apps/maker-api/src/qa/qa.types.ts
+packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts
+packages/game-dsl/src/gameplay-capabilities/index.ts
+packages/game-dsl/src/gameplay-capabilities/pickup-collectible-package.ts
+packages/game-dsl/src/gameplay-capabilities/pickup-collectible-runtime-module.ts
+packages/game-dsl/src/gameplay-capabilities/registry.ts
+packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts
+templates/phaser/side_scrolling_run_and_gun/src/GameScene.ts
+tests/contracts/gameplay-capability-package-contract.test.ts
+tests/contracts/gameplay-capability-qa-probes.test.ts
+tests/contracts/gameplay-capability-registry.test.ts
+tests/contracts/generation-target-profile-runtime-support.test.ts
+tests/contracts/phaser-templates.test.ts
+tests/workspace/generation-pipeline.service.test.ts
+tests/workspace/playwright-qa-runner.test.ts
+```
+
+Evidence / probe chain:
+
+```text
+package_contract=createPickupCollectiblePackageContract()
+capability_id=pickup.collectible.v1
+required_probe_id=pickup.collectible.v1.collection.browser_qa.v1
+runtime_system=pickup.collectible
+runtime_events=pickup.collectible.collected,pickup.collectible.state_changed
+required_state_fields=pickupCollected,pickupConsumed,pickupStateChanged
+producer=templates/phaser/side_scrolling_run_and_gun/src/GameScene.ts
+reader=apps/maker-api/src/qa/playwright-browser-runner.ts
+qa_plan_consumer=apps/maker-api/src/projects/generation-pipeline.service.ts
+overlay_consumer=buildGenerationTargetProfileRuntimeSupportReport()
+static_completeSupported=false
+same_run_observed_overlay=true
+```
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds `pickup.collectible.v1` package contract, runtime module constants, required probe, two runtime telemetry event types, and pickup runtime state fields. |
+| Consumer list | `GameplayCapabilityRegistry`, capability QA plan/report builders, side-scrolling template runtime, Playwright capability runtime evidence reader, generation pipeline QA expectation, target-profile runtime support overlay, and focused contract/workspace tests. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`, resolved in this checkpoint by wiring the package contract, template runtime producer, QA reader, and overlay consumer in the same implementation slice. |
+| Authority | `pickup.collectible.v1` package contract plus same-run capability runtime QA evidence. |
+| Legacy strategy | Existing `collectibles` legacy alias remains registry evidence only; static support stays incomplete until same-run QA observes the required probe. |
+| Failure policy | Missing, stale, wrong-run, event-only, or state-field-incomplete evidence fails closed through required probe failure and target-profile runtime support blockers. |
+| Evidence | Focused contracts and workspace tests verify package contract, registry support evidence, real Playwright QA reader field retention, template runtime telemetry, QA report, and overlay behavior. |
+| Rollback | Revert this checkpoint to remove the package-owned pickup QA probe without rewriting existing legacy pickup semantics or weapon capability state. |
+
+Current validation state:
+
+```text
+npx vitest run tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/generation-pipeline.service.test.ts
+exitCode=0
+duration=48.67s
+result=PASS: 8 focused files and 218 tests passed after this closure candidate record was appended.
+
+npm run test:contracts
+exitCode=0
+duration=7.73s
+result=PASS: 96 contract files and 1119 tests passed.
+
+npm test
+exitCode=0
+duration=contracts 8.05s plus workspace 49.17s
+result=PASS: 96 contract files / 1119 tests and 34 workspace files / 409 tests passed.
+
+npm run typecheck
+exitCode=0
+duration=6.18s
+result=PASS: root, maker-api, and maker-workbench TypeScript checks passed.
+
+git diff --check
+exitCode=0
+result=PASS: no whitespace or patch format errors.
+
+git status --short && git diff --stat && git diff --name-status && git ls-files --others --exclude-standard
+exitCode=0
+result=PASS: diff range is limited to the listed Stage 4 pickup implementation, tests, and this closure candidate record.
+
+Skill bundle freshness
+exitCode=0
+skill_revision_type=sha256_bundle
+skill_bundle_roots=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery
+skill_bundle_manifest=/tmp/step37_skill_manifest.tsv
+skill_bundle_digest=be625c8c69d3fffb983dea5c40ee1cae584e2b5b0f7b82dce4338c9bcf744d78
+```
+
+Unresolved items before candidate commit:
+
+```text
+candidate commit not created yet
+Oracle review not submitted
+receipt commit not created
+```
+
+Scoped closure output:
+
+```yaml
+closure_scope: atomic_step
+atomic_step:
+  id: stage4_pickup_collectible_package_owned_qa_implementation
+  status: candidate_ready
+  candidate_commit: not_created
+  receipt_commit: not_created
+  oracle_status: not_submitted
+parent_stage:
+  id: stage4
+  status: running
+  exit_conditions_met: false
+parent_loop:
+  id: step37
+  status: running
+  global_exit_conditions_met: false
+  user_input_required: false
+  next_action: CONTINUE_PARENT_LOOP
+  next_atomic_step: Stage 4 next unmet package-owned QA checkpoint after pickup.collectible.v1
+```
+
+Exit assessment: `CANDIDATE_READY_NOT_CLOSED`. Local validation has passed for the current pickup implementation tree, but this atomic step is not closed until an immutable candidate commit is created, Oracle approves that candidate revision, a receipt-only commit records the approved result, and post-receipt checks pass. Stage 4 remains running, Step37 remains running, and global exit conditions remain false.

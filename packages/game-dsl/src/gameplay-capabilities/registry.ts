@@ -41,6 +41,10 @@ import {
   HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID,
   createHealthDamageInvulnerabilityPackageContract
 } from './health-damage-invulnerability-package.js';
+import {
+  PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+  createPickupCollectiblePackageContract
+} from './pickup-collectible-package.js';
 import { validateGameplayCapabilityPackage } from './package-contract.js';
 import { hashStableJson } from './stable-json.js';
 
@@ -480,6 +484,19 @@ const healthDamageInvulnerabilityPackageEvidence: GameplayCapabilityEvidence = h
 const healthDamageInvulnerabilityPackageQa: GameplayCapabilityQaEvidence = healthDamageInvulnerabilityPackageReport.supportEligible
   ? { requiredProbeIds: [HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const pickupCollectiblePackageReport = validateGameplayCapabilityPackage(createPickupCollectiblePackageContract());
+const pickupCollectiblePackageEvidence: GameplayCapabilityEvidence = pickupCollectiblePackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const pickupCollectiblePackageQa: GameplayCapabilityQaEvidence = pickupCollectiblePackageReport.supportEligible
+  ? { requiredProbeIds: [PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 
 const contractCompilerEvidence: GameplayCapabilityEvidence = {
   ...contractSeedEvidence,
@@ -497,7 +514,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
   runtimeBacked('movement.eight_direction.v1', 'movement', 'Eight-direction movement', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], [
     'eight_direction_movement'
   ]),
-  runtimeBacked('pickup.collectible.v1', 'pickup', 'Collectible pickup', [topDownActionArcade, phaser2dActionArcade], ['collector.v1', 'dodger.v1'], ['collectibles']),
+  runtimeBacked(
+    'pickup.collectible.v1',
+    'pickup',
+    'Collectible pickup',
+    [topDownActionArcade, phaser2dActionArcade],
+    ['collector.v1', 'dodger.v1'],
+    ['collectibles'],
+    pickupCollectiblePackageEvidence,
+    pickupCollectiblePackageQa
+  ),
   runtimeBacked('hazard.contact_damage.v1', 'hazard', 'Contact hazard damage', [topDownActionArcade], ['dodger.v1'], ['hazards']),
   contractSeeded('metadata.fixed_prompt_binding.v1', 'metadata', 'Fixed prompt metadata binding', [phaser2dActionArcade], [
     'side_scrolling_run_and_gun.v1'
@@ -860,9 +886,11 @@ function runtimeBacked(
   label: string,
   runtimeFamilies: string[],
   profiles: string[],
-  legacyRuntimeCapabilities: string[]
+  legacyRuntimeCapabilities: string[],
+  evidence: GameplayCapabilityEvidence = legacyRuntimeEvidence,
+  qa: GameplayCapabilityQaEvidence = noVerifiedQa
 ): GameplayCapabilityDescriptor {
-  return descriptor({ id, domain, label, runtimeFamilies, profiles, legacyRuntimeCapabilities, status: 'runtime_backed', evidence: legacyRuntimeEvidence });
+  return descriptor({ id, domain, label, runtimeFamilies, profiles, legacyRuntimeCapabilities, status: 'runtime_backed', evidence, qa });
 }
 
 function contractSeeded(

@@ -109,11 +109,15 @@ type SideScrollingTemplateSnapshot = TemplateSnapshot & {
       maxHealth?: number;
       projectileEntityId?: string;
       projectileId?: string;
+      pickupCollected?: boolean;
+      pickupConsumed?: boolean;
+      pickupStateChanged?: boolean;
       sourceRef: string;
       status: 'observed';
     }>;
   };
   enemies: Array<{ id: string; entityId: string; x: number; y: number; health: number; cleared: boolean }>;
+  pickups: Array<{ id: string; kind: string; x: number; y: number; active: boolean }>;
   projectiles: Array<{ id: string; owner: string; x: number; y: number; sourceId?: string; capabilityId?: string; probeId?: string }>;
   waves: Array<{ id: string; triggered: boolean }>;
 };
@@ -1148,7 +1152,11 @@ describe('Phaser templates', () => {
     const { SideScrollingRunAndGunScene } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/GameScene.js');
     const { defaultSideScrollingRuntimeSlice } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/side-scrolling-runtime-plan.js');
     const { defaultSideScrollingParams } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/template-params.js');
-    const scene = new SideScrollingRunAndGunScene(defaultSideScrollingParams, { side_scrolling: defaultSideScrollingRuntimeSlice });
+    const plan = {
+      ...defaultSideScrollingRuntimeSlice,
+      pickups: [{ id: 'qa_pickup', kind: 'score' as const, x: 620, y: 450 }]
+    };
+    const scene = new SideScrollingRunAndGunScene(defaultSideScrollingParams, { side_scrolling: plan });
 
     scene.create();
     scene.start();
@@ -1270,11 +1278,26 @@ describe('Phaser templates', () => {
       sourceRef: 'runtime_plan.side_scrolling.player.damageInvulnerability',
       status: 'observed'
     };
+    const expectedPickupProbe = {
+      capabilityId: 'pickup.collectible.v1',
+      probeId: 'pickup.collectible.v1.collection.browser_qa.v1',
+      runtimeModuleId: 'pickup.collectible',
+      action: 'collect',
+      eventType: 'pickup.collectible.collected',
+      eventTypes: ['pickup.collectible.collected', 'pickup.collectible.state_changed'],
+      pickupCollected: true,
+      pickupConsumed: true,
+      pickupStateChanged: true,
+      sourceRef: 'runtime_plan.side_scrolling.pickups',
+      status: 'observed'
+    };
     const snapshot = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
     const telemetry = globalThis.__GAME_QA__?.telemetry() ?? [];
     const jumpedEvent = telemetry.find((event) => event.type === 'player.jumped');
     const crouchedEvent = telemetry.find((event) => event.type === 'movement.crouch.entered');
     const firedEvent = telemetry.find((event) => event.type === 'player.fired');
+    const pickupCollectedEvent = telemetry.find((event) => event.type === 'pickup.collectible.collected');
+    const pickupStateChangedEvent = telemetry.find((event) => event.type === 'pickup.collectible.state_changed');
     const projectileEvent = telemetry.find(
       (event) => event.type === 'projectile.spawned' && Array.isArray((event.payload as { capabilityRuntimeProbes?: unknown } | undefined)?.capabilityRuntimeProbes)
     );
@@ -1282,6 +1305,8 @@ describe('Phaser templates', () => {
     expect(crouchedEvent?.payload?.capabilityRuntime).toMatchObject(expectedCrouchProbe);
     expect(jumpedEvent?.payload?.capabilityRuntime).toMatchObject(expectedMovementProbe);
     expect(firedEvent?.payload?.capabilityRuntime).toMatchObject(expectedWeaponProbe);
+    expect(pickupCollectedEvent?.payload?.capabilityRuntime).toMatchObject(expectedPickupProbe);
+    expect(pickupStateChangedEvent?.payload?.capabilityRuntime).toMatchObject(expectedPickupProbe);
     expect(projectileEvent?.payload?.capabilityRuntime).toMatchObject(expectedWeaponProbe);
     expect(projectileEvent?.payload?.capabilityRuntimeProbes).toEqual(
       expect.arrayContaining([
@@ -1300,13 +1325,15 @@ describe('Phaser templates', () => {
         expect.objectContaining(expectedDamageInvulnerabilityProbe),
         expect.objectContaining(expectedHealthProbe),
         expect.objectContaining(expectedMovementProbe),
+        expect.objectContaining(expectedPickupProbe),
         expect.objectContaining(expectedSpawnStaticProbe),
         expect.objectContaining(expectedProjectileProbe),
         expect.objectContaining(expectedWeaponProbe)
       ])
     });
-    expect(snapshot?.capabilityRuntime?.probes).toHaveLength(10);
+    expect(snapshot?.capabilityRuntime?.probes).toHaveLength(11);
     expect(snapshot?.player).toMatchObject({ crouching: true, height: 32.48, standingHeight: 56, heightScale: 0.58 });
+    expect(snapshot?.pickups).toEqual([expect.objectContaining({ id: 'qa_pickup', active: false })]);
     const observedHealthProbe = snapshot?.capabilityRuntime?.probes.find((probe) => probe.probeId === 'health.player_health_points.v1.current.browser_qa.v1');
     expect(observedHealthProbe?.health).toBe(snapshot?.health);
     expect(observedHealthProbe?.maxHealth).toBe(3);

@@ -392,6 +392,102 @@ describe('Capability-owned runtime QA probes', () => {
       expect.objectContaining({ assertionId: `${probeId}.assertion.projectile_spawned`, status: 'failed' })
     ]);
   });
+
+  it('does not verify pickup collectible when event evidence lacks collection state fields', () => {
+    const capabilityId = 'pickup.collectible.v1';
+    const probeId = 'pickup.collectible.v1.collection.browser_qa.v1';
+    const packages = [
+      createPackage(capabilityId, {
+        probes: [
+          {
+            ...createRuntimeEventProbe(probeId, capabilityId, `${capabilityId}.system`, ['pickup.collectible.collected', 'pickup.collectible.state_changed']),
+            assertions: [
+              {
+                id: `${probeId}.assertion.collected`,
+                observationId: `${probeId}.observation.pickup_collectible_collected`,
+                comparator: 'exists',
+                expected: { pickupCollected: true },
+                message: 'pickup collected'
+              },
+              {
+                id: `${probeId}.assertion.state_changed`,
+                observationId: `${probeId}.observation.pickup_collectible_state_changed`,
+                comparator: 'exists',
+                expected: { pickupConsumed: true, pickupStateChanged: true },
+                message: 'pickup consumed and state changed'
+              }
+            ]
+          }
+        ]
+      })
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'collect',
+              eventType: 'pickup.collectible.collected',
+              eventTypes: ['pickup.collectible.collected', 'pickup.collectible.state_changed'],
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'collect',
+              eventType: 'pickup.collectible.collected',
+              eventTypes: ['pickup.collectible.collected', 'pickup.collectible.state_changed'],
+              pickupCollected: true,
+              pickupConsumed: true,
+              pickupStateChanged: true,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingState.status).toBe('failed');
+    expect(missingState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingState.requiredResults[0]?.assertionResults).toEqual([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.collected`,
+        status: 'failed',
+        message: expect.stringContaining('expected pickupCollected=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.state_changed`,
+        status: 'failed',
+        message: expect.stringContaining('expected pickupConsumed=true, observed <missing>')
+      })
+    ]);
+    expect(observedState.status).toBe('passed');
+  });
 });
 
 function createLock(packages: readonly GameplayCapabilityPackageContract[], requestedCapabilities: readonly string[]) {

@@ -112,8 +112,15 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   action: string;
   eventType: string;
   eventTypes?: readonly string[];
+  airborne?: boolean;
   crouching?: boolean;
   heightScale?: number;
+  invulnerable?: boolean;
+  damagePrevented?: boolean;
+  projectileEntityId?: string;
+  pickupCollected?: boolean;
+  pickupConsumed?: boolean;
+  pickupStateChanged?: boolean;
   status?: string;
   sourceRef?: string;
 };
@@ -294,11 +301,13 @@ function buildProbeResultFromRuntimeEvidence(probe: CapabilityQaPlanProbe, obser
   const assertionResults = probe.assertions.map((assertion) => {
     const observation = observationsById.get(assertion.observationId);
     const unsupportedComparator = assertion.comparator !== 'exists';
+    const expectedFieldMismatches = compareRuntimeEvidenceExpectedFields(assertion.expected, observed);
     const passed =
       probeMismatches.length === 0 &&
       observation !== undefined &&
       !unsupportedComparator &&
-      eventTypes.has(observation.ref);
+      eventTypes.has(observation.ref) &&
+      expectedFieldMismatches.length === 0;
     return {
       assertionId: assertion.id,
       status: passed ? ('passed' as const) : ('failed' as const),
@@ -310,7 +319,8 @@ function buildProbeResultFromRuntimeEvidence(probe: CapabilityQaPlanProbe, obser
               observationRef: observation?.ref,
               observedEventTypes: [...eventTypes].sort(),
               probeMismatches,
-              unsupportedComparator
+              unsupportedComparator,
+              expectedFieldMismatches
             })
           })
     };
@@ -332,13 +342,61 @@ function buildRuntimeEvidenceAssertionFailureMessage(input: {
   observedEventTypes: readonly string[];
   probeMismatches: readonly string[];
   unsupportedComparator: boolean;
+  expectedFieldMismatches: readonly string[];
 }): string {
   const reasons = [
     ...(input.observationRef === undefined ? ['observation descriptor missing'] : [`observation ${input.observationRef} not observed`]),
     ...(input.unsupportedComparator ? ['only exists assertions can be derived from runtime event evidence'] : []),
+    ...input.expectedFieldMismatches,
     ...input.probeMismatches
   ];
   return `Runtime evidence did not satisfy assertion ${input.assertionId}: ${reasons.join('; ')}; observed events: ${input.observedEventTypes.join(', ') || '<none>'}.`;
+}
+
+function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: CapabilityRuntimeObservedProbeEvidence): string[] {
+  if (!isRecord(expected)) {
+    return [];
+  }
+
+  return [
+    ...compareExpectedBooleanField('airborne', expected, observed.airborne),
+    ...compareExpectedBooleanField('crouching', expected, observed.crouching),
+    ...compareExpectedNumberField('heightScale', expected, observed.heightScale),
+    ...compareExpectedBooleanField('invulnerable', expected, observed.invulnerable),
+    ...compareExpectedBooleanField('damagePrevented', expected, observed.damagePrevented),
+    ...compareExpectedStringField('projectileEntityId', expected, observed.projectileEntityId),
+    ...compareExpectedBooleanField('pickupCollected', expected, observed.pickupCollected),
+    ...compareExpectedBooleanField('pickupConsumed', expected, observed.pickupConsumed),
+    ...compareExpectedBooleanField('pickupStateChanged', expected, observed.pickupStateChanged)
+  ];
+}
+
+function compareExpectedBooleanField(field: string, expected: Readonly<Record<string, unknown>>, observed: boolean | undefined): string[] {
+  const expectedValue = expected[field];
+  if (typeof expectedValue !== 'boolean') {
+    return [];
+  }
+  return observed === expectedValue ? [] : [`expected ${field}=${expectedValue}, observed ${observed === undefined ? '<missing>' : String(observed)}`];
+}
+
+function compareExpectedNumberField(field: string, expected: Readonly<Record<string, unknown>>, observed: number | undefined): string[] {
+  const expectedValue = expected[field];
+  if (typeof expectedValue !== 'number') {
+    return [];
+  }
+  return observed === expectedValue ? [] : [`expected ${field}=${expectedValue}, observed ${observed === undefined ? '<missing>' : String(observed)}`];
+}
+
+function compareExpectedStringField(field: string, expected: Readonly<Record<string, unknown>>, observed: string | undefined): string[] {
+  const expectedValue = expected[field];
+  if (typeof expectedValue !== 'string') {
+    return [];
+  }
+  return observed === expectedValue ? [] : [`expected ${field}=${expectedValue}, observed ${observed ?? '<missing>'}`];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export function buildProfileAcceptanceReport(input: {

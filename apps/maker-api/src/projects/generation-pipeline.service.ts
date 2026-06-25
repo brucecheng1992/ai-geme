@@ -54,6 +54,8 @@ import {
   createMovementCrouchPackageContract,
   MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID,
   createMovementRunJumpPackageContract,
+  PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+  createPickupCollectiblePackageContract,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
   createSpawnStaticPackageContract,
   HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
@@ -1974,6 +1976,15 @@ function buildQaCapabilityRuntimeExpectation(genre: QaGenre): QaCapabilityRuntim
         damagePrevented: true
       },
       {
+        capabilityId: 'pickup.collectible.v1',
+        probeId: PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+        action: 'collect',
+        eventType: 'pickup.collectible.collected',
+        pickupCollected: true,
+        pickupConsumed: true,
+        pickupStateChanged: true
+      },
+      {
         capabilityId: 'movement.run_jump.v1',
         probeId: MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID,
         action: 'jump',
@@ -2011,6 +2022,7 @@ function buildApprovedInstalledCapabilityQaPackages(normalizedGenre: string): re
         createCombatProjectilePackageContract(),
         createMovementCrouchPackageContract(),
         createHealthDamageInvulnerabilityPackageContract(),
+        createPickupCollectiblePackageContract(),
         createMovementRunJumpPackageContract(),
         createSpawnStaticPackageContract(),
         createHealthPlayerHealthPointsPackageContract()

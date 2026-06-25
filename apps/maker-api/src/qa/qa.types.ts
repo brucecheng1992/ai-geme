@@ -133,6 +133,9 @@ export type QaCapabilityRuntimeProbeExpectation = {
   invulnerable?: boolean;
   damagePrevented?: boolean;
   projectileEntityId?: string;
+  pickupCollected?: boolean;
+  pickupConsumed?: boolean;
+  pickupStateChanged?: boolean;
 };
 
 export type QaCapabilityRuntimeExpectation = {
@@ -146,6 +149,9 @@ export type QaCapabilityRuntimeObservedProbe = QaCapabilityRuntimeProbeExpectati
   heightScale?: number;
   invulnerable?: boolean;
   damagePrevented?: boolean;
+  pickupCollected?: boolean;
+  pickupConsumed?: boolean;
+  pickupStateChanged?: boolean;
   runtimeModuleId?: string;
   projectileId?: string;
   sourceRef?: string;

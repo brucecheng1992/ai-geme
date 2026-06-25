@@ -263,6 +263,29 @@ export function evaluateCapabilityRuntimeEvidence(
         )
       );
     }
+    if (expectedProbe.pickupCollected !== undefined) {
+      mismatches.push(
+        ...compareBoolean(
+          `capabilityRuntime.probes[${expectedProbe.probeId}].pickupCollected`,
+          observedProbe.pickupCollected,
+          expectedProbe.pickupCollected
+        )
+      );
+    }
+    if (expectedProbe.pickupConsumed !== undefined) {
+      mismatches.push(
+        ...compareBoolean(`capabilityRuntime.probes[${expectedProbe.probeId}].pickupConsumed`, observedProbe.pickupConsumed, expectedProbe.pickupConsumed)
+      );
+    }
+    if (expectedProbe.pickupStateChanged !== undefined) {
+      mismatches.push(
+        ...compareBoolean(
+          `capabilityRuntime.probes[${expectedProbe.probeId}].pickupStateChanged`,
+          observedProbe.pickupStateChanged,
+          expectedProbe.pickupStateChanged
+        )
+      );
+    }
   }
 
   return {
@@ -391,6 +414,9 @@ function readCapabilityRuntimeProbe(value: unknown, eventTypeFallback?: string):
   const heightScale = readNumber(value.heightScale);
   const invulnerable = readBoolean(value.invulnerable);
   const damagePrevented = readBoolean(value.damagePrevented);
+  const pickupCollected = readBoolean(value.pickupCollected);
+  const pickupConsumed = readBoolean(value.pickupConsumed);
+  const pickupStateChanged = readBoolean(value.pickupStateChanged);
   const projectileEntityId = readString(value.projectileEntityId);
   const runtimeModuleId = readString(value.runtimeModuleId);
   const projectileId = readString(value.projectileId);
@@ -413,6 +439,9 @@ function readCapabilityRuntimeProbe(value: unknown, eventTypeFallback?: string):
     ...(heightScale === undefined ? {} : { heightScale }),
     ...(invulnerable === undefined ? {} : { invulnerable }),
     ...(damagePrevented === undefined ? {} : { damagePrevented }),
+    ...(pickupCollected === undefined ? {} : { pickupCollected }),
+    ...(pickupConsumed === undefined ? {} : { pickupConsumed }),
+    ...(pickupStateChanged === undefined ? {} : { pickupStateChanged }),
     ...(projectileEntityId === undefined ? {} : { projectileEntityId }),
     ...(runtimeModuleId === undefined ? {} : { runtimeModuleId }),
     ...(projectileId === undefined ? {} : { projectileId }),
@@ -436,6 +465,23 @@ function mergeCapabilityRuntimeProbe(
     existing.observedIn.push(observedIn);
   }
   existing.eventTypes = uniqueStrings([...(existing.eventTypes ?? [existing.eventType]), ...(probe.eventTypes ?? [probe.eventType])]);
+  mergeOptionalProbeFields(existing, probe);
+}
+
+function mergeOptionalProbeFields(existing: QaCapabilityRuntimeObservedProbe, probe: Omit<QaCapabilityRuntimeObservedProbe, 'observedIn'>): void {
+  if (existing.airborne === undefined && probe.airborne !== undefined) existing.airborne = probe.airborne;
+  if (existing.crouching === undefined && probe.crouching !== undefined) existing.crouching = probe.crouching;
+  if (existing.heightScale === undefined && probe.heightScale !== undefined) existing.heightScale = probe.heightScale;
+  if (existing.invulnerable === undefined && probe.invulnerable !== undefined) existing.invulnerable = probe.invulnerable;
+  if (existing.damagePrevented === undefined && probe.damagePrevented !== undefined) existing.damagePrevented = probe.damagePrevented;
+  if (existing.pickupCollected === undefined && probe.pickupCollected !== undefined) existing.pickupCollected = probe.pickupCollected;
+  if (existing.pickupConsumed === undefined && probe.pickupConsumed !== undefined) existing.pickupConsumed = probe.pickupConsumed;
+  if (existing.pickupStateChanged === undefined && probe.pickupStateChanged !== undefined) existing.pickupStateChanged = probe.pickupStateChanged;
+  if (existing.projectileEntityId === undefined && probe.projectileEntityId !== undefined) existing.projectileEntityId = probe.projectileEntityId;
+  if (existing.runtimeModuleId === undefined && probe.runtimeModuleId !== undefined) existing.runtimeModuleId = probe.runtimeModuleId;
+  if (existing.projectileId === undefined && probe.projectileId !== undefined) existing.projectileId = probe.projectileId;
+  if (existing.sourceRef === undefined && probe.sourceRef !== undefined) existing.sourceRef = probe.sourceRef;
+  if (existing.status === undefined && probe.status !== undefined) existing.status = probe.status;
 }
 
 function compareScalar(path: string, observed: string | undefined, expected: string): string[] {

@@ -206,6 +206,19 @@ describe('Playable QA gate and runner', () => {
       sourceRef: 'runtime_plan.side_scrolling.waves',
       status: 'observed'
     };
+    const pickupProbe = {
+      capabilityId: 'pickup.collectible.v1',
+      probeId: 'pickup.collectible.v1.collection.browser_qa.v1',
+      runtimeModuleId: 'pickup.collectible',
+      action: 'collect',
+      eventType: 'pickup.collectible.collected',
+      eventTypes: ['pickup.collectible.collected', 'pickup.collectible.state_changed'],
+      pickupCollected: true,
+      pickupConsumed: true,
+      pickupStateChanged: true,
+      sourceRef: 'runtime_plan.side_scrolling.pickups',
+      status: 'observed'
+    };
     const healthProbe = {
       capabilityId: 'health.player_health_points.v1',
       probeId: 'health.player_health_points.v1.current.browser_qa.v1',
@@ -258,6 +271,12 @@ describe('Playable QA gate and runner', () => {
         timestamp_ms: 4,
         frame: 4,
         payload: { capabilityRuntime: damageInvulnerabilityProbe }
+      },
+      {
+        type: 'pickup.collectible.collected',
+        timestamp_ms: 5,
+        frame: 5,
+        payload: { capabilityRuntime: pickupProbe }
       }
     ];
 
@@ -278,6 +297,7 @@ describe('Playable QA gate and runner', () => {
               collisionProbe,
               crouchProbe,
               movementProbe,
+              pickupProbe,
               spawnStaticProbe,
               damageInvulnerabilityProbe,
               healthProbe,
@@ -355,6 +375,16 @@ describe('Playable QA gate and runner', () => {
           probeId: 'movement.run_jump.v1.jump.browser_qa.v1',
           action: 'jump',
           eventType: 'player.jumped',
+          observedIn: ['snapshot', 'telemetry']
+        }),
+        expect.objectContaining({
+          capabilityId: 'pickup.collectible.v1',
+          probeId: 'pickup.collectible.v1.collection.browser_qa.v1',
+          action: 'collect',
+          eventType: 'pickup.collectible.collected',
+          pickupCollected: true,
+          pickupConsumed: true,
+          pickupStateChanged: true,
           observedIn: ['snapshot', 'telemetry']
         }),
         expect.objectContaining({
@@ -567,6 +597,53 @@ describe('Playable QA gate and runner', () => {
     });
   });
 
+  it('fails capability runtime evidence when pickup collection lacks state proof', () => {
+    const expectedCapabilityRuntime: QaCapabilityRuntimeExpectation = {
+      requiredProbes: [
+        {
+          capabilityId: 'pickup.collectible.v1',
+          probeId: 'pickup.collectible.v1.collection.browser_qa.v1',
+          action: 'collect',
+          eventType: 'pickup.collectible.collected',
+          pickupCollected: true,
+          pickupConsumed: true,
+          pickupStateChanged: true
+        }
+      ]
+    };
+    const result = evaluateCapabilityRuntimeEvidence(
+      {
+        capabilityRuntime: {
+          source: 'side_scrolling_runtime',
+          probes: [
+            {
+              capabilityId: 'pickup.collectible.v1',
+              probeId: 'pickup.collectible.v1.collection.browser_qa.v1',
+              runtimeModuleId: 'pickup.collectible',
+              action: 'collect',
+              eventType: 'pickup.collectible.collected',
+              eventTypes: ['pickup.collectible.collected', 'pickup.collectible.state_changed'],
+              sourceRef: 'runtime_plan.side_scrolling.pickups',
+              status: 'observed'
+            }
+          ]
+        }
+      },
+      [{ type: 'pickup.collectible.collected', timestamp_ms: 1, frame: 1 }],
+      expectedCapabilityRuntime
+    );
+
+    expect(result).toMatchObject({
+      status: 'FAILED',
+      missingProbeIds: [],
+      mismatches: [
+        'capabilityRuntime.probes[pickup.collectible.v1.collection.browser_qa.v1].pickupCollected: expected true, observed <missing>',
+        'capabilityRuntime.probes[pickup.collectible.v1.collection.browser_qa.v1].pickupConsumed: expected true, observed <missing>',
+        'capabilityRuntime.probes[pickup.collectible.v1.collection.browser_qa.v1].pickupStateChanged: expected true, observed <missing>'
+      ]
+    });
+  });
+
   it('passes capability runtime evidence through the QA report', async () => {
     const expectedCapabilityRuntime = createDefaultWeaponCapabilityRuntimeExpectation();
     const capabilityRuntime = evaluateCapabilityRuntimeEvidence(
@@ -663,6 +740,19 @@ describe('Playable QA gate and runner', () => {
               invulnerable: true,
               damagePrevented: true,
               sourceRef: 'runtime_plan.side_scrolling.player.damageInvulnerability',
+              status: 'observed'
+            },
+            {
+              capabilityId: 'pickup.collectible.v1',
+              probeId: 'pickup.collectible.v1.collection.browser_qa.v1',
+              runtimeModuleId: 'pickup.collectible',
+              action: 'collect',
+              eventType: 'pickup.collectible.collected',
+              eventTypes: ['pickup.collectible.collected', 'pickup.collectible.state_changed'],
+              pickupCollected: true,
+              pickupConsumed: true,
+              pickupStateChanged: true,
+              sourceRef: 'runtime_plan.side_scrolling.pickups',
               status: 'observed'
             },
             {
@@ -2902,6 +2992,15 @@ function createDefaultWeaponCapabilityRuntimeExpectation(): QaCapabilityRuntimeE
         eventType: 'health.damage_invulnerability.blocked',
         invulnerable: true,
         damagePrevented: true
+      },
+      {
+        capabilityId: 'pickup.collectible.v1',
+        probeId: 'pickup.collectible.v1.collection.browser_qa.v1',
+        action: 'collect',
+        eventType: 'pickup.collectible.collected',
+        pickupCollected: true,
+        pickupConsumed: true,
+        pickupStateChanged: true
       },
       {
         capabilityId: 'movement.run_jump.v1',

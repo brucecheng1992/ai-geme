@@ -178,6 +178,7 @@ describe('GenerationPipelineService failure states', () => {
                   healthPlayerHealthPointsObservedProbe(),
                   movementCrouchObservedProbe(),
                   movementRunJumpObservedProbe(),
+                  pickupCollectibleObservedProbe(),
                   spawnStaticObservedProbe(),
                   defaultWeaponObservedProbe()
                 ]
@@ -346,6 +347,20 @@ describe('GenerationPipelineService failure states', () => {
           ])
         }),
         expect.objectContaining({
+          probeId: 'pickup.collectible.v1.collection.browser_qa.v1',
+          status: 'passed',
+          assertionResults: expect.arrayContaining([
+            expect.objectContaining({
+              assertionId: 'pickup.collectible.v1.collection.browser_qa.v1.assertion.collected',
+              status: 'passed'
+            }),
+            expect.objectContaining({
+              assertionId: 'pickup.collectible.v1.collection.browser_qa.v1.assertion.state_changed',
+              status: 'passed'
+            })
+          ])
+        }),
+        expect.objectContaining({
           probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1',
           status: 'passed',
           assertionResults: expect.arrayContaining([
@@ -361,7 +376,7 @@ describe('GenerationPipelineService failure states', () => {
         })
       ])
     );
-    expect(capabilityQaReport.requiredResults).toHaveLength(10);
+    expect(capabilityQaReport.requiredResults).toHaveLength(11);
     expect(capabilityRuntime.resolutionReportHash).toBe(capabilityResolution.reportHash);
     expect(capabilityRuntime.authorityBundleRef).toEqual(qaReport.runtime_authority?.expected?.authorityBundleRef);
     expect(capabilityRuntime.activeProfileLockRef).toEqual(qaReport.runtime_authority?.expected?.activeProfileLockRef);
@@ -369,7 +384,7 @@ describe('GenerationPipelineService failure states', () => {
       artifactKind: 'generation_target_profile_runtime_support_report',
       status: 'blocked_incomplete_target_profile',
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 10,
+      observedCompleteSupportedCount: 11,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
@@ -381,6 +396,7 @@ describe('GenerationPipelineService failure states', () => {
         'health.player_health_points.v1',
         'movement.crouch.v1',
         'movement.run_jump.v1',
+        'pickup.collectible.v1',
         'spawn.static.v1',
         'weapon.default_straight_single.v1'
       ],
@@ -432,6 +448,13 @@ describe('GenerationPipelineService failure states', () => {
           runtimeVerified: true,
           observedCompleteSupported: true,
           verifiedRequiredProbeIds: ['movement.run_jump.v1.jump.browser_qa.v1'],
+          missingRequiredProbeIds: []
+        }),
+        expect.objectContaining({
+          capabilityId: 'pickup.collectible.v1',
+          runtimeVerified: true,
+          observedCompleteSupported: true,
+          verifiedRequiredProbeIds: ['pickup.collectible.v1.collection.browser_qa.v1'],
           missingRequiredProbeIds: []
         }),
         expect.objectContaining({
@@ -1197,6 +1220,15 @@ describe('GenerationPipelineService failure states', () => {
           damagePrevented: true
         },
         {
+          capabilityId: 'pickup.collectible.v1',
+          probeId: 'pickup.collectible.v1.collection.browser_qa.v1',
+          action: 'collect',
+          eventType: 'pickup.collectible.collected',
+          pickupCollected: true,
+          pickupConsumed: true,
+          pickupStateChanged: true
+        },
+        {
           capabilityId: 'movement.run_jump.v1',
           probeId: 'movement.run_jump.v1.jump.browser_qa.v1',
           action: 'jump',
@@ -1216,7 +1248,7 @@ describe('GenerationPipelineService failure states', () => {
         }
       ])
     });
-    expect(qaCapabilityRuntimeExpectation?.requiredProbes).toHaveLength(10);
+    expect(qaCapabilityRuntimeExpectation?.requiredProbes).toHaveLength(11);
     expect(intentPlan).toMatchObject({
       normalizedGenre: 'side_scrolling_run_and_gun',
       runtimeDslSupport: 'supported',
@@ -2662,6 +2694,7 @@ describe('GenerationPipelineService failure states', () => {
         healthPlayerHealthPointsObservedProbe(),
         movementCrouchObservedProbe(),
         movementRunJumpObservedProbe(),
+        pickupCollectibleObservedProbe(),
         spawnStaticObservedProbe(),
         defaultWeaponObservedProbe()
       ],
@@ -2768,6 +2801,23 @@ describe('GenerationPipelineService failure states', () => {
       sourceRef: 'runtime_plan.side_scrolling.capability_configs.crouch_action_state',
       status: 'observed',
       observedIn: ['snapshot', 'telemetry']
+    };
+  }
+
+  function pickupCollectibleObservedProbe(): QaCapabilityRuntimeEvidence['observed'][number] {
+    return {
+      capabilityId: 'pickup.collectible.v1',
+      probeId: 'pickup.collectible.v1.collection.browser_qa.v1',
+      runtimeModuleId: 'pickup.collectible',
+      action: 'collect',
+      eventType: 'pickup.collectible.collected',
+      eventTypes: ['pickup.collectible.collected', 'pickup.collectible.state_changed'],
+      pickupCollected: true,
+      pickupConsumed: true,
+      pickupStateChanged: true,
+      sourceRef: 'runtime_plan.side_scrolling.pickups',
+      status: 'observed',
+      observedIn: ['snapshot']
     };
   }
 

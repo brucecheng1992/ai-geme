@@ -14,6 +14,7 @@ import {
   RuntimeGenreRegistry,
   validateGameplayCapabilityRegistry,
   MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
+  PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
   type GameplayCapabilityDescriptor,
   type RuntimeGenreCapability
 } from '../../packages/game-dsl/src/index.js';
@@ -55,6 +56,10 @@ describe('Gameplay capability registry', () => {
     expect(findGameplayCapability('movement.crouch.v1')).toMatchObject({
       status: 'planned',
       legacyRuntimeCapabilities: []
+    });
+    expect(findGameplayCapability('pickup.collectible.v1')).toMatchObject({
+      status: 'runtime_backed',
+      legacyRuntimeCapabilities: ['collectibles']
     });
     expect(GameplayCapabilityRegistry.entries.some(isCompleteSupportedGameplayCapability)).toBe(false);
   });
@@ -362,6 +367,42 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(crouch)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(crouch)).toBe(false);
+  });
+
+  it('scopes pickup collectible package-owned QA without static support promotion or weapon overclaim', () => {
+    const pickup = findGameplayCapability('pickup.collectible.v1');
+
+    if (pickup === undefined) {
+      throw new Error('Expected pickup.collectible.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(pickup)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(pickup.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(pickup.qa).toEqual({
+      requiredProbeIds: [PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(pickup.legacyRuntimeCapabilities).toEqual(['collectibles']);
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(pickup)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(pickup)).toBe(false);
+
+    for (const capabilityId of ['weapon.spread_shot.v1', 'weapon.rapid_fire.v1', 'weapon.replacement_rule.v1', 'weapon.death_reset.v1']) {
+      const weapon = findGameplayCapability(capabilityId);
+      if (weapon === undefined) {
+        throw new Error(`Expected ${capabilityId} in registry.`);
+      }
+      expect(isCompleteSupportedGameplayCapability(weapon)).toBe(false);
+    }
   });
 
   it('derives profile runtime status from RuntimeGenreRegistry instead of a second supported list', () => {

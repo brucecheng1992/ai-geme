@@ -23,6 +23,8 @@ export * from './health-damage-invulnerability-runtime-module.js';
 export * from './health-damage-invulnerability-package.js';
 export * from './health-player-health-points-runtime-module.js';
 export * from './health-player-health-points-package.js';
+export * from './pickup-collectible-runtime-module.js';
+export * from './pickup-collectible-package.js';
 export * from './profile-recipe-compiler.js';
 export * from './capability-lock.js';
 export * from './capability-resolver.js';

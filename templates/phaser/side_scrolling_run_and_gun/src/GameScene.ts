@@ -63,11 +63,21 @@ type ProjectileActor = RuntimeActor & {
   probeId?: string;
 };
 
+type PickupActor = {
+  id: string;
+  kind: 'health' | 'score' | 'weapon';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  active: boolean;
+};
+
 type CapabilityRuntimeProbe = {
   capabilityId: string;
   probeId: string;
   runtimeModuleId: string;
-  action: 'block_damage' | 'collide' | 'crouch' | 'fire' | 'jump' | 'move' | 'observe' | 'spawn';
+  action: 'block_damage' | 'collide' | 'collect' | 'crouch' | 'fire' | 'jump' | 'move' | 'observe' | 'spawn';
   eventType:
     | 'combat.airborne_fire.fired'
     | 'collision.platform.grounded'
@@ -75,6 +85,8 @@ type CapabilityRuntimeProbe = {
     | 'health.damage_invulnerability.blocked'
     | 'health.player_health.current'
     | 'movement.crouch.entered'
+    | 'pickup.collectible.collected'
+    | 'pickup.collectible.state_changed'
     | 'player.fired'
     | 'projectile.spawned'
     | 'player.jumped'
@@ -92,6 +104,9 @@ type CapabilityRuntimeProbe = {
   maxHealth?: number;
   projectileEntityId?: string;
   projectileId?: string;
+  pickupCollected?: boolean;
+  pickupConsumed?: boolean;
+  pickupStateChanged?: boolean;
   sourceRef: string;
   status: 'observed';
 };
@@ -145,6 +160,12 @@ const HEALTH_DAMAGE_INVULNERABILITY_ACTIVATED_EVENT_TYPE = 'health.damage_invuln
 const HEALTH_DAMAGE_INVULNERABILITY_BLOCKED_EVENT_TYPE = 'health.damage_invulnerability.blocked';
 const HEALTH_DAMAGE_INVULNERABILITY_SOURCE_REF = 'runtime_plan.side_scrolling.player.damageInvulnerability';
 const HEALTH_DAMAGE_INVULNERABILITY_WINDOW_MS = 900;
+const PICKUP_COLLECTIBLE_CAPABILITY_ID = 'pickup.collectible.v1';
+const PICKUP_COLLECTIBLE_CAPABILITY_PROBE_ID = 'pickup.collectible.v1.collection.browser_qa.v1';
+const PICKUP_COLLECTIBLE_RUNTIME_MODULE_ID = 'pickup.collectible';
+const PICKUP_COLLECTIBLE_COLLECTED_EVENT_TYPE = 'pickup.collectible.collected';
+const PICKUP_COLLECTIBLE_STATE_CHANGED_EVENT_TYPE = 'pickup.collectible.state_changed';
+const PICKUP_COLLECTIBLE_SOURCE_REF = 'runtime_plan.side_scrolling.pickups';
 
 export class SideScrollingRunAndGunScene {
   private readonly plan: SideScrollingRuntimeSlice;
@@ -169,9 +190,11 @@ export class SideScrollingRunAndGunScene {
   private readonly checkpointsReached = new Set<number>();
   private readonly enemies: EnemyActor[] = [];
   private readonly projectiles: ProjectileActor[] = [];
+  private readonly pickups: PickupActor[];
   private readonly staticSprites = new Set<Phaser.GameObjects.GameObject>();
   private readonly enemySprites = new Map<string, Phaser.GameObjects.GameObject>();
   private readonly projectileSprites = new Map<string, Phaser.GameObjects.GameObject>();
+  private readonly pickupSprites = new Map<string, Phaser.GameObjects.GameObject>();
   private readonly capabilityRuntimeProbes = new Map<string, CapabilityRuntimeProbe>();
   private damageInvulnerableUntilMs = 0;
   private playerSprite?: Phaser.GameObjects.GameObject;
@@ -196,6 +219,7 @@ export class SideScrollingRunAndGunScene {
     this.gameState = new GameStateSystem(this.state, this.telemetry);
     this.objective = new ObjectiveSystem(this.state, this.gameState);
     this.player = this.createPlayerActor();
+    this.pickups = this.createPickupActors();
     this.lives = this.plan.player.lives;
     this.endScreen = new EndScreenRenderer(this.plan.scene.viewport, params.ui.screens);
     this.liveEditBridge = createSideScrollingRuntimeBridge({
@@ -231,6 +255,7 @@ export class SideScrollingRunAndGunScene {
         sceneBindings: this.sceneBindingState,
         runtimeAuthority: this.runtimeAuthority,
         enemies: this.enemies.map((enemy) => this.enemySnapshot(enemy)),
+        pickups: this.pickups.map((pickup) => this.pickupSnapshot(pickup)),
         capabilityRuntime: this.capabilityRuntimeSnapshot(),
         projectiles: this.projectiles.map((projectile) => ({
           id: projectile.id,
@@ -423,6 +448,7 @@ export class SideScrollingRunAndGunScene {
     this.spawnTriggeredWaves();
     this.advanceEnemies(deltaMs, this.runtimeClockMs);
     this.advanceProjectiles(deltaMs);
+    this.collectPickups();
     this.checkObjective();
     this.renderHud();
   }
@@ -439,6 +465,7 @@ export class SideScrollingRunAndGunScene {
     this.checkpointsReached.clear();
     this.capabilityRuntimeProbes.clear();
     this.clearDynamicSprites();
+    this.pickups.splice(0, this.pickups.length, ...this.createPickupActors());
     this.enemies.length = 0;
     this.projectiles.length = 0;
     this.endScreen.clear();
@@ -461,6 +488,18 @@ export class SideScrollingRunAndGunScene {
       heightScale: 1,
       health: this.plan.player.health
     };
+  }
+
+  private createPickupActors(): PickupActor[] {
+    return this.plan.pickups.map((pickup) => ({
+      id: pickup.id,
+      kind: pickup.kind,
+      x: pickup.x,
+      y: pickup.y,
+      width: 36,
+      height: 36,
+      active: true
+    }));
   }
 
   private movePlayer(deltaMs: number): void {
@@ -646,6 +685,22 @@ export class SideScrollingRunAndGunScene {
     this.capabilityRuntimeProbes.set(capabilityRuntime.probeId, capabilityRuntime);
   }
 
+  private createPickupCollectibleCapabilityRuntimeProbe(pickupStateChanged: boolean): CapabilityRuntimeProbe {
+    return {
+      capabilityId: PICKUP_COLLECTIBLE_CAPABILITY_ID,
+      probeId: PICKUP_COLLECTIBLE_CAPABILITY_PROBE_ID,
+      runtimeModuleId: PICKUP_COLLECTIBLE_RUNTIME_MODULE_ID,
+      action: 'collect',
+      eventType: PICKUP_COLLECTIBLE_COLLECTED_EVENT_TYPE,
+      eventTypes: [PICKUP_COLLECTIBLE_COLLECTED_EVENT_TYPE, PICKUP_COLLECTIBLE_STATE_CHANGED_EVENT_TYPE],
+      pickupCollected: true,
+      pickupConsumed: true,
+      pickupStateChanged,
+      sourceRef: PICKUP_COLLECTIBLE_SOURCE_REF,
+      status: 'observed'
+    };
+  }
+
   private isDamageInvulnerable(): boolean {
     return this.runtimeClockMs < this.damageInvulnerableUntilMs;
   }
@@ -734,6 +789,55 @@ export class SideScrollingRunAndGunScene {
         this.removeProjectile(projectile);
       }
     }
+  }
+
+  private collectPickups(): void {
+    for (const pickup of this.pickups) {
+      if (!pickup.active || !hitboxesOverlap(this.player, pickup)) {
+        continue;
+      }
+      this.collectPickup(pickup);
+    }
+  }
+
+  private collectPickup(pickup: PickupActor): void {
+    const scoreBefore = this.state.score;
+    const healthBefore = this.state.health;
+    pickup.active = false;
+    this.collision.collide({ source: 'player', target: pickup.id });
+    this.score.add(1);
+    if (pickup.kind === 'health') {
+      this.state.health = Math.min(this.state.maxHealth, this.state.health + 1);
+      this.recordHealthPlayerHealthPointsCapabilityRuntimeProbe();
+    }
+    const pickupStateChanged = this.state.score !== scoreBefore || this.state.health !== healthBefore;
+    const capabilityRuntime = this.createPickupCollectibleCapabilityRuntimeProbe(pickupStateChanged);
+    this.capabilityRuntimeProbes.set(capabilityRuntime.probeId, capabilityRuntime);
+    this.telemetry.emit(PICKUP_COLLECTIBLE_COLLECTED_EVENT_TYPE, {
+      pickupId: pickup.id,
+      pickupKind: pickup.kind,
+      pickupCollected: true,
+      pickupConsumed: true,
+      pickupStateChanged,
+      scoreBefore,
+      scoreAfter: this.state.score,
+      healthBefore,
+      healthAfter: this.state.health,
+      capabilityRuntime
+    });
+    this.telemetry.emit(PICKUP_COLLECTIBLE_STATE_CHANGED_EVENT_TYPE, {
+      pickupId: pickup.id,
+      pickupKind: pickup.kind,
+      pickupCollected: true,
+      pickupConsumed: true,
+      pickupStateChanged,
+      scoreBefore,
+      scoreAfter: this.state.score,
+      healthBefore,
+      healthAfter: this.state.health,
+      capabilityRuntime
+    });
+    this.hidePickup(pickup);
   }
 
   private fireEnemyProjectile(enemy: EnemyActor, nowMs: number): void {
@@ -839,6 +943,9 @@ export class SideScrollingRunAndGunScene {
       this.art?.addImage(scene, 'player', this.player.x, this.player.y) ??
         scene.add.graphics().fillStyle(0x49b6ff, 1).fillRect(this.player.x, this.player.y, this.player.width, this.player.height)
     );
+    for (const pickup of this.pickups) {
+      this.renderPickup(pickup);
+    }
     this.hudText = this.trackStaticSprite(scene.add.text(16, 16, '', { fontFamily: 'Arial, sans-serif', fontSize: '18px', color: '#f8fbff' }));
     this.hudText.setScrollFactor(0);
     this.renderHud();
@@ -871,6 +978,17 @@ export class SideScrollingRunAndGunScene {
     this.projectileSprites.set(projectile.id, object);
   }
 
+  private renderPickup(pickup: PickupActor): void {
+    const scene = this.phaserScene;
+    if (scene === undefined || !pickup.active) {
+      return;
+    }
+    const object =
+      this.art?.addImage(scene, 'pickup', pickup.x, pickup.y) ??
+      scene.add.graphics().fillStyle(0x7dd3fc, 1).fillCircle(pickup.x + pickup.width / 2, pickup.y + pickup.height / 2, pickup.width / 2);
+    this.pickupSprites.set(pickup.id, this.trackStaticSprite(object));
+  }
+
   private renderHud(): void {
     this.hudText?.setText(`HP ${this.state.health}/${this.state.maxHealth}  Lives ${this.lives}  Score ${this.state.score}`);
     this.renderEndScreenIfTerminal();
@@ -901,6 +1019,7 @@ export class SideScrollingRunAndGunScene {
       this.destroyObject(object);
     }
     this.staticSprites.clear();
+    this.pickupSprites.clear();
     this.playerSprite = undefined;
     this.hudText = undefined;
   }
@@ -917,6 +1036,13 @@ export class SideScrollingRunAndGunScene {
     }
     this.destroyObject(this.projectileSprites.get(projectile.id));
     this.projectileSprites.delete(projectile.id);
+  }
+
+  private hidePickup(pickup: PickupActor): void {
+    const object = this.pickupSprites.get(pickup.id);
+    if (object !== undefined && 'setVisible' in object && typeof object.setVisible === 'function') {
+      object.setVisible(false);
+    }
   }
 
   getLiveEditBridge() {
@@ -994,9 +1120,13 @@ export class SideScrollingRunAndGunScene {
   private enemySnapshot(enemy: EnemyActor): Record<string, unknown> {
     return { id: enemy.id, entityId: enemy.entityId, x: enemy.x, y: enemy.y, health: enemy.health, cleared: enemy.cleared };
   }
+
+  private pickupSnapshot(pickup: PickupActor): Record<string, unknown> {
+    return { id: pickup.id, kind: pickup.kind, x: pickup.x, y: pickup.y, active: pickup.active };
+  }
 }
 
-function hitboxesOverlap(a: RuntimeActor, b: RuntimeActor): boolean {
+function hitboxesOverlap(a: { x: number; y: number; width: number; height: number }, b: { x: number; y: number; width: number; height: number }): boolean {
   return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 }
 
