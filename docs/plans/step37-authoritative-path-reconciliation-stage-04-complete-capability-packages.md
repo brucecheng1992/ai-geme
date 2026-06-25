@@ -3459,17 +3459,24 @@ Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `hierarchic
 
 - checkpoint_id: `parent_loop_missing_checkpoint_fail_closed_guardrail`.
 - record_type: `implementation_log`.
-- implementation_status: `complete`.
+- implementation_status: `receipt`.
 - local_validation_status: `passed`.
-- candidate_status: `ready_for_commit`.
-- oracle_status: `not_submitted`.
+- candidate_status: `committed`.
+- oracle_status: `approved`.
+- closure_status: `closed`.
+- reviewed_commit_sha: `9857e1165f3275d59d4660fef8a09d100060d8a1`.
+- reviewed_skill_revision: `0ec6830ff612320d013b339059e4cb3bcb31b2fe1256c02efa4488baadbeac56`.
+- oracle_submission_id: `019f00bf-9edc-7281-9b76-52b7c7e71458` (source: `multi_agent_v1.send_input` response field `submission_id`).
+- oracle_agent_id: `019effae-8aa2-7c22-b5ba-8c4b69f21d20` (source: active Oracle subagent id; used for `wait_agent` polling).
+- oracle_verdict: `PASS`.
+- oracle_blocking_findings: `none`.
 - closure_scope: `atomic_step`.
 - parent_loop_id: `step37`.
 - parent_loop_status: `running`.
 - global_exit_conditions_met: `false`.
 - user_input_required: `false`.
 - next_action: `CONTINUE_PARENT_LOOP`.
-- next_atomic_step: `parent_loop_missing_checkpoint_fail_closed_guardrail implementation`.
+- next_atomic_step: `Stage 4 pickup.collectible package-owned QA slice implementation atomic step`.
 - scope: Parent Loop Driver and closure contracts only; no business runtime, Stage 4 package implementation, Stage 5 exact lock, production default cutover, legacy authoritative path exit, or historical candidate/receipt rewrite is introduced.
 
 Purpose:
@@ -3596,6 +3603,41 @@ result=PASS: no whitespace or patch format errors.
 python3 - <<'PY' ... compute Skill bundle digest ...
 exitCode=0
 result=PASS: current Skill bundle digest 0ec6830ff612320d013b339059e4cb3bcb31b2fe1256c02efa4488baadbeac56
+
+replacement candidate commit
+command=git add docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md packages/game-dsl/src/step37-parent-loop-driver.ts tests/contracts/step37-parent-loop-driver.test.ts && git commit -m "Fix Step37 first unmet checkpoint validation"
+exitCode=0
+result=PASS: replacement candidate commit 9857e1165f3275d59d4660fef8a09d100060d8a1 created from the locally validated tree.
+
+Oracle re-review
+submission_id=019f00bf-9edc-7281-9b76-52b7c7e71458
+agent_id=019effae-8aa2-7c22-b5ba-8c4b69f21d20
+reviewed_commit_sha=9857e1165f3275d59d4660fef8a09d100060d8a1
+reviewed_skill_revision=0ec6830ff612320d013b339059e4cb3bcb31b2fe1256c02efa4488baadbeac56
+verdict=PASS: no P0/P1/P2/P3 findings; prior P2 fixed.
 ```
 
-Exit assessment: `LOCAL_VALIDATION_PASSED_PENDING_REPLACEMENT_CANDIDATE_COMMIT`. Replacement candidate commit, Oracle re-review, receipt, post-receipt checks, and post-receipt Parent Loop Driver evaluation are still required before this atomic hardening guardrail can close.
+Scoped closure output:
+
+```yaml
+closure_scope: atomic_step
+atomic_step:
+  id: parent_loop_missing_checkpoint_fail_closed_guardrail
+  status: closed
+  candidate_commit: 9857e1165f3275d59d4660fef8a09d100060d8a1
+  receipt_commit: external_git_history_only_not_embedded
+  oracle_status: approved
+parent_stage:
+  id: stage4
+  status: running
+  exit_conditions_met: false
+parent_loop:
+  id: step37
+  status: running
+  global_exit_conditions_met: false
+  user_input_required: false
+  next_action: CONTINUE_PARENT_LOOP
+  next_atomic_step: Stage 4 pickup.collectible package-owned QA slice implementation atomic step
+```
+
+Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `parent_loop_missing_checkpoint_fail_closed_guardrail`; Stage 4 remains running, Step37 remains running, global exit conditions remain false, and Parent Loop Driver must continue with `Stage 4 pickup.collectible package-owned QA slice implementation atomic step`.
