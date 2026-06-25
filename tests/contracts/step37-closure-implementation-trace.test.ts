@@ -15,6 +15,9 @@ const auditBoundaryIdentifierClosureTitle = '## Stage 4 Closure Implementation �
 const auditBoundaryIdentifierCheckpointCommit = '2d49b17e';
 const cleanBaselineClosureGuardrailTitle = '## Stage 4 Improvement Log — Clean Baseline Closure Guardrail';
 const timeoutDiagnosisGuardrailTitle = '## Stage 4 Improvement Log — Timeout Diagnosis Guardrail';
+const movementCrouchClosureTitle = '## Stage 4 Closure Implementation — Movement Crouch Package-Owned QA Slice';
+const movementCrouchCheckpointCommit = 'bdb01f36';
+const runtimeStateAndClosureStatusGuardrailTitle = '## Stage 4 Improvement Log — Runtime State And Closure State Guardrails';
 
 const claimedAuditBoundaryIdentifierPaths = [
   stage4PlanPath,
@@ -36,6 +39,28 @@ const claimedHealthDamageInvulnerabilityPaths = [
   'tests/contracts/gameplay-capability-registry.test.ts',
   'tests/contracts/generation-target-profile-runtime-support.test.ts',
   'tests/contracts/deepseek-authoritative-dsl-support.test.ts',
+  'tests/contracts/phaser-templates.test.ts',
+  'tests/workspace/generation-pipeline.service.test.ts',
+  'tests/workspace/playwright-qa-runner.test.ts'
+];
+
+const claimedMovementCrouchPaths = [
+  stage4PlanPath,
+  'packages/game-dsl/src/gameplay-capabilities/movement-crouch-runtime-module.ts',
+  'packages/game-dsl/src/gameplay-capabilities/movement-crouch-package.ts',
+  'packages/game-dsl/src/gameplay-capabilities/index.ts',
+  'packages/game-dsl/src/gameplay-capabilities/registry.ts',
+  'packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts',
+  'apps/maker-api/src/qa/qa.types.ts',
+  'apps/maker-api/src/qa/playwright-browser-runner.ts',
+  'apps/maker-api/src/projects/generation-pipeline.service.ts',
+  'packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts',
+  'templates/phaser/shared/kernel.ts',
+  'templates/phaser/side_scrolling_run_and_gun/src/GameScene.ts',
+  'templates/phaser/side_scrolling_run_and_gun/src/main.ts',
+  'tests/contracts/gameplay-capability-package-contract.test.ts',
+  'tests/contracts/gameplay-capability-registry.test.ts',
+  'tests/contracts/generation-target-profile-runtime-support.test.ts',
   'tests/contracts/phaser-templates.test.ts',
   'tests/workspace/generation-pipeline.service.test.ts',
   'tests/workspace/playwright-qa-runner.test.ts'
@@ -187,6 +212,158 @@ describe('Step37 closure implementation traceability', () => {
     expect(section).not.toContain('## Stage 4 Closure Implementation — Movement Crouch');
     expect(section).not.toContain('Actual code paths');
     expect(section).not.toContain('planned -> landed');
+  });
+
+  it('keeps the movement crouch implementation closure traceable to checkpoint evidence', async () => {
+    const document = await readFile(stage4PlanPath, 'utf8');
+    const section = extractSection(document, movementCrouchClosureTitle);
+    const checkpointPaths = changedPathsForCommit(movementCrouchCheckpointCommit);
+
+    expect(section).toContain(`implementation checkpoint: \`${movementCrouchCheckpointCommit}\``);
+    expect(section).toContain('implementation status: `CHECKPOINT_COMMITTED`');
+    expect(section).toContain('local_validation: `passed`');
+    expect(section).toContain('oracle_status: `passed`');
+    for (const path of claimedMovementCrouchPaths) {
+      expect(section).toContain(`\`${path}\``);
+      expect(checkpointPaths).toContain(path);
+      await expect(access(path)).resolves.toBeUndefined();
+    }
+    expect(section).toContain('movement.crouch.v1.state.browser_qa.v1');
+    expect(section).toContain('movement.crouch.entered');
+    expect(section).toContain('crouching=true');
+    expect(section).toContain('heightScale=0.58');
+    expect(section).toContain('observed support from `9/59` to `10/59`');
+    expect(section).toContain('staticCompleteSupportedCount=0');
+    expect(section).toContain('npx vitest run tests/contracts/step37-closure-implementation-trace.test.ts');
+    expect(section).toContain('oracle_agent_id: `019effae-8aa2-7c22-b5ba-8c4b69f21d20`');
+    expect(section).toContain('oracle_submission_id: `019f0013-d158-7b82-bd80-7678b7afab0d`');
+    expect(section).toContain('result: `PASS / no P0/P1/P2 blocking findings`');
+    expect(section).toContain('planned -> landed -> verified -> oracle_passed -> checkpoint_committed');
+    expect(section).toContain('Stage 4 Movement Crouch Package-Owned QA Slice Implementation: CHECKPOINT_COMMITTED');
+    expect(section).toContain('Stage 4 Exit gate: NOT_MET');
+  });
+
+  it('records runtime-state and closure-state guardrails without rewriting the crouch audit', async () => {
+    const document = await readFile(stage4PlanPath, 'utf8');
+    const section = extractSection(document, runtimeStateAndClosureStatusGuardrailTitle);
+    const auditIndex = document.indexOf(movementCrouchAuditTitle);
+    const implementationIndex = document.indexOf(movementCrouchClosureTitle);
+    const guardrailIndex = document.indexOf(runtimeStateAndClosureStatusGuardrailTitle);
+
+    expect(auditIndex).toBeGreaterThanOrEqual(0);
+    expect(implementationIndex).toBeGreaterThan(auditIndex);
+    expect(guardrailIndex).toBeGreaterThan(implementationIndex);
+    expect(section).toContain('Queued feedback discipline');
+    expect(section).toContain('must stay queued');
+    expect(section).toContain('Runtime state evidence');
+    expect(section).toContain('not just the input or action event');
+    expect(section).toContain('`crouching=true` and the required `heightScale`');
+    expect(section).toContain('registry support evidence');
+    expect(section).toContain('package/runtime probe');
+    expect(section).toContain('QA evidence reader');
+    expect(section).toContain('target-profile runtime overlay');
+    expect(section).toContain('same-run evidence may update observed support only');
+    expect(section).toContain('local_validation: passed');
+    expect(section).toContain('oracle_status: pending');
+    expect(section).toContain('`ORACLE_PENDING` cannot satisfy closed must-pass requirements');
+    expect(section).toContain('rerun the related contract tests');
+    expect(section).toContain('tests/contracts/step37-closure-implementation-trace.test.ts');
+  });
+
+  it('keeps Oracle-gated closure status fail-closed until review evidence exists', () => {
+    expect(
+      evaluateOracleGatedClosureState({
+        localValidation: 'passed',
+        oracleStatus: 'not_submitted',
+        requestedStatus: 'CLOSED',
+        validationReceipts: [{ command: 'npm test', exitCode: 0, result: 'passed' }],
+        diffScopePaths: [stage4PlanPath],
+        reviewRequestId: undefined,
+        oracleConclusion: undefined,
+        unresolvedItems: []
+      })
+    ).toBe('blocked_missing_oracle_pass');
+
+    expect(
+      evaluateOracleGatedClosureState({
+        localValidation: 'passed',
+        oracleStatus: 'pending',
+        requestedStatus: 'CLOSED',
+        validationReceipts: [{ command: 'npm test', exitCode: 0, result: 'passed' }],
+        diffScopePaths: [stage4PlanPath],
+        reviewRequestId: '019f0013-d158-7b82-bd80-7678b7afab0d',
+        oracleConclusion: undefined,
+        unresolvedItems: []
+      })
+    ).toBe('blocked_oracle_pending_not_closed');
+
+    expect(
+      evaluateOracleGatedClosureState({
+        localValidation: 'passed',
+        oracleStatus: 'pending',
+        requestedStatus: 'ORACLE_PENDING',
+        validationReceipts: [
+          { command: 'npm test', exitCode: 0, result: 'passed' },
+          { command: 'npm run typecheck', exitCode: 0, result: 'passed' }
+        ],
+        diffScopePaths: [stage4PlanPath, 'tests/contracts/step37-closure-implementation-trace.test.ts'],
+        reviewRequestId: '019f0013-d158-7b82-bd80-7678b7afab0d',
+        oracleConclusion: undefined,
+        unresolvedItems: []
+      })
+    ).toBe('oracle_pending');
+
+    expect(
+      evaluateOracleGatedClosureState({
+        localValidation: 'passed',
+        oracleStatus: 'pending',
+        requestedStatus: 'ORACLE_PENDING',
+        validationReceipts: [{ command: 'npm test', exitCode: 0, result: 'passed' }],
+        diffScopePaths: [],
+        reviewRequestId: undefined,
+        oracleConclusion: undefined,
+        unresolvedItems: []
+      })
+    ).toBe('blocked_missing_oracle_pending_trace');
+
+    expect(
+      evaluateOracleGatedClosureState({
+        localValidation: 'passed',
+        oracleStatus: 'passed',
+        requestedStatus: 'CLOSED',
+        validationReceipts: [{ command: 'npm test', exitCode: 0, result: 'passed' }],
+        diffScopePaths: [stage4PlanPath],
+        reviewRequestId: '019f0013-d158-7b82-bd80-7678b7afab0d',
+        oracleConclusion: 'PASS / no P0/P1/P2 blocking findings',
+        unresolvedItems: []
+      })
+    ).toBe('closed');
+
+    expect(
+      evaluateOracleGatedClosureState({
+        localValidation: 'passed',
+        oracleStatus: 'passed',
+        requestedStatus: 'CLOSED',
+        validationReceipts: [{ command: 'npm test', exitCode: 0, result: 'passed' }],
+        diffScopePaths: [stage4PlanPath],
+        reviewRequestId: '019f0013-d158-7b82-bd80-7678b7afab0d',
+        oracleConclusion: undefined,
+        unresolvedItems: []
+      })
+    ).toBe('blocked_missing_oracle_pass');
+
+    expect(
+      evaluateOracleGatedClosureState({
+        localValidation: 'passed',
+        oracleStatus: 'changes_required',
+        requestedStatus: 'CLOSED',
+        validationReceipts: [{ command: 'npm test', exitCode: 0, result: 'passed' }],
+        diffScopePaths: [stage4PlanPath],
+        reviewRequestId: '019f0013-d158-7b82-bd80-7678b7afab0d',
+        oracleConclusion: 'CHANGES_REQUIRED: missing validation',
+        unresolvedItems: []
+      })
+    ).toBe('changes_required');
   });
 
   it('records audit boundary and typed identifier guardrails as traceable process contracts', async () => {
@@ -778,6 +955,61 @@ type ClosureBaselineDecision =
   | 'blocked_unexpected_closure_diff'
   | 'blocked_missing_post_write_status'
   | 'blocked_missing_closure_evidence';
+
+function evaluateOracleGatedClosureState(input: OracleGatedClosureRecord): OracleGatedClosureDecision {
+  if (input.validationReceipts.length === 0 || input.validationReceipts.some((receipt) => receipt.exitCode !== 0)) {
+    return 'incomplete_local_validation';
+  }
+  if (input.localValidation !== 'passed') {
+    return 'incomplete_local_validation';
+  }
+  if (input.oracleStatus === 'changes_required') {
+    return 'changes_required';
+  }
+  if (input.oracleStatus === 'blocked') {
+    return 'blocked';
+  }
+  if (input.oracleStatus === 'pending') {
+    if (input.reviewRequestId === undefined || input.reviewRequestId.length === 0 || input.diffScopePaths.length === 0) {
+      return 'blocked_missing_oracle_pending_trace';
+    }
+    return input.requestedStatus === 'CLOSED' ? 'blocked_oracle_pending_not_closed' : 'oracle_pending';
+  }
+  if (input.requestedStatus === 'CLOSED') {
+    if (input.oracleStatus !== 'passed' || input.oracleConclusion === undefined || !/\bPASS\b/i.test(input.oracleConclusion)) {
+      return 'blocked_missing_oracle_pass';
+    }
+    if (input.unresolvedItems.length > 0) {
+      return 'blocked_unresolved_items';
+    }
+    return 'closed';
+  }
+
+  return input.oracleStatus === 'passed' ? 'oracle_passed' : 'blocked_missing_oracle_pass';
+}
+
+type OracleGatedClosureRecord = {
+  localValidation: 'passed' | 'failed' | 'not_run';
+  oracleStatus: 'not_submitted' | 'pending' | 'passed' | 'changes_required' | 'blocked';
+  requestedStatus: 'LOCALLY_VALIDATED' | 'ORACLE_PENDING' | 'CLOSED';
+  validationReceipts: readonly ValidationReceipt[];
+  diffScopePaths: readonly string[];
+  reviewRequestId?: string;
+  oracleConclusion?: string;
+  unresolvedItems: readonly string[];
+};
+
+type OracleGatedClosureDecision =
+  | 'closed'
+  | 'oracle_passed'
+  | 'oracle_pending'
+  | 'changes_required'
+  | 'blocked'
+  | 'blocked_missing_oracle_pass'
+  | 'blocked_oracle_pending_not_closed'
+  | 'blocked_missing_oracle_pending_trace'
+  | 'blocked_unresolved_items'
+  | 'incomplete_local_validation';
 
 function timeoutObservation(command: string, status: TimeoutObservation['status'], timeoutMs: number, durationMs: number): TimeoutObservation {
   return { command, status, timeoutMs, durationMs, environment: 'local-vitest-node' };

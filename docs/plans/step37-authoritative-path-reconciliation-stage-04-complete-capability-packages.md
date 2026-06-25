@@ -2532,7 +2532,8 @@ Repository guardrail added: `tests/contracts/step37-closure-implementation-trace
 
 ## Stage 4 Closure Implementation — Movement Crouch Package-Owned QA Slice
 
-- implementation status: `ORACLE_PASSED_AWAITING_COMMIT`.
+- implementation status: `CHECKPOINT_COMMITTED`.
+- implementation checkpoint: `bdb01f36` (`feat(game-dsl): add movement crouch QA package slice`).
 - local_validation: `passed`.
 - oracle_status: `passed`.
 - scope: Stage 4 `movement.crouch.v1` package-owned QA slice only.
@@ -2546,6 +2547,7 @@ This slice adds package-owned runtime evidence for `movement.crouch.v1` and keep
 
 Actual modified paths:
 
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`
 - `packages/game-dsl/src/gameplay-capabilities/movement-crouch-runtime-module.ts`
 - `packages/game-dsl/src/gameplay-capabilities/movement-crouch-package.ts`
 - `packages/game-dsl/src/gameplay-capabilities/index.ts`
@@ -2650,16 +2652,112 @@ Unresolved items:
 State transition:
 
 ```text
-planned -> landed -> verified -> oracle_passed
+planned -> landed -> verified -> oracle_passed -> checkpoint_committed
 ```
 
 ### Implementation Exit Assessment
 
 ```text
 Stage 4 Movement Crouch Package-Owned QA Slice Audit: CHECKPOINT_COMMITTED
-Stage 4 Movement Crouch Package-Owned QA Slice Implementation: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 Movement Crouch Package-Owned QA Slice Implementation: CHECKPOINT_COMMITTED
 Stage 4 Exit gate: NOT_MET
-Next: checkpoint commit for this implementation only
+Next: post-checkpoint queued feedback guardrail step
 ```
 
-Stop marker: Stage 4 `movement.crouch.v1` package-owned QA slice implementation passed Oracle and is awaiting checkpoint commit. Do not enter the next Stage 4 audit, enter Stage 5, or claim complete package closure until checkpoint commit completes.
+Stop marker: Stage 4 `movement.crouch.v1` package-owned QA slice checkpoint commit `bdb01f36` is complete. Do not enter Stage 5 or claim complete package closure; queued process feedback must start only as an independent atomic step after this checkpoint.
+
+## Stage 4 Improvement Log — Runtime State And Closure State Guardrails
+
+This log records durable process improvements discovered during the `movement.crouch.v1` implementation checkpoint.
+
+1. Queued feedback discipline: new general feedback discovered while an atomic checkpoint is closing must stay queued. It must not change the current implementation, closure diff, or exit assessment until the current checkpoint completes full local validation, Oracle review, and checkpoint commit.
+2. Runtime state evidence: action-oriented capabilities must verify the runtime state caused by the action, not just the input or action event. For `movement.crouch.v1`, `movement.crouch.entered` is insufficient without `crouching=true` and the required `heightScale`.
+3. Evidence consumer chain: new capability slices must identify the registry support evidence, package/runtime probe, QA evidence reader, and target-profile runtime overlay consumers before implementation. Their capability id, probe id, event type, runtime system, action, and field semantics must remain consistent.
+4. Same-run overlay scope: same-run evidence may update observed support only. It must not promote static `completeSupported`, Stage 4 full package closure, Stage 5, production default cutover, or legacy authoritative path exit.
+5. Local validation status: passing focused tests, full tests, typecheck, and diff checks may advance only to `LOCALLY_VALIDATED` with `local_validation: passed`. It does not imply independent review passed.
+6. Oracle pending status: a submitted review request may advance only to `ORACLE_PENDING` with `oracle_status: pending`, a traceable review request id, local validation receipts, and diff scope. `ORACLE_PENDING` cannot satisfy closed must-pass requirements.
+7. Oracle result status: only an explicit Oracle pass result tied to the request/agent mapping may advance to `ORACLE_PASSED_AWAITING_COMMIT` or later. If Oracle requests changes, the state is `CHANGES_REQUIRED` or `BLOCKED` until fixes land and local validation plus Oracle review are rerun.
+8. Closure structure validation: after any closure document field, order, or structure change, rerun the related contract tests. Pure documentation changes can break guardrail parsing and must not be assumed safe.
+
+Repository guardrail added: `tests/contracts/step37-closure-implementation-trace.test.ts` verifies the movement crouch checkpoint trace, runtime-state evidence rule, local-vs-Oracle status discipline, pending-state fail-closed behavior, and audit-history preservation.
+
+## Stage 4 Closure Implementation — Runtime State And Closure State Guardrails
+
+- implementation status: `ORACLE_PASSED_AWAITING_COMMIT`.
+- local_validation: `passed`.
+- oracle_status: `passed`.
+- scope: process/evidence guardrail only; no runtime, schema, compiler, QA runner behavior, Stage 5 exact lock, production default cutover, legacy authoritative path exit, or capability closure was introduced.
+- baseline: Stage 4 `movement.crouch.v1` package-owned QA slice checkpoint commit `bdb01f36` (`feat(game-dsl): add movement crouch QA package slice`).
+
+Actual modified paths:
+
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`
+- `tests/contracts/step37-closure-implementation-trace.test.ts`
+- `/Users/dahufa/.agents/skills/code-change-discipline/SKILL.md`
+
+Evidence/guardrail chain:
+
+1. Skill rule: `code-change-discipline` now records that action-oriented capabilities must verify the runtime state caused by the action, not only input/action events.
+2. Skill rule: queued feedback cannot change a closing atomic checkpoint; it must start as a later independent atomic step after local validation, Oracle review, and checkpoint commit complete.
+3. Skill rule: Oracle-gated closure records separate `local_validation` from `oracle_status`, and pending review states cannot satisfy closed must-pass requirements.
+4. Improvement log: this Stage 4 document records the runtime-state evidence rule, consumer-chain alignment rule, same-run overlay scope, closure status discipline, and contract rerun requirement.
+5. Contract test: `tests/contracts/step37-closure-implementation-trace.test.ts` verifies the crouch checkpoint diff, runtime-state evidence guardrail, pending-state fail-closed behavior, Oracle pass requirement, audit-history preservation, and contract rerun record.
+
+Validation receipts:
+
+```text
+npx vitest run tests/contracts/step37-closure-implementation-trace.test.ts
+exitCode=0
+result=PASS: 17 tests passed
+
+npm test
+exitCode=0
+result=PASS: contracts 95 files / 1078 tests; workspace 34 files / 408 tests
+
+npm run typecheck
+exitCode=0
+result=PASS
+
+git diff --check
+exitCode=0
+result=PASS
+```
+
+### Oracle Review
+
+- oracle_agent_id: `019effae-8aa2-7c22-b5ba-8c4b69f21d20`.
+- oracle_submission_id: `019f0021-805c-7080-8af8-c12510d79e2c`.
+- result: `PASS / no P0/P1/P2 blocking findings`.
+- checkpoint decision: allowed for this Stage 4 runtime-state and closure-state guardrail checkpoint only.
+
+Oracle confirmed:
+
+- repo diff is limited to this Stage 4 plan document and `tests/contracts/step37-closure-implementation-trace.test.ts`;
+- no runtime, schema, compiler, QA runner, product behavior, Stage 5, production default cutover, legacy authoritative exit, or full Stage 4 closure change was introduced;
+- the external Skill records runtime-state evidence, queued-feedback, and `local_validation` / `oracle_status` closure discipline rules;
+- contract tests include executable negative coverage for `ORACLE_PENDING` direct closure, missing pending trace, missing Oracle PASS, and changes-required states;
+- `movement.crouch.v1` closure records checkpoint `bdb01f36`, real paths, Oracle PASS, and Stage 4 `NOT_MET`;
+- the external Skill file is repo-external and cannot be captured by this repo checkpoint commit.
+
+Unresolved items:
+
+- Stage 4 full package closure remains `NOT_MET`.
+- Stage 5 exact lock remains `NOT_ENTERED`.
+- Production default cutover remains inactive.
+- Legacy authoritative path has not exited.
+
+State transition:
+
+```text
+planned -> landed -> verified -> oracle_passed
+```
+
+### Exit Assessment
+
+```text
+Stage 4 Runtime State And Closure State Guardrails: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 Exit gate: NOT_MET
+Next: checkpoint commit for this guardrail checkpoint only
+```
+
+Stop marker: Stage 4 runtime-state and closure-state guardrails passed Oracle and are awaiting checkpoint commit. Do not enter the next Stage 4 audit, enter Stage 5, or claim complete package closure until checkpoint commit completes.
