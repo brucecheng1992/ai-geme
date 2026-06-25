@@ -1,7 +1,7 @@
 # Step 37 Authoritative Path Reconciliation Audit
 
 > - 文档定位：Step 37 authoritative production chain 的逐段只读审计状态文档。
-> - 当前状态：Stage 3 Capability Requirements audit Oracle PASS; checkpoint commit pending
+> - 当前状态：Stage 3 Capability Requirements closure Oracle PASS; checkpoint commit pending
 > - 任务契约：`/Users/dahufa/Downloads/step37-authoritative-path-reconciliation-prompt.md`
 > - 当前分片：`docs/plans/step37-authoritative-path-reconciliation-stage-03-capability-requirements.md`
 > - 更新日期：2026-06-25
@@ -47,17 +47,17 @@
 
 ## 4. 当前状态
 
-- 状态：Stage 3 Capability Requirements audit Oracle PASS; checkpoint commit pending.
-- 当前步骤：Stage 2 closure checkpoint commit `48a855bd` 已创建；Stage 3 Capability Requirements 只读审查已记录、完成 P1 wording remediation，并通过 Oracle 复审。
+- 状态：Stage 3 Capability Requirements closure Oracle PASS; checkpoint commit pending.
+- 当前步骤：Stage 3 audit checkpoint commit `d7af70b9` 已创建；Stage 3 no-code closure implementation 已完成本地验证和 Oracle 复审，等待 checkpoint commit。
 - 最近完成：Stage 2 Profile Resolution closure；profile 由当前 run 的 canonical GameBrief genre 重算 readiness/resolution，并被 `active_profile_lock`、`authority_bundle`、Raw DSL、compiler、runtime 和 QA 消费。
-- 最近验证：Stage 3 focused suite PASS；`git diff --check` PASS；Markdown trailing whitespace scan PASS.
-- 最近 Oracle 结论：Stage 1 final Oracle PASS；Stage 2 Profile Resolution audit Oracle PASS；Stage 2 closure Oracle PASS / no P0/P1/P2/P3；Stage 3 audit Oracle re-review PASS / no P0/P1/P2/P3。
-- 未处理风险：Stage 3 Capability Requirements 尚未审计；post-Stage-1 shadow/canary parity/rollback 仍未实施。`QaReport` status consistency 作为非阻塞债务登记，不重新打开 Stage 1。
-- 工作区核对：Stage 2 closure 已提交为 checkpoint commit `48a855bd`；当前仅允许本状态文档承载 Stage 3 审查记录。
+- 最近验证：Stage 3 closure focused suite PASS；full `npm test` PASS；full `npm run typecheck` PASS；`git diff --check` PASS；Markdown trailing whitespace scan PASS.
+- 最近 Oracle 结论：Stage 1 final Oracle PASS；Stage 2 Profile Resolution audit Oracle PASS；Stage 2 closure Oracle PASS / no P0/P1/P2/P3；Stage 3 audit Oracle re-review PASS / no P0/P1/P2/P3；Stage 3 closure Oracle re-review PASS / no P0/P1/P2/P3。
+- 未处理风险：Stage 4 Complete Capability Packages 和 Stage 5 Exact Capability Lock 尚未进入；Stage 3 Gate E 仍不证明 `profileRequirements.requirementsHash` / `requiredCapabilityIds` 字段级 downstream action；post-Stage-1 shadow/canary parity/rollback 仍未实施。`QaReport` status consistency 作为非阻塞债务登记，不重新打开 Stage 1。
+- 工作区核对：Stage 3 audit 已提交为 checkpoint commit `d7af70b9`；当前仅允许本状态文档和 Stage 3 分片承载 Stage 3 closure 状态记录。
 
 ## 5. 下一步
 
-Stage 3 Capability Requirements 审查正在进行：
+Stage 3 Capability Requirements closure implementation 正在进行：
 
 ```text
 Stage 1: AUTHORITATIVE_AND_CONNECTED
@@ -66,11 +66,13 @@ Stage 2 Audit: PROFILE_RESOLUTION_RECORDED
 Stage 2 Implementation: CHECKPOINT_COMMITTED
 Stage 2 Exit gate: MET
 Stage 2 checkpoint: 48a855bd
-Stage 3 Audit: ORACLE_PASSED_AWAITING_COMMIT
-Stage 3 Implementation: NOT_ENTERED
+Stage 3 Audit: CHECKPOINT_COMMITTED
+Stage 3 audit checkpoint: d7af70b9
+Stage 3 Implementation: ORACLE_PASSED_AWAITING_COMMIT
+Stage 3 Exit gate: MET
 ```
 
-下一步完成 Stage 3 audit checkpoint commit。不要直接实施 Stage 3，也不要把 active runtime requirements 误报成 complete package、exact lock、composed schema 或 final production default cutover。
+下一步完成 Stage 3 closure checkpoint commit。不要把 active runtime requirements 误报成 complete package、exact lock、composed schema 或 final production default cutover。
 
 ## 6. 恢复检查清单
 

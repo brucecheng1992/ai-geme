@@ -2,7 +2,7 @@
 
 > - Parent plan: `docs/plans/step37-authoritative-path-reconciliation-audit.md`
 > - Stage: 3 — Capability Requirements
-> - Current status: audit Oracle PASS; checkpoint commit pending
+> - Current status: closure Oracle PASS; checkpoint commit pending
 > - Updated: 2026-06-25
 
 ## Scope Lock
@@ -151,3 +151,102 @@ Next: Stage 3 audit checkpoint; do not enter Stage 3 implementation or Stage 4 b
 ```
 
 Stop marker: Stage 3 Capability Requirements audit passed Oracle re-review. Do not implement Stage 3 or proceed to Stage 4 until this audit receives a checkpoint commit.
+
+## Stage 3 Closure Implementation — Active Requirements Exit Gate
+
+### Scope Lock
+
+- scope: Stage 3 closure only. This does not reopen Stage 1 or Stage 2 and does not enter Stage 4 Complete Capability Packages.
+- implementation type: no-code closure implementation.
+- baseline: Stage 3 audit checkpoint commit `d7af70b9` (`docs: record stage 3 capability requirements audit`).
+- starting conclusion: `Stage 3 Audit: ACTIVE_REQUIREMENTS_HASH_BOUND_EXACT_LOCK_NOT_ENTERED`; `Stage 3 Implementation: NOT_ENTERED`.
+- non-goals: no producer contract change, no source/test/runtime/QA/capability-evidence edit, no complete package promotion, no exact lock creation, no composed schema, no canonical DSL, no runtime loader, no production default cutover.
+
+### Minimal Closure Requirements
+
+1. Close Stage 3 only for `active_runtime_profile_requirements` source, identity, provenance, and hash-bound active lock availability.
+2. Preserve the narrowed Oracle boundary: downstream consumers receive or compare the active profile lock, but field-level action on `profileRequirements.requirementsHash` or `requiredCapabilityIds` is not proven in Stage 3.
+3. Keep Stage 4 and Stage 5 unopened: `completeSupported`, complete packages, exact capability lock, package-composed schema, and lock-driven runtime consumption remain future stages.
+4. Re-run Stage 3 focused verification plus full tests and typecheck before claiming exit gate.
+5. Re-submit the no-code closure diff and validation evidence to Oracle before checkpoint commit.
+
+### Implemented Scope
+
+- No production code, test, schema, runtime, QA, support-summary, or capability evidence files changed.
+- Stage 3 exit is limited to the documented audit boundary: behavior-bearing active requirements are derived from resolved runtime profile aliases, mapped to registry-owned IDs, persisted in readiness evidence, and hash-bound in `active_profile_lock.profileRequirements`.
+- The closure explicitly keeps Gate E partial for field-level downstream action.
+- Exact lock remains `NOT_ENTERED` and belongs to Stage 5.
+
+### Compatibility & Cutover
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | None. This closure records Stage 3 status only; no contract, field, artifact, runtime behavior, or QA evidence producer changed. |
+| Consumer list | Existing active-profile consumers remain `buildActiveProfileLock`, `buildGenerationCapabilityResolutionShadow`, `authority_bundle.json` readers, receipt/index/acceptance/Workbench evidence, and Stage 2 verified Raw DSL/compiler/runtime/QA authority identity checks. |
+| Compatibility type | `LOSSLESS_COMPATIBLE`: no producer or consumer shape changed. |
+| Authority | `active_profile_lock.profileRequirements.requirementsHash` is the Stage 3 authority for active runtime requirements; readiness report hash and registry snapshot hash remain upstream provenance. |
+| Legacy strategy | Legacy authoritative requirement fallback is forbidden for successful active profiles. Runtime aliases are only the profile-owned source vocabulary before mapping to registry capability IDs. |
+| Failure policy | Existing fail-closed behavior remains unchanged for unresolved profile, empty active requirements, missing aliases, incomplete active requirement state, forged refs, and missing/mismatched authority bundle or lock evidence. |
+| Evidence | Stage 3 focused suite, full `npm test`, full `npm run typecheck`, `git diff --check`, and Oracle closure review must pass before checkpoint commit. |
+| Rollback | Reverting this closure record returns Stage 3 to audit-only status without changing source artifacts, runtime behavior, or capability evidence. |
+
+Compatibility disposition:
+
+```ts
+const STAGE_3_CAPABILITY_REQUIREMENTS_CLOSURE_DISPOSITION = "LOSSLESS_COMPATIBLE";
+```
+
+### Exit Assessment
+
+```text
+Stage 1: AUTHORITATIVE_AND_CONNECTED
+Stage 2: PROFILE_RESOLUTION_CLOSED
+Stage 3 Audit: ACTIVE_REQUIREMENTS_HASH_BOUND_EXACT_LOCK_NOT_ENTERED
+Stage 3 Implementation: LOCAL_VALIDATED_AWAITING_ORACLE
+Stage 3 Exit gate: PENDING_ORACLE
+Next: Stage 4 Complete Capability Packages audit only after Stage 3 closure checkpoint
+```
+
+### Validation
+
+```text
+npx vitest run tests/contracts/generation-capability-readiness.test.ts tests/contracts/generation-capability-resolution.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/workspace/generation-pipeline.service.test.ts
+# PASS, 4 files / 52 tests
+
+npm test
+# PASS, contracts 93 files / 1036 tests; workspace 34 files / 398 tests
+
+npm run typecheck
+# PASS
+
+git diff --check
+# PASS
+
+rg -n "[ \t]+$" docs/plans/step37-authoritative-path-reconciliation-audit.md docs/plans/step37-authoritative-path-reconciliation-stage-03-capability-requirements.md
+# PASS, no matches
+```
+
+Stop marker: Stage 3 closure implementation locally validated. Do not proceed to Stage 4 until Oracle review and checkpoint commit complete.
+
+### Closure Oracle Review
+
+- first review: P1.
+- finding: parent plan still listed `Stage 3 Capability Requirements 尚未审计` as an unresolved risk after the Stage 3 audit checkpoint.
+- remediation: parent plan unresolved risks now state that Stage 4 Complete Capability Packages and Stage 5 Exact Capability Lock have not started, Stage 3 Gate E still does not prove field-level downstream action, and existing non-blocking debts remain.
+- re-review status: PASS.
+- agent: `019efe98-56e0-7b80-95ae-89c999115729`.
+- findings after remediation: P0/P1/P2/P3 none.
+- checkpoint decision: Stage 3 closure may enter checkpoint commit; this does not approve complete package, exact lock, composed schema, canonical DSL, runtime loader, capability-owned QA, or production default cutover.
+
+### Closure Exit Assessment
+
+```text
+Stage 1: AUTHORITATIVE_AND_CONNECTED
+Stage 2: PROFILE_RESOLUTION_CLOSED
+Stage 3 Audit: ACTIVE_REQUIREMENTS_HASH_BOUND_EXACT_LOCK_NOT_ENTERED
+Stage 3 Implementation: ORACLE_PASSED_AWAITING_COMMIT
+Stage 3 Exit gate: MET
+Next: Stage 4 Complete Capability Packages audit after Stage 3 closure checkpoint
+```
+
+Stop marker: Stage 3 closure passed Oracle re-review. Do not proceed to Stage 4 until checkpoint commit completes.
