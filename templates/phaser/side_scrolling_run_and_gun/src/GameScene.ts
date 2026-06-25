@@ -657,7 +657,7 @@ export class SideScrollingRunAndGunScene {
     };
   }
 
-  private createSpawnEnemyWaveCapabilityRuntimeProbe(wave: SideScrollingWave): CapabilityRuntimeProbe {
+  private createSpawnEnemyWaveCapabilityRuntimeProbe(wave: SideScrollingWave, sequenceIndex: number): CapabilityRuntimeProbe {
     return {
       capabilityId: SPAWN_ENEMY_WAVE_CAPABILITY_ID,
       probeId: SPAWN_ENEMY_WAVE_CAPABILITY_PROBE_ID,
@@ -668,7 +668,7 @@ export class SideScrollingRunAndGunScene {
       orderedWaveSequence: true,
       gateTriggered: true,
       waveSpawned: true,
-      sequenceIndex: Math.max(0, this.plan.waves.findIndex((candidate) => candidate.id === wave.id)),
+      sequenceIndex,
       waveId: wave.id,
       sourceRef: SPAWN_ENEMY_WAVE_SOURCE_REF,
       status: 'observed'
@@ -750,8 +750,22 @@ export class SideScrollingRunAndGunScene {
     }
   }
 
+  private orderedEnemyWaveSequenceIndex(wave: SideScrollingWave): number | undefined {
+    const sequenceIndex = this.plan.waves.findIndex((candidate) => candidate.id === wave.id);
+    if (sequenceIndex < 0 || this.plan.waves.length < 2) {
+      return undefined;
+    }
+    const wavesAreOrdered = this.plan.waves.every((candidate, index, waves) => index === 0 || candidate.triggerX > waves[index - 1].triggerX);
+    if (!wavesAreOrdered) {
+      return undefined;
+    }
+    const gateTriggered = wave.trigger === 'enter_segment' || this.plan.waves.slice(0, sequenceIndex).every((candidate) => this.triggeredWaves.has(candidate.id));
+    return gateTriggered ? sequenceIndex : undefined;
+  }
+
   private triggerWave(wave: SideScrollingWave): void {
     this.triggeredWaves.add(wave.id);
+    const orderedSequenceIndex = this.orderedEnemyWaveSequenceIndex(wave);
     const definition = this.plan.enemyDefinitions.find((enemy) => enemy.id === wave.enemyTypeId) ?? this.plan.enemyDefinitions[0];
     if (definition === undefined) {
       return;
@@ -778,9 +792,11 @@ export class SideScrollingRunAndGunScene {
       this.renderEnemy(enemy);
     }
     const staticCapabilityRuntime = this.createSpawnStaticCapabilityRuntimeProbe();
-    const enemyWaveCapabilityRuntime = this.createSpawnEnemyWaveCapabilityRuntimeProbe(wave);
     this.capabilityRuntimeProbes.set(staticCapabilityRuntime.probeId, staticCapabilityRuntime);
-    this.capabilityRuntimeProbes.set(enemyWaveCapabilityRuntime.probeId, enemyWaveCapabilityRuntime);
+    if (orderedSequenceIndex !== undefined && wave.count > 0) {
+      const enemyWaveCapabilityRuntime = this.createSpawnEnemyWaveCapabilityRuntimeProbe(wave, orderedSequenceIndex);
+      this.capabilityRuntimeProbes.set(enemyWaveCapabilityRuntime.probeId, enemyWaveCapabilityRuntime);
+    }
   }
 
   private advanceEnemies(deltaMs: number, nowMs: number): void {

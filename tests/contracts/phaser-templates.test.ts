@@ -1459,6 +1459,10 @@ describe('Phaser templates', () => {
     expect((globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined)?.waves).toEqual([
       expect.objectContaining({ id: 'close_wave', triggered: true })
     ]);
+    const triggeredProbeIds =
+      (globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined)?.capabilityRuntime?.probes.map((probe) => probe.probeId) ?? [];
+    expect(triggeredProbeIds).toContain('spawn.static.v1.triggered.browser_qa.v1');
+    expect(triggeredProbeIds).not.toContain('spawn.enemy_wave.v1.ordered.browser_qa.v1');
 
     scene.fire(1000);
     for (let frame = 0; frame < 20 && globalThis.__GAME_QA__?.snapshot().score === 0; frame += 1) {

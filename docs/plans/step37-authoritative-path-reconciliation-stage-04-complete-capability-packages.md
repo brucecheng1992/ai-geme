@@ -4124,10 +4124,44 @@ Focused RED/GREEN notes:
 - RED: initial focused implementation tests failed because the package contract was absent, the registry still treated `spawn.enemy_wave.v1` as non-package-owned, and QA readers did not preserve ordered-wave fields.
 - GREEN: final focused set proves ordered-wave fields are required and preserved; `player/spawn event only` or static triggered spawn alone is insufficient.
 
+Oracle P2 fix record:
+
+- prior_candidate_commit: `738e92b7f018f0ce285e42d096d69f3d361486bc`.
+- prior_candidate_tree: `df82b763546a91fa1c2bb2ea4b3ced9a4acff809`.
+- oracle_submission_id: `019f010e-5c55-71f1-93b3-5542a66a7fcd`.
+- oracle_agent_id: `019effae-8aa2-7c22-b5ba-8c4b69f21d20`.
+- oracle_status_for_prior_candidate: `changes_required`.
+- blocking_findings: `P2: runtime producer hard-coded orderedWaveSequence/gateTriggered/waveSpawned=true for every triggerWave path, allowing ordinary spawn.static behavior to overclaim spawn.enemy_wave.v1`.
+- fix_summary: `derive ordered enemy-wave evidence from a multi-wave ordered runtime plan and gate/previous-wave state; single-wave or non-gated ordinary triggers now emit only spawn.static evidence`.
+- fix_paths: `templates/phaser/side_scrolling_run_and_gun/src/GameScene.ts; tests/contracts/phaser-templates.test.ts; docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+- current_local_validation_status: `passed`.
+- current_candidate_status: `ready_for_commit`.
+- current_oracle_status: `not_submitted`.
+- current_candidate_commit: `not_created_in_this_record`.
+
+Validation commands after Oracle P2 fix:
+
+```text
+npx vitest run tests/contracts/phaser-templates.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/generation-pipeline.service.test.ts
+exitCode=0
+duration=48.89s
+result=PASS: 5 focused files and 149 tests passed; includes runtime negative regression that a single-wave ordinary reach_x trigger records spawn.static but not spawn.enemy_wave.
+
+npm test
+exitCode=0
+duration=contracts 9.43s + workspace 49.48s
+result=PASS: 96 contract files / 1123 tests and 34 workspace files / 410 tests passed after the P2 fix.
+
+npm run typecheck
+exitCode=0
+duration=6.41s
+result=PASS: root, maker-api, and maker-workbench TypeScript checks passed after the P2 fix.
+```
+
 Unresolved items:
 
-- Oracle review has not been submitted for this implementation candidate.
-- Candidate commit has not yet been created.
+- Oracle review has not been submitted for the revised implementation candidate after the P2 fix.
+- Revised candidate commit has not yet been created.
 - Receipt commit has not yet been created.
 - Stage 4 full package closure remains `NOT_MET`.
 - Step37 global exit conditions remain `false`; production default cutover is not active and legacy authoritative path has not exited.
