@@ -3645,19 +3645,26 @@ Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `parent_loo
 ## Stage 4 Closure Implementation — pickup.collectible.v1 Package-Owned QA Slice
 
 - checkpoint_id: `stage4_pickup_collectible_package_owned_qa_implementation`.
-- record_type: `candidate_closure_implementation`.
-- implementation_status: `complete`.
+- record_type: `receipt_closure`.
+- implementation_status: `receipt`.
 - local_validation_status: `passed`.
-- candidate_status: `ready_for_commit`.
-- oracle_status: `not_submitted`.
-- closure_status: `not_closed`.
+- candidate_status: `committed`.
+- oracle_status: `approved`.
+- closure_status: `closed`.
+- reviewed_commit_sha: `bd0243013be982415df4a7f572551c90b32c5f7f`.
+- reviewed_skill_revision: `be625c8c69d3fffb983dea5c40ee1cae584e2b5b0f7b82dce4338c9bcf744d78`.
+- oracle_submission_id: `019f00e0-6ee9-7b41-ad0c-d2841fb0d000` (source: `multi_agent_v1.send_input` response field `submission_id`).
+- oracle_agent_id: `019effae-8aa2-7c22-b5ba-8c4b69f21d20` (source: active Oracle subagent id; used for `wait_agent` polling).
+- oracle_verdict: `PASS`.
+- oracle_blocking_findings: `none`.
+- oracle_nonblocking_findings: `P3: deterministic browser path relies on movement/combat path plus final capability runtime expectation rather than an explicit pickup-specific wait; no false-pass risk found.`
 - closure_scope: `atomic_step`.
 - parent_loop_id: `step37`.
 - parent_loop_status: `running`.
 - global_exit_conditions_met: `false`.
 - user_input_required: `false`.
 - next_action: `CONTINUE_PARENT_LOOP`.
-- next_atomic_step: `Stage 4 next unmet package-owned QA checkpoint after pickup.collectible.v1`.
+- next_atomic_step: `Stage 4 spawn.enemy_wave package-owned QA slice audit atomic step`.
 - scope: Stage 4 `pickup.collectible.v1` package-owned QA implementation only; no Stage 5 exact lock, production default cutover, legacy authoritative path exit, weapon pickup effect promotion, or historical candidate/receipt rewrite is introduced.
 
 Purpose:
@@ -3757,12 +3764,21 @@ skill_bundle_manifest=/tmp/step37_skill_manifest.tsv
 skill_bundle_digest=be625c8c69d3fffb983dea5c40ee1cae584e2b5b0f7b82dce4338c9bcf744d78
 ```
 
-Unresolved items before candidate commit:
+Oracle review:
 
 ```text
-candidate commit not created yet
-Oracle review not submitted
-receipt commit not created
+submission_id=019f00e0-6ee9-7b41-ad0c-d2841fb0d000
+agent_id=019effae-8aa2-7c22-b5ba-8c4b69f21d20
+reviewed_commit_sha=bd0243013be982415df4a7f572551c90b32c5f7f
+reviewed_skill_revision=be625c8c69d3fffb983dea5c40ee1cae584e2b5b0f7b82dce4338c9bcf744d78
+verdict=PASS: no P0/P1/P2 blocking findings.
+nonblocking=P3 deterministic pickup-specific wait could improve diagnostics later; no false-pass risk found because final capability runtime expectation fails closed if pickup evidence is missing.
+```
+
+Unresolved blocking items after Oracle receipt:
+
+```text
+none
 ```
 
 Scoped closure output:
@@ -3771,10 +3787,10 @@ Scoped closure output:
 closure_scope: atomic_step
 atomic_step:
   id: stage4_pickup_collectible_package_owned_qa_implementation
-  status: candidate_ready
-  candidate_commit: not_created
-  receipt_commit: not_created
-  oracle_status: not_submitted
+  status: closed
+  candidate_commit: bd0243013be982415df4a7f572551c90b32c5f7f
+  receipt_commit: external_git_history_only_not_embedded
+  oracle_status: approved
 parent_stage:
   id: stage4
   status: running
@@ -3785,7 +3801,7 @@ parent_loop:
   global_exit_conditions_met: false
   user_input_required: false
   next_action: CONTINUE_PARENT_LOOP
-  next_atomic_step: Stage 4 next unmet package-owned QA checkpoint after pickup.collectible.v1
+  next_atomic_step: Stage 4 spawn.enemy_wave package-owned QA slice audit atomic step
 ```
 
-Exit assessment: `CANDIDATE_READY_NOT_CLOSED`. Local validation has passed for the current pickup implementation tree, but this atomic step is not closed until an immutable candidate commit is created, Oracle approves that candidate revision, a receipt-only commit records the approved result, and post-receipt checks pass. Stage 4 remains running, Step37 remains running, and global exit conditions remain false.
+Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4_pickup_collectible_package_owned_qa_implementation`; Stage 4 remains running, Step37 remains running, global exit conditions remain false, and Parent Loop Driver must continue with `Stage 4 spawn.enemy_wave package-owned QA slice audit atomic step`.
