@@ -311,6 +311,20 @@ describe('GenerationPipelineService failure states', () => {
           ])
         }),
         expect.objectContaining({
+          probeId: 'health.damage_invulnerability.v1.window.browser_qa.v1',
+          status: 'passed',
+          assertionResults: expect.arrayContaining([
+            expect.objectContaining({
+              assertionId: 'health.damage_invulnerability.v1.window.browser_qa.v1.assertion.window_activated',
+              status: 'passed'
+            }),
+            expect.objectContaining({
+              assertionId: 'health.damage_invulnerability.v1.window.browser_qa.v1.assertion.damage_blocked',
+              status: 'passed'
+            })
+          ])
+        }),
+        expect.objectContaining({
           probeId: 'movement.run_jump.v1.jump.browser_qa.v1',
           status: 'passed',
           assertionResults: expect.arrayContaining([
@@ -346,7 +360,7 @@ describe('GenerationPipelineService failure states', () => {
         })
       ])
     );
-    expect(capabilityQaReport.requiredResults).toHaveLength(8);
+    expect(capabilityQaReport.requiredResults).toHaveLength(9);
     expect(capabilityRuntime.resolutionReportHash).toBe(capabilityResolution.reportHash);
     expect(capabilityRuntime.authorityBundleRef).toEqual(qaReport.runtime_authority?.expected?.authorityBundleRef);
     expect(capabilityRuntime.activeProfileLockRef).toEqual(qaReport.runtime_authority?.expected?.activeProfileLockRef);
@@ -354,7 +368,7 @@ describe('GenerationPipelineService failure states', () => {
       artifactKind: 'generation_target_profile_runtime_support_report',
       status: 'blocked_incomplete_target_profile',
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 8,
+      observedCompleteSupportedCount: 9,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
@@ -362,6 +376,7 @@ describe('GenerationPipelineService failure states', () => {
         'collision.platform.v1',
         'combat.airborne_fire.v1',
         'combat.projectile.v1',
+        'health.damage_invulnerability.v1',
         'health.player_health_points.v1',
         'movement.run_jump.v1',
         'spawn.static.v1',
@@ -401,6 +416,13 @@ describe('GenerationPipelineService failure states', () => {
           runtimeVerified: true,
           observedCompleteSupported: true,
           verifiedRequiredProbeIds: ['health.player_health_points.v1.current.browser_qa.v1'],
+          missingRequiredProbeIds: []
+        }),
+        expect.objectContaining({
+          capabilityId: 'health.damage_invulnerability.v1',
+          runtimeVerified: true,
+          observedCompleteSupported: true,
+          verifiedRequiredProbeIds: ['health.damage_invulnerability.v1.window.browser_qa.v1'],
           missingRequiredProbeIds: []
         }),
         expect.objectContaining({
@@ -1157,6 +1179,14 @@ describe('GenerationPipelineService failure states', () => {
           eventType: 'health.player_health.current'
         },
         {
+          capabilityId: 'health.damage_invulnerability.v1',
+          probeId: 'health.damage_invulnerability.v1.window.browser_qa.v1',
+          action: 'block_damage',
+          eventType: 'health.damage_invulnerability.blocked',
+          invulnerable: true,
+          damagePrevented: true
+        },
+        {
           capabilityId: 'movement.run_jump.v1',
           probeId: 'movement.run_jump.v1.jump.browser_qa.v1',
           action: 'jump',
@@ -1176,7 +1206,7 @@ describe('GenerationPipelineService failure states', () => {
         }
       ])
     });
-    expect(qaCapabilityRuntimeExpectation?.requiredProbes).toHaveLength(8);
+    expect(qaCapabilityRuntimeExpectation?.requiredProbes).toHaveLength(9);
     expect(intentPlan).toMatchObject({
       normalizedGenre: 'side_scrolling_run_and_gun',
       runtimeDslSupport: 'supported',
@@ -2618,6 +2648,7 @@ describe('GenerationPipelineService failure states', () => {
         collisionPlatformObservedProbe(),
         airborneFireObservedProbe(),
         projectileObservedProbe(),
+        healthDamageInvulnerabilityObservedProbe(),
         healthPlayerHealthPointsObservedProbe(),
         movementRunJumpObservedProbe(),
         spawnStaticObservedProbe(),
@@ -2724,6 +2755,22 @@ describe('GenerationPipelineService failure states', () => {
       sourceRef: 'runtime_plan.side_scrolling.player.health',
       status: 'observed',
       observedIn: ['snapshot']
+    };
+  }
+
+  function healthDamageInvulnerabilityObservedProbe(): QaCapabilityRuntimeEvidence['observed'][number] {
+    return {
+      capabilityId: 'health.damage_invulnerability.v1',
+      probeId: 'health.damage_invulnerability.v1.window.browser_qa.v1',
+      runtimeModuleId: 'health.damage_invulnerability',
+      action: 'block_damage',
+      eventType: 'health.damage_invulnerability.blocked',
+      eventTypes: ['health.damage_invulnerability.activated', 'health.damage_invulnerability.blocked'],
+      invulnerable: true,
+      damagePrevented: true,
+      sourceRef: 'runtime_plan.side_scrolling.player.damageInvulnerability',
+      status: 'observed',
+      observedIn: ['snapshot', 'telemetry']
     };
   }
 

@@ -61,10 +61,12 @@ type CapabilityRuntimeProbe = {
   capabilityId: string;
   probeId: string;
   runtimeModuleId: string;
-  action: 'collide' | 'fire' | 'jump' | 'move' | 'observe' | 'spawn';
+  action: 'block_damage' | 'collide' | 'fire' | 'jump' | 'move' | 'observe' | 'spawn';
   eventType:
     | 'combat.airborne_fire.fired'
     | 'collision.platform.grounded'
+    | 'health.damage_invulnerability.activated'
+    | 'health.damage_invulnerability.blocked'
     | 'health.player_health.current'
     | 'player.fired'
     | 'projectile.spawned'
@@ -73,6 +75,8 @@ type CapabilityRuntimeProbe = {
     | 'spawn.static.triggered';
   eventTypes?: string[];
   airborne?: boolean;
+  invulnerable?: boolean;
+  damagePrevented?: boolean;
   health?: number;
   maxHealth?: number;
   projectileEntityId?: string;
@@ -117,6 +121,13 @@ const HEALTH_PLAYER_HEALTH_POINTS_CAPABILITY_PROBE_ID = 'health.player_health_po
 const HEALTH_PLAYER_HEALTH_POINTS_RUNTIME_MODULE_ID = 'health.player_health_points';
 const HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE = 'health.player_health.current';
 const HEALTH_PLAYER_HEALTH_POINTS_SOURCE_REF = 'runtime_plan.side_scrolling.player.health';
+const HEALTH_DAMAGE_INVULNERABILITY_CAPABILITY_ID = 'health.damage_invulnerability.v1';
+const HEALTH_DAMAGE_INVULNERABILITY_CAPABILITY_PROBE_ID = 'health.damage_invulnerability.v1.window.browser_qa.v1';
+const HEALTH_DAMAGE_INVULNERABILITY_RUNTIME_MODULE_ID = 'health.damage_invulnerability';
+const HEALTH_DAMAGE_INVULNERABILITY_ACTIVATED_EVENT_TYPE = 'health.damage_invulnerability.activated';
+const HEALTH_DAMAGE_INVULNERABILITY_BLOCKED_EVENT_TYPE = 'health.damage_invulnerability.blocked';
+const HEALTH_DAMAGE_INVULNERABILITY_SOURCE_REF = 'runtime_plan.side_scrolling.player.damageInvulnerability';
+const HEALTH_DAMAGE_INVULNERABILITY_WINDOW_MS = 900;
 
 export class SideScrollingRunAndGunScene {
   private readonly plan: SideScrollingRuntimeSlice;
@@ -145,6 +156,7 @@ export class SideScrollingRunAndGunScene {
   private readonly enemySprites = new Map<string, Phaser.GameObjects.GameObject>();
   private readonly projectileSprites = new Map<string, Phaser.GameObjects.GameObject>();
   private readonly capabilityRuntimeProbes = new Map<string, CapabilityRuntimeProbe>();
+  private damageInvulnerableUntilMs = 0;
   private playerSprite?: Phaser.GameObjects.GameObject;
   private hudText?: Phaser.GameObjects.Text;
   private cameraScrollX = 0;
@@ -288,9 +300,36 @@ export class SideScrollingRunAndGunScene {
     }
 
     this.collision.collide({ source, target: 'player', ...(projectileId === undefined ? {} : { projectileId }) });
+    if (this.isDamageInvulnerable()) {
+      const capabilityRuntime = this.createHealthDamageInvulnerabilityCapabilityRuntimeProbe(true);
+      this.capabilityRuntimeProbes.set(capabilityRuntime.probeId, capabilityRuntime);
+      this.telemetry.emit(HEALTH_DAMAGE_INVULNERABILITY_BLOCKED_EVENT_TYPE, {
+        health: this.state.health,
+        invulnerable: true,
+        damagePrevented: true,
+        source,
+        ...(projectileId === undefined ? {} : { projectileId }),
+        capabilityRuntime
+      });
+      return;
+    }
+
     this.state.health = Math.max(0, this.state.health - amount);
+    this.damageInvulnerableUntilMs = this.runtimeClockMs + HEALTH_DAMAGE_INVULNERABILITY_WINDOW_MS;
+    const invulnerabilityRuntime = this.createHealthDamageInvulnerabilityCapabilityRuntimeProbe(false);
+    const existingInvulnerabilityRuntime = this.capabilityRuntimeProbes.get(invulnerabilityRuntime.probeId);
+    if (existingInvulnerabilityRuntime?.damagePrevented !== true) {
+      this.capabilityRuntimeProbes.set(invulnerabilityRuntime.probeId, invulnerabilityRuntime);
+    }
     this.recordHealthPlayerHealthPointsCapabilityRuntimeProbe();
     this.telemetry.emit('player.damaged', { health: this.state.health, lives: this.lives });
+    this.telemetry.emit(HEALTH_DAMAGE_INVULNERABILITY_ACTIVATED_EVENT_TYPE, {
+      health: this.state.health,
+      invulnerable: true,
+      damagePrevented: false,
+      windowMs: HEALTH_DAMAGE_INVULNERABILITY_WINDOW_MS,
+      capabilityRuntime: invulnerabilityRuntime
+    });
     if (this.state.health <= 0) {
       this.lives -= 1;
       if (this.lives <= 0) {
@@ -299,6 +338,7 @@ export class SideScrollingRunAndGunScene {
         return;
       }
       this.state.health = this.state.maxHealth;
+      this.damageInvulnerableUntilMs = 0;
       this.recordHealthPlayerHealthPointsCapabilityRuntimeProbe();
       this.resetPlayerToCheckpoint();
     }
@@ -333,6 +373,7 @@ export class SideScrollingRunAndGunScene {
     this.lives = this.plan.player.lives;
     this.runtimeClockMs = 0;
     this.nextProjectileAtMs = 0;
+    this.damageInvulnerableUntilMs = 0;
     this.triggeredWaves.clear();
     this.checkpointsReached.clear();
     this.capabilityRuntimeProbes.clear();
@@ -499,9 +540,32 @@ export class SideScrollingRunAndGunScene {
     };
   }
 
+  private createHealthDamageInvulnerabilityCapabilityRuntimeProbe(damagePrevented: boolean): CapabilityRuntimeProbe {
+    return {
+      capabilityId: HEALTH_DAMAGE_INVULNERABILITY_CAPABILITY_ID,
+      probeId: HEALTH_DAMAGE_INVULNERABILITY_CAPABILITY_PROBE_ID,
+      runtimeModuleId: HEALTH_DAMAGE_INVULNERABILITY_RUNTIME_MODULE_ID,
+      action: 'block_damage',
+      eventType: damagePrevented ? HEALTH_DAMAGE_INVULNERABILITY_BLOCKED_EVENT_TYPE : HEALTH_DAMAGE_INVULNERABILITY_ACTIVATED_EVENT_TYPE,
+      eventTypes: damagePrevented
+        ? [HEALTH_DAMAGE_INVULNERABILITY_ACTIVATED_EVENT_TYPE, HEALTH_DAMAGE_INVULNERABILITY_BLOCKED_EVENT_TYPE]
+        : [HEALTH_DAMAGE_INVULNERABILITY_ACTIVATED_EVENT_TYPE],
+      invulnerable: true,
+      damagePrevented,
+      health: this.state.health,
+      maxHealth: this.state.maxHealth,
+      sourceRef: HEALTH_DAMAGE_INVULNERABILITY_SOURCE_REF,
+      status: 'observed'
+    };
+  }
+
   private recordHealthPlayerHealthPointsCapabilityRuntimeProbe(): void {
     const capabilityRuntime = this.createHealthPlayerHealthPointsCapabilityRuntimeProbe();
     this.capabilityRuntimeProbes.set(capabilityRuntime.probeId, capabilityRuntime);
+  }
+
+  private isDamageInvulnerable(): boolean {
+    return this.runtimeClockMs < this.damageInvulnerableUntilMs;
   }
 
   private capabilityRuntimeSnapshot(): { source: 'side_scrolling_runtime'; probes: CapabilityRuntimeProbe[] } {

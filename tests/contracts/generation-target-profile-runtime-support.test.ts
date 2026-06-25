@@ -7,6 +7,7 @@ import {
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
   GenerationTargetProfileRuntimeSupportReportSchema,
+  HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID,
   HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
   MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
@@ -18,6 +19,7 @@ import {
   createCombatAirborneFirePackageContract,
   createCombatProjectilePackageContract,
   createDefaultStraightSingleWeaponPackageContract,
+  createHealthDamageInvulnerabilityPackageContract,
   createHealthPlayerHealthPointsPackageContract,
   createMovementRunJumpPackageContract,
   createSpawnStaticPackageContract,
@@ -32,6 +34,7 @@ const defaultWeaponCapabilityId = 'weapon.default_straight_single.v1';
 const projectileCapabilityId = 'combat.projectile.v1';
 const movementCapabilityId = 'movement.run_jump.v1';
 const spawnStaticCapabilityId = 'spawn.static.v1';
+const damageInvulnerabilityCapabilityId = 'health.damage_invulnerability.v1';
 const healthCapabilityId = 'health.player_health_points.v1';
 
 describe('Step 37 target profile runtime support overlay', () => {
@@ -44,6 +47,8 @@ describe('Step 37 target profile runtime support overlay', () => {
       'projectile.spawned',
       'player.jumped',
       'spawn.static.triggered',
+      'health.damage_invulnerability.activated',
+      'health.damage_invulnerability.blocked',
       'health.player_health.current'
     ]);
     const report = buildGenerationTargetProfileRuntimeSupportReport({
@@ -57,6 +62,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     const projectile = report.capabilities.find((entry) => entry.capabilityId === projectileCapabilityId);
     const movement = report.capabilities.find((entry) => entry.capabilityId === movementCapabilityId);
     const spawnStatic = report.capabilities.find((entry) => entry.capabilityId === spawnStaticCapabilityId);
+    const damageInvulnerability = report.capabilities.find((entry) => entry.capabilityId === damageInvulnerabilityCapabilityId);
     const health = report.capabilities.find((entry) => entry.capabilityId === healthCapabilityId);
 
     expect(GenerationTargetProfileRuntimeSupportReportSchema.parse(report)).toEqual(report);
@@ -66,7 +72,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 8,
+      observedCompleteSupportedCount: 9,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
@@ -74,12 +80,13 @@ describe('Step 37 target profile runtime support overlay', () => {
         collisionCapabilityId,
         airborneFireCapabilityId,
         projectileCapabilityId,
+        damageInvulnerabilityCapabilityId,
         healthCapabilityId,
         movementCapabilityId,
         spawnStaticCapabilityId,
         defaultWeaponCapabilityId
       ],
-      blockers: ['target_profile_runtime_support_incomplete:8/59']
+      blockers: ['target_profile_runtime_support_incomplete:9/59']
     });
     expect(camera).toMatchObject({
       capabilityId: cameraCapabilityId,
@@ -158,6 +165,17 @@ describe('Step 37 target profile runtime support overlay', () => {
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
     });
+    expect(damageInvulnerability).toMatchObject({
+      capabilityId: damageInvulnerabilityCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
     expect(health).toMatchObject({
       capabilityId: healthCapabilityId,
       runtimeVerified: true,
@@ -191,6 +209,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         `capability_qa_report_missing_required_probe:${COLLISION_PLATFORM_REQUIRED_PROBE_ID}`,
         `capability_qa_report_missing_required_probe:${COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID}`,
         `capability_qa_report_missing_required_probe:${COMBAT_PROJECTILE_REQUIRED_PROBE_ID}`,
+        `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
         `capability_qa_report_missing_required_probe:${HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID}`,
         `capability_qa_report_missing_required_probe:${MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID}`,
         `capability_qa_report_missing_required_probe:${SPAWN_STATIC_REQUIRED_PROBE_ID}`,
@@ -207,6 +226,66 @@ describe('Step 37 target profile runtime support overlay', () => {
       observedEvidenceDimensions: { qa_observed: false }
     });
   });
+
+  it('does not verify damage invulnerability when blocked evidence lacks window activation', () => {
+    const capabilityQaReport = buildDefaultWeaponQaReport([
+      'camera.side_follow.active',
+      'collision.platform.grounded',
+      'combat.airborne_fire.fired',
+      'player.fired',
+      'projectile.spawned',
+      'player.jumped',
+      'spawn.static.triggered',
+      'health.damage_invulnerability.blocked',
+      'health.player_health.current'
+    ]);
+    const report = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260625_target_runtime_support',
+      runId: 'run_20260625_damage_invulnerability_missing_activation',
+      capabilityQaReport
+    });
+    const damageInvulnerability = report.capabilities.find((entry) => entry.capabilityId === damageInvulnerabilityCapabilityId);
+
+    expect(capabilityQaReport.requiredResults.find((entry) => entry.probeId === HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: 'health.damage_invulnerability.v1.window.browser_qa.v1.assertion.window_activated',
+          status: 'failed'
+        }),
+        expect.objectContaining({
+          assertionId: 'health.damage_invulnerability.v1.window.browser_qa.v1.assertion.damage_blocked',
+          status: 'passed'
+        })
+      ])
+    });
+    expect(report).toMatchObject({
+      status: 'blocked_incomplete_target_profile',
+      observedCompleteSupportedCount: 8,
+      targetProfileCompleteSupported: false,
+      observedCapabilityIds: [
+        cameraCapabilityId,
+        collisionCapabilityId,
+        airborneFireCapabilityId,
+        projectileCapabilityId,
+        healthCapabilityId,
+        movementCapabilityId,
+        spawnStaticCapabilityId,
+        defaultWeaponCapabilityId
+      ],
+      blockers: [
+        `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
+        'target_profile_runtime_support_incomplete:8/59'
+      ]
+    });
+    expect(damageInvulnerability).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+  });
 });
 
 function buildDefaultWeaponQaReport(eventTypes: readonly string[]) {
@@ -216,6 +295,7 @@ function buildDefaultWeaponQaReport(eventTypes: readonly string[]) {
     createCombatAirborneFirePackageContract(),
     createDefaultStraightSingleWeaponPackageContract(),
     createCombatProjectilePackageContract(),
+    createHealthDamageInvulnerabilityPackageContract(),
     createMovementRunJumpPackageContract(),
     createSpawnStaticPackageContract(),
     createHealthPlayerHealthPointsPackageContract()
@@ -227,6 +307,7 @@ function buildDefaultWeaponQaReport(eventTypes: readonly string[]) {
       airborneFireCapabilityId,
       defaultWeaponCapabilityId,
       projectileCapabilityId,
+      damageInvulnerabilityCapabilityId,
       movementCapabilityId,
       spawnStaticCapabilityId,
       healthCapabilityId
@@ -303,6 +384,19 @@ function buildDefaultWeaponQaReport(eventTypes: readonly string[]) {
             probeId: COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
             action: 'fire',
             eventType: 'projectile.spawned',
+            eventTypes,
+            status: 'observed' as const,
+            sourceRef: 'qa_report.capability_runtime'
+          }
+        ]
+      : []),
+    ...(eventTypes.includes('health.damage_invulnerability.blocked')
+      ? [
+          {
+            capabilityId: damageInvulnerabilityCapabilityId,
+            probeId: HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID,
+            action: 'block_damage',
+            eventType: 'health.damage_invulnerability.blocked',
             eventTypes,
             status: 'observed' as const,
             sourceRef: 'qa_report.capability_runtime'

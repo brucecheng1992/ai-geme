@@ -47,6 +47,8 @@ import {
   createCombatProjectilePackageContract,
   createDefaultStraightSingleWeaponPackageContract,
   DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
+  HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID,
+  createHealthDamageInvulnerabilityPackageContract,
   MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID,
   createMovementRunJumpPackageContract,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
@@ -1953,6 +1955,14 @@ function buildQaCapabilityRuntimeExpectation(genre: QaGenre): QaCapabilityRuntim
         eventType: 'projectile.spawned'
       },
       {
+        capabilityId: 'health.damage_invulnerability.v1',
+        probeId: HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID,
+        action: 'block_damage',
+        eventType: 'health.damage_invulnerability.blocked',
+        invulnerable: true,
+        damagePrevented: true
+      },
+      {
         capabilityId: 'movement.run_jump.v1',
         probeId: MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID,
         action: 'jump',
@@ -1988,6 +1998,7 @@ function buildApprovedInstalledCapabilityQaPackages(normalizedGenre: string): re
         createCombatAirborneFirePackageContract(),
         createDefaultStraightSingleWeaponPackageContract(),
         createCombatProjectilePackageContract(),
+        createHealthDamageInvulnerabilityPackageContract(),
         createMovementRunJumpPackageContract(),
         createSpawnStaticPackageContract(),
         createHealthPlayerHealthPointsPackageContract()

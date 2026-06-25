@@ -17,6 +17,8 @@ export * from './movement-run-jump-runtime-module.js';
 export * from './movement-run-jump-package.js';
 export * from './spawn-static-runtime-module.js';
 export * from './spawn-static-package.js';
+export * from './health-damage-invulnerability-runtime-module.js';
+export * from './health-damage-invulnerability-package.js';
 export * from './health-player-health-points-runtime-module.js';
 export * from './health-player-health-points-package.js';
 export * from './profile-recipe-compiler.js';

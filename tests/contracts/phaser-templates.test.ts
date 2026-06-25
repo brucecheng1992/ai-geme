@@ -99,6 +99,8 @@ type SideScrollingTemplateSnapshot = TemplateSnapshot & {
       eventType: string;
       eventTypes?: string[];
       airborne?: boolean;
+      invulnerable?: boolean;
+      damagePrevented?: boolean;
       health?: number;
       maxHealth?: number;
       projectileEntityId?: string;
@@ -1236,6 +1238,18 @@ describe('Phaser templates', () => {
       sourceRef: 'runtime_plan.side_scrolling.player.health',
       status: 'observed'
     };
+    const expectedDamageInvulnerabilityProbe = {
+      capabilityId: 'health.damage_invulnerability.v1',
+      probeId: 'health.damage_invulnerability.v1.window.browser_qa.v1',
+      runtimeModuleId: 'health.damage_invulnerability',
+      action: 'block_damage',
+      eventType: 'health.damage_invulnerability.blocked',
+      eventTypes: ['health.damage_invulnerability.activated', 'health.damage_invulnerability.blocked'],
+      invulnerable: true,
+      damagePrevented: true,
+      sourceRef: 'runtime_plan.side_scrolling.player.damageInvulnerability',
+      status: 'observed'
+    };
     const snapshot = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
     const telemetry = globalThis.__GAME_QA__?.telemetry() ?? [];
     const jumpedEvent = telemetry.find((event) => event.type === 'player.jumped');
@@ -1260,6 +1274,7 @@ describe('Phaser templates', () => {
         expect.objectContaining(expectedCameraProbe),
         expect.objectContaining(expectedCollisionProbe),
         expect.objectContaining(expectedAirborneFireProbe),
+        expect.objectContaining(expectedDamageInvulnerabilityProbe),
         expect.objectContaining(expectedHealthProbe),
         expect.objectContaining(expectedMovementProbe),
         expect.objectContaining(expectedSpawnStaticProbe),
@@ -1267,7 +1282,7 @@ describe('Phaser templates', () => {
         expect.objectContaining(expectedWeaponProbe)
       ])
     });
-    expect(snapshot?.capabilityRuntime?.probes).toHaveLength(8);
+    expect(snapshot?.capabilityRuntime?.probes).toHaveLength(9);
     const observedHealthProbe = snapshot?.capabilityRuntime?.probes.find((probe) => probe.probeId === 'health.player_health_points.v1.current.browser_qa.v1');
     expect(observedHealthProbe?.health).toBe(snapshot?.health);
     expect(observedHealthProbe?.maxHealth).toBe(3);
@@ -1430,6 +1445,45 @@ describe('Phaser templates', () => {
     const snapshot = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
     expect(snapshot?.health).toBeLessThan(3);
     expect(globalThis.__GAME_QA__?.telemetry().map((event) => event.type)).toEqual(expect.arrayContaining(['enemy.fired', 'projectile.spawned', 'player.damaged']));
+  });
+
+  it('blocks repeated side-scrolling damage during the invulnerability window', async () => {
+    const { SideScrollingRunAndGunScene } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/GameScene.js');
+    const { defaultSideScrollingRuntimeSlice } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/side-scrolling-runtime-plan.js');
+    const { defaultSideScrollingParams } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/template-params.js');
+    const scene = new SideScrollingRunAndGunScene(defaultSideScrollingParams, { side_scrolling: defaultSideScrollingRuntimeSlice });
+
+    scene.create();
+    scene.start();
+    scene.damagePlayer(1, 'test_hit');
+    const afterFirstHit = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
+    scene.damagePlayer(1, 'test_hit');
+    const afterBlockedHit = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
+    scene.update(1_000, 1_000);
+    scene.damagePlayer(1, 'test_hit');
+    const afterExpiredWindowHit = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
+    const telemetryTypes = globalThis.__GAME_QA__?.telemetry().map((event) => event.type) ?? [];
+    const invulnerabilityProbe = afterBlockedHit?.capabilityRuntime?.probes.find(
+      (probe) => probe.probeId === 'health.damage_invulnerability.v1.window.browser_qa.v1'
+    );
+
+    expect(afterFirstHit?.health).toBe(2);
+    expect(afterBlockedHit?.health).toBe(2);
+    expect(afterExpiredWindowHit?.health).toBe(1);
+    expect(telemetryTypes).toEqual(
+      expect.arrayContaining(['player.damaged', 'health.damage_invulnerability.activated', 'health.damage_invulnerability.blocked'])
+    );
+    expect(invulnerabilityProbe).toMatchObject({
+      capabilityId: 'health.damage_invulnerability.v1',
+      runtimeModuleId: 'health.damage_invulnerability',
+      action: 'block_damage',
+      eventType: 'health.damage_invulnerability.blocked',
+      eventTypes: ['health.damage_invulnerability.activated', 'health.damage_invulnerability.blocked'],
+      invulnerable: true,
+      damagePrevented: true,
+      health: 2,
+      maxHealth: 3
+    });
   });
 
   it('clears side-scrolling static render objects before restart re-renders the first frame', async () => {

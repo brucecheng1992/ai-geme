@@ -33,6 +33,10 @@ import {
   HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
   createHealthPlayerHealthPointsPackageContract
 } from './health-player-health-points-package.js';
+import {
+  HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID,
+  createHealthDamageInvulnerabilityPackageContract
+} from './health-damage-invulnerability-package.js';
 import { validateGameplayCapabilityPackage } from './package-contract.js';
 import { hashStableJson } from './stable-json.js';
 
@@ -446,6 +450,19 @@ const healthPlayerHealthPointsPackageEvidence: GameplayCapabilityEvidence = heal
 const healthPlayerHealthPointsPackageQa: GameplayCapabilityQaEvidence = healthPlayerHealthPointsPackageReport.supportEligible
   ? { requiredProbeIds: [HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const healthDamageInvulnerabilityPackageReport = validateGameplayCapabilityPackage(createHealthDamageInvulnerabilityPackageContract());
+const healthDamageInvulnerabilityPackageEvidence: GameplayCapabilityEvidence = healthDamageInvulnerabilityPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const healthDamageInvulnerabilityPackageQa: GameplayCapabilityQaEvidence = healthDamageInvulnerabilityPackageReport.supportEligible
+  ? { requiredProbeIds: [HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 
 const contractCompilerEvidence: GameplayCapabilityEvidence = {
   ...contractSeedEvidence,
@@ -552,7 +569,8 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [phaser2dActionArcade],
     ['side_scrolling_run_and_gun.v1'],
     [],
-    contractRuntimeLoaderEvidence
+    healthDamageInvulnerabilityPackageEvidence,
+    healthDamageInvulnerabilityPackageQa
   ),
   planned(
     'health.player_health_points.v1',
@@ -836,9 +854,10 @@ function contractSeeded(
   runtimeFamilies: string[],
   profiles: string[],
   legacyRuntimeCapabilities: string[],
-  evidence: GameplayCapabilityEvidence = contractSeedEvidence
+  evidence: GameplayCapabilityEvidence = contractSeedEvidence,
+  qa: GameplayCapabilityQaEvidence = noVerifiedQa
 ): GameplayCapabilityDescriptor {
-  return descriptor({ id, domain, label, runtimeFamilies, profiles, legacyRuntimeCapabilities, status: 'contract_seeded', evidence });
+  return descriptor({ id, domain, label, runtimeFamilies, profiles, legacyRuntimeCapabilities, status: 'contract_seeded', evidence, qa });
 }
 
 function planned(

@@ -204,6 +204,18 @@ describe('Playable QA gate and runner', () => {
       sourceRef: 'runtime_plan.side_scrolling.player.health',
       status: 'observed'
     };
+    const damageInvulnerabilityProbe = {
+      capabilityId: 'health.damage_invulnerability.v1',
+      probeId: 'health.damage_invulnerability.v1.window.browser_qa.v1',
+      runtimeModuleId: 'health.damage_invulnerability',
+      action: 'block_damage',
+      eventType: 'health.damage_invulnerability.blocked',
+      eventTypes: ['health.damage_invulnerability.activated', 'health.damage_invulnerability.blocked'],
+      invulnerable: true,
+      damagePrevented: true,
+      sourceRef: 'runtime_plan.side_scrolling.player.damageInvulnerability',
+      status: 'observed'
+    };
     const telemetry: TelemetryEvent[] = [
       {
         type: 'player.jumped',
@@ -222,6 +234,12 @@ describe('Playable QA gate and runner', () => {
         timestamp_ms: 2,
         frame: 2,
         payload: { capabilityRuntime: probe, capabilityRuntimeProbes: [probe, projectileProbe, airborneFireProbe] }
+      },
+      {
+        type: 'health.damage_invulnerability.blocked',
+        timestamp_ms: 3,
+        frame: 3,
+        payload: { capabilityRuntime: damageInvulnerabilityProbe }
       }
     ];
 
@@ -237,7 +255,7 @@ describe('Playable QA gate and runner', () => {
           },
           capabilityRuntime: {
             source: 'side_scrolling_runtime',
-            probes: [cameraProbe, collisionProbe, movementProbe, spawnStaticProbe, healthProbe, probe, projectileProbe, airborneFireProbe]
+            probes: [cameraProbe, collisionProbe, movementProbe, spawnStaticProbe, damageInvulnerabilityProbe, healthProbe, probe, projectileProbe, airborneFireProbe]
           }
         },
         telemetry,
@@ -286,6 +304,15 @@ describe('Playable QA gate and runner', () => {
           observedIn: ['snapshot']
         }),
         expect.objectContaining({
+          capabilityId: 'health.damage_invulnerability.v1',
+          probeId: 'health.damage_invulnerability.v1.window.browser_qa.v1',
+          action: 'block_damage',
+          eventType: 'health.damage_invulnerability.blocked',
+          invulnerable: true,
+          damagePrevented: true,
+          observedIn: ['snapshot', 'telemetry']
+        }),
+        expect.objectContaining({
           capabilityId: 'movement.run_jump.v1',
           probeId: 'movement.run_jump.v1.jump.browser_qa.v1',
           action: 'jump',
@@ -324,6 +351,7 @@ describe('Playable QA gate and runner', () => {
         'combat.airborne_fire.v1.fired.browser_qa.v1',
         'combat.projectile.v1.spawn.browser_qa.v1',
         'health.player_health_points.v1.current.browser_qa.v1',
+        'health.damage_invulnerability.v1.window.browser_qa.v1',
         'movement.run_jump.v1.jump.browser_qa.v1',
         'spawn.static.v1.triggered.browser_qa.v1',
         'weapon.default_straight_single.v1.fire.browser_qa.v1'
@@ -334,6 +362,7 @@ describe('Playable QA gate and runner', () => {
         'capabilityRuntime.probes[combat.airborne_fire.v1.fired.browser_qa.v1]: missing',
         'capabilityRuntime.probes[combat.projectile.v1.spawn.browser_qa.v1]: missing',
         'capabilityRuntime.probes[health.player_health_points.v1.current.browser_qa.v1]: missing',
+        'capabilityRuntime.probes[health.damage_invulnerability.v1.window.browser_qa.v1]: missing',
         'capabilityRuntime.probes[movement.run_jump.v1.jump.browser_qa.v1]: missing',
         'capabilityRuntime.probes[spawn.static.v1.triggered.browser_qa.v1]: missing',
         'capabilityRuntime.probes[weapon.default_straight_single.v1.fire.browser_qa.v1]: missing'
@@ -387,6 +416,50 @@ describe('Playable QA gate and runner', () => {
       status: 'FAILED',
       missingProbeIds: [],
       mismatches: ['capabilityRuntime.probes[combat.airborne_fire.v1.fired.browser_qa.v1].airborne: expected true, observed <missing>']
+    });
+  });
+
+  it('fails capability runtime evidence when player damage lacks invulnerability proof', () => {
+    const expectedCapabilityRuntime: QaCapabilityRuntimeExpectation = {
+      requiredProbes: [
+        {
+          capabilityId: 'health.damage_invulnerability.v1',
+          probeId: 'health.damage_invulnerability.v1.window.browser_qa.v1',
+          action: 'block_damage',
+          eventType: 'health.damage_invulnerability.blocked',
+          invulnerable: true,
+          damagePrevented: true
+        }
+      ]
+    };
+    const result = evaluateCapabilityRuntimeEvidence(
+      {
+        capabilityRuntime: {
+          source: 'side_scrolling_runtime',
+          probes: [
+            {
+              capabilityId: 'health.damage_invulnerability.v1',
+              probeId: 'health.damage_invulnerability.v1.window.browser_qa.v1',
+              runtimeModuleId: 'health.damage_invulnerability',
+              action: 'block_damage',
+              eventType: 'health.damage_invulnerability.blocked',
+              sourceRef: 'runtime_plan.side_scrolling.player.damageInvulnerability',
+              status: 'observed'
+            }
+          ]
+        }
+      },
+      [{ type: 'player.damaged', timestamp_ms: 1, frame: 1 }],
+      expectedCapabilityRuntime
+    );
+
+    expect(result).toMatchObject({
+      status: 'FAILED',
+      missingProbeIds: [],
+      mismatches: [
+        'capabilityRuntime.probes[health.damage_invulnerability.v1.window.browser_qa.v1].invulnerable: expected true, observed <missing>',
+        'capabilityRuntime.probes[health.damage_invulnerability.v1.window.browser_qa.v1].damagePrevented: expected true, observed <missing>'
+      ]
     });
   });
 
@@ -462,6 +535,18 @@ describe('Playable QA gate and runner', () => {
               eventType: 'health.player_health.current',
               eventTypes: ['health.player_health.current'],
               sourceRef: 'runtime_plan.side_scrolling.player.health',
+              status: 'observed'
+            },
+            {
+              capabilityId: 'health.damage_invulnerability.v1',
+              probeId: 'health.damage_invulnerability.v1.window.browser_qa.v1',
+              runtimeModuleId: 'health.damage_invulnerability',
+              action: 'block_damage',
+              eventType: 'health.damage_invulnerability.blocked',
+              eventTypes: ['health.damage_invulnerability.activated', 'health.damage_invulnerability.blocked'],
+              invulnerable: true,
+              damagePrevented: true,
+              sourceRef: 'runtime_plan.side_scrolling.player.damageInvulnerability',
               status: 'observed'
             },
             {
@@ -1653,6 +1738,9 @@ function sideScrollingObservedBase(): TelemetryEvent['type'][] {
     'enemy.fired',
     'projectile.spawned',
     'enemy.hit',
+    'player.damaged',
+    'health.damage_invulnerability.activated',
+    'health.damage_invulnerability.blocked',
     'checkpoint.reached',
     'game.restarted',
     'level.segment.completed'
@@ -2518,6 +2606,14 @@ function createDefaultWeaponCapabilityRuntimeExpectation(): QaCapabilityRuntimeE
         probeId: 'health.player_health_points.v1.current.browser_qa.v1',
         action: 'observe',
         eventType: 'health.player_health.current'
+      },
+      {
+        capabilityId: 'health.damage_invulnerability.v1',
+        probeId: 'health.damage_invulnerability.v1.window.browser_qa.v1',
+        action: 'block_damage',
+        eventType: 'health.damage_invulnerability.blocked',
+        invulnerable: true,
+        damagePrevented: true
       },
       {
         capabilityId: 'movement.run_jump.v1',

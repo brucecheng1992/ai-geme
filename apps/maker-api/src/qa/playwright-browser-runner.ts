@@ -234,6 +234,20 @@ export function evaluateCapabilityRuntimeEvidence(
     if (expectedProbe.airborne !== undefined) {
       mismatches.push(...compareBoolean(`capabilityRuntime.probes[${expectedProbe.probeId}].airborne`, observedProbe.airborne, expectedProbe.airborne));
     }
+    if (expectedProbe.invulnerable !== undefined) {
+      mismatches.push(
+        ...compareBoolean(`capabilityRuntime.probes[${expectedProbe.probeId}].invulnerable`, observedProbe.invulnerable, expectedProbe.invulnerable)
+      );
+    }
+    if (expectedProbe.damagePrevented !== undefined) {
+      mismatches.push(
+        ...compareBoolean(
+          `capabilityRuntime.probes[${expectedProbe.probeId}].damagePrevented`,
+          observedProbe.damagePrevented,
+          expectedProbe.damagePrevented
+        )
+      );
+    }
     if (expectedProbe.projectileEntityId !== undefined) {
       mismatches.push(
         ...compareScalar(
@@ -363,6 +377,8 @@ function readCapabilityRuntimeProbe(value: unknown, eventTypeFallback?: string):
   }
 
   const airborne = readBoolean(value.airborne);
+  const invulnerable = readBoolean(value.invulnerable);
+  const damagePrevented = readBoolean(value.damagePrevented);
   const projectileEntityId = readString(value.projectileEntityId);
   const runtimeModuleId = readString(value.runtimeModuleId);
   const projectileId = readString(value.projectileId);
@@ -381,6 +397,8 @@ function readCapabilityRuntimeProbe(value: unknown, eventTypeFallback?: string):
     eventType,
     eventTypes,
     ...(airborne === undefined ? {} : { airborne }),
+    ...(invulnerable === undefined ? {} : { invulnerable }),
+    ...(damagePrevented === undefined ? {} : { damagePrevented }),
     ...(projectileEntityId === undefined ? {} : { projectileEntityId }),
     ...(runtimeModuleId === undefined ? {} : { runtimeModuleId }),
     ...(projectileId === undefined ? {} : { projectileId }),
@@ -672,7 +690,11 @@ async function runDeterministicInteraction(page: Page, genre: QaGenre, timeoutMs
     await page.keyboard.press('r');
     return progressed
       ? { ok: true }
-      : { ok: false, message: 'Side-scrolling QA expected run-and-gun input to produce enemy.fired plus enemy.hit, enemy.cleared, or mission completion.' };
+      : {
+          ok: false,
+          message:
+            'Side-scrolling QA expected run-and-gun input to produce enemy.fired, combat progress, and health.damage_invulnerability.blocked.'
+        };
   }
 
   if (genre !== 'shooter') {
@@ -1109,6 +1131,13 @@ async function runSideScrollingCombat(page: Page, timeoutMs: number): Promise<bo
                 }
 
                 return event.type === 'enemy.hit' || event.type === 'enemy.cleared' || event.type === 'level.segment.completed' || event.type === 'game.won';
+              }) === true &&
+              qa?.telemetry().some((event) => {
+                if (typeof event !== 'object' || event === null || !('type' in event)) {
+                  return false;
+                }
+
+                return event.type === 'health.damage_invulnerability.blocked';
               }) === true
             );
           },

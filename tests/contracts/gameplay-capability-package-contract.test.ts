@@ -69,6 +69,14 @@ import {
 import {
   HEALTH_PLAYER_HEALTH_POINTS_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/health-player-health-points-runtime-module.js';
+import {
+  HEALTH_DAMAGE_INVULNERABILITY_PACKAGE_REQUIRED_EVIDENCE_ID,
+  HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID,
+  createHealthDamageInvulnerabilityPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/health-damage-invulnerability-package.js';
+import {
+  HEALTH_DAMAGE_INVULNERABILITY_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/health-damage-invulnerability-runtime-module.js';
 
 describe('Gameplay capability package contract', () => {
   it('accepts a complete supported package and keeps hashes deterministic', () => {
@@ -291,6 +299,51 @@ describe('Gameplay capability package contract', () => {
       capabilityId: 'health.player_health_points.v1',
       severity: 'required',
       observations: [expect.objectContaining({ kind: 'state_probe', runtimeSystemId: HEALTH_PLAYER_HEALTH_POINTS_RUNTIME_SYSTEM_ID, ref: 'health.player_health.current' })]
+    });
+  });
+
+  it('accepts the health damage invulnerability package-owned QA contract', () => {
+    const contract = createHealthDamageInvulnerabilityPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'health.damage_invulnerability.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([HEALTH_DAMAGE_INVULNERABILITY_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: HEALTH_DAMAGE_INVULNERABILITY_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'health.damage_invulnerability.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: 'health.damage_invulnerability.blocked',
+          parameters: expect.objectContaining({ invulnerable: true, damagePrevented: true })
+        })
+      ],
+      observations: expect.arrayContaining([
+        expect.objectContaining({ runtimeSystemId: HEALTH_DAMAGE_INVULNERABILITY_RUNTIME_SYSTEM_ID, ref: 'health.damage_invulnerability.activated' }),
+        expect.objectContaining({ runtimeSystemId: HEALTH_DAMAGE_INVULNERABILITY_RUNTIME_SYSTEM_ID, ref: 'health.damage_invulnerability.blocked' })
+      ]),
+      assertions: expect.arrayContaining([
+        expect.objectContaining({
+          id: 'health.damage_invulnerability.v1.window.browser_qa.v1.assertion.window_activated',
+          observationId: 'health.damage_invulnerability.v1.window.browser_qa.v1.observation.window_activated'
+        }),
+        expect.objectContaining({
+          id: 'health.damage_invulnerability.v1.window.browser_qa.v1.assertion.damage_blocked',
+          observationId: 'health.damage_invulnerability.v1.window.browser_qa.v1.observation.damage_blocked'
+        })
+      ])
     });
   });
 

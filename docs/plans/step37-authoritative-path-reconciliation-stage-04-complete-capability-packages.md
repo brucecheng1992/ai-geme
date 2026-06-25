@@ -2128,3 +2128,99 @@ Next: checkpoint commit for this audit only
 ```
 
 Stop marker: Stage 4 `health.damage_invulnerability.v1` package-owned QA slice audit passed Oracle and is awaiting checkpoint commit. Do not implement this slice, do not enter Stage 5, and do not claim complete package closure until checkpoint commit completes.
+
+## Stage 4 Closure Implementation — Health Damage Invulnerability Package-Owned QA Slice
+
+### Current Stage Review Conclusion
+
+- audit checkpoint: `4433e76a` (`docs: record stage 4 damage invulnerability audit`).
+- starting conclusion: `Stage 4 Health Damage Invulnerability Package-Owned QA Slice Audit: ORACLE_PASSED_AWAITING_COMMIT`; implementation may start for this slice only after the audit checkpoint.
+- non-goals: no Stage 5 exact lock, no composed schema, no canonical DSL/provider run, no production default cutover, no legacy authoritative path exit, no `movement.crouch.v1`, `pickup.collectible.v1`, `spawn.enemy_wave.v1`, or Stage 4 full closure claim.
+
+### Minimal Closure Requirements Extracted
+
+1. Add package-owned contract metadata for `health.damage_invulnerability.v1`.
+2. Add real side-scrolling runtime state for a bounded post-damage invulnerability window.
+3. Preserve machine-readable evidence for both window activation and blocked damage.
+4. Extend QA evidence readers to verify `invulnerable` and `damagePrevented` fields.
+5. Bridge the required probe through active package installation, `CapabilityQaReport`, and target runtime support overlay.
+6. Keep static `completeSupported=false`; only same-run runtime-observed support may advance.
+
+### Implementation
+
+- Added `health-damage-invulnerability-package.ts` and `health-damage-invulnerability-runtime-module.ts` with required probe `health.damage_invulnerability.v1.window.browser_qa.v1`, runtime system `health.damage_invulnerability`, activation and blocked-damage observations, and required assertions for both `window_activated` and `damage_blocked`.
+- Extended `GameplayCapabilityRegistry` so `contractSeeded(...)` can carry package-owned QA evidence, and wired `health.damage_invulnerability.v1` to package evidence without marking static QA verified.
+- Added side-scrolling runtime behavior: first damage opens a bounded invulnerability window; a subsequent hit inside the window emits `health.damage_invulnerability.blocked`, preserves `invulnerable=true` and `damagePrevented=true`, and does not reduce health.
+- Extended runtime telemetry schema, QA types, Playwright QA reader, generation pipeline package installation, and target runtime support overlay consumers for the new evidence.
+- Added positive and negative regression coverage proving damage/health evidence alone is insufficient without blocked invulnerability evidence.
+
+### Compatibility & Cutover
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Added `health.damage_invulnerability.v1` package contract, runtime module ids/events, telemetry event types, QA probe fields, and side-scrolling runtime state/evidence. |
+| Consumer list | `GameplayCapabilityRegistry`, package resolver/QA plan, `generation-pipeline.service`, side-scrolling runtime snapshot/telemetry, runtime-core telemetry parser, Playwright QA evidence reader, `CapabilityQaReport`, target runtime support overlay, and tests. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`, now satisfied for this slice by same-run runtime and QA consumers that read and verify the new probe. Static support remains incomplete because registry QA is not permanently verified. |
+| Authority | Package QA assertion is the semantic authority; same-run side-scrolling browser evidence is observation authority; target runtime support overlay is report authority. |
+| Legacy strategy | Legacy `player.damaged` and `health.player_health.current` remain valid for damage/health capabilities but are forbidden from proving invulnerability without `health.damage_invulnerability.blocked` evidence and preserved state fields. |
+| Failure policy | Missing required probe, missing activation event, missing blocked event, missing `invulnerable=true`, missing `damagePrevented=true`, or action-only damage evidence keeps the capability unverified and the target profile blocked. |
+| Evidence | RED import failed before implementation; focused tests, related suite, full `npm test`, `npm run typecheck`, `git diff --check`, and support probe passed after implementation. |
+| Rollback | Reverting this slice removes only the damage-invulnerability package/runtime/probe evidence and returns runtime-observed support to `8/59` without changing existing damage or health semantics. |
+
+### Validation
+
+- RED: `npx tsx --eval "... createHealthDamageInvulnerabilityPackageContract ..."` initially failed with `TypeError: createHealthDamageInvulnerabilityPackageContract is not a function`.
+- GREEN contract probe: required package id and required probe id resolved.
+- Focused tests before Oracle P2 fix: 7 files passed, 11 tests passed, 162 skipped.
+- Focused tests after Oracle P2 fix: 3 files passed, 5 tests passed, 54 skipped.
+- Related suite after Oracle P2 fix: 7 files passed, 174 tests passed.
+- Full tests after Oracle P2 fix: `npm test` passed, 128 test files passed, 1462 tests passed.
+- Typecheck: `npm run typecheck` passed for root, `@ai-game-maker/maker-api`, and `@ai-game-maker/maker-workbench`.
+- Whitespace: `git diff --check` passed.
+- Support probe: target runtime support remains `blocked_incomplete_target_profile`; `observedCompleteSupportedCount=9`, `requiredCapabilityCount=59`, `staticCompleteSupportedCount=0`, blocker `target_profile_runtime_support_incomplete:9/59`; `health.damage_invulnerability.v1` is runtime verified with verified required probe `health.damage_invulnerability.v1.window.browser_qa.v1`.
+
+### Implementation Oracle Review Round 1
+
+Oracle BLOCKED on P2: package QA observations included both `health.damage_invulnerability.activated` and `health.damage_invulnerability.blocked`, but the required assertions only required `damage_blocked`. That allowed blocked-only evidence to pass without proving damage-triggered window activation.
+
+Fix:
+
+- added required assertion `health.damage_invulnerability.v1.window.browser_qa.v1.assertion.window_activated`;
+- added a negative regression where blocked evidence without activation fails the required probe and keeps `health.damage_invulnerability.v1` unverified;
+- reran focused tests, related suite, full `npm test`, `npm run typecheck`, and `git diff --check`.
+
+### Exit Assessment
+
+```text
+Stage 4 Health Damage Invulnerability Package-Owned QA Slice Audit: ORACLE_PASSED
+Stage 4 Health Damage Invulnerability Package-Owned QA Slice Implementation: LOCALLY_VALIDATED
+Stage 4 Exit gate: NOT_MET
+Next: Oracle review for this implementation only
+```
+
+Stop marker: Stage 4 `health.damage_invulnerability.v1` package-owned QA slice implementation is locally validated and awaiting Oracle review. Do not enter Stage 5 and do not claim complete package closure.
+
+### Implementation Oracle Review Round 2
+
+Oracle PASS / no P0/P1/P2 blocking findings.
+
+Oracle confirmed:
+
+- the prior P2 is resolved because the package required probe now requires both `assertion.window_activated` and `assertion.damage_blocked`;
+- the blocked-only negative regression keeps `health.damage_invulnerability.v1` unverified and leaves runtime-observed support at `8/59`;
+- positive pipeline evidence expects both assertions passed;
+- static support remains incomplete while same-run runtime-observed overlay is the only path to `9/59`;
+- no Stage 5 exact lock, production default cutover, legacy authoritative path exit, full Stage 4 closure, or unrelated capability promotion was introduced.
+
+P3 note: activation is enforced at the `CapabilityQaReport` assertion layer rather than the first `evaluateCapabilityRuntimeEvidence` comparison layer; accepted for this slice because the package assertions and overlay negative regression prevent blocked-only evidence from verifying the capability.
+
+### Exit Assessment After Oracle
+
+```text
+Stage 4 Health Damage Invulnerability Package-Owned QA Slice Audit: ORACLE_PASSED
+Stage 4 Health Damage Invulnerability Package-Owned QA Slice Implementation: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 Exit gate: NOT_MET
+Next: checkpoint commit for this implementation only
+```
+
+Stop marker: Stage 4 `health.damage_invulnerability.v1` package-owned QA slice implementation passed Oracle and is awaiting checkpoint commit. Do not enter Stage 5 and do not claim complete package closure.

@@ -43,6 +43,10 @@ describe('Gameplay capability registry', () => {
       status: 'planned',
       legacyRuntimeCapabilities: ['player_health']
     });
+    expect(findGameplayCapability('health.damage_invulnerability.v1')).toMatchObject({
+      status: 'contract_seeded',
+      legacyRuntimeCapabilities: []
+    });
     expect(findGameplayCapability('combat.airborne_fire.v1')).toMatchObject({
       status: 'planned',
       legacyRuntimeCapabilities: []
@@ -273,6 +277,32 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(health)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(health)).toBe(false);
+  });
+
+  it('scopes health damage invulnerability package-owned QA without static support promotion', () => {
+    const invulnerability = findGameplayCapability('health.damage_invulnerability.v1');
+
+    if (invulnerability === undefined) {
+      throw new Error('Expected health.damage_invulnerability.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(invulnerability)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(invulnerability.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      renderContract: true
+    });
+    expect(invulnerability.qa).toEqual({
+      requiredProbeIds: ['health.damage_invulnerability.v1.window.browser_qa.v1'],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(invulnerability)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(invulnerability)).toBe(false);
   });
 
   it('scopes combat airborne fire package-owned QA without static support promotion', () => {
