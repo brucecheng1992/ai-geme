@@ -55,6 +55,11 @@ import {
   type DslValidationReport,
   GenerationCapabilityReadinessReportSchema,
   GenerationCapabilityResolutionReportSchema,
+  SHADOW_CAPABILITY_QA_PLAN_PATH,
+  SHADOW_CAPABILITY_QA_REPORT_PATH,
+  SHADOW_GAMEPLAY_CAPABILITY_LOCK_PATH,
+  SHADOW_PHASER_RUNTIME_LOADER_REPORT_PATH,
+  SHADOW_PHASER_RUNTIME_SYSTEM_MANIFEST_PATH,
   type GenerationCapabilityReadinessReport,
   type GenerationCapabilityResolutionReport,
   type GenerationCapabilityRuntimeShadowArtifacts,
@@ -1370,13 +1375,20 @@ export class GenerationPipelineService {
     compiled: RuntimeCompileSuccess,
     options: { buildLogPresent?: boolean; qaReportPresent?: boolean; renderFidelityReportPresent?: boolean } = {}
   ): Promise<void> {
+    const modelOutputPresent = async (filename: string) => pathExists(this.workspace.getModelOutputPath(input.projectId, input.runId, filename));
     const index = buildValidPipelineArtifactIndex({
       projectId: input.projectId,
       runId: input.runId,
       compileFiles: compiled.files,
       buildLogPresent: options.buildLogPresent,
       qaReportPresent: options.qaReportPresent,
-      renderFidelityReportPresent: options.renderFidelityReportPresent
+      renderFidelityReportPresent: options.renderFidelityReportPresent,
+      shadowCapabilityLockPresent: await modelOutputPresent(SHADOW_GAMEPLAY_CAPABILITY_LOCK_PATH),
+      shadowRuntimeSystemManifestPresent: await modelOutputPresent(SHADOW_PHASER_RUNTIME_SYSTEM_MANIFEST_PATH),
+      shadowRuntimeLoaderReportPresent: await modelOutputPresent(SHADOW_PHASER_RUNTIME_LOADER_REPORT_PATH),
+      shadowCapabilityQaPlanPresent: await modelOutputPresent(SHADOW_CAPABILITY_QA_PLAN_PATH),
+      shadowCapabilityQaReportPresent: await modelOutputPresent(SHADOW_CAPABILITY_QA_REPORT_PATH),
+      targetProfileRuntimeSupportReportPresent: await modelOutputPresent(GENERATION_TARGET_PROFILE_RUNTIME_SUPPORT_REPORT_PATH)
     });
     await this.writePipelineAcceptanceReport(input, index);
     await writePipelineArtifactIndex(this.workspace.getModelOutputPath(input.projectId, input.runId, 'pipeline_artifact_index.json'), index);

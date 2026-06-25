@@ -164,6 +164,7 @@ const ARTIFACT_ORDER = [
   'shadowRuntimeLoaderReport',
   'shadowCapabilityQaPlan',
   'shadowCapabilityQaReport',
+  'targetProfileRuntimeSupportReport',
   'gameDsl',
   'gameDslCandidate',
   'dslValidationReport',

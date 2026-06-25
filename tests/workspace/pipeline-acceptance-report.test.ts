@@ -110,6 +110,7 @@ describe('Pipeline acceptance report contract', () => {
         expect.objectContaining({ artifactId: 'shadowRuntimeLoaderReport', artifactPath: 'shadow_phaser_runtime_loader_report.json', status: 'skipped', required: false }),
         expect.objectContaining({ artifactId: 'shadowCapabilityQaPlan', artifactPath: 'shadow_capability_qa_plan.json', status: 'skipped', required: false }),
         expect.objectContaining({ artifactId: 'shadowCapabilityQaReport', artifactPath: 'shadow_capability_qa_report.json', status: 'skipped', required: false }),
+        expect.objectContaining({ artifactId: 'targetProfileRuntimeSupportReport', artifactPath: 'generation_target_profile_runtime_support_report.json', status: 'skipped', required: false }),
         expect.objectContaining({ artifactId: 'dslConsumptionReport', artifactPath: 'dsl_consumption_report.json' }),
         expect.objectContaining({ artifactId: 'sceneIr', artifactPath: 'game.scene.ir.json', status: 'skipped', required: false }),
         expect.objectContaining({ artifactId: 'sceneIrAuthorityReport', artifactPath: 'scene_ir_authority_report.json', status: 'skipped', required: false }),

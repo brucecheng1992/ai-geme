@@ -27,6 +27,7 @@ export const PipelineArtifactRefSchema = z.strictObject({
     'shadowRuntimeLoaderReport',
     'shadowCapabilityQaPlan',
     'shadowCapabilityQaReport',
+    'targetProfileRuntimeSupportReport',
     'gameDslCandidate',
     'dslValidationReport',
     'dslConsumptionReport',
@@ -130,6 +131,7 @@ export function buildValidPipelineArtifactIndex(input: {
   shadowRuntimeLoaderReportPresent?: boolean;
   shadowCapabilityQaPlanPresent?: boolean;
   shadowCapabilityQaReportPresent?: boolean;
+  targetProfileRuntimeSupportReportPresent?: boolean;
 }): PipelineArtifactIndex {
   const compileFiles = new Set(input.compileFiles);
   const sideScrollingCompile = input.compileFiles.some((file) => file.startsWith('side_scrolling_run_and_gun/'));
@@ -202,6 +204,17 @@ export function buildValidPipelineArtifactIndex(input: {
       'capability-runtime',
       'json',
       input.shadowCapabilityQaReportPresent === true ? undefined : 'capability_runtime_shadow_artifact_not_resolved'
+    ),
+    artifact(
+      'targetProfileRuntimeSupportReport',
+      'runtime',
+      'model-output',
+      'generation_target_profile_runtime_support_report.json',
+      input.targetProfileRuntimeSupportReportPresent === true ? 'present' : 'skipped',
+      false,
+      'capability-runtime',
+      'json',
+      input.targetProfileRuntimeSupportReportPresent === true ? undefined : 'target_profile_runtime_support_overlay_not_resolved'
     ),
     artifact('gameDsl', 'dsl', 'model-output', 'game_dsl.json', 'present', true, 'generation', 'json'),
     artifact('gameDslCandidate', 'dsl', 'model-output', 'game_dsl.candidate.json', 'skipped', false, 'generation', 'json', 'valid_dsl_path_uses_game_dsl_json'),
@@ -324,6 +337,7 @@ export function buildInvalidDslPipelineArtifactIndex(input: { projectId: string;
     artifact('shadowRuntimeLoaderReport', 'runtime', 'model-output', 'shadow_phaser_runtime_loader_report.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
     artifact('shadowCapabilityQaPlan', 'runtime', 'model-output', 'shadow_capability_qa_plan.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
     artifact('shadowCapabilityQaReport', 'runtime', 'model-output', 'shadow_capability_qa_report.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
+    artifact('targetProfileRuntimeSupportReport', 'runtime', 'model-output', 'generation_target_profile_runtime_support_report.json', 'skipped', false, 'capability-runtime', 'json', 'target_profile_runtime_support_overlay_not_resolved'),
     artifact(
       'gameDsl',
       'dsl',
@@ -398,6 +412,7 @@ export function buildUnsupportedIntentPipelineArtifactIndex(input: { projectId: 
     artifact('shadowRuntimeLoaderReport', 'runtime', 'model-output', 'shadow_phaser_runtime_loader_report.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
     artifact('shadowCapabilityQaPlan', 'runtime', 'model-output', 'shadow_capability_qa_plan.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
     artifact('shadowCapabilityQaReport', 'runtime', 'model-output', 'shadow_capability_qa_report.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
+    artifact('targetProfileRuntimeSupportReport', 'runtime', 'model-output', 'generation_target_profile_runtime_support_report.json', 'skipped', false, 'capability-runtime', 'json', 'target_profile_runtime_support_overlay_not_resolved'),
     artifact('gameDsl', 'dsl', 'model-output', 'game_dsl.json', 'skipped', true, 'generation', 'json', 'runtime_unsupported_before_dsl_generation'),
     artifact('gameDslCandidate', 'dsl', 'model-output', 'game_dsl.candidate.json', 'skipped', false, 'generation', 'json', 'runtime_unsupported_before_dsl_generation'),
     artifact('dslValidationReport', 'validation', 'model-output', 'dsl_validation_report.json', 'skipped', true, 'generation', 'json', 'runtime_unsupported_before_dsl_validation'),
@@ -495,6 +510,7 @@ function buildPreDslBlockedPipelineArtifactIndex(input: {
     artifact('shadowRuntimeLoaderReport', 'runtime', 'model-output', 'shadow_phaser_runtime_loader_report.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
     artifact('shadowCapabilityQaPlan', 'runtime', 'model-output', 'shadow_capability_qa_plan.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
     artifact('shadowCapabilityQaReport', 'runtime', 'model-output', 'shadow_capability_qa_report.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
+    artifact('targetProfileRuntimeSupportReport', 'runtime', 'model-output', 'generation_target_profile_runtime_support_report.json', 'skipped', false, 'capability-runtime', 'json', 'target_profile_runtime_support_overlay_not_resolved'),
     artifact('gameDsl', 'dsl', 'model-output', 'game_dsl.json', 'skipped', true, 'generation', 'json', beforeDsl),
     artifact('gameDslCandidate', 'dsl', 'model-output', 'game_dsl.candidate.json', 'skipped', false, 'generation', 'json', beforeDsl),
     artifact('dslValidationReport', 'validation', 'model-output', 'dsl_validation_report.json', 'skipped', true, 'generation', 'json', beforeDslValidation),
@@ -539,6 +555,7 @@ export function buildCompileFailedPipelineArtifactIndex(input: { projectId: stri
     artifact('shadowRuntimeLoaderReport', 'runtime', 'model-output', 'shadow_phaser_runtime_loader_report.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
     artifact('shadowCapabilityQaPlan', 'runtime', 'model-output', 'shadow_capability_qa_plan.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
     artifact('shadowCapabilityQaReport', 'runtime', 'model-output', 'shadow_capability_qa_report.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
+    artifact('targetProfileRuntimeSupportReport', 'runtime', 'model-output', 'generation_target_profile_runtime_support_report.json', 'skipped', false, 'capability-runtime', 'json', 'target_profile_runtime_support_overlay_not_resolved'),
     artifact('gameDsl', 'dsl', 'model-output', 'game_dsl.json', 'present', true, 'generation', 'json'),
     artifact('gameDslCandidate', 'dsl', 'model-output', 'game_dsl.candidate.json', 'skipped', false, 'generation', 'json', 'valid_dsl_path_uses_game_dsl_json'),
     artifact('dslValidationReport', 'validation', 'model-output', 'dsl_validation_report.json', 'present', true, 'generation', 'json'),

@@ -856,4 +856,120 @@ Stage 4 Exit gate: NOT_MET
 Next: checkpoint commit, then continue Stage 4 next closure requirement review
 ```
 
-Stop marker: Stage 4 target profile runtime support overlay passed Oracle and awaits checkpoint commit. Do not enter Stage 5 and do not claim complete package closure.
+Stop marker: Stage 4 target profile runtime support overlay checkpoint commit `cdccec37` is complete. Do not enter Stage 5 and do not claim complete package closure.
+
+## Stage 4 Closure Implementation — Runtime Support Overlay Artifact Index Visibility
+
+### Scope Lock
+
+- scope: Stage 4 implementation only.
+- baseline: Stage 4 target profile runtime support overlay checkpoint commit `cdccec37` (`feat(game-dsl): add target profile runtime support overlay`).
+- implementation target: expose the Stage 4 runtime support overlay and its package QA inputs through `pipeline_artifact_index.json` and Workbench evidence grouping.
+- non-goals: no registry `qa_observed=true`, no registry `completeSupported=true`, no exact lock, no acceptance verdict gate, no production default cutover.
+- starting conclusion: `Stage 4 Exit gate: NOT_MET`; overlay evidence existed in model-output, but final pipeline evidence still marked `shadow_capability_qa_plan.json` / `shadow_capability_qa_report.json` as skipped and had no overlay artifact ref.
+
+### Current Stage Review Conclusion
+
+The overlay report became a real producer artifact in the previous slice, but it was not reconciled with the pipeline evidence surface. A successful side-scrolling run could contain `shadow_capability_qa_plan.json`, `shadow_capability_qa_report.json`, and `generation_target_profile_runtime_support_report.json`, while `pipeline_artifact_index.json` still hid the first two as skipped and omitted the overlay entirely.
+
+This is a Stage 4 evidence-traceability gap, not a support promotion gap. The minimal closure is to make the existing artifacts visible and status-correct, without making them required acceptance gates or Stage 5 authority.
+
+### Extracted Minimal Closure Requirements
+
+1. Add a stable `targetProfileRuntimeSupportReport` artifact ref for `generation_target_profile_runtime_support_report.json`.
+2. Drive `shadowCapabilityQaPlan`, `shadowCapabilityQaReport`, and `targetProfileRuntimeSupportReport` status from actual model-output file existence.
+3. Keep these refs `required=false` so artifact visibility does not alter QA/playable/acceptance verdicts.
+4. Mark blocked, invalid, unsupported, pre-DSL, and compile-failed paths as skipped without reading stale generated artifacts.
+5. Surface the new ref through Workbench Runtime evidence grouping and acceptance `checkedArtifacts`.
+6. Preserve static support summary and Stage 4 exit as incomplete.
+
+### RED Evidence
+
+```text
+npx vitest run tests/workspace/pipeline-artifact-index.test.ts tests/workspace/generation-pipeline.service.test.ts -t "runtime support overlay refs|rewrites side-scrolling runtime scene binding report"
+# RED before implementation: shadowCapabilityQaPlan/Report stayed skipped and targetProfileRuntimeSupportReport was missing from final index
+```
+
+### Implemented Scope
+
+- `PipelineArtifactRefSchema` now includes `targetProfileRuntimeSupportReport`.
+- `buildValidPipelineArtifactIndex()` can mark the overlay ref present or skipped, and all blocked index builders mark it skipped.
+- `GenerationPipelineService.writeValidPipelineArtifactIndex()` now checks actual model-output existence for shadow lock/runtime/QA artifacts and target runtime support overlay before writing final index and acceptance report.
+- `pipeline_acceptance_report` checked artifacts and Workbench Runtime evidence grouping now include the overlay ref.
+- Focused tests cover direct index flags and the real side-scrolling final index after QA closure.
+
+### Compatibility & Cutover
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | `pipeline_artifact_index.json` can now include `targetProfileRuntimeSupportReport`, and final valid-path index statuses for shadow QA artifacts are file-existence driven. |
+| Consumer list | `GenerationPipelineService`, `buildValidPipelineArtifactIndex`, `PipelineArtifactIndexSchema`, `buildPipelineAcceptanceReport`, Workbench `buildPipelineEvidenceView`, focused tests, and future evidence readers consume the refs. |
+| Compatibility type | `LOSSLESS_COMPATIBLE`: this is additive artifact metadata and does not change artifact payloads or acceptance verdict requirements. |
+| Authority | The underlying artifacts remain authoritative: `shadow_capability_qa_plan.json`, `shadow_capability_qa_report.json`, and `generation_target_profile_runtime_support_report.json`; index refs are evidence pointers only. |
+| Legacy strategy | Runs without these files keep skipped refs with explicit reasons. Historical index consumers continue to see known model-output paths and safe relative refs. |
+| Failure policy | Missing model-output files remain skipped/non-required; no stale generated-project artifact is consulted and no support promotion occurs. |
+| Evidence | RED proved index invisibility; GREEN focused and full tests prove final side-scrolling index marks produced refs present while blocked paths remain skipped. |
+| Rollback | Reverting this slice removes only additive index visibility and returns final index to prior skipped/omitted runtime support refs. |
+
+Compatibility disposition:
+
+```ts
+const STAGE_4_RUNTIME_SUPPORT_OVERLAY_INDEX_VISIBILITY_DISPOSITION = "LOSSLESS_COMPATIBLE";
+```
+
+### Validation
+
+```text
+npx vitest run tests/workspace/pipeline-artifact-index.test.ts tests/workspace/generation-pipeline.service.test.ts -t "runtime support overlay refs|rewrites side-scrolling runtime scene binding report"
+# RED before implementation: final index did not expose the overlay refs correctly
+# GREEN PASS, 2 files / 2 selected tests
+
+npx vitest run tests/workspace/pipeline-artifact-index.test.ts tests/workspace/generation-pipeline.service.test.ts tests/workspace/pipeline-acceptance-report.test.ts tests/workspace/workbench-pipeline-evidence-client.test.ts -t "runtime support overlay refs|rewrites side-scrolling runtime scene binding report|checkedArtifacts|groups safe artifact refs"
+# PASS, 3 files / 3 selected tests; one file skipped by test name filter
+
+npx vitest run tests/workspace/pipeline-artifact-index.test.ts tests/workspace/generation-pipeline.service.test.ts tests/workspace/pipeline-acceptance-report.test.ts tests/workspace/workbench-pipeline-evidence-client.test.ts tests/workspace/pipeline-golden-trace.test.ts
+# PASS, 5 files / 66 tests
+
+npm test
+# PASS, contracts 94 files / 1042 tests; workspace 34 files / 402 tests
+
+npm run typecheck
+# PASS
+
+git diff --check
+# PASS
+
+npx tsx -e "import { buildDeepSeekRunAndGunValidationProfileSupportSummary } from './packages/game-dsl/src/deepseek-run-and-gun-validation-profile-v1.ts'; const support = buildDeepSeekRunAndGunValidationProfileSupportSummary(); const weapon = support.capabilities.find((capability) => capability.capabilityId === 'weapon.default_straight_single.v1'); console.log(JSON.stringify({summary:support.summary, weapon}, null, 2));"
+# PASS: requiredCapabilityCount=59, completeSupportedCount=0; weapon.default_straight_single.v1 remains qa_observed=false, completeSupported=false, and only lists requiredProbesVerified as missing prerequisite
+```
+
+### Implementation Oracle Review
+
+Oracle PASS / no P0/P1/P2/P3.
+
+Oracle confirmed:
+
+- The implementation only adds observability refs for `shadow_capability_qa_plan.json`, `shadow_capability_qa_report.json`, and `generation_target_profile_runtime_support_report.json`.
+- `targetProfileRuntimeSupportReport` stays `required=false`, so acceptance verdicts are not promoted by artifact visibility alone.
+- Static registry / support summary closure is not promoted; Stage 4 support closure remains open.
+- This review does not approve Stage 5 entry, exact lock, production default cutover, or legacy authoritative path exit.
+
+### Implementation Exit Assessment
+
+```text
+Stage 1: AUTHORITATIVE_AND_CONNECTED
+Stage 2: PROFILE_RESOLUTION_CLOSED
+Stage 3: CAPABILITY_REQUIREMENTS_CLOSED
+Stage 4 Audit: COMPLETE_PACKAGE_CLOSURE_NOT_MET
+Stage 4 Package Closure Gate: CHECKPOINT_COMMITTED
+Stage 4 Default Weapon Browser QA Evidence: CHECKPOINT_COMMITTED
+Stage 4 Support Evidence Prerequisite Gate: CHECKPOINT_COMMITTED
+Stage 4 Default Weapon Package Contract Prerequisite: CHECKPOINT_COMMITTED
+Stage 4 Required Probe QA Report Bridge: CHECKPOINT_COMMITTED
+Stage 4 Target Profile Runtime Support Overlay: CHECKPOINT_COMMITTED
+Stage 4 Runtime Support Overlay Artifact Index Visibility: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 Exit gate: NOT_MET
+Next: checkpoint commit, then continue Stage 4 next closure requirement audit
+```
+
+Stop marker: Stage 4 runtime support overlay artifact index visibility passed Oracle and awaits checkpoint commit. Do not enter Stage 5 and do not claim complete package closure.

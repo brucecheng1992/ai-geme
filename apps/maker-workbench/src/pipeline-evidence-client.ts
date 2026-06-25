@@ -62,6 +62,7 @@ const GROUPS: Array<{ id: string; title: string; artifactIds: string[] }> = [
       'shadowRuntimeLoaderReport',
       'shadowCapabilityQaPlan',
       'shadowCapabilityQaReport',
+      'targetProfileRuntimeSupportReport',
       'runtimeCapabilityReport',
       'sceneIr',
       'sceneIrAuthorityReport',

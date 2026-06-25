@@ -184,6 +184,7 @@ describe('GenerationPipelineService failure states', () => {
     const capabilityCutover = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_capability_cutover_report.json'), 'utf8'));
     const runtimeSceneBindingReport = JSON.parse(await readFile(join(workspace.getGeneratedProjectDir(projectId), 'runtime_scene_binding_report.json'), 'utf8'));
     const acceptance = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_acceptance_report.json'), 'utf8'));
+    const artifactIndex = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_artifact_index.json'), 'utf8'));
     const qaReport = await readQaReport();
     expect(generationPathReceipt).toMatchObject({
       artifactKind: 'generation_path_receipt',
@@ -327,6 +328,18 @@ describe('GenerationPipelineService failure states', () => {
           id: 'runtime_scene_binding',
           status: 'pass',
           reason: 'runtime_scene_binding_report.json has no unbound scene nodes.'
+        })
+      ])
+    );
+    expect(artifactIndex.artifacts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'shadowCapabilityQaPlan', status: 'present', path: 'shadow_capability_qa_plan.json', required: false }),
+        expect.objectContaining({ id: 'shadowCapabilityQaReport', status: 'present', path: 'shadow_capability_qa_report.json', required: false }),
+        expect.objectContaining({
+          id: 'targetProfileRuntimeSupportReport',
+          status: 'present',
+          path: 'generation_target_profile_runtime_support_report.json',
+          required: false
         })
       ])
     );
