@@ -1248,3 +1248,45 @@ Next: continue Stage 4 next closure requirement audit
 ```
 
 Stop marker: Stage 4 movement.run_jump package-owned QA slice checkpoint commit is complete. Do not enter Stage 5 and do not claim complete package closure.
+
+## Stage 4 Review — Camera Side Follow Package-Owned QA Slice
+
+### Scope Lock
+
+- scope: Stage 4 audit and implementation only.
+- baseline: Stage 4 movement.run_jump package-owned QA slice checkpoint commit `0965197f` (`feat(game-dsl): add movement run jump QA package slice`).
+- implementation target: close the next smallest real package-owned QA slice for `camera.side_follow.v1` using the existing side-scrolling browser movement path and camera snapshot evidence.
+- non-goals: no full target profile closure, no registry-wide support promotion, no exact lock, no Stage 5 entry, no production default cutover, no legacy fallback promotion.
+- starting conclusion: the runtime support overlay can observe default weapon, combat projectile, and movement run/jump as complete for the same run, but the target profile remains `target_profile_runtime_support_incomplete:3/59`.
+
+### Current Stage Review Conclusion
+
+`camera.side_follow.v1` is the next minimal real package-owned QA slice because the production side-scrolling browser QA already drives horizontal movement and reads camera snapshot data:
+
+- `buildDeepSeekRunAndGunValidationProfileSupportSummary()` reports `camera.side_follow.v1` as `CONDITIONAL_LEGACY_BACKED` with `schema_expressible=true`, `normalized=true`, `compiled=true`, `runtime_consumed=true`, `qa_observed=false`, and missing prerequisites `amendmentOperations`, `capabilityOwnedQa`, `requiredProbeIds`, `requiredProbesVerified`;
+- `SideScrollingRunAndGunScene.cameraSnapshot()` exposes `mode`, `followTarget`, bounds, viewport, `playerX`, `scrollX`, `visibleLeft`, and `visibleRight`;
+- `PlaywrightBrowserRunner.verifySideScrollingMovement()` already fails the side-scrolling smoke if `camera.scrollX` does not advance once the player has moved beyond the viewport midpoint;
+- no camera side-follow package contract owns a required QA probe;
+- `QaCapabilityRuntimeExpectation` currently models only event-type capability probes, so camera follow cannot become package-owned evidence until the probe/evidence bridge can preserve camera-scroll observations instead of inferring support from the legacy `side_view_camera` alias.
+
+Therefore, the next minimal closure requirement is to add a real `camera.side_follow.v1` package-owned QA probe and wire the QA consumer to observe the existing camera follow behavior as package evidence. This may raise runtime-observed support from `3/59` to `4/59`, but Stage 4 exit still remains `NOT_MET`.
+
+### Extracted Minimal Closure Requirements
+
+1. Add a `camera.side_follow.v1` package contract with a required side-follow camera probe over the browser QA movement path.
+2. Extend the capability QA evidence bridge only as far as needed to represent and evaluate camera-scroll observations from the existing QA snapshot.
+3. Install the camera package on the side-scrolling active-profile path alongside default weapon, projectile, and movement packages.
+4. Keep default weapon, projectile, and movement evidence unchanged and continue deriving their pass/fail from real runtime evidence.
+5. Keep static support summary incomplete; only the runtime overlay may report `observedCompleteSupported=true` for this capability.
+6. Keep Stage 4 exit blocked until all 59 required target capabilities are observed complete.
+
+### Exit Assessment Before Implementation
+
+```text
+Stage 4 Camera Side Follow Package-Owned QA Slice Audit: RECORDED
+Stage 4 Camera Side Follow Package-Owned QA Slice Implementation: NOT_ENTERED
+Expected post-implementation overlay: observedCompleteSupportedCount=4/59
+Stage 4 Exit gate: NOT_MET
+```
+
+Stop marker: Stage 4 camera.side_follow package-owned QA slice audit is recorded. Implementation may start for this slice only; do not enter Stage 5 and do not claim complete package closure.
