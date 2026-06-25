@@ -18,6 +18,10 @@ const timeoutDiagnosisGuardrailTitle = '## Stage 4 Improvement Log — Timeout D
 const movementCrouchClosureTitle = '## Stage 4 Closure Implementation — Movement Crouch Package-Owned QA Slice';
 const movementCrouchCheckpointCommit = 'bdb01f36';
 const runtimeStateAndClosureStatusGuardrailTitle = '## Stage 4 Improvement Log — Runtime State And Closure State Guardrails';
+const runtimeStateAndClosureStatusClosureTitle = '## Stage 4 Closure Implementation — Runtime State And Closure State Guardrails';
+const runtimeStateAndClosureStatusCheckpointCommit = '8075ca7c';
+const structuredClosureFieldGuardrailTitle = '## Stage 4 Improvement Log — Structured Closure Field Guardrail';
+const structuredClosureFieldClosureTitle = '## Stage 4 Closure Implementation — Structured Closure Field Guardrail';
 
 const claimedAuditBoundaryIdentifierPaths = [
   stage4PlanPath,
@@ -268,6 +272,162 @@ describe('Step37 closure implementation traceability', () => {
     expect(section).toContain('`ORACLE_PENDING` cannot satisfy closed must-pass requirements');
     expect(section).toContain('rerun the related contract tests');
     expect(section).toContain('tests/contracts/step37-closure-implementation-trace.test.ts');
+  });
+
+  it('keeps the runtime-state guardrail closure traceable to its checkpoint', async () => {
+    const document = await readFile(stage4PlanPath, 'utf8');
+    const section = extractSection(document, runtimeStateAndClosureStatusClosureTitle);
+    const checkpointPaths = changedPathsForCommit(runtimeStateAndClosureStatusCheckpointCommit);
+
+    expect(section).toContain(`implementation checkpoint: \`${runtimeStateAndClosureStatusCheckpointCommit}\``);
+    expect(section).toContain('implementation status: `CHECKPOINT_COMMITTED`');
+    expect(section).toContain('local_validation: `passed`');
+    expect(section).toContain('oracle_status: `passed`');
+    expect(checkpointPaths).toEqual([stage4PlanPath, 'tests/contracts/step37-closure-implementation-trace.test.ts'].sort());
+    expect(section).toContain('planned -> landed -> verified -> oracle_passed -> checkpoint_committed');
+    expect(section).toContain('Stage 4 Runtime State And Closure State Guardrails: CHECKPOINT_COMMITTED');
+    expect(section).toContain('Stage 4 Exit gate: NOT_MET');
+  });
+
+  it('records structured closure field guardrails as local-section contracts', async () => {
+    const document = await readFile(stage4PlanPath, 'utf8');
+    const section = extractSection(document, structuredClosureFieldGuardrailTitle);
+    const closureSection = extractSection(document, structuredClosureFieldClosureTitle);
+
+    expect(section).toContain('Structured facts over near-synonyms');
+    expect(section).toContain('machine-parseable key/value records');
+    expect(section).toContain('focused contract fails');
+    expect(section).toContain('fix the verified object instead of loosening the assertion');
+    expect(section).toContain('Section-local validation');
+    expect(section).toContain('missing fields, duplicate fields, conflicting statuses, invalid field values, and illegal state transitions');
+    expect(section).toContain('actual parsed value');
+    expect(section).toContain('rerun the same failed focused contract first');
+    expect(section).toContain('focused GREEN proves only that local contract gap is fixed');
+    expect(validateStructuredClosureSection(closureSection, structuredClosureFieldClosureTitle)).toEqual([]);
+  });
+
+  it('rejects ambiguous or conflicting structured closure fields with actionable errors', () => {
+    expect(
+      validateStructuredClosureSection(
+        [
+          '## Stage 4 Closure Implementation — Example',
+          '- implementation status: `ORACLE_PENDING`.',
+          '- local_validation: `passed`.',
+          '',
+          'State transition:',
+          '',
+          '```text',
+          'planned -> landed -> verified -> oracle_pending',
+          '```'
+        ].join('\n'),
+        '## Stage 4 Closure Implementation — Example'
+      )
+    ).toEqual([
+      'MISSING_FIELD section="## Stage 4 Closure Implementation — Example" field="oracle_status" actual="<missing>" allowed="not_submitted|pending|passed|changes_required|blocked"'
+    ]);
+
+    expect(
+      validateStructuredClosureSection(
+        [
+          '## Stage 4 Closure Implementation — Example',
+          '- implementation status: `ORACLE_PENDING`.',
+          '- local_validation: `passed`.',
+          '- oracle_status: `pending`.',
+          '- oracle_status: `passed`.',
+          '',
+          'State transition:',
+          '',
+          '```text',
+          'planned -> landed -> verified -> oracle_pending',
+          '```'
+        ].join('\n'),
+        '## Stage 4 Closure Implementation — Example'
+      )
+    ).toEqual([
+      'DUPLICATE_FIELD section="## Stage 4 Closure Implementation — Example" field="oracle_status" actual="pending,passed" allowed="not_submitted|pending|passed|changes_required|blocked"'
+    ]);
+
+    expect(
+      validateStructuredClosureSection(
+        [
+          '## Stage 4 Closure Implementation — Example',
+          '- implementation status: `CLOSED`.',
+          '- local_validation: `passed`.',
+          '- oracle_status: `pending`.',
+          '',
+          'State transition:',
+          '',
+          '```text',
+          'planned -> landed -> verified -> oracle_pending',
+          '```'
+        ].join('\n'),
+        '## Stage 4 Closure Implementation — Example'
+      )
+    ).toEqual([
+      'CONFLICTING_STATUS section="## Stage 4 Closure Implementation — Example" field="oracle_status" actual="pending" allowed="passed"'
+    ]);
+
+    expect(
+      validateStructuredClosureSection(
+        [
+          '## Stage 4 Closure Implementation — Example',
+          '- implementation status: `ORACLE_PENDING`.',
+          '- local_validation: `done`.',
+          '- oracle_status: `pending`.',
+          '',
+          'State transition:',
+          '',
+          '```text',
+          'planned -> landed -> verified -> oracle_pending',
+          '```'
+        ].join('\n'),
+        '## Stage 4 Closure Implementation — Example'
+      )
+    ).toEqual([
+      'INVALID_FIELD_VALUE section="## Stage 4 Closure Implementation — Example" field="local_validation" actual="done" allowed="passed|failed|not_run"'
+    ]);
+
+    expect(
+      validateStructuredClosureSection(
+        [
+          '## Stage 4 Closure Implementation — Example',
+          '- implementation status: `CLOSED`.',
+          '- local_validation: `passed`.',
+          '- oracle_status: `passed`.',
+          '',
+          'State transition:',
+          '',
+          '```text',
+          'planned -> landed -> closed',
+          '```'
+        ].join('\n'),
+        '## Stage 4 Closure Implementation — Example'
+      )
+    ).toEqual([
+      'ILLEGAL_STATE_TRANSITION section="## Stage 4 Closure Implementation — Example" field="state_transition" actual="landed->closed" allowed="planned->landed|landed->verified|verified->oracle_pending|oracle_pending->oracle_passed|verified->oracle_passed|verified->oracle_blocked_p2|oracle_blocked_p2->fixed|fixed->verified|oracle_passed->awaiting_checkpoint|awaiting_checkpoint->checkpoint_committed|oracle_passed->checkpoint_committed|oracle_passed->closed"'
+    ]);
+  });
+
+  it('does not allow global field matches to satisfy a different closure section', () => {
+    const document = [
+      '## Stage 4 Closure Implementation — Other',
+      '- oracle_status: `pending`.',
+      '',
+      '## Stage 4 Closure Implementation — Target',
+      '- implementation status: `ORACLE_PENDING`.',
+      '- local_validation: `passed`.',
+      '',
+      'State transition:',
+      '',
+      '```text',
+      'planned -> landed -> verified -> oracle_pending',
+      '```'
+    ].join('\n');
+    const section = extractSection(document, '## Stage 4 Closure Implementation — Target');
+
+    expect(validateStructuredClosureSection(section, '## Stage 4 Closure Implementation — Target')).toEqual([
+      'MISSING_FIELD section="## Stage 4 Closure Implementation — Target" field="oracle_status" actual="<missing>" allowed="not_submitted|pending|passed|changes_required|blocked"'
+    ]);
   });
 
   it('keeps Oracle-gated closure status fail-closed until review evidence exists', () => {
@@ -1010,6 +1170,162 @@ type OracleGatedClosureDecision =
   | 'blocked_missing_oracle_pending_trace'
   | 'blocked_unresolved_items'
   | 'incomplete_local_validation';
+
+function validateStructuredClosureSection(section: string, sectionTitle: string): string[] {
+  const issues: string[] = [];
+  const implementationStatus = readStructuredField(section, sectionTitle, 'implementation status', structuredImplementationStatuses);
+  const localValidation = readStructuredField(section, sectionTitle, 'local_validation', structuredLocalValidationStatuses);
+  const oracleStatus = readStructuredField(section, sectionTitle, 'oracle_status', structuredOracleStatuses);
+  issues.push(...implementationStatus.issues, ...localValidation.issues, ...oracleStatus.issues);
+
+  if (oracleStatus.issues.length === 0 && implementationStatus.value === 'CLOSED' && oracleStatus.value !== 'passed') {
+    issues.push(
+      structuredFieldIssue({
+        kind: 'CONFLICTING_STATUS',
+        sectionTitle,
+        fieldName: 'oracle_status',
+        actual: oracleStatus.value ?? '<missing>',
+        allowedValues: ['passed']
+      })
+    );
+  }
+  if (oracleStatus.issues.length === 0 && implementationStatus.value === 'ORACLE_PENDING' && oracleStatus.value !== 'pending') {
+    issues.push(
+      structuredFieldIssue({
+        kind: 'CONFLICTING_STATUS',
+        sectionTitle,
+        fieldName: 'oracle_status',
+        actual: oracleStatus.value ?? '<missing>',
+        allowedValues: ['pending']
+      })
+    );
+  }
+  if (localValidation.issues.length === 0 && implementationStatus.value === 'LOCALLY_VALIDATED' && localValidation.value !== 'passed') {
+    issues.push(
+      structuredFieldIssue({
+        kind: 'CONFLICTING_STATUS',
+        sectionTitle,
+        fieldName: 'local_validation',
+        actual: localValidation.value ?? '<missing>',
+        allowedValues: ['passed']
+      })
+    );
+  }
+
+  const invalidTransition = validateOracleGatedStateTransition(parseStateTransition(section))[0];
+  if (invalidTransition !== undefined) {
+    issues.push(
+      `ILLEGAL_STATE_TRANSITION section="${sectionTitle}" field="state_transition" actual="${invalidTransition}" allowed="${oracleGatedAllowedTransitions.join('|')}"`
+    );
+  }
+
+  return issues;
+}
+
+function readStructuredField(
+  section: string,
+  sectionTitle: string,
+  fieldName: string,
+  allowedValues: readonly string[]
+): { value?: string; issues: string[] } {
+  const matches = [...section.matchAll(new RegExp(`^- ${escapeRegExp(fieldName)}: \`([^\\\`]+)\`\\.?$`, 'gm'))].map((match) => match[1] ?? '');
+  if (matches.length === 0) {
+    return {
+      issues: [
+        structuredFieldIssue({
+          kind: 'MISSING_FIELD',
+          sectionTitle,
+          fieldName,
+          actual: '<missing>',
+          allowedValues
+        })
+      ]
+    };
+  }
+  if (matches.length > 1) {
+    return {
+      value: matches[0],
+      issues: [
+        structuredFieldIssue({
+          kind: 'DUPLICATE_FIELD',
+          sectionTitle,
+          fieldName,
+          actual: matches.join(','),
+          allowedValues
+        })
+      ]
+    };
+  }
+  const value = matches[0];
+  if (!allowedValues.includes(value)) {
+    return {
+      value,
+      issues: [
+        structuredFieldIssue({
+          kind: 'INVALID_FIELD_VALUE',
+          sectionTitle,
+          fieldName,
+          actual: value,
+          allowedValues
+        })
+      ]
+    };
+  }
+  return { value, issues: [] };
+}
+
+function structuredFieldIssue(input: {
+  kind: 'MISSING_FIELD' | 'DUPLICATE_FIELD' | 'INVALID_FIELD_VALUE' | 'CONFLICTING_STATUS';
+  sectionTitle: string;
+  fieldName: string;
+  actual: string;
+  allowedValues: readonly string[];
+}): string {
+  return `${input.kind} section="${input.sectionTitle}" field="${input.fieldName}" actual="${input.actual}" allowed="${input.allowedValues.join('|')}"`;
+}
+
+function validateOracleGatedStateTransition(states: readonly string[]): string[] {
+  const invalidEdges: string[] = [];
+  for (let index = 0; index < states.length - 1; index += 1) {
+    const edge = `${states[index]}->${states[index + 1]}`;
+    if (!oracleGatedAllowedTransitionSet.has(edge)) {
+      invalidEdges.push(edge);
+    }
+  }
+  return invalidEdges;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+const structuredImplementationStatuses = [
+  'LANDED_PENDING_VALIDATION',
+  'LOCALLY_VALIDATED',
+  'ORACLE_PENDING',
+  'ORACLE_PASSED_AWAITING_COMMIT',
+  'CHECKPOINT_COMMITTED',
+  'CLOSED',
+  'CHANGES_REQUIRED',
+  'BLOCKED'
+] as const;
+const structuredLocalValidationStatuses = ['passed', 'failed', 'not_run'] as const;
+const structuredOracleStatuses = ['not_submitted', 'pending', 'passed', 'changes_required', 'blocked'] as const;
+const oracleGatedAllowedTransitions = [
+  'planned->landed',
+  'landed->verified',
+  'verified->oracle_pending',
+  'oracle_pending->oracle_passed',
+  'verified->oracle_passed',
+  'verified->oracle_blocked_p2',
+  'oracle_blocked_p2->fixed',
+  'fixed->verified',
+  'oracle_passed->awaiting_checkpoint',
+  'awaiting_checkpoint->checkpoint_committed',
+  'oracle_passed->checkpoint_committed',
+  'oracle_passed->closed'
+] as const;
+const oracleGatedAllowedTransitionSet = new Set<string>(oracleGatedAllowedTransitions);
 
 function timeoutObservation(command: string, status: TimeoutObservation['status'], timeoutMs: number, durationMs: number): TimeoutObservation {
   return { command, status, timeoutMs, durationMs, environment: 'local-vitest-node' };

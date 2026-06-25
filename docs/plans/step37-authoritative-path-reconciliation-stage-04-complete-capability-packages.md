@@ -2683,7 +2683,8 @@ Repository guardrail added: `tests/contracts/step37-closure-implementation-trace
 
 ## Stage 4 Closure Implementation — Runtime State And Closure State Guardrails
 
-- implementation status: `ORACLE_PASSED_AWAITING_COMMIT`.
+- implementation status: `CHECKPOINT_COMMITTED`.
+- implementation checkpoint: `8075ca7c` (`test(game-dsl): preserve runtime state closure guardrails`).
 - local_validation: `passed`.
 - oracle_status: `passed`.
 - scope: process/evidence guardrail only; no runtime, schema, compiler, QA runner behavior, Stage 5 exact lock, production default cutover, legacy authoritative path exit, or capability closure was introduced.
@@ -2749,15 +2750,127 @@ Unresolved items:
 State transition:
 
 ```text
-planned -> landed -> verified -> oracle_passed
+planned -> landed -> verified -> oracle_passed -> checkpoint_committed
 ```
 
 ### Exit Assessment
 
 ```text
-Stage 4 Runtime State And Closure State Guardrails: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 Runtime State And Closure State Guardrails: CHECKPOINT_COMMITTED
+Stage 4 Exit gate: NOT_MET
+Next: structured closure field guardrail step
+```
+
+Stop marker: Stage 4 runtime-state and closure-state guardrail checkpoint commit `8075ca7c` is complete. Do not enter Stage 5 or claim complete package closure; structured closure field feedback must start only as an independent atomic step after this checkpoint.
+
+## Stage 4 Improvement Log — Structured Closure Field Guardrail
+
+This log records the contract failure discovered while validating the runtime-state and closure-state guardrail.
+
+1. Structured facts over near-synonyms: status-machine fields must appear as explicit, machine-parseable key/value records such as `local_validation: passed` and `oracle_status: pending`; natural-language near-synonyms are not valid substitutes.
+2. Focused failure diagnosis: when a focused contract fails, first classify whether the gap is in implementation, documentation, fixture data, or the test itself.
+3. Do not weaken accurate tests: when the contract correctly reveals a missing structured fact, fix the verified object instead of loosening the assertion.
+4. Section-local validation: validators must parse and verify fields inside the owning closure section. A matching global string elsewhere in the document must not satisfy the section's required field.
+5. Negative paths: validators must distinguish missing fields, duplicate fields, conflicting statuses, invalid field values, and illegal state transitions.
+6. Actionable errors: validation failures must name the missing or invalid field, actual parsed value, allowed values, and owning section.
+7. Rerun sequence: after fixing a focused contract failure, rerun the same failed focused contract first, then related contracts, full tests, typecheck, and diff checks before closure.
+8. Scope discipline: focused GREEN proves only that local contract gap is fixed. It does not close the checkpoint without the remaining gates and Oracle review.
+
+Repository guardrail added: `tests/contracts/step37-closure-implementation-trace.test.ts` verifies section-local structured field parsing, missing/duplicate/conflicting/invalid status failures, illegal transition failures, and actionable error messages.
+
+## Stage 4 Closure Implementation — Structured Closure Field Guardrail
+
+- implementation status: `ORACLE_PASSED_AWAITING_COMMIT`.
+- local_validation: `passed`.
+- oracle_status: `passed`.
+- scope: process/evidence guardrail only; no runtime, schema, compiler, QA runner behavior, Stage 5 exact lock, production default cutover, legacy authoritative path exit, or capability closure was introduced.
+- baseline: Stage 4 runtime-state and closure-state guardrail checkpoint commit `8075ca7c` (`test(game-dsl): preserve runtime state closure guardrails`).
+
+Actual modified paths:
+
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`
+- `tests/contracts/step37-closure-implementation-trace.test.ts`
+- `/Users/dahufa/.agents/skills/code-change-discipline/SKILL.md`
+
+Evidence/guardrail chain:
+
+1. Skill rule: closure state fields must be explicit structured key/value records, not natural-language near-synonyms.
+2. Skill rule: accurate focused-contract failures should fix the verified object rather than weaken assertions.
+3. Contract test: section-local validation rejects missing fields even if another section contains the same field name.
+4. Contract test: negative cases distinguish missing fields, duplicate fields, conflicting statuses, invalid field values, and illegal state transitions with actionable messages.
+
+Typecheck correction note:
+
+- Initial typecheck found `TS2345` in the new transition validator because a dynamic edge string was passed to a readonly literal-union `includes()` call.
+- The validator now uses a `Set<string>` for membership checks; the focused contract and typecheck were rerun after the fix.
+
+Validation receipts:
+
+```text
+npx vitest run tests/contracts/step37-closure-implementation-trace.test.ts
+exitCode=0
+result=PASS: 21 tests passed
+
+npm test
+exitCode=0
+result=PASS: contracts 95 files / 1082 tests; workspace 34 files / 408 tests
+
+npm run typecheck
+exitCode=0
+result=PASS
+
+git diff --check
+exitCode=0
+result=PASS
+```
+
+### Oracle Review Round 1
+
+- oracle_agent_id: `019effae-8aa2-7c22-b5ba-8c4b69f21d20`.
+- oracle_submission_id: `019f002a-a51f-7372-b07a-c1fecd999591`.
+- result: `BLOCKED`.
+- blocking finding: `P2` — `ILLEGAL_STATE_TRANSITION` errors included `section`, `actual`, and `allowed`, but omitted `field`.
+
+Remediation:
+
+- `ILLEGAL_STATE_TRANSITION` now emits `field="state_transition"`.
+- The illegal-transition negative assertion now requires the same structured envelope as other field errors: `section`, `field`, `actual`, and `allowed`.
+- Focused contract, full tests, typecheck, and diff check were rerun after the fix.
+
+### Oracle Review Round 2
+
+- oracle_agent_id: `019effae-8aa2-7c22-b5ba-8c4b69f21d20`.
+- oracle_submission_id: `019f002e-ab67-7da2-9be4-e822d9be693d`.
+- result: `PASS / no P0/P1/P2 blocking findings`.
+- checkpoint decision: allowed for this Stage 4 structured closure field guardrail checkpoint only.
+
+Oracle confirmed:
+
+- Round 1 P2 is fixed: `ILLEGAL_STATE_TRANSITION` now includes `field="state_transition"` plus `section`, `actual`, and `allowed`;
+- negative cases still cover missing fields, duplicate fields, conflicting statuses, invalid field values, illegal state transitions, and section-local lookup;
+- validator behavior is section-local and does not rely on global string matches;
+- repo diff remains limited to this Stage 4 plan document and `tests/contracts/step37-closure-implementation-trace.test.ts`;
+- no runtime, schema, compiler, QA runner, product behavior, Stage 5, production default cutover, legacy authoritative exit, or full Stage 4 closure was introduced.
+
+Unresolved items:
+
+- Stage 4 full package closure remains `NOT_MET`.
+- Stage 5 exact lock remains `NOT_ENTERED`.
+- Production default cutover remains inactive.
+- Legacy authoritative path has not exited.
+
+State transition:
+
+```text
+planned -> landed -> verified -> oracle_blocked_p2 -> fixed -> verified -> oracle_passed
+```
+
+### Exit Assessment
+
+```text
+Stage 4 Structured Closure Field Guardrail: ORACLE_PASSED_AWAITING_COMMIT
 Stage 4 Exit gate: NOT_MET
 Next: checkpoint commit for this guardrail checkpoint only
 ```
 
-Stop marker: Stage 4 runtime-state and closure-state guardrails passed Oracle and are awaiting checkpoint commit. Do not enter the next Stage 4 audit, enter Stage 5, or claim complete package closure until checkpoint commit completes.
+Stop marker: Stage 4 structured closure field guardrail passed Oracle and is awaiting checkpoint commit. Do not enter the next Stage 4 audit, enter Stage 5, or claim complete package closure until checkpoint commit completes.
