@@ -22,6 +22,10 @@ import {
   createCombatProjectilePackageContract
 } from './combat-projectile-package.js';
 import {
+  MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
+  createMovementCrouchPackageContract
+} from './movement-crouch-package.js';
+import {
   MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID,
   createMovementRunJumpPackageContract
 } from './movement-run-jump-package.js';
@@ -411,6 +415,19 @@ const combatProjectilePackageEvidence: GameplayCapabilityEvidence = combatProjec
 const combatProjectilePackageQa: GameplayCapabilityQaEvidence = combatProjectilePackageReport.supportEligible
   ? { requiredProbeIds: [COMBAT_PROJECTILE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const movementCrouchPackageReport = validateGameplayCapabilityPackage(createMovementCrouchPackageContract());
+const movementCrouchPackageEvidence: GameplayCapabilityEvidence = movementCrouchPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const movementCrouchPackageQa: GameplayCapabilityQaEvidence = movementCrouchPackageReport.supportEligible
+  ? { requiredProbeIds: [MOVEMENT_CROUCH_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const movementRunJumpPackageReport = validateGameplayCapabilityPackage(createMovementRunJumpPackageContract());
 const movementRunJumpPackageEvidence: GameplayCapabilityEvidence = movementRunJumpPackageReport.supportEligible
   ? {
@@ -526,7 +543,8 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [phaser2dActionArcade],
     ['side_scrolling_run_and_gun.v1'],
     [],
-    canonicalRuntimeLoaderEvidence
+    movementCrouchPackageEvidence,
+    movementCrouchPackageQa
   ),
   planned(
     'movement.run_jump.v1',

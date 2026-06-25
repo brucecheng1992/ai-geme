@@ -128,6 +128,8 @@ export type QaCapabilityRuntimeProbeExpectation = {
   action: string;
   eventType: string;
   airborne?: boolean;
+  crouching?: boolean;
+  heightScale?: number;
   invulnerable?: boolean;
   damagePrevented?: boolean;
   projectileEntityId?: string;
@@ -140,6 +142,8 @@ export type QaCapabilityRuntimeExpectation = {
 export type QaCapabilityRuntimeObservedProbe = QaCapabilityRuntimeProbeExpectation & {
   eventTypes?: string[];
   airborne?: boolean;
+  crouching?: boolean;
+  heightScale?: number;
   invulnerable?: boolean;
   damagePrevented?: boolean;
   runtimeModuleId?: string;

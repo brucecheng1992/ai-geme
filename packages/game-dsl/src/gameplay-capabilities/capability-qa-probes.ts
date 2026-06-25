@@ -112,6 +112,8 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   action: string;
   eventType: string;
   eventTypes?: readonly string[];
+  crouching?: boolean;
+  heightScale?: number;
   status?: string;
   sourceRef?: string;
 };

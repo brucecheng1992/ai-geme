@@ -49,6 +49,9 @@ import {
   DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
   HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID,
   createHealthDamageInvulnerabilityPackageContract,
+  MOVEMENT_CROUCH_HEIGHT_SCALE,
+  MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
+  createMovementCrouchPackageContract,
   MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID,
   createMovementRunJumpPackageContract,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
@@ -1955,6 +1958,14 @@ function buildQaCapabilityRuntimeExpectation(genre: QaGenre): QaCapabilityRuntim
         eventType: 'projectile.spawned'
       },
       {
+        capabilityId: 'movement.crouch.v1',
+        probeId: MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
+        action: 'crouch',
+        eventType: 'movement.crouch.entered',
+        crouching: true,
+        heightScale: MOVEMENT_CROUCH_HEIGHT_SCALE
+      },
+      {
         capabilityId: 'health.damage_invulnerability.v1',
         probeId: HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID,
         action: 'block_damage',
@@ -1998,6 +2009,7 @@ function buildApprovedInstalledCapabilityQaPackages(normalizedGenre: string): re
         createCombatAirborneFirePackageContract(),
         createDefaultStraightSingleWeaponPackageContract(),
         createCombatProjectilePackageContract(),
+        createMovementCrouchPackageContract(),
         createHealthDamageInvulnerabilityPackageContract(),
         createMovementRunJumpPackageContract(),
         createSpawnStaticPackageContract(),

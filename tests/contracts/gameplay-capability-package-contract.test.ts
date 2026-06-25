@@ -46,6 +46,15 @@ import {
   COMBAT_AIRBORNE_FIRE_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/combat-airborne-fire-runtime-module.js';
 import {
+  MOVEMENT_CROUCH_PACKAGE_REQUIRED_EVIDENCE_ID,
+  MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
+  createMovementCrouchPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/movement-crouch-package.js';
+import {
+  MOVEMENT_CROUCH_HEIGHT_SCALE,
+  MOVEMENT_CROUCH_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/movement-crouch-runtime-module.js';
+import {
   MOVEMENT_RUN_JUMP_PACKAGE_REQUIRED_EVIDENCE_ID,
   MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID,
   createMovementRunJumpPackageContract
@@ -247,6 +256,38 @@ describe('Gameplay capability package contract', () => {
       capabilityId: 'movement.run_jump.v1',
       severity: 'required',
       observations: [expect.objectContaining({ runtimeSystemId: MOVEMENT_RUN_JUMP_RUNTIME_SYSTEM_ID, ref: 'player.jumped' })]
+    });
+  });
+
+  it('accepts the movement crouch package-owned QA contract', () => {
+    const contract = createMovementCrouchPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === MOVEMENT_CROUCH_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'movement.crouch.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([MOVEMENT_CROUCH_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: MOVEMENT_CROUCH_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'movement.crouch.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: 'movement.crouch.entered',
+          parameters: expect.objectContaining({ action: 'crouch', crouching: true, heightScale: MOVEMENT_CROUCH_HEIGHT_SCALE })
+        })
+      ],
+      observations: [expect.objectContaining({ runtimeSystemId: MOVEMENT_CROUCH_RUNTIME_SYSTEM_ID, ref: 'movement.crouch.entered' })]
     });
   });
 

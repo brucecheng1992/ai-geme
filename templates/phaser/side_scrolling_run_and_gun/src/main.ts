@@ -78,6 +78,11 @@ if (typeof window !== 'undefined') {
       scene.fire();
     }
 
+    if (event.key === 'ArrowDown' || event.key.toLowerCase() === 's') {
+      event.preventDefault();
+      scene.crouch();
+    }
+
     const direction = directionFromKey(event.key);
     if (direction !== undefined) {
       event.preventDefault();
@@ -90,6 +95,11 @@ if (typeof window !== 'undefined') {
   });
 
   window.addEventListener('keyup', (event) => {
+    if (event.key === 'ArrowDown' || event.key.toLowerCase() === 's') {
+      event.preventDefault();
+      scene.stand();
+    }
+
     const direction = directionFromKey(event.key);
     if (direction !== undefined) {
       scene.setRunInput(direction, false);

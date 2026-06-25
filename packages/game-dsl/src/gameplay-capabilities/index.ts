@@ -13,6 +13,8 @@ export * from './combat-airborne-fire-runtime-module.js';
 export * from './combat-airborne-fire-package.js';
 export * from './combat-projectile-runtime-module.js';
 export * from './combat-projectile-package.js';
+export * from './movement-crouch-runtime-module.js';
+export * from './movement-crouch-package.js';
 export * from './movement-run-jump-runtime-module.js';
 export * from './movement-run-jump-package.js';
 export * from './spawn-static-runtime-module.js';

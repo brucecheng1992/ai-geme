@@ -9,6 +9,8 @@ import {
   GenerationTargetProfileRuntimeSupportReportSchema,
   HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID,
   HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+  MOVEMENT_CROUCH_HEIGHT_SCALE,
+  MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
   MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
   buildCapabilityQaProbeResultsFromRuntimeEvidence,
@@ -21,6 +23,7 @@ import {
   createDefaultStraightSingleWeaponPackageContract,
   createHealthDamageInvulnerabilityPackageContract,
   createHealthPlayerHealthPointsPackageContract,
+  createMovementCrouchPackageContract,
   createMovementRunJumpPackageContract,
   createSpawnStaticPackageContract,
   evaluateCapabilityQaReport,
@@ -32,6 +35,7 @@ const collisionCapabilityId = 'collision.platform.v1';
 const airborneFireCapabilityId = 'combat.airborne_fire.v1';
 const defaultWeaponCapabilityId = 'weapon.default_straight_single.v1';
 const projectileCapabilityId = 'combat.projectile.v1';
+const crouchCapabilityId = 'movement.crouch.v1';
 const movementCapabilityId = 'movement.run_jump.v1';
 const spawnStaticCapabilityId = 'spawn.static.v1';
 const damageInvulnerabilityCapabilityId = 'health.damage_invulnerability.v1';
@@ -45,6 +49,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       'combat.airborne_fire.fired',
       'player.fired',
       'projectile.spawned',
+      'movement.crouch.entered',
       'player.jumped',
       'spawn.static.triggered',
       'health.damage_invulnerability.activated',
@@ -72,7 +77,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 9,
+      observedCompleteSupportedCount: 10,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
@@ -82,11 +87,12 @@ describe('Step 37 target profile runtime support overlay', () => {
         projectileCapabilityId,
         damageInvulnerabilityCapabilityId,
         healthCapabilityId,
+        crouchCapabilityId,
         movementCapabilityId,
         spawnStaticCapabilityId,
         defaultWeaponCapabilityId
       ],
-      blockers: ['target_profile_runtime_support_incomplete:9/59']
+      blockers: ['target_profile_runtime_support_incomplete:10/59']
     });
     expect(camera).toMatchObject({
       capabilityId: cameraCapabilityId,
@@ -150,6 +156,17 @@ describe('Step 37 target profile runtime support overlay', () => {
       observedCompleteSupported: true,
       requiredProbeIds: [MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID],
       verifiedRequiredProbeIds: [MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+    expect(report.capabilities.find((entry) => entry.capabilityId === crouchCapabilityId)).toMatchObject({
+      capabilityId: crouchCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [MOVEMENT_CROUCH_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [MOVEMENT_CROUCH_REQUIRED_PROBE_ID],
       missingRequiredProbeIds: [],
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
@@ -223,6 +240,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       'combat.airborne_fire.fired',
       'player.fired',
       'projectile.spawned',
+      'movement.crouch.entered',
       'player.jumped',
       'spawn.static.triggered',
       'health.damage_invulnerability.blocked',
@@ -250,7 +268,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 8,
+      observedCompleteSupportedCount: 9,
       targetProfileCompleteSupported: false,
       observedCapabilityIds: [
         cameraCapabilityId,
@@ -258,13 +276,14 @@ describe('Step 37 target profile runtime support overlay', () => {
         airborneFireCapabilityId,
         projectileCapabilityId,
         healthCapabilityId,
+        crouchCapabilityId,
         movementCapabilityId,
         spawnStaticCapabilityId,
         defaultWeaponCapabilityId
       ],
       blockers: [
         `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:8/59'
+        'target_profile_runtime_support_incomplete:9/59'
       ]
     });
     expect(damageInvulnerability).toMatchObject({
@@ -284,6 +303,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       `capability_qa_report_missing_required_probe:${COMBAT_PROJECTILE_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${MOVEMENT_CROUCH_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${SPAWN_STATIC_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID}`
@@ -354,6 +374,21 @@ function buildDefaultWeaponQaReport(eventTypes: readonly string[]) {
             action: 'fire',
             eventType: 'projectile.spawned',
             eventTypes,
+            status: 'observed' as const,
+            sourceRef: 'qa_report.capability_runtime'
+          }
+        ]
+      : []),
+    ...(eventTypes.includes('movement.crouch.entered')
+      ? [
+          {
+            capabilityId: crouchCapabilityId,
+            probeId: MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
+            action: 'crouch',
+            eventType: 'movement.crouch.entered',
+            eventTypes,
+            crouching: true,
+            heightScale: MOVEMENT_CROUCH_HEIGHT_SCALE,
             status: 'observed' as const,
             sourceRef: 'qa_report.capability_runtime'
           }
@@ -437,6 +472,7 @@ function buildDefaultWeaponQaPlan() {
     createCombatAirborneFirePackageContract(),
     createDefaultStraightSingleWeaponPackageContract(),
     createCombatProjectilePackageContract(),
+    createMovementCrouchPackageContract(),
     createHealthDamageInvulnerabilityPackageContract(),
     createMovementRunJumpPackageContract(),
     createSpawnStaticPackageContract(),
@@ -449,6 +485,7 @@ function buildDefaultWeaponQaPlan() {
       airborneFireCapabilityId,
       defaultWeaponCapabilityId,
       projectileCapabilityId,
+      crouchCapabilityId,
       damageInvulnerabilityCapabilityId,
       movementCapabilityId,
       spawnStaticCapabilityId,

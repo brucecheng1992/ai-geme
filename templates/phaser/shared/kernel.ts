@@ -21,7 +21,7 @@ export type RuntimeState = GameSnapshot & {
   events: TelemetryEvent[];
 };
 
-export type RuntimeInput = 'start' | 'restart' | 'move' | 'fire';
+export type RuntimeInput = 'start' | 'restart' | 'move' | 'fire' | 'crouch';
 
 export function createRuntimeState(health = 3): RuntimeState {
   return {

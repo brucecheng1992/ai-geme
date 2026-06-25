@@ -234,6 +234,12 @@ export function evaluateCapabilityRuntimeEvidence(
     if (expectedProbe.airborne !== undefined) {
       mismatches.push(...compareBoolean(`capabilityRuntime.probes[${expectedProbe.probeId}].airborne`, observedProbe.airborne, expectedProbe.airborne));
     }
+    if (expectedProbe.crouching !== undefined) {
+      mismatches.push(...compareBoolean(`capabilityRuntime.probes[${expectedProbe.probeId}].crouching`, observedProbe.crouching, expectedProbe.crouching));
+    }
+    if (expectedProbe.heightScale !== undefined) {
+      mismatches.push(...compareNumber(`capabilityRuntime.probes[${expectedProbe.probeId}].heightScale`, observedProbe.heightScale, expectedProbe.heightScale));
+    }
     if (expectedProbe.invulnerable !== undefined) {
       mismatches.push(
         ...compareBoolean(`capabilityRuntime.probes[${expectedProbe.probeId}].invulnerable`, observedProbe.invulnerable, expectedProbe.invulnerable)
@@ -326,6 +332,10 @@ function readBoolean(value: unknown): boolean | undefined {
   return typeof value === 'boolean' ? value : undefined;
 }
 
+function readNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
 function collectCapabilityRuntimeObservedProbes(snapshot: unknown, telemetry: readonly TelemetryEvent[]): QaCapabilityRuntimeObservedProbe[] {
   const probesById = new Map<string, QaCapabilityRuntimeObservedProbe>();
   for (const probe of readSnapshotCapabilityRuntimeProbes(snapshot)) {
@@ -377,6 +387,8 @@ function readCapabilityRuntimeProbe(value: unknown, eventTypeFallback?: string):
   }
 
   const airborne = readBoolean(value.airborne);
+  const crouching = readBoolean(value.crouching);
+  const heightScale = readNumber(value.heightScale);
   const invulnerable = readBoolean(value.invulnerable);
   const damagePrevented = readBoolean(value.damagePrevented);
   const projectileEntityId = readString(value.projectileEntityId);
@@ -397,6 +409,8 @@ function readCapabilityRuntimeProbe(value: unknown, eventTypeFallback?: string):
     eventType,
     eventTypes,
     ...(airborne === undefined ? {} : { airborne }),
+    ...(crouching === undefined ? {} : { crouching }),
+    ...(heightScale === undefined ? {} : { heightScale }),
     ...(invulnerable === undefined ? {} : { invulnerable }),
     ...(damagePrevented === undefined ? {} : { damagePrevented }),
     ...(projectileEntityId === undefined ? {} : { projectileEntityId }),
@@ -429,6 +443,10 @@ function compareScalar(path: string, observed: string | undefined, expected: str
 }
 
 function compareBoolean(path: string, observed: boolean | undefined, expected: boolean): string[] {
+  return observed === expected ? [] : [`${path}: expected ${expected}, observed ${observed === undefined ? '<missing>' : String(observed)}`];
+}
+
+function compareNumber(path: string, observed: number | undefined, expected: number): string[] {
   return observed === expected ? [] : [`${path}: expected ${expected}, observed ${observed === undefined ? '<missing>' : String(observed)}`];
 }
 
@@ -677,6 +695,18 @@ async function runDeterministicInteraction(page: Page, genre: QaGenre, timeoutMs
     if (!movementAssertion.ok) {
       await page.keyboard.press('r');
       return movementAssertion;
+    }
+
+    await page.keyboard.down('ArrowDown');
+    const crouchAssertion = await verifyTelemetryEvent(
+      page,
+      'movement.crouch.entered',
+      'Side-scrolling QA expected ArrowDown to emit movement.crouch.entered.'
+    );
+    await page.keyboard.up('ArrowDown');
+    if (!crouchAssertion.ok) {
+      await page.keyboard.press('r');
+      return crouchAssertion;
     }
 
     await page.keyboard.press(' ');

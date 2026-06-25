@@ -2529,3 +2529,137 @@ This independent guardrail step records the suite-only timeout diagnosis used wh
 8. Closure evidence: a pass conclusion requires the relevant contracts, workspace tests, typecheck, and diff-check to pass with recorded commands, exit codes, timings, and environment.
 
 Repository guardrail added: `tests/contracts/step37-closure-implementation-trace.test.ts` verifies timeout-diagnosis records include the original full run, isolated test run, timeout-only equivalent run, local timeout decision, and inconclusive/blocking fallbacks.
+
+## Stage 4 Closure Implementation — Movement Crouch Package-Owned QA Slice
+
+- implementation status: `ORACLE_PASSED_AWAITING_COMMIT`.
+- local_validation: `passed`.
+- oracle_status: `passed`.
+- scope: Stage 4 `movement.crouch.v1` package-owned QA slice only.
+- baseline: Stage 4 timeout-diagnosis guardrail checkpoint commit `533db5a8` (`test(game-dsl): preserve timeout diagnosis guardrail`).
+- starting conclusion: `Stage 4 Movement Crouch Package-Owned QA Slice Audit: ORACLE_PASSED_AWAITING_COMMIT`; implementation may start for this slice only after the audit checkpoint.
+- non-goals: no Stage 5 exact lock, no composed schema/provider run, no production default cutover, no legacy authoritative path exit, no `pickup.collectible.v1`, no `spawn.enemy_wave.v1`, and no Stage 4 full closure claim.
+
+### Implementation Summary
+
+This slice adds package-owned runtime evidence for `movement.crouch.v1` and keeps the capability incomplete unless the browser QA evidence proves the action changed real runtime posture state.
+
+Actual modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/movement-crouch-runtime-module.ts`
+- `packages/game-dsl/src/gameplay-capabilities/movement-crouch-package.ts`
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`
+- `apps/maker-api/src/qa/qa.types.ts`
+- `apps/maker-api/src/qa/playwright-browser-runner.ts`
+- `apps/maker-api/src/projects/generation-pipeline.service.ts`
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`
+- `templates/phaser/shared/kernel.ts`
+- `templates/phaser/side_scrolling_run_and_gun/src/GameScene.ts`
+- `templates/phaser/side_scrolling_run_and_gun/src/main.ts`
+- `tests/contracts/gameplay-capability-package-contract.test.ts`
+- `tests/contracts/gameplay-capability-registry.test.ts`
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`
+- `tests/contracts/phaser-templates.test.ts`
+- `tests/workspace/generation-pipeline.service.test.ts`
+- `tests/workspace/playwright-qa-runner.test.ts`
+
+Evidence/probe chain:
+
+1. Registry/package authority: `createMovementCrouchPackageContract()` defines `movement.crouch.v1.state.browser_qa.v1`, runtime system `movement.crouch`, event `movement.crouch.entered`, action `crouch`, `crouching=true`, and `heightScale=0.58`.
+2. Runtime production: the side-scrolling Phaser template binds `ArrowDown`/`s` to `scene.crouch()`, changes player body height/scale, records the package-owned runtime probe, and emits `movement.crouch.entered`.
+3. Browser QA consumption: `PlaywrightQaRunnerService` now presses `ArrowDown`, explicitly waits for `movement.crouch.entered`, reads `crouching` and `heightScale`, and fails closed when either required state field is missing or mismatched.
+4. QA report and overlay: `GenerationPipelineService` requests the crouch probe in default weapon QA, the capability QA report records same-run evidence, and the target-profile runtime support overlay advances only observed support from `9/59` to `10/59`.
+5. Static support remains incomplete: registry support still leaves `completeSupported=false`, `staticCompleteSupportedCount=0`, and Stage 4 exit `NOT_MET`.
+
+### Compatibility & Cutover
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a `movement.crouch.v1` package contract, runtime module constants, QA expectation fields, telemetry event type, side-scrolling runtime posture state, and package-owned browser QA probe. |
+| Consumer list | `GameplayCapabilityRegistry`, package contract validator, active-profile package installer, side-scrolling Phaser runtime, `PlaywrightQaRunnerService`, `CapabilityQaReport`, target-profile runtime support overlay, and Stage 4 tests consume it. |
+| Compatibility type | `ADAPTER_REQUIRED`: the existing side-scrolling template can support crouch only after the named package/probe/runtime/QA adapter path observes real posture state. Legacy input-only evidence cannot satisfy the contract. |
+| Authority | The package contract plus same-run browser QA report are authoritative for crouch semantics. Compiler config and input events remain producer or action evidence only. |
+| Legacy strategy | Existing movement behavior remains executable, but legacy or input-only paths are forbidden from proving `movement.crouch.v1` support without `crouching=true` and `heightScale=0.58` evidence. |
+| Failure policy | Missing package contract, missing required probe, missing `movement.crouch.entered`, missing `crouching`, missing `heightScale`, stale/wrong-run evidence, or static-only support must fail closed and keep the capability unverified. |
+| Evidence | Focused contracts, Playwright QA reader negatives, template runtime probe tests, full `npm test`, `npm run typecheck`, and `git diff --check` pass locally; overlay observes `10/59` while static complete support remains `0/59`. |
+| Rollback | Reverting this package/runtime/QA slice restores runtime-observed support to `9/59` without rewriting prior completed package slices or the audit history. |
+
+### Regression Contracts
+
+- `tests/workspace/playwright-qa-runner.test.ts` rejects crouch action evidence when `crouching` and `heightScale` are absent.
+- `tests/workspace/playwright-qa-runner.test.ts` rejects crouch evidence when `crouching=true` is present but `heightScale` is missing.
+- `tests/contracts/phaser-templates.test.ts` verifies the template records the runtime probe with `crouching=true`, `heightScale=0.58`, and changed body height.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts` verifies same-run evidence advances `movement.crouch.v1` to observed support while `staticCompleteSupported=false`.
+- `tests/workspace/generation-pipeline.service.test.ts` verifies the production QA expectation includes the crouch required probe and state assertions.
+
+Validation receipts:
+
+```text
+npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/generation-pipeline.service.test.ts -t "movement crouch|crouch action|capability runtime probe evidence|runtime-observed support|routes supported side-scrolling|package-owned capability runtime evidence|passes capability runtime evidence through the QA report|fails capability runtime evidence when crouch|keeps capability IDs unique"
+exitCode=0
+result=PASS: 6 files passed, 10 tests passed, 154 skipped
+
+npx vitest run tests/workspace/playwright-qa-runner.test.ts
+exitCode=0
+result=PASS: 43 tests passed
+
+npm test
+exitCode=0
+result=PASS: contracts 95 files / 1075 tests; workspace 34 files / 408 tests
+
+npm run typecheck
+exitCode=0
+result=PASS
+
+git diff --check
+exitCode=0
+result=PASS
+
+npx vitest run tests/contracts/step37-closure-implementation-trace.test.ts
+exitCode=0
+result=PASS: 14 tests passed
+```
+
+### Implementation Oracle Review
+
+- oracle_agent_id: `019effae-8aa2-7c22-b5ba-8c4b69f21d20`.
+- oracle_submission_id: `019f0013-d158-7b82-bd80-7678b7afab0d`.
+- result: `PASS / no P0/P1/P2 blocking findings`.
+- checkpoint decision: allowed for this Stage 4 `movement.crouch.v1` package-owned QA slice only.
+
+Oracle confirmed:
+
+- the current diff stays scoped to `movement.crouch.v1` package-owned QA implementation and its closure record;
+- no Stage 5 exact lock, production default cutover, legacy authoritative exit, pickup/spawn promotion, or full Stage 4 closure claim was introduced;
+- package/probe/event identity is consistent across registry, runtime, QA reader, and overlay;
+- `PlaywrightQaRunnerService` reads and compares `crouching` and `heightScale`, rather than accepting action/event evidence alone;
+- negative regressions cover missing posture proof and missing `heightScale`;
+- deterministic browser QA presses `ArrowDown` and waits for `movement.crouch.entered`;
+- same-run evidence advances only runtime-observed overlay support to `10/59`, while static support and Stage 4 exit remain incomplete.
+
+Unresolved items:
+
+- Stage 4 full package closure remains `NOT_MET`.
+- Stage 5 exact lock remains `NOT_ENTERED`.
+- Production default cutover remains inactive.
+- Legacy authoritative path has not exited.
+- `movement.crouch.v1` still has `completeSupported=false`; only same-run observed support advances in this slice.
+
+State transition:
+
+```text
+planned -> landed -> verified -> oracle_passed
+```
+
+### Implementation Exit Assessment
+
+```text
+Stage 4 Movement Crouch Package-Owned QA Slice Audit: CHECKPOINT_COMMITTED
+Stage 4 Movement Crouch Package-Owned QA Slice Implementation: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 Exit gate: NOT_MET
+Next: checkpoint commit for this implementation only
+```
+
+Stop marker: Stage 4 `movement.crouch.v1` package-owned QA slice implementation passed Oracle and is awaiting checkpoint commit. Do not enter the next Stage 4 audit, enter Stage 5, or claim complete package closure until checkpoint commit completes.

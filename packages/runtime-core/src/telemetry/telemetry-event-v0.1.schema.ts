@@ -6,6 +6,7 @@ export const TelemetryEventTypeSchema = z.enum([
   'input.received',
   'player.moved',
   'player.jumped',
+  'movement.crouch.entered',
   'player.fired',
   'projectile.spawned',
   'collision.detected',

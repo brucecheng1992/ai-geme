@@ -55,7 +55,7 @@ type ShooterTemplateSnapshot = TemplateSnapshot & {
 };
 
 type SideScrollingTemplateSnapshot = TemplateSnapshot & {
-  player: { x: number; y: number; onGround: boolean };
+  player: { x: number; y: number; onGround: boolean; crouching?: boolean; height?: number; standingHeight?: number; heightScale?: number };
   camera: {
     mode: 'side_follow';
     followTarget: 'player';
@@ -99,6 +99,10 @@ type SideScrollingTemplateSnapshot = TemplateSnapshot & {
       eventType: string;
       eventTypes?: string[];
       airborne?: boolean;
+      crouching?: boolean;
+      heightScale?: number;
+      bodyHeight?: number;
+      standingHeight?: number;
       invulnerable?: boolean;
       damagePrevented?: boolean;
       health?: number;
@@ -185,6 +189,7 @@ describe('Phaser templates', () => {
     expect(shooterMain).toContain('asset-manifest.generated.json');
     expect(shooterMain).toContain('shooterArt.preload(this)');
     expect(sideScrollingMain).toContain('scene.jump()');
+    expect(sideScrollingMain).toContain('scene.crouch()');
     expect(sideScrollingMain).toContain('scene.fire()');
     expect(sideScrollingMain).toContain('scene.setRunInput');
     expect(sideScrollingMain).toContain('runtime-plan.generated.json');
@@ -1152,6 +1157,7 @@ describe('Phaser templates', () => {
       scene.update(1_000 + frame * 50, 50);
     }
     scene.setRunInput('right', false);
+    scene.crouch();
     scene.jump();
     scene.fire(1_000);
 
@@ -1207,6 +1213,20 @@ describe('Phaser templates', () => {
       sourceRef: 'runtime_plan.side_scrolling.player.jumpVelocity + projectileEntityId',
       status: 'observed'
     };
+    const expectedCrouchProbe = {
+      capabilityId: 'movement.crouch.v1',
+      probeId: 'movement.crouch.v1.state.browser_qa.v1',
+      runtimeModuleId: 'movement.crouch',
+      action: 'crouch',
+      eventType: 'movement.crouch.entered',
+      eventTypes: ['movement.crouch.entered'],
+      crouching: true,
+      heightScale: 0.58,
+      bodyHeight: 32.48,
+      standingHeight: 56,
+      sourceRef: 'runtime_plan.side_scrolling.capability_configs.crouch_action_state',
+      status: 'observed'
+    };
     const expectedMovementProbe = {
       capabilityId: 'movement.run_jump.v1',
       probeId: 'movement.run_jump.v1.jump.browser_qa.v1',
@@ -1253,11 +1273,13 @@ describe('Phaser templates', () => {
     const snapshot = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
     const telemetry = globalThis.__GAME_QA__?.telemetry() ?? [];
     const jumpedEvent = telemetry.find((event) => event.type === 'player.jumped');
+    const crouchedEvent = telemetry.find((event) => event.type === 'movement.crouch.entered');
     const firedEvent = telemetry.find((event) => event.type === 'player.fired');
     const projectileEvent = telemetry.find(
       (event) => event.type === 'projectile.spawned' && Array.isArray((event.payload as { capabilityRuntimeProbes?: unknown } | undefined)?.capabilityRuntimeProbes)
     );
 
+    expect(crouchedEvent?.payload?.capabilityRuntime).toMatchObject(expectedCrouchProbe);
     expect(jumpedEvent?.payload?.capabilityRuntime).toMatchObject(expectedMovementProbe);
     expect(firedEvent?.payload?.capabilityRuntime).toMatchObject(expectedWeaponProbe);
     expect(projectileEvent?.payload?.capabilityRuntime).toMatchObject(expectedWeaponProbe);
@@ -1274,6 +1296,7 @@ describe('Phaser templates', () => {
         expect.objectContaining(expectedCameraProbe),
         expect.objectContaining(expectedCollisionProbe),
         expect.objectContaining(expectedAirborneFireProbe),
+        expect.objectContaining(expectedCrouchProbe),
         expect.objectContaining(expectedDamageInvulnerabilityProbe),
         expect.objectContaining(expectedHealthProbe),
         expect.objectContaining(expectedMovementProbe),
@@ -1282,7 +1305,8 @@ describe('Phaser templates', () => {
         expect.objectContaining(expectedWeaponProbe)
       ])
     });
-    expect(snapshot?.capabilityRuntime?.probes).toHaveLength(9);
+    expect(snapshot?.capabilityRuntime?.probes).toHaveLength(10);
+    expect(snapshot?.player).toMatchObject({ crouching: true, height: 32.48, standingHeight: 56, heightScale: 0.58 });
     const observedHealthProbe = snapshot?.capabilityRuntime?.probes.find((probe) => probe.probeId === 'health.player_health_points.v1.current.browser_qa.v1');
     expect(observedHealthProbe?.health).toBe(snapshot?.health);
     expect(observedHealthProbe?.maxHealth).toBe(3);

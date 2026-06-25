@@ -13,6 +13,7 @@ import {
   listGameplayProfileRuntimeStatuses,
   RuntimeGenreRegistry,
   validateGameplayCapabilityRegistry,
+  MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
   type GameplayCapabilityDescriptor,
   type RuntimeGenreCapability
 } from '../../packages/game-dsl/src/index.js';
@@ -48,6 +49,10 @@ describe('Gameplay capability registry', () => {
       legacyRuntimeCapabilities: []
     });
     expect(findGameplayCapability('combat.airborne_fire.v1')).toMatchObject({
+      status: 'planned',
+      legacyRuntimeCapabilities: []
+    });
+    expect(findGameplayCapability('movement.crouch.v1')).toMatchObject({
       status: 'planned',
       legacyRuntimeCapabilities: []
     });
@@ -330,6 +335,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(airborneFire)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(airborneFire)).toBe(false);
+  });
+
+  it('scopes movement crouch package-owned QA without static support promotion', () => {
+    const crouch = findGameplayCapability('movement.crouch.v1');
+
+    if (crouch === undefined) {
+      throw new Error('Expected movement.crouch.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(crouch)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(crouch.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(crouch.qa).toEqual({
+      requiredProbeIds: [MOVEMENT_CROUCH_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(crouch)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(crouch)).toBe(false);
   });
 
   it('derives profile runtime status from RuntimeGenreRegistry instead of a second supported list', () => {

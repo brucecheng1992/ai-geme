@@ -41,6 +41,12 @@ type RuntimeActor = {
   health: number;
 };
 
+type PlayerActor = RuntimeActor & {
+  standingHeight: number;
+  crouching: boolean;
+  heightScale: number;
+};
+
 type EnemyActor = RuntimeActor & {
   entityId: string;
   waveId: string;
@@ -61,13 +67,14 @@ type CapabilityRuntimeProbe = {
   capabilityId: string;
   probeId: string;
   runtimeModuleId: string;
-  action: 'block_damage' | 'collide' | 'fire' | 'jump' | 'move' | 'observe' | 'spawn';
+  action: 'block_damage' | 'collide' | 'crouch' | 'fire' | 'jump' | 'move' | 'observe' | 'spawn';
   eventType:
     | 'combat.airborne_fire.fired'
     | 'collision.platform.grounded'
     | 'health.damage_invulnerability.activated'
     | 'health.damage_invulnerability.blocked'
     | 'health.player_health.current'
+    | 'movement.crouch.entered'
     | 'player.fired'
     | 'projectile.spawned'
     | 'player.jumped'
@@ -75,6 +82,10 @@ type CapabilityRuntimeProbe = {
     | 'spawn.static.triggered';
   eventTypes?: string[];
   airborne?: boolean;
+  crouching?: boolean;
+  heightScale?: number;
+  bodyHeight?: number;
+  standingHeight?: number;
   invulnerable?: boolean;
   damagePrevented?: boolean;
   health?: number;
@@ -107,6 +118,12 @@ const COMBAT_AIRBORNE_FIRE_SOURCE_REF = 'runtime_plan.side_scrolling.player.jump
 const COMBAT_PROJECTILE_CAPABILITY_ID = 'combat.projectile.v1';
 const COMBAT_PROJECTILE_CAPABILITY_PROBE_ID = 'combat.projectile.v1.spawn.browser_qa.v1';
 const COMBAT_PROJECTILE_RUNTIME_MODULE_ID = 'combat.projectile';
+const MOVEMENT_CROUCH_CAPABILITY_ID = 'movement.crouch.v1';
+const MOVEMENT_CROUCH_CAPABILITY_PROBE_ID = 'movement.crouch.v1.state.browser_qa.v1';
+const MOVEMENT_CROUCH_RUNTIME_MODULE_ID = 'movement.crouch';
+const MOVEMENT_CROUCH_ENTERED_EVENT_TYPE = 'movement.crouch.entered';
+const MOVEMENT_CROUCH_SOURCE_REF = 'runtime_plan.side_scrolling.capability_configs.crouch_action_state';
+const MOVEMENT_CROUCH_HEIGHT_SCALE = 0.58;
 const MOVEMENT_RUN_JUMP_CAPABILITY_ID = 'movement.run_jump.v1';
 const MOVEMENT_RUN_JUMP_CAPABILITY_PROBE_ID = 'movement.run_jump.v1.jump.browser_qa.v1';
 const MOVEMENT_RUN_JUMP_RUNTIME_MODULE_ID = 'movement.run_jump';
@@ -143,7 +160,7 @@ export class SideScrollingRunAndGunScene {
   private readonly endScreen: EndScreenRenderer;
   private readonly liveEditBridge;
   private phaserScene?: Phaser.Scene;
-  private player: RuntimeActor;
+  private player: PlayerActor;
   private lives: number;
   private runtimeClockMs = 0;
   private nextProjectileAtMs = 0;
@@ -197,7 +214,15 @@ export class SideScrollingRunAndGunScene {
     exposeRuntime(
       this.state,
       new QaBridge(this.state, () => this.start(), () => this.restart(), () => ({
-        player: { x: this.player.x, y: this.player.y, onGround: this.player.vy === 0 },
+        player: {
+          x: this.player.x,
+          y: this.player.y,
+          onGround: this.player.vy === 0,
+          crouching: this.player.crouching,
+          height: this.player.height,
+          standingHeight: this.player.standingHeight,
+          heightScale: this.player.heightScale
+        },
         camera: this.cameraSnapshot(),
         gravity: this.plan.scene.world.gravityY,
         backgrounds: this.plan.backgrounds ?? [],
@@ -252,6 +277,42 @@ export class SideScrollingRunAndGunScene {
     const capabilityRuntime = this.createMovementRunJumpCapabilityRuntimeProbe();
     this.capabilityRuntimeProbes.set(capabilityRuntime.probeId, capabilityRuntime);
     this.telemetry.emit('player.jumped', { velocityY: this.player.vy, capabilityRuntime });
+  }
+
+  crouch(): void {
+    this.input.receive('crouch');
+    if (this.state.gameStatus !== 'PLAYING' || this.player.crouching) {
+      return;
+    }
+
+    const bottom = this.player.y + this.player.height;
+    this.player.crouching = true;
+    this.player.heightScale = MOVEMENT_CROUCH_HEIGHT_SCALE;
+    this.player.height = this.player.standingHeight * this.player.heightScale;
+    this.player.y = bottom - this.player.height;
+    const capabilityRuntime = this.createMovementCrouchCapabilityRuntimeProbe();
+    this.capabilityRuntimeProbes.set(capabilityRuntime.probeId, capabilityRuntime);
+    this.telemetry.emit(MOVEMENT_CROUCH_ENTERED_EVENT_TYPE, {
+      crouching: true,
+      heightScale: this.player.heightScale,
+      bodyHeight: this.player.height,
+      standingHeight: this.player.standingHeight,
+      capabilityRuntime
+    });
+    this.syncPlayerSprite();
+  }
+
+  stand(): void {
+    if (!this.player.crouching) {
+      return;
+    }
+
+    const bottom = this.player.y + this.player.height;
+    this.player.crouching = false;
+    this.player.heightScale = 1;
+    this.player.height = this.player.standingHeight;
+    this.player.y = bottom - this.player.height;
+    this.syncPlayerSprite();
   }
 
   fire(nowMs = Date.now()): void {
@@ -385,7 +446,8 @@ export class SideScrollingRunAndGunScene {
     this.updateCamera();
   }
 
-  private createPlayerActor(): RuntimeActor {
+  private createPlayerActor(): PlayerActor {
+    const standingHeight = 56;
     return {
       id: this.plan.player.entityId,
       x: this.plan.player.spawn.x,
@@ -393,7 +455,10 @@ export class SideScrollingRunAndGunScene {
       vx: 0,
       vy: 0,
       width: 42,
-      height: 56,
+      height: standingHeight,
+      standingHeight,
+      crouching: false,
+      heightScale: 1,
       health: this.plan.player.health
     };
   }
@@ -482,6 +547,23 @@ export class SideScrollingRunAndGunScene {
       action: 'jump',
       eventType: 'player.jumped',
       sourceRef: MOVEMENT_RUN_JUMP_SOURCE_REF,
+      status: 'observed'
+    };
+  }
+
+  private createMovementCrouchCapabilityRuntimeProbe(): CapabilityRuntimeProbe {
+    return {
+      capabilityId: MOVEMENT_CROUCH_CAPABILITY_ID,
+      probeId: MOVEMENT_CROUCH_CAPABILITY_PROBE_ID,
+      runtimeModuleId: MOVEMENT_CROUCH_RUNTIME_MODULE_ID,
+      action: 'crouch',
+      eventType: MOVEMENT_CROUCH_ENTERED_EVENT_TYPE,
+      eventTypes: [MOVEMENT_CROUCH_ENTERED_EVENT_TYPE],
+      crouching: true,
+      heightScale: this.player.heightScale,
+      bodyHeight: this.player.height,
+      standingHeight: this.player.standingHeight,
+      sourceRef: MOVEMENT_CROUCH_SOURCE_REF,
       status: 'observed'
     };
   }
@@ -858,6 +940,7 @@ export class SideScrollingRunAndGunScene {
 
   private syncPlayerSprite(): void {
     this.setObjectPosition(this.playerSprite, this.player.x, this.player.y);
+    this.setObjectScale(this.playerSprite, 1, this.player.heightScale);
   }
 
   private updateCamera(): void {
@@ -875,6 +958,12 @@ export class SideScrollingRunAndGunScene {
   private setObjectPosition(object: Phaser.GameObjects.GameObject | undefined, x: number, y: number): void {
     if (object !== undefined && 'setPosition' in object && typeof object.setPosition === 'function') {
       object.setPosition(x, y);
+    }
+  }
+
+  private setObjectScale(object: Phaser.GameObjects.GameObject | undefined, x: number, y: number): void {
+    if (object !== undefined && 'setScale' in object && typeof object.setScale === 'function') {
+      object.setScale(x, y);
     }
   }
 

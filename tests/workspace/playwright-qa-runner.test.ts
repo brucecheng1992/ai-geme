@@ -175,6 +175,18 @@ describe('Playable QA gate and runner', () => {
       sourceRef: 'runtime_plan.side_scrolling.player.jumpVelocity + projectileEntityId',
       status: 'observed'
     };
+    const crouchProbe = {
+      capabilityId: 'movement.crouch.v1',
+      probeId: 'movement.crouch.v1.state.browser_qa.v1',
+      runtimeModuleId: 'movement.crouch',
+      action: 'crouch',
+      eventType: 'movement.crouch.entered',
+      eventTypes: ['movement.crouch.entered'],
+      crouching: true,
+      heightScale: 0.58,
+      sourceRef: 'runtime_plan.side_scrolling.capability_configs.crouch_action_state',
+      status: 'observed'
+    };
     const movementProbe = {
       capabilityId: 'movement.run_jump.v1',
       probeId: 'movement.run_jump.v1.jump.browser_qa.v1',
@@ -224,21 +236,27 @@ describe('Playable QA gate and runner', () => {
         payload: { capabilityRuntime: movementProbe }
       },
       {
-        type: 'player.fired',
+        type: 'movement.crouch.entered',
         timestamp_ms: 1,
         frame: 1,
+        payload: { capabilityRuntime: crouchProbe }
+      },
+      {
+        type: 'player.fired',
+        timestamp_ms: 2,
+        frame: 2,
         payload: { capabilityRuntime: probe }
       },
       {
         type: 'projectile.spawned',
-        timestamp_ms: 2,
-        frame: 2,
+        timestamp_ms: 3,
+        frame: 3,
         payload: { capabilityRuntime: probe, capabilityRuntimeProbes: [probe, projectileProbe, airborneFireProbe] }
       },
       {
         type: 'health.damage_invulnerability.blocked',
-        timestamp_ms: 3,
-        frame: 3,
+        timestamp_ms: 4,
+        frame: 4,
         payload: { capabilityRuntime: damageInvulnerabilityProbe }
       }
     ];
@@ -255,7 +273,18 @@ describe('Playable QA gate and runner', () => {
           },
           capabilityRuntime: {
             source: 'side_scrolling_runtime',
-            probes: [cameraProbe, collisionProbe, movementProbe, spawnStaticProbe, damageInvulnerabilityProbe, healthProbe, probe, projectileProbe, airborneFireProbe]
+            probes: [
+              cameraProbe,
+              collisionProbe,
+              crouchProbe,
+              movementProbe,
+              spawnStaticProbe,
+              damageInvulnerabilityProbe,
+              healthProbe,
+              probe,
+              projectileProbe,
+              airborneFireProbe
+            ]
           }
         },
         telemetry,
@@ -294,6 +323,15 @@ describe('Playable QA gate and runner', () => {
           probeId: 'combat.projectile.v1.spawn.browser_qa.v1',
           action: 'fire',
           eventType: 'projectile.spawned',
+          observedIn: ['snapshot', 'telemetry']
+        }),
+        expect.objectContaining({
+          capabilityId: 'movement.crouch.v1',
+          probeId: 'movement.crouch.v1.state.browser_qa.v1',
+          action: 'crouch',
+          eventType: 'movement.crouch.entered',
+          crouching: true,
+          heightScale: 0.58,
           observedIn: ['snapshot', 'telemetry']
         }),
         expect.objectContaining({
@@ -443,6 +481,92 @@ describe('Playable QA gate and runner', () => {
     });
   });
 
+  it('fails capability runtime evidence when crouch action lacks posture proof', () => {
+    const expectedCapabilityRuntime: QaCapabilityRuntimeExpectation = {
+      requiredProbes: [
+        {
+          capabilityId: 'movement.crouch.v1',
+          probeId: 'movement.crouch.v1.state.browser_qa.v1',
+          action: 'crouch',
+          eventType: 'movement.crouch.entered',
+          crouching: true,
+          heightScale: 0.58
+        }
+      ]
+    };
+    const result = evaluateCapabilityRuntimeEvidence(
+      {
+        capabilityRuntime: {
+          source: 'side_scrolling_runtime',
+          probes: [
+            {
+              capabilityId: 'movement.crouch.v1',
+              probeId: 'movement.crouch.v1.state.browser_qa.v1',
+              runtimeModuleId: 'movement.crouch',
+              action: 'crouch',
+              eventType: 'movement.crouch.entered',
+              sourceRef: 'runtime_plan.side_scrolling.capability_configs.crouch_action_state',
+              status: 'observed'
+            }
+          ]
+        }
+      },
+      [{ type: 'movement.crouch.entered', timestamp_ms: 1, frame: 1 }],
+      expectedCapabilityRuntime
+    );
+
+    expect(result).toMatchObject({
+      status: 'FAILED',
+      missingProbeIds: [],
+      mismatches: [
+        'capabilityRuntime.probes[movement.crouch.v1.state.browser_qa.v1].crouching: expected true, observed <missing>',
+        'capabilityRuntime.probes[movement.crouch.v1.state.browser_qa.v1].heightScale: expected 0.58, observed <missing>'
+      ]
+    });
+  });
+
+  it('fails capability runtime evidence when crouch height proof is missing', () => {
+    const expectedCapabilityRuntime: QaCapabilityRuntimeExpectation = {
+      requiredProbes: [
+        {
+          capabilityId: 'movement.crouch.v1',
+          probeId: 'movement.crouch.v1.state.browser_qa.v1',
+          action: 'crouch',
+          eventType: 'movement.crouch.entered',
+          crouching: true,
+          heightScale: 0.58
+        }
+      ]
+    };
+    const result = evaluateCapabilityRuntimeEvidence(
+      {
+        capabilityRuntime: {
+          source: 'side_scrolling_runtime',
+          probes: [
+            {
+              capabilityId: 'movement.crouch.v1',
+              probeId: 'movement.crouch.v1.state.browser_qa.v1',
+              runtimeModuleId: 'movement.crouch',
+              action: 'crouch',
+              eventType: 'movement.crouch.entered',
+              crouching: true,
+              sourceRef: 'runtime_plan.side_scrolling.capability_configs.crouch_action_state',
+              status: 'observed'
+            }
+          ]
+        }
+      },
+      [{ type: 'movement.crouch.entered', timestamp_ms: 1, frame: 1 }],
+      expectedCapabilityRuntime
+    );
+
+    expect(result).toMatchObject({
+      status: 'FAILED',
+      missingProbeIds: [],
+      mismatches: ['capabilityRuntime.probes[movement.crouch.v1.state.browser_qa.v1].heightScale: expected 0.58, observed <missing>']
+    });
+  });
+
   it('passes capability runtime evidence through the QA report', async () => {
     const expectedCapabilityRuntime = createDefaultWeaponCapabilityRuntimeExpectation();
     const capabilityRuntime = evaluateCapabilityRuntimeEvidence(
@@ -486,6 +610,18 @@ describe('Playable QA gate and runner', () => {
               projectileEntityId: 'pulse_bolt',
               projectileId: 'projectile_1_0',
               sourceRef: 'runtime_plan.side_scrolling.player.projectileEntityId',
+              status: 'observed'
+            },
+            {
+              capabilityId: 'movement.crouch.v1',
+              probeId: 'movement.crouch.v1.state.browser_qa.v1',
+              runtimeModuleId: 'movement.crouch',
+              action: 'crouch',
+              eventType: 'movement.crouch.entered',
+              eventTypes: ['movement.crouch.entered'],
+              crouching: true,
+              heightScale: 0.58,
+              sourceRef: 'runtime_plan.side_scrolling.capability_configs.crouch_action_state',
               status: 'observed'
             },
             {
@@ -2408,6 +2544,12 @@ function sideScrollingCombatHtml(options: { emitInvulnerabilityBlocked: boolean;
           movingRight = true;
           emit('input.received', { input: 'move' });
         }
+        if (event.key === 'ArrowDown') {
+          state.player.crouching = true;
+          state.player.heightScale = 0.58;
+          emit('input.received', { input: 'crouch' });
+          emit('movement.crouch.entered', { crouching: true, heightScale: 0.58 });
+        }
         if (event.key === ' ') {
           emit('input.received', { input: 'jump' });
           emit('player.jumped');
@@ -2738,6 +2880,14 @@ function createDefaultWeaponCapabilityRuntimeExpectation(): QaCapabilityRuntimeE
         probeId: 'combat.projectile.v1.spawn.browser_qa.v1',
         action: 'fire',
         eventType: 'projectile.spawned'
+      },
+      {
+        capabilityId: 'movement.crouch.v1',
+        probeId: 'movement.crouch.v1.state.browser_qa.v1',
+        action: 'crouch',
+        eventType: 'movement.crouch.entered',
+        crouching: true,
+        heightScale: 0.58
       },
       {
         capabilityId: 'health.player_health_points.v1',

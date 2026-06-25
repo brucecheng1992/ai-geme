@@ -176,6 +176,7 @@ describe('GenerationPipelineService failure states', () => {
                   airborneFireObservedProbe(),
                   projectileObservedProbe(),
                   healthPlayerHealthPointsObservedProbe(),
+                  movementCrouchObservedProbe(),
                   movementRunJumpObservedProbe(),
                   spawnStaticObservedProbe(),
                   defaultWeaponObservedProbe()
@@ -360,7 +361,7 @@ describe('GenerationPipelineService failure states', () => {
         })
       ])
     );
-    expect(capabilityQaReport.requiredResults).toHaveLength(9);
+    expect(capabilityQaReport.requiredResults).toHaveLength(10);
     expect(capabilityRuntime.resolutionReportHash).toBe(capabilityResolution.reportHash);
     expect(capabilityRuntime.authorityBundleRef).toEqual(qaReport.runtime_authority?.expected?.authorityBundleRef);
     expect(capabilityRuntime.activeProfileLockRef).toEqual(qaReport.runtime_authority?.expected?.activeProfileLockRef);
@@ -368,7 +369,7 @@ describe('GenerationPipelineService failure states', () => {
       artifactKind: 'generation_target_profile_runtime_support_report',
       status: 'blocked_incomplete_target_profile',
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 9,
+      observedCompleteSupportedCount: 10,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
@@ -378,6 +379,7 @@ describe('GenerationPipelineService failure states', () => {
         'combat.projectile.v1',
         'health.damage_invulnerability.v1',
         'health.player_health_points.v1',
+        'movement.crouch.v1',
         'movement.run_jump.v1',
         'spawn.static.v1',
         'weapon.default_straight_single.v1'
@@ -1173,6 +1175,14 @@ describe('GenerationPipelineService failure states', () => {
           eventType: 'projectile.spawned'
         },
         {
+          capabilityId: 'movement.crouch.v1',
+          probeId: 'movement.crouch.v1.state.browser_qa.v1',
+          action: 'crouch',
+          eventType: 'movement.crouch.entered',
+          crouching: true,
+          heightScale: 0.58
+        },
+        {
           capabilityId: 'health.player_health_points.v1',
           probeId: 'health.player_health_points.v1.current.browser_qa.v1',
           action: 'observe',
@@ -1206,7 +1216,7 @@ describe('GenerationPipelineService failure states', () => {
         }
       ])
     });
-    expect(qaCapabilityRuntimeExpectation?.requiredProbes).toHaveLength(9);
+    expect(qaCapabilityRuntimeExpectation?.requiredProbes).toHaveLength(10);
     expect(intentPlan).toMatchObject({
       normalizedGenre: 'side_scrolling_run_and_gun',
       runtimeDslSupport: 'supported',
@@ -2650,6 +2660,7 @@ describe('GenerationPipelineService failure states', () => {
         projectileObservedProbe(),
         healthDamageInvulnerabilityObservedProbe(),
         healthPlayerHealthPointsObservedProbe(),
+        movementCrouchObservedProbe(),
         movementRunJumpObservedProbe(),
         spawnStaticObservedProbe(),
         defaultWeaponObservedProbe()
@@ -2739,6 +2750,22 @@ describe('GenerationPipelineService failure states', () => {
       eventType: 'player.jumped',
       eventTypes: ['player.jumped'],
       sourceRef: 'runtime_plan.side_scrolling.player.jumpVelocity',
+      status: 'observed',
+      observedIn: ['snapshot', 'telemetry']
+    };
+  }
+
+  function movementCrouchObservedProbe(): QaCapabilityRuntimeEvidence['observed'][number] {
+    return {
+      capabilityId: 'movement.crouch.v1',
+      probeId: 'movement.crouch.v1.state.browser_qa.v1',
+      runtimeModuleId: 'movement.crouch',
+      action: 'crouch',
+      eventType: 'movement.crouch.entered',
+      eventTypes: ['movement.crouch.entered'],
+      crouching: true,
+      heightScale: 0.58,
+      sourceRef: 'runtime_plan.side_scrolling.capability_configs.crouch_action_state',
       status: 'observed',
       observedIn: ['snapshot', 'telemetry']
     };
