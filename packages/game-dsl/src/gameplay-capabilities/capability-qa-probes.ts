@@ -106,6 +106,23 @@ export type CapabilityQaProbeResult = {
   observationRefs?: string[];
 };
 
+export type CapabilityRuntimeObservedProbeEvidence = {
+  capabilityId: string;
+  probeId: string;
+  action: string;
+  eventType: string;
+  eventTypes?: readonly string[];
+  status?: string;
+  sourceRef?: string;
+};
+
+export type CapabilityRuntimeProbeEvidenceReport = {
+  status: 'PASSED' | 'FAILED' | 'NOT_REQUIRED';
+  observed: readonly CapabilityRuntimeObservedProbeEvidence[];
+  missingProbeIds: readonly string[];
+  mismatches: readonly string[];
+};
+
 export type CapabilityQaReport = {
   artifactKind: typeof CAPABILITY_QA_REPORT_KIND;
   schemaVersion: typeof CAPABILITY_QA_REPORT_SCHEMA_VERSION;
@@ -243,6 +260,83 @@ export function evaluateCapabilityQaReport(input: { plan: CapabilityRuntimeQaPla
     failedOptionalProbeIds
   };
   return { ...payload, reportHash: hashStableJson(payload) };
+}
+
+export function buildCapabilityQaProbeResultsFromRuntimeEvidence(input: {
+  plan: CapabilityRuntimeQaPlan;
+  evidence: CapabilityRuntimeProbeEvidenceReport | undefined;
+}): CapabilityQaProbeResult[] {
+  if (input.evidence?.status !== 'PASSED') {
+    return [];
+  }
+
+  const observedByProbeId = new Map(input.evidence.observed.map((probe) => [probe.probeId, probe]));
+  return [...input.plan.requiredProbes, ...input.plan.optionalProbes]
+    .flatMap((probe) => buildProbeResultFromRuntimeEvidence(probe, observedByProbeId.get(probe.id)))
+    .sort(compareProbeResults);
+}
+
+function buildProbeResultFromRuntimeEvidence(probe: CapabilityQaPlanProbe, observed: CapabilityRuntimeObservedProbeEvidence | undefined): CapabilityQaProbeResult[] {
+  if (observed === undefined) {
+    return [];
+  }
+
+  const probeMismatches = [
+    ...(probe.capabilityId === undefined || observed.capabilityId === probe.capabilityId
+      ? []
+      : [`capabilityId expected ${probe.capabilityId}, observed ${observed.capabilityId}`]),
+    ...(observed.status === undefined || observed.status === 'observed' ? [] : [`runtime status ${observed.status} is not observed`])
+  ];
+  const eventTypes = new Set([observed.eventType, ...(observed.eventTypes ?? [])].filter((eventType) => eventType.length > 0));
+  const observationsById = new Map(probe.observations.map((observation) => [observation.id, observation]));
+  const assertionResults = probe.assertions.map((assertion) => {
+    const observation = observationsById.get(assertion.observationId);
+    const unsupportedComparator = assertion.comparator !== 'exists';
+    const passed =
+      probeMismatches.length === 0 &&
+      observation !== undefined &&
+      !unsupportedComparator &&
+      eventTypes.has(observation.ref);
+    return {
+      assertionId: assertion.id,
+      status: passed ? ('passed' as const) : ('failed' as const),
+      ...(passed
+        ? {}
+        : {
+            message: buildRuntimeEvidenceAssertionFailureMessage({
+              assertionId: assertion.id,
+              observationRef: observation?.ref,
+              observedEventTypes: [...eventTypes].sort(),
+              probeMismatches,
+              unsupportedComparator
+            })
+          })
+    };
+  });
+
+  return [
+    {
+      probeId: probe.id,
+      status: assertionResults.every((assertion) => assertion.status === 'passed') ? 'passed' : 'failed',
+      assertionResults,
+      observationRefs: observed.sourceRef === undefined ? [...eventTypes].sort() : [observed.sourceRef]
+    }
+  ];
+}
+
+function buildRuntimeEvidenceAssertionFailureMessage(input: {
+  assertionId: string;
+  observationRef: string | undefined;
+  observedEventTypes: readonly string[];
+  probeMismatches: readonly string[];
+  unsupportedComparator: boolean;
+}): string {
+  const reasons = [
+    ...(input.observationRef === undefined ? ['observation descriptor missing'] : [`observation ${input.observationRef} not observed`]),
+    ...(input.unsupportedComparator ? ['only exists assertions can be derived from runtime event evidence'] : []),
+    ...input.probeMismatches
+  ];
+  return `Runtime evidence did not satisfy assertion ${input.assertionId}: ${reasons.join('; ')}; observed events: ${input.observedEventTypes.join(', ') || '<none>'}.`;
 }
 
 export function buildProfileAcceptanceReport(input: {

@@ -36,6 +36,7 @@ import {
   buildGenerationCapabilityPreflight,
   buildGenerationPathReceipt,
   buildCanonicalGameBriefArtifact,
+  createDefaultStraightSingleWeaponPackageContract,
   buildGenerationScopePlan,
   buildGameDslArtifact,
   checkPhaserRuntimeCapabilities,
@@ -1084,7 +1085,8 @@ export class GenerationPipelineService {
       runId: input.runId,
       normalizedGenre: artifacts.readinessReport.normalizedGenre,
       registrySnapshot: artifacts.registrySnapshot,
-      readinessReport: artifacts.readinessReport
+      readinessReport: artifacts.readinessReport,
+      approvedInstalledPackages: buildApprovedInstalledCapabilityQaPackages(artifacts.readinessReport.normalizedGenre)
     });
     await this.writeGenerationCapabilityResolutionShadowArtifacts(input, resolutionArtifacts);
     return resolutionArtifacts;
@@ -1153,6 +1155,8 @@ export class GenerationPipelineService {
         authorityBundleRef: ReturnType<typeof authorityBundleRef>;
         activeProfileLockRef: AuthorityBundle['refs']['activeProfileLock'];
       };
+      approvedInstalledPackages?: readonly unknown[];
+      capabilityRuntimeEvidence?: QaReport['capability_runtime'];
     }
   ): Promise<void> {
     const runtimeArtifacts = buildGenerationCapabilityRuntimeShadow({
@@ -1160,6 +1164,8 @@ export class GenerationPipelineService {
       runId: input.runId,
       normalizedGenre: closure.resolutionReport.normalizedGenre,
       resolutionReport: closure.resolutionReport,
+      approvedInstalledPackages: closure.approvedInstalledPackages,
+      capabilityRuntimeEvidence: closure.capabilityRuntimeEvidence,
       activeRuntimeAuthority: closure.activeRuntimeAuthority
     });
     await this.writeGenerationCapabilityRuntimeShadowArtifacts(input, runtimeArtifacts);
@@ -1202,7 +1208,9 @@ export class GenerationPipelineService {
               authorityBundleRef: expected.authorityBundleRef,
               activeProfileLockRef: expected.activeProfileLockRef
             }
-          : undefined
+          : undefined,
+      approvedInstalledPackages: buildApprovedInstalledCapabilityQaPackages(stageOneAuthority.capabilityPreflight.readinessReport.normalizedGenre),
+      capabilityRuntimeEvidence: qaReport.capability_runtime
     });
   }
 
@@ -1887,6 +1895,10 @@ function buildQaCapabilityRuntimeExpectation(genre: QaGenre): QaCapabilityRuntim
       }
     ]
   };
+}
+
+function buildApprovedInstalledCapabilityQaPackages(normalizedGenre: string): readonly unknown[] {
+  return normalizedGenre === 'side_scrolling_run_and_gun' ? [createDefaultStraightSingleWeaponPackageContract()] : [];
 }
 
 function qaRuntimeAuthorityMatchesExpected(

@@ -351,12 +351,18 @@ function readCapabilityRuntimeProbe(value: unknown, eventTypeFallback?: string):
   const projectileId = readString(value.projectileId);
   const sourceRef = readString(value.sourceRef);
   const status = readString(value.status);
+  const eventTypes = uniqueStrings([
+    ...readRuntimeEventTypes(value.eventTypes),
+    eventType,
+    ...(eventTypeFallback === undefined ? [] : [eventTypeFallback])
+  ]);
 
   return {
     capabilityId,
     probeId,
     action,
     eventType,
+    eventTypes,
     ...(projectileEntityId === undefined ? {} : { projectileEntityId }),
     ...(runtimeModuleId === undefined ? {} : { runtimeModuleId }),
     ...(projectileId === undefined ? {} : { projectileId }),
@@ -379,6 +385,7 @@ function mergeCapabilityRuntimeProbe(
   if (!existing.observedIn.includes(observedIn)) {
     existing.observedIn.push(observedIn);
   }
+  existing.eventTypes = uniqueStrings([...(existing.eventTypes ?? [existing.eventType]), ...(probe.eventTypes ?? [probe.eventType])]);
 }
 
 function compareScalar(path: string, observed: string | undefined, expected: string): string[] {
@@ -387,6 +394,14 @@ function compareScalar(path: string, observed: string | undefined, expected: str
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function readRuntimeEventTypes(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string' && item.length > 0) : [];
+}
+
+function uniqueStrings(values: readonly string[]): string[] {
+  return [...new Set(values.filter((value) => value.length > 0))].sort();
 }
 
 function resolveInteractionFailureCode(input: {

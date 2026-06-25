@@ -137,6 +137,12 @@ describe('Playable QA gate and runner', () => {
         timestamp_ms: 1,
         frame: 1,
         payload: { capabilityRuntime: probe }
+      },
+      {
+        type: 'projectile.spawned',
+        timestamp_ms: 2,
+        frame: 2,
+        payload: { capabilityRuntime: probe }
       }
     ];
 
@@ -162,6 +168,7 @@ describe('Playable QA gate and runner', () => {
           probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1',
           action: 'fire',
           eventType: 'player.fired',
+          eventTypes: ['player.fired', 'projectile.spawned'],
           observedIn: ['snapshot', 'telemetry']
         })
       ]

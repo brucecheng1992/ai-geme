@@ -615,3 +615,130 @@ Next: checkpoint commit for default weapon package contract prerequisite
 ```
 
 Stop marker: Stage 4 default weapon package contract prerequisite passed Oracle and is awaiting checkpoint commit. Do not enter Stage 5 and do not claim complete package closure.
+
+## Stage 4 Closure Implementation — Default Weapon Required Probe QA Report Bridge
+
+### Scope Lock
+
+- scope: Stage 4 implementation only.
+- baseline: Stage 4 default weapon package contract prerequisite checkpoint commit `9d3e0967` (`feat(game-dsl): add default weapon package prerequisites`).
+- implementation target: consume same-run `QaReport.capability_runtime` evidence as package-owned `CapabilityQaReport` probe results for `weapon.default_straight_single.v1`.
+- non-goals: no registry `qa_observed=true`, no `completeSupported=true`, no full target-profile package set, no Stage 5 exact lock, no production default cutover.
+- starting conclusion: `Stage 4 Exit gate: NOT_MET`; default weapon had a validated package contract and package-owned probe id, but the active-profile closure did not write or consume a package-owned capability QA report from the same run.
+
+### Current Stage Review Conclusion
+
+The nearest remaining `weapon.default_straight_single.v1` blocker is dynamic verification of the required probe. Before this slice, the pipeline could preserve browser `capability_runtime` evidence in `qa_report.json`, but `buildGenerationCapabilityRuntimeShadow()` did not consume that evidence into `shadow_capability_qa_report.json`.
+
+Support summary remains the authority for target-profile closure and still reports:
+
+```text
+weapon.default_straight_single.v1:
+  qa_observed=false
+  completeSupported=false
+  missingSupportEvidencePrerequisites:
+    requiredProbesVerified
+completeSupportedCount=0
+```
+
+### Extracted Minimal Closure Requirements
+
+1. Preserve all runtime event observations for a package-owned probe when browser QA sees the same probe in multiple telemetry events.
+2. Derive `CapabilityQaProbeResult` from the package QA plan plus same-run `capability_runtime` evidence, not from a generic passed flag.
+3. For each package QA assertion, require the corresponding `observation.ref` event to be present in observed runtime evidence.
+4. Let active-profile closure write `shadow_capability_qa_plan.json` and `shadow_capability_qa_report.json` when an approved package contract and same-run capability runtime evidence are present.
+5. Keep missing or incomplete runtime evidence fail-closed as `capability_qa_report:missing_required_probe`.
+6. Preserve `qa_observed=false`, `completeSupported=false`, and Stage 4 Exit gate `NOT_MET` until a support promotion gate consumes this report.
+
+### RED Evidence
+
+```text
+npx vitest run tests/workspace/generation-pipeline.service.test.ts -t "rewrites side-scrolling runtime scene binding report from QA snapshot evidence"
+# RED before implementation: ENOENT shadow_capability_qa_report.json
+```
+
+### Implemented Scope
+
+- Added `CapabilityRuntimeProbeEvidenceReport` and `buildCapabilityQaProbeResultsFromRuntimeEvidence()` in `capability-qa-probes.ts`.
+- The converter reads the package QA plan, maps runtime event evidence to assertion results, and fails assertions when an expected event observation is absent.
+- `runPlaywrightQaBrowser()` now aggregates `eventTypes` for the same observed capability runtime probe across snapshot and telemetry events.
+- `buildGenerationCapabilityRuntimeShadow()` now creates active-profile capability QA plan/report artifacts when validated approved packages and runtime evidence are present.
+- `GenerationPipelineService` now supplies the default weapon package contract and same-run `qaReport.capability_runtime` to the Stage 37 runtime closure.
+- Focused tests cover both the passed default weapon report and fail-closed missing assertion-event case.
+
+### Compatibility & Cutover
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Active-profile runtime closure can now produce `shadow_capability_qa_plan.json` and `shadow_capability_qa_report.json` from same-run `QaReport.capability_runtime`. Browser QA observed probes now preserve `eventTypes`. |
+| Consumer list | `buildCapabilityQaProbeResultsFromRuntimeEvidence`, `evaluateCapabilityQaReport`, `buildGenerationCapabilityRuntimeShadow`, `GenerationPipelineService`, `PlaywrightQaRunnerService`, and Stage 37 report consumers read the new evidence chain. |
+| Compatibility type | `ADAPTER_REQUIRED`: existing browser QA evidence is adapted into package-owned `CapabilityQaProbeResult` only through the named converter and only when package plan assertions are satisfied. |
+| Authority | The package QA plan is the assertion authority; `qa_report.json` is same-run runtime observation evidence; `shadow_capability_qa_report.json` is the consumed QA result artifact. |
+| Legacy strategy | Generic passed QA status, old non-owned probe ids, and single-event probe summaries cannot clear package assertions. Historical artifacts remain read-only evidence only. |
+| Failure policy | Missing package, missing probe, failed evidence status, mismatched capability id, unsupported comparator, or missing assertion event leaves the required probe missing in `CapabilityQaReport` and blocks runtime evidence. |
+| Evidence | RED pipeline test proved the report was not produced; GREEN focused tests prove the active-profile closure writes a passed package QA report only when both required events are observed, and fails closed when one assertion event is absent. |
+| Rollback | Reverting this slice returns active-profile closure to no package-owned QA report consumption while leaving the validated default weapon package contract from `9d3e0967` intact. |
+
+Compatibility disposition:
+
+```ts
+const STAGE_4_DEFAULT_WEAPON_REQUIRED_PROBE_BRIDGE_DISPOSITION = "ADAPTER_REQUIRED";
+```
+
+### Validation
+
+```text
+npx vitest run tests/workspace/generation-pipeline.service.test.ts -t "rewrites side-scrolling runtime scene binding report from QA snapshot evidence"
+# RED before implementation: ENOENT shadow_capability_qa_report.json
+# GREEN PASS, 1 file / 1 selected test
+
+npx vitest run tests/contracts/gameplay-capability-qa-probes.test.ts tests/workspace/generation-pipeline.service.test.ts -t "derives package QA probe results|rewrites side-scrolling runtime scene binding report"
+# PASS, 2 files / 2 selected tests
+
+npx vitest run tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-capability-runtime.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/generation-pipeline.service.test.ts
+# PASS, 6 files / 117 tests
+
+npm test
+# PASS, contracts 93 files / 1040 tests; workspace 34 files / 401 tests
+
+npm run typecheck
+# PASS
+
+git diff --check
+# PASS
+
+npx tsx -e "import { buildDeepSeekRunAndGunValidationProfileSupportSummary } from './packages/game-dsl/src/deepseek-run-and-gun-validation-profile-v1.ts'; const support = buildDeepSeekRunAndGunValidationProfileSupportSummary(); const weapon = support.capabilities.find((capability) => capability.capabilityId === 'weapon.default_straight_single.v1'); console.log(JSON.stringify({summary:support.summary, weapon}, null, 2));"
+# PASS: requiredCapabilityCount=59, completeSupportedCount=0; weapon.default_straight_single.v1 remains qa_observed=false, completeSupported=false, and only lists requiredProbesVerified as missing prerequisite
+```
+
+### Implementation Oracle Review
+
+Oracle PASS / no P0/P1/P2 blocking findings. Checkpoint commit is allowed for this Stage 4 required-probe QA report bridge only.
+
+Oracle confirmed:
+
+- same-run `qaReport.capability_runtime` is passed into runtime closure and converted through package QA plan assertions;
+- missing observation events fail closed;
+- no false promotion to registry `qa_observed`, `completeSupported`, Stage 4 closure, Stage 5, or production cutover was found;
+- Stage 4 Exit gate remains `NOT_MET`;
+- Stage 5 must not be entered.
+
+Non-blocking P3: `buildGenerationCapabilityRuntimeShadow()` still preserves older active-profile behavior where no validated QA package can leave `capabilityQaReportStatus='passed'` / `runtimeEvidenceStatus='observed'` without `shadowCapabilityQa*` refs. This is pre-existing active-profile semantics, does not promote registry `qa_observed`, and does not block this checkpoint because the current side-scrolling path supplies the default weapon package.
+
+### Implementation Exit Assessment
+
+```text
+Stage 1: AUTHORITATIVE_AND_CONNECTED
+Stage 2: PROFILE_RESOLUTION_CLOSED
+Stage 3: CAPABILITY_REQUIREMENTS_CLOSED
+Stage 4 Audit: COMPLETE_PACKAGE_CLOSURE_NOT_MET
+Stage 4 Package Closure Gate: CHECKPOINT_COMMITTED
+Stage 4 Default Weapon Browser QA Evidence: CHECKPOINT_COMMITTED
+Stage 4 Support Evidence Prerequisite Gate: CHECKPOINT_COMMITTED
+Stage 4 Default Weapon Package Contract Prerequisite: CHECKPOINT_COMMITTED
+Stage 4 Required Probe QA Report Bridge: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 Exit gate: NOT_MET
+Next: checkpoint commit, then continue Stage 4 next closure requirement review
+```
+
+Stop marker: Stage 4 required-probe QA report bridge passed Oracle and is awaiting checkpoint commit. Do not enter Stage 5 and do not claim complete package closure.

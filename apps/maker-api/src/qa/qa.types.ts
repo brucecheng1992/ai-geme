@@ -135,6 +135,7 @@ export type QaCapabilityRuntimeExpectation = {
 };
 
 export type QaCapabilityRuntimeObservedProbe = QaCapabilityRuntimeProbeExpectation & {
+  eventTypes?: string[];
   runtimeModuleId?: string;
   projectileId?: string;
   sourceRef?: string;

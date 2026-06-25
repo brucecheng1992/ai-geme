@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildAmendmentVerificationReport,
+  buildCapabilityQaProbeResultsFromRuntimeEvidence,
   buildCapabilityRuntimeQaPlan,
   evaluateCapabilityQaReport,
   resolveGameplayCapabilityGraph,
@@ -319,6 +320,78 @@ describe('Capability-owned runtime QA probes', () => {
     expect(requiredFailure.missingRequiredProbeIds).toEqual(['movement.run_jump.v1.qa.required']);
     expect(missingAssertionResults.status).toBe('failed');
   });
+
+  it('derives package QA probe results from observed runtime event evidence without skipping assertion events', () => {
+    const capabilityId = 'weapon.default_straight_single.v1';
+    const probeId = 'weapon.default_straight_single.v1.fire.browser_qa.v1';
+    const packages = [
+      createPackage(capabilityId, {
+        probes: [createRuntimeEventProbe(probeId, capabilityId, `${capabilityId}.system`, ['player.fired', 'projectile.spawned'])]
+      })
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+
+    const passedReport = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'fire',
+              eventType: 'player.fired',
+              eventTypes: ['player.fired', 'projectile.spawned'],
+              status: 'observed',
+              sourceRef: 'qa_report.capability_runtime'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const failedReport = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'fire',
+              eventType: 'player.fired',
+              eventTypes: ['player.fired'],
+              status: 'observed',
+              sourceRef: 'qa_report.capability_runtime'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(passedReport.status).toBe('passed');
+    expect(passedReport.requiredResults[0]?.assertionResults).toEqual([
+      { assertionId: `${probeId}.assertion.player_fired`, status: 'passed' },
+      { assertionId: `${probeId}.assertion.projectile_spawned`, status: 'passed' }
+    ]);
+    expect(failedReport.status).toBe('failed');
+    expect(failedReport.missingRequiredProbeIds).toEqual([probeId]);
+    expect(failedReport.requiredResults[0]?.assertionResults).toEqual([
+      { assertionId: `${probeId}.assertion.player_fired`, status: 'passed' },
+      expect.objectContaining({ assertionId: `${probeId}.assertion.projectile_spawned`, status: 'failed' })
+    ]);
+  });
 });
 
 function createLock(packages: readonly GameplayCapabilityPackageContract[], requestedCapabilities: readonly string[]) {
@@ -415,6 +488,33 @@ function createProbe(
     ],
     observations: [{ id: `${id}.observation`, kind: 'position_delta', runtimeSystemId, ref: 'player.x' }],
     assertions: [{ id: `${id}.assertion`, observationId: `${id}.observation`, comparator: 'increased', message: 'player x increased' }]
+  };
+}
+
+function createRuntimeEventProbe(
+  id: string,
+  capabilityId: string,
+  runtimeSystemId: string,
+  eventRefs: readonly string[]
+): CapabilityQaProbeDescriptor {
+  return {
+    id,
+    capabilityId,
+    severity: 'required',
+    prerequisites: ['runtime scene started'],
+    actions: [{ id: `${id}.action.fire`, kind: 'runtime_event', target: `${capabilityId}.fire`, parameters: {} }],
+    observations: eventRefs.map((ref) => ({
+      id: `${id}.observation.${ref.replaceAll('.', '_')}`,
+      kind: 'runtime_event',
+      runtimeSystemId,
+      ref
+    })),
+    assertions: eventRefs.map((ref) => ({
+      id: `${id}.assertion.${ref.replaceAll('.', '_')}`,
+      observationId: `${id}.observation.${ref.replaceAll('.', '_')}`,
+      comparator: 'exists',
+      message: `${ref} observed`
+    }))
   };
 }
 

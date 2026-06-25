@@ -14,7 +14,13 @@ import { RunStoreService } from '../../apps/maker-api/src/projects/run-store.ser
 import { LocalWorkspaceService } from '../../apps/maker-api/src/workspace/local-workspace.service.js';
 import { TemplateCompilerService } from '../../apps/maker-api/src/compiler/template-compiler.service.js';
 import type { RuntimeCompileResult } from '../../apps/maker-api/src/compiler/compiler.types.js';
-import type { QaCapabilityRuntimeExpectation, QaGenre, QaReport, QaRuntimeAuthorityExpectation } from '../../apps/maker-api/src/qa/qa.types.js';
+import type {
+  QaCapabilityRuntimeEvidence,
+  QaCapabilityRuntimeExpectation,
+  QaGenre,
+  QaReport,
+  QaRuntimeAuthorityExpectation
+} from '../../apps/maker-api/src/qa/qa.types.js';
 import {
   AssetManifestSchema,
   AssetResolutionReportSchema,
@@ -144,11 +150,23 @@ describe('GenerationPipelineService failure states', () => {
         }
       },
       qaRunner: {
-        async run(input: { genre: QaGenre; expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation }) {
+        async run(input: {
+          genre: QaGenre;
+          expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation;
+          expectedCapabilityRuntime?: QaCapabilityRuntimeExpectation;
+        }) {
           const sceneIr = SceneIrSchema.parse(JSON.parse(await readFile(join(workspace.getGeneratedProjectDir(projectId), 'game.scene.ir.json'), 'utf8')));
           return createQaReport(input.genre, {
-            observed_events: ['game.started'],
-            snapshot: { sceneBindings: buildObservedSceneBindings(sceneIr), runtimeAuthority: input.expectedRuntimeAuthority }
+            observed_events: ['game.started', 'player.fired', 'projectile.spawned'],
+            snapshot: {
+              sceneBindings: buildObservedSceneBindings(sceneIr),
+              runtimeAuthority: input.expectedRuntimeAuthority,
+              capabilityRuntime: {
+                source: 'side_scrolling_runtime',
+                probes: [defaultWeaponObservedProbe()]
+              }
+            },
+            capability_runtime: defaultWeaponCapabilityRuntimeEvidence(input.expectedCapabilityRuntime)
           }, input.expectedRuntimeAuthority);
         }
       }
@@ -160,6 +178,7 @@ describe('GenerationPipelineService failure states', () => {
     const capabilityReadiness = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_capability_readiness_report.json'), 'utf8'));
     const capabilityResolution = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_capability_resolution_report.json'), 'utf8'));
     const capabilityRuntime = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_capability_runtime_report.json'), 'utf8'));
+    const capabilityQaReport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'shadow_capability_qa_report.json'), 'utf8'));
     const capabilityGap = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_capability_gap_report.json'), 'utf8'));
     const capabilityCutover = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_capability_cutover_report.json'), 'utf8'));
     const runtimeSceneBindingReport = JSON.parse(await readFile(join(workspace.getGeneratedProjectDir(projectId), 'runtime_scene_binding_report.json'), 'utf8'));
@@ -213,7 +232,29 @@ describe('GenerationPipelineService failure states', () => {
       capabilityQaPlanStatus: 'ready',
       capabilityQaReportStatus: 'passed',
       qaRuntimeAuthorityStatus: 'matched',
-      runtimeEvidenceStatus: 'observed'
+      runtimeEvidenceStatus: 'observed',
+      shadowCapabilityQaReportRef: 'shadow_capability_qa_report.json'
+    });
+    expect(capabilityQaReport).toMatchObject({
+      artifactKind: 'capability_qa_report',
+      status: 'passed',
+      missingRequiredProbeIds: [],
+      requiredResults: [
+        {
+          probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1',
+          status: 'passed',
+          assertionResults: expect.arrayContaining([
+            expect.objectContaining({
+              assertionId: 'weapon.default_straight_single.v1.fire.browser_qa.v1.assertion.player_fired',
+              status: 'passed'
+            }),
+            expect.objectContaining({
+              assertionId: 'weapon.default_straight_single.v1.fire.browser_qa.v1.assertion.projectile_spawned',
+              status: 'passed'
+            })
+          ])
+        }
+      ]
     });
     expect(capabilityRuntime.resolutionReportHash).toBe(capabilityResolution.reportHash);
     expect(capabilityRuntime.authorityBundleRef).toEqual(qaReport.runtime_authority?.expected?.authorityBundleRef);
@@ -2342,6 +2383,30 @@ describe('GenerationPipelineService failure states', () => {
       started_at: now,
       completed_at: now,
       ...patch
+    };
+  }
+
+  function defaultWeaponCapabilityRuntimeEvidence(expected: QaCapabilityRuntimeExpectation | undefined): QaCapabilityRuntimeEvidence {
+    return {
+      status: 'PASSED',
+      ...(expected === undefined ? {} : { expected }),
+      observed: [defaultWeaponObservedProbe()],
+      missingProbeIds: [],
+      mismatches: []
+    };
+  }
+
+  function defaultWeaponObservedProbe(): QaCapabilityRuntimeEvidence['observed'][number] {
+    return {
+      capabilityId: 'weapon.default_straight_single.v1',
+      probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1',
+      runtimeModuleId: 'weapon.default_straight_single',
+      action: 'fire',
+      eventType: 'player.fired',
+      eventTypes: ['player.fired', 'projectile.spawned'],
+      sourceRef: 'runtime_plan.side_scrolling.player.projectileEntityId',
+      status: 'observed',
+      observedIn: ['snapshot', 'telemetry']
     };
   }
 
