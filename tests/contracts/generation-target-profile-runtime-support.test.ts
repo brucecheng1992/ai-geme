@@ -6,6 +6,7 @@ import {
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
   GenerationTargetProfileRuntimeSupportReportSchema,
+  HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
   MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
   buildCapabilityQaProbeResultsFromRuntimeEvidence,
@@ -15,6 +16,7 @@ import {
   createCollisionPlatformPackageContract,
   createCombatProjectilePackageContract,
   createDefaultStraightSingleWeaponPackageContract,
+  createHealthPlayerHealthPointsPackageContract,
   createMovementRunJumpPackageContract,
   createSpawnStaticPackageContract,
   evaluateCapabilityQaReport,
@@ -27,6 +29,7 @@ const defaultWeaponCapabilityId = 'weapon.default_straight_single.v1';
 const projectileCapabilityId = 'combat.projectile.v1';
 const movementCapabilityId = 'movement.run_jump.v1';
 const spawnStaticCapabilityId = 'spawn.static.v1';
+const healthCapabilityId = 'health.player_health_points.v1';
 
 describe('Step 37 target profile runtime support overlay', () => {
   it('records runtime-observed support without mutating static completeSupported evidence', () => {
@@ -36,7 +39,8 @@ describe('Step 37 target profile runtime support overlay', () => {
       'player.fired',
       'projectile.spawned',
       'player.jumped',
-      'spawn.static.triggered'
+      'spawn.static.triggered',
+      'health.player_health.current'
     ]);
     const report = buildGenerationTargetProfileRuntimeSupportReport({
       projectId: 'proj_20260625_target_runtime_support',
@@ -49,6 +53,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     const projectile = report.capabilities.find((entry) => entry.capabilityId === projectileCapabilityId);
     const movement = report.capabilities.find((entry) => entry.capabilityId === movementCapabilityId);
     const spawnStatic = report.capabilities.find((entry) => entry.capabilityId === spawnStaticCapabilityId);
+    const health = report.capabilities.find((entry) => entry.capabilityId === healthCapabilityId);
 
     expect(GenerationTargetProfileRuntimeSupportReportSchema.parse(report)).toEqual(report);
     expect(report).toMatchObject({
@@ -57,11 +62,11 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 6,
+      observedCompleteSupportedCount: 7,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
-      observedCapabilityIds: [cameraCapabilityId, collisionCapabilityId, projectileCapabilityId, movementCapabilityId, spawnStaticCapabilityId, defaultWeaponCapabilityId],
-      blockers: ['target_profile_runtime_support_incomplete:6/59']
+      observedCapabilityIds: [cameraCapabilityId, collisionCapabilityId, projectileCapabilityId, healthCapabilityId, movementCapabilityId, spawnStaticCapabilityId, defaultWeaponCapabilityId],
+      blockers: ['target_profile_runtime_support_incomplete:7/59']
     });
     expect(camera).toMatchObject({
       capabilityId: cameraCapabilityId,
@@ -129,6 +134,17 @@ describe('Step 37 target profile runtime support overlay', () => {
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
     });
+    expect(health).toMatchObject({
+      capabilityId: healthCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
   });
 
   it('keeps runtime support blocked when the required package QA assertion is missing', () => {
@@ -150,6 +166,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         `capability_qa_report_missing_required_probe:${CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID}`,
         `capability_qa_report_missing_required_probe:${COLLISION_PLATFORM_REQUIRED_PROBE_ID}`,
         `capability_qa_report_missing_required_probe:${COMBAT_PROJECTILE_REQUIRED_PROBE_ID}`,
+        `capability_qa_report_missing_required_probe:${HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID}`,
         `capability_qa_report_missing_required_probe:${MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID}`,
         `capability_qa_report_missing_required_probe:${SPAWN_STATIC_REQUIRED_PROBE_ID}`,
         `capability_qa_report_missing_required_probe:${DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID}`,
@@ -174,10 +191,11 @@ function buildDefaultWeaponQaReport(eventTypes: readonly string[]) {
     createDefaultStraightSingleWeaponPackageContract(),
     createCombatProjectilePackageContract(),
     createMovementRunJumpPackageContract(),
-    createSpawnStaticPackageContract()
+    createSpawnStaticPackageContract(),
+    createHealthPlayerHealthPointsPackageContract()
   ];
   const lockReport = resolveGameplayCapabilityGraph({
-    requestedCapabilities: [cameraCapabilityId, collisionCapabilityId, defaultWeaponCapabilityId, projectileCapabilityId, movementCapabilityId, spawnStaticCapabilityId],
+    requestedCapabilities: [cameraCapabilityId, collisionCapabilityId, defaultWeaponCapabilityId, projectileCapabilityId, movementCapabilityId, spawnStaticCapabilityId, healthCapabilityId],
     packages,
     runtimeFamily: 'phaser_2d_action_arcade.v1'
   });
@@ -266,6 +284,19 @@ function buildDefaultWeaponQaReport(eventTypes: readonly string[]) {
             eventTypes,
             status: 'observed' as const,
             sourceRef: 'qa_report.snapshot.waves'
+          }
+        ]
+      : []),
+    ...(eventTypes.includes('health.player_health.current')
+      ? [
+          {
+            capabilityId: healthCapabilityId,
+            probeId: HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+            action: 'observe',
+            eventType: 'health.player_health.current',
+            eventTypes,
+            status: 'observed' as const,
+            sourceRef: 'qa_report.snapshot.health'
           }
         ]
       : [])

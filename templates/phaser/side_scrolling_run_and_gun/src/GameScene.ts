@@ -61,15 +61,18 @@ type CapabilityRuntimeProbe = {
   capabilityId: string;
   probeId: string;
   runtimeModuleId: string;
-  action: 'collide' | 'fire' | 'jump' | 'move' | 'spawn';
+  action: 'collide' | 'fire' | 'jump' | 'move' | 'observe' | 'spawn';
   eventType:
     | 'collision.platform.grounded'
+    | 'health.player_health.current'
     | 'player.fired'
     | 'projectile.spawned'
     | 'player.jumped'
     | 'camera.side_follow.active'
     | 'spawn.static.triggered';
   eventTypes?: string[];
+  health?: number;
+  maxHealth?: number;
   projectileEntityId?: string;
   projectileId?: string;
   sourceRef: string;
@@ -102,6 +105,11 @@ const SPAWN_STATIC_CAPABILITY_PROBE_ID = 'spawn.static.v1.triggered.browser_qa.v
 const SPAWN_STATIC_RUNTIME_MODULE_ID = 'spawn.static';
 const SPAWN_STATIC_TRIGGERED_EVENT_TYPE = 'spawn.static.triggered';
 const SPAWN_STATIC_SOURCE_REF = 'runtime_plan.side_scrolling.waves';
+const HEALTH_PLAYER_HEALTH_POINTS_CAPABILITY_ID = 'health.player_health_points.v1';
+const HEALTH_PLAYER_HEALTH_POINTS_CAPABILITY_PROBE_ID = 'health.player_health_points.v1.current.browser_qa.v1';
+const HEALTH_PLAYER_HEALTH_POINTS_RUNTIME_MODULE_ID = 'health.player_health_points';
+const HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE = 'health.player_health.current';
+const HEALTH_PLAYER_HEALTH_POINTS_SOURCE_REF = 'runtime_plan.side_scrolling.player.health';
 
 export class SideScrollingRunAndGunScene {
   private readonly plan: SideScrollingRuntimeSlice;
@@ -207,6 +215,7 @@ export class SideScrollingRunAndGunScene {
     this.input.receive('start');
     this.gameState.start();
     this.reachCheckpoint(0);
+    this.recordHealthPlayerHealthPointsCapabilityRuntimeProbe();
     this.renderHud();
   }
 
@@ -269,6 +278,7 @@ export class SideScrollingRunAndGunScene {
 
     this.collision.collide({ source, target: 'player', ...(projectileId === undefined ? {} : { projectileId }) });
     this.state.health = Math.max(0, this.state.health - amount);
+    this.recordHealthPlayerHealthPointsCapabilityRuntimeProbe();
     this.telemetry.emit('player.damaged', { health: this.state.health, lives: this.lives });
     if (this.state.health <= 0) {
       this.lives -= 1;
@@ -278,6 +288,7 @@ export class SideScrollingRunAndGunScene {
         return;
       }
       this.state.health = this.state.maxHealth;
+      this.recordHealthPlayerHealthPointsCapabilityRuntimeProbe();
       this.resetPlayerToCheckpoint();
     }
     this.renderHud();
@@ -444,6 +455,26 @@ export class SideScrollingRunAndGunScene {
       sourceRef: SPAWN_STATIC_SOURCE_REF,
       status: 'observed'
     };
+  }
+
+  private createHealthPlayerHealthPointsCapabilityRuntimeProbe(): CapabilityRuntimeProbe {
+    return {
+      capabilityId: HEALTH_PLAYER_HEALTH_POINTS_CAPABILITY_ID,
+      probeId: HEALTH_PLAYER_HEALTH_POINTS_CAPABILITY_PROBE_ID,
+      runtimeModuleId: HEALTH_PLAYER_HEALTH_POINTS_RUNTIME_MODULE_ID,
+      action: 'observe',
+      eventType: HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE,
+      eventTypes: [HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE],
+      health: this.state.health,
+      maxHealth: this.state.maxHealth,
+      sourceRef: HEALTH_PLAYER_HEALTH_POINTS_SOURCE_REF,
+      status: 'observed'
+    };
+  }
+
+  private recordHealthPlayerHealthPointsCapabilityRuntimeProbe(): void {
+    const capabilityRuntime = this.createHealthPlayerHealthPointsCapabilityRuntimeProbe();
+    this.capabilityRuntimeProbes.set(capabilityRuntime.probeId, capabilityRuntime);
   }
 
   private capabilityRuntimeSnapshot(): { source: 'side_scrolling_runtime'; probes: CapabilityRuntimeProbe[] } {

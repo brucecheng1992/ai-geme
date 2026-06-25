@@ -39,6 +39,10 @@ describe('Gameplay capability registry', () => {
       status: 'planned',
       legacyRuntimeCapabilities: ['enemy_spawn', 'enemy_spawn_triggers']
     });
+    expect(findGameplayCapability('health.player_health_points.v1')).toMatchObject({
+      status: 'planned',
+      legacyRuntimeCapabilities: ['player_health']
+    });
     expect(GameplayCapabilityRegistry.entries.some(isCompleteSupportedGameplayCapability)).toBe(false);
   });
 
@@ -238,6 +242,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(spawnStatic)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(spawnStatic)).toBe(false);
+  });
+
+  it('scopes health player health points package-owned QA without static support promotion', () => {
+    const health = findGameplayCapability('health.player_health_points.v1');
+
+    if (health === undefined) {
+      throw new Error('Expected health.player_health_points.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(health)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(health.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(health.qa).toEqual({
+      requiredProbeIds: ['health.player_health_points.v1.current.browser_qa.v1'],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(health)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(health)).toBe(false);
   });
 
   it('derives profile runtime status from RuntimeGenreRegistry instead of a second supported list', () => {

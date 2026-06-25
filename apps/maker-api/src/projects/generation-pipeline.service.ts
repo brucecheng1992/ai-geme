@@ -49,6 +49,8 @@ import {
   createMovementRunJumpPackageContract,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
   createSpawnStaticPackageContract,
+  HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+  createHealthPlayerHealthPointsPackageContract,
   buildGenerationScopePlan,
   buildGameDslArtifact,
   checkPhaserRuntimeCapabilities,
@@ -1954,6 +1956,12 @@ function buildQaCapabilityRuntimeExpectation(genre: QaGenre): QaCapabilityRuntim
         eventType: 'spawn.static.triggered'
       },
       {
+        capabilityId: 'health.player_health_points.v1',
+        probeId: HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+        action: 'observe',
+        eventType: 'health.player_health.current'
+      },
+      {
         capabilityId: 'weapon.default_straight_single.v1',
         probeId: DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
         action: 'fire',
@@ -1971,7 +1979,8 @@ function buildApprovedInstalledCapabilityQaPackages(normalizedGenre: string): re
         createDefaultStraightSingleWeaponPackageContract(),
         createCombatProjectilePackageContract(),
         createMovementRunJumpPackageContract(),
-        createSpawnStaticPackageContract()
+        createSpawnStaticPackageContract(),
+        createHealthPlayerHealthPointsPackageContract()
       ]
     : [];
 }

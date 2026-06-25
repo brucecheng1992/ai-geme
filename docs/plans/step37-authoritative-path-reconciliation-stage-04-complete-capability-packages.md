@@ -2,7 +2,7 @@
 
 > - Parent plan: `docs/plans/step37-authoritative-path-reconciliation-audit.md`
 > - Stage: 4 — Complete Capability Packages
-> - Current status: spawn.static package-owned QA slice checkpoint `774ab979` committed; health.player_health_points package-owned QA slice audit recorded; implementation not entered; Stage 4 exit not met
+> - Current status: health.player_health_points package-owned QA slice implementation passed Oracle; checkpoint pending; Stage 4 exit not met
 > - Updated: 2026-06-25
 
 ## Scope Lock
@@ -1753,3 +1753,108 @@ Stage 4 Exit gate: NOT_MET
 ```
 
 Stop marker: Stage 4 health.player_health_points package-owned QA slice audit is recorded. Implementation may start for this slice only after audit Oracle/checkpoint; do not enter Stage 5 and do not claim complete package closure.
+
+## Stage 4 Closure Implementation — Health Player Health Points Package-Owned QA Slice
+
+### Scope Lock
+
+- scope: Stage 4 `health.player_health_points.v1` package-owned QA slice only.
+- baseline: Stage 4 health.player_health_points package-owned QA slice audit checkpoint commit `c71e20a0` (`docs: record stage 4 health package audit`).
+- implementation target: add package-owned QA evidence for existing side-scrolling runtime-plan player health state and browser QA snapshot evidence.
+- non-goals: no Stage 5 exact lock, no composed schema, no canonical DSL/provider run, no production default cutover, no legacy authoritative path exit, no `health.damage_invulnerability.v1` promotion, no Stage 4 full closure claim.
+
+### Implementation Summary
+
+- Added `health.player_health_points.v1` runtime constants and package contract with a required current-health browser QA probe.
+- Reclassified `health.player_health_points.v1` from contract-seeded runtime evidence to package-backed planned evidence with `requiredProbesVerified=false`.
+- Installed the health package in the side-scrolling active-profile package set and QA runtime expectation.
+- Added side-scrolling runtime snapshot evidence from actual `state.health` / `state.maxHealth` after `start()` and health changes.
+- Extended Playwright QA runtime evidence, capability QA report, target profile runtime support overlay, and pipeline fixture tests to consume the new required probe.
+- Kept `health.damage_invulnerability.v1` unchanged and incomplete because this slice does not implement invulnerability-window semantics.
+- Kept static target support incomplete; runtime-observed overlay advances from `6/59` to `7/59` only.
+
+### Compatibility & Cutover
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds `health.player_health_points.v1` package contract, runtime constants, registry package evidence, QA expectation, and runtime snapshot probe. |
+| Consumer list | `GameplayCapabilityRegistry`, target profile support summary, active-profile package installer, Playwright QA runtime evidence reader, `CapabilityQaReport`, target runtime support overlay, and Stage 4 tests consume it. |
+| Compatibility type | `ADAPTER_REQUIRED`: existing side-scrolling health state counts only after named package/probe wiring observes current runtime health from the QA snapshot. |
+| Authority | `health.player_health_points.v1` package contract and `capability_qa_report` required probe result are the semantic authority for this slice; `generation_target_profile_runtime_support_report` is only observed overlay evidence. |
+| Legacy strategy | Existing health/lives runtime behavior remains executable but is not authoritative for complete support without the package-owned probe and QA report bridge. `health.damage_invulnerability.v1` remains excluded. |
+| Failure policy | Missing package probe, missing runtime evidence, or missing required QA assertion keeps `requiredProbesVerified=false` and target profile support blocked. |
+| Evidence | RED failed before export/contract existed; GREEN focused tests, related suite, support probe, full tests, and typecheck prove downstream consumption and `observedCompleteSupportedCount=7/59`. |
+| Rollback | Revert this slice to return `health.player_health_points.v1` to contract-seeded incomplete evidence and remove the seventh side-scrolling required probe without rewriting prior package slice evidence. |
+
+Disposition: `ADAPTER_REQUIRED`; same-run evidence is required and recorded below.
+
+### Verification
+
+```text
+RED:
+npx tsx --eval "import { createHealthPlayerHealthPointsPackageContract, HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID } from './packages/game-dsl/src/gameplay-capabilities/index.ts'; const contract = createHealthPlayerHealthPointsPackageContract(); if (contract.manifest.id !== 'health.player_health_points.v1') throw new Error('wrong health package id'); if (!contract.qa.probes.some((probe) => probe.id === HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID && probe.severity === 'required')) throw new Error('missing required health probe');"
+# FAIL before implementation: TypeError: createHealthPlayerHealthPointsPackageContract is not a function
+
+GREEN:
+npx tsx --eval "import { createHealthPlayerHealthPointsPackageContract, HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID } from './packages/game-dsl/src/gameplay-capabilities/index.ts'; const contract = createHealthPlayerHealthPointsPackageContract(); if (contract.manifest.id !== 'health.player_health_points.v1') throw new Error('wrong health package id'); if (!contract.qa.probes.some((probe) => probe.id === HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID && probe.severity === 'required')) throw new Error('missing required health probe'); console.log(JSON.stringify({packageId: contract.manifest.id, requiredProbeId: HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID, status: contract.manifest.status}, null, 2));"
+# PASS: packageId=health.player_health_points.v1; requiredProbeId=health.player_health_points.v1.current.browser_qa.v1; status=supported
+
+Focused tests:
+npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/generation-pipeline.service.test.ts -t "health player health points|runtime-observed support|package-owned capability runtime evidence|capability runtime probe evidence|capability runtime evidence when a required probe is absent|passes capability runtime evidence|passes active profile capability runtime expectation|keeps capability IDs unique|keeps the frozen target profile|rewrites side-scrolling runtime scene binding report|routes supported side-scrolling"
+# PASS: 7 files, 11 selected tests
+
+Related suite:
+npx vitest run tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/generation-capability-resolution.test.ts tests/contracts/generation-capability-runtime.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/generation-pipeline.service.test.ts
+# PASS: 11 files, 184 tests
+
+Support probe:
+# PASS: staticCompleteSupportedCount=0; capability QA requiredResults=7; runtime overlay observedCompleteSupportedCount=7; observedCapabilityIds=[camera.side_follow.v1, collision.platform.v1, combat.projectile.v1, health.player_health_points.v1, movement.run_jump.v1, spawn.static.v1, weapon.default_straight_single.v1]; targetProfileCompleteSupported=false; blocker target_profile_runtime_support_incomplete:7/59
+
+Full tests:
+npm test
+# PASS: contracts 94 files / 1051 tests; workspace 34 files / 402 tests
+
+Typecheck:
+npm run typecheck
+# PASS
+```
+
+### Exit Assessment Before Oracle
+
+```text
+Stage 4 Health Player Health Points Package-Owned QA Slice Audit: RECORDED
+Stage 4 Health Player Health Points Package-Owned QA Slice Implementation: LOCALLY_VALIDATED
+Stage 4 Exit gate: NOT_MET
+Next: Oracle review for this health.player_health_points slice
+```
+
+Stop marker: Stage 4 health.player_health_points package-owned QA slice implementation is locally validated. Do not checkpoint or enter the next Stage 4 audit until Oracle review completes.
+
+### Implementation Oracle Review
+
+Oracle PASS / no P0/P1/P2 blocking findings.
+
+P3 non-blocking:
+
+- Playwright capability runtime evidence generic type/reader still verifies `probeId`, `action`, and `eventType` without preserving `health` / `maxHealth` as typed QA evidence fields. The current slice remains acceptable because the package assertion is `exists` and template tests verify the runtime snapshot probe reads `state.health` / `state.maxHealth`; future value-level health assertions should extend the QA evidence type and browser reader.
+
+Oracle confirmed checkpoint is allowed for this Stage 4 Health Player Health Points Package-Owned QA Slice only.
+
+Oracle scope guard:
+
+- does not approve Stage 4 full closure;
+- does not approve Stage 5 exact lock entry;
+- does not approve production default cutover;
+- does not treat runtime overlay `7/59` as authority closure;
+- does not promote `health.damage_invulnerability.v1`.
+
+### Exit Assessment After Oracle
+
+```text
+Stage 4 Health Player Health Points Package-Owned QA Slice Audit: RECORDED
+Stage 4 Health Player Health Points Package-Owned QA Slice Implementation: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 Exit gate: NOT_MET
+Next: checkpoint commit for this health.player_health_points slice only
+```
+
+Stop marker: Stage 4 health.player_health_points package-owned QA slice passed Oracle and is awaiting checkpoint commit. Do not enter the next Stage 4 audit, do not enter Stage 5, and do not claim complete package closure until checkpoint commit completes.

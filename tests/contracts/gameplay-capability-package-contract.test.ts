@@ -53,6 +53,14 @@ import {
 import {
   SPAWN_STATIC_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/spawn-static-runtime-module.js';
+import {
+  HEALTH_PLAYER_HEALTH_POINTS_PACKAGE_REQUIRED_EVIDENCE_ID,
+  HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+  createHealthPlayerHealthPointsPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/health-player-health-points-package.js';
+import {
+  HEALTH_PLAYER_HEALTH_POINTS_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/health-player-health-points-runtime-module.js';
 
 describe('Gameplay capability package contract', () => {
   it('accepts a complete supported package and keeps hashes deterministic', () => {
@@ -222,6 +230,32 @@ describe('Gameplay capability package contract', () => {
       capabilityId: 'spawn.static.v1',
       severity: 'required',
       observations: [expect.objectContaining({ kind: 'state_probe', runtimeSystemId: SPAWN_STATIC_RUNTIME_SYSTEM_ID, ref: 'spawn.static.triggered' })]
+    });
+  });
+
+  it('accepts the health player health points package-owned QA contract', () => {
+    const contract = createHealthPlayerHealthPointsPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'health.player_health_points.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([HEALTH_PLAYER_HEALTH_POINTS_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: HEALTH_PLAYER_HEALTH_POINTS_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'health.player_health_points.v1',
+      severity: 'required',
+      observations: [expect.objectContaining({ kind: 'state_probe', runtimeSystemId: HEALTH_PLAYER_HEALTH_POINTS_RUNTIME_SYSTEM_ID, ref: 'health.player_health.current' })]
     });
   });
 

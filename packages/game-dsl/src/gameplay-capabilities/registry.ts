@@ -25,6 +25,10 @@ import {
   SPAWN_STATIC_REQUIRED_PROBE_ID,
   createSpawnStaticPackageContract
 } from './spawn-static-package.js';
+import {
+  HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+  createHealthPlayerHealthPointsPackageContract
+} from './health-player-health-points-package.js';
 import { validateGameplayCapabilityPackage } from './package-contract.js';
 import { hashStableJson } from './stable-json.js';
 
@@ -412,6 +416,19 @@ const spawnStaticPackageEvidence: GameplayCapabilityEvidence = spawnStaticPackag
 const spawnStaticPackageQa: GameplayCapabilityQaEvidence = spawnStaticPackageReport.supportEligible
   ? { requiredProbeIds: [SPAWN_STATIC_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const healthPlayerHealthPointsPackageReport = validateGameplayCapabilityPackage(createHealthPlayerHealthPointsPackageContract());
+const healthPlayerHealthPointsPackageEvidence: GameplayCapabilityEvidence = healthPlayerHealthPointsPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const healthPlayerHealthPointsPackageQa: GameplayCapabilityQaEvidence = healthPlayerHealthPointsPackageReport.supportEligible
+  ? { requiredProbeIds: [HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 
 const contractCompilerEvidence: GameplayCapabilityEvidence = {
   ...contractSeedEvidence,
@@ -519,14 +536,15 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     contractRuntimeLoaderEvidence
   ),
-  contractSeeded(
+  planned(
     'health.player_health_points.v1',
     'health',
     'Player health points',
     [phaser2dActionArcade],
     ['side_scrolling_run_and_gun.v1'],
     ['player_health'],
-    contractRuntimeLoaderEvidence
+    healthPlayerHealthPointsPackageEvidence,
+    healthPlayerHealthPointsPackageQa
   ),
   contractSeeded('weapon.cooldown.v1', 'weapon', 'Weapon cooldown', [topDownActionArcade, phaser2dActionArcade], ['shooter.v1', 'side_scrolling_run_and_gun.v1'], []),
   planned('weapon.death_reset.v1', 'weapon', 'Weapon reset on death', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),

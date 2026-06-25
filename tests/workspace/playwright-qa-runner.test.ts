@@ -181,6 +181,16 @@ describe('Playable QA gate and runner', () => {
       sourceRef: 'runtime_plan.side_scrolling.waves',
       status: 'observed'
     };
+    const healthProbe = {
+      capabilityId: 'health.player_health_points.v1',
+      probeId: 'health.player_health_points.v1.current.browser_qa.v1',
+      runtimeModuleId: 'health.player_health_points',
+      action: 'observe',
+      eventType: 'health.player_health.current',
+      eventTypes: ['health.player_health.current'],
+      sourceRef: 'runtime_plan.side_scrolling.player.health',
+      status: 'observed'
+    };
     const telemetry: TelemetryEvent[] = [
       {
         type: 'player.jumped',
@@ -214,7 +224,7 @@ describe('Playable QA gate and runner', () => {
           },
           capabilityRuntime: {
             source: 'side_scrolling_runtime',
-            probes: [cameraProbe, collisionProbe, movementProbe, spawnStaticProbe, probe, projectileProbe]
+            probes: [cameraProbe, collisionProbe, movementProbe, spawnStaticProbe, healthProbe, probe, projectileProbe]
           }
         },
         telemetry,
@@ -246,6 +256,13 @@ describe('Playable QA gate and runner', () => {
           action: 'fire',
           eventType: 'projectile.spawned',
           observedIn: ['snapshot', 'telemetry']
+        }),
+        expect.objectContaining({
+          capabilityId: 'health.player_health_points.v1',
+          probeId: 'health.player_health_points.v1.current.browser_qa.v1',
+          action: 'observe',
+          eventType: 'health.player_health.current',
+          observedIn: ['snapshot']
         }),
         expect.objectContaining({
           capabilityId: 'movement.run_jump.v1',
@@ -284,6 +301,7 @@ describe('Playable QA gate and runner', () => {
         'camera.side_follow.v1.scroll.browser_qa.v1',
         'collision.platform.v1.grounded.browser_qa.v1',
         'combat.projectile.v1.spawn.browser_qa.v1',
+        'health.player_health_points.v1.current.browser_qa.v1',
         'movement.run_jump.v1.jump.browser_qa.v1',
         'spawn.static.v1.triggered.browser_qa.v1',
         'weapon.default_straight_single.v1.fire.browser_qa.v1'
@@ -292,6 +310,7 @@ describe('Playable QA gate and runner', () => {
         'capabilityRuntime.probes[camera.side_follow.v1.scroll.browser_qa.v1]: missing',
         'capabilityRuntime.probes[collision.platform.v1.grounded.browser_qa.v1]: missing',
         'capabilityRuntime.probes[combat.projectile.v1.spawn.browser_qa.v1]: missing',
+        'capabilityRuntime.probes[health.player_health_points.v1.current.browser_qa.v1]: missing',
         'capabilityRuntime.probes[movement.run_jump.v1.jump.browser_qa.v1]: missing',
         'capabilityRuntime.probes[spawn.static.v1.triggered.browser_qa.v1]: missing',
         'capabilityRuntime.probes[weapon.default_straight_single.v1.fire.browser_qa.v1]: missing'
@@ -361,6 +380,16 @@ describe('Playable QA gate and runner', () => {
               eventType: 'spawn.static.triggered',
               eventTypes: ['spawn.static.triggered'],
               sourceRef: 'runtime_plan.side_scrolling.waves',
+              status: 'observed'
+            },
+            {
+              capabilityId: 'health.player_health_points.v1',
+              probeId: 'health.player_health_points.v1.current.browser_qa.v1',
+              runtimeModuleId: 'health.player_health_points',
+              action: 'observe',
+              eventType: 'health.player_health.current',
+              eventTypes: ['health.player_health.current'],
+              sourceRef: 'runtime_plan.side_scrolling.player.health',
               status: 'observed'
             },
             {
@@ -2391,6 +2420,12 @@ function createDefaultWeaponCapabilityRuntimeExpectation(): QaCapabilityRuntimeE
         probeId: 'combat.projectile.v1.spawn.browser_qa.v1',
         action: 'fire',
         eventType: 'projectile.spawned'
+      },
+      {
+        capabilityId: 'health.player_health_points.v1',
+        probeId: 'health.player_health_points.v1.current.browser_qa.v1',
+        action: 'observe',
+        eventType: 'health.player_health.current'
       },
       {
         capabilityId: 'movement.run_jump.v1',

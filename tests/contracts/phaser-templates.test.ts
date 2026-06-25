@@ -98,6 +98,8 @@ type SideScrollingTemplateSnapshot = TemplateSnapshot & {
 	      action: string;
 	      eventType: string;
 	      eventTypes?: string[];
+	      health?: number;
+	      maxHealth?: number;
 	      projectileEntityId?: string;
 	      projectileId?: string;
 	      sourceRef: string;
@@ -1209,6 +1211,18 @@ describe('Phaser templates', () => {
       sourceRef: 'runtime_plan.side_scrolling.waves',
       status: 'observed'
     };
+    const expectedHealthProbe = {
+      capabilityId: 'health.player_health_points.v1',
+      probeId: 'health.player_health_points.v1.current.browser_qa.v1',
+      runtimeModuleId: 'health.player_health_points',
+      action: 'observe',
+      eventType: 'health.player_health.current',
+      eventTypes: ['health.player_health.current'],
+      health: expect.any(Number),
+      maxHealth: 3,
+      sourceRef: 'runtime_plan.side_scrolling.player.health',
+      status: 'observed'
+    };
     const snapshot = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
     const telemetry = globalThis.__GAME_QA__?.telemetry() ?? [];
     const jumpedEvent = telemetry.find((event) => event.type === 'player.jumped');
@@ -1228,13 +1242,17 @@ describe('Phaser templates', () => {
       probes: expect.arrayContaining([
         expect.objectContaining(expectedCameraProbe),
         expect.objectContaining(expectedCollisionProbe),
+        expect.objectContaining(expectedHealthProbe),
         expect.objectContaining(expectedMovementProbe),
         expect.objectContaining(expectedSpawnStaticProbe),
         expect.objectContaining(expectedProjectileProbe),
         expect.objectContaining(expectedWeaponProbe)
       ])
     });
-    expect(snapshot?.capabilityRuntime?.probes).toHaveLength(6);
+    expect(snapshot?.capabilityRuntime?.probes).toHaveLength(7);
+    const observedHealthProbe = snapshot?.capabilityRuntime?.probes.find((probe) => probe.probeId === 'health.player_health_points.v1.current.browser_qa.v1');
+    expect(observedHealthProbe?.health).toBe(snapshot?.health);
+    expect(observedHealthProbe?.maxHealth).toBe(3);
     expect(snapshot?.waves.some((wave) => wave.triggered)).toBe(true);
     expect(snapshot?.enemies.length).toBeGreaterThan(0);
     expect(snapshot?.projectiles.find((projectile) => projectile.owner === 'player')).toMatchObject({
