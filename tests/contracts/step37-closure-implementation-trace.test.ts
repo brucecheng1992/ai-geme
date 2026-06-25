@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { access, readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
@@ -27,6 +28,24 @@ const transitionErrorEnvelopeClosureTitle = '## Stage 4 Closure Implementation �
 const transitionErrorEnvelopeCheckpointCommit = '22dd6ce4';
 const oracleRevisionAlignmentGuardrailTitle = '## Stage 4 Improvement Log — Oracle Revision Alignment Guardrail';
 const oracleRevisionAlignmentClosureTitle = '## Stage 4 Closure Implementation — Oracle Revision Alignment Guardrail';
+const oracleRevisionAlignmentCheckpointCommit = '05b6932e';
+const oracleRevisionAlignmentReceiptCommit = '7a160c5b';
+const verificationFreshnessImmutableReviewGuardrailTitle = '## Stage 4 Improvement Log — Verification Freshness And Immutable Review Guardrail';
+const verificationFreshnessImmutableReviewClosureTitle = '## Stage 4 Closure Implementation — Verification Freshness And Immutable Review Guardrail';
+const codeChangeDisciplineSkillPath = '/Users/dahufa/.agents/skills/code-change-discipline/SKILL.md';
+const codeChangeDisciplineSkillRoot = '/Users/dahufa/.agents/skills/code-change-discipline';
+const codeChangeDisciplineSkillSha256 = 'ac0f7e7d033bf7b44e3e4fe13cc151ca2d240bf8bb871c27eaba2af963c6490f';
+const codeChangeDisciplineSkillBundleDigest = 'd3c166ab08562696e099937e1036c51c81c9415cf8e0aef43a906c7acfb51aca';
+const codeChangeDisciplineSkillManifest = [
+  {
+    relativePath: 'SKILL.md',
+    fileType: 'file',
+    byteLength: 35331,
+    sha256: codeChangeDisciplineSkillSha256,
+    symlinkTarget: '-',
+    symlinkEscapesRoot: false
+  }
+] as const;
 
 const claimedAuditBoundaryIdentifierPaths = [
   stage4PlanPath,
@@ -710,6 +729,680 @@ describe('Step37 closure implementation traceability', () => {
     ).toEqual(['UNEXPLAINED_IMPLEMENTATION_DIFF path="templates/phaser/side_scrolling_run_and_gun/src/GameScene.ts"']);
   });
 
+  it('records verification freshness and immutable review guardrails as an implementing pre-candidate flow', async () => {
+    const document = await readFile(stage4PlanPath, 'utf8');
+    const section = extractSection(document, verificationFreshnessImmutableReviewGuardrailTitle);
+    const closureSection = extractSection(document, verificationFreshnessImmutableReviewClosureTitle);
+    const skillBytes = await readFile(codeChangeDisciplineSkillPath);
+    const closurePhase = parseVerificationFreshnessClosurePhase(closureSection);
+
+    expect(section).toContain('Context memory is not validation evidence');
+    expect(section).toContain('validator, state enum, shared contract helper, or closure schema changes invalidate prior gates');
+    expect(section).toContain('Oracle review must bind to an immutable candidate commit');
+    expect(section).toContain('receipt-only commit');
+    expect(validateVerificationFreshnessClosurePhase(closureSection, closurePhase)).toEqual([]);
+    expect(closureSection).toContain(closurePhase === 'receipt' ? 'oracle_status: `approved`' : 'oracle_status: `not_submitted`');
+    expect(closureSection).toContain(`reviewed_skill_revision: \`${codeChangeDisciplineSkillBundleDigest}\``);
+    expect(closureSection).toContain(`skill_bundle_root: \`${codeChangeDisciplineSkillRoot}\``);
+    expect(closureSection).toContain(`skill_bundle_file: \`${codeChangeDisciplineSkillPath}\``);
+    expect(closureSection).toContain('skill_bundle_file_relative_path: `SKILL.md`');
+    expect(closureSection).toContain('skill_bundle_file_type: `file`');
+    expect(closureSection).toContain('skill_bundle_file_byte_length: `35331`');
+    expect(closureSection).toContain(`skill_bundle_file_sha256: \`${codeChangeDisciplineSkillSha256}\``);
+    expect(closureSection).toContain('skill_bundle_generation_exit_code: `0`');
+    expect(skillBytes.byteLength).toBe(35331);
+    expect(sha256Hex(skillBytes)).toBe(codeChangeDisciplineSkillSha256);
+    expect(digestSkillBundleManifest(codeChangeDisciplineSkillManifest)).toBe(codeChangeDisciplineSkillBundleDigest);
+    expect(closureSection).toContain('no runtime, schema, compiler, QA runner behavior');
+    expect(validateStructuredClosureSection(closureSection, verificationFreshnessImmutableReviewClosureTitle)).toEqual([]);
+  });
+
+  it('validates verification freshness closure phases with exact stage-specific records', () => {
+    const implementingClosure = verificationFreshnessClosureFixture({
+      closurePhase: 'implementing',
+      implementationStatus: 'implementing',
+      localValidation: 'not_run',
+      localValidationStatus: 'pending',
+      oracleStatus: 'not_submitted',
+      candidateStatus: 'not_created',
+      candidateCommitSha: 'pending until candidate checkpoint commit is created',
+      reviewedCommitSha: 'pending until Oracle reviews the candidate commit'
+    });
+    const candidateClosure = verificationFreshnessClosureFixture({
+      closurePhase: 'candidate',
+      implementationStatus: 'complete',
+      localValidation: 'passed',
+      localValidationStatus: 'passed',
+      oracleStatus: 'not_submitted',
+      candidateStatus: 'ready_for_commit',
+      candidateCommitSha: 'pending until candidate checkpoint commit is created',
+      reviewedCommitSha: 'pending until Oracle reviews the candidate commit'
+    });
+    const receiptClosure = verificationFreshnessClosureFixture({
+      closurePhase: 'receipt',
+      implementationStatus: 'receipt',
+      localValidation: 'passed',
+      localValidationStatus: 'passed',
+      oracleStatus: 'approved',
+      candidateStatus: 'ready_for_commit',
+      candidateCommitSha: 'candidate-sha',
+      reviewedCommitSha: 'candidate-sha',
+      closureStatus: 'closed'
+    });
+
+    expect(validateVerificationFreshnessClosurePhase(implementingClosure, 'implementing')).toEqual([]);
+    expect(validateVerificationFreshnessClosurePhase(candidateClosure, 'candidate')).toEqual([]);
+    expect(validateVerificationFreshnessClosurePhase(receiptClosure, 'receipt')).toEqual([]);
+
+    expect(validateVerificationFreshnessClosurePhase(candidateClosure, 'implementing')).toEqual([
+      'CLOSURE_PHASE_FIELD_MISMATCH phase="implementing" field="closure_phase" actual="candidate" expected="implementing"',
+      'CLOSURE_PHASE_FIELD_MISMATCH phase="implementing" field="implementation_status" actual="complete" expected="implementing"',
+      'CLOSURE_PHASE_FIELD_MISMATCH phase="implementing" field="local_validation" actual="passed" expected="not_run"',
+      'CLOSURE_PHASE_FIELD_MISMATCH phase="implementing" field="local_validation_status" actual="passed" expected="pending"',
+      'CLOSURE_PHASE_FIELD_MISMATCH phase="implementing" field="candidate_status" actual="ready_for_commit" expected="not_created"'
+    ]);
+    expect(
+      validateVerificationFreshnessClosurePhase(
+        verificationFreshnessClosureFixture({
+          closurePhase: 'candidate',
+          implementationStatus: 'complete',
+          localValidation: 'not_run',
+          localValidationStatus: 'pending',
+          oracleStatus: 'not_submitted',
+          candidateStatus: 'ready_for_commit',
+          candidateCommitSha: 'pending until candidate checkpoint commit is created',
+          reviewedCommitSha: 'pending until Oracle reviews the candidate commit'
+        }),
+        'candidate'
+      )
+    ).toContain('CANDIDATE_READY_BEFORE_LOCAL_VALIDATION status="pending"');
+    expect(
+      validateVerificationFreshnessClosurePhase(
+        verificationFreshnessClosureFixture({
+          closurePhase: 'receipt',
+          implementationStatus: 'receipt',
+          localValidation: 'passed',
+          localValidationStatus: 'passed',
+          oracleStatus: 'approved',
+          candidateStatus: 'ready_for_commit',
+          candidateCommitSha: 'receipt-sha',
+          reviewedCommitSha: 'receipt-sha',
+          closureStatus: 'closed'
+        }),
+        'receipt',
+        { receiptCommitSha: 'receipt-sha' }
+      )
+    ).toContain('RECEIPT_SELF_REFERENCE_FORBIDDEN receipt="receipt-sha"');
+  });
+
+  it('keeps candidate status, external Oracle pending state, and receipt closure separate', () => {
+    expect(
+      validateCandidateReceiptStateMachine({
+        implementationStatus: 'implementing',
+        localValidationStatus: 'pending',
+        localGates: { focusedContract: false, fullTests: false, typecheck: false, diffCheck: false, finalDiffScope: false },
+        reviewRequired: true,
+        candidateStatus: 'not_created',
+        oracleRequestSubmitted: false,
+        oracleRunStatus: 'not_submitted',
+        candidateCommitSha: undefined,
+        candidateFrozen: false,
+        candidateDocumentWritesOwnSha: false,
+        reviewedCommitSha: undefined,
+        oracleResult: undefined,
+        oraclePendingWrittenToCandidate: false,
+        receiptPaths: [],
+        allowedReceiptPaths: [stage4PlanPath],
+        receiptMutatesSubstantiveContent: false,
+        closureStatus: 'open'
+      })
+    ).toEqual([]);
+
+    expect(
+      validateCandidateReceiptStateMachine({
+        implementationStatus: 'complete',
+        localValidationStatus: 'passed',
+        localGates: { focusedContract: true, fullTests: true, typecheck: true, diffCheck: true, finalDiffScope: true },
+        reviewRequired: true,
+        candidateStatus: 'ready_for_commit',
+        oracleRequestSubmitted: false,
+        oracleRunStatus: 'not_submitted',
+        candidateCommitSha: 'candidate-sha',
+        candidateFrozen: true,
+        candidateDocumentWritesOwnSha: false,
+        reviewedCommitSha: undefined,
+        oracleResult: undefined,
+        oraclePendingWrittenToCandidate: false,
+        receiptPaths: [],
+        allowedReceiptPaths: [stage4PlanPath],
+        receiptMutatesSubstantiveContent: false,
+        closureStatus: 'open'
+      })
+    ).toEqual([]);
+
+    expect(
+      validateCandidateReceiptStateMachine({
+        implementationStatus: 'complete',
+        localValidationStatus: 'passed',
+        localGates: { focusedContract: true, fullTests: true, typecheck: true, diffCheck: true, finalDiffScope: true },
+        reviewRequired: true,
+        candidateStatus: 'ready_for_commit',
+        oracleRequestSubmitted: true,
+        oracleRunStatus: 'pending',
+        candidateCommitSha: 'candidate-sha',
+        candidateFrozen: true,
+        candidateDocumentWritesOwnSha: false,
+        reviewedCommitSha: 'candidate-sha',
+        oracleResult: undefined,
+        oraclePendingWrittenToCandidate: false,
+        receiptPaths: [],
+        allowedReceiptPaths: [stage4PlanPath],
+        receiptMutatesSubstantiveContent: false,
+        closureStatus: 'open'
+      })
+    ).toEqual([]);
+
+    expect(
+      validateCandidateReceiptStateMachine({
+        implementationStatus: 'receipt',
+        localValidationStatus: 'passed',
+        localGates: { focusedContract: true, fullTests: true, typecheck: true, diffCheck: true, finalDiffScope: true },
+        reviewRequired: true,
+        candidateStatus: 'ready_for_commit',
+        oracleRequestSubmitted: true,
+        oracleRunStatus: 'approved',
+        candidateCommitSha: 'candidate-sha',
+        candidateFrozen: true,
+        candidateDocumentWritesOwnSha: false,
+        reviewedCommitSha: 'candidate-sha',
+        oracleResult: 'PASS / no P0/P1/P2 blocking findings',
+        oraclePendingWrittenToCandidate: false,
+        receiptPaths: [stage4PlanPath],
+        allowedReceiptPaths: [stage4PlanPath],
+        receiptMutatesSubstantiveContent: false,
+        closureStatus: 'closed'
+      })
+    ).toEqual([]);
+
+    expect(
+      validateCandidateReceiptStateMachine({
+        implementationStatus: 'complete',
+        localValidationStatus: 'passed',
+        localGates: { focusedContract: true, fullTests: true, typecheck: true, diffCheck: true, finalDiffScope: true },
+        reviewRequired: true,
+        candidateStatus: 'ORACLE_PENDING',
+        oracleRequestSubmitted: false,
+        oracleRunStatus: 'not_submitted',
+        candidateCommitSha: 'candidate-sha',
+        candidateFrozen: true,
+        candidateDocumentWritesOwnSha: false,
+        reviewedCommitSha: undefined,
+        oracleResult: undefined,
+        oraclePendingWrittenToCandidate: true,
+        receiptPaths: [],
+        allowedReceiptPaths: [stage4PlanPath],
+        receiptMutatesSubstantiveContent: false,
+        closureStatus: 'open'
+      })
+    ).toEqual([
+      'CANDIDATE_MUST_NOT_RECORD_ORACLE_PENDING status="ORACLE_PENDING"',
+      'ORACLE_PENDING_WITHOUT_SUBMISSION checkpoint="candidate-sha"',
+      'ORACLE_PENDING_WRITTEN_TO_FROZEN_CANDIDATE checkpoint="candidate-sha"'
+    ]);
+
+    expect(
+      validateCandidateReceiptStateMachine({
+        implementationStatus: 'complete',
+        localValidationStatus: 'pending',
+        localGates: { focusedContract: true, fullTests: false, typecheck: true, diffCheck: true, finalDiffScope: true },
+        reviewRequired: true,
+        candidateStatus: 'ready_for_commit',
+        oracleRequestSubmitted: false,
+        oracleRunStatus: 'not_submitted',
+        candidateCommitSha: 'candidate-sha',
+        candidateFrozen: false,
+        candidateDocumentWritesOwnSha: true,
+        reviewedCommitSha: undefined,
+        oracleResult: undefined,
+        oraclePendingWrittenToCandidate: false,
+        receiptPaths: [],
+        allowedReceiptPaths: [stage4PlanPath],
+        receiptMutatesSubstantiveContent: false,
+        closureStatus: 'open'
+      })
+    ).toEqual([
+      'IMPLEMENTATION_COMPLETE_BEFORE_LOCAL_VALIDATION status="pending"',
+      'CANDIDATE_READY_BEFORE_LOCAL_VALIDATION status="pending"',
+      'LOCAL_VALIDATION_PASSED_BEFORE_FULL_GATES gates="focusedContract,typecheck,diffCheck,finalDiffScope"',
+      'CANDIDATE_NOT_FROZEN checkpoint="candidate-sha"',
+      'CANDIDATE_SELF_SHA_WRITE_FORBIDDEN checkpoint="candidate-sha"'
+    ]);
+
+    expect(
+      validateCandidateReceiptStateMachine({
+        implementationStatus: 'complete',
+        localValidationStatus: 'passed',
+        localGates: { focusedContract: true, fullTests: true, typecheck: false, diffCheck: true, finalDiffScope: true },
+        reviewRequired: true,
+        candidateStatus: 'not_created',
+        oracleRequestSubmitted: false,
+        oracleRunStatus: 'not_submitted',
+        candidateCommitSha: undefined,
+        candidateFrozen: false,
+        candidateDocumentWritesOwnSha: false,
+        reviewedCommitSha: undefined,
+        oracleResult: undefined,
+        oraclePendingWrittenToCandidate: false,
+        receiptPaths: [],
+        allowedReceiptPaths: [stage4PlanPath],
+        receiptMutatesSubstantiveContent: false,
+        closureStatus: 'open'
+      })
+    ).toEqual(['LOCAL_VALIDATION_PASSED_BEFORE_FULL_GATES gates="focusedContract,fullTests,diffCheck,finalDiffScope"']);
+
+    expect(
+      validateCandidateReceiptStateMachine({
+        implementationStatus: 'receipt',
+        localValidationStatus: 'passed',
+        localGates: { focusedContract: true, fullTests: true, typecheck: true, diffCheck: true, finalDiffScope: true },
+        reviewRequired: true,
+        candidateStatus: 'ready_for_commit',
+        oracleRequestSubmitted: true,
+        oracleRunStatus: 'pending',
+        candidateCommitSha: 'candidate-sha',
+        candidateFrozen: true,
+        candidateDocumentWritesOwnSha: false,
+        reviewedCommitSha: 'candidate-sha',
+        oracleResult: undefined,
+        oraclePendingWrittenToCandidate: false,
+        receiptPaths: [stage4PlanPath],
+        allowedReceiptPaths: [stage4PlanPath],
+        receiptMutatesSubstantiveContent: false,
+        closureStatus: 'closed'
+      })
+    ).toEqual(['RECEIPT_CLOSED_WITHOUT_ORACLE_APPROVAL status="pending"']);
+
+    expect(
+      validateCandidateReceiptStateMachine({
+        implementationStatus: 'receipt',
+        localValidationStatus: 'passed',
+        localGates: { focusedContract: true, fullTests: true, typecheck: true, diffCheck: true, finalDiffScope: true },
+        reviewRequired: true,
+        candidateStatus: 'ready_for_commit',
+        oracleRequestSubmitted: false,
+        oracleRunStatus: 'approved',
+        candidateCommitSha: 'candidate-sha',
+        candidateFrozen: true,
+        candidateDocumentWritesOwnSha: false,
+        reviewedCommitSha: undefined,
+        oracleResult: 'PASS / no P0/P1/P2 blocking findings',
+        oraclePendingWrittenToCandidate: false,
+        receiptPaths: [stage4PlanPath],
+        allowedReceiptPaths: [stage4PlanPath],
+        receiptMutatesSubstantiveContent: false,
+        closureStatus: 'closed'
+      })
+    ).toEqual([
+      'ORACLE_APPROVED_WITHOUT_ACCEPTED_REQUEST checkpoint="candidate-sha"',
+      'RECEIPT_REVIEWED_SHA_MISSING actual="<missing>"'
+    ]);
+
+    expect(
+      validateCandidateReceiptStateMachine({
+        implementationStatus: 'receipt',
+        localValidationStatus: 'passed',
+        localGates: { focusedContract: true, fullTests: true, typecheck: true, diffCheck: true, finalDiffScope: true },
+        reviewRequired: true,
+        candidateStatus: 'ready_for_commit',
+        oracleRequestSubmitted: true,
+        oracleRunStatus: 'approved',
+        candidateCommitSha: 'candidate-sha',
+        candidateFrozen: true,
+        candidateDocumentWritesOwnSha: false,
+        reviewedCommitSha: 'different-sha',
+        oracleResult: 'PASS / no P0/P1/P2 blocking findings',
+        oraclePendingWrittenToCandidate: false,
+        receiptPaths: [stage4PlanPath, 'tests/contracts/step37-closure-implementation-trace.test.ts'],
+        allowedReceiptPaths: [stage4PlanPath],
+        receiptMutatesSubstantiveContent: true,
+        closureStatus: 'closed'
+      })
+    ).toEqual([
+      'ORACLE_REVIEW_SHA_MISMATCH actual="different-sha" expected="candidate-sha"',
+      'RECEIPT_SCOPE_VIOLATION path="tests/contracts/step37-closure-implementation-trace.test.ts" allowed="docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md"',
+      'RECEIPT_MUTATES_SUBSTANTIVE_CONTENT checkpoint="candidate-sha"'
+    ]);
+  });
+
+  it('validates candidate-to-receipt lifecycle transitions with no skips or reversals', () => {
+    expect(
+      validateCandidateReceiptLifecycle([
+        'implementing',
+        'locally_validated',
+        'candidate_created',
+        'oracle_pending',
+        'oracle_approved',
+        'receipt_committed',
+        'closed'
+      ])
+    ).toEqual([]);
+
+    expect(validateCandidateReceiptLifecycle(['implementing', 'candidate_created'])).toEqual([
+      'ILLEGAL_CANDIDATE_RECEIPT_TRANSITION actual="implementing -> candidate_created" allowed="locally_validated"'
+    ]);
+    expect(validateCandidateReceiptLifecycle(['implementing', 'locally_validated', 'implementing'])).toEqual([
+      'ILLEGAL_CANDIDATE_RECEIPT_TRANSITION actual="locally_validated -> implementing" allowed="candidate_created"'
+    ]);
+    expect(validateCandidateReceiptLifecycle(['implementing', 'locally_validated', 'candidate_created', 'closed'])).toEqual([
+      'ILLEGAL_CANDIDATE_RECEIPT_TRANSITION actual="candidate_created -> closed" allowed="oracle_pending"'
+    ]);
+  });
+
+  it('binds repo candidates to deterministic external Skill revisions', () => {
+    expect(
+      validateSkillRevisionEvidence({
+        skillRoot: codeChangeDisciplineSkillRoot,
+        normalizedSkillRoot: codeChangeDisciplineSkillRoot,
+        revisionType: 'sha256_bundle',
+        gitRepositoryRoot: undefined,
+        gitCommitSha: undefined,
+        gitStatusPorcelain: undefined,
+        allowDirtySnapshot: false,
+        manifestEntries: codeChangeDisciplineSkillManifest,
+        requiredRelativePaths: ['SKILL.md'],
+        bundleDigest: codeChangeDisciplineSkillBundleDigest,
+        expectedBundleDigest: codeChangeDisciplineSkillBundleDigest,
+        generationCommand: "python3 - <<'PY' ... deterministic relative-path sha256 manifest",
+        generationExitCode: 0
+      })
+    ).toEqual([]);
+
+    expect(
+      validateSkillRevisionEvidence({
+        skillRoot: '/skills/example',
+        normalizedSkillRoot: '/skills/example',
+        revisionType: 'git_commit',
+        gitRepositoryRoot: '/skills',
+        gitCommitSha: 'abc123',
+        gitStatusPorcelain: ' M code-change-discipline/SKILL.md',
+        allowDirtySnapshot: false,
+        manifestEntries: [],
+        requiredRelativePaths: [],
+        bundleDigest: undefined,
+        expectedBundleDigest: undefined,
+        generationCommand: undefined,
+        generationExitCode: undefined
+      })
+    ).toEqual(['DIRTY_GIT_SKILL_REQUIRES_BUNDLE status=" M code-change-discipline/SKILL.md"']);
+
+    expect(
+      validateSkillRevisionEvidence({
+        skillRoot: '/skills/example',
+        normalizedSkillRoot: '/skills/example',
+        revisionType: 'sha256_bundle',
+        gitRepositoryRoot: undefined,
+        gitCommitSha: undefined,
+        gitStatusPorcelain: undefined,
+        allowDirtySnapshot: false,
+        manifestEntries: [
+          {
+            relativePath: 'SKILL.md',
+            fileType: 'file',
+            byteLength: 10,
+            sha256: 'skill-sha',
+            symlinkTarget: '-',
+            symlinkEscapesRoot: false
+          }
+        ],
+        requiredRelativePaths: ['SKILL.md', 'scripts/build.js', 'references/rules.md'],
+        bundleDigest: 'digest-a',
+        expectedBundleDigest: 'digest-b',
+        generationCommand: '',
+        generationExitCode: 1
+      })
+    ).toEqual([
+      'SKILL_BUNDLE_MISSING_FILE path="scripts/build.js"',
+      'SKILL_BUNDLE_MISSING_FILE path="references/rules.md"',
+      'SKILL_BUNDLE_DIGEST_MISMATCH actual="digest-a" expected="digest-b"',
+      'SKILL_BUNDLE_GENERATION_COMMAND_MISSING',
+      'SKILL_BUNDLE_GENERATION_FAILED exitCode=1'
+    ]);
+
+    expect(
+      validateSkillRevisionEvidence({
+        skillRoot: '/skills/example',
+        normalizedSkillRoot: '/skills/example',
+        revisionType: 'sha256_bundle',
+        gitRepositoryRoot: undefined,
+        gitCommitSha: undefined,
+        gitStatusPorcelain: undefined,
+        allowDirtySnapshot: false,
+        manifestEntries: [
+          { relativePath: 'references/rules.md', fileType: 'file', byteLength: 20, sha256: 'ref-sha', symlinkTarget: '-', symlinkEscapesRoot: false },
+          { relativePath: 'SKILL.md', fileType: 'file', byteLength: undefined, sha256: 'skill-sha', symlinkTarget: undefined, symlinkEscapesRoot: false }
+        ],
+        requiredRelativePaths: ['SKILL.md', 'references/rules.md'],
+        bundleDigest: 'digest',
+        expectedBundleDigest: 'digest',
+        generationCommand: 'generate-bundle',
+        generationExitCode: 0
+      })
+    ).toEqual([
+      'SKILL_BUNDLE_MANIFEST_UNSORTED actual="references/rules.md,SKILL.md" expected="SKILL.md,references/rules.md"',
+      'SKILL_BUNDLE_ENTRY_MISSING_BYTE_LENGTH path="SKILL.md"',
+      'SKILL_BUNDLE_ENTRY_MISSING_SYMLINK_TARGET path="SKILL.md"'
+    ]);
+  });
+
+  it('rejects memory-only or stale validation evidence before local validation can be reused', () => {
+    expect(
+      validateValidationEvidenceFreshness({
+        evidenceSource: 'command',
+        repository: 'ai-game-maker',
+        expectedRepository: 'ai-game-maker',
+        worktree: '/Users/dahufa/Documents/workspace/ai-game-maker',
+        expectedWorktree: '/Users/dahufa/Documents/workspace/ai-game-maker',
+        branch: 'main',
+        expectedBranch: 'main',
+        currentCommitSha: oracleRevisionAlignmentReceiptCommit,
+        validatedCommitSha: oracleRevisionAlignmentReceiptCommit,
+        currentSkillRevision: codeChangeDisciplineSkillBundleDigest,
+        validatedSkillRevision: codeChangeDisciplineSkillBundleDigest,
+        skillPath: codeChangeDisciplineSkillPath,
+        expectedSkillPath: codeChangeDisciplineSkillPath,
+        skillFileSha256: codeChangeDisciplineSkillSha256,
+        expectedSkillFileSha256: codeChangeDisciplineSkillSha256,
+        checkpointId: 'verification_freshness_immutable_review_guardrail',
+        expectedCheckpointId: 'verification_freshness_immutable_review_guardrail',
+        validationCommands: [
+          { command: 'npm test', exitCode: 0, executedAt: '2026-06-26T03:55:00+08:00' },
+          { command: 'npm run typecheck', exitCode: 0, executedAt: '2026-06-26T03:55:00+08:00' }
+        ],
+        relevantFilesChangedAfterValidation: false,
+        validatorOrClosureSchemaChangedAfterValidation: false,
+        fullGateRerunAfterValidatorChange: true,
+        requestedStatus: 'LOCALLY_VALIDATED'
+      })
+    ).toEqual([]);
+
+    expect(
+      validateValidationEvidenceFreshness({
+        evidenceSource: 'memory',
+        repository: 'ai-game-maker',
+        expectedRepository: 'ai-game-maker',
+        worktree: '/Users/dahufa/Documents/workspace/ai-game-maker',
+        expectedWorktree: '/tmp/stale-worktree',
+        branch: 'main',
+        expectedBranch: 'stale-branch',
+        currentCommitSha: oracleRevisionAlignmentReceiptCommit,
+        validatedCommitSha: oracleRevisionAlignmentCheckpointCommit,
+        currentSkillRevision: 'changed-skill-bundle-digest',
+        validatedSkillRevision: codeChangeDisciplineSkillBundleDigest,
+        skillPath: codeChangeDisciplineSkillPath,
+        expectedSkillPath: '/tmp/stale-skill/SKILL.md',
+        skillFileSha256: 'changed-skill-file-sha',
+        expectedSkillFileSha256: codeChangeDisciplineSkillSha256,
+        checkpointId: 'verification_freshness_immutable_review_guardrail',
+        expectedCheckpointId: 'other_checkpoint',
+        validationCommands: [{ command: 'npm test' }],
+        relevantFilesChangedAfterValidation: true,
+        validatorOrClosureSchemaChangedAfterValidation: true,
+        fullGateRerunAfterValidatorChange: false,
+        requestedStatus: 'CLOSED'
+      })
+    ).toEqual([
+      'MEMORY_IS_NOT_VALIDATION_EVIDENCE checkpoint="verification_freshness_immutable_review_guardrail"',
+      'BASELINE_MISMATCH field="worktree" actual="/Users/dahufa/Documents/workspace/ai-game-maker" expected="/tmp/stale-worktree"',
+      'BASELINE_MISMATCH field="branch" actual="main" expected="stale-branch"',
+      'BASELINE_MISMATCH field="commit_sha" actual="7a160c5b" expected="05b6932e"',
+      `BASELINE_MISMATCH field="skill_revision" actual="changed-skill-bundle-digest" expected="${codeChangeDisciplineSkillBundleDigest}"`,
+      'BASELINE_MISMATCH field="skill_path" actual="/Users/dahufa/.agents/skills/code-change-discipline/SKILL.md" expected="/tmp/stale-skill/SKILL.md"',
+      `BASELINE_MISMATCH field="skill_file_sha256" actual="changed-skill-file-sha" expected="${codeChangeDisciplineSkillSha256}"`,
+      'BASELINE_MISMATCH field="checkpoint_id" actual="verification_freshness_immutable_review_guardrail" expected="other_checkpoint"',
+      'MISSING_VALIDATION_EXIT_CODE command="npm test"',
+      'MISSING_VALIDATION_EXECUTION_TIME command="npm test"',
+      'VALIDATION_STALE_AFTER_FILE_CHANGE checkpoint="verification_freshness_immutable_review_guardrail"',
+      'VALIDATION_STALE_AFTER_VALIDATOR_CHANGE checkpoint="verification_freshness_immutable_review_guardrail"',
+      'PREMATURE_CLOSURE_STATUS requested="CLOSED" allowed="implementing|validating|incomplete|blocked"'
+    ]);
+  });
+
+  it('requires Oracle review to bind an immutable candidate commit and keeps receipt commits docs-only', () => {
+    const candidatePaths = changedPathsForCommit(oracleRevisionAlignmentCheckpointCommit);
+    const receiptPaths = changedPathsForCommit(oracleRevisionAlignmentReceiptCommit);
+    const receiptSection = execFileSync('git', ['show', `${oracleRevisionAlignmentReceiptCommit}:${stage4PlanPath}`], { encoding: 'utf8' });
+    const postCommitReceiptSection = extractSection(receiptSection, oracleRevisionAlignmentClosureTitle);
+
+    expect(candidatePaths).toEqual([stage4PlanPath, 'tests/contracts/step37-closure-implementation-trace.test.ts'].sort());
+    expect(receiptPaths).toEqual([stage4PlanPath]);
+    expect(isAncestorCommit(oracleRevisionAlignmentCheckpointCommit, oracleRevisionAlignmentReceiptCommit)).toBe(true);
+    expect(postCommitReceiptSection).toContain(`reviewed_commit_sha: \`${oracleRevisionAlignmentCheckpointCommit}`);
+    expect(postCommitReceiptSection).not.toContain(`reviewed_commit_sha: \`${oracleRevisionAlignmentReceiptCommit}`);
+    expect(postCommitReceiptSection).not.toContain('receipt_commit_sha:');
+    expect(validateReceiptOnlyCommit({
+      candidateCommitSha: oracleRevisionAlignmentCheckpointCommit,
+      receiptCommitSha: oracleRevisionAlignmentReceiptCommit,
+      receiptParentSha: execFileSync('git', ['rev-parse', `${oracleRevisionAlignmentReceiptCommit}^`], { encoding: 'utf8' }).trim().slice(0, 8),
+      reviewedCommitSha: oracleRevisionAlignmentCheckpointCommit,
+      receiptPaths,
+      allowedReceiptPaths: [stage4PlanPath],
+      receiptDiff: execFileSync('git', ['diff', `${oracleRevisionAlignmentCheckpointCommit}..${oracleRevisionAlignmentReceiptCommit}`, '--', stage4PlanPath], { encoding: 'utf8' }),
+      requiredClosureTitle: oracleRevisionAlignmentClosureTitle,
+      forbiddenPatterns: ['validateOracleRevisionEvidenceBundle', 'validateGuardrailCheckpointTrace', 'structuredOracleStatuses', 'receipt_commit_sha:'],
+      postCommitHead: oracleRevisionAlignmentReceiptCommit,
+      expectedPostCommitHead: oracleRevisionAlignmentReceiptCommit,
+      postCommitStatusShort: '',
+      focusedContractExitCode: 0,
+      showCheckExitCode: 0
+    })).toEqual([]);
+
+    expect(validateReceiptOnlyCommit({
+      candidateCommitSha: 'abc12345',
+      receiptCommitSha: 'def67890',
+      receiptParentSha: 'abc12345',
+      reviewedCommitSha: 'abc12345',
+      receiptPaths: [stage4PlanPath],
+      allowedReceiptPaths: [stage4PlanPath],
+      receiptDiff: [
+        `diff --git a/${stage4PlanPath} b/${stage4PlanPath}`,
+        ` ## Stage 4 Closure Implementation — Example`,
+        '- oracle_status: `pending`.',
+        '+ oracle_status: `approved`.'
+      ].join('\n'),
+      requiredClosureTitle: '## Stage 4 Closure Implementation — Example',
+      forbiddenPatterns: ['receipt_commit_sha:'],
+      postCommitHead: 'def67890',
+      expectedPostCommitHead: 'def67890',
+      postCommitStatusShort: '',
+      focusedContractExitCode: 0,
+      showCheckExitCode: 0
+    })).toEqual([]);
+    expect(
+      validateImmutableOracleReviewFlow({
+        candidateCommitSha: oracleRevisionAlignmentCheckpointCommit,
+        reviewedCommitSha: oracleRevisionAlignmentCheckpointCommit,
+        candidateSkillRevision: codeChangeDisciplineSkillBundleDigest,
+        reviewedSkillRevision: codeChangeDisciplineSkillBundleDigest,
+        checkpointId: 'oracle_revision_alignment_guardrail',
+        fileScope: candidatePaths,
+        validationReceipts: [{ command: 'npm test', exitCode: 0, result: 'passed' }],
+        oracleSubmissionId: '019f0055-c12d-7b03-9f36-abe7e331496e',
+        oracleAgentId: '019effae-8aa2-7c22-b5ba-8c4b69f21d20',
+        reviewedFilesChangedAfterOracleSubmission: false,
+        oracleResult: 'PASS / no P0/P1/P2 blocking findings',
+        oracleStatus: 'approved',
+        receiptCommitPaths: receiptPaths,
+        allowedReceiptPaths: [stage4PlanPath],
+        receiptMutatesValidationLogic: false
+      })
+    ).toEqual([]);
+
+    expect(
+      validateImmutableOracleReviewFlow({
+        candidateCommitSha: oracleRevisionAlignmentCheckpointCommit,
+        reviewedCommitSha: 'stale-review-sha',
+        candidateSkillRevision: codeChangeDisciplineSkillBundleDigest,
+        reviewedSkillRevision: 'stale-skill-revision',
+        checkpointId: 'oracle_revision_alignment_guardrail',
+        fileScope: candidatePaths,
+        validationReceipts: [{ command: 'npm test', exitCode: 1, result: 'failed' }],
+        oracleSubmissionId: undefined,
+        oracleAgentId: undefined,
+        reviewedFilesChangedAfterOracleSubmission: true,
+        oracleResult: 'PASS / no P0/P1/P2 blocking findings',
+        oracleStatus: 'approved',
+        receiptCommitPaths: [stage4PlanPath, 'tests/contracts/step37-closure-implementation-trace.test.ts'],
+        allowedReceiptPaths: [stage4PlanPath],
+        receiptMutatesValidationLogic: true
+      })
+    ).toEqual([
+      'REVIEW_NOT_BOUND_TO_CANDIDATE_COMMIT checkpoint="oracle_revision_alignment_guardrail" actual="stale-review-sha" expected="05b6932e"',
+      `REVIEW_NOT_BOUND_TO_SKILL_REVISION checkpoint="oracle_revision_alignment_guardrail" actual="stale-skill-revision" expected="${codeChangeDisciplineSkillBundleDigest}"`,
+      'MISSING_ORACLE_ID field="submission_id"',
+      'MISSING_ORACLE_ID field="agent_id"',
+      'VALIDATION_RECEIPT_FAILED command="npm test" exitCode=1',
+      'REVIEW_STALE_AFTER_FILE_CHANGE checkpoint="oracle_revision_alignment_guardrail"',
+      'RECEIPT_SCOPE_VIOLATION path="tests/contracts/step37-closure-implementation-trace.test.ts" allowed="docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md"',
+      'RECEIPT_MUTATES_VALIDATION_LOGIC checkpoint="oracle_revision_alignment_guardrail"'
+    ]);
+
+    expect(
+      validateReceiptOnlyCommit({
+        candidateCommitSha: oracleRevisionAlignmentCheckpointCommit,
+        receiptCommitSha: oracleRevisionAlignmentReceiptCommit,
+        receiptParentSha: 'intermediate-sha',
+        reviewedCommitSha: oracleRevisionAlignmentReceiptCommit,
+        receiptPaths: [stage4PlanPath, 'tests/contracts/step37-closure-implementation-trace.test.ts'],
+        allowedReceiptPaths: [stage4PlanPath],
+        receiptDiff: [
+          `diff --git a/${stage4PlanPath} b/${stage4PlanPath}`,
+          '+- receipt_commit_sha: `7a160c5b`',
+          `diff --git a/tests/contracts/step37-closure-implementation-trace.test.ts b/tests/contracts/step37-closure-implementation-trace.test.ts`,
+          '+const structuredOracleStatuses = [] as const;'
+        ].join('\n'),
+        requiredClosureTitle: oracleRevisionAlignmentClosureTitle,
+        forbiddenPatterns: ['structuredOracleStatuses', 'receipt_commit_sha:'],
+        postCommitHead: 'unexpected-head',
+        expectedPostCommitHead: oracleRevisionAlignmentReceiptCommit,
+        postCommitStatusShort: ' M tests/contracts/step37-closure-implementation-trace.test.ts',
+        focusedContractExitCode: 1,
+        showCheckExitCode: 1
+      })
+    ).toEqual([
+      'RECEIPT_REVIEWED_SHA_MISMATCH actual="7a160c5b" expected="05b6932e"',
+      'RECEIPT_PARENT_NOT_CANDIDATE actual="intermediate-sha" expected="05b6932e"',
+      'RECEIPT_SELF_REFERENCE_FORBIDDEN receipt="7a160c5b"',
+      'RECEIPT_SCOPE_VIOLATION path="tests/contracts/step37-closure-implementation-trace.test.ts" allowed="docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md"',
+      'RECEIPT_DIFF_OUTSIDE_TARGET_SECTION section="## Stage 4 Closure Implementation — Oracle Revision Alignment Guardrail"',
+      'RECEIPT_FORBIDDEN_PATTERN pattern="structuredOracleStatuses"',
+      'RECEIPT_FORBIDDEN_PATTERN pattern="receipt_commit_sha:"',
+      'POST_COMMIT_HEAD_MISMATCH actual="unexpected-head" expected="7a160c5b"',
+      'POST_COMMIT_STATUS_NOT_CLEAN actual=" M tests/contracts/step37-closure-implementation-trace.test.ts"',
+      'POST_COMMIT_FOCUSED_CONTRACT_FAILED exitCode=1',
+      'POST_COMMIT_SHOW_CHECK_FAILED exitCode=1'
+    ]);
+  });
+
   it('does not allow global field matches to satisfy a different closure section', () => {
     const document = [
       '## Stage 4 Closure Implementation — Other',
@@ -1210,12 +1903,169 @@ function extractSection(document: string, title: string): string {
   return next < 0 ? document.slice(start) : document.slice(start, next);
 }
 
+function verificationFreshnessClosureFixture(input: {
+  closurePhase: VerificationFreshnessClosurePhase;
+  implementationStatus: string;
+  localValidation: string;
+  localValidationStatus: string;
+  oracleStatus: string;
+  candidateStatus: string;
+  candidateCommitSha: string;
+  reviewedCommitSha: string;
+  closureStatus?: string;
+}): string {
+  return [
+    verificationFreshnessImmutableReviewClosureTitle,
+    '',
+    `- closure_phase: \`${input.closurePhase}\`.`,
+    `- implementation_status: \`${input.implementationStatus}\`.`,
+    `- local_validation: \`${input.localValidation}\`.`,
+    `- local_validation_status: \`${input.localValidationStatus}\`.`,
+    `- oracle_status: \`${input.oracleStatus}\`.`,
+    '- review_required: `true`.',
+    `- candidate_status: \`${input.candidateStatus}\`.`,
+    `- candidate_commit_sha: \`${input.candidateCommitSha}\`.`,
+    `- reviewed_commit_sha: \`${input.reviewedCommitSha}\`.`,
+    input.closureStatus === undefined ? '' : `- closure_status: \`${input.closureStatus}\`.`
+  ]
+    .filter((line) => line.length > 0)
+    .join('\n');
+}
+
+function validateVerificationFreshnessClosurePhase(
+  section: string,
+  phase: VerificationFreshnessClosurePhase,
+  options: { receiptCommitSha?: string } = {}
+): string[] {
+  const fields = parseBulletFields(section);
+  const issues: string[] = [];
+  const expectedFields: Record<VerificationFreshnessClosurePhase, Record<string, string>> = {
+    implementing: {
+      closure_phase: 'implementing',
+      implementation_status: 'implementing',
+      local_validation: 'not_run',
+      local_validation_status: 'pending',
+      oracle_status: 'not_submitted',
+      candidate_status: 'not_created'
+    },
+    candidate: {
+      closure_phase: 'candidate',
+      implementation_status: 'complete',
+      local_validation: 'passed',
+      local_validation_status: 'passed',
+      oracle_status: 'not_submitted',
+      candidate_status: 'ready_for_commit'
+    },
+    receipt: {
+      closure_phase: 'receipt',
+      implementation_status: 'receipt',
+      local_validation: 'passed',
+      local_validation_status: 'passed',
+      oracle_status: 'approved',
+      candidate_status: 'ready_for_commit',
+      closure_status: 'closed'
+    }
+  };
+
+  for (const [fieldName, expectedValue] of Object.entries(expectedFields[phase])) {
+    const actualValue = fields.get(fieldName) ?? '<missing>';
+    if (actualValue !== expectedValue) {
+      issues.push(
+        `CLOSURE_PHASE_FIELD_MISMATCH phase="${phase}" field="${fieldName}" actual="${actualValue}" expected="${expectedValue}"`
+      );
+    }
+  }
+
+  const localValidationStatus = fields.get('local_validation_status') ?? '<missing>';
+  const candidateStatus = fields.get('candidate_status') ?? '<missing>';
+  const oracleStatus = fields.get('oracle_status') ?? '<missing>';
+  const reviewedCommitSha = fields.get('reviewed_commit_sha') ?? '<missing>';
+  const candidateCommitSha = fields.get('candidate_commit_sha') ?? '<missing>';
+  const closureStatus = fields.get('closure_status');
+
+  if (candidateStatus === 'ready_for_commit' && localValidationStatus !== 'passed') {
+    issues.push(`CANDIDATE_READY_BEFORE_LOCAL_VALIDATION status="${localValidationStatus}"`);
+  }
+  if (candidateStatus === 'ORACLE_PENDING') {
+    issues.push(`CANDIDATE_MUST_NOT_RECORD_ORACLE_PENDING status="${candidateStatus}"`);
+  }
+  if (phase === 'candidate' && closureStatus === 'closed') {
+    issues.push('CANDIDATE_CLOSURE_MUST_NOT_BE_CLOSED');
+  }
+  if (phase === 'receipt') {
+    if (oracleStatus !== 'approved') {
+      issues.push(`RECEIPT_CLOSED_WITHOUT_ORACLE_APPROVAL status="${oracleStatus}"`);
+    }
+    if (reviewedCommitSha === '<missing>' || reviewedCommitSha.startsWith('pending')) {
+      issues.push(`RECEIPT_REVIEWED_SHA_MISSING actual="${reviewedCommitSha}"`);
+    }
+    if (options.receiptCommitSha !== undefined && reviewedCommitSha === options.receiptCommitSha) {
+      issues.push(`RECEIPT_SELF_REFERENCE_FORBIDDEN receipt="${options.receiptCommitSha}"`);
+    }
+    if (reviewedCommitSha !== '<missing>' && !reviewedCommitSha.startsWith('pending') && candidateCommitSha !== reviewedCommitSha) {
+      issues.push(`RECEIPT_REVIEWED_SHA_MISMATCH actual="${reviewedCommitSha}" expected="${candidateCommitSha}"`);
+    }
+  }
+  return issues;
+}
+
+type VerificationFreshnessClosurePhase = 'implementing' | 'candidate' | 'receipt';
+
+function parseVerificationFreshnessClosurePhase(section: string): VerificationFreshnessClosurePhase {
+  const phase = parseBulletFields(section).get('closure_phase');
+  if (phase !== 'implementing' && phase !== 'candidate' && phase !== 'receipt') {
+    throw new Error(`Invalid verification freshness closure_phase: ${phase ?? '<missing>'}`);
+  }
+  return phase;
+}
+
+function parseBulletFields(section: string): Map<string, string> {
+  const fields = new Map<string, string>();
+  for (const match of section.matchAll(/^- (?<field>[a-zA-Z_ ]+): `(?<value>[^`]+)`\.?$/gm)) {
+    const field = match.groups?.field;
+    const value = match.groups?.value;
+    if (field !== undefined && value !== undefined) {
+      fields.set(field, value);
+    }
+  }
+  return fields;
+}
+
 function changedPathsForCommit(commit: string): string[] {
   return execFileSync('git', ['show', '--name-only', '--format=', commit], { encoding: 'utf8' })
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
     .sort();
+}
+
+function isAncestorCommit(ancestor: string, descendant: string): boolean {
+  try {
+    execFileSync('git', ['merge-base', '--is-ancestor', ancestor, descendant], { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function sha256Hex(bytes: Buffer): string {
+  return createHash('sha256').update(bytes).digest('hex');
+}
+
+function digestSkillBundleManifest(entries: readonly SkillBundleManifestEntry[]): string {
+  const source = entries
+    .map((entry) =>
+      [
+        entry.relativePath,
+        entry.fileType,
+        entry.byteLength,
+        entry.sha256,
+        entry.symlinkTarget,
+        String(entry.symlinkEscapesRoot).replace('false', 'False').replace('true', 'True')
+      ].join('\t')
+    )
+    .join('\n');
+  return createHash('sha256').update(source).digest('hex');
 }
 
 function parseValidationReceipts(section: string): ValidationReceipt[] {
@@ -1611,6 +2461,9 @@ function escapeRegExp(value: string): string {
 }
 
 const structuredImplementationStatuses = [
+  'implementing',
+  'complete',
+  'receipt',
   'LANDED_PENDING_VALIDATION',
   'LOCALLY_VALIDATED',
   'ORACLE_PENDING',
@@ -1729,6 +2582,418 @@ type GuardrailCheckpointTrace = {
   expectedCommittedPaths: readonly string[];
   closureStatus: 'LOCALLY_VALIDATED' | 'ORACLE_PENDING' | 'ORACLE_PASSED_AWAITING_COMMIT' | 'CHECKPOINT_COMMITTED';
   unexplainedImplementationDiffPaths: readonly string[];
+};
+
+function validateCandidateReceiptStateMachine(input: CandidateReceiptState): string[] {
+  const issues: string[] = [];
+  const passedGateNames = Object.entries(input.localGates)
+    .filter(([, passed]) => passed)
+    .map(([gateName]) => gateName)
+    .join(',');
+  if (input.candidateStatus === 'ORACLE_PENDING') {
+    issues.push(`CANDIDATE_MUST_NOT_RECORD_ORACLE_PENDING status="${input.candidateStatus}"`);
+    if (!input.oracleRequestSubmitted) {
+      issues.push(`ORACLE_PENDING_WITHOUT_SUBMISSION checkpoint="${input.candidateCommitSha ?? '<missing>'}"`);
+    }
+  }
+  if (input.oracleRunStatus === 'pending' && !input.oracleRequestSubmitted) {
+    issues.push(`ORACLE_PENDING_WITHOUT_SUBMISSION checkpoint="${input.candidateCommitSha ?? '<missing>'}"`);
+  }
+  if (input.oracleRunStatus === 'approved' && !input.oracleRequestSubmitted) {
+    issues.push(`ORACLE_APPROVED_WITHOUT_ACCEPTED_REQUEST checkpoint="${input.candidateCommitSha ?? '<missing>'}"`);
+  }
+  if (input.implementationStatus === 'complete' && input.localValidationStatus !== 'passed') {
+    issues.push(`IMPLEMENTATION_COMPLETE_BEFORE_LOCAL_VALIDATION status="${input.localValidationStatus}"`);
+  }
+  if (input.candidateStatus === 'ready_for_commit' && input.localValidationStatus !== 'passed') {
+    issues.push(`CANDIDATE_READY_BEFORE_LOCAL_VALIDATION status="${input.localValidationStatus}"`);
+  }
+  if (input.localValidationStatus === 'passed' || input.candidateStatus === 'ready_for_commit') {
+    if (!allLocalGatesPassed(input.localGates)) {
+      issues.push(`LOCAL_VALIDATION_PASSED_BEFORE_FULL_GATES gates="${passedGateNames}"`);
+    }
+  }
+  if (input.candidateStatus === 'ready_for_commit' && !input.candidateFrozen) {
+    issues.push(`CANDIDATE_NOT_FROZEN checkpoint="${input.candidateCommitSha ?? '<missing>'}"`);
+  }
+  if (input.candidateDocumentWritesOwnSha) {
+    issues.push(`CANDIDATE_SELF_SHA_WRITE_FORBIDDEN checkpoint="${input.candidateCommitSha ?? '<missing>'}"`);
+  }
+  if (input.oraclePendingWrittenToCandidate) {
+    issues.push(`ORACLE_PENDING_WRITTEN_TO_FROZEN_CANDIDATE checkpoint="${input.candidateCommitSha ?? '<missing>'}"`);
+  }
+  if (input.reviewedCommitSha !== undefined && input.candidateCommitSha !== undefined && input.reviewedCommitSha !== input.candidateCommitSha) {
+    issues.push(`ORACLE_REVIEW_SHA_MISMATCH actual="${input.reviewedCommitSha}" expected="${input.candidateCommitSha}"`);
+  }
+  if (input.closureStatus === 'closed') {
+    if (input.oracleRunStatus !== 'approved' || input.oracleResult === undefined || !/\bPASS\b/i.test(input.oracleResult)) {
+      issues.push(`RECEIPT_CLOSED_WITHOUT_ORACLE_APPROVAL status="${input.oracleRunStatus}"`);
+    }
+    if (input.reviewedCommitSha === undefined || input.reviewedCommitSha.startsWith('pending')) {
+      issues.push(`RECEIPT_REVIEWED_SHA_MISSING actual="${input.reviewedCommitSha ?? '<missing>'}"`);
+    }
+    for (const path of input.receiptPaths) {
+      if (!input.allowedReceiptPaths.includes(path)) {
+        issues.push(`RECEIPT_SCOPE_VIOLATION path="${path}" allowed="${input.allowedReceiptPaths.join('|')}"`);
+      }
+    }
+    if (input.receiptMutatesSubstantiveContent) {
+      issues.push(`RECEIPT_MUTATES_SUBSTANTIVE_CONTENT checkpoint="${input.candidateCommitSha ?? '<missing>'}"`);
+    }
+  }
+  return issues;
+}
+
+type CandidateReceiptState = {
+  implementationStatus: 'implementing' | 'complete' | 'receipt';
+  localValidationStatus: 'pending' | 'passed' | 'failed';
+  localGates: LocalValidationGates;
+  reviewRequired: boolean;
+  candidateStatus: 'not_created' | 'ready_for_commit' | 'ORACLE_PENDING';
+  oracleRequestSubmitted: boolean;
+  oracleRunStatus: 'not_submitted' | 'pending' | 'approved' | 'changes_required' | 'blocked';
+  candidateCommitSha?: string;
+  candidateFrozen: boolean;
+  candidateDocumentWritesOwnSha: boolean;
+  reviewedCommitSha?: string;
+  oracleResult?: string;
+  oraclePendingWrittenToCandidate: boolean;
+  receiptPaths: readonly string[];
+  allowedReceiptPaths: readonly string[];
+  receiptMutatesSubstantiveContent: boolean;
+  closureStatus: 'open' | 'closed';
+};
+
+type LocalValidationGates = {
+  focusedContract: boolean;
+  fullTests: boolean;
+  typecheck: boolean;
+  diffCheck: boolean;
+  finalDiffScope: boolean;
+};
+
+function allLocalGatesPassed(gates: LocalValidationGates): boolean {
+  return gates.focusedContract && gates.fullTests && gates.typecheck && gates.diffCheck && gates.finalDiffScope;
+}
+
+function validateCandidateReceiptLifecycle(states: readonly CandidateReceiptLifecycleState[]): string[] {
+  const issues: string[] = [];
+  for (let index = 0; index < states.length - 1; index += 1) {
+    const currentState = states[index] ?? '';
+    const nextState = states[index + 1] ?? '';
+    const allowedNextState = candidateReceiptLifecycleNext[currentState];
+    if (allowedNextState !== nextState) {
+      issues.push(`ILLEGAL_CANDIDATE_RECEIPT_TRANSITION actual="${currentState} -> ${nextState}" allowed="${allowedNextState ?? '<none>'}"`);
+    }
+  }
+  return issues;
+}
+
+type CandidateReceiptLifecycleState =
+  | 'implementing'
+  | 'locally_validated'
+  | 'candidate_created'
+  | 'oracle_pending'
+  | 'oracle_approved'
+  | 'receipt_committed'
+  | 'closed';
+
+const candidateReceiptLifecycleNext: Partial<Record<CandidateReceiptLifecycleState, CandidateReceiptLifecycleState>> = {
+  implementing: 'locally_validated',
+  locally_validated: 'candidate_created',
+  candidate_created: 'oracle_pending',
+  oracle_pending: 'oracle_approved',
+  oracle_approved: 'receipt_committed',
+  receipt_committed: 'closed'
+};
+
+function validateSkillRevisionEvidence(input: SkillRevisionEvidence): string[] {
+  const issues: string[] = [];
+  if (input.skillRoot !== input.normalizedSkillRoot) {
+    issues.push(`SKILL_ROOT_NOT_NORMALIZED actual="${input.skillRoot}" expected="${input.normalizedSkillRoot}"`);
+  }
+  if (input.revisionType === 'git_commit') {
+    if (input.gitCommitSha === undefined || input.gitCommitSha.length === 0) {
+      issues.push('GIT_SKILL_COMMIT_MISSING');
+    }
+    if ((input.gitStatusPorcelain ?? '').length > 0 && !input.allowDirtySnapshot) {
+      issues.push(`DIRTY_GIT_SKILL_REQUIRES_BUNDLE status="${input.gitStatusPorcelain}"`);
+    }
+    return issues;
+  }
+
+  const manifestPaths = input.manifestEntries.map((entry) => entry.relativePath);
+  const sortedManifestPaths = [...manifestPaths].sort();
+  if (manifestPaths.join('\n') !== sortedManifestPaths.join('\n')) {
+    issues.push(`SKILL_BUNDLE_MANIFEST_UNSORTED actual="${manifestPaths.join(',')}" expected="${sortedManifestPaths.join(',')}"`);
+  }
+  for (const requiredPath of input.requiredRelativePaths) {
+    if (!manifestPaths.includes(requiredPath)) {
+      issues.push(`SKILL_BUNDLE_MISSING_FILE path="${requiredPath}"`);
+    }
+  }
+  for (const entry of input.manifestEntries) {
+    if (entry.byteLength === undefined) {
+      issues.push(`SKILL_BUNDLE_ENTRY_MISSING_BYTE_LENGTH path="${entry.relativePath}"`);
+    }
+    if (entry.fileType.length === 0) {
+      issues.push(`SKILL_BUNDLE_ENTRY_MISSING_FILE_TYPE path="${entry.relativePath}"`);
+    }
+    if (entry.symlinkTarget === undefined) {
+      issues.push(`SKILL_BUNDLE_ENTRY_MISSING_SYMLINK_TARGET path="${entry.relativePath}"`);
+    }
+    if (entry.symlinkEscapesRoot) {
+      issues.push(`SKILL_BUNDLE_SYMLINK_ESCAPES_ROOT path="${entry.relativePath}" target="${entry.symlinkTarget ?? '<missing>'}"`);
+    }
+  }
+  if (input.bundleDigest !== input.expectedBundleDigest) {
+    issues.push(`SKILL_BUNDLE_DIGEST_MISMATCH actual="${input.bundleDigest ?? '<missing>'}" expected="${input.expectedBundleDigest ?? '<missing>'}"`);
+  }
+  if ((input.generationCommand ?? '').length === 0) {
+    issues.push('SKILL_BUNDLE_GENERATION_COMMAND_MISSING');
+  }
+  if (input.generationExitCode !== 0) {
+    issues.push(`SKILL_BUNDLE_GENERATION_FAILED exitCode=${input.generationExitCode ?? '<missing>'}`);
+  }
+  return issues;
+}
+
+type SkillRevisionEvidence = {
+  skillRoot: string;
+  normalizedSkillRoot: string;
+  revisionType: 'git_commit' | 'sha256_bundle' | 'dirty_snapshot';
+  gitRepositoryRoot?: string;
+  gitCommitSha?: string;
+  gitStatusPorcelain?: string;
+  allowDirtySnapshot: boolean;
+  manifestEntries: readonly SkillBundleManifestEntry[];
+  requiredRelativePaths: readonly string[];
+  bundleDigest?: string;
+  expectedBundleDigest?: string;
+  generationCommand?: string;
+  generationExitCode?: number;
+};
+
+type SkillBundleManifestEntry = {
+  relativePath: string;
+  fileType: 'file' | 'symlink';
+  byteLength?: number;
+  sha256: string;
+  symlinkTarget?: string;
+  symlinkEscapesRoot: boolean;
+};
+
+function validateValidationEvidenceFreshness(input: ValidationEvidenceFreshnessRecord): string[] {
+  const issues: string[] = [];
+  if (input.evidenceSource === 'memory') {
+    issues.push(`MEMORY_IS_NOT_VALIDATION_EVIDENCE checkpoint="${input.checkpointId}"`);
+  }
+  for (const [field, actual, expected] of [
+    ['repository', input.repository, input.expectedRepository],
+    ['worktree', input.worktree, input.expectedWorktree],
+    ['branch', input.branch, input.expectedBranch],
+    ['commit_sha', input.currentCommitSha, input.validatedCommitSha],
+    ['skill_revision', input.currentSkillRevision, input.validatedSkillRevision],
+    ['skill_path', input.skillPath, input.expectedSkillPath],
+    ['skill_file_sha256', input.skillFileSha256, input.expectedSkillFileSha256],
+    ['checkpoint_id', input.checkpointId, input.expectedCheckpointId]
+  ] as const) {
+    if (actual !== expected) {
+      issues.push(`BASELINE_MISMATCH field="${field}" actual="${actual}" expected="${expected}"`);
+    }
+  }
+  for (const receipt of input.validationCommands) {
+    if (receipt.exitCode === undefined) {
+      issues.push(`MISSING_VALIDATION_EXIT_CODE command="${receipt.command}"`);
+    }
+    if (receipt.executedAt === undefined) {
+      issues.push(`MISSING_VALIDATION_EXECUTION_TIME command="${receipt.command}"`);
+    }
+  }
+  if (input.relevantFilesChangedAfterValidation) {
+    issues.push(`VALIDATION_STALE_AFTER_FILE_CHANGE checkpoint="${input.checkpointId}"`);
+  }
+  if (input.validatorOrClosureSchemaChangedAfterValidation && !input.fullGateRerunAfterValidatorChange) {
+    issues.push(`VALIDATION_STALE_AFTER_VALIDATOR_CHANGE checkpoint="${input.checkpointId}"`);
+  }
+  if (issues.length > 0 && (input.requestedStatus === 'LOCALLY_VALIDATED' || input.requestedStatus === 'CLOSED')) {
+    issues.push(`PREMATURE_CLOSURE_STATUS requested="${input.requestedStatus}" allowed="implementing|validating|incomplete|blocked"`);
+  }
+  return issues;
+}
+
+type ValidationEvidenceFreshnessRecord = {
+  evidenceSource: 'command' | 'memory';
+  repository: string;
+  expectedRepository: string;
+  worktree: string;
+  expectedWorktree: string;
+  branch: string;
+  expectedBranch: string;
+  currentCommitSha: string;
+  validatedCommitSha: string;
+  currentSkillRevision: string;
+  validatedSkillRevision: string;
+  skillPath: string;
+  expectedSkillPath: string;
+  skillFileSha256: string;
+  expectedSkillFileSha256: string;
+  checkpointId: string;
+  expectedCheckpointId: string;
+  validationCommands: readonly {
+    command: string;
+    exitCode?: number;
+    executedAt?: string;
+  }[];
+  relevantFilesChangedAfterValidation: boolean;
+  validatorOrClosureSchemaChangedAfterValidation: boolean;
+  fullGateRerunAfterValidatorChange: boolean;
+  requestedStatus: 'implementing' | 'validating' | 'incomplete' | 'blocked' | 'LOCALLY_VALIDATED' | 'CLOSED';
+};
+
+function validateImmutableOracleReviewFlow(input: ImmutableOracleReviewFlow): string[] {
+  const issues: string[] = [];
+  if (input.reviewedCommitSha !== input.candidateCommitSha) {
+    issues.push(
+      `REVIEW_NOT_BOUND_TO_CANDIDATE_COMMIT checkpoint="${input.checkpointId}" actual="${input.reviewedCommitSha}" expected="${input.candidateCommitSha}"`
+    );
+  }
+  if (input.reviewedSkillRevision !== input.candidateSkillRevision) {
+    issues.push(
+      `REVIEW_NOT_BOUND_TO_SKILL_REVISION checkpoint="${input.checkpointId}" actual="${input.reviewedSkillRevision}" expected="${input.candidateSkillRevision}"`
+    );
+  }
+  if (input.oracleSubmissionId === undefined) {
+    issues.push('MISSING_ORACLE_ID field="submission_id"');
+  }
+  if (input.oracleAgentId === undefined) {
+    issues.push('MISSING_ORACLE_ID field="agent_id"');
+  }
+  for (const receipt of input.validationReceipts) {
+    if (receipt.exitCode !== 0) {
+      issues.push(`VALIDATION_RECEIPT_FAILED command="${receipt.command}" exitCode=${receipt.exitCode}`);
+    }
+  }
+  if (input.reviewedFilesChangedAfterOracleSubmission) {
+    issues.push(`REVIEW_STALE_AFTER_FILE_CHANGE checkpoint="${input.checkpointId}"`);
+  }
+  if (input.oracleStatus === 'approved' && !/\bPASS\b/i.test(input.oracleResult)) {
+    issues.push(`APPROVED_WITHOUT_ORACLE_PASS checkpoint="${input.checkpointId}"`);
+  }
+  for (const path of input.receiptCommitPaths) {
+    if (!input.allowedReceiptPaths.includes(path)) {
+      issues.push(`RECEIPT_SCOPE_VIOLATION path="${path}" allowed="${input.allowedReceiptPaths.join('|')}"`);
+    }
+  }
+  if (input.receiptMutatesValidationLogic) {
+    issues.push(`RECEIPT_MUTATES_VALIDATION_LOGIC checkpoint="${input.checkpointId}"`);
+  }
+  return issues;
+}
+
+type ImmutableOracleReviewFlow = {
+  candidateCommitSha: string;
+  reviewedCommitSha: string;
+  candidateSkillRevision: string;
+  reviewedSkillRevision: string;
+  checkpointId: string;
+  fileScope: readonly string[];
+  validationReceipts: readonly ValidationReceipt[];
+  oracleSubmissionId?: string;
+  oracleAgentId?: string;
+  reviewedFilesChangedAfterOracleSubmission: boolean;
+  oracleResult: string;
+  oracleStatus: 'pending' | 'approved' | 'changes_required' | 'blocked';
+  receiptCommitPaths: readonly string[];
+  allowedReceiptPaths: readonly string[];
+  receiptMutatesValidationLogic: boolean;
+};
+
+function validateReceiptOnlyCommit(input: ReceiptOnlyCommit): string[] {
+  const issues: string[] = [];
+  if (input.reviewedCommitSha !== input.candidateCommitSha) {
+    issues.push(`RECEIPT_REVIEWED_SHA_MISMATCH actual="${input.reviewedCommitSha}" expected="${input.candidateCommitSha}"`);
+  }
+  if (input.receiptParentSha !== input.candidateCommitSha) {
+    issues.push(`RECEIPT_PARENT_NOT_CANDIDATE actual="${input.receiptParentSha}" expected="${input.candidateCommitSha}"`);
+  }
+  if (input.reviewedCommitSha === input.receiptCommitSha || input.receiptDiff.includes('receipt_commit_sha:')) {
+    issues.push(`RECEIPT_SELF_REFERENCE_FORBIDDEN receipt="${input.receiptCommitSha}"`);
+  }
+  for (const path of input.receiptPaths) {
+    if (!input.allowedReceiptPaths.includes(path)) {
+      issues.push(`RECEIPT_SCOPE_VIOLATION path="${path}" allowed="${input.allowedReceiptPaths.join('|')}"`);
+    }
+  }
+  if (!receiptDiffOnlyTouchesSection(input.receiptDiff, input.requiredClosureTitle)) {
+    issues.push(`RECEIPT_DIFF_OUTSIDE_TARGET_SECTION section="${input.requiredClosureTitle}"`);
+  }
+  for (const pattern of input.forbiddenPatterns) {
+    if (input.receiptDiff.includes(pattern)) {
+      issues.push(`RECEIPT_FORBIDDEN_PATTERN pattern="${pattern}"`);
+    }
+  }
+  if (input.postCommitHead !== input.expectedPostCommitHead) {
+    issues.push(`POST_COMMIT_HEAD_MISMATCH actual="${input.postCommitHead}" expected="${input.expectedPostCommitHead}"`);
+  }
+  if (input.postCommitStatusShort.length > 0) {
+    issues.push(`POST_COMMIT_STATUS_NOT_CLEAN actual="${input.postCommitStatusShort}"`);
+  }
+  if (input.focusedContractExitCode !== 0) {
+    issues.push(`POST_COMMIT_FOCUSED_CONTRACT_FAILED exitCode=${input.focusedContractExitCode}`);
+  }
+  if (input.showCheckExitCode !== 0) {
+    issues.push(`POST_COMMIT_SHOW_CHECK_FAILED exitCode=${input.showCheckExitCode}`);
+  }
+  return issues;
+}
+
+function receiptDiffOnlyTouchesSection(diff: string, sectionTitle: string): boolean {
+  const lines = diff.split('\n');
+  let sawTargetSection = false;
+  let inTargetSection = false;
+  for (const line of lines) {
+    if (line.startsWith('diff --git ')) {
+      inTargetSection = false;
+      continue;
+    }
+    if (line.startsWith('@@')) {
+      continue;
+    }
+    const content = line.replace(/^[+\- ]/, '');
+    if (content.startsWith('## ')) {
+      inTargetSection = content === sectionTitle;
+      sawTargetSection ||= inTargetSection;
+      continue;
+    }
+    if (!line.startsWith('+') && !line.startsWith('-')) {
+      continue;
+    }
+    if (line.startsWith('+++') || line.startsWith('---')) {
+      continue;
+    }
+    if (!inTargetSection) {
+      return false;
+    }
+  }
+  return sawTargetSection;
+}
+
+type ReceiptOnlyCommit = {
+  candidateCommitSha: string;
+  receiptCommitSha: string;
+  receiptParentSha: string;
+  reviewedCommitSha: string;
+  receiptPaths: readonly string[];
+  allowedReceiptPaths: readonly string[];
+  receiptDiff: string;
+  requiredClosureTitle: string;
+  forbiddenPatterns: readonly string[];
+  postCommitHead: string;
+  expectedPostCommitHead: string;
+  postCommitStatusShort: string;
+  focusedContractExitCode: number;
+  showCheckExitCode: number;
 };
 
 function timeoutObservation(command: string, status: TimeoutObservation['status'], timeoutMs: number, durationMs: number): TimeoutObservation {

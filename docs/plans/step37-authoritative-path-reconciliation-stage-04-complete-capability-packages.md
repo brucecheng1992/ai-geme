@@ -3076,3 +3076,126 @@ Next: queued immutable-review closure receipt guardrail step
 ```
 
 Stop marker: Stage 4 Oracle revision alignment guardrail checkpoint commit `05b6932e` is complete. Do not enter Stage 5 or claim complete package closure; queued immutable-review closure receipt feedback must start only as an independent atomic step after this checkpoint.
+
+## Stage 4 Improvement Log — Verification Freshness And Immutable Review Guardrail
+
+This log records the closure discipline learned while synchronizing the Oracle revision alignment checkpoint and its receipt.
+
+1. Context memory is not validation evidence. After compaction, resume, or long pause, rebuild the baseline from the current repository, worktree, branch, HEAD, status, diff scope, and checkpoint identity.
+2. Validation freshness: focused GREEN only proves the local contract. Any validator, state enum, shared contract helper, or closure schema changes invalidate prior gates until focused contract, full tests, typecheck, and diff check rerun on the current revision.
+3. Immutable review: Oracle review must bind to an immutable candidate commit SHA, not only to a described diff.
+4. Candidate status: candidate records stable, completed local facts only. Pending belongs to the external Oracle review run or an independent review record, not to the frozen candidate commit.
+5. Candidate versus receipt: the candidate commit carries reviewed substantive content; a later receipt-only commit may record approval and state transition but must not mutate implementation, validator, contract semantics, tests, or state-machine rules.
+6. Receipt scope: `reviewed_commit_sha` must point to the candidate commit, not the receipt commit. Do not write `receipt_commit_sha` into the receipt itself because that creates a self-reference loop.
+7. Review invalidation: if reviewed files change after Oracle submission, or if a receipt commit contains substantive changes, the previous Oracle PASS is stale and must be rerun.
+8. Post-commit checks: receipt closure requires clean `git status --short`, expected `git rev-parse HEAD`, candidate ancestry, receipt diff allowlist, focused contract, and `git show --check`.
+
+Repository guardrail added: `tests/contracts/step37-closure-implementation-trace.test.ts` now validates verification freshness, immutable Oracle review binding, and receipt-only commit boundaries.
+
+## Stage 4 Closure Implementation — Verification Freshness And Immutable Review Guardrail
+
+- implementation status: `complete`.
+- closure_phase: `candidate`.
+- implementation_status: `complete`.
+- local_validation: `passed`.
+- local_validation_status: `passed`.
+- oracle_status: `not_submitted`.
+- review_required: `true`.
+- candidate_status: `ready_for_commit`.
+- scope: process/evidence guardrail only; no runtime, schema, compiler, QA runner behavior, Stage 5 exact lock, production default cutover, legacy authoritative path exit, capability closure, or state-machine expansion was introduced.
+- baseline: Stage 4 Oracle revision alignment guardrail receipt commit `7a160c5b` (`docs(game-dsl): record oracle revision guardrail checkpoint receipt`).
+
+Actual modified paths:
+
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`
+- `tests/contracts/step37-closure-implementation-trace.test.ts`
+- `/Users/dahufa/.agents/skills/code-change-discipline/SKILL.md`
+
+Evidence/guardrail chain:
+
+1. Skill rule: validation results cannot be reused from memory or prior revisions when the worktree, commit, validator, state enum, helper, closure schema, config, or relevant files changed.
+2. Contract test: validation freshness rejects memory-only evidence, baseline mismatches, missing exit code/time, file changes after validation, validator/schema changes without full rerun, and premature closure.
+3. Contract test: immutable Oracle review rejects missing `submission_id`/`agent_id`, candidate/review SHA mismatch, failed validation receipts, reviewed file changes after submission, and receipt scope violations.
+4. Contract test: receipt-only validation requires candidate `05b6932e` to remain the reviewed commit, receipt `7a160c5b` to be docs-only, no `receipt_commit_sha` self-reference, candidate ancestry, clean post-commit status, focused contract success, and `git show --check`.
+5. Contract test: external Skill revision validation binds the repo candidate to `/Users/dahufa/.agents/skills/code-change-discipline/SKILL.md` through a SHA-256 file manifest and bundle digest because the Skill is outside Git.
+
+Immutable review fields:
+
+- checkpoint_id: `verification_freshness_immutable_review_guardrail`.
+- candidate_commit_sha: `pending until candidate checkpoint commit is created`.
+- reviewed_commit_sha: `pending until Oracle reviews the candidate commit`.
+- reviewed_skill_revision: `d3c166ab08562696e099937e1036c51c81c9415cf8e0aef43a906c7acfb51aca`.
+- skill_revision_type: `sha256_bundle`.
+- skill_git_repository: `not_a_git_repository`.
+- skill_bundle_root: `/Users/dahufa/.agents/skills/code-change-discipline`.
+- skill_bundle_file: `/Users/dahufa/.agents/skills/code-change-discipline/SKILL.md`.
+- skill_bundle_file_relative_path: `SKILL.md`.
+- skill_bundle_file_type: `file`.
+- skill_bundle_file_byte_length: `35331`.
+- skill_bundle_file_sha256: `ac0f7e7d033bf7b44e3e4fe13cc151ca2d240bf8bb871c27eaba2af963c6490f`.
+- skill_bundle_symlink_target: `-`.
+- skill_bundle_generation_command: `python3 - <<'PY' ... deterministic relative-path sha256 manifest`.
+- skill_bundle_generation_exit_code: `0`.
+- oracle_agent_id: `not_submitted`.
+- oracle_submission_id: `not_submitted`.
+
+Validation receipts:
+
+```text
+npx vitest run tests/contracts/step37-closure-implementation-trace.test.ts
+exitCode=0
+duration=1.479s
+result=PASS: 34 tests passed
+
+npm run test:contracts
+exitCode=0
+duration=9.848s
+result=PASS: contracts 95 files / 1095 tests
+
+npm test
+exitCode=0
+duration=60.70s
+result=PASS: contracts 95 files / 1095 tests; workspace 34 files / 408 tests
+
+npm run typecheck
+exitCode=0
+duration=6.756s
+result=PASS: root, @ai-game-maker/maker-api, and @ai-game-maker/maker-workbench typecheck passed
+
+git diff --check
+exitCode=0
+duration=0.017s
+result=PASS: no whitespace errors
+
+python3 - <<'PY' ... deterministic Skill bundle freshness check
+exitCode=0
+duration=0.027s
+result=PASS: SKILL.md 35331 bytes, sha256 ac0f7e7d033bf7b44e3e4fe13cc151ca2d240bf8bb871c27eaba2af963c6490f, bundle d3c166ab08562696e099937e1036c51c81c9415cf8e0aef43a906c7acfb51aca
+```
+
+Unresolved items:
+
+- Candidate checkpoint commit is pending and must preserve these local-validation facts without writing its own SHA into the candidate document.
+- Oracle review is not submitted and must later bind to the candidate commit SHA.
+- Oracle review must also bind to reviewed_skill_revision `d3c166ab08562696e099937e1036c51c81c9415cf8e0aef43a906c7acfb51aca`.
+- Receipt-only closure commit is pending after Oracle approval.
+- Stage 4 full package closure remains `NOT_MET`.
+- Stage 5 exact lock remains `NOT_ENTERED`.
+- Production default cutover remains inactive.
+- Legacy authoritative path has not exited.
+
+State transition:
+
+```text
+planned -> landed -> verified
+```
+
+### Exit Assessment
+
+```text
+Stage 4 Verification Freshness And Immutable Review Guardrail: LOCALLY_VALIDATED
+Stage 4 Exit gate: NOT_MET
+Next: rerun final gates against this candidate-ready tree, then create candidate checkpoint commit if no file changes occur
+```
+
+Stop marker: Stage 4 verification freshness and immutable review guardrail is locally validated and ready for a candidate checkpoint commit after final same-tree gates. Do not enter Stage 5 or claim complete package closure; this checkpoint must next create a candidate commit, receive Oracle review for that exact repo commit and Skill revision, and then use a receipt-only closure commit if approved.
