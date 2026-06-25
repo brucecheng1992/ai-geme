@@ -3001,7 +3001,9 @@ Repository guardrail added: `tests/contracts/step37-closure-implementation-trace
 
 ## Stage 4 Closure Implementation — Oracle Revision Alignment Guardrail
 
-- implementation status: `ORACLE_PASSED_AWAITING_COMMIT`.
+- implementation status: `CHECKPOINT_COMMITTED`.
+- implementation checkpoint: `05b6932e` (`test(game-dsl): preserve oracle revision alignment guardrail`).
+- reviewed_commit_sha: `05b6932e173b9660418026e2c7a077965a50249e`.
 - local_validation: `passed`.
 - oracle_status: `approved`.
 - scope: process/evidence guardrail only; no runtime, schema, compiler, QA runner behavior, Stage 5 exact lock, production default cutover, legacy authoritative path exit, capability closure, or state-machine expansion was introduced.
@@ -3062,15 +3064,15 @@ Unresolved items:
 State transition:
 
 ```text
-planned -> landed -> verified -> oracle_blocked_p2 -> fixed -> verified -> oracle_passed
+planned -> landed -> verified -> oracle_blocked_p2 -> fixed -> verified -> oracle_passed -> checkpoint_committed
 ```
 
 ### Exit Assessment
 
 ```text
-Stage 4 Oracle Revision Alignment Guardrail: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 Oracle Revision Alignment Guardrail: CHECKPOINT_COMMITTED
 Stage 4 Exit gate: NOT_MET
-Next: checkpoint commit for this guardrail checkpoint only
+Next: queued immutable-review closure receipt guardrail step
 ```
 
-Stop marker: Stage 4 Oracle revision alignment guardrail passed Oracle and is awaiting checkpoint commit. Do not enter the next Stage 4 audit, enter Stage 5, or claim complete package closure until the checkpoint commit completes.
+Stop marker: Stage 4 Oracle revision alignment guardrail checkpoint commit `05b6932e` is complete. Do not enter Stage 5 or claim complete package closure; queued immutable-review closure receipt feedback must start only as an independent atomic step after this checkpoint.
