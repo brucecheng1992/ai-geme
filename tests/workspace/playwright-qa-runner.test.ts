@@ -345,28 +345,8 @@ describe('Playable QA gate and runner', () => {
       status: 'FAILED',
       expected: expectedCapabilityRuntime,
       observed: [],
-      missingProbeIds: [
-        'camera.side_follow.v1.scroll.browser_qa.v1',
-        'collision.platform.v1.grounded.browser_qa.v1',
-        'combat.airborne_fire.v1.fired.browser_qa.v1',
-        'combat.projectile.v1.spawn.browser_qa.v1',
-        'health.player_health_points.v1.current.browser_qa.v1',
-        'health.damage_invulnerability.v1.window.browser_qa.v1',
-        'movement.run_jump.v1.jump.browser_qa.v1',
-        'spawn.static.v1.triggered.browser_qa.v1',
-        'weapon.default_straight_single.v1.fire.browser_qa.v1'
-      ],
-      mismatches: [
-        'capabilityRuntime.probes[camera.side_follow.v1.scroll.browser_qa.v1]: missing',
-        'capabilityRuntime.probes[collision.platform.v1.grounded.browser_qa.v1]: missing',
-        'capabilityRuntime.probes[combat.airborne_fire.v1.fired.browser_qa.v1]: missing',
-        'capabilityRuntime.probes[combat.projectile.v1.spawn.browser_qa.v1]: missing',
-        'capabilityRuntime.probes[health.player_health_points.v1.current.browser_qa.v1]: missing',
-        'capabilityRuntime.probes[health.damage_invulnerability.v1.window.browser_qa.v1]: missing',
-        'capabilityRuntime.probes[movement.run_jump.v1.jump.browser_qa.v1]: missing',
-        'capabilityRuntime.probes[spawn.static.v1.triggered.browser_qa.v1]: missing',
-        'capabilityRuntime.probes[weapon.default_straight_single.v1.fire.browser_qa.v1]: missing'
-      ]
+      missingProbeIds: expectedDefaultWeaponRequiredProbeIds(),
+      mismatches: expectedDefaultWeaponRequiredProbeIds().map((probeId) => `capabilityRuntime.probes[${probeId}]: missing`)
     });
   });
 
@@ -1721,6 +1701,60 @@ describe('Playable QA gate and runner', () => {
     },
     30_000
   );
+
+  it(
+    'fails side-scrolling QA when combat smoke completes without invulnerability blocked evidence',
+    async () => {
+      const server = await startHtmlPreviewServer(sideScrollingCombatHtml({ emitInvulnerabilityBlocked: false }));
+      const port = (server.address() as AddressInfo).port;
+      const runner = new PlaywrightQaRunnerService(workspace, gate);
+
+      try {
+        const report = await runner.run({ projectId, runId, genre: 'side_scrolling_run_and_gun', previewUrl: `http://127.0.0.1:${port}/index.html`, timeoutMs: 3_000 });
+
+        expect(report).toMatchObject({
+          status: 'QA_FAILED',
+          visual_status: 'PASSED',
+          code: 'QA_RUNNER_FAILED',
+          message: 'Side-scrolling QA expected run-and-gun input to produce enemy.fired, combat progress, and health.damage_invulnerability.blocked.'
+        });
+        expect(report.missing_events).toEqual([]);
+        expect(report.missing_any_groups).toEqual([]);
+        expect(report.observed_events).toEqual(
+          expect.arrayContaining(['enemy.fired', 'enemy.hit', 'level.segment.completed', 'health.damage_invulnerability.activated'])
+        );
+        expect(report.observed_events).not.toContain('health.damage_invulnerability.blocked');
+      } finally {
+        await closeServer(server);
+      }
+    },
+    30_000
+  );
+
+  it(
+    'captures delayed side-scrolling invulnerability blocked evidence within the QA wait window',
+    async () => {
+      const server = await startHtmlPreviewServer(sideScrollingCombatHtml({ emitInvulnerabilityBlocked: true, blockedDelayMs: 450 }));
+      const port = (server.address() as AddressInfo).port;
+      const runner = new PlaywrightQaRunnerService(workspace, gate);
+
+      try {
+        const report = await runner.run({ projectId, runId, genre: 'side_scrolling_run_and_gun', previewUrl: `http://127.0.0.1:${port}/index.html`, timeoutMs: 5_000 });
+
+        expect(report).toMatchObject({
+          status: 'PASSED',
+          runtime_status: 'PASSED',
+          visual_status: 'PASSED'
+        });
+        expect(report.observed_events).toEqual(
+          expect.arrayContaining(['enemy.fired', 'enemy.hit', 'level.segment.completed', 'health.damage_invulnerability.blocked'])
+        );
+      } finally {
+        await closeServer(server);
+      }
+    },
+    30_000
+  );
 });
 
 function missingObservedBase(): TelemetryEvent['type'][] {
@@ -1745,6 +1779,10 @@ function sideScrollingObservedBase(): TelemetryEvent['type'][] {
     'game.restarted',
     'level.segment.completed'
   ];
+}
+
+function expectedDefaultWeaponRequiredProbeIds(): string[] {
+  return createDefaultWeaponCapabilityRuntimeExpectation().requiredProbes.map((probe) => probe.probeId);
 }
 
 async function writeValidAssetManifest(workspace: LocalWorkspaceService, id: string): Promise<void> {
@@ -2299,6 +2337,106 @@ function shooterRuntimePlanHtml(params: { enemiesActive: number; hitPayload: Rec
           state.player.x -= 80;
         }
       });
+      window.__GAME_TELEMETRY__ = { events: telemetry, state, assets: ${shooterRuntimeAssetsJson()} };
+      window.__GAME_QA__ = {
+        snapshot() { return state; },
+        telemetry() { return telemetry; }
+      };
+    </script>
+  </body>
+</html>`;
+}
+
+function sideScrollingCombatHtml(options: { emitInvulnerabilityBlocked: boolean; blockedDelayMs?: number }): string {
+  const blockedDelayMs = options.blockedDelayMs ?? 0;
+  return `<!doctype html>
+<html>
+  <body style="margin:0;background:#07111f">
+    <canvas id="game" width="640" height="360" style="width:640px;height:360px;background:linear-gradient(180deg,#07111f 0%,#123323 62%,#2f2f2f 62%,#2f2f2f 100%)"></canvas>
+    <script>
+      const canvas = document.getElementById('game');
+      const context = canvas.getContext('2d');
+      context.fillStyle = '#07111f';
+      context.fillRect(0, 0, 640, 220);
+      context.fillStyle = '#14532d';
+      context.fillRect(0, 220, 640, 140);
+      context.fillStyle = '#38bdf8';
+      context.fillRect(120, 180, 42, 42);
+      context.fillStyle = '#f97316';
+      context.fillRect(480, 180, 48, 48);
+      const telemetry = [{ type: 'game.ready', timestamp_ms: 0, frame: 0 }];
+      const state = {
+        gameStatus: 'READY',
+        score: 0,
+        health: 3,
+        frame: 0,
+        player: { x: 120, y: 180 },
+        camera: { mode: 'side_follow', followTarget: 'player', scrollX: 0, playerX: 120, viewport: { width: 640 } }
+      };
+      let movingRight = false;
+      let combatStarted = false;
+      function emit(type, payload) {
+        telemetry.push({ type, timestamp_ms: telemetry.length, frame: state.frame, payload });
+      }
+      function emitCombatProgress() {
+        if (combatStarted) {
+          return;
+        }
+        combatStarted = true;
+        emit('input.received', { input: 'fire' });
+        emit('player.fired');
+        emit('projectile.spawned');
+        emit('enemy.fired');
+        emit('enemy.hit');
+        emit('checkpoint.reached');
+        emit('level.segment.completed');
+        emit('player.damaged');
+        emit('health.damage_invulnerability.activated');
+        if (${JSON.stringify(options.emitInvulnerabilityBlocked)}) {
+          setTimeout(() => {
+            emit('health.damage_invulnerability.blocked');
+          }, ${blockedDelayMs});
+        }
+      }
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          state.gameStatus = 'PLAYING';
+          emit('input.received', { input: 'start' });
+          emit('game.started');
+        }
+        if (event.key === 'ArrowRight') {
+          movingRight = true;
+          emit('input.received', { input: 'move' });
+        }
+        if (event.key === ' ') {
+          emit('input.received', { input: 'jump' });
+          emit('player.jumped');
+        }
+        if (event.key.toLowerCase() === 'j') {
+          emitCombatProgress();
+        }
+        if (event.key.toLowerCase() === 'r') {
+          state.gameStatus = 'READY';
+          emit('input.received', { input: 'restart' });
+          emit('game.restarted');
+        }
+      });
+      document.addEventListener('keyup', (event) => {
+        if (event.key === 'ArrowRight') {
+          movingRight = false;
+        }
+      });
+      setInterval(() => {
+        if (state.gameStatus !== 'PLAYING' || !movingRight) {
+          return;
+        }
+        const fromX = state.player.x;
+        state.frame += 1;
+        state.player.x += 24;
+        state.camera.playerX = state.player.x;
+        state.camera.scrollX = Math.max(0, state.player.x - 320);
+        emit('player.moved', { fromX, fromY: state.player.y, toX: state.player.x, toY: state.player.y });
+      }, 80);
       window.__GAME_TELEMETRY__ = { events: telemetry, state, assets: ${shooterRuntimeAssetsJson()} };
       window.__GAME_QA__ = {
         snapshot() { return state; },

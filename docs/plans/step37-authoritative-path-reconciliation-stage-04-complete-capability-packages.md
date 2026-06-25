@@ -2134,6 +2134,7 @@ Stop marker: Stage 4 `health.damage_invulnerability.v1` package-owned QA slice a
 ### Current Stage Review Conclusion
 
 - audit checkpoint: `4433e76a` (`docs: record stage 4 damage invulnerability audit`).
+- implementation checkpoint: `d8225bf1` (`feat(game-dsl): add damage invulnerability QA package slice`).
 - starting conclusion: `Stage 4 Health Damage Invulnerability Package-Owned QA Slice Audit: ORACLE_PASSED_AWAITING_COMMIT`; implementation may start for this slice only after the audit checkpoint.
 - non-goals: no Stage 5 exact lock, no composed schema, no canonical DSL/provider run, no production default cutover, no legacy authoritative path exit, no `movement.crouch.v1`, `pickup.collectible.v1`, `spawn.enemy_wave.v1`, or Stage 4 full closure claim.
 
@@ -2154,6 +2155,25 @@ Stop marker: Stage 4 `health.damage_invulnerability.v1` package-owned QA slice a
 - Extended runtime telemetry schema, QA types, Playwright QA reader, generation pipeline package installation, and target runtime support overlay consumers for the new evidence.
 - Added positive and negative regression coverage proving damage/health evidence alone is insufficient without blocked invulnerability evidence.
 
+Actual code paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/health-damage-invulnerability-package.ts`
+- `packages/game-dsl/src/gameplay-capabilities/health-damage-invulnerability-runtime-module.ts`
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`
+- `apps/maker-api/src/projects/generation-pipeline.service.ts`
+- `apps/maker-api/src/qa/playwright-browser-runner.ts`
+- `apps/maker-api/src/qa/qa.types.ts`
+- `templates/phaser/side_scrolling_run_and_gun/src/GameScene.ts`
+- `tests/contracts/gameplay-capability-package-contract.test.ts`
+- `tests/contracts/gameplay-capability-registry.test.ts`
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`
+- `tests/contracts/phaser-templates.test.ts`
+- `tests/workspace/generation-pipeline.service.test.ts`
+- `tests/workspace/playwright-qa-runner.test.ts`
+
 ### Compatibility & Cutover
 
 | Check | Required answer |
@@ -2169,15 +2189,49 @@ Stop marker: Stage 4 `health.damage_invulnerability.v1` package-owned QA slice a
 
 ### Validation
 
-- RED: `npx tsx --eval "... createHealthDamageInvulnerabilityPackageContract ..."` initially failed with `TypeError: createHealthDamageInvulnerabilityPackageContract is not a function`.
-- GREEN contract probe: required package id and required probe id resolved.
-- Focused tests before Oracle P2 fix: 7 files passed, 11 tests passed, 162 skipped.
-- Focused tests after Oracle P2 fix: 3 files passed, 5 tests passed, 54 skipped.
-- Related suite after Oracle P2 fix: 7 files passed, 174 tests passed.
-- Full tests after Oracle P2 fix: `npm test` passed, 128 test files passed, 1462 tests passed.
-- Typecheck: `npm run typecheck` passed for root, `@ai-game-maker/maker-api`, and `@ai-game-maker/maker-workbench`.
-- Whitespace: `git diff --check` passed.
+- RED: `npx tsx --eval "... createHealthDamageInvulnerabilityPackageContract ..."` initially failed with `TypeError: createHealthDamageInvulnerabilityPackageContract is not a function` before implementation.
+- GREEN contract probe: required package id and required probe id resolved with exit code 0.
+- Focused tests before Oracle P2 fix: 7 files passed, 11 tests passed, 162 skipped, exit code 0.
+- Focused tests after Oracle P2 fix: 3 files passed, 5 tests passed, 54 skipped, exit code 0.
+- Related suite after Oracle P2 fix: 7 files passed, 174 tests passed, exit code 0.
+- Full tests after Oracle P2 fix: `npm test` passed, 128 test files passed, 1462 tests passed, exit code 0.
+- Typecheck: `npm run typecheck` passed for root, `@ai-game-maker/maker-api`, and `@ai-game-maker/maker-workbench`, exit code 0.
+- Whitespace: `git diff --check` passed with exit code 0.
 - Support probe: target runtime support remains `blocked_incomplete_target_profile`; `observedCompleteSupportedCount=9`, `requiredCapabilityCount=59`, `staticCompleteSupportedCount=0`, blocker `target_profile_runtime_support_incomplete:9/59`; `health.damage_invulnerability.v1` is runtime verified with verified required probe `health.damage_invulnerability.v1.window.browser_qa.v1`.
+
+Validation receipts:
+
+- command: `npx tsx --eval "... createHealthDamageInvulnerabilityPackageContract ..."`
+  exitCode: 0
+  result: GREEN contract probe resolved package id `health.damage_invulnerability.v1` and required probe `health.damage_invulnerability.v1.window.browser_qa.v1`.
+- command: `npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/workspace/generation-pipeline.service.test.ts -t "damage invulnerability|runtime-observed support|rewrites side-scrolling runtime scene binding report|routes supported side-scrolling"`
+  exitCode: 0
+  result: focused tests after Oracle P2 fix passed, 3 files passed, 5 tests passed, 54 skipped.
+- command: `npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/generation-pipeline.service.test.ts`
+  exitCode: 0
+  result: related suite after Oracle P2 fix passed, 7 files passed, 174 tests passed.
+- command: `npm test`
+  exitCode: 0
+  result: full tests after Oracle P2 fix passed, 128 test files passed, 1462 tests passed.
+- command: `npm run typecheck`
+  exitCode: 0
+  result: typecheck passed for root, `@ai-game-maker/maker-api`, and `@ai-game-maker/maker-workbench`.
+- command: `git diff --check`
+  exitCode: 0
+  result: whitespace/diff check passed.
+
+Unresolved items:
+
+- Stage 4 full package closure remains `NOT_MET`.
+- Stage 5 exact capability lock remains `NOT_ENTERED`.
+- Production default cutover remains inactive.
+- Legacy authoritative path has not exited.
+
+State transition:
+
+```text
+planned -> landed -> verified -> oracle_blocked_p2 -> fixed -> verified -> oracle_passed -> checkpoint_committed
+```
 
 ### Implementation Oracle Review Round 1
 
@@ -2224,3 +2278,29 @@ Next: checkpoint commit for this implementation only
 ```
 
 Stop marker: Stage 4 `health.damage_invulnerability.v1` package-owned QA slice implementation passed Oracle and is awaiting checkpoint commit. Do not enter Stage 5 and do not claim complete package closure.
+
+### Checkpoint Commit
+
+Checkpoint commit `d8225bf1` is complete for this implementation slice.
+
+```text
+Stage 4 Health Damage Invulnerability Package-Owned QA Slice Audit: ORACLE_PASSED
+Stage 4 Health Damage Invulnerability Package-Owned QA Slice Implementation: CHECKPOINT_COMMITTED
+Stage 4 Exit gate: NOT_MET
+Next: post-checkpoint guardrail solidification requested by user
+```
+
+Stop marker: Stage 4 `health.damage_invulnerability.v1` package-owned QA slice checkpoint commit `d8225bf1` is complete. Do not enter Stage 5 and do not claim complete package closure.
+
+## Stage 4 Improvement Log — Evidence And Closure Guardrails
+
+This log records durable process improvements discovered during the `combat.airborne_fire.v1` and `health.damage_invulnerability.v1` slices.
+
+1. True evidence and wait conditions: production QA must not pass only because combat smoke completed. It must explicitly wait for and capture required evidence such as `health.damage_invulnerability.blocked`; a completed flow with missing required event remains evidence-insufficient. This prevents false passes that lack real runtime evidence.
+2. Delayed required evidence: required events that arrive inside the allowed wait window must be captured, not treated as missing because the first smoke condition completed early. This prevents timing-sensitive false failures.
+3. Probe order determinism: missing probe/blocker order is treated as an interface contract when emitted by the canonical QA plan or expectation helper. Tests now derive expected order from helpers, and non-contract order should be normalized before comparison. This prevents false failures caused only by array order drift.
+4. Landing confirmation before continuation: after interruption, compaction, or Oracle feedback, the next implementation step must inspect target files and diff to confirm key fields, probes, and tests actually landed. Do not rely on prior conversation or plan text.
+5. Closure Implementation sections: each implementation closure must be appended as an independent section, preserving audit history. The section must include status, real paths, evidence/probe chain, validation commands with exit codes, QA/test results, unresolved items, exit assessment, and state transition.
+6. Automatic closure check: a closure cannot be marked closed unless claimed paths exist, claimed modifications are visible in diff or commit history, required evidence is captured, and must-pass validation succeeds. Otherwise record `INCOMPLETE` or `BLOCKED`.
+
+Repository guardrail added: `tests/contracts/step37-closure-implementation-trace.test.ts` verifies the current closure section has traceable paths, validation evidence, unresolved items, exit assessment, and state transition.

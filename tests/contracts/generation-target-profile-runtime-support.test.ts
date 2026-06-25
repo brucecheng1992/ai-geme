@@ -204,18 +204,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       observedCompleteSupportedCount: 0,
       targetProfileCompleteSupported: false,
       observedCapabilityIds: [],
-      blockers: [
-        `capability_qa_report_missing_required_probe:${CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID}`,
-        `capability_qa_report_missing_required_probe:${COLLISION_PLATFORM_REQUIRED_PROBE_ID}`,
-        `capability_qa_report_missing_required_probe:${COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID}`,
-        `capability_qa_report_missing_required_probe:${COMBAT_PROJECTILE_REQUIRED_PROBE_ID}`,
-        `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
-        `capability_qa_report_missing_required_probe:${HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID}`,
-        `capability_qa_report_missing_required_probe:${MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID}`,
-        `capability_qa_report_missing_required_probe:${SPAWN_STATIC_REQUIRED_PROBE_ID}`,
-        `capability_qa_report_missing_required_probe:${DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:0/59'
-      ]
+      blockers: [...expectedMissingRequiredProbeBlockers(), 'target_profile_runtime_support_incomplete:0/59']
     });
     expect(capability).toMatchObject({
       runtimeVerified: false,
@@ -286,44 +275,24 @@ describe('Step 37 target profile runtime support overlay', () => {
       observedEvidenceDimensions: { qa_observed: false }
     });
   });
+
+  it('keeps missing required probe blockers in canonical QA plan order', () => {
+    expect(expectedMissingRequiredProbeBlockers()).toEqual([
+      `capability_qa_report_missing_required_probe:${CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${COLLISION_PLATFORM_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${COMBAT_PROJECTILE_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${SPAWN_STATIC_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID}`
+    ]);
+  });
 });
 
 function buildDefaultWeaponQaReport(eventTypes: readonly string[]) {
-  const packages = [
-    createCameraSideFollowPackageContract(),
-    createCollisionPlatformPackageContract(),
-    createCombatAirborneFirePackageContract(),
-    createDefaultStraightSingleWeaponPackageContract(),
-    createCombatProjectilePackageContract(),
-    createHealthDamageInvulnerabilityPackageContract(),
-    createMovementRunJumpPackageContract(),
-    createSpawnStaticPackageContract(),
-    createHealthPlayerHealthPointsPackageContract()
-  ];
-  const lockReport = resolveGameplayCapabilityGraph({
-    requestedCapabilities: [
-      cameraCapabilityId,
-      collisionCapabilityId,
-      airborneFireCapabilityId,
-      defaultWeaponCapabilityId,
-      projectileCapabilityId,
-      damageInvulnerabilityCapabilityId,
-      movementCapabilityId,
-      spawnStaticCapabilityId,
-      healthCapabilityId
-    ],
-    packages,
-    runtimeFamily: 'phaser_2d_action_arcade.v1'
-  });
-  if (lockReport.lock === undefined) {
-    throw new Error(`expected default weapon lock, got diagnostics ${JSON.stringify(lockReport.diagnostics)}`);
-  }
-
-  const plan = buildCapabilityRuntimeQaPlan({
-    profileId: 'side_scrolling_run_and_gun.v1',
-    capabilityLock: lockReport.lock,
-    packages
-  });
+  const { plan } = buildDefaultWeaponQaPlan();
   const observed = [
     ...(eventTypes.includes('camera.side_follow.active')
       ? [
@@ -455,4 +424,47 @@ function buildDefaultWeaponQaReport(eventTypes: readonly string[]) {
       }
     })
   });
+}
+
+function expectedMissingRequiredProbeBlockers(): string[] {
+  return buildDefaultWeaponQaPlan().plan.requiredProbes.map((probe) => `capability_qa_report_missing_required_probe:${probe.id}`);
+}
+
+function buildDefaultWeaponQaPlan() {
+  const packages = [
+    createCameraSideFollowPackageContract(),
+    createCollisionPlatformPackageContract(),
+    createCombatAirborneFirePackageContract(),
+    createDefaultStraightSingleWeaponPackageContract(),
+    createCombatProjectilePackageContract(),
+    createHealthDamageInvulnerabilityPackageContract(),
+    createMovementRunJumpPackageContract(),
+    createSpawnStaticPackageContract(),
+    createHealthPlayerHealthPointsPackageContract()
+  ];
+  const lockReport = resolveGameplayCapabilityGraph({
+    requestedCapabilities: [
+      cameraCapabilityId,
+      collisionCapabilityId,
+      airborneFireCapabilityId,
+      defaultWeaponCapabilityId,
+      projectileCapabilityId,
+      damageInvulnerabilityCapabilityId,
+      movementCapabilityId,
+      spawnStaticCapabilityId,
+      healthCapabilityId
+    ],
+    packages,
+    runtimeFamily: 'phaser_2d_action_arcade.v1'
+  });
+  if (lockReport.lock === undefined) {
+    throw new Error(`expected default weapon lock, got diagnostics ${JSON.stringify(lockReport.diagnostics)}`);
+  }
+
+  const plan = buildCapabilityRuntimeQaPlan({
+    profileId: 'side_scrolling_run_and_gun.v1',
+    capabilityLock: lockReport.lock,
+    packages
+  });
+  return { packages, plan };
 }
