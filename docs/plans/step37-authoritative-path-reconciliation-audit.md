@@ -1,7 +1,7 @@
 # Step 37 Authoritative Path Reconciliation Audit
 
 > - 文档定位：Step 37 authoritative production chain 的逐段只读审计状态文档。
-> - 当前状态：Stage 2 Profile Resolution audit Oracle PASS; no Stage 2 implementation entered
+> - 当前状态：Stage 2 Profile Resolution closure Oracle PASS; checkpoint commit pending
 > - 任务契约：`/Users/dahufa/Downloads/step37-authoritative-path-reconciliation-prompt.md`
 > - 当前分片：无
 > - 更新日期：2026-06-25
@@ -46,26 +46,27 @@
 
 ## 4. 当前状态
 
-- 状态：Stage 2 Profile Resolution audit Oracle PASS; no Stage 2 implementation entered.
-- 当前步骤：Stage 2 只读审查已完成并通过 Oracle 文档复审；停止等待用户显式授权。
+- 状态：Stage 2 Profile Resolution closure Oracle PASS; checkpoint commit pending.
+- 当前步骤：Stage 2 closure implementation 已完成 no-code 本地验证和 Oracle 复审；等待 checkpoint commit 后进入 Stage 3 Capability Requirements 审查。
 - 最近完成：Stage 2 Profile Resolution audit；profile 由当前 run 的 canonical GameBrief genre 重算 readiness/resolution，并被 `active_profile_lock`、`authority_bundle`、Raw DSL、compiler、runtime 和 QA 消费。
-- 最近验证：checkpoint commit `b9a0c0cb` 已创建；Stage 2 focused suite PASS；`git diff --check` PASS；Markdown trailing whitespace scan PASS.
-- 最近 Oracle 结论：Stage 1 final Oracle PASS；Stage 2 Profile Resolution 文档复审 Oracle PASS / no P0/P1/P2。
+- 最近验证：Stage 2 closure focused suite PASS；full `npm test` PASS；full `npm run typecheck` PASS；`git diff --check` PASS；Markdown trailing whitespace scan PASS.
+- 最近 Oracle 结论：Stage 1 final Oracle PASS；Stage 2 Profile Resolution audit Oracle PASS；Stage 2 closure Oracle PASS / no P0/P1/P2/P3。
 - 未处理风险：Stage 3 Capability Requirements 尚未审计；post-Stage-1 shadow/canary parity/rollback 仍未实施。`QaReport` status consistency 作为非阻塞债务登记，不重新打开 Stage 1。
-- 工作区核对：Stage 1 Round 4 已提交为 checkpoint commit `b9a0c0cb`；当前仅允许本状态文档承载 Stage 2 审查记录。
+- 工作区核对：Stage 2 audit 已提交为 checkpoint commit `f2a5c195`；当前仅允许本状态文档承载 Stage 2 closure 状态记录。
 
 ## 5. 下一步
 
-Stage 2 Profile Resolution audit 已完成并通过 Oracle 文档复审：
+Stage 2 Profile Resolution closure implementation 当前等待 checkpoint commit：
 
 ```text
 Stage 1: AUTHORITATIVE_AND_CONNECTED
 Exit gate: MET
 Stage 2 Audit: PROFILE_RESOLUTION_RECORDED
-Stage 2 Implementation: NOT_ENTERED
+Stage 2 Implementation: ORACLE_PASSED_AWAITING_COMMIT
+Stage 2 Exit gate: MET
 ```
 
-下一步停止等待用户显式授权 Stage 3 Capability Requirements 审计。不要直接实施 Stage 2，也不要把 post-Stage-1 shadow/canary parity/rollback 当成当前 production default。
+下一步完成 Stage 2 checkpoint commit；随后进入 Stage 3 Capability Requirements 审查。不要把 Stage 2 closure 扩展为 Stage 3 capability package、shadow/canary parity、rollback promotion 或 production default cutover。
 
 ## 6. 恢复检查清单
 
@@ -659,6 +660,90 @@ Oracle confirmed:
 - Profile Resolution evidence is sufficient for `PROFILE_RESOLUTION_AUTHORITATIVE_FOR_ACTIVE_PROFILE_CHAIN`.
 - `QaReport` status consistency is correctly registered as non-blocking debt and does not reopen Stage 1.
 - Next step is gated on explicit user authorization for Stage 3 Capability Requirements audit.
+
+## Stage 2 Closure Implementation — Profile Resolution Exit Gate
+
+### Scope Lock
+
+- scope: Stage 2 only. This closure does not reopen Stage 1 and does not enter Stage 3 Capability Requirements.
+- implementation type: no-code closure implementation.
+- baseline: Stage 2 audit checkpoint commit `f2a5c195` (`docs: record stage 2 profile resolution audit`).
+- starting conclusion: `Stage 2 Audit: PROFILE_RESOLUTION_RECORDED`; `Stage 2 Implementation: NOT_ENTERED`.
+- non-goals: no producer contract change, no source/test/runtime/QA/capability-evidence edit, no shadow/canary parity, no rollback promotion, no complete package cutover, no production default cutover.
+
+### Minimal Closure Requirements
+
+1. Convert the Stage 2 audit verdict into an implementation closure only if no additional code path is needed to make profile resolution authoritative.
+2. Preserve the Stage 2 evidence boundary: profile resolution is closed only for canonical GameBrief-derived active-profile authority consumption through the current production chain.
+3. Keep Stage 3 unopened: capability requirement identity, package completeness, exact lock, composed schema, canonical DSL, runtime loader, real runtime evidence, and capability-owned QA remain future stages.
+4. Re-run Stage 2 focused verification plus full tests and typecheck before claiming the Stage 2 exit gate.
+5. Re-submit the no-code closure diff and verification evidence to Oracle before checkpoint commit.
+
+### Implemented Scope
+
+- No production code, test, schema, runtime, QA, support-summary, or capability evidence files changed.
+- The current-state cursor now records Stage 2 closure implementation as in progress instead of treating the Stage 2 audit as a permanent stop marker.
+- The closure state continues to use `authority_bundle.json` and embedded `active_profile_lock` as the profile-resolution authority.
+- `QaReport` status consistency remains a P3 follow-up and does not reopen Stage 1 or block Stage 2.
+
+### Compatibility & Cutover
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | None. This closure records no-code Stage 2 implementation status; it does not change a contract, field, artifact, runtime behavior, or QA evidence producer. |
+| Consumer list | Existing Stage 2 consumers remain Raw DSL provider, prompt context, compiler, runtime templates, Playwright QA, receipt, artifact index, acceptance report, and Workbench evidence. |
+| Compatibility type | `LOSSLESS_COMPATIBLE`: no producer or consumer shape changed. |
+| Authority | `authority_bundle.json` remains the Stage 2 authority; embedded `active_profile_lock` remains the resolved profile identity and behavior-bearing requirement authority. |
+| Legacy strategy | Legacy authoritative path remains exited for successful active profiles; no legacy fallback or `legacy_runtime_supported` production default is reintroduced. |
+| Failure policy | Existing fail-closed policies remain unchanged for unresolved profile, unsupported profile, malformed bundle/lock refs, missing runtime authority, and mismatched QA runtime authority. |
+| Evidence | Stage 2 focused suite, full `npm test`, full `npm run typecheck`, `git diff --check`, and Oracle closure review must pass before checkpoint commit. |
+| Rollback | Reverting this closure record returns Stage 2 to audit-only `NOT_ENTERED` documentation without changing source artifacts or runtime behavior. |
+
+Compatibility disposition:
+
+```ts
+const STAGE_2_PROFILE_RESOLUTION_CLOSURE_DISPOSITION = "LOSSLESS_COMPATIBLE";
+```
+
+### Exit Assessment
+
+```text
+Stage 1: AUTHORITATIVE_AND_CONNECTED
+Exit gate: MET
+Stage 2 Audit: PROFILE_RESOLUTION_RECORDED
+Stage 2 Implementation: ORACLE_PASSED_AWAITING_COMMIT
+Stage 2 Exit gate: MET
+Next: Stage 3 Capability Requirements audit only after Stage 2 checkpoint commit
+```
+
+### Validation
+
+```text
+npx vitest run tests/contracts/generation-capability-readiness.test.ts tests/contracts/generation-capability-resolution.test.ts tests/workspace/generation-pipeline.service.test.ts tests/workspace/compiler-service.test.ts tests/workspace/playwright-qa-runner.test.ts
+# PASS, 5 files / 88 tests
+
+npm test
+# PASS, contracts 93 files / 1036 tests; workspace 34 files / 398 tests
+
+npm run typecheck
+# PASS
+
+git diff --check
+# PASS
+
+rg -n "[ \t]+$" docs/plans/step37-authoritative-path-reconciliation-audit.md
+# PASS, no matches
+```
+
+### Oracle Review
+
+- status: PASS.
+- agent: `019efe8e-d261-78a0-8c76-b66b60975c7f`.
+- findings: P0/P1/P2/P3 none.
+- conclusion: Stage 2 Profile Resolution no-code closure may pass Oracle gate and proceed to checkpoint commit.
+- scope guard: Oracle explicitly did not approve Stage 3 capability closure, runtime cutover, shadow/canary parity, rollback promotion, or production default approval.
+
+Stop marker: Stage 2 closure implementation passed local validation and Oracle. Do not proceed to Stage 3 until checkpoint commit completes.
 
 ## Stage 1 Closure Implementation — Round 4 Complete Active Profile Consumption
 
