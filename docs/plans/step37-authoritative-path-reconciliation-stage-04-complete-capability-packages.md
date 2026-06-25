@@ -2780,7 +2780,8 @@ Repository guardrail added: `tests/contracts/step37-closure-implementation-trace
 
 ## Stage 4 Closure Implementation — Structured Closure Field Guardrail
 
-- implementation status: `ORACLE_PASSED_AWAITING_COMMIT`.
+- implementation status: `CHECKPOINT_COMMITTED`.
+- implementation checkpoint: `3874d742` (`test(game-dsl): require structured closure fields`).
 - local_validation: `passed`.
 - oracle_status: `passed`.
 - scope: process/evidence guardrail only; no runtime, schema, compiler, QA runner behavior, Stage 5 exact lock, production default cutover, legacy authoritative path exit, or capability closure was introduced.
@@ -2862,15 +2863,123 @@ Unresolved items:
 State transition:
 
 ```text
+planned -> landed -> verified -> oracle_blocked_p2 -> fixed -> verified -> oracle_passed -> checkpoint_committed
+```
+
+### Exit Assessment
+
+```text
+Stage 4 Structured Closure Field Guardrail: CHECKPOINT_COMMITTED
+Stage 4 Exit gate: NOT_MET
+Next: transition error envelope guardrail step
+```
+
+Stop marker: Stage 4 structured closure field guardrail checkpoint commit `3874d742` is complete. Do not enter Stage 5 or claim complete package closure; transition error envelope feedback must start only as an independent atomic step after this checkpoint.
+
+## Stage 4 Improvement Log — Transition Error Envelope Guardrail
+
+This log records the diagnostic-shape improvement discovered after the structured closure field guardrail.
+
+1. Shared envelope: different validation failures should share a stable structured envelope, including `section`, `field`, `actual`, and `allowed`.
+2. Type-specific context: a unified envelope must not discard context unique to the error type. For state transitions, `actual` must include the current and target states as `A -> B`.
+3. Allowed next states: transition errors must report the canonical next states allowed from the current state, not every possible state or every possible transition.
+4. Distinct negative paths: unknown state, skip transition, and reverse transition must have independent negative tests.
+5. Positive path: legal transitions must keep a positive test so the validator does not over-block.
+6. Canonical order: allowed next states are emitted from the validator's canonical state map in stable order.
+7. Fail closed: illegal transitions produce validation failures, not warnings.
+8. Scope discipline: this step only unifies the error contract and preserves existing state-machine semantics.
+
+Repository guardrail added: `tests/contracts/step37-closure-implementation-trace.test.ts` verifies transition-specific `actual`/`allowed` semantics, unknown-state handling, skip/reverse failures, legal transition acceptance, and stable structured error fields.
+
+## Stage 4 Closure Implementation — Transition Error Envelope Guardrail
+
+- implementation status: `ORACLE_PASSED_AWAITING_COMMIT`.
+- local_validation: `passed`.
+- oracle_status: `passed`.
+- scope: process/evidence guardrail only; no runtime, schema, compiler, QA runner behavior, Stage 5 exact lock, production default cutover, legacy authoritative path exit, capability closure, or state-machine expansion was introduced.
+- baseline: Stage 4 structured closure field guardrail checkpoint commit `3874d742` (`test(game-dsl): require structured closure fields`).
+
+Actual modified paths:
+
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`
+- `tests/contracts/step37-closure-implementation-trace.test.ts`
+- `/Users/dahufa/.agents/skills/code-change-discipline/SKILL.md`
+
+Evidence/guardrail chain:
+
+1. Skill rule: shared error envelopes must preserve error-type-specific context.
+2. Skill rule: state transition `actual` is `A -> B`, and `allowed` is the canonical next-state set for `A`.
+3. Contract test: unknown states, skip transitions, reverse transitions, and legal transitions are verified independently.
+4. Contract validator: illegal transitions now fail with `field="state_transition"`, transition-specific `actual`, and canonical next-state `allowed`.
+
+Validation receipts:
+
+```text
+npx vitest run tests/contracts/step37-closure-implementation-trace.test.ts
+exitCode=0
+result=PASS: 23 tests passed
+
+npm test
+exitCode=0
+result=PASS: contracts 95 files / 1084 tests; workspace 34 files / 408 tests
+
+npm run typecheck
+exitCode=0
+result=PASS
+
+git diff --check
+exitCode=0
+result=PASS
+```
+
+### Oracle Review
+
+- oracle_agent_id: `019effae-8aa2-7c22-b5ba-8c4b69f21d20`.
+- oracle_submission_id_round_1: `019f0037-d85c-7ac2-bb9e-42d92688d284`.
+- result_round_1: `BLOCKED`.
+- blocking finding: `P2` — transition guardrail validation receipts recorded the pre-closure values `22 tests passed` and `contracts 95 files / 1083 tests`, while the actual post-change results were `23 tests passed` and `contracts 95 files / 1084 tests`.
+
+Remediation:
+
+- The transition-envelope closure validation receipts now record `23 tests passed` and `contracts 95 files / 1084 tests; workspace 34 files / 408 tests`.
+- Focused contract, full tests, typecheck, and diff check were rerun after the receipt correction.
+
+Re-read review:
+
+- oracle_submission_id_round_2: `019f003b-ee5e-7580-b8ab-f9cd2a42d072`.
+- result_round_2: `BLOCKED` on a stale receipt read; current local `rg` and `nl` checks showed no remaining `22 tests` or `1083 tests` receipt in this closure section.
+- oracle_submission_id_round_3: `019f003d-5997-7e10-9def-c26c2dd97433`.
+- result_round_3: `PASS / no P0/P1/P2 blocking findings`.
+- checkpoint decision: allowed for this Stage 4 transition error envelope guardrail checkpoint only.
+
+Oracle confirmed:
+
+- receipt mismatch is fixed in the current working tree;
+- transition envelope semantics still satisfy `actual=A -> B` and current-state canonical next-state `allowed`;
+- unknown state, skip transition, reverse transition, and legal transition cases are independently covered;
+- illegal transitions are validation failures, not warnings;
+- repo diff remains limited to this Stage 4 plan document and `tests/contracts/step37-closure-implementation-trace.test.ts`;
+- no runtime, schema, compiler, QA runner, product behavior, Stage 5, production default cutover, legacy authoritative exit, or full Stage 4 closure was introduced.
+
+Unresolved items:
+
+- Stage 4 full package closure remains `NOT_MET`.
+- Stage 5 exact lock remains `NOT_ENTERED`.
+- Production default cutover remains inactive.
+- Legacy authoritative path has not exited.
+
+State transition:
+
+```text
 planned -> landed -> verified -> oracle_blocked_p2 -> fixed -> verified -> oracle_passed
 ```
 
 ### Exit Assessment
 
 ```text
-Stage 4 Structured Closure Field Guardrail: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 Transition Error Envelope Guardrail: ORACLE_PASSED_AWAITING_COMMIT
 Stage 4 Exit gate: NOT_MET
 Next: checkpoint commit for this guardrail checkpoint only
 ```
 
-Stop marker: Stage 4 structured closure field guardrail passed Oracle and is awaiting checkpoint commit. Do not enter the next Stage 4 audit, enter Stage 5, or claim complete package closure until checkpoint commit completes.
+Stop marker: Stage 4 transition error envelope guardrail passed Oracle and is awaiting checkpoint commit. Do not enter the next Stage 4 audit, enter Stage 5, or claim complete package closure until checkpoint commit completes.

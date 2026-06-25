@@ -22,6 +22,8 @@ const runtimeStateAndClosureStatusClosureTitle = '## Stage 4 Closure Implementat
 const runtimeStateAndClosureStatusCheckpointCommit = '8075ca7c';
 const structuredClosureFieldGuardrailTitle = '## Stage 4 Improvement Log — Structured Closure Field Guardrail';
 const structuredClosureFieldClosureTitle = '## Stage 4 Closure Implementation — Structured Closure Field Guardrail';
+const transitionErrorEnvelopeGuardrailTitle = '## Stage 4 Improvement Log — Transition Error Envelope Guardrail';
+const transitionErrorEnvelopeClosureTitle = '## Stage 4 Closure Implementation — Transition Error Envelope Guardrail';
 
 const claimedAuditBoundaryIdentifierPaths = [
   stage4PlanPath,
@@ -404,8 +406,109 @@ describe('Step37 closure implementation traceability', () => {
         '## Stage 4 Closure Implementation — Example'
       )
     ).toEqual([
-      'ILLEGAL_STATE_TRANSITION section="## Stage 4 Closure Implementation — Example" field="state_transition" actual="landed->closed" allowed="planned->landed|landed->verified|verified->oracle_pending|oracle_pending->oracle_passed|verified->oracle_passed|verified->oracle_blocked_p2|oracle_blocked_p2->fixed|fixed->verified|oracle_passed->awaiting_checkpoint|awaiting_checkpoint->checkpoint_committed|oracle_passed->checkpoint_committed|oracle_passed->closed"'
+      'ILLEGAL_STATE_TRANSITION section="## Stage 4 Closure Implementation — Example" field="state_transition" actual="landed -> closed" allowed="verified"'
     ]);
+  });
+
+  it('keeps transition validation specific to unknown, skip, reverse and legal paths', () => {
+    expect(
+      validateStructuredClosureSection(
+        [
+          '## Stage 4 Closure Implementation — Example',
+          '- implementation status: `LOCALLY_VALIDATED`.',
+          '- local_validation: `passed`.',
+          '- oracle_status: `not_submitted`.',
+          '',
+          'State transition:',
+          '',
+          '```text',
+          'planned -> unknown_state',
+          '```'
+        ].join('\n'),
+        '## Stage 4 Closure Implementation — Example'
+      )
+    ).toEqual([
+      'UNKNOWN_STATE section="## Stage 4 Closure Implementation — Example" field="state_transition" actual="unknown_state" allowed="planned|landed|verified|oracle_pending|oracle_blocked_p2|fixed|oracle_passed|awaiting_checkpoint|checkpoint_committed|closed"'
+    ]);
+
+    expect(
+      validateStructuredClosureSection(
+        [
+          '## Stage 4 Closure Implementation — Example',
+          '- implementation status: `LOCALLY_VALIDATED`.',
+          '- local_validation: `passed`.',
+          '- oracle_status: `not_submitted`.',
+          '',
+          'State transition:',
+          '',
+          '```text',
+          'planned -> verified',
+          '```'
+        ].join('\n'),
+        '## Stage 4 Closure Implementation — Example'
+      )
+    ).toEqual([
+      'ILLEGAL_STATE_TRANSITION section="## Stage 4 Closure Implementation — Example" field="state_transition" actual="planned -> verified" allowed="landed"'
+    ]);
+
+    expect(
+      validateStructuredClosureSection(
+        [
+          '## Stage 4 Closure Implementation — Example',
+          '- implementation status: `LOCALLY_VALIDATED`.',
+          '- local_validation: `passed`.',
+          '- oracle_status: `not_submitted`.',
+          '',
+          'State transition:',
+          '',
+          '```text',
+          'planned -> landed -> verified -> landed',
+          '```'
+        ].join('\n'),
+        '## Stage 4 Closure Implementation — Example'
+      )
+    ).toEqual([
+      'ILLEGAL_STATE_TRANSITION section="## Stage 4 Closure Implementation — Example" field="state_transition" actual="verified -> landed" allowed="oracle_pending|oracle_blocked_p2|oracle_passed"'
+    ]);
+
+    expect(
+      validateStructuredClosureSection(
+        [
+          '## Stage 4 Closure Implementation — Example',
+          '- implementation status: `CHECKPOINT_COMMITTED`.',
+          '- local_validation: `passed`.',
+          '- oracle_status: `passed`.',
+          '',
+          'State transition:',
+          '',
+          '```text',
+          'planned -> landed -> verified -> oracle_pending -> oracle_passed -> awaiting_checkpoint -> checkpoint_committed',
+          '```'
+        ].join('\n'),
+        '## Stage 4 Closure Implementation — Example'
+      )
+    ).toEqual([]);
+  });
+
+  it('records transition error envelope guardrails without changing runtime scope', async () => {
+    const document = await readFile(stage4PlanPath, 'utf8');
+    const section = extractSection(document, transitionErrorEnvelopeGuardrailTitle);
+    const closureSection = extractSection(document, transitionErrorEnvelopeClosureTitle);
+
+    expect(section).toContain('Shared envelope');
+    expect(section).toContain('Type-specific context');
+    expect(section).toContain('`actual` must include the current and target states as `A -> B`');
+    expect(section).toContain('Allowed next states');
+    expect(section).toContain('not every possible state or every possible transition');
+    expect(section).toContain('unknown state, skip transition, and reverse transition');
+    expect(section).toContain('legal transitions');
+    expect(section).toContain('canonical state map');
+    expect(section).toContain('validation failures, not warnings');
+    expect(closureSection).toContain('no runtime, schema, compiler, QA runner behavior');
+    expect(closureSection).toContain('state-machine expansion');
+    expect(closureSection).toContain('actual` is `A -> B`');
+    expect(closureSection).toContain('canonical next-state `allowed`');
+    expect(validateStructuredClosureSection(closureSection, transitionErrorEnvelopeClosureTitle)).toEqual([]);
   });
 
   it('does not allow global field matches to satisfy a different closure section', () => {
@@ -1212,12 +1315,7 @@ function validateStructuredClosureSection(section: string, sectionTitle: string)
     );
   }
 
-  const invalidTransition = validateOracleGatedStateTransition(parseStateTransition(section))[0];
-  if (invalidTransition !== undefined) {
-    issues.push(
-      `ILLEGAL_STATE_TRANSITION section="${sectionTitle}" field="state_transition" actual="${invalidTransition}" allowed="${oracleGatedAllowedTransitions.join('|')}"`
-    );
-  }
+  issues.push(...validateOracleGatedStateTransition(parseStateTransition(section), sectionTitle));
 
   return issues;
 }
@@ -1284,15 +1382,29 @@ function structuredFieldIssue(input: {
   return `${input.kind} section="${input.sectionTitle}" field="${input.fieldName}" actual="${input.actual}" allowed="${input.allowedValues.join('|')}"`;
 }
 
-function validateOracleGatedStateTransition(states: readonly string[]): string[] {
-  const invalidEdges: string[] = [];
+function validateOracleGatedStateTransition(states: readonly string[], sectionTitle: string): string[] {
+  const issues: string[] = [];
   for (let index = 0; index < states.length - 1; index += 1) {
-    const edge = `${states[index]}->${states[index + 1]}`;
-    if (!oracleGatedAllowedTransitionSet.has(edge)) {
-      invalidEdges.push(edge);
+    const currentState = states[index] ?? '';
+    const nextState = states[index + 1] ?? '';
+    const allowedNextStates = oracleGatedAllowedNextStates[currentState];
+    if (allowedNextStates === undefined) {
+      issues.push(
+        `UNKNOWN_STATE section="${sectionTitle}" field="state_transition" actual="${currentState}" allowed="${oracleGatedKnownStates.join('|')}"`
+      );
+      continue;
+    }
+    if (!oracleGatedKnownStateSet.has(nextState)) {
+      issues.push(`UNKNOWN_STATE section="${sectionTitle}" field="state_transition" actual="${nextState}" allowed="${oracleGatedKnownStates.join('|')}"`);
+      continue;
+    }
+    if (!allowedNextStates.includes(nextState)) {
+      issues.push(
+        `ILLEGAL_STATE_TRANSITION section="${sectionTitle}" field="state_transition" actual="${currentState} -> ${nextState}" allowed="${allowedNextStates.join('|')}"`
+      );
     }
   }
-  return invalidEdges;
+  return issues;
 }
 
 function escapeRegExp(value: string): string {
@@ -1311,21 +1423,20 @@ const structuredImplementationStatuses = [
 ] as const;
 const structuredLocalValidationStatuses = ['passed', 'failed', 'not_run'] as const;
 const structuredOracleStatuses = ['not_submitted', 'pending', 'passed', 'changes_required', 'blocked'] as const;
-const oracleGatedAllowedTransitions = [
-  'planned->landed',
-  'landed->verified',
-  'verified->oracle_pending',
-  'oracle_pending->oracle_passed',
-  'verified->oracle_passed',
-  'verified->oracle_blocked_p2',
-  'oracle_blocked_p2->fixed',
-  'fixed->verified',
-  'oracle_passed->awaiting_checkpoint',
-  'awaiting_checkpoint->checkpoint_committed',
-  'oracle_passed->checkpoint_committed',
-  'oracle_passed->closed'
-] as const;
-const oracleGatedAllowedTransitionSet = new Set<string>(oracleGatedAllowedTransitions);
+const oracleGatedAllowedNextStates: Record<string, readonly string[]> = {
+  planned: ['landed'],
+  landed: ['verified'],
+  verified: ['oracle_pending', 'oracle_blocked_p2', 'oracle_passed'],
+  oracle_pending: ['oracle_passed'],
+  oracle_blocked_p2: ['fixed'],
+  fixed: ['verified'],
+  oracle_passed: ['awaiting_checkpoint', 'checkpoint_committed', 'closed'],
+  awaiting_checkpoint: ['checkpoint_committed'],
+  checkpoint_committed: [],
+  closed: []
+};
+const oracleGatedKnownStates = Object.keys(oracleGatedAllowedNextStates);
+const oracleGatedKnownStateSet = new Set<string>(oracleGatedKnownStates);
 
 function timeoutObservation(command: string, status: TimeoutObservation['status'], timeoutMs: number, durationMs: number): TimeoutObservation {
   return { command, status, timeoutMs, durationMs, environment: 'local-vitest-node' };
