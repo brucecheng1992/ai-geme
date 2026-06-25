@@ -3203,12 +3203,22 @@ Stop marker: Stage 4 verification freshness and immutable review guardrail has a
 ## Stage 4 Audit — Pickup Collectible Package-Owned QA Slice
 
 - checkpoint_id: `pickup_collectible_package_owned_qa_slice_audit`.
-- record_type: `audit_candidate`.
-- implementation_status: `complete`.
+- record_type: `audit_receipt`.
+- implementation_status: `receipt`.
 - local_validation_status: `passed`.
 - candidate_status: `ready_for_commit`.
-- oracle_status: `not_submitted`.
-- closure_status: `not_closed`.
+- oracle_status: `approved`.
+- closure_status: `closed`.
+- candidate_commit_sha: `67c41f2038bcb6ce21c1b04be78b47ea7e44c007`.
+- reviewed_commit_sha: `67c41f2038bcb6ce21c1b04be78b47ea7e44c007`.
+- reviewed_skill_revision: `d3c166ab08562696e099937e1036c51c81c9415cf8e0aef43a906c7acfb51aca`.
+- skill_revision_type: `sha256_bundle`.
+- oracle_agent_id: `019effae-8aa2-7c22-b5ba-8c4b69f21d20`.
+- oracle_agent_id_source: `existing Oracle agent handle`.
+- oracle_submission_id: `019f0095-b444-7cd3-afb6-e8ee7415e92c`.
+- oracle_submission_id_source: `multi_agent_v1.send_input response`.
+- oracle_result: `PASS / no P0/P1/P2 blocking findings`.
+- oracle_p3: `implementation_status complete was mildly ambiguous in the candidate audit section; receipt metadata now uses implementation_status receipt`.
 - baseline: Stage 4 verification freshness immutable review receipt commit `cd4f6a81` (`docs(game-dsl): record immutable review freshness receipt`).
 - scope: Stage 4 audit only; no runtime, schema, compiler, QA runner behavior, Stage 5 exact lock, production default cutover, legacy authoritative path exit, or capability closure is introduced.
 
@@ -3279,7 +3289,7 @@ result=PASS: SKILL.md 35331 bytes, sha256 ac0f7e7d033bf7b44e3e4fe13cc151ca2d240b
 ```
 
 ```text
-Stage 4 Pickup Collectible Package-Owned QA Slice Audit: LOCALLY_VALIDATED
+Stage 4 Pickup Collectible Package-Owned QA Slice Audit: CLOSED
 Stage 4 Pickup Collectible Package-Owned QA Slice Implementation: NOT_ENTERED
 Stage 4 Exit gate: NOT_MET
 Stage 5 Exact Lock: NOT_ENTERED
@@ -3287,7 +3297,7 @@ Production Default Cutover: NOT_ACTIVE
 legacy authoritative path: NOT_EXITED
 global_exit_conditions_met: false
 loop_status: RUNNING
-Next: candidate checkpoint commit for this audit only
+Next: Stage 4 pickup.collectible package-owned QA slice implementation atomic step
 ```
 
-Stop marker: Stage 4 `pickup.collectible.v1` package-owned QA slice audit is locally validated and ready for a candidate checkpoint commit. Do not implement this slice, do not enter Stage 5, and do not claim complete package closure until this audit candidate is committed, Oracle-reviewed, and closed by a receipt-only checkpoint.
+Stop marker: Stage 4 `pickup.collectible.v1` package-owned QA slice audit is closed by Oracle-approved receipt metadata only. Do not enter Stage 5 or claim complete package closure; the next parent-loop atomic step is the separate `pickup.collectible.v1` implementation slice.
