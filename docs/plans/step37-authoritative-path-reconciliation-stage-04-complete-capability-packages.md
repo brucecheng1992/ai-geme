@@ -4213,3 +4213,117 @@ parent_loop:
 ```
 
 Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4_spawn_enemy_wave_package_owned_qa_implementation` after candidate commit creation, Oracle PASS, and receipt-only metadata update. It does not close Stage 4, Step37, production default cutover, legacy authoritative path exit, Stage 5, or final global closure. Parent Loop Driver must continue with `stage4.pickup_collectible.package_owned_qa_slice.implementation` while global exits remain false and no verified user blocker exists.
+
+## Stage 4 Improvement Log — Telemetry Focused Validation Guardrail
+
+- checkpoint_id: `telemetry_schema_focused_validation_guardrail`.
+- closure_scope: `atomic_step`.
+- implementation_status: `complete`.
+- local_validation_status: `passed`.
+- candidate_status: `ready_for_commit`.
+- oracle_status: `not_submitted`.
+- parent_stage_status: `running`.
+- parent_loop_status: `running`.
+- global_exit_conditions_met: `false`.
+- user_input_required: `false`.
+
+Problem statement:
+
+The focused validation set must be derived from the current diff impact. When the diff changes telemetry event schema, event identity, field shape, requiredness, allowed values, producer schema, or QA/evidence reader field expectations, focused validation must include telemetry schema freeze coverage. A local focused GREEN cannot replace complete related contracts, full tests, typecheck, diff check, final diff scope review, or external Skill freshness checks.
+
+Implementation scope:
+
+- Add a small Step37 focused-validation helper under `packages/game-dsl/src/step37-focused-validation.ts`.
+- Export the helper through `packages/game-dsl/src/index.ts`.
+- Add contract tests in `tests/contracts/step37-focused-validation.test.ts`.
+- Record the concise repo rule in `AGENTS.md`.
+- Record the detailed workflow rule in `/Users/dahufa/.agents/skills/code-change-discipline/SKILL.md`.
+- Do not modify business runtime, Stage 4 package implementation, Stage 5 exact lock, production default cutover, or legacy authoritative path behavior.
+
+Must-pass contract:
+
+- Telemetry schema path changes require `tests/contracts/contract-freeze.test.ts` in the focused set.
+- Event identity/name/schema version/field type/requiredness/enum/producer-reader shape impacts require the same freeze contract even if the changed file is not the schema file.
+- Added optional telemetry fields require an explicit compatibility policy.
+- Object key order is canonicalized for freeze comparisons, but field and type changes remain visible.
+- Focused GREEN without full related contracts, full tests, typecheck, diff check, final diff scope review, and Skill freshness remains insufficient for closure.
+
+Current status:
+
+- Focused contract for the new helper has passed locally.
+- Full related contracts, full tests, typecheck, diff checks, and Skill freshness have passed for this atomic step.
+- Candidate commit, Oracle review, and receipt remain pending for this atomic step.
+- This guardrail does not close Stage 4 or Step37.
+
+Active Skill freshness for this guardrail:
+
+```text
+skill_bundle_file_byte_length=43467
+skill_bundle_file_sha256=f816d70eeb76d9a97d18472696ae9fa6ae1abc94ffa2ead9acf7a56e7150fea3
+skill_bundle_digest=afb000865c530f9fc1afdda9323846882fb8da38dfd2402687e9e5b745a02d1e
+skill_bundle_format=step37_manifest_v1_path_size_sha
+skill_file_count=8
+skill_bundle_digest_8_file=aea1af2a6b7304e666193a0b176c6187a49226305edba9bdc01d89e809f24faf
+skill_bundle_generation_exit_code=0
+```
+
+Validation commands:
+
+```text
+npx vitest run tests/contracts/step37-focused-validation.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/step37-parent-loop-driver.test.ts
+exitCode=0
+duration=1.50s
+result=PASS: 4 focused files and 78 tests passed; focused set includes contract-freeze because this guardrail governs telemetry schema freeze selection.
+
+npm run test:contracts
+exitCode=0
+duration=8.12s
+result=PASS: 97 contract files and 1130 tests passed.
+
+npm test
+exitCode=0
+duration=58.07s
+result=PASS: 97 contract files / 1130 tests and 34 workspace files / 410 tests passed.
+
+npm run typecheck
+exitCode=0
+duration=6.27s
+result=PASS: root, maker-api, and maker-workbench TypeScript checks passed.
+
+git diff --check
+exitCode=0
+result=PASS: no whitespace or patch format errors.
+
+{ for f in /Users/dahufa/.agents/skills/code-change-discipline/SKILL.md /Users/dahufa/.agents/skills/review-gated-delivery/SKILL.md /Users/dahufa/.agents/skills/review-gated-delivery/assets/*.txt /Users/dahufa/.agents/skills/review-gated-delivery/assets/*.md; do case "$f" in /Users/dahufa/.agents/skills/code-change-discipline/*) rel="code-change-discipline/${f#/Users/dahufa/.agents/skills/code-change-discipline/}" ;; /Users/dahufa/.agents/skills/review-gated-delivery/*) rel="review-gated-delivery/${f#/Users/dahufa/.agents/skills/review-gated-delivery/}" ;; *) exit 2 ;; esac; size=$(wc -c < "$f" | tr -d ' '); sha=$(shasum -a 256 "$f" | awk '{print $1}'); printf "%s\t%s\t%s\n" "$rel" "$size" "$sha"; done; } | LC_ALL=C sort > /tmp/step37_skill_manifest.tsv && wc -l /tmp/step37_skill_manifest.tsv && shasum -a 256 /tmp/step37_skill_manifest.tsv
+exitCode=0
+result=PASS: skill_bundle_format=step37_manifest_v1_path_size_sha; skill_file_count=8; skill_bundle_digest=aea1af2a6b7304e666193a0b176c6187a49226305edba9bdc01d89e809f24faf.
+```
+
+Candidate boundary:
+
+```yaml
+closure_scope: atomic_step
+atomic_step:
+  id: telemetry_schema_focused_validation_guardrail
+  status: locally_validated_not_closed
+  implementation_status: complete
+  local_validation_status: passed
+  candidate_status: ready_for_commit
+  candidate_commit: not_created_in_this_record
+  receipt_commit: not_created
+  oracle_status: not_submitted
+parent_stage:
+  id: stage4
+  status: running
+  exit_conditions_met: false
+parent_loop:
+  id: step37
+  status: running
+  global_exit_conditions_met: false
+  user_input_required: false
+  next_action: CONTINUE_PARENT_LOOP
+  next_atomic_step: current_atomic_step_candidate_oracle_then_receipt
+  next_atomic_step_scope: guardrail_review
+```
+
+Exit assessment: `LOCAL_VALIDATION_PASSED_AWAITING_CANDIDATE_COMMIT_ORACLE`. This record does not close the atomic step. The step remains open until candidate commit creation, Oracle review, receipt-only closure, post-receipt checks, and Parent Loop Driver reevaluation complete.
