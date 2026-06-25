@@ -3199,3 +3199,95 @@ Next: continue the queued Step37 guardrail loop only after receipt post-commit c
 ```
 
 Stop marker: Stage 4 verification freshness and immutable review guardrail has a candidate commit reviewed by Oracle and is ready for a receipt-only checkpoint commit. Do not enter Stage 5 or claim complete package closure; this receipt closes only this guardrail, not Stage 4 full package closure.
+
+## Stage 4 Audit — Pickup Collectible Package-Owned QA Slice
+
+- checkpoint_id: `pickup_collectible_package_owned_qa_slice_audit`.
+- record_type: `audit_candidate`.
+- implementation_status: `complete`.
+- local_validation_status: `passed`.
+- candidate_status: `ready_for_commit`.
+- oracle_status: `not_submitted`.
+- closure_status: `not_closed`.
+- baseline: Stage 4 verification freshness immutable review receipt commit `cd4f6a81` (`docs(game-dsl): record immutable review freshness receipt`).
+- scope: Stage 4 audit only; no runtime, schema, compiler, QA runner behavior, Stage 5 exact lock, production default cutover, legacy authoritative path exit, or capability closure is introduced.
+
+Current Stage review conclusion: `pickup.collectible.v1` is the next Stage 4 package-owned QA frontier after the 10/59 runtime-observed support checkpoint, but it is not implemented or closed.
+
+Evidence trail:
+
+1. `DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1` includes `pickup.collectible.v1` in M3 weapon and loadout lifecycle and references it for R015, R016, and R032.
+2. `GameplayCapabilityRegistry` still declares `pickup.collectible.v1` as runtime-backed for collector/dodger style profiles, not as a side-scrolling run-and-gun package-owned QA slice.
+3. `buildGenerationTargetProfileRuntimeSupportReport()` currently observes 10 required capabilities from package-owned QA probes; the canonical probe plan does not include a `pickup.collectible.v1` required probe.
+4. Static target profile support remains `completeSupportedCount=0/59`; same-run runtime overlay remains blocked until every required capability has package-owned QA evidence.
+
+### Minimal Closure Requirements
+
+1. Add a real package contract for `pickup.collectible.v1` before any support promotion.
+2. Define package-owned evidence that proves the player collected an actual pickup, not merely that a pickup was present, spawned, or represented in template params.
+3. Preserve action and state semantics: evidence must prove the pickup collision/collection event and the resulting runtime state change, such as pickup consumed, score/loadout inventory changed, or an equivalent capability-owned state field.
+4. Keep weapon-specific effects separate: `pickup.collectible.v1` may prove collection, but it must not overclaim `weapon.spread_shot.v1`, `weapon.rapid_fire.v1`, `weapon.replacement_rule.v1`, or `weapon.death_reset.v1` without their own package evidence.
+5. Wire any later implementation through the package contract, active package installer, runtime/telemetry event, Playwright capability runtime reader, `CapabilityQaReport`, and target-profile runtime support overlay.
+6. Preserve static `completeSupported=false`; only same-run package-owned QA evidence may advance runtime-observed support from `10/59` to `11/59`.
+7. Missing pickup collection evidence, stale evidence from another run, or evidence without the collection state field must fail closed and keep the runtime overlay blocked.
+
+### Compatibility & Cutover
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | This audit changes only the execution plan. A later implementation would add the `pickup.collectible.v1` package contract, required probe, runtime event/state evidence, and QA reader wiring. |
+| Consumer list | Future consumers must include `validateGameplayCapabilityPackage`, `GameplayCapabilityRegistry`, the active side-scrolling package installer, runtime telemetry/schema, Playwright QA evidence reader, `CapabilityQaReport`, `buildGenerationTargetProfileRuntimeSupportReport()`, DSL consumption reports, and Workbench/report readers that surface runtime support. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: current runtime-backed collector/dodger support cannot prove side-scrolling run-and-gun package-owned collection semantics. |
+| Authority | Future authority must be the `pickup.collectible.v1` package contract plus same-run capability QA evidence; current registry/runtime-backed state is only evidence of an incomplete frontier. |
+| Legacy strategy | Legacy collector/dodger runtime behavior remains read-only evidence and cannot satisfy Stage 4 package closure for the DeepSeek run-and-gun target profile. |
+| Failure policy | Missing, stale, wrong-run, spawn-only, template-param-only, or no-state-change pickup evidence must fail closed as missing package-owned QA evidence. |
+| Evidence | This audit cites existing profile, registry, runtime support overlay, and contract tests to prove the frontier is unmet; it does not claim implementation evidence. |
+| Rollback | Reverting this audit removes only this planning record and does not change runtime behavior or support evidence. |
+
+### Audit Exit Assessment
+
+Candidate local validation receipts:
+
+```text
+npx vitest run tests/contracts/step37-closure-implementation-trace.test.ts
+exitCode=0
+duration=2.67s
+result=PASS: 34 tests passed
+
+npm run test:contracts
+exitCode=0
+duration=12.08s
+result=PASS: contracts 95 files / 1095 tests
+
+npm test
+exitCode=0
+duration=59.25s
+result=PASS: contracts 95 files / 1095 tests; workspace 34 files / 408 tests
+
+npm run typecheck
+exitCode=0
+duration=15.354s
+result=PASS: root, @ai-game-maker/maker-api, and @ai-game-maker/maker-workbench typecheck passed
+
+git diff --check
+exitCode=0
+result=PASS: no whitespace errors
+
+skill revision freshness check for /Users/dahufa/.agents/skills/code-change-discipline/SKILL.md
+exitCode=0
+result=PASS: SKILL.md 35331 bytes, sha256 ac0f7e7d033bf7b44e3e4fe13cc151ca2d240bf8bb871c27eaba2af963c6490f, bundle d3c166ab08562696e099937e1036c51c81c9415cf8e0aef43a906c7acfb51aca
+```
+
+```text
+Stage 4 Pickup Collectible Package-Owned QA Slice Audit: LOCALLY_VALIDATED
+Stage 4 Pickup Collectible Package-Owned QA Slice Implementation: NOT_ENTERED
+Stage 4 Exit gate: NOT_MET
+Stage 5 Exact Lock: NOT_ENTERED
+Production Default Cutover: NOT_ACTIVE
+legacy authoritative path: NOT_EXITED
+global_exit_conditions_met: false
+loop_status: RUNNING
+Next: candidate checkpoint commit for this audit only
+```
+
+Stop marker: Stage 4 `pickup.collectible.v1` package-owned QA slice audit is locally validated and ready for a candidate checkpoint commit. Do not implement this slice, do not enter Stage 5, and do not claim complete package closure until this audit candidate is committed, Oracle-reviewed, and closed by a receipt-only checkpoint.
