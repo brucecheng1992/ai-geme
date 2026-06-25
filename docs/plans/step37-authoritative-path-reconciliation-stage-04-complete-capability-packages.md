@@ -1,0 +1,184 @@
+# Step 37 Stage 4 Complete Capability Packages Audit
+
+> - Parent plan: `docs/plans/step37-authoritative-path-reconciliation-audit.md`
+> - Stage: 4 — Complete Capability Packages
+> - Current status: audit Oracle PASS; checkpoint commit pending
+> - Updated: 2026-06-25
+
+## Scope Lock
+
+- scope: Stage 4 read-only audit only.
+- baseline: Stage 3 closure checkpoint commit `59a00483` (`docs: close stage 3 capability requirements`).
+- question: Does the current production chain have complete capability packages for the required target capabilities, with all five support dimensions proven and incomplete packages failing closed?
+- non-goals: no source code edit, no test edit, no capability evidence update, no package promotion, no exact lock creation, no composed schema, no canonical DSL, no runtime loader, no provider run, no production default cutover.
+- starting conclusion: `Stage 3 Exit gate: MET`; `Stage 4 Implementation: NOT_ENTERED`.
+
+## Verdict
+
+`COMPLETE_PACKAGE_CLOSURE_NOT_MET`.
+
+The repository has strict complete-support vocabulary, package-contract validation, and profile compiler fail-closed behavior. Those contracts prevent manual promotion and reject incomplete supported packages. However, the current DeepSeek target profile support summary still reports `completeSupportedCount=0` across 59 required capability IDs, and the current successful active profile path is `active_profile_supported`, not package-complete `capability_complete_supported`. Stage 4 therefore cannot close as complete package support.
+
+## Minimal Closure Requirements
+
+To close Stage 4 in a later implementation checkpoint, the production chain must prove all items below without using a status-string override or legacy template fallback:
+
+1. Produce or reference a package set for the target required capability IDs.
+2. Validate each required package as `supportEligible=true` and `completeness=COMPLETE_SUPPORTED`.
+3. Preserve owned DSL path, normalizer, IR compiler, runtime system, amendment/patch, required QA evidence, and render-contract ownership per package.
+4. Keep every missing, malformed, experimental, legacy-backed, or partial package fail-closed with stable issues.
+5. Update target support evidence only from real downstream consumer evidence for `schema_expressible`, `normalized`, `compiled`, `runtime_consumed`, and `qa_observed`.
+6. Do not enter Stage 5 exact lock until the Stage 4 package set can prove complete support for the required package universe.
+
+## Producer
+
+- Support vocabulary producer: `GameplayCapabilityRegistry` defines the five support evidence dimensions and derives `COMPLETE_SUPPORTED` only when every dimension is true.
+- Target profile producer: `DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1` defines 60 requirements, 15 clusters, and target completion condition `all_required_capabilities_complete_supported`.
+- Support summary producer: `buildDeepSeekRunAndGunValidationProfileSupportSummary` derives required capability count, registered count, complete supported count, classification, missing dimensions, and legacy-backed state from the registry.
+- Package contract producer: `GameplayCapabilityPackageContractSchema` and `validateGameplayCapabilityPackage` validate package structure, ownership, completeness, deterministic hashes, and `supportEligible`.
+- Profile package compiler: `compileGameplayProfileRecipe` accepts only support-eligible required packages when composing a supported profile from package contracts.
+
+## Artifact
+
+| Artifact | Role |
+| --- | --- |
+| `targetProfileSupport` in `DslConsumptionReport` | Exposes target profile support dimensions and `completeSupportedCount`; currently evidence only, not closure. |
+| `DeepSeekRunAndGunProfileSupportSummary` | Derived support summary for the frozen target profile. |
+| `GameplayCapabilityPackageValidationReport` | Per-package validation result, completeness, hashes, support eligibility, and issues. |
+| `GameplayCapabilityPackageSetValidationReport` | Package-set validation, duplicate ID and owned path conflict checks. |
+| `GameplayProfileCompilationReport` | Synthetic package-composed profile compiler output in tests; proves fail-closed contract behavior, not current target profile production closure. |
+
+## Consumer
+
+- `isCompleteSupportedEvidenceDimensions` requires all five evidence dimensions before complete support is true.
+- `GameplayCapabilityDescriptorSchema` rejects descriptors that claim `complete_supported` without evidence, verified QA probes, and no blockers.
+- `validateGameplayCapabilityPackage` rejects supported package contracts whose derived completeness is not `COMPLETE_SUPPORTED`.
+- `validateGameplayCapabilityPackages` rejects duplicate package IDs and overlapping owned DSL paths.
+- `compileGameplayProfileRecipe` rejects missing or non-support-eligible required packages.
+- `buildDslConsumptionReport` exposes the target support summary so downstream reports keep incomplete capability evidence visible.
+
+## Actual Data Flow
+
+1. The frozen DeepSeek target profile declares the authoritative target condition: all required capability IDs must reach complete support.
+2. The support summary derives its required capability universe from the target profile clusters.
+3. Each capability ID is looked up in the gameplay capability registry and mapped to five evidence dimensions.
+4. `completeSupported` is derived from those dimensions; missing or malformed evidence fails to false.
+5. DSL consumption reports publish the derived summary as evidence, including `completeSupportedCount`.
+6. Separately, package-contract tests prove a package compiler path can accept synthetic complete packages and reject incomplete ones.
+7. No current artifact proves that the DeepSeek target profile required package set is complete or production-active.
+
+## Authority
+
+The Stage 4 authority for closure is a complete, support-eligible capability package set tied to the target required capability universe. The current repository authority is weaker: `GameplayCapabilityRegistry` and target profile support summary are authoritative for incomplete evidence reporting, while package-contract tests are authoritative only for contract behavior.
+
+## Fail Closed
+
+- Manual `status: complete_supported` without evidence remains incomplete.
+- Unknown or malformed evidence dimensions derive to false.
+- Supported packages that parse but lack required QA/evidence/render/amendment completeness fail with `SUPPORTED_PACKAGE_INCOMPLETE`.
+- Missing required profile packages fail with `PROFILE_REQUIRED_CAPABILITY_MISSING`.
+- Required packages that are not support-eligible fail with `PROFILE_REQUIRED_CAPABILITY_UNSUPPORTED`.
+- Experimental complete packages remain non-production-eligible.
+
+## Fallback
+
+No Stage 4 fallback can promote legacy-backed or active-profile-supported capability state to complete packages. Synthetic package compiler tests are not a fallback for the DeepSeek target profile package universe, and legacy runtime-backed behavior cannot satisfy `qa_observed` or package-owned evidence without real capability consumers.
+
+## Gate Matrix
+
+| Gate | Result | Evidence | Missing proof |
+| --- | --- | --- | --- |
+| A. Five evidence dimensions exist and are strict | YES | Registry defines `schema_expressible`, `normalized`, `compiled`, `runtime_consumed`, `qa_observed` and derives complete support from all five. | None for vocabulary strictness. |
+| B. Manual complete support override is blocked | YES | Descriptor schema and tests keep status-only or partial evidence below complete support. | None for status-only guard. |
+| C. Package contract can prove complete packages | PARTIAL | Package-contract tests accept synthetic complete packages and reject incomplete supported packages. | No production target profile package set is shown. |
+| D. Profile compiler fails closed for required packages | YES | Compiler rejects missing and unsupported required packages before profile support can be forced. | This is tested with fixtures, not target profile production packages. |
+| E. DeepSeek target profile complete support | NO | Current support summary contract asserts `completeSupportedCount=0`, `requiredCapabilityCount=59`, and every target capability incomplete. | Need all required target capabilities to become `completeSupported=true` from real downstream evidence. |
+| F. Production active path uses complete packages | NO | Current loop boundaries show active profile support is not final complete package cutover; production default cutover remains not active. | Need package-complete path to become the production authority before Stage 5 exact lock. |
+
+## Findings
+
+### Blocking: target profile package closure is not met
+
+The frozen target profile currently has zero complete-supported required capabilities. This blocks Stage 4 closure because the stage is about complete capability packages, not active profile requirement identity.
+
+`weapon.default_straight_single.v1` is the nearest partial vertical slice, but it remains incomplete: support tests record `schema_expressible=true`, `normalized=true`, `compiled=true`, `runtime_consumed=true`, `qa_observed=false`, and `completeSupported=false`.
+
+### Boundary: contract existence is not production closure
+
+The package contract and profile compiler already enforce important fail-closed semantics, but they are exercised through synthetic fixtures. They do not prove a production package set for the 59 required target capability IDs.
+
+### Boundary: active profile support is below complete package support
+
+Stage 1-3 active profile authority checks can remain closed, but they do not convert `active_profile_supported` or legacy-backed capability evidence into `capability_complete_supported`.
+
+## Missing Proof
+
+- No target profile package set containing all required capability IDs is available as production authority.
+- No evidence shows all required packages validated as `supportEligible=true`.
+- No evidence shows all 59 required target capabilities have `qa_observed=true`.
+- No evidence shows `completeSupportedCount=59`.
+- No evidence shows production default path selects complete package authority.
+- No Stage 5 exact capability lock can be derived from complete packages yet.
+
+## Source References
+
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts:12`
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts:13`
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts:129`
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts:730`
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts:751`
+- `packages/game-dsl/src/gameplay-capabilities/package-contract.ts:11`
+- `packages/game-dsl/src/gameplay-capabilities/package-contract.ts:281`
+- `packages/game-dsl/src/gameplay-capabilities/package-contract.ts:302`
+- `packages/game-dsl/src/gameplay-capabilities/package-contract.ts:372`
+- `packages/game-dsl/src/gameplay-capabilities/profile-recipe-compiler.ts:435`
+- `packages/game-dsl/src/gameplay-capabilities/profile-recipe-compiler.ts:446`
+- `packages/game-dsl/src/deepseek-run-and-gun-validation-profile-v1.ts:66`
+- `packages/game-dsl/src/deepseek-run-and-gun-validation-profile-v1.ts:268`
+- `packages/game-dsl/src/dsl-consumption-report.ts:28`
+- `packages/game-dsl/src/dsl-consumption-report.ts:114`
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts:50`
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts:80`
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts:135`
+- `tests/contracts/gameplay-capability-package-contract.test.ts:10`
+- `tests/contracts/gameplay-capability-package-contract.test.ts:39`
+- `tests/contracts/gameplay-profile-recipe-compiler.test.ts:47`
+- `docs/refactor-log/step37-capability-first-authoritative-generation-pipeline-cutover.md:5`
+- `docs/refactor-log/deepseek-authoritative-dsl-consumption-m1.md:89`
+
+## Verification
+
+```text
+npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-profile-recipe-compiler.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/gameplay-capability-registry.test.ts
+# PASS, 5 files / 52 tests
+
+git diff --check
+# PASS
+
+rg -n "[ \t]+$" docs/plans/step37-authoritative-path-reconciliation-audit.md docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md
+# PASS, no matches
+```
+
+## Oracle Review
+
+- review status: PASS.
+- agent: `019efe9e-ccf1-7333-9a1a-4835c414fe98`.
+- findings: P0/P1/P2 none.
+- P3: Oracle requested explicit mention that `weapon.default_straight_single.v1` remains incomplete because `qa_observed=false`.
+- remediation: Findings now point out that `weapon.default_straight_single.v1` has four dimensions true but still keeps `qa_observed=false` and `completeSupported=false`.
+- checkpoint decision: Stage 4 audit may enter checkpoint commit; this does not approve Stage 4 implementation, complete package closure, Stage 5 exact lock, composed schema, canonical DSL, runtime loader, capability-owned QA, or production default cutover.
+
+## Exit Assessment
+
+```text
+Stage 1: AUTHORITATIVE_AND_CONNECTED
+Stage 2: PROFILE_RESOLUTION_CLOSED
+Stage 3: CAPABILITY_REQUIREMENTS_CLOSED
+Stage 4 Audit: COMPLETE_PACKAGE_CLOSURE_NOT_MET
+Stage 4 Audit Gate: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 Implementation: NOT_ENTERED
+Stage 4 Exit gate: NOT_MET
+Next: Stage 4 audit checkpoint commit
+```
+
+Stop marker: Stage 4 Complete Capability Packages audit passed Oracle. Do not implement Stage 4 or enter Stage 5 until checkpoint commit completes.

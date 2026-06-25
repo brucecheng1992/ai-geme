@@ -1,15 +1,15 @@
 # Step 37 Authoritative Path Reconciliation Audit
 
 > - 文档定位：Step 37 authoritative production chain 的逐段只读审计状态文档。
-> - 当前状态：Stage 3 Capability Requirements closure Oracle PASS; checkpoint commit pending
+> - 当前状态：Stage 4 Complete Capability Packages audit Oracle PASS; checkpoint commit pending
 > - 任务契约：`/Users/dahufa/Downloads/step37-authoritative-path-reconciliation-prompt.md`
-> - 当前分片：`docs/plans/step37-authoritative-path-reconciliation-stage-03-capability-requirements.md`
+> - 当前分片：`docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`
 > - 更新日期：2026-06-25
 
 ## 1. 任务总览
 
 - 任务契约：`/Users/dahufa/Downloads/step37-authoritative-path-reconciliation-prompt.md`
-- 总目标：按外部 prompt 固定的 Stage 0-15 顺序，逐段审计 Step 37 authoritative production chain 是否真实接通，并在每个阶段只给出该阶段结论后停止等待用户显式继续。
+- 总目标：按外部 prompt 固定的 Stage 0-15 顺序，逐段审计 Step 37 authoritative production chain 是否真实接通；当前用户已授权从 Stage 2 closure 开始执行 full Step37 Loop，但每个阶段仍必须先审查、再实施、再验证、Oracle 复审、checkpoint。
 - 背景依据：用户要求“理解拆分任务，先一步步落档成文档再执行”；现有 Step 37 execution log 为 `docs/refactor-log/step37-capability-first-authoritative-generation-pipeline-cutover.md`。
 - 非目标：本轮不修复、不实现、不新增测试、不更新 capability evidence、不修改 generation pipeline、不推进 default cutover、不一次性汇总全部阶段。
 - 验收标准：每次只执行一个阶段；每个阶段报告必须包含 verdict、producer、artifact、consumer、actual data flow、authority、fail-closed、fallback、test coverage、findings、missing proof、exit assessment、source references 和 stop marker。
@@ -22,7 +22,7 @@
 - [x] 0. Repository and Campaign Baseline：核对 HEAD、工作区、ahead count、最近提交、campaign ledger、support summary、capability cursor、browser QA cursor；不审计业务链路。
 - [x] 1. GameBrief v0.2：审计 production run 是否生成并下游消费 canonical GameBrief v0.2。
 - [x] 2. Profile Resolution：审计 profile 是否由当前 run 的 GameBrief 决定并被下游真实消费。
-- [ ] 3. Capability Requirements：审计 requirements/capability 映射来源、identity、provenance 和 exact lock 消费。
+- [x] 3. Capability Requirements：审计 requirements/capability 映射来源、identity、provenance 和 exact lock 消费。
 - [ ] 4. Complete Capability Packages：审计五维 evidence、completeSupported 和 incomplete package fail-closed。
 - [ ] 5. Exact Capability Lock：审计 lock 是否由 requirements 和 complete packages 共同决定并约束后续消费者。
 - [ ] 6. Composed DSL Schema：审计 schema 是否由 exact lock 组合并真实用于 model request。
@@ -40,24 +40,25 @@
 ## 3. 分片索引
 
 - 主状态文档职责：保留总览、阶段拆分、当前状态、下一步、恢复清单和最近执行记录。
-- 当前分片：`docs/plans/step37-authoritative-path-reconciliation-stage-03-capability-requirements.md`
+- 当前分片：`docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`
 - 分片列表：
   - Stage 3 Capability Requirements：`docs/plans/step37-authoritative-path-reconciliation-stage-03-capability-requirements.md`
+  - Stage 4 Complete Capability Packages：`docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`
 - 归档规则：后续阶段记录写入阶段分片；主状态文档只保留总览、当前状态、下一步、恢复清单和最近执行摘要。
 
 ## 4. 当前状态
 
-- 状态：Stage 3 Capability Requirements closure Oracle PASS; checkpoint commit pending.
-- 当前步骤：Stage 3 audit checkpoint commit `d7af70b9` 已创建；Stage 3 no-code closure implementation 已完成本地验证和 Oracle 复审，等待 checkpoint commit。
-- 最近完成：Stage 2 Profile Resolution closure；profile 由当前 run 的 canonical GameBrief genre 重算 readiness/resolution，并被 `active_profile_lock`、`authority_bundle`、Raw DSL、compiler、runtime 和 QA 消费。
-- 最近验证：Stage 3 closure focused suite PASS；full `npm test` PASS；full `npm run typecheck` PASS；`git diff --check` PASS；Markdown trailing whitespace scan PASS.
-- 最近 Oracle 结论：Stage 1 final Oracle PASS；Stage 2 Profile Resolution audit Oracle PASS；Stage 2 closure Oracle PASS / no P0/P1/P2/P3；Stage 3 audit Oracle re-review PASS / no P0/P1/P2/P3；Stage 3 closure Oracle re-review PASS / no P0/P1/P2/P3。
-- 未处理风险：Stage 4 Complete Capability Packages 和 Stage 5 Exact Capability Lock 尚未进入；Stage 3 Gate E 仍不证明 `profileRequirements.requirementsHash` / `requiredCapabilityIds` 字段级 downstream action；post-Stage-1 shadow/canary parity/rollback 仍未实施。`QaReport` status consistency 作为非阻塞债务登记，不重新打开 Stage 1。
-- 工作区核对：Stage 3 audit 已提交为 checkpoint commit `d7af70b9`；当前仅允许本状态文档和 Stage 3 分片承载 Stage 3 closure 状态记录。
+- 状态：Stage 4 Complete Capability Packages audit Oracle PASS; checkpoint commit pending.
+- 当前步骤：Stage 3 closure checkpoint commit `59a00483` 已创建；Stage 4 audit 已记录五维 evidence、`completeSupported`、capability package contract、profile package compiler fail-closed 和 target profile support summary 的审查结论，等待 checkpoint commit。
+- 最近完成：Stage 3 Capability Requirements closure；active runtime requirements 已限定为 resolved profile source、registry-owned ID、readiness provenance 和 active profile lock hash-bound availability。
+- 最近验证：Stage 4 audit focused suite PASS；`git diff --check` PASS；Markdown trailing whitespace scan PASS.
+- 最近 Oracle 结论：Stage 1 final Oracle PASS；Stage 2 Profile Resolution audit Oracle PASS；Stage 2 closure Oracle PASS / no P0/P1/P2/P3；Stage 3 audit Oracle re-review PASS / no P0/P1/P2/P3；Stage 3 closure Oracle re-review PASS / no P0/P1/P2/P3；Stage 4 audit Oracle PASS / no P0/P1/P2, P3 remediated。
+- 未处理风险：Stage 4 complete package closure 尚未达成；Stage 5 Exact Capability Lock 尚未进入；Stage 3 Gate E 仍不证明 `profileRequirements.requirementsHash` / `requiredCapabilityIds` 字段级 downstream action；post-Stage-1 shadow/canary parity/rollback 仍未实施。`QaReport` status consistency 作为非阻塞债务登记，不重新打开 Stage 1。
+- 工作区核对：Stage 3 closure 已提交为 checkpoint commit `59a00483`；当前仅允许本状态文档和 Stage 4 分片承载 Stage 4 audit 状态记录。
 
 ## 5. 下一步
 
-Stage 3 Capability Requirements closure implementation 正在进行：
+Stage 4 Complete Capability Packages audit 正在进行：
 
 ```text
 Stage 1: AUTHORITATIVE_AND_CONNECTED
@@ -68,11 +69,15 @@ Stage 2 Exit gate: MET
 Stage 2 checkpoint: 48a855bd
 Stage 3 Audit: CHECKPOINT_COMMITTED
 Stage 3 audit checkpoint: d7af70b9
-Stage 3 Implementation: ORACLE_PASSED_AWAITING_COMMIT
+Stage 3 Implementation: CHECKPOINT_COMMITTED
 Stage 3 Exit gate: MET
+Stage 3 closure checkpoint: 59a00483
+Stage 4 Audit: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 Implementation: NOT_ENTERED
+Stage 4 Exit gate: NOT_MET
 ```
 
-下一步完成 Stage 3 closure checkpoint commit。不要把 active runtime requirements 误报成 complete package、exact lock、composed schema 或 final production default cutover。
+下一步完成 Stage 4 audit checkpoint commit。不要把 active runtime requirements、synthetic test package compiler success 或 partial support evidence 误报成 target profile complete package closure。
 
 ## 6. 恢复检查清单
 
