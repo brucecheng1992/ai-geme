@@ -313,8 +313,11 @@ function collectCapabilityRuntimeObservedProbes(snapshot: unknown, telemetry: re
 
   for (const event of telemetry) {
     const payload = isRecord(event.payload) ? event.payload : undefined;
-    const probe = readCapabilityRuntimeProbe(payload?.capabilityRuntime, event.type);
-    if (probe !== undefined) {
+    const probes = [
+      ...readCapabilityRuntimeProbes(payload?.capabilityRuntime, event.type),
+      ...readCapabilityRuntimeProbes(payload?.capabilityRuntimeProbes, event.type)
+    ];
+    for (const probe of probes) {
       mergeCapabilityRuntimeProbe(probesById, probe, 'telemetry');
     }
   }
@@ -327,10 +330,16 @@ function readSnapshotCapabilityRuntimeProbes(snapshot: unknown): Array<Omit<QaCa
     return [];
   }
 
-  return snapshot.capabilityRuntime.probes.flatMap((probe) => {
-    const observed = readCapabilityRuntimeProbe(probe);
-    return observed === undefined ? [] : [observed];
-  });
+  return snapshot.capabilityRuntime.probes.flatMap((probe) => readCapabilityRuntimeProbes(probe));
+}
+
+function readCapabilityRuntimeProbes(value: unknown, eventTypeFallback?: string): Array<Omit<QaCapabilityRuntimeObservedProbe, 'observedIn'>> {
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) => readCapabilityRuntimeProbes(entry, eventTypeFallback));
+  }
+
+  const probe = readCapabilityRuntimeProbe(value, eventTypeFallback);
+  return probe === undefined ? [] : [probe];
 }
 
 function readCapabilityRuntimeProbe(value: unknown, eventTypeFallback?: string): Omit<QaCapabilityRuntimeObservedProbe, 'observedIn'> | undefined {

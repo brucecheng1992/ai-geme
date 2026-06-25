@@ -37,7 +37,10 @@ import {
   buildGenerationCapabilityPreflight,
   buildGenerationPathReceipt,
   buildCanonicalGameBriefArtifact,
+  COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
+  createCombatProjectilePackageContract,
   createDefaultStraightSingleWeaponPackageContract,
+  DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
   buildGenerationScopePlan,
   buildGameDslArtifact,
   checkPhaserRuntimeCapabilities,
@@ -1913,8 +1916,14 @@ function buildQaCapabilityRuntimeExpectation(genre: QaGenre): QaCapabilityRuntim
   return {
     requiredProbes: [
       {
+        capabilityId: 'combat.projectile.v1',
+        probeId: COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
+        action: 'fire',
+        eventType: 'projectile.spawned'
+      },
+      {
         capabilityId: 'weapon.default_straight_single.v1',
-        probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1',
+        probeId: DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
         action: 'fire',
         eventType: 'player.fired'
       }
@@ -1923,7 +1932,9 @@ function buildQaCapabilityRuntimeExpectation(genre: QaGenre): QaCapabilityRuntim
 }
 
 function buildApprovedInstalledCapabilityQaPackages(normalizedGenre: string): readonly unknown[] {
-  return normalizedGenre === 'side_scrolling_run_and_gun' ? [createDefaultStraightSingleWeaponPackageContract()] : [];
+  return normalizedGenre === 'side_scrolling_run_and_gun'
+    ? [createDefaultStraightSingleWeaponPackageContract(), createCombatProjectilePackageContract()]
+    : [];
 }
 
 function qaRuntimeAuthorityMatchesExpected(

@@ -1143,7 +1143,7 @@ describe('Phaser templates', () => {
     scene.start();
     scene.fire(1_000);
 
-    const expectedProbe = {
+    const expectedWeaponProbe = {
       capabilityId: 'weapon.default_straight_single.v1',
       probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1',
       runtimeModuleId: 'weapon.default_straight_single',
@@ -1153,17 +1153,31 @@ describe('Phaser templates', () => {
       sourceRef: 'runtime_plan.side_scrolling.player.projectileEntityId',
       status: 'observed'
     };
+    const expectedProjectileProbe = {
+      capabilityId: 'combat.projectile.v1',
+      probeId: 'combat.projectile.v1.spawn.browser_qa.v1',
+      runtimeModuleId: 'combat.projectile',
+      action: 'fire',
+      eventType: 'projectile.spawned',
+      projectileEntityId: 'pulse_bolt',
+      sourceRef: 'runtime_plan.side_scrolling.player.projectileEntityId',
+      status: 'observed'
+    };
     const snapshot = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
     const telemetry = globalThis.__GAME_QA__?.telemetry() ?? [];
     const firedEvent = telemetry.find((event) => event.type === 'player.fired');
     const projectileEvent = telemetry.find((event) => event.type === 'projectile.spawned');
 
-    expect(firedEvent?.payload?.capabilityRuntime).toMatchObject(expectedProbe);
-    expect(projectileEvent?.payload?.capabilityRuntime).toMatchObject(expectedProbe);
+    expect(firedEvent?.payload?.capabilityRuntime).toMatchObject(expectedWeaponProbe);
+    expect(projectileEvent?.payload?.capabilityRuntime).toMatchObject(expectedWeaponProbe);
+    expect(projectileEvent?.payload?.capabilityRuntimeProbes).toEqual(
+      expect.arrayContaining([expect.objectContaining(expectedProjectileProbe), expect.objectContaining(expectedWeaponProbe)])
+    );
     expect(snapshot?.capabilityRuntime).toMatchObject({
       source: 'side_scrolling_runtime',
-      probes: [expect.objectContaining(expectedProbe)]
+      probes: expect.arrayContaining([expect.objectContaining(expectedProjectileProbe), expect.objectContaining(expectedWeaponProbe)])
     });
+    expect(snapshot?.capabilityRuntime?.probes).toHaveLength(2);
     expect(snapshot?.projectiles[0]).toMatchObject({
       owner: 'player',
       sourceId: 'pulse_bolt',

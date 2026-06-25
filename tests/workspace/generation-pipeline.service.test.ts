@@ -163,7 +163,7 @@ describe('GenerationPipelineService failure states', () => {
               runtimeAuthority: input.expectedRuntimeAuthority,
               capabilityRuntime: {
                 source: 'side_scrolling_runtime',
-                probes: [defaultWeaponObservedProbe()]
+                probes: [projectileObservedProbe(), defaultWeaponObservedProbe()]
               }
             },
             capability_runtime: defaultWeaponCapabilityRuntimeEvidence(input.expectedCapabilityRuntime)
@@ -240,9 +240,21 @@ describe('GenerationPipelineService failure states', () => {
     expect(capabilityQaReport).toMatchObject({
       artifactKind: 'capability_qa_report',
       status: 'passed',
-      missingRequiredProbeIds: [],
-      requiredResults: [
-        {
+      missingRequiredProbeIds: []
+    });
+    expect(capabilityQaReport.requiredResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          probeId: 'combat.projectile.v1.spawn.browser_qa.v1',
+          status: 'passed',
+          assertionResults: expect.arrayContaining([
+            expect.objectContaining({
+              assertionId: 'combat.projectile.v1.spawn.browser_qa.v1.assertion.projectile_spawned',
+              status: 'passed'
+            })
+          ])
+        }),
+        expect.objectContaining({
           probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1',
           status: 'passed',
           assertionResults: expect.arrayContaining([
@@ -255,9 +267,10 @@ describe('GenerationPipelineService failure states', () => {
               status: 'passed'
             })
           ])
-        }
-      ]
-    });
+        })
+      ])
+    );
+    expect(capabilityQaReport.requiredResults).toHaveLength(2);
     expect(capabilityRuntime.resolutionReportHash).toBe(capabilityResolution.reportHash);
     expect(capabilityRuntime.authorityBundleRef).toEqual(qaReport.runtime_authority?.expected?.authorityBundleRef);
     expect(capabilityRuntime.activeProfileLockRef).toEqual(qaReport.runtime_authority?.expected?.activeProfileLockRef);
@@ -265,11 +278,18 @@ describe('GenerationPipelineService failure states', () => {
       artifactKind: 'generation_target_profile_runtime_support_report',
       status: 'blocked_incomplete_target_profile',
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 1,
+      observedCompleteSupportedCount: 2,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
-      observedCapabilityIds: ['weapon.default_straight_single.v1'],
+      observedCapabilityIds: ['combat.projectile.v1', 'weapon.default_straight_single.v1'],
       capabilities: expect.arrayContaining([
+        expect.objectContaining({
+          capabilityId: 'combat.projectile.v1',
+          runtimeVerified: true,
+          observedCompleteSupported: true,
+          verifiedRequiredProbeIds: ['combat.projectile.v1.spawn.browser_qa.v1'],
+          missingRequiredProbeIds: []
+        }),
         expect.objectContaining({
           capabilityId: 'weapon.default_straight_single.v1',
           runtimeVerified: true,
@@ -977,15 +997,22 @@ describe('GenerationPipelineService failure states', () => {
     expect(compiledTemplateId).toBe('side_scrolling_run_and_gun.v1');
     expect(qaGenre).toBe('side_scrolling_run_and_gun');
     expect(qaCapabilityRuntimeExpectation).toEqual({
-      requiredProbes: [
+      requiredProbes: expect.arrayContaining([
+        {
+          capabilityId: 'combat.projectile.v1',
+          probeId: 'combat.projectile.v1.spawn.browser_qa.v1',
+          action: 'fire',
+          eventType: 'projectile.spawned'
+        },
         {
           capabilityId: 'weapon.default_straight_single.v1',
           probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1',
           action: 'fire',
           eventType: 'player.fired'
         }
-      ]
+      ])
     });
+    expect(qaCapabilityRuntimeExpectation?.requiredProbes).toHaveLength(2);
     expect(intentPlan).toMatchObject({
       normalizedGenre: 'side_scrolling_run_and_gun',
       runtimeDslSupport: 'supported',
@@ -2422,7 +2449,7 @@ describe('GenerationPipelineService failure states', () => {
     return {
       status: 'PASSED',
       ...(expected === undefined ? {} : { expected }),
-      observed: [defaultWeaponObservedProbe()],
+      observed: [projectileObservedProbe(), defaultWeaponObservedProbe()],
       missingProbeIds: [],
       mismatches: []
     };
@@ -2436,6 +2463,20 @@ describe('GenerationPipelineService failure states', () => {
       action: 'fire',
       eventType: 'player.fired',
       eventTypes: ['player.fired', 'projectile.spawned'],
+      sourceRef: 'runtime_plan.side_scrolling.player.projectileEntityId',
+      status: 'observed',
+      observedIn: ['snapshot', 'telemetry']
+    };
+  }
+
+  function projectileObservedProbe(): QaCapabilityRuntimeEvidence['observed'][number] {
+    return {
+      capabilityId: 'combat.projectile.v1',
+      probeId: 'combat.projectile.v1.spawn.browser_qa.v1',
+      runtimeModuleId: 'combat.projectile',
+      action: 'fire',
+      eventType: 'projectile.spawned',
+      eventTypes: ['projectile.spawned'],
       sourceRef: 'runtime_plan.side_scrolling.player.projectileEntityId',
       status: 'observed',
       observedIn: ['snapshot', 'telemetry']

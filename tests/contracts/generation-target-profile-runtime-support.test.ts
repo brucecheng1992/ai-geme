@@ -1,17 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
   GenerationTargetProfileRuntimeSupportReportSchema,
   buildCapabilityQaProbeResultsFromRuntimeEvidence,
   buildCapabilityRuntimeQaPlan,
   buildGenerationTargetProfileRuntimeSupportReport,
+  createCombatProjectilePackageContract,
   createDefaultStraightSingleWeaponPackageContract,
   evaluateCapabilityQaReport,
   resolveGameplayCapabilityGraph
 } from '../../packages/game-dsl/src/index.js';
 
-const capabilityId = 'weapon.default_straight_single.v1';
+const defaultWeaponCapabilityId = 'weapon.default_straight_single.v1';
+const projectileCapabilityId = 'combat.projectile.v1';
 
 describe('Step 37 target profile runtime support overlay', () => {
   it('records runtime-observed support without mutating static completeSupported evidence', () => {
@@ -21,7 +24,8 @@ describe('Step 37 target profile runtime support overlay', () => {
       runId: 'run_20260625_target_runtime_support',
       capabilityQaReport
     });
-    const capability = report.capabilities.find((entry) => entry.capabilityId === capabilityId);
+    const defaultWeapon = report.capabilities.find((entry) => entry.capabilityId === defaultWeaponCapabilityId);
+    const projectile = report.capabilities.find((entry) => entry.capabilityId === projectileCapabilityId);
 
     expect(GenerationTargetProfileRuntimeSupportReportSchema.parse(report)).toEqual(report);
     expect(report).toMatchObject({
@@ -30,19 +34,30 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 1,
+      observedCompleteSupportedCount: 2,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
-      observedCapabilityIds: [capabilityId],
-      blockers: ['target_profile_runtime_support_incomplete:1/59']
+      observedCapabilityIds: [projectileCapabilityId, defaultWeaponCapabilityId],
+      blockers: ['target_profile_runtime_support_incomplete:2/59']
     });
-    expect(capability).toMatchObject({
-      capabilityId,
+    expect(defaultWeapon).toMatchObject({
+      capabilityId: defaultWeaponCapabilityId,
       runtimeVerified: true,
       staticCompleteSupported: false,
       observedCompleteSupported: true,
       requiredProbeIds: [DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID],
       verifiedRequiredProbeIds: [DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+    expect(projectile).toMatchObject({
+      capabilityId: projectileCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [COMBAT_PROJECTILE_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [COMBAT_PROJECTILE_REQUIRED_PROBE_ID],
       missingRequiredProbeIds: [],
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
@@ -56,7 +71,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       runId: 'run_20260625_target_runtime_support_missing',
       capabilityQaReport
     });
-    const capability = report.capabilities.find((entry) => entry.capabilityId === capabilityId);
+    const capability = report.capabilities.find((entry) => entry.capabilityId === defaultWeaponCapabilityId);
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
@@ -65,6 +80,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       targetProfileCompleteSupported: false,
       observedCapabilityIds: [],
       blockers: [
+        `capability_qa_report_missing_required_probe:${COMBAT_PROJECTILE_REQUIRED_PROBE_ID}`,
         `capability_qa_report_missing_required_probe:${DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID}`,
         'target_profile_runtime_support_incomplete:0/59'
       ]
@@ -81,9 +97,9 @@ describe('Step 37 target profile runtime support overlay', () => {
 });
 
 function buildDefaultWeaponQaReport(eventTypes: readonly string[]) {
-  const packages = [createDefaultStraightSingleWeaponPackageContract()];
+  const packages = [createDefaultStraightSingleWeaponPackageContract(), createCombatProjectilePackageContract()];
   const lockReport = resolveGameplayCapabilityGraph({
-    requestedCapabilities: [capabilityId],
+    requestedCapabilities: [defaultWeaponCapabilityId, projectileCapabilityId],
     packages,
     runtimeFamily: 'phaser_2d_action_arcade.v1'
   });
@@ -96,23 +112,41 @@ function buildDefaultWeaponQaReport(eventTypes: readonly string[]) {
     capabilityLock: lockReport.lock,
     packages
   });
+  const observed = [
+    ...(eventTypes.includes('player.fired')
+      ? [
+          {
+            capabilityId: defaultWeaponCapabilityId,
+            probeId: DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
+            action: 'fire',
+            eventType: 'player.fired',
+            eventTypes,
+            status: 'observed' as const,
+            sourceRef: 'qa_report.capability_runtime'
+          }
+        ]
+      : []),
+    ...(eventTypes.includes('projectile.spawned')
+      ? [
+          {
+            capabilityId: projectileCapabilityId,
+            probeId: COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
+            action: 'fire',
+            eventType: 'projectile.spawned',
+            eventTypes,
+            status: 'observed' as const,
+            sourceRef: 'qa_report.capability_runtime'
+          }
+        ]
+      : [])
+  ];
   return evaluateCapabilityQaReport({
     plan,
     probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
       plan,
       evidence: {
         status: 'PASSED',
-        observed: [
-          {
-            capabilityId,
-            probeId: DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
-            action: 'fire',
-            eventType: eventTypes[0] ?? '',
-            eventTypes,
-            status: 'observed',
-            sourceRef: 'qa_report.capability_runtime'
-          }
-        ],
+        observed,
         missingProbeIds: [],
         mismatches: []
       }

@@ -131,6 +131,17 @@ describe('Playable QA gate and runner', () => {
       sourceRef: 'runtime_plan.side_scrolling.player.projectileEntityId',
       status: 'observed'
     };
+    const projectileProbe = {
+      capabilityId: 'combat.projectile.v1',
+      probeId: 'combat.projectile.v1.spawn.browser_qa.v1',
+      runtimeModuleId: 'combat.projectile',
+      action: 'fire',
+      eventType: 'projectile.spawned',
+      projectileEntityId: 'pulse_bolt',
+      projectileId: 'projectile_1_0',
+      sourceRef: 'runtime_plan.side_scrolling.player.projectileEntityId',
+      status: 'observed'
+    };
     const telemetry: TelemetryEvent[] = [
       {
         type: 'player.fired',
@@ -142,7 +153,7 @@ describe('Playable QA gate and runner', () => {
         type: 'projectile.spawned',
         timestamp_ms: 2,
         frame: 2,
-        payload: { capabilityRuntime: probe }
+        payload: { capabilityRuntime: probe, capabilityRuntimeProbes: [probe, projectileProbe] }
       }
     ];
 
@@ -151,7 +162,7 @@ describe('Playable QA gate and runner', () => {
         {
           capabilityRuntime: {
             source: 'side_scrolling_runtime',
-            probes: [probe]
+            probes: [probe, projectileProbe]
           }
         },
         telemetry,
@@ -162,7 +173,14 @@ describe('Playable QA gate and runner', () => {
       expected: expectedCapabilityRuntime,
       missingProbeIds: [],
       mismatches: [],
-      observed: [
+      observed: expect.arrayContaining([
+        expect.objectContaining({
+          capabilityId: 'combat.projectile.v1',
+          probeId: 'combat.projectile.v1.spawn.browser_qa.v1',
+          action: 'fire',
+          eventType: 'projectile.spawned',
+          observedIn: ['snapshot', 'telemetry']
+        }),
         expect.objectContaining({
           capabilityId: 'weapon.default_straight_single.v1',
           probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1',
@@ -171,7 +189,7 @@ describe('Playable QA gate and runner', () => {
           eventTypes: ['player.fired', 'projectile.spawned'],
           observedIn: ['snapshot', 'telemetry']
         })
-      ]
+      ])
     });
   });
 
@@ -182,8 +200,11 @@ describe('Playable QA gate and runner', () => {
       status: 'FAILED',
       expected: expectedCapabilityRuntime,
       observed: [],
-      missingProbeIds: ['weapon.default_straight_single.v1.fire.browser_qa.v1'],
-      mismatches: ['capabilityRuntime.probes[weapon.default_straight_single.v1.fire.browser_qa.v1]: missing']
+      missingProbeIds: ['combat.projectile.v1.spawn.browser_qa.v1', 'weapon.default_straight_single.v1.fire.browser_qa.v1'],
+      mismatches: [
+        'capabilityRuntime.probes[combat.projectile.v1.spawn.browser_qa.v1]: missing',
+        'capabilityRuntime.probes[weapon.default_straight_single.v1.fire.browser_qa.v1]: missing'
+      ]
     });
   });
 
@@ -194,6 +215,17 @@ describe('Playable QA gate and runner', () => {
         capabilityRuntime: {
           source: 'side_scrolling_runtime',
           probes: [
+            {
+              capabilityId: 'combat.projectile.v1',
+              probeId: 'combat.projectile.v1.spawn.browser_qa.v1',
+              runtimeModuleId: 'combat.projectile',
+              action: 'fire',
+              eventType: 'projectile.spawned',
+              projectileEntityId: 'pulse_bolt',
+              projectileId: 'projectile_1_0',
+              sourceRef: 'runtime_plan.side_scrolling.player.projectileEntityId',
+              status: 'observed'
+            },
             {
               capabilityId: 'weapon.default_straight_single.v1',
               probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1',
@@ -2204,6 +2236,12 @@ function createRuntimeAuthorityExpectation(): QaRuntimeAuthorityExpectation {
 function createDefaultWeaponCapabilityRuntimeExpectation(): QaCapabilityRuntimeExpectation {
   return {
     requiredProbes: [
+      {
+        capabilityId: 'combat.projectile.v1',
+        probeId: 'combat.projectile.v1.spawn.browser_qa.v1',
+        action: 'fire',
+        eventType: 'projectile.spawned'
+      },
       {
         capabilityId: 'weapon.default_straight_single.v1',
         probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1',

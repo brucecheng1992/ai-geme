@@ -5,6 +5,10 @@ import {
   DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
   createDefaultStraightSingleWeaponPackageContract
 } from './default-straight-single-weapon-package.js';
+import {
+  COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
+  createCombatProjectilePackageContract
+} from './combat-projectile-package.js';
 import { validateGameplayCapabilityPackage } from './package-contract.js';
 import { hashStableJson } from './stable-json.js';
 
@@ -327,6 +331,19 @@ const defaultStraightSingleWeaponPackageEvidence: GameplayCapabilityEvidence = d
 const defaultStraightSingleWeaponPackageQa: GameplayCapabilityQaEvidence = defaultStraightSingleWeaponPackageReport.supportEligible
   ? { requiredProbeIds: [DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const combatProjectilePackageReport = validateGameplayCapabilityPackage(createCombatProjectilePackageContract());
+const combatProjectilePackageEvidence: GameplayCapabilityEvidence = combatProjectilePackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const combatProjectilePackageQa: GameplayCapabilityQaEvidence = combatProjectilePackageReport.supportEligible
+  ? { requiredProbeIds: [COMBAT_PROJECTILE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 
 const contractCompilerEvidence: GameplayCapabilityEvidence = {
   ...contractSeedEvidence,
@@ -358,10 +375,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     canonicalRuntimeLoaderEvidence
   ),
-  runtimeBacked('combat.projectile.v1', 'combat', 'Projectile combat', [topDownActionArcade, phaser2dActionArcade], ['shooter.v1', 'side_scrolling_run_and_gun.v1'], [
-    'projectile_combat',
-    'multi_direction_shooting'
-  ]),
+  planned(
+    'combat.projectile.v1',
+    'combat',
+    'Projectile combat',
+    [topDownActionArcade, phaser2dActionArcade],
+    ['shooter.v1', 'side_scrolling_run_and_gun.v1'],
+    ['projectile_combat', 'multi_direction_shooting'],
+    combatProjectilePackageEvidence,
+    combatProjectilePackageQa
+  ),
   runtimeBacked('spawn.enemy_wave.v1', 'spawn', 'Enemy wave spawning', [topDownActionArcade], ['shooter.v1'], ['enemy_waves']),
   runtimeBacked('camera.side_follow.v1', 'camera', 'Side-scrolling follow camera', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1', 'side_scrolling_platformer.v1'], [
     'side_view_camera'

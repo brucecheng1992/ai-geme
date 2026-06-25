@@ -13,6 +13,14 @@ import {
 import {
   DEFAULT_STRAIGHT_SINGLE_WEAPON_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/default-straight-single-weapon-runtime-module.js';
+import {
+  COMBAT_PROJECTILE_PACKAGE_REQUIRED_EVIDENCE_ID,
+  COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
+  createCombatProjectilePackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/combat-projectile-package.js';
+import {
+  COMBAT_PROJECTILE_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/combat-projectile-runtime-module.js';
 
 describe('Gameplay capability package contract', () => {
   it('accepts a complete supported package and keeps hashes deterministic', () => {
@@ -50,6 +58,32 @@ describe('Gameplay capability package contract', () => {
       capabilityId: 'weapon.default_straight_single.v1',
       severity: 'required',
       observations: expect.arrayContaining([expect.objectContaining({ runtimeSystemId: DEFAULT_STRAIGHT_SINGLE_WEAPON_RUNTIME_SYSTEM_ID })])
+    });
+  });
+
+  it('accepts the combat projectile package-owned QA contract', () => {
+    const contract = createCombatProjectilePackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === COMBAT_PROJECTILE_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'combat.projectile.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([COMBAT_PROJECTILE_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: COMBAT_PROJECTILE_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'combat.projectile.v1',
+      severity: 'required',
+      observations: [expect.objectContaining({ runtimeSystemId: COMBAT_PROJECTILE_RUNTIME_SYSTEM_ID, ref: 'projectile.spawned' })]
     });
   });
 

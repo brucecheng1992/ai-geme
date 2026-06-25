@@ -62,7 +62,7 @@ type CapabilityRuntimeProbe = {
   probeId: string;
   runtimeModuleId: string;
   action: 'fire';
-  eventType: 'player.fired';
+  eventType: 'player.fired' | 'projectile.spawned';
   projectileEntityId: string;
   projectileId: string;
   sourceRef: string;
@@ -73,6 +73,9 @@ const DEFAULT_WEAPON_CAPABILITY_ID = 'weapon.default_straight_single.v1';
 const DEFAULT_WEAPON_CAPABILITY_PROBE_ID = 'weapon.default_straight_single.v1.fire.browser_qa.v1';
 const DEFAULT_WEAPON_RUNTIME_MODULE_ID = 'weapon.default_straight_single';
 const DEFAULT_WEAPON_PROJECTILE_SOURCE_REF = 'runtime_plan.side_scrolling.player.projectileEntityId';
+const COMBAT_PROJECTILE_CAPABILITY_ID = 'combat.projectile.v1';
+const COMBAT_PROJECTILE_CAPABILITY_PROBE_ID = 'combat.projectile.v1.spawn.browser_qa.v1';
+const COMBAT_PROJECTILE_RUNTIME_MODULE_ID = 'combat.projectile';
 
 export class SideScrollingRunAndGunScene {
   private readonly plan: SideScrollingRuntimeSlice;
@@ -214,14 +217,20 @@ export class SideScrollingRunAndGunScene {
       damage: this.plan.player.projectileDamage,
       sourceId: this.plan.player.projectileEntityId
     };
-    const capabilityRuntime = this.createDefaultWeaponCapabilityRuntimeProbe(projectile.id);
-    projectile.capabilityId = capabilityRuntime.capabilityId;
-    projectile.probeId = capabilityRuntime.probeId;
+    const defaultWeaponRuntime = this.createDefaultWeaponCapabilityRuntimeProbe(projectile.id);
+    const projectileRuntime = this.createCombatProjectileCapabilityRuntimeProbe(projectile.id);
+    projectile.capabilityId = defaultWeaponRuntime.capabilityId;
+    projectile.probeId = defaultWeaponRuntime.probeId;
     this.projectiles.push(projectile);
-    this.capabilityRuntimeProbes.set(capabilityRuntime.probeId, capabilityRuntime);
+    this.capabilityRuntimeProbes.set(defaultWeaponRuntime.probeId, defaultWeaponRuntime);
+    this.capabilityRuntimeProbes.set(projectileRuntime.probeId, projectileRuntime);
     this.nextProjectileAtMs = nowMs + this.plan.player.fireCooldownMs;
-    this.telemetry.emit('player.fired', { projectileEntityId: this.plan.player.projectileEntityId, capabilityRuntime });
-    this.spawn.spawn('projectile', { projectileId: projectile.id, capabilityRuntime });
+    this.telemetry.emit('player.fired', { projectileEntityId: this.plan.player.projectileEntityId, capabilityRuntime: defaultWeaponRuntime });
+    this.spawn.spawn('projectile', {
+      projectileId: projectile.id,
+      capabilityRuntime: defaultWeaponRuntime,
+      capabilityRuntimeProbes: [defaultWeaponRuntime, projectileRuntime]
+    });
     this.renderProjectile(projectile);
   }
 
@@ -335,6 +344,20 @@ export class SideScrollingRunAndGunScene {
       runtimeModuleId: DEFAULT_WEAPON_RUNTIME_MODULE_ID,
       action: 'fire',
       eventType: 'player.fired',
+      projectileEntityId: this.plan.player.projectileEntityId,
+      projectileId,
+      sourceRef: DEFAULT_WEAPON_PROJECTILE_SOURCE_REF,
+      status: 'observed'
+    };
+  }
+
+  private createCombatProjectileCapabilityRuntimeProbe(projectileId: string): CapabilityRuntimeProbe {
+    return {
+      capabilityId: COMBAT_PROJECTILE_CAPABILITY_ID,
+      probeId: COMBAT_PROJECTILE_CAPABILITY_PROBE_ID,
+      runtimeModuleId: COMBAT_PROJECTILE_RUNTIME_MODULE_ID,
+      action: 'fire',
+      eventType: 'projectile.spawned',
       projectileEntityId: this.plan.player.projectileEntityId,
       projectileId,
       sourceRef: DEFAULT_WEAPON_PROJECTILE_SOURCE_REF,

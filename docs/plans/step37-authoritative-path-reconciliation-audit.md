@@ -1,7 +1,7 @@
 # Step 37 Authoritative Path Reconciliation Audit
 
 > - 文档定位：Step 37 authoritative production chain 的逐段只读审计状态文档。
-> - 当前状态：Stage 4 runtime support overlay artifact index visibility Oracle PASS; checkpoint commit pending
+> - 当前状态：Stage 4 combat projectile package-owned QA slice Oracle PASS; checkpoint commit pending
 > - 任务契约：`/Users/dahufa/Downloads/step37-authoritative-path-reconciliation-prompt.md`
 > - 当前分片：`docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`
 > - 更新日期：2026-06-25
@@ -48,13 +48,13 @@
 
 ## 4. 当前状态
 
-- 状态：Stage 4 runtime support overlay artifact index visibility Oracle PASS; checkpoint commit pending.
-- 当前步骤：Stage 4 target profile runtime support overlay checkpoint commit `cdccec37` 已创建；当前 Stage 4 micro-loop reconciles `shadow_capability_qa_plan.json`, `shadow_capability_qa_report.json`, and `generation_target_profile_runtime_support_report.json` into `pipeline_artifact_index.json` / Workbench evidence visibility.
-- 最近完成：Stage 4 target profile runtime support overlay 已 checkpoint；它把 `shadow_capability_qa_report.json` 消费为 runtime-observed target support overlay，但不提升 registry `qa_observed`。
-- 最近验证：runtime support overlay artifact index visibility RED focused failed as expected because `shadowCapabilityQaPlan/Report` stayed skipped and `targetProfileRuntimeSupportReport` was missing from final index；GREEN focused PASS, 3 files / 3 selected tests；expanded focused PASS, 5 files / 66 tests；full `npm test` PASS, contracts 94 files / 1042 tests and workspace 34 files / 402 tests；full `npm run typecheck` PASS；`git diff --check` PASS；support summary read-only probe confirms `requiredCapabilityCount=59`, `completeSupportedCount=0`, and `weapon.default_straight_single.v1` remains `qa_observed=false` / `completeSupported=false` with only `requiredProbesVerified` missing。
-- 最近 Oracle 结论：Stage 1 final Oracle PASS；Stage 2 Profile Resolution audit Oracle PASS；Stage 2 closure Oracle PASS / no P0/P1/P2/P3；Stage 3 audit Oracle re-review PASS / no P0/P1/P2/P3；Stage 3 closure Oracle re-review PASS / no P0/P1/P2/P3；Stage 4 audit Oracle PASS / no P0/P1/P2, P3 remediated；Stage 4 package closure gate implementation Oracle PASS / no P0/P1/P2/P3；Stage 4 default weapon browser QA evidence implementation Oracle PASS / no P0/P1/P2，P3 notes direct `PlaywrightQaRunnerService.run` capability evidence gate remains opt-in outside production pipeline；Stage 4 support prerequisite gate first Oracle BLOCKED on same-version schema compatibility；adapter fix Oracle re-review PASS / no P0/P1/P2/P3，checkpoint committed as `f5f1daa3`；Stage 4 default weapon package contract prerequisite Oracle PASS / no P0/P1/P2/P3；Stage 4 required-probe QA report bridge Oracle PASS / no P0/P1/P2, non-blocking P3 notes older active-profile no-package behavior can still report passed/observed without shadow QA refs; checkpoint commit allowed；Stage 4 target profile runtime support overlay Oracle PASS / P3 exact-lock wording remediated；Oracle re-review PASS / no P0/P1/P2/P3, checkpoint commit allowed for overlay only；Stage 4 runtime support overlay artifact index visibility Oracle PASS / no P0/P1/P2/P3, checkpoint allowed for this artifact visibility micro-step only。
+- 状态：Stage 4 combat projectile package-owned QA slice Oracle PASS; checkpoint commit pending.
+- 当前步骤：Stage 4 runtime support overlay artifact index visibility checkpoint commit `41f76f26` 已创建；当前 Stage 4 micro-loop adds the next smallest real package-owned QA closure candidate, `combat.projectile.v1`.
+- 最近完成：Stage 4 combat projectile package-owned QA slice 本地验证通过；它新增 projectile package/probe/runtime evidence wiring，使 runtime overlay observed complete support 从 `1/59` 推进到 `2/59`，但 static support summary 仍保持 `completeSupportedCount=0`。
+- 最近验证：combat projectile RED focused failed as expected because package/export missing, registry still legacy-backed, pipeline produced one QA result, and template reused the weapon probe；GREEN focused PASS, 6 files / 8 selected tests；related suite PASS, 10 files / 171 tests；full `npm test` PASS, contracts 94 files / 1043 tests and workspace 34 files / 402 tests；full `npm run typecheck` PASS；support probe confirms static `completeSupportedCount=0`, static `combat.projectile.v1` remains `qa_observed=false` / `completeSupported=false`, and runtime overlay reports `observedCompleteSupportedCount=2` with blocker `target_profile_runtime_support_incomplete:2/59`。
+- 最近 Oracle 结论：Stage 1 final Oracle PASS；Stage 2 Profile Resolution audit Oracle PASS；Stage 2 closure Oracle PASS / no P0/P1/P2/P3；Stage 3 audit Oracle re-review PASS / no P0/P1/P2/P3；Stage 3 closure Oracle re-review PASS / no P0/P1/P2/P3；Stage 4 audit Oracle PASS / no P0/P1/P2, P3 remediated；Stage 4 package closure gate implementation Oracle PASS / no P0/P1/P2/P3；Stage 4 default weapon browser QA evidence implementation Oracle PASS / no P0/P1/P2，P3 notes direct `PlaywrightQaRunnerService.run` capability evidence gate remains opt-in outside production pipeline；Stage 4 support prerequisite gate first Oracle BLOCKED on same-version schema compatibility；adapter fix Oracle re-review PASS / no P0/P1/P2/P3，checkpoint committed as `f5f1daa3`；Stage 4 default weapon package contract prerequisite Oracle PASS / no P0/P1/P2/P3；Stage 4 required-probe QA report bridge Oracle PASS / no P0/P1/P2, non-blocking P3 notes older active-profile no-package behavior can still report passed/observed without shadow QA refs; checkpoint commit allowed；Stage 4 target profile runtime support overlay Oracle PASS / P3 exact-lock wording remediated；Oracle re-review PASS / no P0/P1/P2/P3, checkpoint commit allowed for overlay only；Stage 4 runtime support overlay artifact index visibility Oracle PASS / no P0/P1/P2/P3, checkpoint allowed for this artifact visibility micro-step only；Stage 4 combat projectile package-owned QA slice Oracle PASS / no P0/P1/P2/P3, checkpoint allowed for this projectile slice only。
 - 未处理风险：Stage 4 complete package closure 尚未达成；Stage 5 Exact Capability Lock 尚未进入；Stage 3 Gate E 仍不证明 `profileRequirements.requirementsHash` / `requiredCapabilityIds` 字段级 downstream action；post-Stage-1 shadow/canary parity/rollback 仍未实施。`QaReport` status consistency 作为非阻塞债务登记，不重新打开 Stage 1。
-- 工作区核对：当前仅允许 Stage 4 runtime support overlay artifact index visibility 相关 files：`pipeline-artifact-index.ts`, `pipeline-acceptance-report.ts`, pipeline final index wiring, Workbench evidence grouping, related focused tests, 本状态文档和 Stage 4 分片。
+- 工作区核对：当前仅允许 Stage 4 `combat.projectile.v1` package-owned QA slice 相关 package contract、registry evidence、runtime QA probe wiring、focused tests、本状态文档和 Stage 4 分片；checkpoint commit pending.
 
 ## 5. 下一步
 
@@ -82,11 +82,14 @@ Stage 4 required-probe QA report bridge: CHECKPOINT_COMMITTED
 Stage 4 required-probe QA report bridge checkpoint: 8ce5c3a8
 Stage 4 target profile runtime support overlay: CHECKPOINT_COMMITTED
 Stage 4 target profile runtime support overlay checkpoint: cdccec37
-Stage 4 runtime support overlay artifact index visibility: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 runtime support overlay artifact index visibility: CHECKPOINT_COMMITTED
+Stage 4 runtime support overlay artifact index visibility checkpoint: 41f76f26
+Stage 4 combat projectile package-owned QA slice audit: RECORDED
+Stage 4 combat projectile package-owned QA slice implementation: ORACLE_PASSED_AWAITING_COMMIT
 Stage 4 Exit gate: NOT_MET
 ```
 
-下一步 checkpoint commit 当前 Stage 4 runtime support overlay artifact index visibility；提交后继续 Stage 4 下一 closure requirement 审查。不要把 artifact visibility 等同于 registry/static support promotion；support summary 仍保持 `requiredProbesVerified` 阻塞 `qa_observed` 和 `completeSupported`。
+下一步 checkpoint commit 当前 Stage 4 `combat.projectile.v1` package-owned QA slice；提交后继续 Stage 4 下一 closure requirement 审查。不得把此局部能力完成等同于 Stage 4 exit。
 
 ## 6. 恢复检查清单
 

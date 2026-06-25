@@ -226,6 +226,21 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       missingEvidenceDimensions: ['qa_observed'],
       missingSupportEvidencePrerequisites: ['requiredProbesVerified']
     });
+    expect(capabilities.get('combat.projectile.v1')).toMatchObject({
+      registered: true,
+      classification: 'DEFERRED',
+      completeSupported: false,
+      legacyBacked: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
   });
 
   it('reports spread-shot weapon normalization evidence without compiler or runtime support', () => {
