@@ -2,7 +2,7 @@
 
 > - Parent plan: `docs/plans/step37-authoritative-path-reconciliation-audit.md`
 > - Stage: 4 — Complete Capability Packages
-> - Current status: audit Oracle PASS; checkpoint commit pending
+> - Current status: camera.side_follow package-owned QA slice checkpoint committed; collision.platform package-owned QA slice audit recorded
 > - Updated: 2026-06-25
 
 ## Scope Lock
@@ -1398,3 +1398,45 @@ Next: continue Stage 4 next closure requirement audit
 ```
 
 Stop marker: Stage 4 camera.side_follow package-owned QA slice checkpoint commit is complete. Do not enter Stage 5 and do not claim complete package closure.
+
+## Stage 4 Review — Collision Platform Package-Owned QA Slice
+
+### Scope Lock
+
+- scope: Stage 4 audit only.
+- baseline: Stage 4 camera.side_follow package-owned QA slice checkpoint commit `b19d8c48` (`feat(game-dsl): add camera side follow QA package slice`).
+- implementation target: close the next smallest real package-owned QA slice for `collision.platform.v1` using existing side-scrolling ground collision runtime behavior and browser QA snapshot evidence.
+- non-goals: no Stage 5 exact lock, no composed schema, no canonical DSL, no provider run, no production default cutover, no legacy authoritative path exit, no full Stage 4 closure claim.
+- starting conclusion: runtime overlay can observe camera, projectile, movement, and default weapon as complete for the same run, but the target profile remains `target_profile_runtime_support_incomplete:4/59`.
+
+### Current Stage Review Conclusion
+
+`collision.platform.v1` is the next minimal real package-owned QA slice because the production side-scrolling runtime already performs platform/floor collision and exposes player grounded state, but the support summary still cannot treat that behavior as package-owned evidence:
+
+- `buildDeepSeekRunAndGunValidationProfileSupportSummary()` reports `collision.platform.v1` as legacy-backed with `schema_expressible=true`, `normalized=true`, `compiled=true`, `runtime_consumed=true`, `qa_observed=false`, and missing prerequisites including `capabilityOwnedQa`, `requiredProbeIds`, and `requiredProbesVerified`;
+- `SideScrollingRunAndGunScene.resolveGroundCollision()` clamps the player to the matching floor platform and zeroes vertical velocity when the player reaches standing height;
+- the side-scrolling QA snapshot already exposes `player.onGround`, so the browser path can observe grounded collision without inventing a synthetic action;
+- no `collision.platform.v1` package contract currently owns a required QA probe;
+- `QaCapabilityRuntimeExpectation` currently requires only camera, projectile, movement, and default weapon probes, so collision support cannot advance without an explicit collision package/probe bridge.
+
+Therefore, the next minimal closure requirement is to add a real `collision.platform.v1` package-owned QA probe and wire the runtime/QA consumer to observe existing ground collision as package evidence. This may raise runtime-observed support from `4/59` to `5/59`, but Stage 4 exit still remains `NOT_MET`.
+
+### Extracted Minimal Closure Requirements
+
+1. Add a `collision.platform.v1` package contract with a required grounded/platform collision QA probe.
+2. Install the collision package on the side-scrolling active-profile path alongside camera, default weapon, projectile, and movement packages.
+3. Extend the side-scrolling runtime snapshot/probe evidence only when ground collision actually resolves through `resolveGroundCollision()`.
+4. Extend the Playwright QA expectation to require the collision probe while keeping prior four probes unchanged.
+5. Keep static support summary incomplete; only the runtime overlay may report `observedCompleteSupported=true` for this capability.
+6. Keep Stage 4 exit blocked until all 59 required target capabilities are observed complete.
+
+### Exit Assessment Before Implementation
+
+```text
+Stage 4 Collision Platform Package-Owned QA Slice Audit: RECORDED
+Stage 4 Collision Platform Package-Owned QA Slice Implementation: NOT_ENTERED
+Expected post-implementation overlay: observedCompleteSupportedCount=5/59
+Stage 4 Exit gate: NOT_MET
+```
+
+Stop marker: Stage 4 collision.platform package-owned QA slice audit is recorded. Implementation may start for this slice only; do not enter Stage 5 and do not claim complete package closure.
