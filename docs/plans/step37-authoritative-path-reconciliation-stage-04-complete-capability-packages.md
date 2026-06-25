@@ -3301,3 +3301,114 @@ Next: Stage 4 pickup.collectible package-owned QA slice implementation atomic st
 ```
 
 Stop marker: Stage 4 `pickup.collectible.v1` package-owned QA slice audit is closed by Oracle-approved receipt metadata only. Do not enter Stage 5 or claim complete package closure; the next parent-loop atomic step is the separate `pickup.collectible.v1` implementation slice.
+
+## Stage 4 Improvement Log — Hierarchical Completion And Parent Loop Continuation Guardrail
+
+- checkpoint_id: `hierarchical_completion_parent_loop_guardrail`.
+- record_type: `implementation_log`.
+- implementation_status: `complete`.
+- local_validation_status: `passed`.
+- candidate_status: `ready_for_commit`.
+- oracle_status: `not_submitted`.
+- closure_scope: `atomic_step`.
+- parent_loop_id: `step37`.
+- parent_loop_status: `running`.
+- global_exit_conditions_met: `false`.
+- user_input_required: `false`.
+- next_action: `CONTINUE_PARENT_LOOP`.
+- next_atomic_step: `hierarchical_completion_parent_loop_guardrail implementation`.
+- scope: guardrail only; no business runtime, Stage 4 package implementation, Stage 5 exact lock, production default cutover, legacy authoritative path exit, or historical candidate/receipt rewrite is introduced.
+
+Purpose:
+
+- Prevent an atomic-step closure, candidate commit, Oracle PASS, receipt commit, or post-commit check from being interpreted as parent Stage, parent Loop, or global Step37 completion.
+- Require every atomic closure to run a Parent Loop Driver before deciding whether to continue, pause, or complete the global loop.
+- Replace unscoped completion wording with scoped closure fields that distinguish `atomic_step`, `parent_stage`, and `parent_loop`.
+
+Allowed result model:
+
+```text
+CONTINUE_PARENT_LOOP
+PAUSE_FOR_USER
+COMPLETE_GLOBAL_LOOP
+```
+
+Current facts at step start:
+
+```text
+worktree=/Users/dahufa/Documents/workspace/ai-game-maker
+branch=main
+HEAD=67438aae6c0b96e2c2084ce96fb8a375f0177771
+git status --short=<clean>
+Stage 4 exit gate=NOT_MET
+Stage 5 exact lock=NOT_ENTERED
+Production Default Cutover=NOT_ACTIVE
+legacy authoritative path=NOT_EXITED
+Final Closure=BLOCKED
+global_exit_conditions_met=false
+```
+
+External Skill revision for this guardrail candidate:
+
+```text
+skill_revision_type=sha256_bundle
+skill_bundle_root=/Users/dahufa/.agents/skills/code-change-discipline
+skill_bundle_file=/Users/dahufa/.agents/skills/code-change-discipline/SKILL.md
+skill_bundle_file_relative_path=SKILL.md
+skill_bundle_file_type=file
+skill_bundle_file_byte_length=39756
+skill_bundle_file_sha256=968c89c3240013af8650980b3d0f3aac1f2839572a25e7369aa5c27d81f671a6
+skill_bundle_digest=976bbc25d9a0c2e5d37b85e93fceecd1ebf5c908014555e6339c13385324954d
+skill_bundle_generation_exit_code=0
+```
+
+Minimum implementation requirements:
+
+1. Add a Parent Loop Driver or equivalent pure state evaluator with only three legal outcomes: `CONTINUE_PARENT_LOOP`, `PAUSE_FOR_USER`, and `COMPLETE_GLOBAL_LOOP`.
+2. Add scoped closure schema/validator fields for `atomic_step`, `parent_stage`, and `parent_loop`.
+3. Reject `COMPLETE_GLOBAL_LOOP` unless all global exit conditions are true.
+4. Reject `PAUSE_FOR_USER` unless a verified human-decision blocker is recorded.
+5. Reject a running parent loop whose `next_atomic_step` is empty.
+6. Reject unscoped completion markers while global exit conditions remain false.
+7. Rebuild parent-loop state from committed repo facts after compaction, resume, or new-session recovery.
+8. Update AGENTS.md and the active Skill so future queued feedback preserves parent-loop continuation semantics.
+
+Current validation state:
+
+```text
+npx vitest run tests/contracts/step37-parent-loop-driver.test.ts
+exitCode=0
+duration=0.832s
+result=PASS: 12 tests passed
+
+npx vitest run tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-closure-implementation-trace.test.ts
+exitCode=1
+duration=1.05s
+result=FAILED before contract fix: historical verification-freshness fixture incorrectly required the current mutable Skill file to keep the old historical digest.
+
+npx vitest run tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-closure-implementation-trace.test.ts
+exitCode=0
+duration=1.11s
+result=PASS: 48 focused contract tests passed after final driver, Skill, and contract-tree updates.
+
+npm run test:contracts
+exitCode=0
+duration=9.96s
+result=PASS: 96 contract files and 1109 tests passed.
+
+npm test
+exitCode=0
+duration=contracts 10.55s plus workspace 50.05s
+result=PASS: 96 contract files / 1109 tests and 34 workspace files / 408 tests passed.
+
+npm run typecheck
+exitCode=0
+duration=7.65s
+result=PASS: root, maker-api, and maker-workbench TypeScript checks passed.
+
+python3 - <<'PY' ... compute Skill bundle digest ...
+exitCode=0
+result=PASS: current Skill bundle digest 976bbc25d9a0c2e5d37b85e93fceecd1ebf5c908014555e6339c13385324954d
+```
+
+Exit assessment: `LOCAL_VALIDATION_PASSED_PENDING_CANDIDATE_COMMIT`. Candidate commit, Oracle review, receipt, post-receipt checks, and post-receipt Parent Loop Driver evaluation are still required before this atomic guardrail can close.

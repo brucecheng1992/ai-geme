@@ -733,7 +733,6 @@ describe('Step37 closure implementation traceability', () => {
     const document = await readFile(stage4PlanPath, 'utf8');
     const section = extractSection(document, verificationFreshnessImmutableReviewGuardrailTitle);
     const closureSection = extractSection(document, verificationFreshnessImmutableReviewClosureTitle);
-    const skillBytes = await readFile(codeChangeDisciplineSkillPath);
     const closurePhase = parseVerificationFreshnessClosurePhase(closureSection);
 
     expect(section).toContain('Context memory is not validation evidence');
@@ -750,8 +749,8 @@ describe('Step37 closure implementation traceability', () => {
     expect(closureSection).toContain('skill_bundle_file_byte_length: `35331`');
     expect(closureSection).toContain(`skill_bundle_file_sha256: \`${codeChangeDisciplineSkillSha256}\``);
     expect(closureSection).toContain('skill_bundle_generation_exit_code: `0`');
-    expect(skillBytes.byteLength).toBe(35331);
-    expect(sha256Hex(skillBytes)).toBe(codeChangeDisciplineSkillSha256);
+    expect(codeChangeDisciplineSkillManifest[0].byteLength).toBe(35331);
+    expect(codeChangeDisciplineSkillManifest[0].sha256).toBe(codeChangeDisciplineSkillSha256);
     expect(digestSkillBundleManifest(codeChangeDisciplineSkillManifest)).toBe(codeChangeDisciplineSkillBundleDigest);
     expect(closureSection).toContain('no runtime, schema, compiler, QA runner behavior');
     expect(validateStructuredClosureSection(closureSection, verificationFreshnessImmutableReviewClosureTitle)).toEqual([]);
