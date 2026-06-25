@@ -61,14 +61,20 @@ type CapabilityRuntimeProbe = {
   capabilityId: string;
   probeId: string;
   runtimeModuleId: string;
-  action: 'fire' | 'jump';
-  eventType: 'player.fired' | 'projectile.spawned' | 'player.jumped';
+  action: 'fire' | 'jump' | 'move';
+  eventType: 'player.fired' | 'projectile.spawned' | 'player.jumped' | 'camera.side_follow.active';
+  eventTypes?: string[];
   projectileEntityId?: string;
   projectileId?: string;
   sourceRef: string;
   status: 'observed';
 };
 
+const CAMERA_SIDE_FOLLOW_CAPABILITY_ID = 'camera.side_follow.v1';
+const CAMERA_SIDE_FOLLOW_CAPABILITY_PROBE_ID = 'camera.side_follow.v1.scroll.browser_qa.v1';
+const CAMERA_SIDE_FOLLOW_RUNTIME_MODULE_ID = 'camera.side_follow';
+const CAMERA_SIDE_FOLLOW_ACTIVE_EVENT_TYPE = 'camera.side_follow.active';
+const CAMERA_SIDE_FOLLOW_SOURCE_REF = 'runtime_plan.side_scrolling.camera.bounds';
 const DEFAULT_WEAPON_CAPABILITY_ID = 'weapon.default_straight_single.v1';
 const DEFAULT_WEAPON_CAPABILITY_PROBE_ID = 'weapon.default_straight_single.v1.fire.browser_qa.v1';
 const DEFAULT_WEAPON_RUNTIME_MODULE_ID = 'weapon.default_straight_single';
@@ -383,6 +389,19 @@ export class SideScrollingRunAndGunScene {
     };
   }
 
+  private createCameraSideFollowCapabilityRuntimeProbe(): CapabilityRuntimeProbe {
+    return {
+      capabilityId: CAMERA_SIDE_FOLLOW_CAPABILITY_ID,
+      probeId: CAMERA_SIDE_FOLLOW_CAPABILITY_PROBE_ID,
+      runtimeModuleId: CAMERA_SIDE_FOLLOW_RUNTIME_MODULE_ID,
+      action: 'move',
+      eventType: CAMERA_SIDE_FOLLOW_ACTIVE_EVENT_TYPE,
+      eventTypes: [CAMERA_SIDE_FOLLOW_ACTIVE_EVENT_TYPE],
+      sourceRef: CAMERA_SIDE_FOLLOW_SOURCE_REF,
+      status: 'observed'
+    };
+  }
+
   private capabilityRuntimeSnapshot(): { source: 'side_scrolling_runtime'; probes: CapabilityRuntimeProbe[] } {
     return {
       source: 'side_scrolling_runtime',
@@ -678,6 +697,10 @@ export class SideScrollingRunAndGunScene {
     const maxScrollX = Math.max(x, x + width - this.plan.scene.viewport.width);
     const targetScrollX = this.player.x + this.player.width / 2 - this.plan.scene.viewport.width / 2;
     this.cameraScrollX = clamp(targetScrollX, x, maxScrollX);
+    if (this.cameraScrollX > x) {
+      const capabilityRuntime = this.createCameraSideFollowCapabilityRuntimeProbe();
+      this.capabilityRuntimeProbes.set(capabilityRuntime.probeId, capabilityRuntime);
+    }
     this.phaserScene?.cameras.main.setScroll(this.cameraScrollX, y);
   }
 

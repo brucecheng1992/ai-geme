@@ -1290,3 +1290,111 @@ Stage 4 Exit gate: NOT_MET
 ```
 
 Stop marker: Stage 4 camera.side_follow package-owned QA slice audit is recorded. Implementation may start for this slice only; do not enter Stage 5 and do not claim complete package closure.
+
+### RED Evidence
+
+```text
+npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/generation-pipeline.service.test.ts -t "camera side follow|runtime-observed support|default straight single weapon runtime consumer evidence|keeps capability IDs unique|package-owned capability runtime evidence|capability runtime probe evidence|capability runtime evidence when a required probe is absent|passes capability runtime evidence|rewrites side-scrolling runtime scene binding report|passes active profile capability runtime expectation"
+# RED before implementation:
+# - camera side-follow package/export missing
+# - registry still statused camera.side_follow.v1 as runtime_backed / CONDITIONAL_LEGACY_BACKED
+# - side-scrolling template snapshot exposed no camera package probe
+# - pipeline shadow capability QA report produced only three required results
+# - target runtime support overlay remained observedCompleteSupportedCount=3
+```
+
+### Implemented Scope
+
+- Added `camera.side_follow.v1` runtime constants and package contract with a required side-follow camera QA probe.
+- Reclassified `camera.side_follow.v1` registry evidence from legacy-backed to package-backed planned evidence with `requiredProbesVerified=false`.
+- Installed the camera package on the side-scrolling active profile path alongside default weapon, projectile, and movement packages.
+- Extended side-scrolling QA runtime expectations to require camera, default weapon, projectile, and movement probes.
+- Extended `SideScrollingRunAndGunScene.updateCamera()` to record a camera side-follow probe in the runtime snapshot only after camera scroll actually advances.
+- Extended focused contract/workspace tests so package QA report and target runtime support overlay require the camera probe before reporting runtime-observed completion.
+
+### Compatibility & Cutover
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds `camera.side_follow.v1` package contract, runtime constants, registry package evidence, QA expectation, and runtime snapshot probe. |
+| Consumer list | `GameplayCapabilityRegistry`, target profile support summary, active-profile package installer, Playwright QA runtime evidence reader, `CapabilityQaReport`, target runtime support overlay, and Stage 4 tests consume it. |
+| Compatibility type | `ADAPTER_REQUIRED`: camera follow support moves off the legacy `side_view_camera` alias into a named package/probe while preserving existing side-scrolling camera snapshot behavior. |
+| Authority | The camera package contract owns the required probe; same-run `capability_qa_report` and `generation_target_profile_runtime_support_report.json` are authority for observed completion. |
+| Legacy strategy | Legacy `side_view_camera` remains only as a registry/profile alias; camera support is not complete unless the package-owned camera probe passes after real camera scroll. |
+| Failure policy | Missing camera package/probe evidence fails `CapabilityQaReport` and keeps runtime overlay blocked; static support remains incomplete with `requiredProbesVerified` missing. |
+| Evidence | RED failed before package/probe/snapshot wiring; GREEN focused, related suite, full tests, typecheck, and support probe prove observed support advances to `4/59` while Stage 4 exit remains blocked. |
+| Rollback | Revert this slice to remove camera package/probe wiring and return runtime overlay observed complete support from `4/59` to the previous `3/59`. |
+
+Compatibility disposition:
+
+```ts
+const STAGE_4_CAMERA_SIDE_FOLLOW_PACKAGE_QA_SLICE_DISPOSITION = "ADAPTER_REQUIRED";
+```
+
+This disposition is allowed for this checkpoint because the same slice includes adapter-backed runtime snapshot consumption and same-run evidence that the Playwright QA reader consumed the new camera probe payload.
+
+### Validation
+
+```text
+npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/generation-pipeline.service.test.ts -t "camera side follow|runtime-observed support|default straight single weapon runtime consumer evidence|keeps capability IDs unique|package-owned capability runtime evidence|capability runtime probe evidence|capability runtime evidence when a required probe is absent|passes capability runtime evidence|rewrites side-scrolling runtime scene binding report|passes active profile capability runtime expectation"
+# GREEN PASS, 7 files / 9 selected tests
+
+npx vitest run tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/generation-capability-resolution.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/generation-pipeline.service.test.ts
+# PASS, 10 files / 173 tests
+
+npm test
+# PASS, contracts 94 files / 1045 tests; workspace 34 files / 402 tests
+
+npm run typecheck
+# PASS
+
+npx tsx --eval "<support probe for static support summary and runtime overlay>"
+# PASS: static completeSupportedCount=0; runtime overlay observedCompleteSupportedCount=4; observedCapabilityIds=[camera.side_follow.v1, combat.projectile.v1, movement.run_jump.v1, weapon.default_straight_single.v1]; targetProfileCompleteSupported=false; blocker target_profile_runtime_support_incomplete:4/59
+```
+
+### Implementation Oracle Review
+
+Oracle PASS with one non-blocking P3:
+
+- P3: `tests/workspace/playwright-qa-runner.test.ts` QA report passthrough fixture initially did not include the camera probe in the snapshot and did not assert `capabilityRuntime.status`.
+
+P3 remediation:
+
+- Added the `camera.side_follow.v1` probe to the fixture snapshot.
+- Added an explicit assertion that `evaluateCapabilityRuntimeEvidence(...)` returns `PASSED`.
+- Re-ran focused `playwright-qa-runner` tests, full `npm test`, and `npm run typecheck`.
+
+Oracle re-review PASS / no P0/P1/P2/P3.
+
+Oracle confirmed checkpoint is allowed for this Stage 4 Camera Side Follow Package-Owned QA Slice only.
+
+Oracle scope guard:
+
+- does not approve Stage 4 full closure;
+- does not approve Stage 5 exact lock;
+- does not approve production default cutover;
+- does not approve legacy authoritative path exit;
+- does not approve final closure.
+
+### Implementation Exit Assessment
+
+```text
+Stage 1: AUTHORITATIVE_AND_CONNECTED
+Stage 2: PROFILE_RESOLUTION_CLOSED
+Stage 3: CAPABILITY_REQUIREMENTS_CLOSED
+Stage 4 Audit: COMPLETE_PACKAGE_CLOSURE_NOT_MET
+Stage 4 Package Closure Gate: CHECKPOINT_COMMITTED
+Stage 4 Default Weapon Browser QA Evidence: CHECKPOINT_COMMITTED
+Stage 4 Support Evidence Prerequisite Gate: CHECKPOINT_COMMITTED
+Stage 4 Default Weapon Package Contract Prerequisite: CHECKPOINT_COMMITTED
+Stage 4 Required Probe QA Report Bridge: CHECKPOINT_COMMITTED
+Stage 4 Target Profile Runtime Support Overlay: CHECKPOINT_COMMITTED
+Stage 4 Runtime Support Overlay Artifact Index Visibility: CHECKPOINT_COMMITTED
+Stage 4 Combat Projectile Package-Owned QA Slice: CHECKPOINT_COMMITTED
+Stage 4 Movement Run Jump Package-Owned QA Slice: CHECKPOINT_COMMITTED
+Stage 4 Camera Side Follow Package-Owned QA Slice: CHECKPOINT_COMMITTED
+Stage 4 Exit gate: NOT_MET
+Next: continue Stage 4 next closure requirement audit
+```
+
+Stop marker: Stage 4 camera.side_follow package-owned QA slice checkpoint commit is complete. Do not enter Stage 5 and do not claim complete package closure.

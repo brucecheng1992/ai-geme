@@ -2,6 +2,10 @@ import { z } from 'zod';
 
 import { isRuntimeGenreExecutable, RuntimeGenreRegistry, type RuntimeGenreCapability } from '../runtime-capabilities.js';
 import {
+  CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
+  createCameraSideFollowPackageContract
+} from './camera-side-follow-package.js';
+import {
   DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
   createDefaultStraightSingleWeaponPackageContract
 } from './default-straight-single-weapon-package.js';
@@ -322,6 +326,19 @@ const canonicalRuntimeLoaderEvidence: GameplayCapabilityEvidence = {
 
 const noVerifiedQa: GameplayCapabilityQaEvidence = { requiredProbeIds: [], requiredProbesVerified: false };
 
+const cameraSideFollowPackageReport = validateGameplayCapabilityPackage(createCameraSideFollowPackageContract());
+const cameraSideFollowPackageEvidence: GameplayCapabilityEvidence = cameraSideFollowPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const cameraSideFollowPackageQa: GameplayCapabilityQaEvidence = cameraSideFollowPackageReport.supportEligible
+  ? { requiredProbeIds: [CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const defaultStraightSingleWeaponPackageReport = validateGameplayCapabilityPackage(createDefaultStraightSingleWeaponPackageContract());
 const defaultStraightSingleWeaponPackageEvidence: GameplayCapabilityEvidence = defaultStraightSingleWeaponPackageReport.supportEligible
   ? {
@@ -403,9 +420,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     combatProjectilePackageQa
   ),
   runtimeBacked('spawn.enemy_wave.v1', 'spawn', 'Enemy wave spawning', [topDownActionArcade], ['shooter.v1'], ['enemy_waves']),
-  runtimeBacked('camera.side_follow.v1', 'camera', 'Side-scrolling follow camera', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1', 'side_scrolling_platformer.v1'], [
-    'side_view_camera'
-  ]),
+  planned(
+    'camera.side_follow.v1',
+    'camera',
+    'Side-scrolling follow camera',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1', 'side_scrolling_platformer.v1'],
+    ['side_view_camera'],
+    cameraSideFollowPackageEvidence,
+    cameraSideFollowPackageQa
+  ),
   runtimeBacked('physics.gravity_platformer.v1', 'physics', 'Gravity platformer physics', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1', 'side_scrolling_platformer.v1'], [
     'gravity_platformer_physics'
   ]),

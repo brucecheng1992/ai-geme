@@ -23,6 +23,10 @@ describe('Gameplay capability registry', () => {
 
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toEqual([...ids].sort());
+    expect(findGameplayCapability('camera.side_follow.v1')).toMatchObject({
+      status: 'planned',
+      legacyRuntimeCapabilities: ['side_view_camera']
+    });
     expect(findGameplayCapability('movement.run_jump.v1')).toMatchObject({
       status: 'planned',
       legacyRuntimeCapabilities: ['run_jump_controller']

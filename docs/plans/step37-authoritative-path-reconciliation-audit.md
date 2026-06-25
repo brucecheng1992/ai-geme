@@ -1,7 +1,7 @@
 # Step 37 Authoritative Path Reconciliation Audit
 
 > - 文档定位：Step 37 authoritative production chain 的逐段只读审计状态文档。
-> - 当前状态：Stage 4 camera.side_follow package-owned QA slice audit recorded; implementation not entered
+> - 当前状态：Stage 4 camera.side_follow package-owned QA slice checkpoint committed
 > - 任务契约：`/Users/dahufa/Downloads/step37-authoritative-path-reconciliation-prompt.md`
 > - 当前分片：`docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`
 > - 更新日期：2026-06-25
@@ -48,13 +48,13 @@
 
 ## 4. 当前状态
 
-- 状态：Stage 4 camera.side_follow package-owned QA slice audit recorded; implementation not entered.
-- 当前步骤：Stage 4 movement.run_jump package-owned QA slice checkpoint commit `0965197f` 已创建；当前 Stage 4 micro-loop audits the next smallest real package-owned QA closure candidate, `camera.side_follow.v1`.
-- 最近完成：Stage 4 movement.run_jump package-owned QA slice 已 checkpoint；它新增 movement run/jump package/probe/runtime evidence wiring，使 runtime overlay observed complete support 从 `2/59` 推进到 `3/59`，但 static support summary 仍保持 `completeSupportedCount=0`。
-- 最近验证：movement run/jump RED focused failed as expected because package/export missing, registry still legacy-backed, pipeline produced two QA results, and template emitted `player.jumped` without package-owned runtime evidence；GREEN focused PASS, 6 files / 8 selected tests；related suite PASS, 10 files / 172 tests；full `npm test` PASS, contracts 94 files / 1044 tests and workspace 34 files / 402 tests；full `npm run typecheck` PASS；support probe confirms static `completeSupportedCount=0`, runtime overlay reports `observedCompleteSupportedCount=3`, observed capability ids `[combat.projectile.v1, movement.run_jump.v1, weapon.default_straight_single.v1]`, and blocker `target_profile_runtime_support_incomplete:3/59`。
-- 最近 Oracle 结论：Stage 1 final Oracle PASS；Stage 2 Profile Resolution audit Oracle PASS；Stage 2 closure Oracle PASS / no P0/P1/P2/P3；Stage 3 audit Oracle re-review PASS / no P0/P1/P2/P3；Stage 3 closure Oracle re-review PASS / no P0/P1/P2/P3；Stage 4 audit Oracle PASS / no P0/P1/P2, P3 remediated；Stage 4 package closure gate implementation Oracle PASS / no P0/P1/P2/P3；Stage 4 default weapon browser QA evidence implementation Oracle PASS / no P0/P1/P2，P3 notes direct `PlaywrightQaRunnerService.run` capability evidence gate remains opt-in outside production pipeline；Stage 4 support prerequisite gate first Oracle BLOCKED on same-version schema compatibility；adapter fix Oracle re-review PASS / no P0/P1/P2/P3，checkpoint committed as `f5f1daa3`；Stage 4 default weapon package contract prerequisite Oracle PASS / no P0/P1/P2/P3；Stage 4 required-probe QA report bridge Oracle PASS / no P0/P1/P2, non-blocking P3 notes older active-profile no-package behavior can still report passed/observed without shadow QA refs; checkpoint commit allowed；Stage 4 target profile runtime support overlay Oracle PASS / P3 exact-lock wording remediated；Oracle re-review PASS / no P0/P1/P2/P3, checkpoint commit allowed for overlay only；Stage 4 runtime support overlay artifact index visibility Oracle PASS / no P0/P1/P2/P3, checkpoint allowed for this artifact visibility micro-step only；Stage 4 combat projectile package-owned QA slice Oracle PASS / no P0/P1/P2/P3, checkpoint allowed for this projectile slice only；Stage 4 movement.run_jump package-owned QA slice Oracle PASS / no P0/P1/P2/P3, checkpoint allowed for this movement slice only。
+- 状态：Stage 4 camera.side_follow package-owned QA slice checkpoint committed.
+- 当前步骤：Stage 4 camera.side_follow package-owned QA slice has implemented the next smallest real package-owned QA closure candidate, `camera.side_follow.v1`; checkpoint is this commit.
+- 最近完成：Stage 4 camera.side_follow package-owned QA slice 已完成 Oracle 复审并进入 checkpoint；它新增 camera side-follow package/probe/snapshot evidence wiring，使 runtime overlay observed complete support 从 `3/59` 推进到 `4/59`，但 static support summary 仍保持 `completeSupportedCount=0`。
+- 最近验证：camera side-follow RED focused failed as expected because package/export missing, registry still legacy-backed, target summary still `CONDITIONAL_LEGACY_BACKED`, template snapshot lacked camera probe, and pipeline QA report produced only three required results；GREEN focused PASS, 7 files / 9 selected tests；related suite PASS, 10 files / 173 tests；full `npm test` PASS, contracts 94 files / 1045 tests and workspace 34 files / 402 tests；full `npm run typecheck` PASS；support probe confirms static `completeSupportedCount=0`, runtime overlay reports `observedCompleteSupportedCount=4`, observed capability ids `[camera.side_follow.v1, combat.projectile.v1, movement.run_jump.v1, weapon.default_straight_single.v1]`, and blocker `target_profile_runtime_support_incomplete:4/59`。After P3 remediation, focused `playwright-qa-runner` PASS, full `npm test` PASS, and `npm run typecheck` PASS again.
+- 最近 Oracle 结论：Stage 1 final Oracle PASS；Stage 2 Profile Resolution audit Oracle PASS；Stage 2 closure Oracle PASS / no P0/P1/P2/P3；Stage 3 audit Oracle re-review PASS / no P0/P1/P2/P3；Stage 3 closure Oracle re-review PASS / no P0/P1/P2/P3；Stage 4 audit Oracle PASS / no P0/P1/P2, P3 remediated；Stage 4 package closure gate implementation Oracle PASS / no P0/P1/P2/P3；Stage 4 default weapon browser QA evidence implementation Oracle PASS / no P0/P1/P2，P3 notes direct `PlaywrightQaRunnerService.run` capability evidence gate remains opt-in outside production pipeline；Stage 4 support prerequisite gate first Oracle BLOCKED on same-version schema compatibility；adapter fix Oracle re-review PASS / no P0/P1/P2/P3，checkpoint committed as `f5f1daa3`；Stage 4 default weapon package contract prerequisite Oracle PASS / no P0/P1/P2/P3；Stage 4 required-probe QA report bridge Oracle PASS / no P0/P1/P2, non-blocking P3 notes older active-profile no-package behavior can still report passed/observed without shadow QA refs; checkpoint commit allowed；Stage 4 target profile runtime support overlay Oracle PASS / P3 exact-lock wording remediated；Oracle re-review PASS / no P0/P1/P2/P3, checkpoint commit allowed for overlay only；Stage 4 runtime support overlay artifact index visibility Oracle PASS / no P0/P1/P2/P3, checkpoint allowed for this artifact visibility micro-step only；Stage 4 combat projectile package-owned QA slice Oracle PASS / no P0/P1/P2/P3, checkpoint allowed for this projectile slice only；Stage 4 movement.run_jump package-owned QA slice Oracle PASS / no P0/P1/P2/P3, checkpoint allowed for this movement slice only；Stage 4 camera.side_follow package-owned QA slice Oracle PASS with non-blocking P3, P3 remediated, Oracle re-review PASS / no P0/P1/P2/P3, checkpoint allowed for this camera slice only。
 - 未处理风险：Stage 4 complete package closure 尚未达成；Stage 5 Exact Capability Lock 尚未进入；Stage 3 Gate E 仍不证明 `profileRequirements.requirementsHash` / `requiredCapabilityIds` 字段级 downstream action；post-Stage-1 shadow/canary parity/rollback 仍未实施。`QaReport` status consistency 作为非阻塞债务登记，不重新打开 Stage 1。
-- 工作区核对：当前工作区 clean at `0965197f`；下一步仅允许 Stage 4 `camera.side_follow.v1` package-owned QA slice 相关 package contract、QA probe evaluator、runtime/snapshot evidence wiring、focused tests、本状态文档和 Stage 4 分片。
+- 工作区核对：Stage 4 `camera.side_follow.v1` package-owned QA slice checkpoint is this commit; next loop must start with the next Stage 4 closure requirement audit.
 
 ## 5. 下一步
 
@@ -91,11 +91,13 @@ Stage 4 movement.run_jump package-owned QA slice audit: RECORDED
 Stage 4 movement.run_jump package-owned QA slice implementation: CHECKPOINT_COMMITTED
 Stage 4 movement.run_jump package-owned QA slice checkpoint: 0965197f
 Stage 4 camera.side_follow package-owned QA slice audit: RECORDED
-Stage 4 camera.side_follow package-owned QA slice implementation: NOT_ENTERED
+Stage 4 camera.side_follow package-owned QA slice audit checkpoint: f2e8da5a
+Stage 4 camera.side_follow package-owned QA slice implementation: CHECKPOINT_COMMITTED
+Stage 4 camera.side_follow package-owned QA slice checkpoint: this commit
 Stage 4 Exit gate: NOT_MET
 ```
 
-下一步仅实施 Stage 4 `camera.side_follow.v1` package-owned QA slice：把现有 side-scrolling browser movement/camera snapshot check 升级成 package-owned camera follow probe evidence，使 target runtime support overlay 的 observed complete support 预期从 3/59 推进到 4/59；不得把此局部能力完成等同于 Stage 4 exit。
+下一步进入 Stage 4 下一 closure requirement audit；不得跳过审查直接实施，不得把 `4/59` runtime-observed support 等同于 Stage 4 exit。
 
 ## 6. 恢复检查清单
 

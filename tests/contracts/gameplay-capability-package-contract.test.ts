@@ -14,6 +14,14 @@ import {
   DEFAULT_STRAIGHT_SINGLE_WEAPON_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/default-straight-single-weapon-runtime-module.js';
 import {
+  CAMERA_SIDE_FOLLOW_PACKAGE_REQUIRED_EVIDENCE_ID,
+  CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
+  createCameraSideFollowPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/camera-side-follow-package.js';
+import {
+  CAMERA_SIDE_FOLLOW_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/camera-side-follow-runtime-module.js';
+import {
   COMBAT_PROJECTILE_PACKAGE_REQUIRED_EVIDENCE_ID,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   createCombatProjectilePackageContract
@@ -66,6 +74,32 @@ describe('Gameplay capability package contract', () => {
       capabilityId: 'weapon.default_straight_single.v1',
       severity: 'required',
       observations: expect.arrayContaining([expect.objectContaining({ runtimeSystemId: DEFAULT_STRAIGHT_SINGLE_WEAPON_RUNTIME_SYSTEM_ID })])
+    });
+  });
+
+  it('accepts the camera side follow package-owned QA contract', () => {
+    const contract = createCameraSideFollowPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'camera.side_follow.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([CAMERA_SIDE_FOLLOW_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: CAMERA_SIDE_FOLLOW_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'camera.side_follow.v1',
+      severity: 'required',
+      observations: [expect.objectContaining({ kind: 'camera_scroll', runtimeSystemId: CAMERA_SIDE_FOLLOW_RUNTIME_SYSTEM_ID, ref: 'camera.side_follow.active' })]
     });
   });
 

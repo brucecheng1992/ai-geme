@@ -37,6 +37,8 @@ import {
   buildGenerationCapabilityPreflight,
   buildGenerationPathReceipt,
   buildCanonicalGameBriefArtifact,
+  CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
+  createCameraSideFollowPackageContract,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   createCombatProjectilePackageContract,
   createDefaultStraightSingleWeaponPackageContract,
@@ -1918,6 +1920,12 @@ function buildQaCapabilityRuntimeExpectation(genre: QaGenre): QaCapabilityRuntim
   return {
     requiredProbes: [
       {
+        capabilityId: 'camera.side_follow.v1',
+        probeId: CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
+        action: 'move',
+        eventType: 'camera.side_follow.active'
+      },
+      {
         capabilityId: 'combat.projectile.v1',
         probeId: COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
         action: 'fire',
@@ -1941,7 +1949,12 @@ function buildQaCapabilityRuntimeExpectation(genre: QaGenre): QaCapabilityRuntim
 
 function buildApprovedInstalledCapabilityQaPackages(normalizedGenre: string): readonly unknown[] {
   return normalizedGenre === 'side_scrolling_run_and_gun'
-    ? [createDefaultStraightSingleWeaponPackageContract(), createCombatProjectilePackageContract(), createMovementRunJumpPackageContract()]
+    ? [
+        createCameraSideFollowPackageContract(),
+        createDefaultStraightSingleWeaponPackageContract(),
+        createCombatProjectilePackageContract(),
+        createMovementRunJumpPackageContract()
+      ]
     : [];
 }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
   GenerationTargetProfileRuntimeSupportReportSchema,
@@ -8,6 +9,7 @@ import {
   buildCapabilityQaProbeResultsFromRuntimeEvidence,
   buildCapabilityRuntimeQaPlan,
   buildGenerationTargetProfileRuntimeSupportReport,
+  createCameraSideFollowPackageContract,
   createCombatProjectilePackageContract,
   createDefaultStraightSingleWeaponPackageContract,
   createMovementRunJumpPackageContract,
@@ -15,18 +17,20 @@ import {
   resolveGameplayCapabilityGraph
 } from '../../packages/game-dsl/src/index.js';
 
+const cameraCapabilityId = 'camera.side_follow.v1';
 const defaultWeaponCapabilityId = 'weapon.default_straight_single.v1';
 const projectileCapabilityId = 'combat.projectile.v1';
 const movementCapabilityId = 'movement.run_jump.v1';
 
 describe('Step 37 target profile runtime support overlay', () => {
   it('records runtime-observed support without mutating static completeSupported evidence', () => {
-    const capabilityQaReport = buildDefaultWeaponQaReport(['player.fired', 'projectile.spawned', 'player.jumped']);
+    const capabilityQaReport = buildDefaultWeaponQaReport(['camera.side_follow.active', 'player.fired', 'projectile.spawned', 'player.jumped']);
     const report = buildGenerationTargetProfileRuntimeSupportReport({
       projectId: 'proj_20260625_target_runtime_support',
       runId: 'run_20260625_target_runtime_support',
       capabilityQaReport
     });
+    const camera = report.capabilities.find((entry) => entry.capabilityId === cameraCapabilityId);
     const defaultWeapon = report.capabilities.find((entry) => entry.capabilityId === defaultWeaponCapabilityId);
     const projectile = report.capabilities.find((entry) => entry.capabilityId === projectileCapabilityId);
     const movement = report.capabilities.find((entry) => entry.capabilityId === movementCapabilityId);
@@ -38,11 +42,22 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 3,
+      observedCompleteSupportedCount: 4,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
-      observedCapabilityIds: [projectileCapabilityId, movementCapabilityId, defaultWeaponCapabilityId],
-      blockers: ['target_profile_runtime_support_incomplete:3/59']
+      observedCapabilityIds: [cameraCapabilityId, projectileCapabilityId, movementCapabilityId, defaultWeaponCapabilityId],
+      blockers: ['target_profile_runtime_support_incomplete:4/59']
+    });
+    expect(camera).toMatchObject({
+      capabilityId: cameraCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
     });
     expect(defaultWeapon).toMatchObject({
       capabilityId: defaultWeaponCapabilityId,
@@ -95,6 +110,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       targetProfileCompleteSupported: false,
       observedCapabilityIds: [],
       blockers: [
+        `capability_qa_report_missing_required_probe:${CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID}`,
         `capability_qa_report_missing_required_probe:${COMBAT_PROJECTILE_REQUIRED_PROBE_ID}`,
         `capability_qa_report_missing_required_probe:${MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID}`,
         `capability_qa_report_missing_required_probe:${DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID}`,
@@ -113,9 +129,14 @@ describe('Step 37 target profile runtime support overlay', () => {
 });
 
 function buildDefaultWeaponQaReport(eventTypes: readonly string[]) {
-  const packages = [createDefaultStraightSingleWeaponPackageContract(), createCombatProjectilePackageContract(), createMovementRunJumpPackageContract()];
+  const packages = [
+    createCameraSideFollowPackageContract(),
+    createDefaultStraightSingleWeaponPackageContract(),
+    createCombatProjectilePackageContract(),
+    createMovementRunJumpPackageContract()
+  ];
   const lockReport = resolveGameplayCapabilityGraph({
-    requestedCapabilities: [defaultWeaponCapabilityId, projectileCapabilityId, movementCapabilityId],
+    requestedCapabilities: [cameraCapabilityId, defaultWeaponCapabilityId, projectileCapabilityId, movementCapabilityId],
     packages,
     runtimeFamily: 'phaser_2d_action_arcade.v1'
   });
@@ -129,6 +150,19 @@ function buildDefaultWeaponQaReport(eventTypes: readonly string[]) {
     packages
   });
   const observed = [
+    ...(eventTypes.includes('camera.side_follow.active')
+      ? [
+          {
+            capabilityId: cameraCapabilityId,
+            probeId: CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
+            action: 'move',
+            eventType: 'camera.side_follow.active',
+            eventTypes,
+            status: 'observed' as const,
+            sourceRef: 'qa_report.snapshot.camera.scrollX'
+          }
+        ]
+      : []),
     ...(eventTypes.includes('player.fired')
       ? [
           {

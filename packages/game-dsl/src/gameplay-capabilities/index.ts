@@ -3,6 +3,8 @@ export * from './package-contract.js';
 export * from './capability-dsl.js';
 export * from './capability-ir.js';
 export * from './phaser-runtime-loader.js';
+export * from './camera-side-follow-runtime-module.js';
+export * from './camera-side-follow-package.js';
 export * from './default-straight-single-weapon-runtime-module.js';
 export * from './default-straight-single-weapon-package.js';
 export * from './combat-projectile-runtime-module.js';

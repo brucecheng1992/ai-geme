@@ -107,7 +107,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
   });
 
   it('keeps legacy-backed, schema-only, and contract-seeded capabilities below complete_supported', () => {
-    const legacyBacked = cloneCapability('camera.side_follow.v1');
+    const legacyBacked = cloneCapability('collision.platform.v1');
     const contractSeeded = cloneCapability('health.damage_invulnerability.v1');
     const schemaOnly = {
       ...cloneCapability('goal.reach_exit.v1'),
@@ -211,6 +211,21 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
     const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
     const capabilities = new Map(support.capabilities.map((capability) => [capability.capabilityId, capability]));
 
+    expect(capabilities.get('camera.side_follow.v1')).toMatchObject({
+      registered: true,
+      classification: 'DEFERRED',
+      completeSupported: false,
+      legacyBacked: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
     expect(capabilities.get('weapon.default_straight_single.v1')).toMatchObject({
       registered: true,
       classification: 'DEFERRED',
