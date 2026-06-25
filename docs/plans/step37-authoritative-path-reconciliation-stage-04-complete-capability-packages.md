@@ -4350,3 +4350,69 @@ parent_loop:
 ```
 
 Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `telemetry_schema_focused_validation_guardrail` after candidate commit creation, Oracle PASS, and receipt-only metadata update. It does not close Stage 4, Step37, production default cutover, legacy authoritative path exit, Stage 5, or final global closure. Parent Loop Driver must continue with `stage4.remaining_complete_supported_package_inventory_audit` while global exits remain false and no verified user blocker exists.
+
+## Stage 4 Audit — Remaining Complete-Supported Package Inventory
+
+- checkpoint_id: `stage4.remaining_complete_supported_package_inventory_audit`.
+- closure_scope: `atomic_step`.
+- audit_status: `complete`.
+- implementation_status: `not_started`.
+- capability_closure_status: `not_met`.
+- parent_stage_status: `running`.
+- parent_loop_status: `running`.
+- global_exit_conditions_met: `false`.
+- user_input_required: `false`.
+
+Current review conclusion:
+
+Stage 4 complete package closure remains `NOT_MET`. The current target profile support summary still reports `requiredCapabilityCount=59`, `registeredCapabilityCount=18`, `completeSupportedCount=0`, and `legacyBackedCapabilityCount=1`. The package-owned QA slices closed so far improve same-run observed overlay evidence, but static target-profile support remains fail-closed because `qa_observed=false` and `requiredProbesVerified` remains missing for every registered target capability.
+
+Traceable evidence:
+
+```text
+npx tsx --eval 'import { buildDeepSeekRunAndGunValidationProfileSupportSummary } from "./packages/game-dsl/src/index.ts"; const support=buildDeepSeekRunAndGunValidationProfileSupportSummary(); console.log(JSON.stringify({summary:support.summary}, null, 2));'
+exitCode=0
+summary={requirementCount:60, capabilityClusterCount:15, requiredCapabilityCount:59, registeredCapabilityCount:18, completeSupportedCount:0, legacyBackedCapabilityCount:1}
+
+npx tsx --eval 'import { buildDeepSeekRunAndGunValidationProfileSupportSummary } from "./packages/game-dsl/src/index.ts"; const support=buildDeepSeekRunAndGunValidationProfileSupportSummary(); const byClass=Object.fromEntries([...new Set(support.capabilities.map((capability)=>capability.classification))].sort().map((classification)=>[classification,support.capabilities.filter((capability)=>capability.classification===classification).length])); console.log(JSON.stringify(byClass));'
+exitCode=0
+byClass={CONDITIONAL_LEGACY_BACKED:1, CONTRACT_SEEDED:3, DEFERRED:14, UNSUPPORTED:41}
+```
+
+Current inventory facts:
+
+- Registered but incomplete required capabilities: `18`.
+- Unsupported required capabilities: `41`.
+- Complete-supported required capabilities: `0`.
+- Registered incomplete sample: `camera.side_follow.v1`, `collision.platform.v1`, `combat.airborne_fire.v1`, `combat.projectile.v1`, `health.damage_invulnerability.v1`, `movement.crouch.v1`, `pickup.collectible.v1`, `spawn.enemy_wave.v1`, `weapon.default_straight_single.v1`.
+- Unsupported sample: `artifact.lineage_no_manual_patch.v1`, `artifact.no_hidden_script.v1`, `camera.bounds_clamp.v1`, `canonical.semantic_preservation.v1`, `enemy.boss_attack_pattern.v1`, `feedback.victory_declaration.v1`, `provider.deepseek_authoritative_draft.v1`, `runtime.plan_coverage.v1`, `scene.ordered_segments.v1`.
+
+Minimal closure requirements:
+
+1. Add an authoritative remaining-inventory driver or artifact that derives the next unmet checkpoint from current support summary and committed closure history, not from a hard-coded fixture or stale conversation memory.
+2. Distinguish at least these states per required capability: complete-supported, same-run observed only, registered but static `qa_observed=false`, registered without required probe verification, unsupported/unregistered, and legacy-backed.
+3. Keep same-run observed overlay evidence separate from static `completeSupported`; observed overlay must not mutate static support or claim production cutover.
+4. Define the selection rule for next implementation slices so Parent Loop Driver can pick a real next checkpoint without fabricating `running/null` or replaying already closed package slices.
+5. Preserve Stage 4 failure policy: while `completeSupportedCount=0/59`, Stage 5 exact lock, production default cutover, legacy authoritative path exit, and final closure remain blocked.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | This audit introduces no producer change. A later implementation may add an inventory driver/artifact derived from `buildDeepSeekRunAndGunValidationProfileSupportSummary()` and closure history. |
+| Consumer list | Parent Loop Driver, Stage 4 closure contracts, Step37 plan/closure readers, and future package-slice selection logic. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: current prose and test fixtures are insufficient as an authoritative continuing-loop inventory. |
+| Authority | Current source authority is `buildDeepSeekRunAndGunValidationProfileSupportSummary()` plus committed closure records. The next implementation must make that authority machine-readable. |
+| Legacy strategy | Legacy-backed capabilities remain incomplete; legacy behavior cannot promote static complete support. |
+| Failure policy | Missing inventory, stale closure history, duplicate checkpoint identity, or no next unmet checkpoint while global exits are false must fail closed instead of returning `running/null`. |
+| Evidence | This audit records current support summary counts and classification counts only. Implementation evidence must include contracts proving selection from actual support data and closure history. |
+| Rollback | Reverting this audit removes only the inventory review note; it does not change support data, runtime, tests, or package evidence. |
+
+Next implementation:
+
+- next_action: `CONTINUE_PARENT_LOOP`.
+- next_atomic_step: `stage4.remaining_complete_supported_package_inventory_driver_implementation`.
+- next_atomic_step_scope: `implementation`.
+- next_atomic_step_entry_conditions: `this audit candidate committed, Oracle audit receipt approved, Parent Loop Driver returns CONTINUE_PARENT_LOOP, global_exit_conditions_met=false, user_input_required=false`.
+
+Exit assessment: `AUDIT_COMPLETE_IMPLEMENTATION_NOT_ENTERED`. This audit closes only the inventory review once Oracle and receipt complete. It does not close Stage 4 or Step37. The next atomic step must implement an authoritative remaining-inventory driver before further package-slice selection can be treated as parent-loop evidence.
