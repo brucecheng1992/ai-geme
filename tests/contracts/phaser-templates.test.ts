@@ -94,12 +94,12 @@ type SideScrollingTemplateSnapshot = TemplateSnapshot & {
     probes: Array<{
       capabilityId: string;
       probeId: string;
-      runtimeModuleId: string;
-      action: string;
-      eventType: string;
-      projectileEntityId: string;
-      projectileId?: string;
-      sourceRef: string;
+	      runtimeModuleId: string;
+	      action: string;
+	      eventType: string;
+	      projectileEntityId?: string;
+	      projectileId?: string;
+	      sourceRef: string;
       status: 'observed';
     }>;
   };
@@ -1133,7 +1133,7 @@ describe('Phaser templates', () => {
     });
   });
 
-  it('exposes default weapon capability runtime evidence through side-scrolling QA telemetry', async () => {
+  it('exposes package-owned capability runtime evidence through side-scrolling QA telemetry', async () => {
     const { SideScrollingRunAndGunScene } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/GameScene.js');
     const { defaultSideScrollingRuntimeSlice } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/side-scrolling-runtime-plan.js');
     const { defaultSideScrollingParams } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/template-params.js');
@@ -1141,6 +1141,7 @@ describe('Phaser templates', () => {
 
     scene.create();
     scene.start();
+    scene.jump();
     scene.fire(1_000);
 
     const expectedWeaponProbe = {
@@ -1163,11 +1164,22 @@ describe('Phaser templates', () => {
       sourceRef: 'runtime_plan.side_scrolling.player.projectileEntityId',
       status: 'observed'
     };
+    const expectedMovementProbe = {
+      capabilityId: 'movement.run_jump.v1',
+      probeId: 'movement.run_jump.v1.jump.browser_qa.v1',
+      runtimeModuleId: 'movement.run_jump',
+      action: 'jump',
+      eventType: 'player.jumped',
+      sourceRef: 'runtime_plan.side_scrolling.player.jumpVelocity',
+      status: 'observed'
+    };
     const snapshot = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
     const telemetry = globalThis.__GAME_QA__?.telemetry() ?? [];
+    const jumpedEvent = telemetry.find((event) => event.type === 'player.jumped');
     const firedEvent = telemetry.find((event) => event.type === 'player.fired');
     const projectileEvent = telemetry.find((event) => event.type === 'projectile.spawned');
 
+    expect(jumpedEvent?.payload?.capabilityRuntime).toMatchObject(expectedMovementProbe);
     expect(firedEvent?.payload?.capabilityRuntime).toMatchObject(expectedWeaponProbe);
     expect(projectileEvent?.payload?.capabilityRuntime).toMatchObject(expectedWeaponProbe);
     expect(projectileEvent?.payload?.capabilityRuntimeProbes).toEqual(
@@ -1175,9 +1187,13 @@ describe('Phaser templates', () => {
     );
     expect(snapshot?.capabilityRuntime).toMatchObject({
       source: 'side_scrolling_runtime',
-      probes: expect.arrayContaining([expect.objectContaining(expectedProjectileProbe), expect.objectContaining(expectedWeaponProbe)])
+      probes: expect.arrayContaining([
+        expect.objectContaining(expectedMovementProbe),
+        expect.objectContaining(expectedProjectileProbe),
+        expect.objectContaining(expectedWeaponProbe)
+      ])
     });
-    expect(snapshot?.capabilityRuntime?.probes).toHaveLength(2);
+    expect(snapshot?.capabilityRuntime?.probes).toHaveLength(3);
     expect(snapshot?.projectiles[0]).toMatchObject({
       owner: 'player',
       sourceId: 'pulse_bolt',

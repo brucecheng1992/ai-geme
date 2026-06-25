@@ -107,7 +107,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
   });
 
   it('keeps legacy-backed, schema-only, and contract-seeded capabilities below complete_supported', () => {
-    const legacyBacked = cloneCapability('movement.run_jump.v1');
+    const legacyBacked = cloneCapability('camera.side_follow.v1');
     const contractSeeded = cloneCapability('health.damage_invulnerability.v1');
     const schemaOnly = {
       ...cloneCapability('goal.reach_exit.v1'),
@@ -241,6 +241,21 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       missingEvidenceDimensions: ['qa_observed'],
       missingSupportEvidencePrerequisites: ['requiredProbesVerified']
     });
+    expect(capabilities.get('movement.run_jump.v1')).toMatchObject({
+      registered: true,
+      classification: 'DEFERRED',
+      completeSupported: false,
+      legacyBacked: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
   });
 
   it('reports spread-shot weapon normalization evidence without compiler or runtime support', () => {
@@ -330,9 +345,11 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       expect.arrayContaining([
         expect.objectContaining({
           capabilityId: 'movement.run_jump.v1',
-          classification: 'CONDITIONAL_LEGACY_BACKED',
+          classification: 'DEFERRED',
           completeSupported: false,
-          missingEvidenceDimensions: expect.arrayContaining(['qa_observed'])
+          legacyBacked: false,
+          missingEvidenceDimensions: expect.arrayContaining(['qa_observed']),
+          missingSupportEvidencePrerequisites: ['requiredProbesVerified']
         })
       ])
     );

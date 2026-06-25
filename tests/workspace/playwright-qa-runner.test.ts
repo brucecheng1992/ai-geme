@@ -142,7 +142,22 @@ describe('Playable QA gate and runner', () => {
       sourceRef: 'runtime_plan.side_scrolling.player.projectileEntityId',
       status: 'observed'
     };
+    const movementProbe = {
+      capabilityId: 'movement.run_jump.v1',
+      probeId: 'movement.run_jump.v1.jump.browser_qa.v1',
+      runtimeModuleId: 'movement.run_jump',
+      action: 'jump',
+      eventType: 'player.jumped',
+      sourceRef: 'runtime_plan.side_scrolling.player.jumpVelocity',
+      status: 'observed'
+    };
     const telemetry: TelemetryEvent[] = [
+      {
+        type: 'player.jumped',
+        timestamp_ms: 0,
+        frame: 0,
+        payload: { capabilityRuntime: movementProbe }
+      },
       {
         type: 'player.fired',
         timestamp_ms: 1,
@@ -162,7 +177,7 @@ describe('Playable QA gate and runner', () => {
         {
           capabilityRuntime: {
             source: 'side_scrolling_runtime',
-            probes: [probe, projectileProbe]
+            probes: [movementProbe, probe, projectileProbe]
           }
         },
         telemetry,
@@ -179,6 +194,13 @@ describe('Playable QA gate and runner', () => {
           probeId: 'combat.projectile.v1.spawn.browser_qa.v1',
           action: 'fire',
           eventType: 'projectile.spawned',
+          observedIn: ['snapshot', 'telemetry']
+        }),
+        expect.objectContaining({
+          capabilityId: 'movement.run_jump.v1',
+          probeId: 'movement.run_jump.v1.jump.browser_qa.v1',
+          action: 'jump',
+          eventType: 'player.jumped',
           observedIn: ['snapshot', 'telemetry']
         }),
         expect.objectContaining({
@@ -200,9 +222,14 @@ describe('Playable QA gate and runner', () => {
       status: 'FAILED',
       expected: expectedCapabilityRuntime,
       observed: [],
-      missingProbeIds: ['combat.projectile.v1.spawn.browser_qa.v1', 'weapon.default_straight_single.v1.fire.browser_qa.v1'],
+      missingProbeIds: [
+        'combat.projectile.v1.spawn.browser_qa.v1',
+        'movement.run_jump.v1.jump.browser_qa.v1',
+        'weapon.default_straight_single.v1.fire.browser_qa.v1'
+      ],
       mismatches: [
         'capabilityRuntime.probes[combat.projectile.v1.spawn.browser_qa.v1]: missing',
+        'capabilityRuntime.probes[movement.run_jump.v1.jump.browser_qa.v1]: missing',
         'capabilityRuntime.probes[weapon.default_straight_single.v1.fire.browser_qa.v1]: missing'
       ]
     });
@@ -224,6 +251,15 @@ describe('Playable QA gate and runner', () => {
               projectileEntityId: 'pulse_bolt',
               projectileId: 'projectile_1_0',
               sourceRef: 'runtime_plan.side_scrolling.player.projectileEntityId',
+              status: 'observed'
+            },
+            {
+              capabilityId: 'movement.run_jump.v1',
+              probeId: 'movement.run_jump.v1.jump.browser_qa.v1',
+              runtimeModuleId: 'movement.run_jump',
+              action: 'jump',
+              eventType: 'player.jumped',
+              sourceRef: 'runtime_plan.side_scrolling.player.jumpVelocity',
               status: 'observed'
             },
             {
@@ -2241,6 +2277,12 @@ function createDefaultWeaponCapabilityRuntimeExpectation(): QaCapabilityRuntimeE
         probeId: 'combat.projectile.v1.spawn.browser_qa.v1',
         action: 'fire',
         eventType: 'projectile.spawned'
+      },
+      {
+        capabilityId: 'movement.run_jump.v1',
+        probeId: 'movement.run_jump.v1.jump.browser_qa.v1',
+        action: 'jump',
+        eventType: 'player.jumped'
       },
       {
         capabilityId: 'weapon.default_straight_single.v1',

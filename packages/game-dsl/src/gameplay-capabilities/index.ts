@@ -7,6 +7,8 @@ export * from './default-straight-single-weapon-runtime-module.js';
 export * from './default-straight-single-weapon-package.js';
 export * from './combat-projectile-runtime-module.js';
 export * from './combat-projectile-package.js';
+export * from './movement-run-jump-runtime-module.js';
+export * from './movement-run-jump-package.js';
 export * from './profile-recipe-compiler.js';
 export * from './capability-lock.js';
 export * from './capability-resolver.js';

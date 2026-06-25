@@ -9,6 +9,10 @@ import {
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   createCombatProjectilePackageContract
 } from './combat-projectile-package.js';
+import {
+  MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID,
+  createMovementRunJumpPackageContract
+} from './movement-run-jump-package.js';
 import { validateGameplayCapabilityPackage } from './package-contract.js';
 import { hashStableJson } from './stable-json.js';
 
@@ -344,6 +348,19 @@ const combatProjectilePackageEvidence: GameplayCapabilityEvidence = combatProjec
 const combatProjectilePackageQa: GameplayCapabilityQaEvidence = combatProjectilePackageReport.supportEligible
   ? { requiredProbeIds: [COMBAT_PROJECTILE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const movementRunJumpPackageReport = validateGameplayCapabilityPackage(createMovementRunJumpPackageContract());
+const movementRunJumpPackageEvidence: GameplayCapabilityEvidence = movementRunJumpPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const movementRunJumpPackageQa: GameplayCapabilityQaEvidence = movementRunJumpPackageReport.supportEligible
+  ? { requiredProbeIds: [MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 
 const contractCompilerEvidence: GameplayCapabilityEvidence = {
   ...contractSeedEvidence,
@@ -401,9 +418,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     canonicalRuntimeLoaderEvidence
   ),
-  runtimeBacked('movement.run_jump.v1', 'movement', 'Run and jump controller', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1', 'side_scrolling_platformer.v1'], [
-    'run_jump_controller'
-  ]),
+  planned(
+    'movement.run_jump.v1',
+    'movement',
+    'Run and jump controller',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1', 'side_scrolling_platformer.v1'],
+    ['run_jump_controller'],
+    movementRunJumpPackageEvidence,
+    movementRunJumpPackageQa
+  ),
   runtimeBacked('collision.platform.v1', 'collision', 'Platform terrain collision', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1', 'side_scrolling_platformer.v1'], [
     'platform_collision',
     'terrain_collision',

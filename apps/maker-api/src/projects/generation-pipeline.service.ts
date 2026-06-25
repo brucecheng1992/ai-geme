@@ -41,6 +41,8 @@ import {
   createCombatProjectilePackageContract,
   createDefaultStraightSingleWeaponPackageContract,
   DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
+  MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID,
+  createMovementRunJumpPackageContract,
   buildGenerationScopePlan,
   buildGameDslArtifact,
   checkPhaserRuntimeCapabilities,
@@ -1922,6 +1924,12 @@ function buildQaCapabilityRuntimeExpectation(genre: QaGenre): QaCapabilityRuntim
         eventType: 'projectile.spawned'
       },
       {
+        capabilityId: 'movement.run_jump.v1',
+        probeId: MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID,
+        action: 'jump',
+        eventType: 'player.jumped'
+      },
+      {
         capabilityId: 'weapon.default_straight_single.v1',
         probeId: DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
         action: 'fire',
@@ -1933,7 +1941,7 @@ function buildQaCapabilityRuntimeExpectation(genre: QaGenre): QaCapabilityRuntim
 
 function buildApprovedInstalledCapabilityQaPackages(normalizedGenre: string): readonly unknown[] {
   return normalizedGenre === 'side_scrolling_run_and_gun'
-    ? [createDefaultStraightSingleWeaponPackageContract(), createCombatProjectilePackageContract()]
+    ? [createDefaultStraightSingleWeaponPackageContract(), createCombatProjectilePackageContract(), createMovementRunJumpPackageContract()]
     : [];
 }
 

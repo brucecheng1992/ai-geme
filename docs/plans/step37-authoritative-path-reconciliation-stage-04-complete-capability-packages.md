@@ -1108,4 +1108,143 @@ Stage 4 Exit gate: NOT_MET
 Next: checkpoint commit, then continue Stage 4 next closure requirement audit
 ```
 
-Stop marker: Stage 4 combat projectile package-owned QA slice passed Oracle and awaits checkpoint commit. Do not enter Stage 5 and do not claim complete package closure.
+Stop marker: Stage 4 combat projectile package-owned QA slice checkpoint commit `b440010a` is complete. Do not enter Stage 5 and do not claim complete package closure.
+
+## Stage 4 Review — Movement Run Jump Package-Owned QA Slice
+
+### Scope Lock
+
+- scope: Stage 4 audit and implementation only.
+- baseline: Stage 4 combat projectile package-owned QA slice checkpoint commit `b440010a` (`feat(game-dsl): add combat projectile QA package slice`).
+- implementation target: close the next smallest real package-owned QA slice for `movement.run_jump.v1` using the existing side-scrolling `jump()` action and `player.jumped` runtime evidence.
+- non-goals: no full target profile closure, no registry-wide support promotion, no exact lock, no Stage 5 entry, no production default cutover, no legacy fallback promotion.
+- starting conclusion: the runtime support overlay can observe default weapon and combat projectile as complete for the same run, but the target profile remains `target_profile_runtime_support_incomplete:2/59`.
+
+### Current Stage Review Conclusion
+
+`movement.run_jump.v1` is the next minimal real package-owned QA slice because the production side-scrolling runtime already emits `player.jumped`, and the browser QA deterministic input path already triggers jump. However, it is still legacy-backed and cannot satisfy Stage 4 support evidence:
+
+- no movement run/jump package contract owns a required QA probe;
+- the active side-scrolling package list installs only the default weapon and projectile packages;
+- `QaCapabilityRuntimeExpectation` does not require a movement probe;
+- `SideScrollingRunAndGunScene.jump()` emits `player.jumped` without package-owned capability runtime evidence;
+- the static target profile support summary keeps `movement.run_jump.v1` legacy-backed/incomplete.
+
+Therefore, the next minimal closure requirement is to add a real `movement.run_jump.v1` package-owned QA probe and wire the runtime/QA consumer to observe it. This may raise runtime-observed support from `2/59` to `3/59`, but Stage 4 exit still remains `NOT_MET`.
+
+### Extracted Minimal Closure Requirements
+
+1. Add a `movement.run_jump.v1` package contract with a required `player.jumped` runtime-event probe.
+2. Install that package on the side-scrolling active-profile path alongside the default weapon and projectile packages.
+3. Extend QA runtime expectations and template telemetry/snapshot evidence so the movement probe is observed with its own `probeId` and `capabilityId`.
+4. Keep default weapon and projectile evidence unchanged and continue deriving probe pass/fail from real runtime evidence.
+5. Keep static support summary incomplete; only the runtime overlay may report `observedCompleteSupported=true` for this capability.
+6. Keep Stage 4 exit blocked until all 59 required target capabilities are observed complete.
+
+### Exit Assessment Before Implementation
+
+```text
+Stage 4 Movement Run Jump Package-Owned QA Slice Audit: RECORDED
+Stage 4 Movement Run Jump Package-Owned QA Slice Implementation: NOT_ENTERED
+Expected post-implementation overlay: observedCompleteSupportedCount=3/59
+Stage 4 Exit gate: NOT_MET
+```
+
+Stop marker: Stage 4 movement.run_jump package-owned QA slice audit is recorded. Implementation may start for this slice only; do not enter Stage 5 and do not claim complete package closure.
+
+### RED Evidence
+
+```text
+npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/generation-pipeline.service.test.ts -t "movement run jump|runtime-observed support|default straight single weapon runtime consumer evidence|package-owned capability runtime evidence|capability runtime probe evidence|capability runtime evidence when a required probe is absent|passes capability runtime evidence|rewrites side-scrolling runtime scene binding report|passes active profile capability runtime expectation"
+# RED before implementation:
+# - movement run/jump package/export missing
+# - static support summary still classified movement.run_jump.v1 as CONDITIONAL_LEGACY_BACKED with missing package-owned QA prerequisites
+# - pipeline produced only two capability QA results
+# - side-scrolling player.jumped telemetry did not include package-owned capability runtime evidence
+```
+
+### Implemented Scope
+
+- Added `movement.run_jump.v1` runtime constants and package contract with a required `player.jumped` runtime-event QA probe.
+- Reclassified `movement.run_jump.v1` registry evidence from legacy-backed to package-backed planned evidence with `requiredProbesVerified=false`.
+- Installed the movement package on the side-scrolling active profile path alongside default weapon and projectile packages.
+- Extended side-scrolling QA runtime expectations to require default weapon, projectile, and movement probes.
+- Extended `SideScrollingRunAndGunScene.jump()` to expose the movement probe in runtime snapshot and `player.jumped` telemetry.
+- Extended focused contract/workspace tests so package QA report and target runtime support overlay require the movement probe before reporting runtime-observed completion.
+
+### Compatibility & Cutover
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds `movement.run_jump.v1` package contract, runtime constants, registry package evidence, QA expectation, and runtime telemetry/snapshot probe. |
+| Consumer list | `GameplayCapabilityRegistry`, target profile support summary, active-profile package installer, Playwright QA runtime evidence reader, `CapabilityQaReport`, target runtime support overlay, and Stage 4 tests consume it. |
+| Compatibility type | `ADAPTER_REQUIRED`: movement support is moved off legacy alias authority and into named package/probe evidence while the runtime continues emitting existing `player.jumped` gameplay telemetry. |
+| Authority | The movement package contract owns the required probe; same-run `capability_qa_report` and `generation_target_profile_runtime_support_report.json` are authority for observed completion. |
+| Legacy strategy | Legacy `run_jump_controller` remains only as a registry alias for profile membership; movement support is not complete unless the package-owned `player.jumped` probe passes. |
+| Failure policy | Missing movement package/probe evidence fails `CapabilityQaReport` and keeps runtime overlay blocked; static support remains incomplete with `requiredProbesVerified` missing. |
+| Evidence | RED failed before package/probe/runtime wiring; GREEN focused, related suite, full tests, typecheck, and support probe prove observed support advances to `3/59` while Stage 4 exit remains blocked. |
+| Rollback | Revert this slice to remove movement package/probe wiring and return runtime overlay observed complete support from `3/59` to the previous `2/59`. |
+
+Compatibility disposition:
+
+```ts
+const STAGE_4_MOVEMENT_RUN_JUMP_PACKAGE_QA_SLICE_DISPOSITION = "ADAPTER_REQUIRED";
+```
+
+This disposition is allowed for this checkpoint because the same slice includes adapter-backed runtime telemetry consumption and same-run evidence that the Playwright QA reader consumed the new movement probe payload.
+
+### Validation
+
+```text
+npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/generation-pipeline.service.test.ts -t "movement run jump|runtime-observed support|default straight single weapon runtime consumer evidence|package-owned capability runtime evidence|capability runtime probe evidence|capability runtime evidence when a required probe is absent|passes capability runtime evidence|rewrites side-scrolling runtime scene binding report|passes active profile capability runtime expectation"
+# GREEN PASS, 6 files / 8 selected tests
+
+npx vitest run tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/generation-capability-resolution.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/generation-pipeline.service.test.ts
+# PASS, 10 files / 172 tests
+
+npm test
+# PASS, contracts 94 files / 1044 tests; workspace 34 files / 402 tests
+
+npm run typecheck
+# PASS
+
+npx tsx --eval "<support probe for static support summary and runtime overlay>"
+# first attempt with ./packages/game-dsl/src/index.js failed due tsx eval import resolution; rerun with ./packages/game-dsl/src/index.ts PASS
+# PASS: static completeSupportedCount=0; runtime overlay observedCompleteSupportedCount=3; observedCapabilityIds=[combat.projectile.v1, movement.run_jump.v1, weapon.default_straight_single.v1]; targetProfileCompleteSupported=false; blocker target_profile_runtime_support_incomplete:3/59
+```
+
+### Implementation Oracle Review
+
+Oracle PASS / no P0/P1/P2/P3.
+
+Oracle confirmed checkpoint is allowed for this Stage 4 Movement Run Jump Package-Owned QA Slice only.
+
+Oracle scope guard:
+
+- does not approve Stage 4 full closure;
+- does not approve Stage 5 exact lock;
+- does not approve production default cutover;
+- does not approve legacy authoritative path exit;
+- does not approve final closure.
+
+### Implementation Exit Assessment
+
+```text
+Stage 1: AUTHORITATIVE_AND_CONNECTED
+Stage 2: PROFILE_RESOLUTION_CLOSED
+Stage 3: CAPABILITY_REQUIREMENTS_CLOSED
+Stage 4 Audit: COMPLETE_PACKAGE_CLOSURE_NOT_MET
+Stage 4 Package Closure Gate: CHECKPOINT_COMMITTED
+Stage 4 Default Weapon Browser QA Evidence: CHECKPOINT_COMMITTED
+Stage 4 Support Evidence Prerequisite Gate: CHECKPOINT_COMMITTED
+Stage 4 Default Weapon Package Contract Prerequisite: CHECKPOINT_COMMITTED
+Stage 4 Required Probe QA Report Bridge: CHECKPOINT_COMMITTED
+Stage 4 Target Profile Runtime Support Overlay: CHECKPOINT_COMMITTED
+Stage 4 Runtime Support Overlay Artifact Index Visibility: CHECKPOINT_COMMITTED
+Stage 4 Combat Projectile Package-Owned QA Slice: CHECKPOINT_COMMITTED
+Stage 4 Movement Run Jump Package-Owned QA Slice: CHECKPOINT_COMMITTED
+Stage 4 Exit gate: NOT_MET
+Next: continue Stage 4 next closure requirement audit
+```
+
+Stop marker: Stage 4 movement.run_jump package-owned QA slice checkpoint commit is complete. Do not enter Stage 5 and do not claim complete package closure.

@@ -24,7 +24,7 @@ describe('Gameplay capability registry', () => {
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toEqual([...ids].sort());
     expect(findGameplayCapability('movement.run_jump.v1')).toMatchObject({
-      status: 'runtime_backed',
+      status: 'planned',
       legacyRuntimeCapabilities: ['run_jump_controller']
     });
     expect(GameplayCapabilityRegistry.entries.some(isCompleteSupportedGameplayCapability)).toBe(false);

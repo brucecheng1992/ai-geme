@@ -21,6 +21,14 @@ import {
 import {
   COMBAT_PROJECTILE_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/combat-projectile-runtime-module.js';
+import {
+  MOVEMENT_RUN_JUMP_PACKAGE_REQUIRED_EVIDENCE_ID,
+  MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID,
+  createMovementRunJumpPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/movement-run-jump-package.js';
+import {
+  MOVEMENT_RUN_JUMP_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/movement-run-jump-runtime-module.js';
 
 describe('Gameplay capability package contract', () => {
   it('accepts a complete supported package and keeps hashes deterministic', () => {
@@ -84,6 +92,32 @@ describe('Gameplay capability package contract', () => {
       capabilityId: 'combat.projectile.v1',
       severity: 'required',
       observations: [expect.objectContaining({ runtimeSystemId: COMBAT_PROJECTILE_RUNTIME_SYSTEM_ID, ref: 'projectile.spawned' })]
+    });
+  });
+
+  it('accepts the movement run jump package-owned QA contract', () => {
+    const contract = createMovementRunJumpPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'movement.run_jump.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([MOVEMENT_RUN_JUMP_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: MOVEMENT_RUN_JUMP_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'movement.run_jump.v1',
+      severity: 'required',
+      observations: [expect.objectContaining({ runtimeSystemId: MOVEMENT_RUN_JUMP_RUNTIME_SYSTEM_ID, ref: 'player.jumped' })]
     });
   });
 

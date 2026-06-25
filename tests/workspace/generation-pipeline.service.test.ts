@@ -157,13 +157,13 @@ describe('GenerationPipelineService failure states', () => {
         }) {
           const sceneIr = SceneIrSchema.parse(JSON.parse(await readFile(join(workspace.getGeneratedProjectDir(projectId), 'game.scene.ir.json'), 'utf8')));
           return createQaReport(input.genre, {
-            observed_events: ['game.started', 'player.fired', 'projectile.spawned'],
+            observed_events: ['game.started', 'player.jumped', 'player.fired', 'projectile.spawned'],
             snapshot: {
               sceneBindings: buildObservedSceneBindings(sceneIr),
               runtimeAuthority: input.expectedRuntimeAuthority,
               capabilityRuntime: {
                 source: 'side_scrolling_runtime',
-                probes: [projectileObservedProbe(), defaultWeaponObservedProbe()]
+                probes: [projectileObservedProbe(), movementRunJumpObservedProbe(), defaultWeaponObservedProbe()]
               }
             },
             capability_runtime: defaultWeaponCapabilityRuntimeEvidence(input.expectedCapabilityRuntime)
@@ -255,6 +255,16 @@ describe('GenerationPipelineService failure states', () => {
           ])
         }),
         expect.objectContaining({
+          probeId: 'movement.run_jump.v1.jump.browser_qa.v1',
+          status: 'passed',
+          assertionResults: expect.arrayContaining([
+            expect.objectContaining({
+              assertionId: 'movement.run_jump.v1.jump.browser_qa.v1.assertion.player_jumped',
+              status: 'passed'
+            })
+          ])
+        }),
+        expect.objectContaining({
           probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1',
           status: 'passed',
           assertionResults: expect.arrayContaining([
@@ -270,7 +280,7 @@ describe('GenerationPipelineService failure states', () => {
         })
       ])
     );
-    expect(capabilityQaReport.requiredResults).toHaveLength(2);
+    expect(capabilityQaReport.requiredResults).toHaveLength(3);
     expect(capabilityRuntime.resolutionReportHash).toBe(capabilityResolution.reportHash);
     expect(capabilityRuntime.authorityBundleRef).toEqual(qaReport.runtime_authority?.expected?.authorityBundleRef);
     expect(capabilityRuntime.activeProfileLockRef).toEqual(qaReport.runtime_authority?.expected?.activeProfileLockRef);
@@ -278,16 +288,23 @@ describe('GenerationPipelineService failure states', () => {
       artifactKind: 'generation_target_profile_runtime_support_report',
       status: 'blocked_incomplete_target_profile',
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 2,
+      observedCompleteSupportedCount: 3,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
-      observedCapabilityIds: ['combat.projectile.v1', 'weapon.default_straight_single.v1'],
+      observedCapabilityIds: ['combat.projectile.v1', 'movement.run_jump.v1', 'weapon.default_straight_single.v1'],
       capabilities: expect.arrayContaining([
         expect.objectContaining({
           capabilityId: 'combat.projectile.v1',
           runtimeVerified: true,
           observedCompleteSupported: true,
           verifiedRequiredProbeIds: ['combat.projectile.v1.spawn.browser_qa.v1'],
+          missingRequiredProbeIds: []
+        }),
+        expect.objectContaining({
+          capabilityId: 'movement.run_jump.v1',
+          runtimeVerified: true,
+          observedCompleteSupported: true,
+          verifiedRequiredProbeIds: ['movement.run_jump.v1.jump.browser_qa.v1'],
           missingRequiredProbeIds: []
         }),
         expect.objectContaining({
@@ -1005,6 +1022,12 @@ describe('GenerationPipelineService failure states', () => {
           eventType: 'projectile.spawned'
         },
         {
+          capabilityId: 'movement.run_jump.v1',
+          probeId: 'movement.run_jump.v1.jump.browser_qa.v1',
+          action: 'jump',
+          eventType: 'player.jumped'
+        },
+        {
           capabilityId: 'weapon.default_straight_single.v1',
           probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1',
           action: 'fire',
@@ -1012,7 +1035,7 @@ describe('GenerationPipelineService failure states', () => {
         }
       ])
     });
-    expect(qaCapabilityRuntimeExpectation?.requiredProbes).toHaveLength(2);
+    expect(qaCapabilityRuntimeExpectation?.requiredProbes).toHaveLength(3);
     expect(intentPlan).toMatchObject({
       normalizedGenre: 'side_scrolling_run_and_gun',
       runtimeDslSupport: 'supported',
@@ -2449,7 +2472,7 @@ describe('GenerationPipelineService failure states', () => {
     return {
       status: 'PASSED',
       ...(expected === undefined ? {} : { expected }),
-      observed: [projectileObservedProbe(), defaultWeaponObservedProbe()],
+      observed: [projectileObservedProbe(), movementRunJumpObservedProbe(), defaultWeaponObservedProbe()],
       missingProbeIds: [],
       mismatches: []
     };
@@ -2478,6 +2501,20 @@ describe('GenerationPipelineService failure states', () => {
       eventType: 'projectile.spawned',
       eventTypes: ['projectile.spawned'],
       sourceRef: 'runtime_plan.side_scrolling.player.projectileEntityId',
+      status: 'observed',
+      observedIn: ['snapshot', 'telemetry']
+    };
+  }
+
+  function movementRunJumpObservedProbe(): QaCapabilityRuntimeEvidence['observed'][number] {
+    return {
+      capabilityId: 'movement.run_jump.v1',
+      probeId: 'movement.run_jump.v1.jump.browser_qa.v1',
+      runtimeModuleId: 'movement.run_jump',
+      action: 'jump',
+      eventType: 'player.jumped',
+      eventTypes: ['player.jumped'],
+      sourceRef: 'runtime_plan.side_scrolling.player.jumpVelocity',
       status: 'observed',
       observedIn: ['snapshot', 'telemetry']
     };

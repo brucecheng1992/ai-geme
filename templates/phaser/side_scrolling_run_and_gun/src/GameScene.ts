@@ -61,10 +61,10 @@ type CapabilityRuntimeProbe = {
   capabilityId: string;
   probeId: string;
   runtimeModuleId: string;
-  action: 'fire';
-  eventType: 'player.fired' | 'projectile.spawned';
-  projectileEntityId: string;
-  projectileId: string;
+  action: 'fire' | 'jump';
+  eventType: 'player.fired' | 'projectile.spawned' | 'player.jumped';
+  projectileEntityId?: string;
+  projectileId?: string;
   sourceRef: string;
   status: 'observed';
 };
@@ -76,6 +76,10 @@ const DEFAULT_WEAPON_PROJECTILE_SOURCE_REF = 'runtime_plan.side_scrolling.player
 const COMBAT_PROJECTILE_CAPABILITY_ID = 'combat.projectile.v1';
 const COMBAT_PROJECTILE_CAPABILITY_PROBE_ID = 'combat.projectile.v1.spawn.browser_qa.v1';
 const COMBAT_PROJECTILE_RUNTIME_MODULE_ID = 'combat.projectile';
+const MOVEMENT_RUN_JUMP_CAPABILITY_ID = 'movement.run_jump.v1';
+const MOVEMENT_RUN_JUMP_CAPABILITY_PROBE_ID = 'movement.run_jump.v1.jump.browser_qa.v1';
+const MOVEMENT_RUN_JUMP_RUNTIME_MODULE_ID = 'movement.run_jump';
+const MOVEMENT_RUN_JUMP_SOURCE_REF = 'runtime_plan.side_scrolling.player.jumpVelocity';
 
 export class SideScrollingRunAndGunScene {
   private readonly plan: SideScrollingRuntimeSlice;
@@ -195,7 +199,9 @@ export class SideScrollingRunAndGunScene {
     }
 
     this.player.vy = this.plan.player.jumpVelocity;
-    this.telemetry.emit('player.jumped', { velocityY: this.player.vy });
+    const capabilityRuntime = this.createMovementRunJumpCapabilityRuntimeProbe();
+    this.capabilityRuntimeProbes.set(capabilityRuntime.probeId, capabilityRuntime);
+    this.telemetry.emit('player.jumped', { velocityY: this.player.vy, capabilityRuntime });
   }
 
   fire(nowMs = Date.now()): void {
@@ -361,6 +367,18 @@ export class SideScrollingRunAndGunScene {
       projectileEntityId: this.plan.player.projectileEntityId,
       projectileId,
       sourceRef: DEFAULT_WEAPON_PROJECTILE_SOURCE_REF,
+      status: 'observed'
+    };
+  }
+
+  private createMovementRunJumpCapabilityRuntimeProbe(): CapabilityRuntimeProbe {
+    return {
+      capabilityId: MOVEMENT_RUN_JUMP_CAPABILITY_ID,
+      probeId: MOVEMENT_RUN_JUMP_CAPABILITY_PROBE_ID,
+      runtimeModuleId: MOVEMENT_RUN_JUMP_RUNTIME_MODULE_ID,
+      action: 'jump',
+      eventType: 'player.jumped',
+      sourceRef: MOVEMENT_RUN_JUMP_SOURCE_REF,
       status: 'observed'
     };
   }
