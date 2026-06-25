@@ -4013,14 +4013,14 @@ Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4_spa
 ## Stage 4 Closure Implementation — spawn.enemy_wave.v1 Package-Owned QA Slice
 
 - checkpoint_id: `stage4_spawn_enemy_wave_package_owned_qa_implementation`.
-- record_type: `implementation_candidate`.
+- record_type: `implementation_receipt`.
 - closure_scope: `atomic_step`.
-- implementation_status: `complete`.
+- implementation_status: `receipt`.
 - local_validation_status: `passed`.
 - review_required: `true`.
-- candidate_status: `ready_for_commit`.
-- oracle_status: `not_submitted`.
-- closure_status: `not_closed`.
+- candidate_status: `created`.
+- oracle_status: `approved`.
+- closure_status: `closed`.
 - capability_closure_status: `not_met`.
 - parent_stage_status: `running`.
 - parent_loop_status: `running`.
@@ -4032,9 +4032,12 @@ Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4_spa
 - active_skill_realpaths: `/Users/dahufa/.agents/skills/code-change-discipline, /Users/dahufa/.agents/skills/review-gated-delivery`.
 - skill_file_count: `8`.
 - skill_revision: `be625c8c69d3fffb983dea5c40ee1cae584e2b5b0f7b82dce4338c9bcf744d78`.
-- candidate_commit: `not_created_in_this_record`.
-- receipt_commit: `not_created`.
-- repo_revision_binding: `candidate commit SHA will be created after this record is staged; this candidate record intentionally does not self-reference its own commit SHA`.
+- reviewed_skill_revision: `be625c8c69d3fffb983dea5c40ee1cae584e2b5b0f7b82dce4338c9bcf744d78`.
+- candidate_commit: `c5b20731d17c813cd0279b609529352373c58040`.
+- reviewed_commit_sha: `c5b20731d17c813cd0279b609529352373c58040`.
+- reviewed_commit_tree: `dbd117e9d94a3e5a02b851f785c3f2c05472b254`.
+- receipt_commit: `not_self_referenced_in_receipt`.
+- repo_revision_binding: `Oracle reviewed immutable candidate commit c5b20731d17c813cd0279b609529352373c58040; this receipt intentionally does not record its own commit SHA to avoid self-reference`.
 
 Implementation summary:
 
@@ -4158,11 +4161,23 @@ duration=6.41s
 result=PASS: root, maker-api, and maker-workbench TypeScript checks passed after the P2 fix.
 ```
 
+Oracle approval receipt record:
+
+- reviewed_commit_sha: `c5b20731d17c813cd0279b609529352373c58040`.
+- reviewed_commit_tree: `dbd117e9d94a3e5a02b851f785c3f2c05472b254`.
+- reviewed_skill_revision: `be625c8c69d3fffb983dea5c40ee1cae584e2b5b0f7b82dce4338c9bcf744d78`.
+- oracle_submission_id: `019f0119-ba89-74d3-b7ee-b93647d5d37f`.
+- oracle_agent_id: `019effae-8aa2-7c22-b5ba-8c4b69f21d20`.
+- oracle_verdict: `PASS_NO_P0_P1_P2_BLOCKERS`.
+- oracle_findings: `P0=0; P1=0; P2=0; P3=0`.
+- oracle_result_source: `multi_agent_v1.wait_agent target=019effae-8aa2-7c22-b5ba-8c4b69f21d20`.
+- receipt_scope: `docs_only_closure_metadata`.
+- receipt_allowlist: `this closure section status, reviewed commit, reviewed Skill revision, Oracle result reference, and parent-loop continuation metadata only`.
+- receipt_git_identity: `derive from Git history after this receipt is committed; do not write the receipt commit SHA into its own content`.
+- post_receipt_required_checks: `focused closure contract, git diff --check, git show --check, receipt diff allowlist, candidate ancestry, clean worktree`.
+
 Unresolved items:
 
-- Oracle review has not been submitted for the revised implementation candidate after the P2 fix.
-- Revised candidate commit has not yet been created.
-- Receipt commit has not yet been created.
 - Stage 4 full package closure remains `NOT_MET`.
 - Step37 global exit conditions remain `false`; production default cutover is not active and legacy authoritative path has not exited.
 
@@ -4172,14 +4187,16 @@ Scoped candidate boundary:
 closure_scope: atomic_step
 atomic_step:
   id: stage4_spawn_enemy_wave_package_owned_qa_implementation
-  status: locally_validated_not_closed
-  implementation_status: complete
+  status: closed
+  implementation_status: receipt
   local_validation_status: passed
   review_required: true
-  candidate_status: ready_for_commit
-  candidate_commit: not_created_in_this_record
-  receipt_commit: not_created
-  oracle_status: not_submitted
+  candidate_status: created
+  candidate_commit: c5b20731d17c813cd0279b609529352373c58040
+  reviewed_commit_sha: c5b20731d17c813cd0279b609529352373c58040
+  receipt_commit: not_self_referenced_in_receipt
+  oracle_status: approved
+  closure_status: closed
   capability_closure_status: not_met
 parent_stage:
   id: stage4
@@ -4191,8 +4208,8 @@ parent_loop:
   global_exit_conditions_met: false
   user_input_required: false
   next_action: CONTINUE_PARENT_LOOP
-  next_atomic_step: current_atomic_step_oracle_review_then_receipt
-  next_atomic_step_scope: implementation_review
+  next_atomic_step: stage4.pickup_collectible.package_owned_qa_slice.implementation
+  next_atomic_step_scope: implementation
 ```
 
-Exit assessment: `LOCAL_VALIDATION_PASSED_AWAITING_CANDIDATE_COMMIT_ORACLE`. This record does not close the atomic step. It freezes the locally validated implementation facts so a candidate commit can be created and reviewed by Oracle. The current step must remain open until candidate commit creation, Oracle PASS, receipt-only closure, post-receipt checks, and Parent Loop Driver reevaluation complete.
+Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4_spawn_enemy_wave_package_owned_qa_implementation` after candidate commit creation, Oracle PASS, and receipt-only metadata update. It does not close Stage 4, Step37, production default cutover, legacy authoritative path exit, Stage 5, or final global closure. Parent Loop Driver must continue with `stage4.pickup_collectible.package_owned_qa_slice.implementation` while global exits remain false and no verified user blocker exists.
