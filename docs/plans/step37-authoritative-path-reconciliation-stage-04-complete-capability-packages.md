@@ -182,3 +182,97 @@ Next: Stage 4 audit checkpoint commit
 ```
 
 Stop marker: Stage 4 Complete Capability Packages audit passed Oracle. Do not implement Stage 4 or enter Stage 5 until checkpoint commit completes.
+
+## Stage 4 Closure Implementation — Package Closure Gate
+
+### Scope Lock
+
+- scope: Stage 4 implementation only.
+- baseline: Stage 4 audit checkpoint commit `d75d49ce` (`docs: record stage 4 package audit`).
+- implementation target: make the existing target profile support artifact explicitly carry package-closure gate evidence, without changing capability evidence or marking any capability complete.
+- non-goals: no registry evidence promotion, no source/test fixture fake QA, no active profile lock behavior change, no exact lock creation, no Stage 5 entry, no runtime loader, no provider/browser artifact, no production default cutover.
+- starting conclusion: `Stage 4 Audit: COMPLETE_PACKAGE_CLOSURE_NOT_MET`; `Stage 4 Implementation: NOT_ENTERED`.
+
+### Extracted Minimal Closure Requirements
+
+1. Preserve the audit conclusion that target package closure is not met.
+2. Make `targetProfileSupport` expose the required package universe, registered count, incomplete capability IDs, and an exact-lock blocker.
+3. Derive the closure gate only from `buildDeepSeekRunAndGunValidationProfileSupportSummary`; do not add a manual support flag.
+4. Keep `active_profile_supported` and active profile lock semantics unchanged for Stage 1-3.
+5. Add focused contract coverage proving Stage 5 exact lock is blocked while `completeSupportedCount=0/59`.
+
+### Implemented Scope
+
+- `DslConsumptionTargetProfileSupportSchema` now includes `requiredCapabilityCount`, `registeredCapabilityCount`, and `completePackageClosure`.
+- `completePackageClosure.status` is `blocked_incomplete_target_profile` until every required target capability is complete-supported.
+- `completePackageClosure.exactLockAllowed` is `false` unless `completeSupportedCount === requiredCapabilityCount` and there are no incomplete capability IDs.
+- `completePackageClosure.incompleteCapabilityIds` lists every required target capability whose support summary is not complete-supported.
+- The GREEN test asserts the current fail-closed state: 59 required capabilities, 18 registered capabilities, zero complete-supported capabilities, `weapon.default_straight_single.v1` still incomplete, and Stage 5 exact lock blocked.
+
+### Compatibility & Cutover
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | `DslConsumptionTargetProfileSupportSchema` and `buildDslConsumptionTargetProfileSupport` add derived package-closure fields: `requiredCapabilityCount`, `registeredCapabilityCount`, and `completePackageClosure`. |
+| Consumer list | `DslConsumptionReportSchema`, existing `buildDslConsumptionReport` callers, DSL consumption report tests, Workbench/artifact readers that parse report JSON, and future Stage 5 exact-lock gates can read the additive fields. |
+| Compatibility type | `LOSSLESS_COMPATIBLE`: existing target-profile support fields remain unchanged; new fields are additive on generated reports and preserve old semantic evidence. |
+| Authority | `DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1` defines the required capability universe; `GameplayCapabilityRegistry` support evidence and `buildDeepSeekRunAndGunValidationProfileSupportSummary` derive counts and incomplete IDs. |
+| Legacy strategy | Legacy-backed or active-profile-supported runtime state cannot promote `completePackageClosure`; the gate remains blocked until all five dimensions are true for every required target capability. |
+| Failure policy | Missing or incomplete support evidence derives `completePackageClosure.status=blocked_incomplete_target_profile`, `exactLockAllowed=false`, and blocker `stage5_exact_lock_blocked`; no exact lock may be claimed from this artifact. |
+| Evidence | RED/GREEN `tests/contracts/dsl-consumption-report.test.ts` proves the new fields are required and currently block Stage 5 exact lock while keeping weapon QA incomplete. |
+| Rollback | Reverting this implementation removes only additive report fields and the focused assertion; prior targetProfileSupport evidence and active profile path semantics remain available. |
+
+Compatibility disposition:
+
+```ts
+const STAGE_4_PACKAGE_CLOSURE_GATE_DISPOSITION = "LOSSLESS_COMPATIBLE";
+```
+
+### Validation
+
+```text
+npx vitest run tests/contracts/dsl-consumption-report.test.ts
+# RED: failed before producer wiring because required package-closure fields were absent
+
+npx vitest run tests/contracts/dsl-consumption-report.test.ts
+# GREEN: PASS, 1 file / 6 tests
+
+npx vitest run tests/contracts/dsl-consumption-report.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-profile-recipe-compiler.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/generation-capability-resolution.test.ts tests/contracts/generation-capability-gap.test.ts
+# PASS, 8 files / 62 tests
+
+npm test
+# PASS, contracts 93 files / 1036 tests; workspace 34 files / 398 tests
+
+npm run typecheck
+# PASS
+
+git diff --check
+# PASS
+
+rg -n "[ \t]+$" docs/plans/step37-authoritative-path-reconciliation-audit.md docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md packages/game-dsl/src/dsl-consumption-report.ts tests/contracts/dsl-consumption-report.test.ts
+# PASS, no matches
+```
+
+### Implementation Exit Assessment
+
+### Implementation Oracle Review
+
+- review status: PASS.
+- agent: `019efea7-5a9b-74c3-bca9-37ce91347a81`.
+- findings: P0/P1/P2/P3 none.
+- checkpoint decision: Stage 4 implementation may enter checkpoint commit.
+- scope guard: This review approves only the additive package-closure gate reporting in `targetProfileSupport`. It does not approve complete package closure, Stage 5 exact lock, composed schema, runtime loader, capability-owned QA, or production default cutover.
+
+### Implementation Exit Assessment
+
+```text
+Stage 1: AUTHORITATIVE_AND_CONNECTED
+Stage 2: PROFILE_RESOLUTION_CLOSED
+Stage 3: CAPABILITY_REQUIREMENTS_CLOSED
+Stage 4 Audit: COMPLETE_PACKAGE_CLOSURE_NOT_MET
+Stage 4 Implementation: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 Exit gate: NOT_MET
+Next: Stage 4 implementation checkpoint commit
+```
+
+Stop marker: Stage 4 implementation passed Oracle for package closure gate only. Do not enter Stage 5 and do not claim complete package closure until checkpoint commit complete.

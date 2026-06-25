@@ -1,7 +1,7 @@
 # Step 37 Authoritative Path Reconciliation Audit
 
 > - 文档定位：Step 37 authoritative production chain 的逐段只读审计状态文档。
-> - 当前状态：Stage 4 Complete Capability Packages audit Oracle PASS; checkpoint commit pending
+> - 当前状态：Stage 4 Complete Capability Packages implementation Oracle PASS; checkpoint commit pending
 > - 任务契约：`/Users/dahufa/Downloads/step37-authoritative-path-reconciliation-prompt.md`
 > - 当前分片：`docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`
 > - 更新日期：2026-06-25
@@ -48,13 +48,13 @@
 
 ## 4. 当前状态
 
-- 状态：Stage 4 Complete Capability Packages audit Oracle PASS; checkpoint commit pending.
-- 当前步骤：Stage 3 closure checkpoint commit `59a00483` 已创建；Stage 4 audit 已记录五维 evidence、`completeSupported`、capability package contract、profile package compiler fail-closed 和 target profile support summary 的审查结论，等待 checkpoint commit。
-- 最近完成：Stage 3 Capability Requirements closure；active runtime requirements 已限定为 resolved profile source、registry-owned ID、readiness provenance 和 active profile lock hash-bound availability。
-- 最近验证：Stage 4 audit focused suite PASS；`git diff --check` PASS；Markdown trailing whitespace scan PASS.
-- 最近 Oracle 结论：Stage 1 final Oracle PASS；Stage 2 Profile Resolution audit Oracle PASS；Stage 2 closure Oracle PASS / no P0/P1/P2/P3；Stage 3 audit Oracle re-review PASS / no P0/P1/P2/P3；Stage 3 closure Oracle re-review PASS / no P0/P1/P2/P3；Stage 4 audit Oracle PASS / no P0/P1/P2, P3 remediated。
+- 状态：Stage 4 Complete Capability Packages implementation Oracle PASS; checkpoint commit pending.
+- 当前步骤：Stage 4 audit checkpoint commit `d75d49ce` 已创建；Stage 4 implementation 已把 package closure gate 接入 `targetProfileSupport`，使 target profile report 明确暴露 required/registered counts、incomplete IDs 和 Stage 5 exact-lock blocker，等待 checkpoint commit。
+- 最近完成：Stage 4 Complete Capability Packages audit；结论为 `COMPLETE_PACKAGE_CLOSURE_NOT_MET`，Oracle PASS / no P0/P1/P2，P3 remediated。
+- 最近验证：Stage 4 implementation RED `tests/contracts/dsl-consumption-report.test.ts` failed as expected for missing closure fields；GREEN same test PASS；focused suite PASS；full `npm test` PASS；full `npm run typecheck` PASS；`git diff --check` PASS；trailing whitespace scan PASS。
+- 最近 Oracle 结论：Stage 1 final Oracle PASS；Stage 2 Profile Resolution audit Oracle PASS；Stage 2 closure Oracle PASS / no P0/P1/P2/P3；Stage 3 audit Oracle re-review PASS / no P0/P1/P2/P3；Stage 3 closure Oracle re-review PASS / no P0/P1/P2/P3；Stage 4 audit Oracle PASS / no P0/P1/P2, P3 remediated；Stage 4 implementation Oracle PASS / no P0/P1/P2/P3。
 - 未处理风险：Stage 4 complete package closure 尚未达成；Stage 5 Exact Capability Lock 尚未进入；Stage 3 Gate E 仍不证明 `profileRequirements.requirementsHash` / `requiredCapabilityIds` 字段级 downstream action；post-Stage-1 shadow/canary parity/rollback 仍未实施。`QaReport` status consistency 作为非阻塞债务登记，不重新打开 Stage 1。
-- 工作区核对：Stage 3 closure 已提交为 checkpoint commit `59a00483`；当前仅允许本状态文档和 Stage 4 分片承载 Stage 4 audit 状态记录。
+- 工作区核对：当前仅允许 Stage 4 implementation 相关 files：`packages/game-dsl/src/dsl-consumption-report.ts`、`tests/contracts/dsl-consumption-report.test.ts`、本状态文档和 Stage 4 分片。
 
 ## 5. 下一步
 
@@ -72,12 +72,13 @@ Stage 3 audit checkpoint: d7af70b9
 Stage 3 Implementation: CHECKPOINT_COMMITTED
 Stage 3 Exit gate: MET
 Stage 3 closure checkpoint: 59a00483
-Stage 4 Audit: ORACLE_PASSED_AWAITING_COMMIT
-Stage 4 Implementation: NOT_ENTERED
+Stage 4 Audit: CHECKPOINT_COMMITTED
+Stage 4 audit checkpoint: d75d49ce
+Stage 4 Implementation: ORACLE_PASSED_AWAITING_COMMIT
 Stage 4 Exit gate: NOT_MET
 ```
 
-下一步完成 Stage 4 audit checkpoint commit。不要把 active runtime requirements、synthetic test package compiler success 或 partial support evidence 误报成 target profile complete package closure。
+下一步完成 Stage 4 implementation checkpoint commit。不要把 closure gate 的 fail-closed blocker 误报成 complete package closure；它只阻断 Stage 5 exact lock，直到 `completeSupportedCount=59`。
 
 ## 6. 恢复检查清单
 

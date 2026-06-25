@@ -164,6 +164,21 @@ describe('Step 33 DSL consumption report', () => {
     });
     const capabilities = new Map(report.targetProfileSupport?.capabilities.map((capability) => [capability.capabilityId, capability]));
 
+    expect(report.targetProfileSupport).toMatchObject({
+      requiredCapabilityCount: 59,
+      registeredCapabilityCount: 18,
+      completeSupportedCount: 0,
+      completePackageClosure: {
+        status: 'blocked_incomplete_target_profile',
+        exactLockAllowed: false,
+        incompleteCapabilityIds: expect.arrayContaining(['weapon.default_straight_single.v1']),
+        blockers: [
+          'complete_package_closure_incomplete',
+          'complete_supported_count:0/59',
+          'stage5_exact_lock_blocked'
+        ]
+      }
+    });
     expect(capabilities.get('weapon.default_straight_single.v1')).toMatchObject({
       classification: 'DEFERRED',
       completeSupported: false,

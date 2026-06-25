@@ -30,7 +30,15 @@ export const DslConsumptionTargetProfileSupportSchema = z.strictObject({
   profileVersion: z.string().min(1),
   requirementCount: z.number().int().min(0),
   capabilityClusterCount: z.number().int().min(0),
+  requiredCapabilityCount: z.number().int().min(0),
+  registeredCapabilityCount: z.number().int().min(0),
   completeSupportedCount: z.number().int().min(0),
+  completePackageClosure: z.strictObject({
+    status: z.enum(['ready_for_exact_lock', 'blocked_incomplete_target_profile']),
+    exactLockAllowed: z.boolean(),
+    incompleteCapabilityIds: z.array(z.string().min(1)),
+    blockers: z.array(z.string().min(1))
+  }),
   capabilities: z.array(
     z.strictObject({
       capabilityId: z.string().min(1),
@@ -113,12 +121,34 @@ export function buildDslConsumptionReport(input: BuildDslConsumptionReportInput)
 
 function buildDslConsumptionTargetProfileSupport(): DslConsumptionTargetProfileSupport {
   const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
+  const incompleteCapabilityIds = support.capabilities
+    .filter((capability) => !capability.completeSupported)
+    .map((capability) => capability.capabilityId)
+    .sort();
+  const exactLockAllowed =
+    support.summary.requiredCapabilityCount > 0 &&
+    support.summary.completeSupportedCount === support.summary.requiredCapabilityCount &&
+    incompleteCapabilityIds.length === 0;
   return {
     profileId: support.profileId,
     profileVersion: support.profileVersion,
     requirementCount: support.summary.requirementCount,
     capabilityClusterCount: support.summary.capabilityClusterCount,
+    requiredCapabilityCount: support.summary.requiredCapabilityCount,
+    registeredCapabilityCount: support.summary.registeredCapabilityCount,
     completeSupportedCount: support.summary.completeSupportedCount,
+    completePackageClosure: {
+      status: exactLockAllowed ? 'ready_for_exact_lock' : 'blocked_incomplete_target_profile',
+      exactLockAllowed,
+      incompleteCapabilityIds,
+      blockers: exactLockAllowed
+        ? []
+        : [
+            'complete_package_closure_incomplete',
+            `complete_supported_count:${support.summary.completeSupportedCount}/${support.summary.requiredCapabilityCount}`,
+            'stage5_exact_lock_blocked'
+          ]
+    },
     capabilities: support.capabilities.map((capability) => ({
       capabilityId: capability.capabilityId,
       classification: capability.classification,
