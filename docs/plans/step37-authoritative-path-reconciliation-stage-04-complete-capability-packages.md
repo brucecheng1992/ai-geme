@@ -3094,14 +3094,15 @@ Repository guardrail added: `tests/contracts/step37-closure-implementation-trace
 
 ## Stage 4 Closure Implementation — Verification Freshness And Immutable Review Guardrail
 
-- implementation status: `complete`.
-- closure_phase: `candidate`.
-- implementation_status: `complete`.
+- implementation status: `CLOSED`.
+- closure_phase: `receipt`.
+- implementation_status: `receipt`.
 - local_validation: `passed`.
 - local_validation_status: `passed`.
-- oracle_status: `not_submitted`.
+- oracle_status: `approved`.
 - review_required: `true`.
 - candidate_status: `ready_for_commit`.
+- closure_status: `closed`.
 - scope: process/evidence guardrail only; no runtime, schema, compiler, QA runner behavior, Stage 5 exact lock, production default cutover, legacy authoritative path exit, capability closure, or state-machine expansion was introduced.
 - baseline: Stage 4 Oracle revision alignment guardrail receipt commit `7a160c5b` (`docs(game-dsl): record oracle revision guardrail checkpoint receipt`).
 
@@ -3122,8 +3123,8 @@ Evidence/guardrail chain:
 Immutable review fields:
 
 - checkpoint_id: `verification_freshness_immutable_review_guardrail`.
-- candidate_commit_sha: `pending until candidate checkpoint commit is created`.
-- reviewed_commit_sha: `pending until Oracle reviews the candidate commit`.
+- candidate_commit_sha: `d05eb64ea7bb1bedd78ba21c616a03cd558d6e8d`.
+- reviewed_commit_sha: `d05eb64ea7bb1bedd78ba21c616a03cd558d6e8d`.
 - reviewed_skill_revision: `d3c166ab08562696e099937e1036c51c81c9415cf8e0aef43a906c7acfb51aca`.
 - skill_revision_type: `sha256_bundle`.
 - skill_git_repository: `not_a_git_repository`.
@@ -3136,8 +3137,11 @@ Immutable review fields:
 - skill_bundle_symlink_target: `-`.
 - skill_bundle_generation_command: `python3 - <<'PY' ... deterministic relative-path sha256 manifest`.
 - skill_bundle_generation_exit_code: `0`.
-- oracle_agent_id: `not_submitted`.
-- oracle_submission_id: `not_submitted`.
+- oracle_agent_id: `019effae-8aa2-7c22-b5ba-8c4b69f21d20`.
+- oracle_agent_id_source: `existing Oracle agent handle`.
+- oracle_submission_id: `019f0080-cf74-7910-8e40-e64779258f6e`.
+- oracle_submission_id_source: `multi_agent_v1.send_input response`.
+- oracle_result: `PASS / no P0/P1/P2 blocking findings`.
 
 Validation receipts:
 
@@ -3173,12 +3177,8 @@ duration=0.027s
 result=PASS: SKILL.md 35331 bytes, sha256 ac0f7e7d033bf7b44e3e4fe13cc151ca2d240bf8bb871c27eaba2af963c6490f, bundle d3c166ab08562696e099937e1036c51c81c9415cf8e0aef43a906c7acfb51aca
 ```
 
-Unresolved items:
+Out-of-scope remaining Step37 conditions:
 
-- Candidate checkpoint commit is pending and must preserve these local-validation facts without writing its own SHA into the candidate document.
-- Oracle review is not submitted and must later bind to the candidate commit SHA.
-- Oracle review must also bind to reviewed_skill_revision `d3c166ab08562696e099937e1036c51c81c9415cf8e0aef43a906c7acfb51aca`.
-- Receipt-only closure commit is pending after Oracle approval.
 - Stage 4 full package closure remains `NOT_MET`.
 - Stage 5 exact lock remains `NOT_ENTERED`.
 - Production default cutover remains inactive.
@@ -3187,15 +3187,15 @@ Unresolved items:
 State transition:
 
 ```text
-planned -> landed -> verified
+planned -> landed -> verified -> oracle_passed -> closed
 ```
 
 ### Exit Assessment
 
 ```text
-Stage 4 Verification Freshness And Immutable Review Guardrail: LOCALLY_VALIDATED
+Stage 4 Verification Freshness And Immutable Review Guardrail: CLOSED
 Stage 4 Exit gate: NOT_MET
-Next: rerun final gates against this candidate-ready tree, then create candidate checkpoint commit if no file changes occur
+Next: continue the queued Step37 guardrail loop only after receipt post-commit checks remain clean
 ```
 
-Stop marker: Stage 4 verification freshness and immutable review guardrail is locally validated and ready for a candidate checkpoint commit after final same-tree gates. Do not enter Stage 5 or claim complete package closure; this checkpoint must next create a candidate commit, receive Oracle review for that exact repo commit and Skill revision, and then use a receipt-only closure commit if approved.
+Stop marker: Stage 4 verification freshness and immutable review guardrail has a candidate commit reviewed by Oracle and is ready for a receipt-only checkpoint commit. Do not enter Stage 5 or claim complete package closure; this receipt closes only this guardrail, not Stage 4 full package closure.
