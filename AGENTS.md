@@ -56,6 +56,10 @@ After every atomic closure, run the Parent Loop Driver or equivalent state evalu
 - Use `PAUSE_FOR_USER` only when a verified blocker genuinely requires a user decision.
 - Otherwise use `CONTINUE_PARENT_LOOP` and record a non-empty `next_atomic_step`.
 
+When global exits are unmet and no verified user blocker exists, missing `next_atomic_step` is a validation failure, not a fourth outcome. The driver must fail closed with a structured error such as `NEXT_ATOMIC_STEP_REQUIRED`; it must not return `CONTINUE_PARENT_LOOP` with a null step, convert the state to pause/complete, or treat the atomic closure as the parent-loop stop.
+
+`parent_stage.status` only expresses lifecycle and may be `running` or `complete`; blockers and recovery failures belong in separate fields.
+
 Running loops must not use unscoped `stop marker`, `completed`, `closed`, `task finished`, or similar wording as a stopping reason. Use structured scoped fields such as `closure_scope: atomic_step`, `parent_loop.status`, `parent_loop.global_exit_conditions_met`, `parent_loop.next_action`, and `parent_loop.next_atomic_step`.
 
 After compaction, resume, or a new session, rebuild loop state from repository facts: current worktree, branch, `HEAD`, status, plan/checkpoint identity, closure contract, and current evidence. New feedback belongs to the next atomic step and must not expand a step already being closed.

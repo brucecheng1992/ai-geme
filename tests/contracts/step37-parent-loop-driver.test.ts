@@ -5,10 +5,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
   decideStep37ParentLoop,
+  evaluateStep37ParentLoop,
   rebuildStep37ParentLoopFromCommittedState,
   validateStep37ClosureTextBoundary,
   validateStep37ScopedClosureRecord,
+  type Step37CheckpointInventoryItem,
   type Step37GlobalExitConditions,
+  type Step37ParentLoopDecisionError,
   type Step37ScopedClosureRecord
 } from '../../packages/game-dsl/src/index.js';
 
@@ -38,6 +41,16 @@ const metExitConditions: Step37GlobalExitConditions = {
   final_oracle_no_blocking_findings: true,
   final_closure_not_blocked: true,
   workspace_documentation_reconciled: true
+};
+
+const sourcePlanRevision = '64c223a77a3f870747faf7adb43c7c16c9d80aeb:docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md';
+const pickupImplementationCheckpoint: Step37CheckpointInventoryItem = {
+  checkpoint_id: 'stage4.pickup_collectible.package_owned_qa_slice.implementation',
+  parent_stage_id: 'stage4',
+  next_atomic_step: 'Stage 4 pickup.collectible package-owned QA slice implementation atomic step',
+  status: 'unmet',
+  unmet_reason: 'Stage 4 pickup.collectible implementation remains NOT_ENTERED while global exit conditions are false.',
+  source_plan_revision: sourcePlanRevision
 };
 
 describe('Step37 parent loop driver', () => {
@@ -92,14 +105,22 @@ describe('Step37 parent loop driver', () => {
       decideStep37ParentLoop({
         atomic_step_boundary_reached: true,
         global_exit_conditions: unmetExitConditions,
-        remaining_checkpoints: ['pickup.collectible.v1 implementation']
+        checkpoint_inventory: [pickupImplementationCheckpoint]
       })
     ).toEqual({
       loop_status: 'running',
       global_exit_conditions_met: false,
       user_input_required: false,
       next_action: 'CONTINUE_PARENT_LOOP',
-      next_atomic_step: 'pickup.collectible.v1 implementation'
+      next_atomic_step: 'Stage 4 pickup.collectible package-owned QA slice implementation atomic step',
+      next_checkpoint: {
+        checkpoint_id: 'stage4.pickup_collectible.package_owned_qa_slice.implementation',
+        parent_stage_id: 'stage4',
+        next_atomic_step: 'Stage 4 pickup.collectible package-owned QA slice implementation atomic step',
+        unmet_reason: 'Stage 4 pickup.collectible implementation remains NOT_ENTERED while global exit conditions are false.',
+        selection_rule: 'first_unmet_checkpoint_in_authoritative_inventory',
+        source_plan_revision: sourcePlanRevision
+      }
     });
   });
 
@@ -125,13 +146,13 @@ describe('Step37 parent loop driver', () => {
       decideStep37ParentLoop({
         atomic_step_boundary_reached: true,
         global_exit_conditions: conditions,
-        remaining_checkpoints: ['write receipt and continue parent loop']
+        checkpoint_inventory: [pickupImplementationCheckpoint]
       })
     ).toMatchObject({
       loop_status: 'running',
       global_exit_conditions_met: false,
       next_action: 'CONTINUE_PARENT_LOOP',
-      next_atomic_step: 'write receipt and continue parent loop'
+      next_atomic_step: 'Stage 4 pickup.collectible package-owned QA slice implementation atomic step'
     });
   });
 
@@ -156,14 +177,112 @@ describe('Step37 parent loop driver', () => {
     );
   });
 
-  it('fails closed instead of returning a running loop without a next checkpoint', () => {
-    expect(() =>
+  it('fails closed with structured diagnostics instead of returning a running loop without a next checkpoint', () => {
+    expect(
+      evaluateStep37ParentLoop({
+        atomic_step_boundary_reached: true,
+        global_exit_conditions: unmetExitConditions,
+        parent_stage_status: 'running',
+        checkpoint_inventory: []
+      })
+    ).toEqual({
+      ok: false,
+      failure: {
+        error_code: 'NEXT_ATOMIC_STEP_REQUIRED',
+        global_exit_conditions_met: false,
+        user_input_required: false,
+        parent_stage_status: 'running',
+        message: 'NEXT_ATOMIC_STEP_REQUIRED: global exits are unmet, no verified human blocker exists, and authoritative checkpoint inventory has no unmet executable checkpoint'
+      }
+    });
+
+    try {
       decideStep37ParentLoop({
         atomic_step_boundary_reached: true,
         global_exit_conditions: unmetExitConditions,
-        remaining_checkpoints: []
+        parent_stage_status: 'running',
+        checkpoint_inventory: []
+      });
+      throw new Error('expected decideStep37ParentLoop to throw');
+    } catch (error) {
+      expect((error as Step37ParentLoopDecisionError).failure).toMatchObject({
+        error_code: 'NEXT_ATOMIC_STEP_REQUIRED',
+        global_exit_conditions_met: false,
+        user_input_required: false,
+        parent_stage_status: 'running'
+      });
+    }
+  });
+
+  it('continues when global exits are unmet, no blocker exists, and the authoritative checkpoint inventory has an unmet checkpoint', () => {
+    expect(
+      evaluateStep37ParentLoop({
+        atomic_step_boundary_reached: true,
+        global_exit_conditions: unmetExitConditions,
+        checkpoint_inventory: [pickupImplementationCheckpoint]
       })
-    ).toThrow('STEP37_NEXT_ATOMIC_STEP_MISSING');
+    ).toMatchObject({
+      ok: true,
+      decision: {
+        next_action: 'CONTINUE_PARENT_LOOP',
+        next_atomic_step: pickupImplementationCheckpoint.next_atomic_step,
+        next_checkpoint: {
+          checkpoint_id: pickupImplementationCheckpoint.checkpoint_id,
+          parent_stage_id: pickupImplementationCheckpoint.parent_stage_id,
+          unmet_reason: pickupImplementationCheckpoint.unmet_reason,
+          selection_rule: 'first_unmet_checkpoint_in_authoritative_inventory',
+          source_plan_revision: sourcePlanRevision
+        }
+      }
+    });
+  });
+
+  it('pauses for a verified human blocker even when no next checkpoint is available', () => {
+    expect(
+      decideStep37ParentLoop({
+        atomic_step_boundary_reached: true,
+        global_exit_conditions: unmetExitConditions,
+        verified_human_blocker: { required: true, reason: 'Owner must choose between incompatible authority paths.' },
+        checkpoint_inventory: []
+      })
+    ).toEqual({
+      loop_status: 'blocked',
+      global_exit_conditions_met: false,
+      user_input_required: true,
+      next_action: 'PAUSE_FOR_USER',
+      next_atomic_step: null,
+      next_checkpoint: null
+    });
+  });
+
+  it('rejects illegal parent_stage_status values such as blocked or pending', () => {
+    for (const illegalStatus of ['blocked', 'pending']) {
+      const issues = validateStep37ScopedClosureRecord({
+        ...runningClosureRecord(),
+        parent_stage: {
+          id: 'stage4',
+          status: illegalStatus,
+          exit_conditions_met: false
+        }
+      });
+
+      expect(issues).toHaveLength(1);
+      expect(issues[0]).toContain('SCHEMA_INVALID path="parent_stage.status"');
+      expect(issues[0]).toContain('"running"|"complete"');
+    }
+  });
+
+  it('fails when authoritative plan still has an unmet checkpoint but resolver output is null', () => {
+    const authoritativeInventory = [pickupImplementationCheckpoint];
+    const resolverOutput = null;
+
+    expect(authoritativeInventory.some((checkpoint) => checkpoint.status === 'unmet')).toBe(true);
+    expect(resolverOutput).toBeNull();
+    expect(
+      validateStep37ScopedClosureRecord({
+        ...runningClosureRecord({ nextAtomicStep: resolverOutput })
+      })
+    ).toContain('RUNNING_LOOP_NEXT_STEP_MISSING actual="<empty>" expected="next_atomic_step"');
   });
 
   it('rejects COMPLETE_GLOBAL_LOOP while global exit conditions are false', () => {
@@ -222,7 +341,7 @@ describe('Step37 parent loop driver', () => {
         committed_head_sha: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
         git_status_short: '',
         global_exit_conditions: unmetExitConditions,
-        remaining_checkpoints: ['Stage 4 pickup.collectible implementation']
+        checkpoint_inventory: [pickupImplementationCheckpoint]
       })
     ).toEqual({
       committed_state_valid: true,
@@ -231,7 +350,36 @@ describe('Step37 parent loop driver', () => {
       global_exit_conditions_met: false,
       user_input_required: false,
       next_action: 'CONTINUE_PARENT_LOOP',
-      next_atomic_step: 'Stage 4 pickup.collectible implementation'
+      next_atomic_step: 'Stage 4 pickup.collectible package-owned QA slice implementation atomic step',
+      next_checkpoint: {
+        checkpoint_id: pickupImplementationCheckpoint.checkpoint_id,
+        parent_stage_id: pickupImplementationCheckpoint.parent_stage_id,
+        next_atomic_step: pickupImplementationCheckpoint.next_atomic_step,
+        unmet_reason: pickupImplementationCheckpoint.unmet_reason,
+        selection_rule: 'first_unmet_checkpoint_in_authoritative_inventory',
+        source_plan_revision: sourcePlanRevision
+      }
+    });
+  });
+
+  it('reports a state recovery failure instead of rebuilding running/null after resume', () => {
+    expect(
+      rebuildStep37ParentLoopFromCommittedState({
+        committed_head_sha: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        git_status_short: '',
+        global_exit_conditions: unmetExitConditions,
+        checkpoint_inventory: []
+      })
+    ).toEqual({
+      committed_state_valid: false,
+      committed_state_issues: ['STATE_RECOVERY_NEXT_ATOMIC_STEP_MISSING'],
+      failure: {
+        error_code: 'STATE_RECOVERY_REQUIRED',
+        global_exit_conditions_met: false,
+        user_input_required: false,
+        parent_stage_status: 'running',
+        message: 'NEXT_ATOMIC_STEP_REQUIRED: global exits are unmet, no verified human blocker exists, and authoritative checkpoint inventory has no unmet executable checkpoint'
+      }
     });
   });
 
@@ -240,14 +388,15 @@ describe('Step37 parent loop driver', () => {
       decideStep37ParentLoop({
         atomic_step_boundary_reached: true,
         global_exit_conditions: metExitConditions,
-        remaining_checkpoints: []
+        checkpoint_inventory: []
       })
     ).toEqual({
       loop_status: 'complete',
       global_exit_conditions_met: true,
       user_input_required: false,
       next_action: 'COMPLETE_GLOBAL_LOOP',
-      next_atomic_step: null
+      next_atomic_step: null,
+      next_checkpoint: null
     });
   });
 });

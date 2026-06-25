@@ -3454,3 +3454,103 @@ parent_loop:
 ```
 
 Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `hierarchical_completion_parent_loop_guardrail`; Stage 4 remains running, Step37 remains running, global exit conditions remain false, and Parent Loop Driver must continue with `Stage 4 pickup.collectible package-owned QA slice implementation atomic step`.
+
+## Stage 4 Improvement Log — Parent Loop Missing Checkpoint Fail-Closed Hardening
+
+- checkpoint_id: `parent_loop_missing_checkpoint_fail_closed_guardrail`.
+- record_type: `implementation_log`.
+- implementation_status: `complete`.
+- local_validation_status: `passed`.
+- candidate_status: `ready_for_commit`.
+- oracle_status: `not_submitted`.
+- closure_scope: `atomic_step`.
+- parent_loop_id: `step37`.
+- parent_loop_status: `running`.
+- global_exit_conditions_met: `false`.
+- user_input_required: `false`.
+- next_action: `CONTINUE_PARENT_LOOP`.
+- next_atomic_step: `parent_loop_missing_checkpoint_fail_closed_guardrail implementation`.
+- scope: Parent Loop Driver and closure contracts only; no business runtime, Stage 4 package implementation, Stage 5 exact lock, production default cutover, legacy authoritative path exit, or historical candidate/receipt rewrite is introduced.
+
+Purpose:
+
+- Ensure missing `next_atomic_step` is treated as a state recovery / checkpoint inventory failure when global exits are false and no verified user blocker exists.
+- Preserve the only normal parent-loop outcomes: `CONTINUE_PARENT_LOOP`, `PAUSE_FOR_USER`, and `COMPLETE_GLOBAL_LOOP`.
+- Require next-step selection to come from authoritative checkpoint inventory with `checkpoint_id`, `parent_stage_id`, `unmet_reason`, `selection_rule`, and `source_plan_revision`.
+
+Current facts at step start:
+
+```text
+worktree=/Users/dahufa/Documents/workspace/ai-game-maker
+branch=main
+HEAD=64c223a77a3f870747faf7adb43c7c16c9d80aeb
+git status --short=<clean>
+Stage 4 exit gate=NOT_MET
+Stage 5 exact lock=NOT_ENTERED
+Production Default Cutover=NOT_ACTIVE
+legacy authoritative path=NOT_EXITED
+Final Closure=BLOCKED
+global_exit_conditions_met=false
+```
+
+External Skill revision for this hardening candidate:
+
+```text
+skill_revision_type=sha256_bundle
+skill_bundle_root=/Users/dahufa/.agents/skills/code-change-discipline
+skill_bundle_file=/Users/dahufa/.agents/skills/code-change-discipline/SKILL.md
+skill_bundle_file_relative_path=SKILL.md
+skill_bundle_file_type=file
+skill_bundle_file_byte_length=41835
+skill_bundle_file_sha256=be263fd2aba283741163d4de78f567a85611722b81ab8bf9a25990cfa1868b3a
+skill_bundle_digest=0ec6830ff612320d013b339059e4cb3bcb31b2fe1256c02efa4488baadbeac56
+skill_bundle_generation_exit_code=0
+```
+
+Minimum implementation requirements:
+
+1. Missing next checkpoint with unmet global exits and no user blocker must produce structured failure `NEXT_ATOMIC_STEP_REQUIRED`, not a normal decision.
+2. The driver must not convert missing checkpoint to global complete, pause for user, or `CONTINUE_PARENT_LOOP` with `null`.
+3. `parent_stage_status` remains lifecycle-only: `running | complete`.
+4. `PAUSE_FOR_USER` requires a verified user-only blocker; internal state gaps are not user blockers.
+5. Resume/compaction rebuild must expose recovery failure if committed state cannot yield `next_atomic_step`.
+6. Authoritative checkpoint inventory selection must record checkpoint identity, parent stage, unmet reason, selection rule, and source plan revision.
+
+Current validation state:
+
+```text
+npx vitest run tests/contracts/step37-parent-loop-driver.test.ts
+exitCode=0
+duration=0.905s
+result=PASS: initial focused contract after driver/test update before Skill and AGENTS sync.
+
+npx vitest run tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-closure-implementation-trace.test.ts
+exitCode=0
+duration=0.997s
+result=PASS: 53 focused contract tests passed after Skill, AGENTS, and hardening log sync.
+
+npm run test:contracts
+exitCode=0
+duration=8.78s
+result=PASS: 96 contract files and 1114 tests passed.
+
+npm test
+exitCode=0
+duration=contracts 9.02s plus workspace 49.47s
+result=PASS: 96 contract files / 1114 tests and 34 workspace files / 408 tests passed.
+
+npm run typecheck
+exitCode=0
+duration=6.20s
+result=PASS: root, maker-api, and maker-workbench TypeScript checks passed.
+
+git diff --check
+exitCode=0
+result=PASS: no whitespace or patch format errors.
+
+python3 - <<'PY' ... compute Skill bundle digest ...
+exitCode=0
+result=PASS: current Skill bundle digest 0ec6830ff612320d013b339059e4cb3bcb31b2fe1256c02efa4488baadbeac56
+```
+
+Exit assessment: `LOCAL_VALIDATION_PASSED_PENDING_CANDIDATE_COMMIT`. Candidate commit, Oracle review, receipt, post-receipt checks, and post-receipt Parent Loop Driver evaluation are still required before this atomic hardening guardrail can close.
