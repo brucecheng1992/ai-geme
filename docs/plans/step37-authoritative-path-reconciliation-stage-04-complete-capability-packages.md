@@ -3805,3 +3805,140 @@ parent_loop:
 ```
 
 Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4_pickup_collectible_package_owned_qa_implementation`; Stage 4 remains running, Step37 remains running, global exit conditions remain false, and Parent Loop Driver must continue with `Stage 4 spawn.enemy_wave package-owned QA slice audit atomic step`.
+
+## Stage 4 Audit — spawn.enemy_wave.v1 Package-Owned QA Slice
+
+- checkpoint_id: `stage4_spawn_enemy_wave_package_owned_qa_audit`.
+- record_type: `audit_candidate`.
+- audit_status: `complete`.
+- implementation_status: `not_started`.
+- capability_closure_status: `not_met`.
+- local_validation_status: `passed`.
+- candidate_status: `ready_for_commit`.
+- oracle_status: `not_submitted`.
+- closure_status: `not_closed`.
+- skill_revision_type: `sha256_bundle`.
+- skill_revision: `d85fb9ec2a1a8a67d2d956155c01ea2ccda8ea3c41f416f2ae9c3dcc9325cfeb`.
+- closure_scope: `atomic_step`.
+- parent_loop_id: `step37`.
+- parent_loop_status: `running`.
+- global_exit_conditions_met: `false`.
+- user_input_required: `false`.
+- next_action: `CONTINUE_PARENT_LOOP`.
+- next_atomic_step: `stage4_spawn_enemy_wave_package_owned_qa_implementation`.
+- next_atomic_step_scope: `implementation`.
+- next_atomic_step_entry_conditions: `audit candidate committed, Oracle audit receipt approved, Parent Loop Driver returns CONTINUE_PARENT_LOOP, global_exit_conditions_met=false, user_input_required=false`.
+- scope: Stage 4 `spawn.enemy_wave.v1` audit only; no runtime, tests, package implementation, Stage 5 exact lock, production default cutover, legacy authoritative path exit, or historical receipt rewrite is introduced.
+
+Current Stage review conclusion:
+
+`spawn.enemy_wave.v1` is the next Stage 4 frontier after the pickup collectible package-owned QA slice, but it is not ready to close and must not be conflated with the already implemented `spawn.static.v1` triggered-spawn evidence.
+
+Facts from current code and profile evidence:
+
+1. `DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1` requires `spawn.enemy_wave.v1` in cluster `M5` for ordered level progression. Evidence: `packages/game-dsl/src/deepseek-run-and-gun-validation-profile-v1.ts:138`.
+2. Requirement `R034` states: "Enemy core spawns two waves after entrance closes." Its existing construct is `spawn.enemy_wave.v1 partial`, and its required construct is `ordered_wave_sequence`. Evidence: `packages/game-dsl/src/deepseek-run-and-gun-validation-profile-v1.ts:225`.
+3. `GameplayCapabilityRegistry` currently declares `spawn.enemy_wave.v1` as `runtime_backed` only for `shooter.v1` with legacy alias `enemy_waves`. Evidence: `packages/game-dsl/src/gameplay-capabilities/registry.ts:551`.
+4. Current support evidence for `spawn.enemy_wave.v1` is `schema_expressible=true`, `normalized=true`, `compiled=true`, `runtime_consumed=true`, `qa_observed=false`, missing `amendmentOperations`, `capabilityOwnedQa`, `requiredProbeIds`, and `requiredProbesVerified`. Evidence command: `npx tsx -e "... findGameplayCapability('spawn.enemy_wave.v1') ..."`.
+5. `spawn.static.v1` remains the side-scrolling triggered/static spawn package-owned QA slice. It proves triggered spawn state, not an ordered multi-wave sequence gated by entrance closure or wave clear progression. Evidence: `packages/game-dsl/src/gameplay-capabilities/registry.ts:596`, `templates/phaser/side_scrolling_run_and_gun/src/GameScene.ts:146`, `tests/contracts/gameplay-capability-registry.test.ts:239`.
+
+Minimum closure requirements for a later implementation step:
+
+1. Add `packages/game-dsl/src/gameplay-capabilities/spawn-enemy-wave-*` package/runtime-module code, registry evidence, exports, and a required probe only when its semantics are distinct from `spawn.static.v1`: ordered multi-wave sequence, gate/entrance-close trigger, and wave progression state.
+2. Wire the consumer chain through capability QA plan/report, side-scrolling runtime evidence producer, Playwright capability runtime reader, generation pipeline QA expectation, and target-profile runtime overlay.
+3. Runtime evidence must prove both the wave-spawn action and the ordering/gating condition. A single triggered static wave or generic enemy spawn must not verify `spawn.enemy_wave.v1`.
+4. Runtime evidence must preserve stable wave identity, sequence index/order, trigger or gate source, and resulting spawned enemy/wave state.
+5. QA reader and capability QA report must retain those fields and fail closed when any required field is missing, stale, wrong-run, or associated with a different capability.
+6. Target-profile overlay may advance only from same-run observed evidence and must keep static `completeSupported=false` until the required probe is verified.
+7. `spawn.static.v1` evidence must remain separate and must not be reused to overclaim `spawn.enemy_wave.v1` without the ordered wave sequence proof.
+8. Add positive contracts for registry package evidence, QA plan/report, runtime evidence reader, generation pipeline expectation, target-profile observed overlay, and template/runtime probe emission.
+9. Add negative contracts for static-spawn-only evidence, unordered wave evidence, missing gate/trigger fields, missing sequence index, wrong-run or stale evidence, different capability identity, and accidental static `completeSupported=true`.
+10. Compatibility & Cutover entry condition: implementation may enter only after this audit receipt closes and Parent Loop Driver selects `stage4_spawn_enemy_wave_package_owned_qa_implementation`; capability closure may advance only after local validation, Oracle review, and same-run package-owned QA evidence prove ordered wave semantics.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | This audit changes only the execution plan. A later implementation would add a `spawn.enemy_wave.v1` package contract, required ordered-wave probe, runtime sequence/gate evidence, QA reader fields, and overlay wiring. |
+| Consumer list | Future consumers must include registry support evidence, capability QA plan/report builder, side-scrolling runtime evidence producer, Playwright capability runtime reader, generation pipeline QA expectation, and target-profile runtime overlay. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: current `spawn.static.v1` triggered-spawn consumer is insufficient for ordered enemy-wave semantics. |
+| Authority | Future authority must be the `spawn.enemy_wave.v1` package contract plus same-run capability QA evidence for ordered wave sequence state. |
+| Legacy strategy | Existing top-down shooter `enemy_waves` legacy evidence remains non-authoritative for side-scrolling M5 closure until package-owned QA proves the new semantics. |
+| Failure policy | If ordered-wave identity, ordering, gate/trigger, or resulting state is absent, the support overlay must fail closed rather than falling back to `spawn.static.v1` evidence. |
+| Evidence | This audit cites current registry/profile facts and defines future evidence requirements; it does not claim implementation evidence. |
+| Rollback | Reverting this audit removes only the planning record and does not alter runtime, tests, package contracts, or existing spawn static support. |
+
+Cutover boundary: current authoritative side-scrolling spawn support remains `spawn.static.v1` observed overlay plus legacy runtime-backed `spawn.enemy_wave.v1` for top-down shooter only. Observed overlay is allowed only for same-run evidence; production default cutover, Stage 5 exact lock, completeSupported promotion, and legacy authoritative path exit are explicitly not allowed in this audit.
+
+Validation commands for this audit:
+
+```text
+git rev-parse --show-toplevel && git branch --show-current && git rev-parse HEAD && git status --short
+exitCode=0
+result=PASS: worktree=/Users/dahufa/Documents/workspace/ai-game-maker; branch=main; HEAD=0aeaed76a26fdd29d09895e003cf7056f3809eaf; git status --short=<clean>.
+
+npx tsx -e "... findGameplayCapability('spawn.enemy_wave.v1') ..."
+exitCode=0
+result=PASS: spawn.enemy_wave.v1 status=runtime_backed; profiles=[shooter.v1]; legacyRuntimeCapabilities=[enemy_waves]; requiredProbeIds=[]; completeSupported=false; missing prerequisites include amendmentOperations, capabilityOwnedQa, requiredProbeIds, requiredProbesVerified.
+
+npx tsx -e "... DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1 ..."
+exitCode=0
+result=PASS: M5 requires spawn.enemy_wave.v1; R034 requires ordered_wave_sequence; current support classification is CONDITIONAL_LEGACY_BACKED and completeSupported=false.
+
+node - <<'NODE' ... compute deterministic external Skill bundle digest ...
+exitCode=0
+result=PASS: skill_bundle_digest=d85fb9ec2a1a8a67d2d956155c01ea2ccda8ea3c41f416f2ae9c3dcc9325cfeb; manifest includes code-change-discipline/SKILL.md, review-gated-delivery/SKILL.md, and review-gated-delivery/assets entries sorted by root and relative path.
+
+npx vitest run tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/step37-parent-loop-driver.test.ts
+exitCode=0
+duration=1.11s
+result=PASS: 2 focused files and 54 tests passed after the audit status, next checkpoint identity, and Skill digest record were synchronized.
+
+npm run test:contracts
+exitCode=0
+duration=11s
+result=PASS: 96 contract files and 1119 tests passed.
+
+npm test
+exitCode=0
+duration=60s
+result=PASS: 96 contract files / 1119 tests and 34 workspace files / 409 tests passed.
+
+npm run typecheck
+exitCode=0
+duration=6s
+result=PASS: root, maker-api, and maker-workbench TypeScript checks passed.
+
+git diff --check
+exitCode=0
+result=PASS: no whitespace or patch format errors.
+```
+
+Scoped audit boundary:
+
+```yaml
+closure_scope: atomic_step
+atomic_step:
+  id: stage4_spawn_enemy_wave_package_owned_qa_audit
+  status: audit_complete
+  implementation_status: not_started
+  capability_closure_status: not_met
+  candidate_commit: not_created
+  receipt_commit: not_created
+  oracle_status: not_submitted
+parent_stage:
+  id: stage4
+  status: running
+  exit_conditions_met: false
+parent_loop:
+  id: step37
+  status: running
+  global_exit_conditions_met: false
+  user_input_required: false
+  next_action: CONTINUE_PARENT_LOOP
+  next_atomic_step: stage4_spawn_enemy_wave_package_owned_qa_implementation
+  next_atomic_step_scope: implementation
+  next_atomic_step_entry_conditions: audit receipt approved, global_exit_conditions_met=false, user_input_required=false
+```
+
+Exit assessment: `AUDIT_CANDIDATE_READY_NOT_CLOSED`. This audit closes no implementation requirement. It defines the next implementation boundary for `spawn.enemy_wave.v1`; Stage 4 remains running, Step37 remains running, and global exit conditions remain false.
