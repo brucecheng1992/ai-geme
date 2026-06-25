@@ -2,7 +2,7 @@
 
 > - Parent plan: `docs/plans/step37-authoritative-path-reconciliation-audit.md`
 > - Stage: 4 — Complete Capability Packages
-> - Current status: health.player_health_points package-owned QA slice implementation passed Oracle; checkpoint pending; Stage 4 exit not met
+> - Current status: combat.airborne_fire package-owned QA slice audit recorded; Oracle review pending; Stage 4 exit not met
 > - Updated: 2026-06-25
 
 ## Scope Lock
@@ -1858,3 +1858,85 @@ Next: checkpoint commit for this health.player_health_points slice only
 ```
 
 Stop marker: Stage 4 health.player_health_points package-owned QA slice passed Oracle and is awaiting checkpoint commit. Do not enter the next Stage 4 audit, do not enter Stage 5, and do not claim complete package closure until checkpoint commit completes.
+
+## Stage 4 Review — Combat Airborne Fire Package-Owned QA Slice
+
+### Scope Lock
+
+- scope: Stage 4 audit only.
+- baseline: Stage 4 health.player_health_points package-owned QA slice checkpoint commit `71e83e0c` (`feat(game-dsl): add health player points QA package slice`).
+- implementation target: close the next smallest real package-owned QA slice for `combat.airborne_fire.v1` by proving the side-scrolling runtime permits firing while the player is airborne in the same runtime session.
+- non-goals: no implementation in this audit checkpoint, no Stage 5 exact lock, no composed schema, no canonical DSL/provider run, no production default cutover, no legacy authoritative path exit, no Stage 4 full closure claim, no `movement.crouch.v1`, `health.damage_invulnerability.v1`, `pickup.collectible.v1`, or `spawn.enemy_wave.v1` promotion.
+- starting conclusion: runtime overlay can observe camera, collision, projectile, movement, spawn static, health points, and default weapon as complete for the same run, but the target profile remains `target_profile_runtime_support_incomplete:7/59`.
+
+### Current Stage Review Conclusion
+
+`combat.airborne_fire.v1` is the next minimal real package-owned QA slice because it has all non-QA support dimensions in the static target summary, and the existing side-scrolling runtime can exercise the semantic in one browser QA session:
+
+- `buildDeepSeekRunAndGunValidationProfileSupportSummary()` reports `combat.airborne_fire.v1` as `DEFERRED` with `schema_expressible=true`, `normalized=true`, `compiled=true`, `runtime_consumed=true`, `qa_observed=false`, and missing prerequisites `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`;
+- `SideScrollingRunAndGunScene.jump()` starts from a grounded player, sets `player.vy` to the runtime-plan jump velocity, and emits `player.jumped` with the `movement.run_jump.v1` runtime probe;
+- `SideScrollingRunAndGunScene.fire()` does not require grounded state and can run while `player.vy !== 0`, emitting `player.fired` and `projectile.spawned` in the same session;
+- current package-owned QA evidence proves generic fire/projectile behavior, but it does not yet distinguish a grounded shot from an airborne shot, so `combat.airborne_fire.v1` must get its own probe identity and airborne-state evidence.
+
+The following candidates are excluded from this slice:
+
+- `movement.crouch.v1`: no side-scrolling crouch input/state/runtime effect exists yet, so a probe would be synthetic.
+- `health.damage_invulnerability.v1`: current runtime decrements health and resets lives/checkpoint, but it has no invulnerability window/cooldown semantics.
+- `pickup.collectible.v1`: registry support is conditional legacy-backed for collector/dodger pickup loops, not the side-scrolling weapon pickup/loadout semantics required by this target profile.
+- `spawn.enemy_wave.v1`: registry support is currently top-down shooter runtime-backed/legacy-backed; side-scrolling wave spawning is covered by `spawn.static.v1` until an enemy-wave package contract is authored.
+
+Therefore, the next minimal closure requirement is to add a `combat.airborne_fire.v1` package-owned QA probe that is emitted only when a fire action happens while the player is airborne, and to make downstream QA/overlay consumers require that probe. This may raise runtime-observed support from `7/59` to `8/59`, but Stage 4 exit still remains `NOT_MET`.
+
+### Extracted Minimal Closure Requirements
+
+1. Add a `combat.airborne_fire.v1` package contract with a required airborne-fire browser QA probe.
+2. Install the airborne-fire package on the side-scrolling active-profile path alongside the seven existing package-owned QA slices.
+3. Extend runtime evidence so the airborne-fire probe is recorded only when `fire()` occurs while `player.vy !== 0` in the same session after `jump()`.
+4. Preserve behavior-specific evidence in tests and QA runtime evidence so ordinary `player.fired` / `projectile.spawned` probes cannot satisfy the airborne-fire requirement by themselves.
+5. Extend Playwright QA expectation and runtime support overlay to require the airborne-fire probe while keeping prior seven probes unchanged.
+6. Keep static support summary incomplete; only the runtime overlay may report `observedCompleteSupported=true` for this capability.
+7. Keep Stage 4 exit blocked until all 59 required target capabilities are observed complete.
+
+### Compatibility & Cutover
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | No code producer changes in this audit checkpoint. The future implementation would add `combat.airborne_fire.v1` package contract, runtime constants, registry package evidence, QA expectation, and runtime snapshot probe. |
+| Consumer list | Future consumers must include `GameplayCapabilityRegistry`, active-profile package installer, Playwright QA runtime evidence reader, `CapabilityQaReport`, target runtime support overlay, side-scrolling runtime snapshot, and Stage 4 tests. |
+| Compatibility type | `ADAPTER_REQUIRED`: current fire/projectile telemetry is not enough; existing side-scrolling behavior can count only through a named airborne-fire probe emitted under an airborne runtime-state condition. |
+| Authority | The future `combat.airborne_fire.v1` package contract and same-run `capability_qa_report` required probe result must be semantic authority; `generation_target_profile_runtime_support_report` remains derived overlay evidence only. |
+| Legacy strategy | Ordinary fire/projectile probes remain valid for their own capabilities but are forbidden from proving airborne-fire support without the airborne-fire probe. |
+| Failure policy | Missing airborne-fire probe, grounded-only fire evidence, or missing required QA assertion must keep `requiredProbesVerified=false` and target profile support blocked. |
+| Evidence | This audit records source evidence and closure requirements only. Same-run RED/GREEN, focused tests, full tests, typecheck, and Oracle implementation review are required before any implementation checkpoint. |
+| Rollback | Reverting a future slice must return `combat.airborne_fire.v1` to planned incomplete evidence and remove only its eighth required side-scrolling probe without rewriting prior package slice evidence. |
+
+Disposition: `ADAPTER_REQUIRED`; same-run downstream consumption evidence will be required before implementation closure.
+
+### Exit Assessment Before Implementation
+
+```text
+Stage 4 Combat Airborne Fire Package-Owned QA Slice Audit: RECORDED
+Stage 4 Combat Airborne Fire Package-Owned QA Slice Implementation: NOT_ENTERED
+Expected post-implementation overlay: observedCompleteSupportedCount=8/59
+Stage 4 Exit gate: NOT_MET
+```
+
+Stop marker: Stage 4 combat.airborne_fire package-owned QA slice audit is recorded. Implementation may start for this slice only after audit Oracle/checkpoint; do not enter Stage 5 and do not claim complete package closure.
+
+### Audit Oracle Review
+
+Oracle PASS / no P0/P1/P2 blocking findings.
+
+P3 non-blocking:
+
+- Future implementation should include a grounded-only fire negative test as the RED condition, ensuring ordinary fire/projectile probes cannot satisfy the airborne-fire gate.
+
+Oracle confirmed:
+
+- the audit is docs-only and did not enter implementation;
+- `combat.airborne_fire.v1` is a reasonable next minimal real package-owned QA slice;
+- closure requirements are strong enough to prevent generic fire/projectile QA from proving airborne-fire support;
+- Stage 4 exit remains `NOT_MET`;
+- no Stage 5 exact lock, production default cutover, or complete loop closure is approved.
+
+Stop marker: Stage 4 combat.airborne_fire package-owned QA slice audit passed Oracle and is awaiting checkpoint commit. Implementation remains `NOT_ENTERED`.
