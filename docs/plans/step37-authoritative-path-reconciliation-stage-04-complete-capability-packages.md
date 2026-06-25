@@ -4218,10 +4218,16 @@ Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4_spa
 
 - checkpoint_id: `telemetry_schema_focused_validation_guardrail`.
 - closure_scope: `atomic_step`.
-- implementation_status: `complete`.
+- implementation_status: `receipt`.
 - local_validation_status: `passed`.
-- candidate_status: `ready_for_commit`.
-- oracle_status: `not_submitted`.
+- candidate_status: `created`.
+- oracle_status: `approved`.
+- closure_status: `closed`.
+- candidate_commit: `682c0987798f4a876d0f7f4d4b9ff62a14701576`.
+- reviewed_commit_sha: `682c0987798f4a876d0f7f4d4b9ff62a14701576`.
+- reviewed_commit_tree: `d7ae2963987c84a2526d334b530de758ad27d576`.
+- reviewed_skill_revision: `aea1af2a6b7304e666193a0b176c6187a49226305edba9bdc01d89e809f24faf`.
+- receipt_commit: `not_self_referenced_in_receipt`.
 - parent_stage_status: `running`.
 - parent_loop_status: `running`.
 - global_exit_conditions_met: `false`.
@@ -4252,7 +4258,8 @@ Current status:
 
 - Focused contract for the new helper has passed locally.
 - Full related contracts, full tests, typecheck, diff checks, and Skill freshness have passed for this atomic step.
-- Candidate commit, Oracle review, and receipt remain pending for this atomic step.
+- Candidate commit `682c0987798f4a876d0f7f4d4b9ff62a14701576` was reviewed by Oracle with no P0/P1/P2 blockers.
+- Receipt commit is this docs-only metadata update and intentionally does not record its own SHA.
 - This guardrail does not close Stage 4 or Step37.
 
 Active Skill freshness for this guardrail:
@@ -4299,19 +4306,35 @@ exitCode=0
 result=PASS: skill_bundle_format=step37_manifest_v1_path_size_sha; skill_file_count=8; skill_bundle_digest=aea1af2a6b7304e666193a0b176c6187a49226305edba9bdc01d89e809f24faf.
 ```
 
-Candidate boundary:
+Oracle approval receipt record:
+
+- reviewed_commit_sha: `682c0987798f4a876d0f7f4d4b9ff62a14701576`.
+- reviewed_commit_tree: `d7ae2963987c84a2526d334b530de758ad27d576`.
+- reviewed_skill_revision: `aea1af2a6b7304e666193a0b176c6187a49226305edba9bdc01d89e809f24faf`.
+- oracle_submission_id: `019f0127-5655-7530-aadc-1174f9460152`.
+- oracle_agent_id: `019effae-8aa2-7c22-b5ba-8c4b69f21d20`.
+- oracle_verdict: `PASS_NO_P0_P1_P2_BLOCKERS`.
+- oracle_findings: `P0=0; P1=0; P2=0; P3=1 nonblocking naming clarity note`.
+- oracle_result_source: `multi_agent_v1.wait_agent target=019effae-8aa2-7c22-b5ba-8c4b69f21d20`.
+- receipt_scope: `docs_only_closure_metadata`.
+- receipt_allowlist: `this guardrail section status, reviewed commit, reviewed Skill revision, Oracle result reference, and parent-loop continuation metadata only`.
+- receipt_git_identity: `derive from Git history after this receipt is committed; do not write the receipt commit SHA into its own content`.
+
+Receipt boundary:
 
 ```yaml
 closure_scope: atomic_step
 atomic_step:
   id: telemetry_schema_focused_validation_guardrail
-  status: locally_validated_not_closed
-  implementation_status: complete
+  status: closed
+  implementation_status: receipt
   local_validation_status: passed
-  candidate_status: ready_for_commit
-  candidate_commit: not_created_in_this_record
-  receipt_commit: not_created
-  oracle_status: not_submitted
+  candidate_status: created
+  candidate_commit: 682c0987798f4a876d0f7f4d4b9ff62a14701576
+  reviewed_commit_sha: 682c0987798f4a876d0f7f4d4b9ff62a14701576
+  receipt_commit: not_self_referenced_in_receipt
+  oracle_status: approved
+  closure_status: closed
 parent_stage:
   id: stage4
   status: running
@@ -4322,8 +4345,8 @@ parent_loop:
   global_exit_conditions_met: false
   user_input_required: false
   next_action: CONTINUE_PARENT_LOOP
-  next_atomic_step: current_atomic_step_candidate_oracle_then_receipt
-  next_atomic_step_scope: guardrail_review
+  next_atomic_step: stage4.remaining_complete_supported_package_inventory_audit
+  next_atomic_step_scope: audit
 ```
 
-Exit assessment: `LOCAL_VALIDATION_PASSED_AWAITING_CANDIDATE_COMMIT_ORACLE`. This record does not close the atomic step. The step remains open until candidate commit creation, Oracle review, receipt-only closure, post-receipt checks, and Parent Loop Driver reevaluation complete.
+Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `telemetry_schema_focused_validation_guardrail` after candidate commit creation, Oracle PASS, and receipt-only metadata update. It does not close Stage 4, Step37, production default cutover, legacy authoritative path exit, Stage 5, or final global closure. Parent Loop Driver must continue with `stage4.remaining_complete_supported_package_inventory_audit` while global exits remain false and no verified user blocker exists.
