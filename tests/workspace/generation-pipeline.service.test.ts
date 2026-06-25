@@ -170,7 +170,13 @@ describe('GenerationPipelineService failure states', () => {
               runtimeAuthority: input.expectedRuntimeAuthority,
               capabilityRuntime: {
                 source: 'side_scrolling_runtime',
-                probes: [cameraSideFollowObservedProbe(), projectileObservedProbe(), movementRunJumpObservedProbe(), defaultWeaponObservedProbe()]
+                probes: [
+                  cameraSideFollowObservedProbe(),
+                  collisionPlatformObservedProbe(),
+                  projectileObservedProbe(),
+                  movementRunJumpObservedProbe(),
+                  defaultWeaponObservedProbe()
+                ]
               }
             },
             capability_runtime: defaultWeaponCapabilityRuntimeEvidence(input.expectedCapabilityRuntime)
@@ -262,6 +268,16 @@ describe('GenerationPipelineService failure states', () => {
           ])
         }),
         expect.objectContaining({
+          probeId: 'collision.platform.v1.grounded.browser_qa.v1',
+          status: 'passed',
+          assertionResults: expect.arrayContaining([
+            expect.objectContaining({
+              assertionId: 'collision.platform.v1.grounded.browser_qa.v1.assertion.grounded',
+              status: 'passed'
+            })
+          ])
+        }),
+        expect.objectContaining({
           probeId: 'combat.projectile.v1.spawn.browser_qa.v1',
           status: 'passed',
           assertionResults: expect.arrayContaining([
@@ -297,7 +313,7 @@ describe('GenerationPipelineService failure states', () => {
         })
       ])
     );
-    expect(capabilityQaReport.requiredResults).toHaveLength(4);
+    expect(capabilityQaReport.requiredResults).toHaveLength(5);
     expect(capabilityRuntime.resolutionReportHash).toBe(capabilityResolution.reportHash);
     expect(capabilityRuntime.authorityBundleRef).toEqual(qaReport.runtime_authority?.expected?.authorityBundleRef);
     expect(capabilityRuntime.activeProfileLockRef).toEqual(qaReport.runtime_authority?.expected?.activeProfileLockRef);
@@ -305,16 +321,29 @@ describe('GenerationPipelineService failure states', () => {
       artifactKind: 'generation_target_profile_runtime_support_report',
       status: 'blocked_incomplete_target_profile',
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 4,
+      observedCompleteSupportedCount: 5,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
-      observedCapabilityIds: ['camera.side_follow.v1', 'combat.projectile.v1', 'movement.run_jump.v1', 'weapon.default_straight_single.v1'],
+      observedCapabilityIds: [
+        'camera.side_follow.v1',
+        'collision.platform.v1',
+        'combat.projectile.v1',
+        'movement.run_jump.v1',
+        'weapon.default_straight_single.v1'
+      ],
       capabilities: expect.arrayContaining([
         expect.objectContaining({
           capabilityId: 'camera.side_follow.v1',
           runtimeVerified: true,
           observedCompleteSupported: true,
           verifiedRequiredProbeIds: ['camera.side_follow.v1.scroll.browser_qa.v1'],
+          missingRequiredProbeIds: []
+        }),
+        expect.objectContaining({
+          capabilityId: 'collision.platform.v1',
+          runtimeVerified: true,
+          observedCompleteSupported: true,
+          verifiedRequiredProbeIds: ['collision.platform.v1.grounded.browser_qa.v1'],
           missingRequiredProbeIds: []
         }),
         expect.objectContaining({
@@ -1046,6 +1075,12 @@ describe('GenerationPipelineService failure states', () => {
           eventType: 'camera.side_follow.active'
         },
         {
+          capabilityId: 'collision.platform.v1',
+          probeId: 'collision.platform.v1.grounded.browser_qa.v1',
+          action: 'collide',
+          eventType: 'collision.platform.grounded'
+        },
+        {
           capabilityId: 'combat.projectile.v1',
           probeId: 'combat.projectile.v1.spawn.browser_qa.v1',
           action: 'fire',
@@ -1065,7 +1100,7 @@ describe('GenerationPipelineService failure states', () => {
         }
       ])
     });
-    expect(qaCapabilityRuntimeExpectation?.requiredProbes).toHaveLength(4);
+    expect(qaCapabilityRuntimeExpectation?.requiredProbes).toHaveLength(5);
     expect(intentPlan).toMatchObject({
       normalizedGenre: 'side_scrolling_run_and_gun',
       runtimeDslSupport: 'supported',
@@ -2502,7 +2537,13 @@ describe('GenerationPipelineService failure states', () => {
     return {
       status: 'PASSED',
       ...(expected === undefined ? {} : { expected }),
-      observed: [cameraSideFollowObservedProbe(), projectileObservedProbe(), movementRunJumpObservedProbe(), defaultWeaponObservedProbe()],
+      observed: [
+        cameraSideFollowObservedProbe(),
+        collisionPlatformObservedProbe(),
+        projectileObservedProbe(),
+        movementRunJumpObservedProbe(),
+        defaultWeaponObservedProbe()
+      ],
       missingProbeIds: [],
       mismatches: []
     };
@@ -2517,6 +2558,20 @@ describe('GenerationPipelineService failure states', () => {
       eventType: 'camera.side_follow.active',
       eventTypes: ['camera.side_follow.active'],
       sourceRef: 'runtime_plan.side_scrolling.camera.bounds',
+      status: 'observed',
+      observedIn: ['snapshot']
+    };
+  }
+
+  function collisionPlatformObservedProbe(): QaCapabilityRuntimeEvidence['observed'][number] {
+    return {
+      capabilityId: 'collision.platform.v1',
+      probeId: 'collision.platform.v1.grounded.browser_qa.v1',
+      runtimeModuleId: 'collision.platform',
+      action: 'collide',
+      eventType: 'collision.platform.grounded',
+      eventTypes: ['collision.platform.grounded'],
+      sourceRef: 'runtime_plan.side_scrolling.platforms',
       status: 'observed',
       observedIn: ['snapshot']
     };

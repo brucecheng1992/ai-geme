@@ -107,7 +107,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
   });
 
   it('keeps legacy-backed, schema-only, and contract-seeded capabilities below complete_supported', () => {
-    const legacyBacked = cloneCapability('collision.platform.v1');
+    const legacyBacked = cloneCapability('pickup.collectible.v1');
     const contractSeeded = cloneCapability('health.damage_invulnerability.v1');
     const schemaOnly = {
       ...cloneCapability('goal.reach_exit.v1'),

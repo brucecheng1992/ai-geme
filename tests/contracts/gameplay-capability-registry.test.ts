@@ -27,6 +27,10 @@ describe('Gameplay capability registry', () => {
       status: 'planned',
       legacyRuntimeCapabilities: ['side_view_camera']
     });
+    expect(findGameplayCapability('collision.platform.v1')).toMatchObject({
+      status: 'planned',
+      legacyRuntimeCapabilities: ['platform_collision', 'terrain_collision', 'platforms_terrain_collision']
+    });
     expect(findGameplayCapability('movement.run_jump.v1')).toMatchObject({
       status: 'planned',
       legacyRuntimeCapabilities: ['run_jump_controller']
@@ -176,6 +180,33 @@ describe('Gameplay capability registry', () => {
         qa_observed: false
       });
     }
+  });
+
+  it('scopes collision platform package-owned QA without static support promotion', () => {
+    const collision = findGameplayCapability('collision.platform.v1');
+
+    if (collision === undefined) {
+      throw new Error('Expected collision.platform.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(collision)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(collision.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(collision.qa).toEqual({
+      requiredProbeIds: ['collision.platform.v1.grounded.browser_qa.v1'],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(collision)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(collision)).toBe(false);
   });
 
   it('derives profile runtime status from RuntimeGenreRegistry instead of a second supported list', () => {

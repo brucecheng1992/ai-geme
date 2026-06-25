@@ -6,6 +6,10 @@ import {
   createCameraSideFollowPackageContract
 } from './camera-side-follow-package.js';
 import {
+  COLLISION_PLATFORM_REQUIRED_PROBE_ID,
+  createCollisionPlatformPackageContract
+} from './collision-platform-package.js';
+import {
   DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
   createDefaultStraightSingleWeaponPackageContract
 } from './default-straight-single-weapon-package.js';
@@ -339,6 +343,19 @@ const cameraSideFollowPackageEvidence: GameplayCapabilityEvidence = cameraSideFo
 const cameraSideFollowPackageQa: GameplayCapabilityQaEvidence = cameraSideFollowPackageReport.supportEligible
   ? { requiredProbeIds: [CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const collisionPlatformPackageReport = validateGameplayCapabilityPackage(createCollisionPlatformPackageContract());
+const collisionPlatformPackageEvidence: GameplayCapabilityEvidence = collisionPlatformPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const collisionPlatformPackageQa: GameplayCapabilityQaEvidence = collisionPlatformPackageReport.supportEligible
+  ? { requiredProbeIds: [COLLISION_PLATFORM_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const defaultStraightSingleWeaponPackageReport = validateGameplayCapabilityPackage(createDefaultStraightSingleWeaponPackageContract());
 const defaultStraightSingleWeaponPackageEvidence: GameplayCapabilityEvidence = defaultStraightSingleWeaponPackageReport.supportEligible
   ? {
@@ -452,11 +469,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     movementRunJumpPackageEvidence,
     movementRunJumpPackageQa
   ),
-  runtimeBacked('collision.platform.v1', 'collision', 'Platform terrain collision', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1', 'side_scrolling_platformer.v1'], [
-    'platform_collision',
-    'terrain_collision',
-    'platforms_terrain_collision'
-  ]),
+  planned(
+    'collision.platform.v1',
+    'collision',
+    'Platform terrain collision',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1', 'side_scrolling_platformer.v1'],
+    ['platform_collision', 'terrain_collision', 'platforms_terrain_collision'],
+    collisionPlatformPackageEvidence,
+    collisionPlatformPackageQa
+  ),
   runtimeBacked('spawn.static.v1', 'spawn', 'Static and trigger-based spawning', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], [
     'enemy_spawn',
     'enemy_spawn_triggers'

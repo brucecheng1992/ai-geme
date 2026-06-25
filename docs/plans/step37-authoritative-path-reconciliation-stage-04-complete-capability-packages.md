@@ -263,6 +263,26 @@ rg -n "[ \t]+$" docs/plans/step37-authoritative-path-reconciliation-audit.md doc
 
 ### Implementation Exit Assessment
 
+### Implementation Oracle Review
+
+Oracle PASS / no P0/P1/P2 blocking findings.
+
+Non-blocking P3:
+
+- QA runtime evidence does not yet hard-assert `runtimeModuleId` against the package observation's `runtimeSystemId`. The current bridge checks `capabilityId`, `action`, and `eventType`, then downstream capability QA checks required probe status. This matches the existing Stage 4 bridge pattern and does not block this collision slice, but a future hardening step should assert runtime module/system identity.
+
+Oracle confirmed checkpoint is allowed for this Stage 4 Collision Platform Package-Owned QA Slice only.
+
+Oracle scope guard:
+
+- does not approve Stage 4 full closure;
+- does not approve Stage 5 exact lock;
+- does not approve production default cutover;
+- does not approve legacy authoritative path exit;
+- does not approve final closure.
+
+### Implementation Exit Assessment
+
 ```text
 Stage 1: AUTHORITATIVE_AND_CONNECTED
 Stage 2: PROFILE_RESOLUTION_CLOSED
@@ -1440,3 +1460,108 @@ Stage 4 Exit gate: NOT_MET
 ```
 
 Stop marker: Stage 4 collision.platform package-owned QA slice audit is recorded. Implementation may start for this slice only; do not enter Stage 5 and do not claim complete package closure.
+
+### RED Evidence
+
+```text
+npx tsx --eval "import { createCollisionPlatformPackageContract, COLLISION_PLATFORM_REQUIRED_PROBE_ID } from './packages/game-dsl/src/gameplay-capabilities/index.ts'; const contract = createCollisionPlatformPackageContract(); if (contract.manifest.id !== 'collision.platform.v1') throw new Error('wrong collision package id'); if (!contract.qa.probes.some((probe) => probe.id === COLLISION_PLATFORM_REQUIRED_PROBE_ID && probe.severity === 'required')) throw new Error('missing required collision probe');"
+# RED before implementation:
+# TypeError: createCollisionPlatformPackageContract is not a function
+```
+
+### Implemented Scope
+
+- Added `collision.platform.v1` runtime constants and package contract with a required grounded platform-collision QA probe.
+- Reclassified `collision.platform.v1` registry evidence from legacy-backed runtime evidence to package-backed planned evidence with `requiredProbesVerified=false`.
+- Installed the collision package on the side-scrolling active-profile path alongside camera, default weapon, projectile, and movement packages.
+- Extended side-scrolling QA runtime expectations to require camera, collision, projectile, movement, and default weapon probes.
+- Extended `SideScrollingRunAndGunScene.resolveGroundCollision()` to record a collision platform probe in the runtime snapshot only after ground collision actually resolves.
+- Extended focused contract/workspace tests so package QA report and target runtime support overlay require the collision probe before reporting runtime-observed completion.
+
+### Compatibility & Cutover
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds `collision.platform.v1` package contract, runtime constants, registry package evidence, QA expectation, and runtime snapshot probe. |
+| Consumer list | `GameplayCapabilityRegistry`, target profile support summary, active-profile package installer, Playwright QA runtime evidence reader, `CapabilityQaReport`, target runtime support overlay, and Stage 4 tests consume it. |
+| Compatibility type | `ADAPTER_REQUIRED`: platform collision support moves off legacy `platform_collision` / `terrain_collision` aliases into a named package/probe while preserving existing side-scrolling ground collision behavior. |
+| Authority | The collision package contract owns the required probe; same-run `capability_qa_report` and `generation_target_profile_runtime_support_report.json` are authority for observed completion. |
+| Legacy strategy | Legacy collision aliases remain only as registry/profile aliases; collision support is not complete unless the package-owned grounded probe passes after real `resolveGroundCollision()` consumption. |
+| Failure policy | Missing collision package/probe evidence fails `CapabilityQaReport` and keeps runtime overlay blocked; static support remains incomplete with `requiredProbesVerified` missing. |
+| Evidence | RED failed before package/probe/runtime wiring; GREEN focused, related suite, full tests, typecheck, and support probe prove observed support advances to `5/59` while Stage 4 exit remains blocked. |
+| Rollback | Revert this slice to remove collision package/probe wiring and return runtime overlay observed complete support from `5/59` to the previous `4/59`. |
+
+Compatibility disposition:
+
+```ts
+const STAGE_4_COLLISION_PLATFORM_PACKAGE_QA_SLICE_DISPOSITION = "ADAPTER_REQUIRED";
+```
+
+This disposition is allowed for this checkpoint because the same slice includes adapter-backed runtime snapshot consumption and same-run evidence that the Playwright QA reader consumed the new collision probe payload.
+
+### Validation
+
+```text
+npx tsx --eval "<collision package export/probe RED-GREEN probe>"
+# GREEN PASS after implementation
+
+npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/generation-pipeline.service.test.ts -t "collision platform|runtime-observed support|package-owned capability runtime evidence|capability runtime probe evidence|capability runtime evidence when a required probe is absent|passes capability runtime evidence|passes active profile capability runtime expectation|keeps capability IDs unique|keeps legacy-backed"
+# GREEN PASS, 6 files / 9 selected tests; 1 file skipped by selector
+
+npx vitest run tests/workspace/generation-pipeline.service.test.ts -t "rewrites side-scrolling runtime scene binding report"
+# PASS, 1 selected test
+
+npx vitest run tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/generation-capability-resolution.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/generation-pipeline.service.test.ts
+# PASS, 10 files / 175 tests
+
+npx tsx --eval "<support probe for static support summary and runtime overlay>"
+# PASS: static completeSupportedCount=0; capability QA requiredResults=5; runtime overlay observedCompleteSupportedCount=5; observedCapabilityIds=[camera.side_follow.v1, collision.platform.v1, combat.projectile.v1, movement.run_jump.v1, weapon.default_straight_single.v1]; targetProfileCompleteSupported=false; blocker target_profile_runtime_support_incomplete:5/59
+
+npm test
+# PASS, contracts 94 files / 1047 tests; workspace 34 files / 402 tests
+
+npm run typecheck
+# PASS
+```
+
+### Implementation Oracle Review
+
+Oracle PASS / no P0/P1/P2 blocking findings.
+
+Non-blocking P3:
+
+- QA runtime evidence does not yet hard-assert `runtimeModuleId` against the package observation's `runtimeSystemId`. The current bridge checks `capabilityId`, `action`, and `eventType`, then downstream capability QA checks required probe status. This matches the existing Stage 4 bridge pattern and does not block this collision slice, but a future hardening step should assert runtime module/system identity.
+
+Oracle confirmed checkpoint is allowed for this Stage 4 Collision Platform Package-Owned QA Slice only.
+
+Oracle scope guard:
+
+- does not approve Stage 4 full closure;
+- does not approve Stage 5 exact lock;
+- does not approve production default cutover;
+- does not approve legacy authoritative path exit;
+- does not approve final closure.
+
+### Implementation Exit Assessment
+
+```text
+Stage 1: AUTHORITATIVE_AND_CONNECTED
+Stage 2: PROFILE_RESOLUTION_CLOSED
+Stage 3: CAPABILITY_REQUIREMENTS_CLOSED
+Stage 4 Audit: COMPLETE_PACKAGE_CLOSURE_NOT_MET
+Stage 4 Package Closure Gate: CHECKPOINT_COMMITTED
+Stage 4 Default Weapon Browser QA Evidence: CHECKPOINT_COMMITTED
+Stage 4 Support Evidence Prerequisite Gate: CHECKPOINT_COMMITTED
+Stage 4 Default Weapon Package Contract Prerequisite: CHECKPOINT_COMMITTED
+Stage 4 Required Probe QA Report Bridge: CHECKPOINT_COMMITTED
+Stage 4 Target Profile Runtime Support Overlay: CHECKPOINT_COMMITTED
+Stage 4 Runtime Support Overlay Artifact Index Visibility: CHECKPOINT_COMMITTED
+Stage 4 Combat Projectile Package-Owned QA Slice: CHECKPOINT_COMMITTED
+Stage 4 Movement Run Jump Package-Owned QA Slice: CHECKPOINT_COMMITTED
+Stage 4 Camera Side Follow Package-Owned QA Slice: CHECKPOINT_COMMITTED
+Stage 4 Collision Platform Package-Owned QA Slice: CHECKPOINT_COMMITTED
+Stage 4 Exit gate: NOT_MET
+Next: continue Stage 4 next closure requirement audit
+```
+
+Stop marker: Stage 4 collision.platform package-owned QA slice checkpoint commit is complete. Do not enter Stage 5 and do not claim complete package closure.

@@ -1160,6 +1160,16 @@ describe('Phaser templates', () => {
       sourceRef: 'runtime_plan.side_scrolling.camera.bounds',
       status: 'observed'
     };
+    const expectedCollisionProbe = {
+      capabilityId: 'collision.platform.v1',
+      probeId: 'collision.platform.v1.grounded.browser_qa.v1',
+      runtimeModuleId: 'collision.platform',
+      action: 'collide',
+      eventType: 'collision.platform.grounded',
+      eventTypes: ['collision.platform.grounded'],
+      sourceRef: 'runtime_plan.side_scrolling.platforms',
+      status: 'observed'
+    };
     const expectedWeaponProbe = {
       capabilityId: 'weapon.default_straight_single.v1',
       probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1',
@@ -1207,12 +1217,13 @@ describe('Phaser templates', () => {
       source: 'side_scrolling_runtime',
       probes: expect.arrayContaining([
         expect.objectContaining(expectedCameraProbe),
+        expect.objectContaining(expectedCollisionProbe),
         expect.objectContaining(expectedMovementProbe),
         expect.objectContaining(expectedProjectileProbe),
         expect.objectContaining(expectedWeaponProbe)
       ])
     });
-    expect(snapshot?.capabilityRuntime?.probes).toHaveLength(4);
+    expect(snapshot?.capabilityRuntime?.probes).toHaveLength(5);
     expect(snapshot?.projectiles.find((projectile) => projectile.owner === 'player')).toMatchObject({
       owner: 'player',
       sourceId: 'pulse_bolt',

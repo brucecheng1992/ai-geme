@@ -39,6 +39,8 @@ import {
   buildCanonicalGameBriefArtifact,
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   createCameraSideFollowPackageContract,
+  COLLISION_PLATFORM_REQUIRED_PROBE_ID,
+  createCollisionPlatformPackageContract,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   createCombatProjectilePackageContract,
   createDefaultStraightSingleWeaponPackageContract,
@@ -1926,6 +1928,12 @@ function buildQaCapabilityRuntimeExpectation(genre: QaGenre): QaCapabilityRuntim
         eventType: 'camera.side_follow.active'
       },
       {
+        capabilityId: 'collision.platform.v1',
+        probeId: COLLISION_PLATFORM_REQUIRED_PROBE_ID,
+        action: 'collide',
+        eventType: 'collision.platform.grounded'
+      },
+      {
         capabilityId: 'combat.projectile.v1',
         probeId: COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
         action: 'fire',
@@ -1951,6 +1959,7 @@ function buildApprovedInstalledCapabilityQaPackages(normalizedGenre: string): re
   return normalizedGenre === 'side_scrolling_run_and_gun'
     ? [
         createCameraSideFollowPackageContract(),
+        createCollisionPlatformPackageContract(),
         createDefaultStraightSingleWeaponPackageContract(),
         createCombatProjectilePackageContract(),
         createMovementRunJumpPackageContract()

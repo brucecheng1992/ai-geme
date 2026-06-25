@@ -22,6 +22,14 @@ import {
   CAMERA_SIDE_FOLLOW_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/camera-side-follow-runtime-module.js';
 import {
+  COLLISION_PLATFORM_PACKAGE_REQUIRED_EVIDENCE_ID,
+  COLLISION_PLATFORM_REQUIRED_PROBE_ID,
+  createCollisionPlatformPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/collision-platform-package.js';
+import {
+  COLLISION_PLATFORM_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/collision-platform-runtime-module.js';
+import {
   COMBAT_PROJECTILE_PACKAGE_REQUIRED_EVIDENCE_ID,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   createCombatProjectilePackageContract
@@ -100,6 +108,34 @@ describe('Gameplay capability package contract', () => {
       capabilityId: 'camera.side_follow.v1',
       severity: 'required',
       observations: [expect.objectContaining({ kind: 'camera_scroll', runtimeSystemId: CAMERA_SIDE_FOLLOW_RUNTIME_SYSTEM_ID, ref: 'camera.side_follow.active' })]
+    });
+  });
+
+  it('accepts the collision platform package-owned QA contract', () => {
+    const contract = createCollisionPlatformPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === COLLISION_PLATFORM_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'collision.platform.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([COLLISION_PLATFORM_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: COLLISION_PLATFORM_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'collision.platform.v1',
+      severity: 'required',
+      observations: [
+        expect.objectContaining({ kind: 'state_probe', runtimeSystemId: COLLISION_PLATFORM_RUNTIME_SYSTEM_ID, ref: 'collision.platform.grounded' })
+      ]
     });
   });
 

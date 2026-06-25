@@ -61,8 +61,8 @@ type CapabilityRuntimeProbe = {
   capabilityId: string;
   probeId: string;
   runtimeModuleId: string;
-  action: 'fire' | 'jump' | 'move';
-  eventType: 'player.fired' | 'projectile.spawned' | 'player.jumped' | 'camera.side_follow.active';
+  action: 'collide' | 'fire' | 'jump' | 'move';
+  eventType: 'collision.platform.grounded' | 'player.fired' | 'projectile.spawned' | 'player.jumped' | 'camera.side_follow.active';
   eventTypes?: string[];
   projectileEntityId?: string;
   projectileId?: string;
@@ -75,6 +75,11 @@ const CAMERA_SIDE_FOLLOW_CAPABILITY_PROBE_ID = 'camera.side_follow.v1.scroll.bro
 const CAMERA_SIDE_FOLLOW_RUNTIME_MODULE_ID = 'camera.side_follow';
 const CAMERA_SIDE_FOLLOW_ACTIVE_EVENT_TYPE = 'camera.side_follow.active';
 const CAMERA_SIDE_FOLLOW_SOURCE_REF = 'runtime_plan.side_scrolling.camera.bounds';
+const COLLISION_PLATFORM_CAPABILITY_ID = 'collision.platform.v1';
+const COLLISION_PLATFORM_CAPABILITY_PROBE_ID = 'collision.platform.v1.grounded.browser_qa.v1';
+const COLLISION_PLATFORM_RUNTIME_MODULE_ID = 'collision.platform';
+const COLLISION_PLATFORM_GROUNDED_EVENT_TYPE = 'collision.platform.grounded';
+const COLLISION_PLATFORM_SOURCE_REF = 'runtime_plan.side_scrolling.platforms';
 const DEFAULT_WEAPON_CAPABILITY_ID = 'weapon.default_straight_single.v1';
 const DEFAULT_WEAPON_CAPABILITY_PROBE_ID = 'weapon.default_straight_single.v1.fire.browser_qa.v1';
 const DEFAULT_WEAPON_RUNTIME_MODULE_ID = 'weapon.default_straight_single';
@@ -346,6 +351,8 @@ export class SideScrollingRunAndGunScene {
     if (this.player.y >= standingY) {
       this.player.y = standingY;
       this.player.vy = 0;
+      const capabilityRuntime = this.createCollisionPlatformCapabilityRuntimeProbe();
+      this.capabilityRuntimeProbes.set(capabilityRuntime.probeId, capabilityRuntime);
     }
   }
 
@@ -398,6 +405,19 @@ export class SideScrollingRunAndGunScene {
       eventType: CAMERA_SIDE_FOLLOW_ACTIVE_EVENT_TYPE,
       eventTypes: [CAMERA_SIDE_FOLLOW_ACTIVE_EVENT_TYPE],
       sourceRef: CAMERA_SIDE_FOLLOW_SOURCE_REF,
+      status: 'observed'
+    };
+  }
+
+  private createCollisionPlatformCapabilityRuntimeProbe(): CapabilityRuntimeProbe {
+    return {
+      capabilityId: COLLISION_PLATFORM_CAPABILITY_ID,
+      probeId: COLLISION_PLATFORM_CAPABILITY_PROBE_ID,
+      runtimeModuleId: COLLISION_PLATFORM_RUNTIME_MODULE_ID,
+      action: 'collide',
+      eventType: COLLISION_PLATFORM_GROUNDED_EVENT_TYPE,
+      eventTypes: [COLLISION_PLATFORM_GROUNDED_EVENT_TYPE],
+      sourceRef: COLLISION_PLATFORM_SOURCE_REF,
       status: 'observed'
     };
   }

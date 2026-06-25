@@ -130,6 +130,16 @@ describe('Playable QA gate and runner', () => {
       sourceRef: 'runtime_plan.side_scrolling.camera.bounds',
       status: 'observed'
     };
+    const collisionProbe = {
+      capabilityId: 'collision.platform.v1',
+      probeId: 'collision.platform.v1.grounded.browser_qa.v1',
+      runtimeModuleId: 'collision.platform',
+      action: 'collide',
+      eventType: 'collision.platform.grounded',
+      eventTypes: ['collision.platform.grounded'],
+      sourceRef: 'runtime_plan.side_scrolling.platforms',
+      status: 'observed'
+    };
     const probe = {
       capabilityId: 'weapon.default_straight_single.v1',
       probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1',
@@ -194,7 +204,7 @@ describe('Playable QA gate and runner', () => {
           },
           capabilityRuntime: {
             source: 'side_scrolling_runtime',
-            probes: [cameraProbe, movementProbe, probe, projectileProbe]
+            probes: [cameraProbe, collisionProbe, movementProbe, probe, projectileProbe]
           }
         },
         telemetry,
@@ -211,6 +221,13 @@ describe('Playable QA gate and runner', () => {
           probeId: 'camera.side_follow.v1.scroll.browser_qa.v1',
           action: 'move',
           eventType: 'camera.side_follow.active',
+          observedIn: ['snapshot']
+        }),
+        expect.objectContaining({
+          capabilityId: 'collision.platform.v1',
+          probeId: 'collision.platform.v1.grounded.browser_qa.v1',
+          action: 'collide',
+          eventType: 'collision.platform.grounded',
           observedIn: ['snapshot']
         }),
         expect.objectContaining({
@@ -248,12 +265,14 @@ describe('Playable QA gate and runner', () => {
       observed: [],
       missingProbeIds: [
         'camera.side_follow.v1.scroll.browser_qa.v1',
+        'collision.platform.v1.grounded.browser_qa.v1',
         'combat.projectile.v1.spawn.browser_qa.v1',
         'movement.run_jump.v1.jump.browser_qa.v1',
         'weapon.default_straight_single.v1.fire.browser_qa.v1'
       ],
       mismatches: [
         'capabilityRuntime.probes[camera.side_follow.v1.scroll.browser_qa.v1]: missing',
+        'capabilityRuntime.probes[collision.platform.v1.grounded.browser_qa.v1]: missing',
         'capabilityRuntime.probes[combat.projectile.v1.spawn.browser_qa.v1]: missing',
         'capabilityRuntime.probes[movement.run_jump.v1.jump.browser_qa.v1]: missing',
         'capabilityRuntime.probes[weapon.default_straight_single.v1.fire.browser_qa.v1]: missing'
@@ -283,6 +302,16 @@ describe('Playable QA gate and runner', () => {
               eventType: 'camera.side_follow.active',
               eventTypes: ['camera.side_follow.active'],
               sourceRef: 'runtime_plan.side_scrolling.camera.bounds',
+              status: 'observed'
+            },
+            {
+              capabilityId: 'collision.platform.v1',
+              probeId: 'collision.platform.v1.grounded.browser_qa.v1',
+              runtimeModuleId: 'collision.platform',
+              action: 'collide',
+              eventType: 'collision.platform.grounded',
+              eventTypes: ['collision.platform.grounded'],
+              sourceRef: 'runtime_plan.side_scrolling.platforms',
               status: 'observed'
             },
             {
@@ -2321,6 +2350,12 @@ function createDefaultWeaponCapabilityRuntimeExpectation(): QaCapabilityRuntimeE
         probeId: 'camera.side_follow.v1.scroll.browser_qa.v1',
         action: 'move',
         eventType: 'camera.side_follow.active'
+      },
+      {
+        capabilityId: 'collision.platform.v1',
+        probeId: 'collision.platform.v1.grounded.browser_qa.v1',
+        action: 'collide',
+        eventType: 'collision.platform.grounded'
       },
       {
         capabilityId: 'combat.projectile.v1',
