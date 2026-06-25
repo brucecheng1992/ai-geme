@@ -1,7 +1,7 @@
 # Step 37 Authoritative Path Reconciliation Audit
 
 > - 文档定位：Step 37 authoritative production chain 的逐段只读审计状态文档。
-> - 当前状态：Stage 4 default weapon browser QA evidence implementation Oracle PASS; checkpoint commit pending
+> - 当前状态：Stage 4 support evidence prerequisite gate Oracle PASS; checkpoint commit pending
 > - 任务契约：`/Users/dahufa/Downloads/step37-authoritative-path-reconciliation-prompt.md`
 > - 当前分片：`docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`
 > - 更新日期：2026-06-25
@@ -48,11 +48,11 @@
 
 ## 4. 当前状态
 
-- 状态：Stage 4 default weapon browser QA evidence implementation Oracle PASS; checkpoint commit pending.
-- 当前步骤：Stage 4 package closure gate checkpoint commit `2cfe1f54` 已创建；当前 Stage 4 micro-loop 已把 `weapon.default_straight_single.v1` browser-observed runtime probe 暴露到 side-scrolling QA telemetry/snapshot，并让 QA runner/report/pipeline 消费该 probe expectation。
-- 最近完成：Stage 4 当前最小 closure requirement：为 default weapon capability 建立真实 browser QA 可观察 evidence surface，但不提升 registry `qa_observed`、不声称 `completeSupported`、不进入 Stage 5。
-- 最近验证：RED `tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts` failed as expected for missing `capabilityRuntime`/missing evaluator；RED `tests/workspace/generation-pipeline.service.test.ts -t "routes supported side-scrolling run-and-gun prompts through compile, build, and QA"` failed as expected for missing `expectedCapabilityRuntime`；GREEN focused suite PASS, 11 files / 178 tests；full `npm test` PASS, contracts 93 files / 1037 tests and workspace 34 files / 401 tests；full `npm run typecheck` PASS。
-- 最近 Oracle 结论：Stage 1 final Oracle PASS；Stage 2 Profile Resolution audit Oracle PASS；Stage 2 closure Oracle PASS / no P0/P1/P2/P3；Stage 3 audit Oracle re-review PASS / no P0/P1/P2/P3；Stage 3 closure Oracle re-review PASS / no P0/P1/P2/P3；Stage 4 audit Oracle PASS / no P0/P1/P2, P3 remediated；Stage 4 package closure gate implementation Oracle PASS / no P0/P1/P2/P3；Stage 4 default weapon browser QA evidence implementation Oracle PASS / no P0/P1/P2，P3 notes direct `PlaywrightQaRunnerService.run` capability evidence gate remains opt-in outside production pipeline。
+- 状态：Stage 4 support evidence prerequisite gate Oracle PASS; checkpoint commit pending.
+- 当前步骤：Stage 4 default weapon browser QA evidence checkpoint commit `5cefcee1` 已创建；当前 Stage 4 micro-loop 正在把 support summary/DSL consumption report 的 `qa_observed` prerequisite blockers 细化，防止 browser probe evidence 被误升格为 registry support。
+- 最近完成：Stage 4 default weapon browser QA evidence surface 已 checkpoint；它证明一枚 capability 的 QA 观察链路可被生产 QA 消费，但 `completeSupportedCount` 仍为 `0/59`。
+- 最近验证：当前 prerequisite gate RED `tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts` failed as expected for missing `missingSupportEvidencePrerequisites`；legacy parser adapter RED `tests/contracts/dsl-consumption-report.test.ts -t "parses older target profile support reports without prerequisite blockers"` failed as expected before schema adapter；GREEN adapter regression PASS, 1 passed / 6 skipped；GREEN `tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/gameplay-capability-registry.test.ts` PASS, 3 files / 33 tests；Stage 4 focused suite PASS, 9 files / 68 tests；full `npm test` PASS, contracts 93 files / 1038 tests and workspace 34 files / 401 tests；full `npm run typecheck` PASS；`git diff --check` PASS；trailing-whitespace scan no matches；support summary read-only probe confirms `requiredCapabilityCount=59`, `completeSupportedCount=0`, and `weapon.default_straight_single.v1` remains `qa_observed=false` / `completeSupported=false` with prerequisite blockers。
+- 最近 Oracle 结论：Stage 1 final Oracle PASS；Stage 2 Profile Resolution audit Oracle PASS；Stage 2 closure Oracle PASS / no P0/P1/P2/P3；Stage 3 audit Oracle re-review PASS / no P0/P1/P2/P3；Stage 3 closure Oracle re-review PASS / no P0/P1/P2/P3；Stage 4 audit Oracle PASS / no P0/P1/P2, P3 remediated；Stage 4 package closure gate implementation Oracle PASS / no P0/P1/P2/P3；Stage 4 default weapon browser QA evidence implementation Oracle PASS / no P0/P1/P2，P3 notes direct `PlaywrightQaRunnerService.run` capability evidence gate remains opt-in outside production pipeline；Stage 4 support prerequisite gate first Oracle BLOCKED on same-version schema compatibility；adapter fix Oracle re-review PASS / no P0/P1/P2/P3，checkpoint commit allowed。
 - 未处理风险：Stage 4 complete package closure 尚未达成；Stage 5 Exact Capability Lock 尚未进入；Stage 3 Gate E 仍不证明 `profileRequirements.requirementsHash` / `requiredCapabilityIds` 字段级 downstream action；post-Stage-1 shadow/canary parity/rollback 仍未实施。`QaReport` status consistency 作为非阻塞债务登记，不重新打开 Stage 1。
 - 工作区核对：当前仅允许 Stage 4 implementation 相关 files：QA runner/report/pipeline capability-runtime evidence files、side-scrolling template QA evidence files、相关 focused tests、本状态文档和 Stage 4 分片。
 
@@ -74,11 +74,13 @@ Stage 3 Exit gate: MET
 Stage 3 closure checkpoint: 59a00483
 Stage 4 Audit: CHECKPOINT_COMMITTED
 Stage 4 audit checkpoint: d75d49ce
+Stage 4 package closure gate checkpoint: 2cfe1f54
+Stage 4 default weapon QA evidence checkpoint: 5cefcee1
 Stage 4 Implementation: ORACLE_PASSED_AWAITING_COMMIT
 Stage 4 Exit gate: NOT_MET
 ```
 
-下一步完成当前 Stage 4 default weapon browser QA evidence implementation checkpoint commit。不要把 `capabilityRuntime` browser evidence surface 误报成 package closure；它只证明一枚 capability 的 QA 观察链路已经可被生产 QA 消费，直到 registry/package closure 独立升级前 `completeSupportedCount=0/59` 仍保持不变。
+下一步完成当前 Stage 4 support evidence prerequisite gate checkpoint commit。不要把 `missingSupportEvidencePrerequisites` 的消失等同于 Stage 4 closure；它只是下一步 package promotion 的前置细化。
 
 ## 6. 恢复检查清单
 

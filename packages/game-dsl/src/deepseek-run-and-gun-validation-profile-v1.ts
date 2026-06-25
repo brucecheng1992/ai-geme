@@ -6,11 +6,13 @@ import {
   deriveGameplayCapabilitySupportEvidenceDimensions,
   findGameplayCapability,
   getMissingGameplayCapabilitySupportEvidenceDimensions,
+  getMissingGameplayCapabilitySupportEvidencePrerequisites,
   isCompleteSupportedEvidenceDimensions,
   type GameplayCapabilityDerivedSupportClassification,
   type GameplayCapabilityRegistry,
   type GameplayCapabilitySupportEvidenceDimension,
-  type GameplayCapabilitySupportEvidenceDimensions
+  type GameplayCapabilitySupportEvidenceDimensions,
+  type GameplayCapabilitySupportEvidencePrerequisite
 } from './gameplay-capabilities/registry.js';
 
 export const DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1_ID = 'DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1';
@@ -74,6 +76,7 @@ export type DeepSeekRunAndGunProfileCapabilitySupport = {
   classification: GameplayCapabilityDerivedSupportClassification;
   evidenceDimensions: GameplayCapabilitySupportEvidenceDimensions;
   missingEvidenceDimensions: GameplayCapabilitySupportEvidenceDimension[];
+  missingSupportEvidencePrerequisites: GameplayCapabilitySupportEvidencePrerequisite[];
   completeSupported: boolean;
   legacyBacked: boolean;
 };
@@ -295,6 +298,7 @@ function buildCapabilitySupport(capabilityId: string, registry: GameplayCapabili
       classification: 'UNSUPPORTED',
       evidenceDimensions: emptyEvidenceDimensions,
       missingEvidenceDimensions: [...GAMEPLAY_CAPABILITY_SUPPORT_EVIDENCE_DIMENSIONS],
+      missingSupportEvidencePrerequisites: getMissingGameplayCapabilitySupportEvidencePrerequisites(undefined),
       completeSupported: false,
       legacyBacked: false
     };
@@ -307,6 +311,7 @@ function buildCapabilitySupport(capabilityId: string, registry: GameplayCapabili
     classification: deriveGameplayCapabilitySupportClassification(capability),
     evidenceDimensions,
     missingEvidenceDimensions: getMissingGameplayCapabilitySupportEvidenceDimensions(evidenceDimensions),
+    missingSupportEvidencePrerequisites: getMissingGameplayCapabilitySupportEvidencePrerequisites(capability),
     completeSupported: isCompleteSupportedEvidenceDimensions(evidenceDimensions),
     legacyBacked: capability.status === 'runtime_backed'
   };

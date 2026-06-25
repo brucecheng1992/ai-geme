@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { AuthorityBundleRefSchema, type AuthorityBundleRef } from './authority-bundle.js';
 import { buildDeepSeekRunAndGunValidationProfileSupportSummary } from './deepseek-run-and-gun-validation-profile-v1.js';
+import { GAMEPLAY_CAPABILITY_SUPPORT_EVIDENCE_PREREQUISITES } from './gameplay-capabilities/registry.js';
 import type { NormalizedGameIr } from './schemas/normalized-game-ir-v0.1.schema.js';
 import type { RawGameDsl } from './schemas/raw-game-dsl-v0.1.schema.js';
 
@@ -52,7 +53,8 @@ export const DslConsumptionTargetProfileSupportSchema = z.strictObject({
         runtime_consumed: z.boolean(),
         qa_observed: z.boolean()
       }),
-      missingEvidenceDimensions: z.array(z.enum(['schema_expressible', 'normalized', 'compiled', 'runtime_consumed', 'qa_observed']))
+      missingEvidenceDimensions: z.array(z.enum(['schema_expressible', 'normalized', 'compiled', 'runtime_consumed', 'qa_observed'])),
+      missingSupportEvidencePrerequisites: z.array(z.enum(GAMEPLAY_CAPABILITY_SUPPORT_EVIDENCE_PREREQUISITES)).default([])
     })
   )
 });
@@ -155,7 +157,8 @@ function buildDslConsumptionTargetProfileSupport(): DslConsumptionTargetProfileS
       completeSupported: capability.completeSupported,
       legacyBacked: capability.legacyBacked,
       evidenceDimensions: capability.evidenceDimensions,
-      missingEvidenceDimensions: capability.missingEvidenceDimensions
+      missingEvidenceDimensions: capability.missingEvidenceDimensions,
+      missingSupportEvidencePrerequisites: capability.missingSupportEvidencePrerequisites
     }))
   };
 }

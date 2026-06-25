@@ -189,7 +189,15 @@ describe('Step 33 DSL consumption report', () => {
         runtime_consumed: true,
         qa_observed: false
       },
-      missingEvidenceDimensions: ['qa_observed']
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: [
+        'amendmentOperations',
+        'capabilityOwnedQa',
+        'artifactEvidence',
+        'renderContract',
+        'requiredProbeIds',
+        'requiredProbesVerified'
+      ]
     });
     expect(capabilities.get('weapon.spread_shot.v1')).toMatchObject({
       classification: 'DEFERRED',
@@ -215,6 +223,32 @@ describe('Step 33 DSL consumption report', () => {
       },
       missingEvidenceDimensions: ['compiled', 'runtime_consumed', 'qa_observed']
     });
+  });
+
+  it('parses older target profile support reports without prerequisite blockers', () => {
+    const normalized = validateAndNormalizeRawGameDsl(createSideScrollingRunAndGunRawDsl());
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const report = buildDslConsumptionReport({
+      projectId: 'proj_20260625_legacy_prerequisites',
+      runId: 'run_20260625_legacy_prerequisites',
+      rawDsl: normalized.rawDsl,
+      ir: normalized.ir
+    });
+    const legacyReport = {
+      ...report,
+      targetProfileSupport: {
+        ...report.targetProfileSupport,
+        capabilities: report.targetProfileSupport?.capabilities.map(({ missingSupportEvidencePrerequisites: _omitted, ...capability }) => capability)
+      }
+    };
+
+    const parsed = DslConsumptionReportSchema.parse(legacyReport);
+    const weapon = parsed.targetProfileSupport?.capabilities.find((capability) => capability.capabilityId === 'weapon.default_straight_single.v1');
+    expect(weapon?.missingSupportEvidencePrerequisites).toEqual([]);
   });
 
   it('does not point non-side-scrolling world gravity to side-scrolling runtime refs', () => {

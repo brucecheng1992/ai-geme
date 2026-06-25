@@ -17,6 +17,18 @@ export const GAMEPLAY_CAPABILITY_SUPPORT_EVIDENCE_DIMENSIONS = [
   'runtime_consumed',
   'qa_observed'
 ] as const;
+export const GAMEPLAY_CAPABILITY_SUPPORT_EVIDENCE_PREREQUISITES = [
+  'dslSchema',
+  'normalizer',
+  'irCompiler',
+  'runtimeModule',
+  'amendmentOperations',
+  'capabilityOwnedQa',
+  'artifactEvidence',
+  'renderContract',
+  'requiredProbeIds',
+  'requiredProbesVerified'
+] as const;
 export const GAMEPLAY_CAPABILITY_DERIVED_SUPPORT_CLASSIFICATIONS = [
   'COMPLETE_SUPPORTED',
   'CONDITIONAL_LEGACY_BACKED',
@@ -166,6 +178,7 @@ export const GameplayCapabilityDescriptorSchema = z
 
 export type GameplayCapabilitySupportStatus = z.infer<typeof GameplayCapabilityStatusSchema>;
 export type GameplayCapabilitySupportEvidenceDimension = (typeof GAMEPLAY_CAPABILITY_SUPPORT_EVIDENCE_DIMENSIONS)[number];
+export type GameplayCapabilitySupportEvidencePrerequisite = (typeof GAMEPLAY_CAPABILITY_SUPPORT_EVIDENCE_PREREQUISITES)[number];
 export type GameplayCapabilitySupportEvidenceDimensions = z.infer<typeof GameplayCapabilitySupportEvidenceDimensionsSchema>;
 export type GameplayCapabilityDerivedSupportClassification = z.infer<typeof GameplayCapabilityDerivedSupportClassificationSchema>;
 export type GameplayCapabilityDomain = z.infer<typeof GameplayCapabilityDomainSchema>;
@@ -225,6 +238,7 @@ export type GameplayCapabilityInventorySupportEvidence = {
   derivedClassification: GameplayCapabilityDerivedSupportClassification;
   evidenceDimensions: GameplayCapabilitySupportEvidenceDimensions;
   missingEvidenceDimensions: GameplayCapabilitySupportEvidenceDimension[];
+  missingSupportEvidencePrerequisites: GameplayCapabilitySupportEvidencePrerequisite[];
   completeSupported: boolean;
   legacyBacked: boolean;
 };
@@ -761,6 +775,26 @@ export function getMissingGameplayCapabilitySupportEvidenceDimensions(input: unk
   return GAMEPLAY_CAPABILITY_SUPPORT_EVIDENCE_DIMENSIONS.filter((dimension) => !evidence[dimension]);
 }
 
+export function getMissingGameplayCapabilitySupportEvidencePrerequisites(input: unknown): GameplayCapabilitySupportEvidencePrerequisite[] {
+  const capabilityRecord = isRecord(input) ? input : {};
+  const evidence = isRecord(capabilityRecord.evidence) ? capabilityRecord.evidence : {};
+  const qa = isRecord(capabilityRecord.qa) ? capabilityRecord.qa : {};
+  const prerequisiteReady: Record<GameplayCapabilitySupportEvidencePrerequisite, boolean> = {
+    dslSchema: evidence.dslSchema === true,
+    normalizer: evidence.normalizer === true,
+    irCompiler: evidence.irCompiler === true,
+    runtimeModule: evidence.runtimeModule === true,
+    amendmentOperations: evidence.amendmentOperations === true,
+    capabilityOwnedQa: evidence.capabilityOwnedQa === true,
+    artifactEvidence: evidence.artifactEvidence === true,
+    renderContract: evidence.renderContract === true,
+    requiredProbeIds: Array.isArray(qa.requiredProbeIds) && qa.requiredProbeIds.length > 0,
+    requiredProbesVerified: qa.requiredProbesVerified === true
+  };
+
+  return GAMEPLAY_CAPABILITY_SUPPORT_EVIDENCE_PREREQUISITES.filter((prerequisite) => !prerequisiteReady[prerequisite]);
+}
+
 export function deriveGameplayCapabilitySupportClassification(
   capability: GameplayCapabilityDescriptor
 ): GameplayCapabilityDerivedSupportClassification {
@@ -787,6 +821,7 @@ function buildGameplayCapabilityInventorySupportEvidence(capability: GameplayCap
     derivedClassification: deriveGameplayCapabilitySupportClassification(capability),
     evidenceDimensions,
     missingEvidenceDimensions: getMissingGameplayCapabilitySupportEvidenceDimensions(evidenceDimensions),
+    missingSupportEvidencePrerequisites: getMissingGameplayCapabilitySupportEvidencePrerequisites(capability),
     completeSupported: isCompleteSupportedEvidenceDimensions(evidenceDimensions),
     legacyBacked: capability.status === 'runtime_backed'
   };

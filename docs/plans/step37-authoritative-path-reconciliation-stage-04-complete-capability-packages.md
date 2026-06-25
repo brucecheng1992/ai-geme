@@ -379,3 +379,116 @@ Next: Stage 4 default weapon browser QA evidence checkpoint commit
 ```
 
 Stop marker: Stage 4 default weapon browser QA evidence implementation passed Oracle and is awaiting checkpoint commit. Do not enter Stage 5 and do not claim complete package closure.
+
+## Stage 4 Closure Implementation — Support Evidence Prerequisite Gate
+
+### Scope Lock
+
+- scope: Stage 4 implementation only.
+- baseline: Stage 4 default weapon browser QA evidence checkpoint commit `5cefcee1` (`feat(game-dsl): expose default weapon QA probe evidence`).
+- implementation target: expose granular support-evidence prerequisites for target profile capabilities so `qa_observed` cannot be inferred from browser probe evidence alone.
+- non-goals: no registry evidence promotion, no `qa_observed=true`, no `completeSupported=true`, no complete package set, no Stage 5 exact lock, no runtime loader cutover, no production default cutover.
+- starting conclusion: `Stage 4 Exit gate: NOT_MET`; default weapon now has browser QA evidence plumbing, but support formula still requires package-owned QA plus artifact/render/amendment prerequisites.
+
+### Extracted Minimal Closure Requirements
+
+1. Preserve `missingEvidenceDimensions: ['qa_observed']` for `weapon.default_straight_single.v1`.
+2. Add granular prerequisite blockers showing which pieces prevent `qa_observed` from becoming true.
+3. Derive those blockers from the existing registry descriptor fields, not from a manual report override.
+4. Publish the blockers through both DeepSeek target profile support summary and `targetProfileSupport.capabilities` in DSL consumption reports.
+5. Keep Stage 4 package closure gate blocked at `completeSupportedCount=0/59`.
+
+### Implemented Scope
+
+- Added `GAMEPLAY_CAPABILITY_SUPPORT_EVIDENCE_PREREQUISITES` and `getMissingGameplayCapabilitySupportEvidencePrerequisites`.
+- `DeepSeekRunAndGunProfileCapabilitySupport` now carries `missingSupportEvidencePrerequisites`.
+- `DslConsumptionTargetProfileSupportSchema.capabilities[]` now carries `missingSupportEvidencePrerequisites`.
+- Focused tests require `weapon.default_straight_single.v1` to expose the missing prerequisites:
+  - `amendmentOperations`;
+  - `capabilityOwnedQa`;
+  - `artifactEvidence`;
+  - `renderContract`;
+  - `requiredProbeIds`;
+  - `requiredProbesVerified`.
+
+### Compatibility & Cutover
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Target profile support summary and DSL consumption report add additive `missingSupportEvidencePrerequisites` arrays per capability. |
+| Consumer list | `buildDeepSeekRunAndGunValidationProfileSupportSummary`, `buildGameplayCapabilityInventoryReport`, `DslConsumptionReportSchema`, report readers, and future Stage 4 promotion gates can read the blockers. |
+| Compatibility type | `ADAPTER_REQUIRED`: new generated reports write additive blocker arrays; same-version `DslConsumptionReportSchema` keeps old reports readable by defaulting absent blocker arrays to `[]`. |
+| Authority | `GameplayCapabilityRegistry` descriptor evidence and QA metadata remain the source of truth for support prerequisites. |
+| Legacy strategy | Legacy reports without the new field remain readable through the schema adapter, but they do not gain prerequisite evidence; newly generated reports must derive blockers from the registry descriptor. |
+| Failure policy | Missing registry evidence or QA probe metadata keeps prerequisites listed and preserves `qa_observed=false`, `completeSupported=false`, and `completePackageClosure.status=blocked_incomplete_target_profile`. |
+| Evidence | RED/GREEN focused tests prove the blockers are surfaced for default weapon support reports, and a legacy parse regression proves old target-profile support reports remain readable through the adapter. |
+| Rollback | Reverting this implementation removes only additive blocker details and the parser adapter; previous fail-closed support dimensions and package closure gate remain intact. |
+
+Compatibility disposition:
+
+```ts
+const STAGE_4_SUPPORT_PREREQUISITE_GATE_DISPOSITION = "ADAPTER_REQUIRED";
+```
+
+### Validation
+
+```text
+npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts
+# RED: failed before implementation because missingSupportEvidencePrerequisites was absent
+
+npx vitest run tests/contracts/dsl-consumption-report.test.ts -t "parses older target profile support reports without prerequisite blockers"
+# RED: failed before the schema adapter because same-version legacy reports without missingSupportEvidencePrerequisites were rejected
+# PASS after adapter, 1 passed / 6 skipped
+
+npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/gameplay-capability-registry.test.ts
+# PASS, 3 files / 33 tests
+
+npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-profile-recipe-compiler.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/generation-capability-resolution.test.ts tests/contracts/generation-capability-runtime.test.ts tests/contracts/generation-capability-gap.test.ts
+# PASS, 9 files / 68 tests
+
+npm test
+# PASS, contracts 93 files / 1038 tests; workspace 34 files / 401 tests
+
+npm run typecheck
+# PASS
+
+git diff --check
+# PASS
+
+npx tsx -e "import { buildDeepSeekRunAndGunValidationProfileSupportSummary } from './packages/game-dsl/src/deepseek-run-and-gun-validation-profile-v1.ts'; const support = buildDeepSeekRunAndGunValidationProfileSupportSummary(); const weapon = support.capabilities.find((capability) => capability.capabilityId === 'weapon.default_straight_single.v1'); console.log(JSON.stringify({summary:support.summary, weapon}, null, 2));"
+# PASS: requiredCapabilityCount=59, completeSupportedCount=0; weapon.default_straight_single.v1 remains qa_observed=false, completeSupported=false, and lists prerequisite blockers
+```
+
+### Oracle Re-review Note
+
+The first support prerequisite gate Oracle review returned BLOCKED on P1 because same-version `DslConsumptionReportSchema` required the newly added `missingSupportEvidencePrerequisites` field and could reject older `targetProfileSupport` reports. The follow-up implementation keeps new generated reports authoritative for blocker lists while adapting old parsed reports to `[]`; Oracle re-review is required before checkpoint commit.
+
+### Implementation Oracle Re-review
+
+Oracle PASS / no P0/P1/P2/P3.
+
+Oracle confirmed:
+
+- the previous same-version parser compatibility P1 is resolved by the schema adapter;
+- new reports still carry registry-derived blocker lists;
+- legacy reports remain readable but do not gain prerequisite evidence;
+- browser probe evidence is not promoted into registry `qa_observed` or `completeSupported`;
+- Compatibility & Cutover now correctly uses `ADAPTER_REQUIRED`;
+- Stage 4 Exit gate remains `NOT_MET`;
+- checkpoint commit is allowed.
+
+### Implementation Exit Assessment
+
+```text
+Stage 1: AUTHORITATIVE_AND_CONNECTED
+Stage 2: PROFILE_RESOLUTION_CLOSED
+Stage 3: CAPABILITY_REQUIREMENTS_CLOSED
+Stage 4 Audit: COMPLETE_PACKAGE_CLOSURE_NOT_MET
+Stage 4 Package Closure Gate: CHECKPOINT_COMMITTED
+Stage 4 Default Weapon Browser QA Evidence: CHECKPOINT_COMMITTED
+Stage 4 Support Evidence Prerequisite Gate: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 Exit gate: NOT_MET
+Next: checkpoint commit for support evidence prerequisite gate
+```
+
+Stop marker: Stage 4 support evidence prerequisite gate passed Oracle and is awaiting checkpoint commit. Do not enter Stage 5 and do not claim complete package closure.
