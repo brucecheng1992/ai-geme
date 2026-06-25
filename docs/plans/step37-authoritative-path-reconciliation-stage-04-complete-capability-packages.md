@@ -3306,17 +3306,24 @@ Stop marker: Stage 4 `pickup.collectible.v1` package-owned QA slice audit is clo
 
 - checkpoint_id: `hierarchical_completion_parent_loop_guardrail`.
 - record_type: `implementation_log`.
-- implementation_status: `complete`.
+- implementation_status: `receipt`.
 - local_validation_status: `passed`.
-- candidate_status: `ready_for_commit`.
-- oracle_status: `not_submitted`.
+- candidate_status: `committed`.
+- oracle_status: `approved`.
+- closure_status: `closed`.
+- reviewed_commit_sha: `529903865621af95f64343f17295e3d9f1a86712`.
+- reviewed_skill_revision: `976bbc25d9a0c2e5d37b85e93fceecd1ebf5c908014555e6339c13385324954d`.
+- oracle_submission_id: `019f00ad-d3a0-7093-996c-a3e1563e099c` (source: `multi_agent_v1.send_input` response field `submission_id`).
+- oracle_agent_id: `019effae-8aa2-7c22-b5ba-8c4b69f21d20` (source: active Oracle subagent id; used for `wait_agent` polling).
+- oracle_verdict: `PASS`.
+- oracle_blocking_findings: `none`.
 - closure_scope: `atomic_step`.
 - parent_loop_id: `step37`.
 - parent_loop_status: `running`.
 - global_exit_conditions_met: `false`.
 - user_input_required: `false`.
 - next_action: `CONTINUE_PARENT_LOOP`.
-- next_atomic_step: `hierarchical_completion_parent_loop_guardrail implementation`.
+- next_atomic_step: `Stage 4 pickup.collectible package-owned QA slice implementation atomic step`.
 - scope: guardrail only; no business runtime, Stage 4 package implementation, Stage 5 exact lock, production default cutover, legacy authoritative path exit, or historical candidate/receipt rewrite is introduced.
 
 Purpose:
@@ -3409,6 +3416,41 @@ result=PASS: root, maker-api, and maker-workbench TypeScript checks passed.
 python3 - <<'PY' ... compute Skill bundle digest ...
 exitCode=0
 result=PASS: current Skill bundle digest 976bbc25d9a0c2e5d37b85e93fceecd1ebf5c908014555e6339c13385324954d
+
+candidate commit
+command=git add AGENTS.md docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md packages/game-dsl/src/index.ts packages/game-dsl/src/step37-parent-loop-driver.ts tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/step37-parent-loop-driver.test.ts && git commit -m "Add Step37 parent loop continuation guardrail"
+exitCode=0
+result=PASS: candidate commit 529903865621af95f64343f17295e3d9f1a86712 created from the locally validated tree.
+
+Oracle review
+submission_id=019f00ad-d3a0-7093-996c-a3e1563e099c
+agent_id=019effae-8aa2-7c22-b5ba-8c4b69f21d20
+reviewed_commit_sha=529903865621af95f64343f17295e3d9f1a86712
+reviewed_skill_revision=976bbc25d9a0c2e5d37b85e93fceecd1ebf5c908014555e6339c13385324954d
+verdict=PASS: no P0/P1/P2 blocking findings.
 ```
 
-Exit assessment: `LOCAL_VALIDATION_PASSED_PENDING_CANDIDATE_COMMIT`. Candidate commit, Oracle review, receipt, post-receipt checks, and post-receipt Parent Loop Driver evaluation are still required before this atomic guardrail can close.
+Scoped closure output:
+
+```yaml
+closure_scope: atomic_step
+atomic_step:
+  id: hierarchical_completion_parent_loop_guardrail
+  status: closed
+  candidate_commit: 529903865621af95f64343f17295e3d9f1a86712
+  receipt_commit: external_git_history_only_not_embedded
+  oracle_status: approved
+parent_stage:
+  id: stage4
+  status: running
+  exit_conditions_met: false
+parent_loop:
+  id: step37
+  status: running
+  global_exit_conditions_met: false
+  user_input_required: false
+  next_action: CONTINUE_PARENT_LOOP
+  next_atomic_step: Stage 4 pickup.collectible package-owned QA slice implementation atomic step
+```
+
+Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `hierarchical_completion_parent_loop_guardrail`; Stage 4 remains running, Step37 remains running, global exit conditions remain false, and Parent Loop Driver must continue with `Stage 4 pickup.collectible package-owned QA slice implementation atomic step`.
