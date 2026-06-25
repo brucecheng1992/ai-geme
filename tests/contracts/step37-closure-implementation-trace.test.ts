@@ -13,6 +13,7 @@ const movementCrouchAuditCheckpointCommit = '09c1ea60';
 const auditBoundaryAndIdentifierGuardrailTitle = '## Stage 4 Improvement Log — Audit Boundary And Identifier Guardrails';
 const auditBoundaryIdentifierClosureTitle = '## Stage 4 Closure Implementation — Audit Boundary And Identifier Guardrails';
 const auditBoundaryIdentifierCheckpointCommit = '2d49b17e';
+const cleanBaselineClosureGuardrailTitle = '## Stage 4 Improvement Log — Clean Baseline Closure Guardrail';
 
 const claimedAuditBoundaryIdentifierPaths = [
   stage4PlanPath,
@@ -283,6 +284,181 @@ describe('Step37 closure implementation traceability', () => {
     expect(section).toContain('planned -> landed -> verified -> oracle_passed -> checkpoint_committed');
     expect(section).toContain('Stage 4 Exit gate: NOT_MET');
   });
+
+  it('records clean-baseline closure checks before adding new closure diff', async () => {
+    const document = await readFile(stage4PlanPath, 'utf8');
+    const section = extractSection(document, cleanBaselineClosureGuardrailTitle);
+
+    expect(section).toContain('Baseline before closure');
+    expect(section).toContain('confirm `HEAD` is the expected checkpoint');
+    expect(section).toContain('staged, unstaged, untracked');
+    expect(section).toContain('Directed cleanup only');
+    expect(section).toContain('Do not use destructive broad commands');
+    expect(section).toContain('Range-controlled closure diff');
+    expect(section).toContain('Post-write status verification');
+    expect(section).toContain('Clean baseline is not closure');
+    expect(section).toContain('Audit history preservation');
+
+    expect(
+      evaluateClosureBaseline({
+        expectedHead: '7848af42',
+        actualHead: '7848af42',
+        stagedPaths: [],
+        unstagedPaths: [],
+        untrackedPaths: [],
+        diffCheckPassed: true,
+        cleanupActions: [{ kind: 'directed_fix', command: 'apply_patch', reason: 'removed withdrawn draft blank line' }],
+        closureDiffPaths: [stage4PlanPath, 'tests/contracts/step37-closure-implementation-trace.test.ts'],
+        allowedClosurePaths: [stage4PlanPath, 'tests/contracts/step37-closure-implementation-trace.test.ts'],
+        postWriteStatusChecked: true,
+        postWriteDiffStatChecked: true,
+        postWriteDiffCheckPassed: true,
+        validationReceiptsPresent: true,
+        oracleConclusionPresent: true,
+        exitAssessmentPresent: true
+      })
+    ).toEqual('ready_for_closure');
+
+    expect(
+      evaluateClosureBaseline({
+        expectedHead: '7848af42',
+        actualHead: '7848af42',
+        stagedPaths: [],
+        unstagedPaths: ['templates/phaser/side_scrolling_run_and_gun/src/GameScene.ts'],
+        untrackedPaths: [],
+        diffCheckPassed: true,
+        cleanupActions: [],
+        closureDiffPaths: [stage4PlanPath],
+        allowedClosurePaths: [stage4PlanPath],
+        postWriteStatusChecked: true,
+        postWriteDiffStatChecked: true,
+        postWriteDiffCheckPassed: true,
+        validationReceiptsPresent: true,
+        oracleConclusionPresent: true,
+        exitAssessmentPresent: true
+      })
+    ).toEqual('blocked_dirty_baseline');
+
+    expect(
+      evaluateClosureBaseline({
+        expectedHead: '7848af42',
+        actualHead: '7848af42',
+        stagedPaths: [],
+        unstagedPaths: [],
+        untrackedPaths: [],
+        diffCheckPassed: true,
+        cleanupActions: [{ kind: 'destructive_command', command: 'git reset --hard', reason: 'clear worktree' }],
+        closureDiffPaths: [stage4PlanPath],
+        allowedClosurePaths: [stage4PlanPath],
+        postWriteStatusChecked: true,
+        postWriteDiffStatChecked: true,
+        postWriteDiffCheckPassed: true,
+        validationReceiptsPresent: true,
+        oracleConclusionPresent: true,
+        exitAssessmentPresent: true
+      })
+    ).toEqual('blocked_destructive_cleanup');
+
+    expect(
+      evaluateClosureBaseline({
+        expectedHead: '7848af42',
+        actualHead: '7848af42',
+        stagedPaths: [],
+        unstagedPaths: [],
+        untrackedPaths: [],
+        diffCheckPassed: true,
+        cleanupActions: [],
+        closureDiffPaths: [stage4PlanPath, 'templates/phaser/side_scrolling_run_and_gun/src/GameScene.ts'],
+        allowedClosurePaths: [stage4PlanPath],
+        postWriteStatusChecked: true,
+        postWriteDiffStatChecked: true,
+        postWriteDiffCheckPassed: true,
+        validationReceiptsPresent: true,
+        oracleConclusionPresent: true,
+        exitAssessmentPresent: true
+      })
+    ).toEqual('blocked_unexpected_closure_diff');
+
+    expect(
+      evaluateClosureBaseline({
+        expectedHead: '7848af42',
+        actualHead: '2d49b17e',
+        stagedPaths: [],
+        unstagedPaths: [],
+        untrackedPaths: [],
+        diffCheckPassed: true,
+        cleanupActions: [],
+        closureDiffPaths: [stage4PlanPath],
+        allowedClosurePaths: [stage4PlanPath],
+        postWriteStatusChecked: true,
+        postWriteDiffStatChecked: true,
+        postWriteDiffCheckPassed: true,
+        validationReceiptsPresent: true,
+        oracleConclusionPresent: true,
+        exitAssessmentPresent: true
+      })
+    ).toEqual('blocked_head_mismatch');
+
+    expect(
+      evaluateClosureBaseline({
+        expectedHead: '7848af42',
+        actualHead: '7848af42',
+        stagedPaths: [],
+        unstagedPaths: [],
+        untrackedPaths: [],
+        diffCheckPassed: false,
+        cleanupActions: [],
+        closureDiffPaths: [stage4PlanPath],
+        allowedClosurePaths: [stage4PlanPath],
+        postWriteStatusChecked: true,
+        postWriteDiffStatChecked: true,
+        postWriteDiffCheckPassed: true,
+        validationReceiptsPresent: true,
+        oracleConclusionPresent: true,
+        exitAssessmentPresent: true
+      })
+    ).toEqual('blocked_diff_format');
+
+    expect(
+      evaluateClosureBaseline({
+        expectedHead: '7848af42',
+        actualHead: '7848af42',
+        stagedPaths: [],
+        unstagedPaths: [],
+        untrackedPaths: [],
+        diffCheckPassed: true,
+        cleanupActions: [],
+        closureDiffPaths: [stage4PlanPath],
+        allowedClosurePaths: [stage4PlanPath],
+        postWriteStatusChecked: false,
+        postWriteDiffStatChecked: true,
+        postWriteDiffCheckPassed: true,
+        validationReceiptsPresent: true,
+        oracleConclusionPresent: true,
+        exitAssessmentPresent: true
+      })
+    ).toEqual('blocked_missing_post_write_status');
+
+    expect(
+      evaluateClosureBaseline({
+        expectedHead: '7848af42',
+        actualHead: '7848af42',
+        stagedPaths: [],
+        unstagedPaths: [],
+        untrackedPaths: [],
+        diffCheckPassed: true,
+        cleanupActions: [],
+        closureDiffPaths: [stage4PlanPath],
+        allowedClosurePaths: [stage4PlanPath],
+        postWriteStatusChecked: true,
+        postWriteDiffStatChecked: true,
+        postWriteDiffCheckPassed: true,
+        validationReceiptsPresent: false,
+        oracleConclusionPresent: true,
+        exitAssessmentPresent: true
+      })
+    ).toEqual('blocked_missing_closure_evidence');
+  });
 });
 
 function extractSection(document: string, title: string): string {
@@ -443,3 +619,62 @@ type IdentifierLogEntry = {
   value: string;
   source: string;
 };
+
+function evaluateClosureBaseline(input: ClosureBaselineRecord): ClosureBaselineDecision {
+  if (input.actualHead !== input.expectedHead) {
+    return 'blocked_head_mismatch';
+  }
+  if (input.stagedPaths.length > 0 || input.unstagedPaths.length > 0 || input.untrackedPaths.length > 0) {
+    return 'blocked_dirty_baseline';
+  }
+  if (!input.diffCheckPassed) {
+    return 'blocked_diff_format';
+  }
+  if (input.cleanupActions.some((action) => action.kind === 'destructive_command')) {
+    return 'blocked_destructive_cleanup';
+  }
+  if (input.closureDiffPaths.some((path) => !input.allowedClosurePaths.includes(path))) {
+    return 'blocked_unexpected_closure_diff';
+  }
+  if (!input.postWriteStatusChecked || !input.postWriteDiffStatChecked || !input.postWriteDiffCheckPassed) {
+    return 'blocked_missing_post_write_status';
+  }
+  if (!input.validationReceiptsPresent || !input.oracleConclusionPresent || !input.exitAssessmentPresent) {
+    return 'blocked_missing_closure_evidence';
+  }
+  return 'ready_for_closure';
+}
+
+type ClosureBaselineRecord = {
+  expectedHead: string;
+  actualHead: string;
+  stagedPaths: readonly string[];
+  unstagedPaths: readonly string[];
+  untrackedPaths: readonly string[];
+  diffCheckPassed: boolean;
+  cleanupActions: readonly ClosureCleanupAction[];
+  closureDiffPaths: readonly string[];
+  allowedClosurePaths: readonly string[];
+  postWriteStatusChecked: boolean;
+  postWriteDiffStatChecked: boolean;
+  postWriteDiffCheckPassed: boolean;
+  validationReceiptsPresent: boolean;
+  oracleConclusionPresent: boolean;
+  exitAssessmentPresent: boolean;
+};
+
+type ClosureCleanupAction = {
+  kind: 'directed_fix' | 'destructive_command';
+  command: string;
+  reason: string;
+};
+
+type ClosureBaselineDecision =
+  | 'ready_for_closure'
+  | 'blocked_head_mismatch'
+  | 'blocked_dirty_baseline'
+  | 'blocked_diff_format'
+  | 'blocked_destructive_cleanup'
+  | 'blocked_unexpected_closure_diff'
+  | 'blocked_missing_post_write_status'
+  | 'blocked_missing_closure_evidence';

@@ -2501,3 +2501,16 @@ Next: independent timeout-diagnosis rule solidification step
 ```
 
 Stop marker: Stage 4 audit-boundary and identifier guardrail checkpoint `2d49b17e` is complete. Do not treat this checkpoint as Stage 4 full closure, Stage 5 entry, production default cutover, or legacy authoritative path exit. The timeout-diagnosis rule may start only as a separate atomic step after this checkpoint remains clean and verified.
+
+## Stage 4 Improvement Log — Clean Baseline Closure Guardrail
+
+This log records the clean-baseline discipline used before writing the closure record for checkpoint `2d49b17e`.
+
+1. Baseline before closure: before writing closure, confirm `HEAD` is the expected checkpoint and inspect staged, unstaged, untracked, diff range, and diff formatting state.
+2. Directed cleanup only: cleanup must be explainable and targeted, such as removing a stray blank line left by a withdrawn draft. Do not use destructive broad commands such as `git reset --hard` or `git clean -fd` without explicit authorization.
+3. Range-controlled closure diff: after the baseline is clean, the closure diff may contain only the expected audit/closure files. Runtime, tests, config, or unrelated edits must stop closure until their source is understood.
+4. Post-write status verification: after appending closure, rerun `git status --short`, `git diff --stat`, `git diff --check`, and, when staging is involved, `git diff --cached --name-status`.
+5. Clean baseline is not closure: a clean starting worktree only permits writing closure. Final closure still requires validation commands, exit codes, execution timing or result summaries, Oracle conclusion, unresolved items, and exit assessment.
+6. Audit history preservation: existing audit/guardrail history remains unchanged; closure is appended as an independent section.
+
+Repository guardrail added: `tests/contracts/step37-closure-implementation-trace.test.ts` verifies the clean-baseline closure record requires expected `HEAD`, status/diff checks, directed cleanup, expected file scope, validation receipts, Oracle conclusion, unresolved items, and exit assessment.
