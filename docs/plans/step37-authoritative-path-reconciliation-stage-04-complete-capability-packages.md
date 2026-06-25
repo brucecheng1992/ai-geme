@@ -3957,3 +3957,55 @@ parent_loop:
 ```
 
 Exit assessment: `AUDIT_CANDIDATE_READY_NOT_CLOSED`. This audit closes no implementation requirement. It defines the next implementation boundary for `spawn.enemy_wave.v1`; Stage 4 remains running, Step37 remains running, and global exit conditions remain false.
+
+## Stage 4 Audit Receipt — spawn.enemy_wave.v1 Package-Owned QA Slice
+
+- checkpoint_id: `stage4_spawn_enemy_wave_package_owned_qa_audit`.
+- record_type: `audit_receipt`.
+- closure_scope: `atomic_step`.
+- reviewed_commit_sha: `b7b1a725f5d1345e1196f6dc8b14a5b1181bbb96`.
+- reviewed_skill_revision: `be625c8c69d3fffb983dea5c40ee1cae584e2b5b0f7b82dce4338c9bcf744d78`.
+- oracle_submission_id: `019f00f6-dde9-7d40-a838-c6aa3f881a37`.
+- oracle_agent_id: `019effae-8aa2-7c22-b5ba-8c4b69f21d20`.
+- oracle_status: `approved`.
+- oracle_verdict: `PASS_NO_P0_P1_P2_BLOCKERS`.
+- unresolved_items: `P3 traceability note: two npx tsx receipts remain ellipsized but source facts are independently verifiable; not blocking for audit closure`.
+- audit_status: `complete`.
+- implementation_status: `not_started`.
+- capability_closure_status: `not_met`.
+- atomic_step_status: `closed`.
+- closure_status: `closed`.
+- receipt_only_scope: `docs-only audit closure metadata; no runtime, tests, contract semantics, Skill, AGENTS.md, or validator changes`.
+
+Oracle conclusion:
+
+The Oracle re-review of `b7b1a725f5d1345e1196f6dc8b14a5b1181bbb96` approved the audit candidate with no P0/P1/P2 blockers. The previous Skill digest P2 against `e02d3d459daa21c817349d0c5a1c6864ab4b99a2` is resolved by the reproducible `be625c8c69d3fffb983dea5c40ee1cae584e2b5b0f7b82dce4338c9bcf744d78` bundle record.
+
+Scoped closure output:
+
+```yaml
+closure_scope: atomic_step
+atomic_step:
+  id: stage4_spawn_enemy_wave_package_owned_qa_audit
+  status: closed
+  candidate_commit: b7b1a725f5d1345e1196f6dc8b14a5b1181bbb96
+  receipt_commit: external_git_history_after_receipt_commit
+  oracle_status: approved
+  audit_status: complete
+  implementation_status: not_started
+  capability_closure_status: not_met
+parent_stage:
+  id: stage4
+  status: running
+  exit_conditions_met: false
+parent_loop:
+  id: step37
+  status: running
+  global_exit_conditions_met: false
+  user_input_required: false
+  next_action: CONTINUE_PARENT_LOOP
+  next_atomic_step: stage4_spawn_enemy_wave_package_owned_qa_implementation
+  next_atomic_step_scope: implementation
+```
+
+Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4_spawn_enemy_wave_package_owned_qa_audit`. It does not close the `spawn.enemy_wave.v1` capability, Stage 4, Step37, production default cutover, legacy authoritative path exit, or final global loop. Parent Loop Driver must continue with `stage4_spawn_enemy_wave_package_owned_qa_implementation` while global exits remain false and no verified user blocker exists.
