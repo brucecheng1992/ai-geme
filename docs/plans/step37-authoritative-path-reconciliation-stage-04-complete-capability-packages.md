@@ -2893,7 +2893,8 @@ Repository guardrail added: `tests/contracts/step37-closure-implementation-trace
 
 ## Stage 4 Closure Implementation — Transition Error Envelope Guardrail
 
-- implementation status: `ORACLE_PASSED_AWAITING_COMMIT`.
+- implementation status: `CHECKPOINT_COMMITTED`.
+- implementation checkpoint: `22dd6ce4` (`test(game-dsl): refine transition closure diagnostics`).
 - local_validation: `passed`.
 - oracle_status: `passed`.
 - scope: process/evidence guardrail only; no runtime, schema, compiler, QA runner behavior, Stage 5 exact lock, production default cutover, legacy authoritative path exit, capability closure, or state-machine expansion was introduced.
@@ -2971,15 +2972,105 @@ Unresolved items:
 State transition:
 
 ```text
+planned -> landed -> verified -> oracle_blocked_p2 -> fixed -> verified -> oracle_passed -> checkpoint_committed
+```
+
+### Exit Assessment
+
+```text
+Stage 4 Transition Error Envelope Guardrail: CHECKPOINT_COMMITTED
+Stage 4 Exit gate: NOT_MET
+Next: Oracle revision alignment guardrail step
+```
+
+Stop marker: Stage 4 transition error envelope guardrail checkpoint commit `22dd6ce4` is complete. Do not enter Stage 5 or claim complete package closure; Oracle revision alignment feedback must start only as an independent atomic step after this checkpoint.
+
+## Stage 4 Improvement Log — Oracle Revision Alignment Guardrail
+
+This log records the review discipline used when Oracle cited stale validation receipts after the transition error envelope fix.
+
+1. Revision alignment first: before deciding Oracle read an old snapshot, confirm the same repository, worktree, branch, commit SHA, file path, and checkpoint identity.
+2. Stable identity: do not locate records only by repeated heading text or receipt names. Use a guardrail/checkpoint id, commit SHA, section id, or equivalent stable identity.
+3. Evidence bundle: re-review requests must include current commit SHA, exact file path, unique section/checkpoint id, `rg` search command and result, `nl` line range, and current value versus Oracle quoted stale value.
+4. No blind rewrite: if the current file is already correct, do not rewrite content to satisfy a stale finding; the agent must request re-review against the current revision with reproducible line evidence.
+5. Pending until aligned: if Oracle cannot show its conclusion is based on the current commit, keep the state `ORACLE_PENDING` or `BLOCKED`; do not close.
+6. Recheck citations: if Oracle still reports a problem, compare its file, line, revision, and section identity before deciding whether to modify code or resolve reviewer snapshot mismatch.
+7. Trace contract: improvement log, closure, guardrail identity, commit SHA, and validation receipts must map one-to-one.
+
+Repository guardrail added: `tests/contracts/step37-closure-implementation-trace.test.ts` verifies revision evidence bundles, log/closure identity matching, commit existence, committed path matching, and fail-closed behavior when a committed closure has unexplained implementation diff.
+
+## Stage 4 Closure Implementation — Oracle Revision Alignment Guardrail
+
+- implementation status: `ORACLE_PASSED_AWAITING_COMMIT`.
+- local_validation: `passed`.
+- oracle_status: `approved`.
+- scope: process/evidence guardrail only; no runtime, schema, compiler, QA runner behavior, Stage 5 exact lock, production default cutover, legacy authoritative path exit, capability closure, or state-machine expansion was introduced.
+- baseline: Stage 4 transition error envelope guardrail checkpoint commit `22dd6ce4` (`test(game-dsl): refine transition closure diagnostics`).
+
+Actual modified paths:
+
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`
+- `tests/contracts/step37-closure-implementation-trace.test.ts`
+- `/Users/dahufa/.agents/skills/code-change-discipline/SKILL.md`
+
+Evidence/guardrail chain:
+
+review evidence bundle:
+
+1. Skill rule: review conclusions that disagree with current repo facts require revision, path, and stable identity alignment before modifying content.
+2. Skill rule: re-review bundles include exact file path, section id, `rg` result, `nl` line range, and stale-versus-current value comparison.
+3. Contract test: revision evidence bundle validation rejects repo/worktree/branch/commit/path/section mismatches and missing line evidence.
+4. Contract test: checkpoint trace validation rejects missing log/closure, identity mismatch, missing commit, missing committed path, and unexplained implementation diff.
+5. Oracle P2 fix: the same contract now explicitly covers missing closure records, missing committed paths, and worktree/branch/file path mismatches.
+6. Oracle ID trace: `oracle_agent_id` and `oracle_submission_id` are recorded as distinct fields with their sources.
+
+Oracle review trace:
+
+- oracle_agent_id: `019effae-8aa2-7c22-b5ba-8c4b69f21d20` (source: existing Oracle agent handle used as `wait_agent.targets[0]`).
+- oracle_initial_submission_id: `019f0047-9493-7ff0-ae26-011e06111559` (source: first `send_input` response; result: P2 changes required).
+- oracle_rereview_submission_id: `019f004d-640e-77e0-9dca-0742391e25bd` (source: second `send_input` response after P2 fix; result: PASS).
+- oracle_final_submission_id: `019f0051-df1f-71b1-a282-ce20c60cbc7a` (source: final `send_input` response after closure status sync; result: PASS).
+- oracle_result: `PASS / no P0/P1/P2 blocking findings`.
+
+Validation receipts:
+
+```text
+npx vitest run tests/contracts/step37-closure-implementation-trace.test.ts
+exitCode=0
+result=PASS: 27 tests passed
+
+npm test
+exitCode=0
+result=PASS: contracts 95 files / 1088 tests; workspace 34 files / 408 tests
+
+npm run typecheck
+exitCode=0
+result=PASS: root, @ai-game-maker/maker-api, and @ai-game-maker/maker-workbench typecheck passed
+
+git diff --check
+exitCode=0
+result=PASS: no whitespace errors
+```
+
+Unresolved items:
+
+- Stage 4 full package closure remains `NOT_MET`.
+- Stage 5 exact lock remains `NOT_ENTERED`.
+- Production default cutover remains inactive.
+- Legacy authoritative path has not exited.
+
+State transition:
+
+```text
 planned -> landed -> verified -> oracle_blocked_p2 -> fixed -> verified -> oracle_passed
 ```
 
 ### Exit Assessment
 
 ```text
-Stage 4 Transition Error Envelope Guardrail: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 Oracle Revision Alignment Guardrail: ORACLE_PASSED_AWAITING_COMMIT
 Stage 4 Exit gate: NOT_MET
 Next: checkpoint commit for this guardrail checkpoint only
 ```
 
-Stop marker: Stage 4 transition error envelope guardrail passed Oracle and is awaiting checkpoint commit. Do not enter the next Stage 4 audit, enter Stage 5, or claim complete package closure until checkpoint commit completes.
+Stop marker: Stage 4 Oracle revision alignment guardrail passed Oracle and is awaiting checkpoint commit. Do not enter the next Stage 4 audit, enter Stage 5, or claim complete package closure until the checkpoint commit completes.

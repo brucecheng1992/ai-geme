@@ -24,6 +24,9 @@ const structuredClosureFieldGuardrailTitle = '## Stage 4 Improvement Log — Str
 const structuredClosureFieldClosureTitle = '## Stage 4 Closure Implementation — Structured Closure Field Guardrail';
 const transitionErrorEnvelopeGuardrailTitle = '## Stage 4 Improvement Log — Transition Error Envelope Guardrail';
 const transitionErrorEnvelopeClosureTitle = '## Stage 4 Closure Implementation — Transition Error Envelope Guardrail';
+const transitionErrorEnvelopeCheckpointCommit = '22dd6ce4';
+const oracleRevisionAlignmentGuardrailTitle = '## Stage 4 Improvement Log — Oracle Revision Alignment Guardrail';
+const oracleRevisionAlignmentClosureTitle = '## Stage 4 Closure Implementation — Oracle Revision Alignment Guardrail';
 
 const claimedAuditBoundaryIdentifierPaths = [
   stage4PlanPath,
@@ -325,7 +328,7 @@ describe('Step37 closure implementation traceability', () => {
         '## Stage 4 Closure Implementation — Example'
       )
     ).toEqual([
-      'MISSING_FIELD section="## Stage 4 Closure Implementation — Example" field="oracle_status" actual="<missing>" allowed="not_submitted|pending|passed|changes_required|blocked"'
+      'MISSING_FIELD section="## Stage 4 Closure Implementation — Example" field="oracle_status" actual="<missing>" allowed="not_submitted|pending|passed|approved|changes_required|blocked"'
     ]);
 
     expect(
@@ -346,7 +349,7 @@ describe('Step37 closure implementation traceability', () => {
         '## Stage 4 Closure Implementation — Example'
       )
     ).toEqual([
-      'DUPLICATE_FIELD section="## Stage 4 Closure Implementation — Example" field="oracle_status" actual="pending,passed" allowed="not_submitted|pending|passed|changes_required|blocked"'
+      'DUPLICATE_FIELD section="## Stage 4 Closure Implementation — Example" field="oracle_status" actual="pending,passed" allowed="not_submitted|pending|passed|approved|changes_required|blocked"'
     ]);
 
     expect(
@@ -366,7 +369,7 @@ describe('Step37 closure implementation traceability', () => {
         '## Stage 4 Closure Implementation — Example'
       )
     ).toEqual([
-      'CONFLICTING_STATUS section="## Stage 4 Closure Implementation — Example" field="oracle_status" actual="pending" allowed="passed"'
+      'CONFLICTING_STATUS section="## Stage 4 Closure Implementation — Example" field="oracle_status" actual="pending" allowed="passed|approved"'
     ]);
 
     expect(
@@ -511,6 +514,202 @@ describe('Step37 closure implementation traceability', () => {
     expect(validateStructuredClosureSection(closureSection, transitionErrorEnvelopeClosureTitle)).toEqual([]);
   });
 
+  it('keeps the transition-envelope guardrail closure linked to its checkpoint commit', async () => {
+    const document = await readFile(stage4PlanPath, 'utf8');
+    const section = extractSection(document, transitionErrorEnvelopeClosureTitle);
+    const checkpointPaths = changedPathsForCommit(transitionErrorEnvelopeCheckpointCommit);
+
+    expect(section).toContain(`implementation checkpoint: \`${transitionErrorEnvelopeCheckpointCommit}\``);
+    expect(section).toContain('implementation status: `CHECKPOINT_COMMITTED`');
+    expect(checkpointPaths).toEqual([stage4PlanPath, 'tests/contracts/step37-closure-implementation-trace.test.ts'].sort());
+    expect(validateStructuredClosureSection(section, transitionErrorEnvelopeClosureTitle)).toEqual([]);
+  });
+
+  it('records Oracle revision alignment guardrails as reproducible line evidence', async () => {
+    const document = await readFile(stage4PlanPath, 'utf8');
+    const section = extractSection(document, oracleRevisionAlignmentGuardrailTitle);
+    const closureSection = extractSection(document, oracleRevisionAlignmentClosureTitle);
+
+    expect(section).toContain('same repository, worktree, branch, commit SHA, file path, and checkpoint identity');
+    expect(section).toContain('rg` search command and result');
+    expect(section).toContain('`nl` line range');
+    expect(section).toContain('current value versus Oracle quoted stale value');
+    expect(section).toContain('must request re-review against the current revision');
+    expect(closureSection).toContain('review evidence bundle');
+    expect(closureSection).toContain('oracle_status: `approved`');
+    expect(closureSection).toContain('oracle_agent_id: `019effae-8aa2-7c22-b5ba-8c4b69f21d20`');
+    expect(closureSection).toContain('oracle_initial_submission_id: `019f0047-9493-7ff0-ae26-011e06111559`');
+    expect(closureSection).toContain('oracle_rereview_submission_id: `019f004d-640e-77e0-9dca-0742391e25bd`');
+    expect(closureSection).toContain('source: existing Oracle agent handle');
+    expect(closureSection).toContain('source: first `send_input` response');
+    expect(closureSection).toContain('source: second `send_input` response');
+    expect(closureSection).toContain('no runtime, schema, compiler, QA runner behavior');
+    expect(validateStructuredClosureSection(closureSection, oracleRevisionAlignmentClosureTitle)).toEqual([]);
+  });
+
+  it('validates Oracle revision evidence before treating stale review findings as current', () => {
+    expect(
+      validateOracleRevisionEvidenceBundle({
+        repository: 'ai-game-maker',
+        expectedRepository: 'ai-game-maker',
+        worktree: '/Users/dahufa/Documents/workspace/ai-game-maker',
+        expectedWorktree: '/Users/dahufa/Documents/workspace/ai-game-maker',
+        branch: 'main',
+        expectedBranch: 'main',
+        currentCommitSha: transitionErrorEnvelopeCheckpointCommit,
+        oracleCommitSha: transitionErrorEnvelopeCheckpointCommit,
+        filePath: stage4PlanPath,
+        oracleFilePath: stage4PlanPath,
+        sectionId: 'transition_error_envelope_guardrail',
+        oracleSectionId: 'transition_error_envelope_guardrail',
+        rgCommand: 'rg -n "22 tests|1083 tests|23 tests|1084 tests" docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md',
+        rgResults: ['2920:result=PASS: 23 tests passed', '2924:result=PASS: contracts 95 files / 1084 tests; workspace 34 files / 408 tests'],
+        nlRange: '2910,2930',
+        currentValue: '23 tests / 1084 tests',
+        oracleQuotedValue: '22 tests / 1083 tests'
+      })
+    ).toEqual([]);
+
+    expect(
+      validateOracleRevisionEvidenceBundle({
+        repository: 'ai-game-maker',
+        expectedRepository: 'other-repo',
+        worktree: '/Users/dahufa/Documents/workspace/ai-game-maker',
+        expectedWorktree: '/tmp/stale-ai-game-maker',
+        branch: 'main',
+        expectedBranch: 'stale-review-branch',
+        currentCommitSha: transitionErrorEnvelopeCheckpointCommit,
+        oracleCommitSha: 'stale-sha',
+        filePath: stage4PlanPath,
+        oracleFilePath: 'docs/plans/stale-step37-receipt.md',
+        sectionId: 'transition_error_envelope_guardrail',
+        oracleSectionId: 'other_guardrail',
+        rgCommand: '',
+        rgResults: [],
+        nlRange: '',
+        currentValue: '23 tests / 1084 tests',
+        oracleQuotedValue: '22 tests / 1083 tests'
+      })
+    ).toEqual([
+      'REVISION_MISMATCH field="repository" actual="ai-game-maker" expected="other-repo"',
+      'REVISION_MISMATCH field="worktree" actual="/Users/dahufa/Documents/workspace/ai-game-maker" expected="/tmp/stale-ai-game-maker"',
+      'REVISION_MISMATCH field="branch" actual="main" expected="stale-review-branch"',
+      'REVISION_MISMATCH field="commit_sha" actual="22dd6ce4" expected="stale-sha"',
+      'REVISION_MISMATCH field="file_path" actual="docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md" expected="docs/plans/stale-step37-receipt.md"',
+      'REVISION_MISMATCH field="section_id" actual="transition_error_envelope_guardrail" expected="other_guardrail"',
+      'MISSING_REVIEW_EVIDENCE field="rgCommand" actual="<missing>" expected="present"',
+      'MISSING_REVIEW_EVIDENCE field="rgResults" actual="<missing>" expected="present"',
+      'MISSING_REVIEW_EVIDENCE field="nlRange" actual="<missing>" expected="present"'
+    ]);
+  });
+
+  it('fails checkpoint trace links when log, closure, identity, commit or workspace state is ambiguous', () => {
+    expect(
+      validateGuardrailCheckpointTrace({
+        logExists: true,
+        closureExists: true,
+        logIdentity: 'transition_error_envelope_guardrail',
+        closureIdentity: 'transition_error_envelope_guardrail',
+        commitSha: transitionErrorEnvelopeCheckpointCommit,
+        commitExists: true,
+        committedPaths: [stage4PlanPath, 'tests/contracts/step37-closure-implementation-trace.test.ts'],
+        expectedCommittedPaths: [stage4PlanPath, 'tests/contracts/step37-closure-implementation-trace.test.ts'],
+        closureStatus: 'CHECKPOINT_COMMITTED',
+        unexplainedImplementationDiffPaths: []
+      })
+    ).toEqual([]);
+
+    expect(
+      validateGuardrailCheckpointTrace({
+        logExists: false,
+        closureExists: true,
+        logIdentity: 'transition_error_envelope_guardrail',
+        closureIdentity: 'transition_error_envelope_guardrail',
+        commitSha: transitionErrorEnvelopeCheckpointCommit,
+        commitExists: true,
+        committedPaths: [stage4PlanPath],
+        expectedCommittedPaths: [stage4PlanPath],
+        closureStatus: 'CHECKPOINT_COMMITTED',
+        unexplainedImplementationDiffPaths: []
+      })
+    ).toEqual(['MISSING_IMPROVEMENT_LOG identity="transition_error_envelope_guardrail"']);
+
+    expect(
+      validateGuardrailCheckpointTrace({
+        logExists: true,
+        closureExists: false,
+        logIdentity: 'transition_error_envelope_guardrail',
+        closureIdentity: 'transition_error_envelope_guardrail',
+        commitSha: transitionErrorEnvelopeCheckpointCommit,
+        commitExists: true,
+        committedPaths: [stage4PlanPath],
+        expectedCommittedPaths: [stage4PlanPath],
+        closureStatus: 'CHECKPOINT_COMMITTED',
+        unexplainedImplementationDiffPaths: []
+      })
+    ).toEqual(['MISSING_CLOSURE_RECORD identity="transition_error_envelope_guardrail"']);
+
+    expect(
+      validateGuardrailCheckpointTrace({
+        logExists: true,
+        closureExists: true,
+        logIdentity: 'transition_error_envelope_guardrail',
+        closureIdentity: 'structured_field_guardrail',
+        commitSha: transitionErrorEnvelopeCheckpointCommit,
+        commitExists: true,
+        committedPaths: [stage4PlanPath],
+        expectedCommittedPaths: [stage4PlanPath],
+        closureStatus: 'CHECKPOINT_COMMITTED',
+        unexplainedImplementationDiffPaths: []
+      })
+    ).toEqual(['CHECKPOINT_IDENTITY_MISMATCH log="transition_error_envelope_guardrail" closure="structured_field_guardrail"']);
+
+    expect(
+      validateGuardrailCheckpointTrace({
+        logExists: true,
+        closureExists: true,
+        logIdentity: 'transition_error_envelope_guardrail',
+        closureIdentity: 'transition_error_envelope_guardrail',
+        commitSha: 'deadbeef',
+        commitExists: false,
+        committedPaths: [],
+        expectedCommittedPaths: [stage4PlanPath],
+        closureStatus: 'CHECKPOINT_COMMITTED',
+        unexplainedImplementationDiffPaths: []
+      })
+    ).toEqual(['COMMIT_NOT_FOUND commit="deadbeef"']);
+
+    expect(
+      validateGuardrailCheckpointTrace({
+        logExists: true,
+        closureExists: true,
+        logIdentity: 'transition_error_envelope_guardrail',
+        closureIdentity: 'transition_error_envelope_guardrail',
+        commitSha: transitionErrorEnvelopeCheckpointCommit,
+        commitExists: true,
+        committedPaths: [],
+        expectedCommittedPaths: [stage4PlanPath],
+        closureStatus: 'CHECKPOINT_COMMITTED',
+        unexplainedImplementationDiffPaths: []
+      })
+    ).toEqual([`COMMIT_PATH_MISSING commit="${transitionErrorEnvelopeCheckpointCommit}" path="${stage4PlanPath}"`]);
+
+    expect(
+      validateGuardrailCheckpointTrace({
+        logExists: true,
+        closureExists: true,
+        logIdentity: 'transition_error_envelope_guardrail',
+        closureIdentity: 'transition_error_envelope_guardrail',
+        commitSha: transitionErrorEnvelopeCheckpointCommit,
+        commitExists: true,
+        committedPaths: [stage4PlanPath],
+        expectedCommittedPaths: [stage4PlanPath],
+        closureStatus: 'CHECKPOINT_COMMITTED',
+        unexplainedImplementationDiffPaths: ['templates/phaser/side_scrolling_run_and_gun/src/GameScene.ts']
+      })
+    ).toEqual(['UNEXPLAINED_IMPLEMENTATION_DIFF path="templates/phaser/side_scrolling_run_and_gun/src/GameScene.ts"']);
+  });
+
   it('does not allow global field matches to satisfy a different closure section', () => {
     const document = [
       '## Stage 4 Closure Implementation — Other',
@@ -529,7 +728,7 @@ describe('Step37 closure implementation traceability', () => {
     const section = extractSection(document, '## Stage 4 Closure Implementation — Target');
 
     expect(validateStructuredClosureSection(section, '## Stage 4 Closure Implementation — Target')).toEqual([
-      'MISSING_FIELD section="## Stage 4 Closure Implementation — Target" field="oracle_status" actual="<missing>" allowed="not_submitted|pending|passed|changes_required|blocked"'
+      'MISSING_FIELD section="## Stage 4 Closure Implementation — Target" field="oracle_status" actual="<missing>" allowed="not_submitted|pending|passed|approved|changes_required|blocked"'
     ]);
   });
 
@@ -1239,7 +1438,7 @@ function evaluateOracleGatedClosureState(input: OracleGatedClosureRecord): Oracl
     return input.requestedStatus === 'CLOSED' ? 'blocked_oracle_pending_not_closed' : 'oracle_pending';
   }
   if (input.requestedStatus === 'CLOSED') {
-    if (input.oracleStatus !== 'passed' || input.oracleConclusion === undefined || !/\bPASS\b/i.test(input.oracleConclusion)) {
+    if (!isOracleApproved(input.oracleStatus) || input.oracleConclusion === undefined || !/\bPASS\b/i.test(input.oracleConclusion)) {
       return 'blocked_missing_oracle_pass';
     }
     if (input.unresolvedItems.length > 0) {
@@ -1248,12 +1447,12 @@ function evaluateOracleGatedClosureState(input: OracleGatedClosureRecord): Oracl
     return 'closed';
   }
 
-  return input.oracleStatus === 'passed' ? 'oracle_passed' : 'blocked_missing_oracle_pass';
+  return isOracleApproved(input.oracleStatus) ? 'oracle_passed' : 'blocked_missing_oracle_pass';
 }
 
 type OracleGatedClosureRecord = {
   localValidation: 'passed' | 'failed' | 'not_run';
-  oracleStatus: 'not_submitted' | 'pending' | 'passed' | 'changes_required' | 'blocked';
+  oracleStatus: 'not_submitted' | 'pending' | 'passed' | 'approved' | 'changes_required' | 'blocked';
   requestedStatus: 'LOCALLY_VALIDATED' | 'ORACLE_PENDING' | 'CLOSED';
   validationReceipts: readonly ValidationReceipt[];
   diffScopePaths: readonly string[];
@@ -1281,14 +1480,14 @@ function validateStructuredClosureSection(section: string, sectionTitle: string)
   const oracleStatus = readStructuredField(section, sectionTitle, 'oracle_status', structuredOracleStatuses);
   issues.push(...implementationStatus.issues, ...localValidation.issues, ...oracleStatus.issues);
 
-  if (oracleStatus.issues.length === 0 && implementationStatus.value === 'CLOSED' && oracleStatus.value !== 'passed') {
+  if (oracleStatus.issues.length === 0 && implementationStatus.value === 'CLOSED' && !isOracleApproved(oracleStatus.value)) {
     issues.push(
       structuredFieldIssue({
         kind: 'CONFLICTING_STATUS',
         sectionTitle,
         fieldName: 'oracle_status',
         actual: oracleStatus.value ?? '<missing>',
-        allowedValues: ['passed']
+        allowedValues: ['passed', 'approved']
       })
     );
   }
@@ -1422,7 +1621,11 @@ const structuredImplementationStatuses = [
   'BLOCKED'
 ] as const;
 const structuredLocalValidationStatuses = ['passed', 'failed', 'not_run'] as const;
-const structuredOracleStatuses = ['not_submitted', 'pending', 'passed', 'changes_required', 'blocked'] as const;
+const structuredOracleStatuses = ['not_submitted', 'pending', 'passed', 'approved', 'changes_required', 'blocked'] as const;
+
+function isOracleApproved(status: string | undefined): boolean {
+  return status === 'passed' || status === 'approved';
+}
 const oracleGatedAllowedNextStates: Record<string, readonly string[]> = {
   planned: ['landed'],
   landed: ['verified'],
@@ -1437,6 +1640,96 @@ const oracleGatedAllowedNextStates: Record<string, readonly string[]> = {
 };
 const oracleGatedKnownStates = Object.keys(oracleGatedAllowedNextStates);
 const oracleGatedKnownStateSet = new Set<string>(oracleGatedKnownStates);
+
+function validateOracleRevisionEvidenceBundle(input: OracleRevisionEvidenceBundle): string[] {
+  const issues: string[] = [];
+  for (const [field, actual, expected] of [
+    ['repository', input.repository, input.expectedRepository],
+    ['worktree', input.worktree, input.expectedWorktree],
+    ['branch', input.branch, input.expectedBranch],
+    ['commit_sha', input.currentCommitSha, input.oracleCommitSha],
+    ['file_path', input.filePath, input.oracleFilePath],
+    ['section_id', input.sectionId, input.oracleSectionId]
+  ] as const) {
+    if (actual !== expected) {
+      issues.push(`REVISION_MISMATCH field="${field}" actual="${actual}" expected="${expected}"`);
+    }
+  }
+  if (input.rgCommand.length === 0) {
+    issues.push('MISSING_REVIEW_EVIDENCE field="rgCommand" actual="<missing>" expected="present"');
+  }
+  if (input.rgResults.length === 0) {
+    issues.push('MISSING_REVIEW_EVIDENCE field="rgResults" actual="<missing>" expected="present"');
+  }
+  if (input.nlRange.length === 0) {
+    issues.push('MISSING_REVIEW_EVIDENCE field="nlRange" actual="<missing>" expected="present"');
+  }
+  if (input.currentValue === input.oracleQuotedValue) {
+    issues.push(`STALE_VALUE_NOT_DISTINGUISHED actual="${input.currentValue}" expectedDifferentFrom="${input.oracleQuotedValue}"`);
+  }
+  return issues;
+}
+
+type OracleRevisionEvidenceBundle = {
+  repository: string;
+  expectedRepository: string;
+  worktree: string;
+  expectedWorktree: string;
+  branch: string;
+  expectedBranch: string;
+  currentCommitSha: string;
+  oracleCommitSha: string;
+  filePath: string;
+  oracleFilePath: string;
+  sectionId: string;
+  oracleSectionId: string;
+  rgCommand: string;
+  rgResults: readonly string[];
+  nlRange: string;
+  currentValue: string;
+  oracleQuotedValue: string;
+};
+
+function validateGuardrailCheckpointTrace(input: GuardrailCheckpointTrace): string[] {
+  const issues: string[] = [];
+  if (!input.logExists) {
+    issues.push(`MISSING_IMPROVEMENT_LOG identity="${input.logIdentity}"`);
+  }
+  if (!input.closureExists) {
+    issues.push(`MISSING_CLOSURE_RECORD identity="${input.closureIdentity}"`);
+  }
+  if (input.logIdentity !== input.closureIdentity) {
+    issues.push(`CHECKPOINT_IDENTITY_MISMATCH log="${input.logIdentity}" closure="${input.closureIdentity}"`);
+  }
+  if (!input.commitExists) {
+    issues.push(`COMMIT_NOT_FOUND commit="${input.commitSha}"`);
+    return issues;
+  }
+  for (const path of input.expectedCommittedPaths) {
+    if (!input.committedPaths.includes(path)) {
+      issues.push(`COMMIT_PATH_MISSING commit="${input.commitSha}" path="${path}"`);
+    }
+  }
+  if (input.closureStatus === 'CHECKPOINT_COMMITTED') {
+    for (const path of input.unexplainedImplementationDiffPaths) {
+      issues.push(`UNEXPLAINED_IMPLEMENTATION_DIFF path="${path}"`);
+    }
+  }
+  return issues;
+}
+
+type GuardrailCheckpointTrace = {
+  logExists: boolean;
+  closureExists: boolean;
+  logIdentity: string;
+  closureIdentity: string;
+  commitSha: string;
+  commitExists: boolean;
+  committedPaths: readonly string[];
+  expectedCommittedPaths: readonly string[];
+  closureStatus: 'LOCALLY_VALIDATED' | 'ORACLE_PENDING' | 'ORACLE_PASSED_AWAITING_COMMIT' | 'CHECKPOINT_COMMITTED';
+  unexplainedImplementationDiffPaths: readonly string[];
+};
 
 function timeoutObservation(command: string, status: TimeoutObservation['status'], timeoutMs: number, durationMs: number): TimeoutObservation {
   return { command, status, timeoutMs, durationMs, environment: 'local-vitest-node' };
