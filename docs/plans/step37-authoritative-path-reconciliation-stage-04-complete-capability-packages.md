@@ -2044,3 +2044,14 @@ Next: checkpoint commit for this combat.airborne_fire slice only
 ```
 
 Stop marker: Stage 4 combat.airborne_fire package-owned QA slice passed Oracle and is awaiting checkpoint commit. Do not enter the next Stage 4 audit, do not enter Stage 5, and do not claim complete package closure until checkpoint commit completes.
+
+### Durable Guardrail — Compound Capability Evidence
+
+This Stage 4 loop now treats compound capabilities of the form "perform action X under condition Y" as requiring evidence for both the action and the condition. Future slices must not reduce a conditional capability to the action event alone.
+
+For `combat.airborne_fire.v1`, the must-pass check is stable:
+
+- QA runtime evidence must preserve and validate `airborne: true`.
+- `player.fired` and `projectile.spawned` alone do not verify `combat.airborne_fire.v1`.
+- A negative regression must continue to fail when `player.fired` exists but airborne proof is missing or false.
+- Future Step37 loop work must not delete, weaken, bypass, or rename this check without a new audit, Oracle review, and replacement evidence that proves the same action-plus-condition semantics.
