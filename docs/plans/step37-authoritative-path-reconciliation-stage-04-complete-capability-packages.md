@@ -2,7 +2,7 @@
 
 > - Parent plan: `docs/plans/step37-authoritative-path-reconciliation-audit.md`
 > - Stage: 4 — Complete Capability Packages
-> - Current status: collision.platform package-owned QA slice checkpoint committed; spawn.static package-owned QA slice audit recorded
+> - Current status: spawn.static package-owned QA slice checkpoint `774ab979` committed; health.player_health_points package-owned QA slice audit recorded; implementation not entered; Stage 4 exit not met
 > - Updated: 2026-06-25
 
 ## Scope Lock
@@ -1711,3 +1711,45 @@ Next: checkpoint commit for this spawn.static slice only
 ```
 
 Stop marker: Stage 4 spawn.static package-owned QA slice passed Oracle and is awaiting checkpoint commit. Do not enter Stage 5 and do not claim complete package closure.
+
+## Stage 4 Review — Health Player Health Points Package-Owned QA Slice
+
+### Scope Lock
+
+- scope: Stage 4 audit only.
+- baseline: Stage 4 spawn.static package-owned QA slice checkpoint commit `774ab979` (`feat(game-dsl): add spawn static QA package slice`).
+- implementation target: close the next smallest real package-owned QA slice for `health.player_health_points.v1` using existing side-scrolling runtime-plan health state, HUD consumption, and browser QA snapshot evidence.
+- non-goals: no Stage 5 exact lock, no composed schema, no canonical DSL, no provider run, no production default cutover, no legacy authoritative path exit, no full Stage 4 closure claim, no `health.damage_invulnerability.v1` promotion.
+- starting conclusion: runtime overlay can observe camera, collision, projectile, movement, spawn static, and default weapon as complete for the same run, but the target profile remains `target_profile_runtime_support_incomplete:6/59`.
+
+### Current Stage Review Conclusion
+
+`health.player_health_points.v1` is the next minimal real package-owned QA slice because the production side-scrolling runtime already initializes and consumes player health from runtime-plan data, and browser QA can observe the live health state through the runtime snapshot:
+
+- `buildDeepSeekRunAndGunValidationProfileSupportSummary()` reports `health.player_health_points.v1` as `CONTRACT_SEEDED` with `schema_expressible=true`, `normalized=true`, `compiled=true`, `runtime_consumed=true`, `qa_observed=false`, and missing prerequisites `amendmentOperations`, `capabilityOwnedQa`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`;
+- `SideScrollingRunAndGunScene` initializes `createRuntimeState(this.plan.player.health)`, tracks `state.health` / `state.maxHealth`, and renders the HUD text from current health and max health;
+- `QaBridge.snapshot()` exposes `health`, and the side-scrolling QA snapshot also exposes `lives`, so browser QA can observe a real runtime health state without synthetic telemetry;
+- `health.damage_invulnerability.v1` is excluded from this slice because the current runtime does not implement a distinct invulnerability window or cooldown semantics; wrapping plain damage/lives behavior as invulnerability would overclaim support.
+
+Therefore, the next minimal closure requirement is to add a real `health.player_health_points.v1` package-owned QA probe and wire the runtime/QA consumer to observe current player health as package evidence. This may raise runtime-observed support from `6/59` to `7/59`, but Stage 4 exit still remains `NOT_MET`.
+
+### Extracted Minimal Closure Requirements
+
+1. Add a `health.player_health_points.v1` package contract with a required player-health runtime state QA probe.
+2. Install the health player points package on the side-scrolling active-profile path alongside the six existing package-owned QA slices.
+3. Extend the side-scrolling runtime snapshot/probe evidence from actual runtime health state, not from static template constants alone.
+4. Extend the Playwright QA expectation to require the health player points probe while keeping prior six probes unchanged.
+5. Keep `health.damage_invulnerability.v1` out of this slice because invulnerability semantics are not yet runtime-supported.
+6. Keep static support summary incomplete; only the runtime overlay may report `observedCompleteSupported=true` for this capability.
+7. Keep Stage 4 exit blocked until all 59 required target capabilities are observed complete.
+
+### Exit Assessment Before Implementation
+
+```text
+Stage 4 Health Player Health Points Package-Owned QA Slice Audit: RECORDED
+Stage 4 Health Player Health Points Package-Owned QA Slice Implementation: NOT_ENTERED
+Expected post-implementation overlay: observedCompleteSupportedCount=7/59
+Stage 4 Exit gate: NOT_MET
+```
+
+Stop marker: Stage 4 health.player_health_points package-owned QA slice audit is recorded. Implementation may start for this slice only after audit Oracle/checkpoint; do not enter Stage 5 and do not claim complete package closure.

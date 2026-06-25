@@ -1,7 +1,7 @@
 # Step 37 Authoritative Path Reconciliation Audit
 
 > - 文档定位：Step 37 authoritative production chain 的逐段只读审计状态文档。
-> - 当前状态：Stage 4 spawn.static package-owned QA slice Oracle passed; checkpoint pending
+> - 当前状态：Stage 4 health.player_health_points package-owned QA slice audit recorded
 > - 任务契约：`/Users/dahufa/Downloads/step37-authoritative-path-reconciliation-prompt.md`
 > - 当前分片：`docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`
 > - 更新日期：2026-06-25
@@ -48,13 +48,13 @@
 
 ## 4. 当前状态
 
-- 状态：Stage 4 spawn.static package-owned QA slice Oracle passed; checkpoint pending.
-- 当前步骤：Stage 4 已完成 `spawn.static.v1` package-owned QA slice implementation local validation and Oracle review；下一步只允许 checkpoint commit 当前 slice。
-- 最近完成：Stage 4 spawn.static package-owned QA slice 新增 spawn static package/probe/runtime snapshot evidence wiring，使 runtime overlay observed complete support 从 `5/59` 推进到 `6/59`，但 static support summary 仍保持 `completeSupportedCount=0`，Stage 4 exit 仍为 `NOT_MET`。
+- 状态：Stage 4 health.player_health_points package-owned QA slice audit recorded.
+- 当前步骤：Stage 4 已完成 `spawn.static.v1` package-owned QA slice checkpoint `774ab979`，并已进入下一 closure requirement 的只读审查；`health.player_health_points.v1` 是当前最小实现候选，implementation 尚未进入。
+- 最近完成：Stage 4 spawn.static package-owned QA slice 新增 spawn static package/probe/runtime snapshot evidence wiring，使 runtime overlay observed complete support 从 `5/59` 推进到 `6/59`，但 static support summary 仍保持 `completeSupportedCount=0`，Stage 4 exit 仍为 `NOT_MET`。随后 Stage 4 审查确认 `health.player_health_points.v1` 仍缺 package-owned QA probe / required probe verification；下一实现只能围绕现有 side-scrolling runtime-plan health state、HUD consumption 与 browser QA snapshot evidence。
 - 最近验证：spawn RED probe failed before implementation because `createSpawnStaticPackageContract` was not exported；GREEN probe PASS；focused tests PASS, 7 files / 11 selected tests；related suite PASS, 10 files / 177 tests；support probe confirms static `completeSupportedCount=0`, capability QA `requiredResults=6`, runtime overlay `observedCompleteSupportedCount=6`, observed capability ids `[camera.side_follow.v1, collision.platform.v1, combat.projectile.v1, movement.run_jump.v1, spawn.static.v1, weapon.default_straight_single.v1]`, and blocker `target_profile_runtime_support_incomplete:6/59`；full `npm test` PASS, contracts 94 files / 1049 tests and workspace 34 files / 402 tests；full `npm run typecheck` PASS。
 - 最近 Oracle 结论：Stage 1 final Oracle PASS；Stage 2 Profile Resolution audit Oracle PASS；Stage 2 closure Oracle PASS / no P0/P1/P2/P3；Stage 3 audit Oracle re-review PASS / no P0/P1/P2/P3；Stage 3 closure Oracle re-review PASS / no P0/P1/P2/P3；Stage 4 audit Oracle PASS / no P0/P1/P2, P3 remediated；Stage 4 package closure gate implementation Oracle PASS / no P0/P1/P2/P3；Stage 4 default weapon browser QA evidence implementation Oracle PASS / no P0/P1/P2，P3 notes direct `PlaywrightQaRunnerService.run` capability evidence gate remains opt-in outside production pipeline；Stage 4 support prerequisite gate first Oracle BLOCKED on same-version schema compatibility；adapter fix Oracle re-review PASS / no P0/P1/P2/P3，checkpoint committed as `f5f1daa3`；Stage 4 default weapon package contract prerequisite Oracle PASS / no P0/P1/P2/P3；Stage 4 required-probe QA report bridge Oracle PASS / no P0/P1/P2, non-blocking P3 notes older active-profile no-package behavior can still report passed/observed without shadow QA refs; checkpoint commit allowed；Stage 4 target profile runtime support overlay Oracle PASS / P3 exact-lock wording remediated；Oracle re-review PASS / no P0/P1/P2/P3, checkpoint commit allowed for overlay only；Stage 4 runtime support overlay artifact index visibility Oracle PASS / no P0/P1/P2/P3, checkpoint allowed for this artifact visibility micro-step only；Stage 4 combat projectile package-owned QA slice Oracle PASS / no P0/P1/P2/P3, checkpoint allowed for this projectile slice only；Stage 4 movement.run_jump package-owned QA slice Oracle PASS / no P0/P1/P2/P3, checkpoint allowed for this movement slice only；Stage 4 camera.side_follow package-owned QA slice Oracle PASS with non-blocking P3, P3 remediated, Oracle re-review PASS / no P0/P1/P2/P3, checkpoint allowed for this camera slice only；Stage 4 collision.platform package-owned QA slice Oracle PASS / no P0/P1/P2 blocking findings, non-blocking P3 notes future hardening should assert `runtimeModuleId` against package `runtimeSystemId`, checkpoint allowed for this collision slice only；Stage 4 spawn.static package-owned QA slice Oracle PASS / no P0/P1/P2 blocking findings, non-blocking P3 repeats the same future hardening for `runtimeModuleId` vs package `runtimeSystemId`, checkpoint allowed for this spawn slice only。
 - 未处理风险：Stage 4 complete package closure 尚未达成；Stage 5 Exact Capability Lock 尚未进入；Stage 3 Gate E 仍不证明 `profileRequirements.requirementsHash` / `requiredCapabilityIds` 字段级 downstream action；post-Stage-1 shadow/canary parity/rollback 仍未实施。`QaReport` status consistency 作为非阻塞债务登记，不重新打开 Stage 1。
-- 工作区核对：Stage 4 `spawn.static.v1` package-owned QA slice audit checkpoint is `5fb63428`; implementation passed Oracle and is awaiting checkpoint commit.
+- 工作区核对：Stage 4 `spawn.static.v1` package-owned QA slice checkpoint is `774ab979`; Stage 4 `health.player_health_points.v1` package-owned QA slice audit is recorded in the working tree and awaits Oracle/checkpoint.
 
 ## 5. 下一步
 
@@ -100,11 +100,14 @@ Stage 4 collision.platform package-owned QA slice implementation: CHECKPOINT_COM
 Stage 4 collision.platform package-owned QA slice checkpoint: 638bc34a
 Stage 4 spawn.static package-owned QA slice audit: RECORDED
 Stage 4 spawn.static package-owned QA slice audit checkpoint: 5fb63428
-Stage 4 spawn.static package-owned QA slice implementation: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 spawn.static package-owned QA slice implementation: CHECKPOINT_COMMITTED
+Stage 4 spawn.static package-owned QA slice checkpoint: 774ab979
+Stage 4 health.player_health_points package-owned QA slice audit: RECORDED
+Stage 4 health.player_health_points package-owned QA slice implementation: NOT_ENTERED
 Stage 4 Exit gate: NOT_MET
 ```
 
-下一步只允许提交 Stage 4 `spawn.static.v1` package-owned QA slice checkpoint；不得进入其他 Stage，不得把 `6/59` runtime-observed support 等同于 Stage 4 exit。
+下一步只允许对 Stage 4 `health.player_health_points.v1` package-owned QA slice audit 做 Oracle 复审和 checkpoint；不得跳过审查直接实现，不得进入 Stage 5，不得把预期 `7/59` runtime-observed support 等同于 Stage 4 exit。
 
 ## 6. 恢复检查清单
 
