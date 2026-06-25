@@ -2414,3 +2414,90 @@ This log records durable process improvements discovered during the `movement.cr
 8. Identifier traceability: logs must record the ID field name, value, and source, and the result must map back to the original submission/agent relationship. Results from another task, agent, or run are not valid closure evidence.
 
 Repository guardrail added: `tests/contracts/step37-closure-implementation-trace.test.ts` verifies audit-only boundaries and typed Oracle polling identifiers, including a negative contract where a `submission_id` cannot satisfy an `agent_id` polling path.
+
+## Stage 4 Closure Implementation — Audit Boundary And Identifier Guardrails
+
+- implementation status: `CHECKPOINT_COMMITTED`.
+- implementation checkpoint: `2d49b17e` (`test(game-dsl): preserve step37 audit guardrails`).
+- scope: process/evidence guardrail only; no runtime, schema, compiler, QA runner behavior, Stage 5 exact lock, production default cutover, legacy authoritative path exit, or capability closure was introduced.
+
+Actual modified paths in checkpoint `2d49b17e`:
+
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`
+- `tests/contracts/step37-closure-implementation-trace.test.ts`
+- `tests/contracts/art-asset-metadata-runtime-export-cli.test.ts`
+
+Evidence/probe chain:
+
+- `tests/contracts/step37-closure-implementation-trace.test.ts` verifies the `movement.crouch.v1` audit checkpoint `09c1ea60` changed only this Stage 4 plan document and did not introduce implementation closure claims.
+- The same contract test verifies typed Oracle polling identifiers: a `submission_id` cannot satisfy an `agent_id` polling path, and returned results must match the original submission/agent mapping.
+- `tests/contracts/art-asset-metadata-runtime-export-cli.test.ts` keeps the existing usage-error behavior unchanged and applies a local `10_000ms` timeout only to the CLI usage-error test that runs four CLI subprocesses.
+
+Timeout adjustment evidence:
+
+- Original full command: `npm test`.
+  - exitCode: 1.
+  - result: FAIL twice on `tests/contracts/art-asset-metadata-runtime-export-cli.test.ts > returns exit code 2 for usage errors` at Vitest's default `5000ms` timeout.
+  - observed durations: about `5011ms` and `5014ms` before timeout.
+- Isolated failing test command: `npx vitest run tests/contracts/art-asset-metadata-runtime-export-cli.test.ts -t "returns exit code 2 for usage errors"`.
+  - exitCode: 0.
+  - result: PASS, 1 test passed, 7 skipped.
+  - observed duration: about `2208ms` before the local timeout change, and about `2794ms` after the local timeout change.
+- Equivalent full-contract command with only timeout changed: `npx vitest run tests/contracts --testTimeout=10000`.
+  - exitCode: 0.
+  - result: PASS, 95 files passed, 1070 tests passed.
+  - observed usage-error test duration: about `4458ms`.
+- Conclusion: the evidence supports a narrow local timeout for this multi-subprocess CLI usage-error test; it does not change global timeout and does not claim a product performance improvement.
+
+Validation receipts:
+
+```text
+npx vitest run tests/contracts/step37-closure-implementation-trace.test.ts
+exitCode=0
+result=PASS: 11 tests passed
+
+npx vitest run tests/contracts/art-asset-metadata-runtime-export-cli.test.ts -t "returns exit code 2 for usage errors"
+exitCode=0
+result=PASS: 1 test passed, 7 skipped
+
+npm test
+exitCode=0
+result=PASS: contracts 95 files / 1070 tests; workspace 34 files / 406 tests
+
+npm run typecheck
+exitCode=0
+result=PASS
+
+git diff --check
+exitCode=0
+result=PASS
+```
+
+Oracle review:
+
+- Oracle PASS / no P0/P1/P2 blocking findings.
+- Oracle reviewed the audit/implementation separation, typed ID contract, movement.crouch docs-only boundary, local timeout stabilization, and absence of Stage 5/default cutover/legacy-exit/capability-closure claims.
+
+Unresolved items:
+
+- Stage 4 full package closure remains `NOT_MET`.
+- Stage 5 exact lock remains `NOT_ENTERED`.
+- Production default cutover remains inactive.
+- Legacy authoritative path has not exited.
+- The generalized "testing timeout diagnosis" rule is intentionally deferred to the next independent atomic step.
+
+State transition:
+
+```text
+planned -> landed -> verified -> oracle_passed -> checkpoint_committed
+```
+
+### Exit Assessment
+
+```text
+Stage 4 Audit Boundary And Identifier Guardrails: CHECKPOINT_COMMITTED
+Stage 4 Exit gate: NOT_MET
+Next: independent timeout-diagnosis rule solidification step
+```
+
+Stop marker: Stage 4 audit-boundary and identifier guardrail checkpoint `2d49b17e` is complete. Do not treat this checkpoint as Stage 4 full closure, Stage 5 entry, production default cutover, or legacy authoritative path exit. The timeout-diagnosis rule may start only as a separate atomic step after this checkpoint remains clean and verified.

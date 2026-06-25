@@ -11,6 +11,14 @@ const healthDamageInvulnerabilityCheckpointCommit = 'd8225bf1';
 const movementCrouchAuditTitle = '## Stage 4 Audit — Movement Crouch Package-Owned QA Slice';
 const movementCrouchAuditCheckpointCommit = '09c1ea60';
 const auditBoundaryAndIdentifierGuardrailTitle = '## Stage 4 Improvement Log — Audit Boundary And Identifier Guardrails';
+const auditBoundaryIdentifierClosureTitle = '## Stage 4 Closure Implementation — Audit Boundary And Identifier Guardrails';
+const auditBoundaryIdentifierCheckpointCommit = '2d49b17e';
+
+const claimedAuditBoundaryIdentifierPaths = [
+  stage4PlanPath,
+  'tests/contracts/step37-closure-implementation-trace.test.ts',
+  'tests/contracts/art-asset-metadata-runtime-export-cli.test.ts'
+];
 
 const claimedHealthDamageInvulnerabilityPaths = [
   'packages/game-dsl/src/gameplay-capabilities/health-damage-invulnerability-package.ts',
@@ -248,6 +256,32 @@ describe('Step37 closure implementation traceability', () => {
         resultSubmissionId: 'submission_other'
       })
     ).toEqual(['ORACLE_RESULT_SUBMISSION_MISMATCH']);
+  });
+
+  it('keeps the audit boundary and identifier guardrail closure traceable to checkpoint evidence', async () => {
+    const document = await readFile(stage4PlanPath, 'utf8');
+    const section = extractSection(document, auditBoundaryIdentifierClosureTitle);
+    const checkpointPaths = changedPathsForCommit(auditBoundaryIdentifierCheckpointCommit);
+
+    expect(section).toContain(`implementation checkpoint: \`${auditBoundaryIdentifierCheckpointCommit}\``);
+    expect(section).toContain('implementation status: `CHECKPOINT_COMMITTED`');
+    for (const path of claimedAuditBoundaryIdentifierPaths) {
+      expect(section).toContain(`\`${path}\``);
+      expect(checkpointPaths).toContain(path);
+    }
+    expect(section).toContain('a `submission_id` cannot satisfy an `agent_id` polling path');
+    expect(section).toContain('movement.crouch.v1` audit checkpoint `09c1ea60` changed only this Stage 4 plan document');
+    expect(section).toContain('Original full command: `npm test`');
+    expect(section).toContain('exitCode: 1');
+    expect(section).toContain('Equivalent full-contract command with only timeout changed');
+    expect(section).toContain('does not change global timeout');
+    expect(section).toContain('npm test\nexitCode=0');
+    expect(section).toContain('npm run typecheck\nexitCode=0');
+    expect(section).toContain('git diff --check\nexitCode=0');
+    expect(section).toContain('Oracle PASS / no P0/P1/P2 blocking findings');
+    expect(section).toContain('The generalized "testing timeout diagnosis" rule is intentionally deferred');
+    expect(section).toContain('planned -> landed -> verified -> oracle_passed -> checkpoint_committed');
+    expect(section).toContain('Stage 4 Exit gate: NOT_MET');
   });
 });
 
