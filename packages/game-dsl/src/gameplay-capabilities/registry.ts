@@ -235,13 +235,15 @@ export type GameplayProfileRuntimeStatus = {
   runtimeSupportStatus: RuntimeGenreCapability['status'];
   runtimeExecutable: boolean;
   runtimeTemplateId?: string;
+  runtimeTemplateManifestId?: string;
   qaProfile?: string;
+  activeRequirementCapabilityIds: string[];
   gameplayCapabilityIds: string[];
   declaredProfileCapabilityIds: string[];
   completeSupportedCapabilityIds: string[];
   incompleteCapabilityIds: string[];
   missingRegistryCapabilityAliases: string[];
-  profileSupportStatus: 'capability_complete_supported' | 'legacy_runtime_supported' | 'unsupported';
+  profileSupportStatus: 'capability_complete_supported' | 'active_profile_supported' | 'legacy_runtime_supported' | 'unsupported';
 };
 
 const phaser2dActionArcade = 'phaser_2d_action_arcade.v1';
@@ -363,6 +365,15 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     'health.damage_invulnerability.v1',
     'health',
     'Damage and invulnerability window',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    contractRuntimeLoaderEvidence
+  ),
+  contractSeeded(
+    'health.player_health_points.v1',
+    'health',
+    'Player health points',
     [phaser2dActionArcade],
     ['side_scrolling_run_and_gun.v1'],
     ['player_health'],
@@ -580,17 +591,23 @@ export function listGameplayProfileRuntimeStatuses(input: {
       }
     }
 
+    const activeRequirementCapabilityIds = uniqueSortedStrings(legacyGameplayCapabilityIds);
     const declaredProfileCapabilityIds = registry.entries.filter((entry) => entry.profiles.includes(profileId)).map((entry) => entry.id);
-    const gameplayCapabilityIds = uniqueSortedStrings([...legacyGameplayCapabilityIds, ...declaredProfileCapabilityIds]);
+    const gameplayCapabilityIds = uniqueSortedStrings([...activeRequirementCapabilityIds, ...declaredProfileCapabilityIds]);
     const capabilities = gameplayCapabilityIds.flatMap((id) => {
+      const capability = findGameplayCapability(id, registry);
+      return capability === undefined ? [] : [capability];
+    });
+    const activeRequirementCapabilities = activeRequirementCapabilityIds.flatMap((id) => {
       const capability = findGameplayCapability(id, registry);
       return capability === undefined ? [] : [capability];
     });
     const completeSupportedCapabilityIds = capabilities.filter(isCompleteSupportedGameplayCapability).map((entry) => entry.id);
     const incompleteCapabilityIds = capabilities.filter((entry) => !isCompleteSupportedGameplayCapability(entry)).map((entry) => entry.id);
     const runtimeExecutable = isRuntimeGenreExecutable(runtimeGenre);
-    const allCapabilitiesComplete =
-      runtimeExecutable && gameplayCapabilityIds.length > 0 && missingRegistryCapabilityAliases.length === 0 && incompleteCapabilityIds.length === 0;
+    const activeRequirementsResolved = runtimeExecutable && activeRequirementCapabilityIds.length > 0 && missingRegistryCapabilityAliases.length === 0;
+    const activeRequirementsComplete =
+      activeRequirementsResolved && activeRequirementCapabilities.every(isCompleteSupportedGameplayCapability);
 
     return {
       profileId,
@@ -598,16 +615,18 @@ export function listGameplayProfileRuntimeStatuses(input: {
       runtimeSupportStatus: runtimeGenre.status,
       runtimeExecutable,
       ...(runtimeGenre.templateId === undefined ? {} : { runtimeTemplateId: runtimeGenre.templateId }),
+      ...(runtimeGenre.runtimeTemplateManifestId === undefined ? {} : { runtimeTemplateManifestId: runtimeGenre.runtimeTemplateManifestId }),
       ...(runtimeGenre.qaProfile === undefined ? {} : { qaProfile: runtimeGenre.qaProfile }),
+      activeRequirementCapabilityIds,
       gameplayCapabilityIds,
       declaredProfileCapabilityIds,
       completeSupportedCapabilityIds,
       incompleteCapabilityIds,
       missingRegistryCapabilityAliases,
-      profileSupportStatus: allCapabilitiesComplete
+      profileSupportStatus: activeRequirementsComplete
         ? 'capability_complete_supported'
-        : runtimeExecutable
-          ? 'legacy_runtime_supported'
+        : activeRequirementsResolved
+          ? 'active_profile_supported'
           : 'unsupported'
     };
   });

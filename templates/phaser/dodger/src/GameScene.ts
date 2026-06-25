@@ -14,6 +14,7 @@ import {
   exposeRuntime
 } from '../../shared/kernel.js';
 import { EndScreenRenderer } from '../../shared/end-screen.js';
+import type { RuntimeAuthoritySnapshot } from '../../shared/runtime-authority.js';
 import { createDodgerArtRuntime, emitCoinSpark, type DodgerArtRuntime } from './dodger-art-library.js';
 import {
   defaultDodgerRuntimePlan,
@@ -89,7 +90,8 @@ export class DodgerGameScene {
   constructor(
     private readonly params: DodgerTemplateParams,
     private readonly runtimePlan: DodgerRuntimePlan = defaultDodgerRuntimePlan,
-    private readonly art: DodgerArtRuntime = createDodgerArtRuntime({ version: 'asset-manifest-v0.1', assets: [] })
+    private readonly art: DodgerArtRuntime = createDodgerArtRuntime({ version: 'asset-manifest-v0.1', assets: [] }),
+    private readonly runtimeAuthority?: RuntimeAuthoritySnapshot
   ) {
     this.state = createRuntimeState(params.player.health);
     this.telemetry = new TelemetrySystem(this.state);
@@ -117,7 +119,8 @@ export class DodgerGameScene {
         spawnPlan: {
           hazard: this.spawnRuleSnapshot(this.hazardSpawnRule),
           ...(this.params.collectible ? { collectible: this.spawnRuleSnapshot(this.collectibleSpawnRule) } : {})
-        }
+        },
+        runtimeAuthority: this.runtimeAuthority
       })),
       () => ({ assets: this.art.telemetry() })
     );

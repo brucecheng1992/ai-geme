@@ -41,5 +41,5 @@
     "src/live-edit-registry.generated.json",
     "src/asset-manifest.generated.json"
   ],
-  "shared_files": ["../shared/kernel.ts", "../shared/end-screen.ts"]
+  "shared_files": ["../shared/kernel.ts", "../shared/end-screen.ts", "../shared/runtime-authority.ts"]
 }

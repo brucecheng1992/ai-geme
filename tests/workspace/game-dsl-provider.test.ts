@@ -6,10 +6,17 @@ import { buildRawDslPromptContext } from '../../apps/maker-api/src/model-provide
 import type { GenerateJsonResult, JsonChatParams } from '../../apps/maker-api/src/model-provider/model-provider.types.js';
 import {
   buildGameDslArtifact,
+  buildActiveProfileLock,
+  buildAuthorityBundle,
+  buildCanonicalGameBriefArtifact,
+  buildGenerationCapabilityPreflight,
+  buildGenerationScopePlan,
   checkPhaserRuntimeCapabilities,
+  parseAndNormalizeGameBrief,
   RawGameDslSchema,
   validateAndNormalizeRawGameDsl,
   validateGameDslArtifact,
+  type AuthorityBundle,
   type GameBrief,
   type GameBriefV02,
   type GameDslArtifact
@@ -61,11 +68,16 @@ const sideScrollingBrief: GameBrief = {
   difficulty: 'normal'
 };
 
-const requestBase = {
+const requestIdentity = {
   projectId: 'proj_20260609_153000_abcd',
-  runId: 'run_20260609_153000_abcd',
+  runId: 'run_20260609_153000_abcd'
+};
+
+const requestBase = {
+  ...requestIdentity,
   idea: 'make a gem collector',
-  language: 'en' as const
+  language: 'en' as const,
+  authorityBundle: createAuthorityBundleForBrief(brief, requestIdentity)
 };
 
 function createModelClient(result: GenerateJsonResult, calls: JsonChatParams[] = []) {
@@ -84,6 +96,63 @@ function success(json: unknown): GenerateJsonResult {
     rawText: JSON.stringify(json),
     rawOutputPath: '/tmp/model-output.json'
   };
+}
+
+function createAuthorityBundleForBrief(
+  providerBrief: GameBrief | GameBriefV02,
+  identity: { projectId: string; runId: string } = requestBase
+): AuthorityBundle {
+  const parsed = parseAndNormalizeGameBrief(providerBrief);
+  const canonicalBrief = buildCanonicalGameBriefArtifact({
+    projectId: identity.projectId,
+    runId: identity.runId,
+    canonicalBrief: parsed.canonical,
+    sourceFormat: parsed.sourceFormat
+  });
+  const generationScopePlan = buildGenerationScopePlan({ requestedPlayTime: canonicalBrief.canonicalBrief.play_time_intent });
+  const preflight = buildGenerationCapabilityPreflight({
+    projectId: identity.projectId,
+    runId: identity.runId,
+    normalizedGenre: runtimeGenreForBrief(canonicalBrief.canonicalBrief)
+  });
+  const activeProfileLock = buildActiveProfileLock({
+    projectId: identity.projectId,
+    runId: identity.runId,
+    canonicalBrief,
+    generationScopePlan,
+    readinessReport: preflight.readinessReport
+  });
+  if (!activeProfileLock.ok) {
+    throw new Error(`Expected test active profile lock: ${activeProfileLock.issues.join('; ')}`);
+  }
+  const authorityBundle = buildAuthorityBundle({
+    projectId: identity.projectId,
+    runId: identity.runId,
+    canonicalBrief,
+    generationScopePlan,
+    activeProfileLock: activeProfileLock.value
+  });
+  if (!authorityBundle.ok) {
+    throw new Error(`Expected test authority bundle: ${authorityBundle.issues.join('; ')}`);
+  }
+  return authorityBundle.value;
+}
+
+function withAuthority<T extends { projectId: string; runId: string; brief: GameBrief | GameBriefV02 }>(input: T): T & { authorityBundle: AuthorityBundle } {
+  return {
+    ...input,
+    authorityBundle: createAuthorityBundleForBrief(input.brief, input)
+  };
+}
+
+function runtimeGenreForBrief(brief: GameBriefV02): string {
+  if (brief.genre === 'shooter') {
+    return 'top_down_shooter';
+  }
+  if (brief.genre === 'dodger') {
+    return 'dodger_collector';
+  }
+  return brief.genre;
 }
 
 function omitSpawn<T extends { spawn?: unknown }>(entity: T): Omit<T, 'spawn'> {
@@ -450,7 +519,7 @@ describe('GameDslProviderService', () => {
     const calls: JsonChatParams[] = [];
     const service = new GameDslProviderService(createModelClient(success(createCollectorRawDsl()), calls));
 
-    const result = await service.generateRawGameDsl({ ...requestBase, brief: briefV02 });
+    const result = await service.generateRawGameDsl(withAuthority({ ...requestBase, brief: briefV02 }));
 
     expect(result).toMatchObject({
       ok: false,
@@ -465,13 +534,13 @@ describe('GameDslProviderService', () => {
     const calls: JsonChatParams[] = [];
     const service = new GameDslProviderService(createModelClient(success(createCollectorRawDsl()), calls));
 
-    const result = await service.generateRawGameDsl({
+    const result = await service.generateRawGameDsl(withAuthority({
       ...requestBase,
       brief: {
         ...briefV02,
         play_time_intent: { mode }
       }
-    });
+    }));
 
     expect(result).toMatchObject({
       ok: false,
@@ -490,7 +559,7 @@ describe('GameDslProviderService', () => {
     };
     const service = new GameDslProviderService(createModelClient(success(rawDsl), calls));
 
-    await expect(service.generateRawGameDsl({ ...requestBase, brief: shortBrief })).resolves.toMatchObject({
+    await expect(service.generateRawGameDsl(withAuthority({ ...requestBase, brief: shortBrief }))).resolves.toMatchObject({
       ok: true,
       value: rawDsl
     });
@@ -517,7 +586,7 @@ describe('GameDslProviderService', () => {
       };
       const service = new GameDslProviderService(createModelClient(success(rawDsl)));
 
-      const result = await service.generateRawGameDsl({ ...requestBase, idea, language: 'zh', brief: sideBrief });
+      const result = await service.generateRawGameDsl(withAuthority({ ...requestBase, idea, language: 'zh', brief: sideBrief }));
 
       expect(result).toMatchObject({
         ok: true,
@@ -559,7 +628,7 @@ describe('GameDslProviderService', () => {
     };
     const service = new GameDslProviderService(createModelClient(success(rawDsl)));
 
-    const result = await service.generateRawGameDsl({ ...requestBase, idea: '做一个魂斗罗式横版射击游戏', language: 'zh', brief: sideBrief });
+    const result = await service.generateRawGameDsl(withAuthority({ ...requestBase, idea: '做一个魂斗罗式横版射击游戏', language: 'zh', brief: sideBrief }));
 
     expect(result).toMatchObject({
       ok: true,
@@ -594,7 +663,7 @@ describe('GameDslProviderService', () => {
     };
     const service = new GameDslProviderService(createModelClient(success(rawDsl)));
 
-    const result = await service.generateRawGameDsl({ ...requestBase, idea: '做一个魂斗罗式横版射击游戏', language: 'zh', brief: sideBrief });
+    const result = await service.generateRawGameDsl(withAuthority({ ...requestBase, idea: '做一个魂斗罗式横版射击游戏', language: 'zh', brief: sideBrief }));
 
     expect(result).toMatchObject({
       ok: false,
@@ -608,7 +677,7 @@ describe('GameDslProviderService', () => {
     const rawDsl = createDodgerRawDsl();
     const service = new GameDslProviderService(createModelClient(success(rawDsl), calls));
 
-    await expect(service.generateRawGameDsl({ ...requestBase, brief: dodgerBrief })).resolves.toMatchObject({
+    await expect(service.generateRawGameDsl(withAuthority({ ...requestBase, brief: dodgerBrief }))).resolves.toMatchObject({
       ok: true,
       value: {
         game: { genre: 'dodger' },
@@ -637,7 +706,7 @@ describe('GameDslProviderService', () => {
     };
     const service = new GameDslProviderService(createModelClient(success(rawDsl)));
 
-    const result = await service.generateRawGameDsl({ ...requestBase, brief: dodgerBrief });
+    const result = await service.generateRawGameDsl(withAuthority({ ...requestBase, brief: dodgerBrief }));
 
     expect(result).toMatchObject({
       ok: false,
@@ -660,7 +729,7 @@ describe('GameDslProviderService', () => {
     };
     const service = new GameDslProviderService(createModelClient(success(rawDsl)));
 
-    const result = await service.generateRawGameDsl({ ...requestBase, brief: dodgerBrief });
+    const result = await service.generateRawGameDsl(withAuthority({ ...requestBase, brief: dodgerBrief }));
 
     expect(result).toMatchObject({
       ok: false,
@@ -710,7 +779,7 @@ describe('GameDslProviderService', () => {
     };
     const service = new GameDslProviderService(createModelClient(success(rawDsl)));
 
-    const result = await service.generateRawGameDsl({ ...requestBase, brief: dodgerBrief });
+    const result = await service.generateRawGameDsl(withAuthority({ ...requestBase, brief: dodgerBrief }));
 
     expect(result).toMatchObject({
       ok: false,
@@ -760,7 +829,7 @@ describe('GameDslProviderService', () => {
     };
     const service = new GameDslProviderService(createModelClient(success(rawDsl)));
 
-    const result = await service.generateRawGameDsl({ ...requestBase, brief: dodgerBrief });
+    const result = await service.generateRawGameDsl(withAuthority({ ...requestBase, brief: dodgerBrief }));
 
     expect(result).toMatchObject({
       ok: false,
@@ -791,7 +860,7 @@ describe('GameDslProviderService', () => {
     };
     const service = new GameDslProviderService(createModelClient(success(rawDsl)));
 
-    const result = await service.generateRawGameDsl({ ...requestBase, brief: dodgerBrief });
+    const result = await service.generateRawGameDsl(withAuthority({ ...requestBase, brief: dodgerBrief }));
 
     expect(result).toMatchObject({
       ok: false,
@@ -823,7 +892,7 @@ describe('GameDslProviderService', () => {
     };
     const service = new GameDslProviderService(createModelClient(success(rawDsl)));
 
-    const result = await service.generateRawGameDsl({ ...requestBase, brief: dodgerBrief });
+    const result = await service.generateRawGameDsl(withAuthority({ ...requestBase, brief: dodgerBrief }));
 
     expect(result).toMatchObject({
       ok: false,
@@ -855,7 +924,7 @@ describe('GameDslProviderService', () => {
     };
     const service = new GameDslProviderService(createModelClient(success(rawDsl)));
 
-    const result = await service.generateRawGameDsl({ ...requestBase, brief: dodgerBrief });
+    const result = await service.generateRawGameDsl(withAuthority({ ...requestBase, brief: dodgerBrief }));
 
     expect(result).toMatchObject({
       ok: false,
@@ -901,7 +970,7 @@ describe('GameDslProviderService', () => {
   ])('rejects dodger collectible fixed_positions spawn when scoring collect semantics are invalid: $label', async ({ patch }) => {
     const service = new GameDslProviderService(createModelClient(success(patch(createDodgerRawDsl()))));
 
-    const result = await service.generateRawGameDsl({ ...requestBase, brief: dodgerBrief });
+    const result = await service.generateRawGameDsl(withAuthority({ ...requestBase, brief: dodgerBrief }));
 
     expect(result).toMatchObject({
       ok: false,
@@ -920,7 +989,7 @@ describe('GameDslProviderService', () => {
       createModelClient(success({ ...rawDsl, rules: { ...rawDsl.rules, spawns: [{ entity: 'obstacle', strategy: 'right_edge_wave' }] } }))
     );
 
-    const result = await service.generateRawGameDsl({ ...requestBase, brief: dodgerBrief });
+    const result = await service.generateRawGameDsl(withAuthority({ ...requestBase, brief: dodgerBrief }));
 
     expect(result).toMatchObject({
       ok: false,
@@ -941,12 +1010,73 @@ describe('GameDslProviderService', () => {
     };
     const service = new GameDslProviderService(createModelClient(success(rawDsl)));
 
-    await expect(service.generateRawGameDsl({ ...requestBase, brief: shooterBrief })).resolves.toMatchObject({
+    await expect(service.generateRawGameDsl(withAuthority({ ...requestBase, brief: shooterBrief }))).resolves.toMatchObject({
       ok: true,
       value: {
         objectives: { win: { type: 'enemy_cleared', target: 6 } }
       }
     });
+  });
+
+  it('fails closed before the model when Raw DSL generation lacks Stage 1 authority refs', async () => {
+    const calls: JsonChatParams[] = [];
+    const service = new GameDslProviderService(createModelClient(success(createShooterRawDsl()), calls));
+    const directRequestBase = {
+      projectId: requestBase.projectId,
+      runId: requestBase.runId,
+      idea: requestBase.idea,
+      language: requestBase.language
+    };
+
+    const result = await service.generateRawGameDsl({
+      ...directRequestBase,
+      brief: shooterBrief,
+      authorityBundle: undefined as unknown as AuthorityBundle
+    });
+
+    expect(calls).toHaveLength(0);
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'MODEL_SCHEMA_VALIDATION_FAILED',
+      message: 'Raw Game DSL authority bundle is invalid.'
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok && 'issues' in result) {
+      expect(result.issues).toEqual(
+        expect.arrayContaining([
+          'authorityBundle.<root>: Invalid input: expected object, received undefined'
+        ])
+      );
+    }
+  });
+
+  it('fails closed before the model when the authority bundle ref hash is forged', async () => {
+    const calls: JsonChatParams[] = [];
+    const service = new GameDslProviderService(createModelClient(success(createShooterRawDsl()), calls));
+    const forgedBundle = JSON.parse(JSON.stringify(createAuthorityBundleForBrief(shooterBrief, requestIdentity))) as AuthorityBundle;
+    forgedBundle.refs.generationScopePlan.contentHash = 'fnv1a_00000000';
+
+    const result = await service.generateRawGameDsl({
+      ...requestBase,
+      brief: shooterBrief,
+      authorityBundle: forgedBundle
+    });
+
+    expect(calls).toHaveLength(0);
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'MODEL_SCHEMA_VALIDATION_FAILED',
+      message: 'Raw Game DSL authority bundle is invalid.'
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok && 'issues' in result) {
+      expect(result.issues).toEqual(
+        expect.arrayContaining([
+          'authorityBundle.bundleHash: hash does not match bundle payload',
+          expect.stringMatching(/^refs\.generationScopePlan\.contentHash: expected fnv1a_[0-9a-f]{8}, received fnv1a_00000000$/)
+        ])
+      );
+    }
   });
 
   it('normalizes shooter survive_duration to enemy_cleared for the P0 runtime', async () => {
@@ -957,7 +1087,7 @@ describe('GameDslProviderService', () => {
     };
     const service = new GameDslProviderService(createModelClient(success(rawDsl)));
 
-    await expect(service.generateRawGameDsl({ ...requestBase, brief: shooterBrief })).resolves.toMatchObject({
+    await expect(service.generateRawGameDsl(withAuthority({ ...requestBase, brief: shooterBrief }))).resolves.toMatchObject({
       ok: true,
       value: {
         objectives: { win: { type: 'enemy_cleared', target: 6 } }
@@ -976,7 +1106,7 @@ describe('GameDslProviderService', () => {
     };
     const service = new GameDslProviderService(createModelClient(success(rawDsl)));
 
-    const result = await service.generateRawGameDsl({ ...requestBase, brief: shooterBrief });
+    const result = await service.generateRawGameDsl(withAuthority({ ...requestBase, brief: shooterBrief }));
 
     expect(result).toMatchObject({
       ok: false,
@@ -1012,7 +1142,7 @@ describe('GameDslProviderService', () => {
     const rawDsl = createCollectorRawDsl();
     const service = new GameDslProviderService(createModelClient(success(rawDsl)));
 
-    const result = await service.generateRawGameDsl({ ...requestBase, brief: shooterBrief });
+    const result = await service.generateRawGameDsl(withAuthority({ ...requestBase, brief: shooterBrief }));
 
     expect(result).toMatchObject({
       ok: false,

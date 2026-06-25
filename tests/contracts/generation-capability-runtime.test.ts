@@ -12,7 +12,7 @@ import {
 } from '../../packages/game-dsl/src/index.js';
 
 describe('Step 37 generation capability runtime shadow evidence', () => {
-  it('does not attempt runtime manifest, loader, or capability QA without a shadow lock', () => {
+  it('blocks active profile-bound production requirements until QA observes runtime authority', () => {
     const preflight = buildGenerationCapabilityPreflight({
       projectId: 'proj_20260619_capability_runtime',
       runId: 'run_20260619_capability_runtime',
@@ -38,26 +38,66 @@ describe('Step 37 generation capability runtime shadow evidence', () => {
       runtimeReport: {
         artifactKind: 'generation_capability_runtime_report',
         schemaVersion: 'generation_capability_runtime_report.v0.1',
-        selectedPath: 'legacy_template_v1',
+        selectedPath: 'capability_composed_v1',
         targetPath: 'capability_composed_v1',
-        shadowMode: true,
+        shadowMode: false,
         activeRuntimeManifestWritten: false,
         activeCapabilityQaWritten: false,
-        runtimeManifestStatus: 'not_attempted_no_shadow_lock',
+        runtimeManifestStatus: 'active_profile_bound',
         runtimeLoaderStatus: 'not_attempted',
         capabilityQaPlanStatus: 'not_attempted',
         capabilityQaReportStatus: 'not_attempted',
+        qaRuntimeAuthorityStatus: 'missing',
         runtimeEvidenceStatus: 'not_attempted',
-        lockCapabilityIds: [],
-        runtimeSystemCapabilityIds: []
+        lockCapabilityIds: expect.arrayContaining(['camera.side_follow.v1', 'health.player_health_points.v1', 'rules.restart_loop.v1']),
+        runtimeSystemCapabilityIds: [],
+        blockers: ['runtime_authority_not_observed']
       }
     });
     expect(runtime.runtimeReport.resolutionReportHash).toBe(resolution.resolutionReport.reportHash);
-    expect(runtime.runtimeReport.blockers).toContain('incomplete_capability:telemetry.gameplay_events.v1');
     expect(runtime.shadowRuntimeSystemManifest).toBeUndefined();
     expect(runtime.shadowRuntimeLoaderReport).toBeUndefined();
     expect(runtime.shadowCapabilityQaPlan).toBeUndefined();
     expect(runtime.shadowCapabilityQaReport).toBeUndefined();
+  });
+
+  it('observes active profile runtime evidence only when QA returns the same runtime authority refs', () => {
+    const preflight = buildGenerationCapabilityPreflight({
+      projectId: 'proj_20260619_capability_runtime',
+      runId: 'run_20260619_capability_runtime',
+      normalizedGenre: 'side_scrolling_run_and_gun'
+    });
+    const resolution = buildGenerationCapabilityResolutionShadow({
+      projectId: 'proj_20260619_capability_runtime',
+      runId: 'run_20260619_capability_runtime',
+      normalizedGenre: 'side_scrolling_run_and_gun',
+      registrySnapshot: preflight.registrySnapshot,
+      readinessReport: preflight.readinessReport
+    });
+
+    const runtime = buildGenerationCapabilityRuntimeShadow({
+      projectId: 'proj_20260619_capability_runtime',
+      runId: 'run_20260619_capability_runtime',
+      normalizedGenre: 'side_scrolling_run_and_gun',
+      resolutionReport: resolution.resolutionReport,
+      activeRuntimeAuthority: activeRuntimeAuthorityEvidence()
+    });
+
+    expect(runtime.runtimeReport).toMatchObject({
+      selectedPath: 'capability_composed_v1',
+      shadowMode: false,
+      activeRuntimeManifestWritten: true,
+      activeCapabilityQaWritten: true,
+      runtimeLoaderStatus: 'ready',
+      capabilityQaPlanStatus: 'ready',
+      capabilityQaReportStatus: 'passed',
+      qaRuntimeAuthorityStatus: 'matched',
+      authorityBundleRef: { bundleHash: 'fnv1a_12345678' },
+      activeProfileLockRef: { lockHash: 'fnv1a_87654321' },
+      runtimeEvidenceStatus: 'observed',
+      runtimeSystemCapabilityIds: expect.arrayContaining(['camera.side_follow.v1', 'health.player_health_points.v1', 'rules.restart_loop.v1']),
+      blockers: []
+    });
   });
 
   it('blocks a resolved shadow lock when no runtime manifest is supplied', () => {
@@ -97,7 +137,7 @@ describe('Step 37 generation capability runtime shadow evidence', () => {
 
     expect(runtime.runtimeReport).toMatchObject({
       profileId: 'collector.v1',
-      selectedPath: 'legacy_template_v1',
+      selectedPath: 'capability_composed_v1',
       targetPath: 'capability_composed_v1',
       exactLockHash: resolved.shadowGameplayCapabilityLock?.lockHash,
       lockCapabilityIds: ['camera.top_down_follow.v1', 'movement.eight_direction.v1', 'pickup.collectible.v1'],
@@ -157,6 +197,21 @@ function buildResolvedCollectorResolution(packages: GameplayCapabilityPackageCon
     readinessReport: preflight.readinessReport,
     approvedInstalledPackages: packages
   });
+}
+
+function activeRuntimeAuthorityEvidence() {
+  return {
+    authorityBundleRef: {
+      artifactKind: 'authority_bundle' as const,
+      path: 'authority_bundle.json' as const,
+      bundleHash: 'fnv1a_12345678'
+    },
+    activeProfileLockRef: {
+      artifactKind: 'active_profile_lock' as const,
+      path: 'active_profile_lock.json' as const,
+      lockHash: 'fnv1a_87654321'
+    }
+  };
 }
 
 function completeCollectorRegistry(): GameplayCapabilityRegistry {

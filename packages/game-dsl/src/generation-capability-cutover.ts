@@ -62,8 +62,8 @@ export const GenerationCapabilityCutoverReportSchema = z.strictObject({
   normalizedGenre: z.string().min(1),
   profileId: z.string().min(1).optional(),
   targetPath: z.literal('capability_composed_v1'),
-  activeSelectedPath: z.enum(['legacy_template_v1', 'fail_closed_unsupported_intent']),
-  defaultCutoverAllowed: z.literal(false),
+  activeSelectedPath: z.enum(['capability_composed_v1', 'legacy_template_v1', 'fail_closed_unsupported_intent']),
+  defaultCutoverAllowed: z.boolean(),
   activePathMutation: z.literal(false),
   shadowOutputMutation: z.literal(false),
   cutoverStage: z.enum([
@@ -72,6 +72,7 @@ export const GenerationCapabilityCutoverReportSchema = z.strictObject({
     'blocked_by_runtime_evidence',
     'blocked_by_parity',
     'blocked_by_rollback',
+    'active_profile_authoritative',
     'candidate_canary_ready'
   ]),
   candidateCanaryStatus: z.enum([
@@ -82,10 +83,18 @@ export const GenerationCapabilityCutoverReportSchema = z.strictObject({
     'blocked_rollback',
     'ready'
   ]),
-  parityStatus: z.enum(['not_comparable_evidence_identity', 'not_comparable_gap_blocked', 'not_comparable_runtime_blocked', 'passed', 'failed', 'missing']),
+  parityStatus: z.enum([
+    'not_required_active_profile',
+    'not_comparable_evidence_identity',
+    'not_comparable_gap_blocked',
+    'not_comparable_runtime_blocked',
+    'passed',
+    'failed',
+    'missing'
+  ]),
   unresolvedParityP0Count: z.number().int().min(0),
   unresolvedParityP1Count: z.number().int().min(0),
-  rollbackDrillStatus: z.enum(['not_started_gap_blocked', 'not_started_runtime_blocked', 'passed', 'failed', 'missing']),
+  rollbackDrillStatus: z.enum(['not_required_active_profile', 'not_started_gap_blocked', 'not_started_runtime_blocked', 'passed', 'failed', 'missing']),
   legacyAuthorizationRequiredForRollback: z.literal(true),
   legacyAuthorizationExpiresBeforeDefault: z.boolean().optional(),
   gapReportHash: z.string().min(1),
@@ -167,6 +176,12 @@ export function buildGenerationCapabilityCutoverReport(input: {
   const evidenceIdentityBlocked = evidenceIdentityBlockers.length > 0;
   const gapBlocked = !evidenceIdentityBlocked && gapReport.gapStatus !== 'not_required';
   const runtimeBlocked = !evidenceIdentityBlocked && !gapBlocked && runtimeReport.runtimeEvidenceStatus !== 'observed';
+  const activeProfileAuthoritative =
+    !evidenceIdentityBlocked &&
+    !gapBlocked &&
+    !runtimeBlocked &&
+    gapReport.selectedPath === 'capability_composed_v1' &&
+    runtimeReport.selectedPath === 'capability_composed_v1';
   const parity = migration?.parityReport;
   const unresolvedParityP1Count =
     parity === undefined
@@ -186,6 +201,7 @@ export function buildGenerationCapabilityCutoverReport(input: {
     unresolvedParityP1Count === 0;
   const rollbackPassed = rollback?.status === 'passed';
   const blockers = buildCutoverBlockers({
+    activeProfileAuthoritative,
     gapBlocked,
     runtimeBlocked,
     evidenceIdentityBlockers,
@@ -195,7 +211,7 @@ export function buildGenerationCapabilityCutoverReport(input: {
     rollback,
     rollbackPassed
   });
-  const cutoverStage = deriveCutoverStage({ evidenceIdentityBlocked, gapBlocked, runtimeBlocked, migrationReady, rollbackPassed });
+  const cutoverStage = deriveCutoverStage({ evidenceIdentityBlocked, gapBlocked, runtimeBlocked, activeProfileAuthoritative, migrationReady, rollbackPassed });
   const payload: Omit<GenerationCapabilityCutoverReport, 'reportHash'> = {
     artifactKind: GENERATION_CAPABILITY_CUTOVER_REPORT_KIND,
     schemaVersion: GENERATION_CAPABILITY_CUTOVER_REPORT_SCHEMA_VERSION,
@@ -205,15 +221,15 @@ export function buildGenerationCapabilityCutoverReport(input: {
     ...(gapReport.profileId === undefined ? {} : { profileId: gapReport.profileId }),
     targetPath: 'capability_composed_v1',
     activeSelectedPath: gapReport.selectedPath,
-    defaultCutoverAllowed: false,
+    defaultCutoverAllowed: activeProfileAuthoritative,
     activePathMutation: false,
     shadowOutputMutation: false,
     cutoverStage,
     candidateCanaryStatus: deriveCanaryStatus(cutoverStage),
-    parityStatus: deriveParityStatus({ evidenceIdentityBlocked, gapBlocked, runtimeBlocked, migration }),
+    parityStatus: deriveParityStatus({ evidenceIdentityBlocked, gapBlocked, runtimeBlocked, activeProfileAuthoritative, migration }),
     unresolvedParityP0Count: 0,
     unresolvedParityP1Count,
-    rollbackDrillStatus: deriveRollbackStatus({ gapBlocked, runtimeBlocked, rollback }),
+    rollbackDrillStatus: deriveRollbackStatus({ gapBlocked, runtimeBlocked, activeProfileAuthoritative, rollback }),
     legacyAuthorizationRequiredForRollback: true,
     ...(rollback === undefined ? {} : { legacyAuthorizationExpiresBeforeDefault: true }),
     gapReportHash: gapReport.reportHash,
@@ -231,6 +247,7 @@ export function buildGenerationCapabilityCutoverReport(input: {
 }
 
 function buildCutoverBlockers(input: {
+  activeProfileAuthoritative: boolean;
   gapBlocked: boolean;
   runtimeBlocked: boolean;
   evidenceIdentityBlockers: readonly string[];
@@ -249,6 +266,9 @@ function buildCutoverBlockers(input: {
   if (input.runtimeBlocked) {
     return ['runtime_evidence_not_observed'];
   }
+  if (input.activeProfileAuthoritative) {
+    return [];
+  }
   return [
     ...(input.migration === undefined ? ['run_and_gun_migration_report_missing'] : []),
     ...(input.migration !== undefined && !input.migrationReady ? ['run_and_gun_migration_not_ready'] : []),
@@ -262,6 +282,7 @@ function deriveCutoverStage(input: {
   evidenceIdentityBlocked: boolean;
   gapBlocked: boolean;
   runtimeBlocked: boolean;
+  activeProfileAuthoritative: boolean;
   migrationReady: boolean;
   rollbackPassed: boolean;
 }): GenerationCapabilityCutoverReport['cutoverStage'] {
@@ -273,6 +294,9 @@ function deriveCutoverStage(input: {
   }
   if (input.runtimeBlocked) {
     return 'blocked_by_runtime_evidence';
+  }
+  if (input.activeProfileAuthoritative) {
+    return 'active_profile_authoritative';
   }
   if (!input.migrationReady) {
     return 'blocked_by_parity';
@@ -306,8 +330,12 @@ function deriveParityStatus(input: {
   evidenceIdentityBlocked: boolean;
   gapBlocked: boolean;
   runtimeBlocked: boolean;
+  activeProfileAuthoritative: boolean;
   migration: RunAndGunCapabilityMigrationReport | undefined;
 }): GenerationCapabilityCutoverReport['parityStatus'] {
+  if (input.activeProfileAuthoritative) {
+    return 'not_required_active_profile';
+  }
   if (input.evidenceIdentityBlocked) {
     return 'not_comparable_evidence_identity';
   }
@@ -326,8 +354,12 @@ function deriveParityStatus(input: {
 function deriveRollbackStatus(input: {
   gapBlocked: boolean;
   runtimeBlocked: boolean;
+  activeProfileAuthoritative: boolean;
   rollback: GenerationCapabilityRollbackDrillReport | undefined;
 }): GenerationCapabilityCutoverReport['rollbackDrillStatus'] {
+  if (input.activeProfileAuthoritative) {
+    return 'not_required_active_profile';
+  }
   if (input.gapBlocked) {
     return 'not_started_gap_blocked';
   }

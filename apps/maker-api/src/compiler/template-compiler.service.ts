@@ -13,7 +13,8 @@ import {
   checkPhaserRuntimeCapabilities,
   findRuntimeGenreCapabilityByTemplateManifestId,
   getRuntimeLiveEditCapabilitiesForGenre,
-  NormalizedGameIrSchema
+  NormalizedGameIrSchema,
+  validateAuthorityBundleForRun
 } from '../../../../packages/game-dsl/src/index.js';
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
 import { writeAssetBindingTraceReport } from './asset-binding-trace-report.js';
@@ -34,6 +35,10 @@ export class TemplateCompilerService {
   }
 
   async compile(input: RuntimeCompileInput): Promise<RuntimeCompileResult> {
+    const authority = validateAuthorityBundleForRun({ projectId: input.projectId, runId: input.runId, bundle: input.authorityBundle });
+    if (!authority.ok) {
+      throw new Error(`Authority bundle precondition failed before compile: ${authority.issues.join('; ')}`);
+    }
     const ir = NormalizedGameIrSchema.parse(input.ir);
     const templateId = ir.template_params.template_id;
     const runtimeGate = checkPhaserRuntimeCapabilities(ir);
@@ -81,11 +86,14 @@ export class TemplateCompilerService {
       `${genre}/src/template-params.ts`,
       'shared/kernel.ts',
       'shared/end-screen.ts',
+      'shared/runtime-authority.ts',
       ...(generatedTemplateArtifacts.has('assetManifest') ? [`${genre}/src/asset-manifest.generated.json`] : []),
       ...(generatedTemplateArtifacts.has('runtimePlan') ? [`${genre}/src/runtime-plan.generated.json`] : []),
+      `${genre}/src/runtime-authority.generated.json`,
       ...(generatedTemplateArtifacts.has('sceneIr') && sceneIr !== undefined ? [`${genre}/src/scene-ir.generated.json`] : []),
       ...(generatedTemplateArtifacts.has('liveEditRegistry') ? [`${genre}/src/live-edit-registry.generated.json`] : []),
       `${genre}/src/template-params.generated.json`,
+      'runtime-authority.generated.json',
       ...(sceneIr === undefined ? [] : ['game.scene.ir.json', 'scene_ir_authority_report.json', 'scene_ir_coverage_report.json', 'runtime_scene_binding_report.json'])
     ];
 
@@ -103,6 +111,8 @@ export class TemplateCompilerService {
     });
     const templateAssetRoot = join(this.templateRoot, '..', '..');
     await writeFile(join(outputDir, 'game.ir.json'), `${JSON.stringify(ir, null, 2)}\n`, 'utf8');
+    await writeFile(join(outputDir, 'runtime-authority.generated.json'), `${JSON.stringify(authority.value, null, 2)}\n`, 'utf8');
+    await writeFile(join(outputDir, `${genre}`, 'src', 'runtime-authority.generated.json'), `${JSON.stringify(authority.value, null, 2)}\n`, 'utf8');
     if (sceneIr !== undefined) {
       await writeFile(join(outputDir, 'game.scene.ir.json'), `${JSON.stringify(sceneIr, null, 2)}\n`, 'utf8');
       await writeFile(

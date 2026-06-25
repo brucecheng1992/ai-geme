@@ -364,6 +364,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       'goal.reach_exit.v1',
       'hazard.contact_damage.v1',
       'health.damage_invulnerability.v1',
+      'health.player_health_points.v1',
       'metadata.fixed_prompt_binding.v1',
       'movement.crouch.v1',
       'movement.eight_direction.v1',

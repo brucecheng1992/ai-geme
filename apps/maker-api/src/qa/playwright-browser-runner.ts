@@ -11,6 +11,8 @@ import type {
   QaFailureCode,
   QaGenre,
   QaRequiredEvents,
+  QaRuntimeAuthorityEvidence,
+  QaRuntimeAuthorityExpectation,
   QaVisualMetrics,
   RunQaInput
 } from './qa.types.js';
@@ -112,7 +114,9 @@ export const runPlaywrightQaBrowser: QaBrowserRunner = async (input, requiredEve
     });
     const telemetry = result.telemetry.map((event) => TelemetryEventSchema.parse(event));
     const gateReady = requiredTelemetryObserved(telemetry.map((event) => event.type), requiredEvents);
-    const interactionReady = consoleErrors.length === 0 && gateReady && interactionAssertion.ok;
+    const runtimeAuthority = evaluateRuntimeAuthorityEvidence(result.snapshot, input.expectedRuntimeAuthority);
+    const runtimeAuthorityReady = runtimeAuthority?.status !== 'FAILED';
+    const interactionReady = consoleErrors.length === 0 && gateReady && interactionAssertion.ok && runtimeAuthorityReady;
 
     return {
       ok: interactionReady && visualGate.ok,
@@ -122,11 +126,12 @@ export const runPlaywrightQaBrowser: QaBrowserRunner = async (input, requiredEve
       telemetry,
       snapshot: result.snapshot,
       console_errors: consoleErrors,
-      failure_code: consoleErrors.length > 0 ? 'FATAL_CONSOLE_ERROR' : !gateReady ? 'REQUIRED_TELEMETRY_MISSING' : interactionAssertion.ok ? undefined : 'QA_RUNNER_FAILED',
-      message: interactionAssertion.message,
+      failure_code: resolveInteractionFailureCode({ consoleErrors, gateReady, interactionAssertion, runtimeAuthority }),
+      message: buildInteractionMessage(interactionAssertion.message, runtimeAuthority),
       screenshot_path: visualGate.screenshot_path,
       visual_metrics: visualGate.visual_metrics,
-      asset_runtime: assetAssertion.telemetry
+      asset_runtime: assetAssertion.telemetry,
+      runtime_authority: runtimeAuthority
     };
   } catch (error) {
     return {
@@ -155,6 +160,128 @@ function failedBrowserResult(failureCode: QaBrowserResult['failure_code'], conso
     failure_code: failureCode,
     message: error instanceof Error ? error.message : 'Playwright QA failed'
   };
+}
+
+export function evaluateRuntimeAuthorityEvidence(
+  snapshot: unknown,
+  expected: QaRuntimeAuthorityExpectation | undefined
+): QaRuntimeAuthorityEvidence | undefined {
+  if (expected === undefined) {
+    return undefined;
+  }
+
+  const observed = readRuntimeAuthoritySnapshot(snapshot);
+  if (observed === undefined) {
+    return {
+      status: 'FAILED',
+      expected,
+      mismatches: ['snapshot.runtimeAuthority: missing']
+    };
+  }
+
+  const mismatches = [
+    ...compareScalar('authorityBundleRef.artifactKind', observed.authorityBundleRef?.artifactKind, expected.authorityBundleRef.artifactKind),
+    ...compareScalar('authorityBundleRef.path', observed.authorityBundleRef?.path, expected.authorityBundleRef.path),
+    ...compareScalar('authorityBundleRef.bundleHash', observed.authorityBundleRef?.bundleHash, expected.authorityBundleRef.bundleHash),
+    ...compareScalar('activeProfileLockRef.artifactKind', observed.activeProfileLockRef?.artifactKind, expected.activeProfileLockRef.artifactKind),
+    ...compareScalar('activeProfileLockRef.path', observed.activeProfileLockRef?.path, expected.activeProfileLockRef.path),
+    ...compareScalar('activeProfileLockRef.lockHash', observed.activeProfileLockRef?.lockHash, expected.activeProfileLockRef.lockHash),
+    ...compareScalar('profileId', observed.profileId, expected.profileId),
+    ...compareScalar('runtimeTemplateId', observed.runtimeTemplateId, expected.runtimeTemplateId),
+    ...compareScalar('runtimeTemplateManifestId', observed.runtimeTemplateManifestId, expected.runtimeTemplateManifestId),
+    ...compareScalar('qaProfile', observed.qaProfile, expected.qaProfile)
+  ];
+
+  return {
+    status: mismatches.length === 0 ? 'PASSED' : 'FAILED',
+    expected,
+    observed,
+    mismatches
+  };
+}
+
+function readRuntimeAuthoritySnapshot(snapshot: unknown): Partial<QaRuntimeAuthorityExpectation> | undefined {
+  if (snapshot === null || typeof snapshot !== 'object' || !('runtimeAuthority' in snapshot)) {
+    return undefined;
+  }
+
+  const runtimeAuthority = (snapshot as { runtimeAuthority?: unknown }).runtimeAuthority;
+  if (runtimeAuthority === null || typeof runtimeAuthority !== 'object') {
+    return undefined;
+  }
+
+  return {
+    authorityBundleRef: readAuthorityBundleRef((runtimeAuthority as { authorityBundleRef?: unknown }).authorityBundleRef),
+    activeProfileLockRef: readActiveProfileLockRef((runtimeAuthority as { activeProfileLockRef?: unknown }).activeProfileLockRef),
+    profileId: readString((runtimeAuthority as { profileId?: unknown }).profileId),
+    runtimeTemplateId: readString((runtimeAuthority as { runtimeTemplateId?: unknown }).runtimeTemplateId),
+    runtimeTemplateManifestId: readString((runtimeAuthority as { runtimeTemplateManifestId?: unknown }).runtimeTemplateManifestId),
+    qaProfile: readString((runtimeAuthority as { qaProfile?: unknown }).qaProfile)
+  };
+}
+
+function readAuthorityBundleRef(value: unknown): QaRuntimeAuthorityExpectation['authorityBundleRef'] | undefined {
+  if (value === null || typeof value !== 'object') {
+    return undefined;
+  }
+  const ref = value as { artifactKind?: unknown; path?: unknown; bundleHash?: unknown };
+  if (typeof ref.artifactKind !== 'string' || typeof ref.path !== 'string' || typeof ref.bundleHash !== 'string') {
+    return undefined;
+  }
+  return {
+    artifactKind: ref.artifactKind as QaRuntimeAuthorityExpectation['authorityBundleRef']['artifactKind'],
+    path: ref.path as QaRuntimeAuthorityExpectation['authorityBundleRef']['path'],
+    bundleHash: ref.bundleHash
+  };
+}
+
+function readActiveProfileLockRef(value: unknown): QaRuntimeAuthorityExpectation['activeProfileLockRef'] | undefined {
+  if (value === null || typeof value !== 'object') {
+    return undefined;
+  }
+  const ref = value as { artifactKind?: unknown; path?: unknown; lockHash?: unknown };
+  if (typeof ref.artifactKind !== 'string' || typeof ref.path !== 'string' || typeof ref.lockHash !== 'string') {
+    return undefined;
+  }
+  return {
+    artifactKind: ref.artifactKind as QaRuntimeAuthorityExpectation['activeProfileLockRef']['artifactKind'],
+    path: ref.path as QaRuntimeAuthorityExpectation['activeProfileLockRef']['path'],
+    lockHash: ref.lockHash
+  };
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+function compareScalar(path: string, observed: string | undefined, expected: string): string[] {
+  return observed === expected ? [] : [`${path}: expected ${expected}, observed ${observed ?? '<missing>'}`];
+}
+
+function resolveInteractionFailureCode(input: {
+  consoleErrors: readonly string[];
+  gateReady: boolean;
+  interactionAssertion: { ok: boolean };
+  runtimeAuthority: QaRuntimeAuthorityEvidence | undefined;
+}): QaFailureCode | undefined {
+  if (input.consoleErrors.length > 0) {
+    return 'FATAL_CONSOLE_ERROR';
+  }
+  if (!input.gateReady) {
+    return 'REQUIRED_TELEMETRY_MISSING';
+  }
+  if (input.runtimeAuthority?.status === 'FAILED') {
+    return 'RUNTIME_AUTHORITY_MISMATCH';
+  }
+  return input.interactionAssertion.ok ? undefined : 'QA_RUNNER_FAILED';
+}
+
+function buildInteractionMessage(interactionMessage: string | undefined, runtimeAuthority: QaRuntimeAuthorityEvidence | undefined): string | undefined {
+  const messages = [
+    interactionMessage,
+    runtimeAuthority?.status === 'FAILED' ? `Runtime authority mismatch: ${runtimeAuthority.mismatches.join('; ')}` : undefined
+  ].filter((message): message is string => message !== undefined && message.length > 0);
+  return messages.length === 0 ? undefined : messages.join(' ');
 }
 
 function failedInteractionResult(

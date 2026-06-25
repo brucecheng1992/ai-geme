@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { AuthorityBundleRefSchema, type AuthorityBundleRef } from './authority-bundle.js';
 import { buildDeepSeekRunAndGunValidationProfileSupportSummary } from './deepseek-run-and-gun-validation-profile-v1.js';
 import type { NormalizedGameIr } from './schemas/normalized-game-ir-v0.1.schema.js';
 import type { RawGameDsl } from './schemas/raw-game-dsl-v0.1.schema.js';
@@ -52,6 +53,7 @@ export const DslConsumptionReportSchema = z.strictObject({
   schemaVersion: z.literal('step33.dsl-consumption.v1'),
   projectId: z.string().regex(/^proj_[A-Za-z0-9_-]+$/),
   runId: z.string().regex(/^run_[A-Za-z0-9_-]+$/),
+  authorityBundleRef: AuthorityBundleRefSchema.optional(),
   dslHash: z.string().min(1),
   runtimeProfile: z.string().min(1),
   entries: z.array(DslConsumptionEntrySchema).min(1),
@@ -77,6 +79,7 @@ type BuildDslConsumptionReportInput = {
   runId: string;
   rawDsl: RawGameDsl;
   ir: NormalizedGameIr;
+  authorityBundleRef?: AuthorityBundleRef;
 };
 
 type EntrySpec = {
@@ -99,6 +102,7 @@ export function buildDslConsumptionReport(input: BuildDslConsumptionReportInput)
     schemaVersion: 'step33.dsl-consumption.v1',
     projectId: input.projectId,
     runId: input.runId,
+    ...(input.authorityBundleRef === undefined ? {} : { authorityBundleRef: input.authorityBundleRef }),
     dslHash: stableDslHash(input.rawDsl),
     runtimeProfile,
     entries,

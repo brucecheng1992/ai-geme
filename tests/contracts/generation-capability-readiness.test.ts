@@ -8,7 +8,7 @@ import {
 } from '../../packages/game-dsl/src/index.js';
 
 describe('Step 37 generation capability readiness preflight', () => {
-  it('records side-scrolling profile requirements without pretending capability-composed is ready', () => {
+  it('selects the active capability path for executable production profile requirements', () => {
     const { registrySnapshot, readinessReport } = buildGenerationCapabilityPreflight({
       projectId: 'proj_20260619_capability_readiness',
       runId: 'run_20260619_capability_readiness',
@@ -31,18 +31,18 @@ describe('Step 37 generation capability readiness preflight', () => {
         status: 'resolved',
         profileId: 'side_scrolling_run_and_gun.v1',
         runtimeExecutable: true,
-        profileSupportStatus: 'legacy_runtime_supported'
+        profileSupportStatus: 'active_profile_supported'
       },
       targetDefaultPath: 'capability_composed_v1',
-      selectedDefaultPath: 'legacy_template_v1',
-      capabilityPathReadiness: 'blocked',
-      exactLockStatus: 'not_attempted_requirements_incomplete'
+      selectedDefaultPath: 'capability_composed_v1',
+      capabilityPathReadiness: 'ready_for_active_profile',
+      exactLockStatus: 'not_required_active_profile_bound'
     });
     expect(readinessReport.capabilityRequirements.requiredCapabilityIds).toEqual(
-      expect.arrayContaining(['camera.side_follow.v1', 'movement.run_jump.v1', 'telemetry.gameplay_events.v1'])
+      expect.arrayContaining(['camera.side_follow.v1', 'movement.run_jump.v1', 'rules.restart_loop.v1'])
     );
-    expect(readinessReport.capabilityRequirements.incompleteCapabilityIds).toEqual(expect.arrayContaining(['telemetry.gameplay_events.v1']));
-    expect(readinessReport.blockers).toContain('incomplete_capability:telemetry.gameplay_events.v1');
+    expect(readinessReport.capabilityRequirements.incompleteCapabilityIds).toEqual([]);
+    expect(readinessReport.blockers).toEqual([]);
   });
 
   it('fails closed when no runtime profile resolves for the normalized genre', () => {
@@ -71,7 +71,7 @@ describe('Step 37 generation capability readiness preflight', () => {
     });
   });
 
-  it('keeps the actual default legacy until cutover even when requirements are resolver-ready', () => {
+  it('does not route complete-supported profiles through the legacy default', () => {
     const { readinessReport } = buildGenerationCapabilityPreflight({
       projectId: 'proj_20260619_capability_readiness',
       runId: 'run_20260619_ready_capability_readiness',
@@ -86,9 +86,9 @@ describe('Step 37 generation capability readiness preflight', () => {
         runtimeExecutable: true,
         profileSupportStatus: 'capability_complete_supported'
       },
-      capabilityPathReadiness: 'ready_for_resolver',
-      selectedDefaultPath: 'legacy_template_v1',
-      exactLockStatus: 'not_attempted_until_resolver_phase',
+      capabilityPathReadiness: 'ready_for_active_profile',
+      selectedDefaultPath: 'capability_composed_v1',
+      exactLockStatus: 'not_required_active_profile_bound',
       blockers: []
     });
     expect(readinessReport.capabilityRequirements.completeSupportedCapabilityIds).toEqual([

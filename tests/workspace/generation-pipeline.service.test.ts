@@ -14,7 +14,7 @@ import { RunStoreService } from '../../apps/maker-api/src/projects/run-store.ser
 import { LocalWorkspaceService } from '../../apps/maker-api/src/workspace/local-workspace.service.js';
 import { TemplateCompilerService } from '../../apps/maker-api/src/compiler/template-compiler.service.js';
 import type { RuntimeCompileResult } from '../../apps/maker-api/src/compiler/compiler.types.js';
-import type { QaGenre, QaReport } from '../../apps/maker-api/src/qa/qa.types.js';
+import type { QaGenre, QaReport, QaRuntimeAuthorityExpectation } from '../../apps/maker-api/src/qa/qa.types.js';
 import {
   AssetManifestSchema,
   AssetResolutionReportSchema,
@@ -25,7 +25,7 @@ import {
   type AssetPlan,
   type AssetResolutionReport
 } from '../../packages/asset-pipeline/src/index.js';
-import { GameBriefSchema, RawGameDslSchema, SceneIrSchema, buildGameDslArtifact, type GameDslArtifact, type NormalizedGameIr, type RawGameDsl, type SceneIr } from '../../packages/game-dsl/src/index.js';
+import { GameBriefSchema, RawGameDslSchema, SceneIrSchema, buildGameDslArtifact, type GameBriefV02, type GameDslArtifact, type NormalizedGameIr, type RawGameDsl, type SceneIr } from '../../packages/game-dsl/src/index.js';
 
 const projectId = 'proj_20260610_050000_pipe';
 const runId = 'run_20260610_050000_pipe';
@@ -98,12 +98,12 @@ describe('GenerationPipelineService failure states', () => {
         }
       },
       qaRunner: {
-        async run(input: { genre: QaGenre }) {
+        async run(input: { genre: QaGenre; expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation }) {
           qaRuns += 1;
           return createQaReport(input.genre, {
             asset_semantic_status: 'FAILED',
             overall_status: 'NEEDS_ASSET_REPAIR'
-          });
+          }, input.expectedRuntimeAuthority);
         }
       },
       assetSemanticRepairConfig: { enabled: true, maxAttempts: 0 }
@@ -144,12 +144,12 @@ describe('GenerationPipelineService failure states', () => {
         }
       },
       qaRunner: {
-        async run(input: { genre: QaGenre }) {
+        async run(input: { genre: QaGenre; expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation }) {
           const sceneIr = SceneIrSchema.parse(JSON.parse(await readFile(join(workspace.getGeneratedProjectDir(projectId), 'game.scene.ir.json'), 'utf8')));
           return createQaReport(input.genre, {
             observed_events: ['game.started'],
-            snapshot: { sceneBindings: buildObservedSceneBindings(sceneIr) }
-          });
+            snapshot: { sceneBindings: buildObservedSceneBindings(sceneIr), runtimeAuthority: input.expectedRuntimeAuthority }
+          }, input.expectedRuntimeAuthority);
         }
       }
     });
@@ -164,86 +164,91 @@ describe('GenerationPipelineService failure states', () => {
     const capabilityCutover = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_capability_cutover_report.json'), 'utf8'));
     const runtimeSceneBindingReport = JSON.parse(await readFile(join(workspace.getGeneratedProjectDir(projectId), 'runtime_scene_binding_report.json'), 'utf8'));
     const acceptance = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_acceptance_report.json'), 'utf8'));
+    const qaReport = await readQaReport();
     expect(generationPathReceipt).toMatchObject({
       artifactKind: 'generation_path_receipt',
       projectId,
       runId,
-      selectedPath: 'legacy_template_v1',
+      selectedPath: 'capability_composed_v1',
+      targetPath: 'capability_composed_v1',
       dslSource: 'model_provider',
       defaultPathForSupportedProfiles: 'capability_composed_v1',
-      capabilityReadiness: 'not_evaluated'
+      capabilityReadiness: 'ready'
     });
     expect(capabilityReadiness).toMatchObject({
       artifactKind: 'generation_capability_readiness_report',
       profileResolution: {
         profileId: 'side_scrolling_run_and_gun.v1',
         runtimeExecutable: true,
-        profileSupportStatus: 'legacy_runtime_supported'
+        profileSupportStatus: 'active_profile_supported'
       },
       targetDefaultPath: 'capability_composed_v1',
-      selectedDefaultPath: 'legacy_template_v1',
-      capabilityPathReadiness: 'blocked',
-      exactLockStatus: 'not_attempted_requirements_incomplete'
+      selectedDefaultPath: 'capability_composed_v1',
+      capabilityPathReadiness: 'ready_for_active_profile',
+      exactLockStatus: 'not_required_active_profile_bound'
     });
-    expect(capabilityReadiness.blockers).toContain('incomplete_capability:telemetry.gameplay_events.v1');
+    expect(capabilityReadiness.blockers).toEqual([]);
     expect(capabilityResolution).toMatchObject({
       artifactKind: 'generation_capability_resolution_report',
-      selectedPath: 'legacy_template_v1',
+      selectedPath: 'capability_composed_v1',
       targetPath: 'capability_composed_v1',
       shadowMode: true,
       activeLockWritten: false,
       candidatePackagePolicy: 'approved_installed_packages_only',
-      resolverAttempt: 'skipped_readiness_blocked',
-      resolutionStatus: 'blocked',
-      exactLockStatus: 'not_attempted_requirements_incomplete'
+      resolverAttempt: 'skipped_active_profile_bound',
+      resolutionStatus: 'resolved',
+      exactLockStatus: 'not_required_active_profile_bound'
     });
     expect(capabilityResolution.registrySnapshotHash).toBe(capabilityReadiness.registrySnapshotHash);
     expect(capabilityResolution.readinessReportHash).toBe(capabilityReadiness.reportHash);
     expect(capabilityRuntime).toMatchObject({
       artifactKind: 'generation_capability_runtime_report',
-      selectedPath: 'legacy_template_v1',
+      selectedPath: 'capability_composed_v1',
       targetPath: 'capability_composed_v1',
-      shadowMode: true,
-      activeRuntimeManifestWritten: false,
-      activeCapabilityQaWritten: false,
-      runtimeManifestStatus: 'not_attempted_no_shadow_lock',
-      runtimeLoaderStatus: 'not_attempted',
-      capabilityQaPlanStatus: 'not_attempted',
-      capabilityQaReportStatus: 'not_attempted',
-      runtimeEvidenceStatus: 'not_attempted'
+      shadowMode: false,
+      activeRuntimeManifestWritten: true,
+      activeCapabilityQaWritten: true,
+      runtimeManifestStatus: 'active_profile_bound',
+      runtimeLoaderStatus: 'ready',
+      capabilityQaPlanStatus: 'ready',
+      capabilityQaReportStatus: 'passed',
+      qaRuntimeAuthorityStatus: 'matched',
+      runtimeEvidenceStatus: 'observed'
     });
     expect(capabilityRuntime.resolutionReportHash).toBe(capabilityResolution.reportHash);
+    expect(capabilityRuntime.authorityBundleRef).toEqual(qaReport.runtime_authority?.expected?.authorityBundleRef);
+    expect(capabilityRuntime.activeProfileLockRef).toEqual(qaReport.runtime_authority?.expected?.activeProfileLockRef);
     expect(capabilityGap).toMatchObject({
       artifactKind: 'generation_capability_gap_report',
-      selectedPath: 'legacy_template_v1',
+      selectedPath: 'capability_composed_v1',
       targetPath: 'capability_composed_v1',
-      shadowMode: true,
-      capabilityPathGate: 'blocked_before_provider',
-      gapStatus: 'required_capability_gap',
-      providerInvocationPolicy: 'block_capability_provider_until_exact_lock',
-      step36EscalationStatus: 'eligible_blocked_gap',
+      shadowMode: false,
+      capabilityPathGate: 'ready_for_active_profile_provider',
+      gapStatus: 'not_required',
+      providerInvocationPolicy: 'active_profile_provider_allowed',
+      step36EscalationStatus: 'not_required',
       productionMutation: {
         activeRegistryMutation: false,
         activeExactLockMutation: false,
         fixedTemplateFallbackOnGap: false
       }
     });
-    expect(capabilityGap.missingRequiredCapabilityIds).toContain('telemetry.gameplay_events.v1');
+    expect(capabilityGap.missingRequiredCapabilityIds).toEqual([]);
     expect(capabilityGap.readinessReportHash).toBe(capabilityReadiness.reportHash);
     expect(capabilityGap.resolutionReportHash).toBe(capabilityResolution.reportHash);
     expect(capabilityGap.runtimeReportHash).toBe(capabilityRuntime.reportHash);
     expect(capabilityCutover).toMatchObject({
       artifactKind: 'generation_capability_cutover_report',
-      activeSelectedPath: 'legacy_template_v1',
+      activeSelectedPath: 'capability_composed_v1',
       targetPath: 'capability_composed_v1',
-      defaultCutoverAllowed: false,
+      defaultCutoverAllowed: true,
       activePathMutation: false,
       shadowOutputMutation: false,
-      cutoverStage: 'blocked_by_gap',
-      candidateCanaryStatus: 'not_started_gap_blocked',
-      parityStatus: 'not_comparable_gap_blocked',
-      rollbackDrillStatus: 'not_started_gap_blocked',
-      blockers: ['capability_gap_not_resolved']
+      cutoverStage: 'active_profile_authoritative',
+      candidateCanaryStatus: 'ready',
+      parityStatus: 'not_required_active_profile',
+      rollbackDrillStatus: 'not_required_active_profile',
+      blockers: []
     });
     expect(capabilityCutover.gapReportHash).toBe(capabilityGap.reportHash);
     expect(capabilityCutover.runtimeReportHash).toBe(capabilityRuntime.reportHash);
@@ -307,9 +312,9 @@ describe('GenerationPipelineService failure states', () => {
         }
       },
       qaRunner: {
-        async run(input: { genre: QaGenre }) {
+        async run(input: { genre: QaGenre; expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation }) {
           qaRuns += 1;
-          return createQaReport(input.genre);
+          return createQaReport(input.genre, {}, input.expectedRuntimeAuthority);
         }
       }
     });
@@ -325,25 +330,52 @@ describe('GenerationPipelineService failure states', () => {
     );
   });
 
-  it('keeps deterministic fallback only for missing local model configuration', async () => {
+  it('fails closed instead of using deterministic Raw DSL fallback when the model is unavailable', async () => {
+    let compileRuns = 0;
+    let buildRuns = 0;
     const pipeline = createPipeline({
-      compiler: { compile: compileWithDist },
+      modelProvider: {
+        async generateGameBrief() {
+          return { ok: false, code: 'MODEL_NOT_AVAILABLE', message: 'unit test unavailable' };
+        },
+        async generateRawGameDsl() {
+          throw new Error('Raw DSL should not be requested when GameBrief generation is unavailable.');
+        }
+      },
+      compiler: {
+        async compile() {
+          compileRuns += 1;
+          return compileWithDist();
+        }
+      },
       buildRunner: {
         async build() {
+          buildRuns += 1;
           return { ok: true, projectId, distDir: workspace.getGeneratedProjectDistDir(projectId), logPath: workspace.getBuildLogPath(projectId, runId) };
         }
       }
     });
 
-    await expect(runPipeline(pipeline)).resolves.toBe('PLAYABLE');
-    await expect(projectStore.readProject(projectId)).resolves.toMatchObject({ status: 'PLAYABLE' });
-    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'generation_path_receipt.json'), 'utf8')).resolves.toContain(
-      '"dslSource": "deterministic_local_fallback"'
+    await expect(runPipeline(pipeline)).resolves.toBe('FAILED');
+    expect(compileRuns).toBe(0);
+    expect(buildRuns).toBe(0);
+    await expect(projectStore.readProject(projectId)).resolves.toMatchObject({ status: 'FAILED' });
+
+    const receipt = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_path_receipt.json'), 'utf8'));
+    expect(receipt).toMatchObject({
+      selectedPath: 'fail_closed_model_unavailable',
+      dslSource: 'not_generated',
+      modelFailureCode: 'MODEL_NOT_AVAILABLE'
+    });
+    expect(receipt.artifactRefs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ artifactKind: 'generation_input_report', path: 'generation_input_report.json' }),
+        expect.objectContaining({ artifactKind: 'intent_plan', path: 'intent_plan.json' })
+      ])
     );
-    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'generation_path_receipt.json'), 'utf8')).resolves.toContain(
-      '"raw_game_dsl_fallback"'
-    );
-    await expect(runStore.readEvents(runId)).resolves.toEqual(expect.arrayContaining([expect.objectContaining({ type: 'model.fallback' })]));
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'raw-game-dsl.raw.json'), 'utf8')).rejects.toThrow();
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'game_dsl.json'), 'utf8')).rejects.toThrow();
+    await expect(runStore.readEvents(runId)).resolves.toEqual(expect.not.arrayContaining([expect.objectContaining({ type: 'model.fallback' })]));
   });
 
   it('stores model-generated raw DSL snapshots under data/local-data/result by time', async () => {
@@ -484,6 +516,341 @@ describe('GenerationPipelineService failure states', () => {
     );
   });
 
+  it('persists canonical GameBrief and GenerationScopePlan evidence before Raw DSL generation', async () => {
+    const rawDsl = RawGameDslSchema.parse(createShooterRawDsl());
+    const briefV02: GameBriefV02 = {
+      brief_version: 'game-brief-v0.1',
+      schema_version: '0.2',
+      title: 'Alien Clear',
+      genre: 'shooter',
+      camera: 'top_down',
+      core_loop: ['Move around the arena.', 'Fire projectiles at enemies.', 'Clear enemies to win.'],
+      difficulty: 'normal',
+      play_time_intent: { mode: 'target', target_sec: 90 }
+    };
+    let rawDslBrief: unknown;
+    let rawDslAuthorityBundle: unknown;
+    const pipeline = createPipeline({
+      modelProvider: {
+        async generateGameBrief() {
+          return {
+            ok: true,
+            value: briefV02,
+            rawText: JSON.stringify(briefV02),
+            rawOutputPath: workspace.getModelOutputPath(projectId, runId, 'game-brief.raw.json'),
+            sourceFormat: 'v0.2' as const
+          };
+        },
+        async generateRawGameDsl(input) {
+          rawDslBrief = input.brief;
+          rawDslAuthorityBundle = input.authorityBundle;
+          return {
+            ok: true,
+            value: rawDsl,
+            rawText: JSON.stringify(rawDsl),
+            rawOutputPath: workspace.getModelOutputPath(projectId, runId, 'raw-game-dsl.raw.json')
+          };
+        }
+      },
+      compiler: { compile: compileWithDist },
+      buildRunner: {
+        async build() {
+          return { ok: true, projectId, distDir: workspace.getGeneratedProjectDistDir(projectId), logPath: workspace.getBuildLogPath(projectId, runId) };
+        }
+      }
+    });
+
+    await expect(runPipeline(pipeline, { idea: 'cat shooter for 90 seconds', language: 'en' })).resolves.toBe('PLAYABLE');
+
+    const canonicalBrief = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'canonical_game_brief.json'), 'utf8'));
+    const generationScopePlan = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_scope_plan.json'), 'utf8'));
+    const authorityBundle = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'authority_bundle.json'), 'utf8'));
+    const dslConsumptionReport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'dsl_consumption_report.json'), 'utf8'));
+    const receipt = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_path_receipt.json'), 'utf8'));
+    const index = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_artifact_index.json'), 'utf8'));
+
+    expect(canonicalBrief).toMatchObject({
+      artifactKind: 'canonical_game_brief',
+      schemaVersion: 'canonical_game_brief.v1',
+      projectId,
+      runId,
+      briefSchemaVersion: '0.2',
+      sourceFormat: 'v0.2',
+      rawOutputRef: { artifactKind: 'game_brief_raw_model_output', path: 'game-brief.raw.json' },
+      canonicalBrief: briefV02,
+      contentHash: expect.stringMatching(/^fnv1a_[0-9a-f]{8}$/)
+    });
+    expect(generationScopePlan).toMatchObject({
+      schemaVersion: 'step37.generation-scope-plan.v1',
+      requestedPlayTime: briefV02.play_time_intent,
+      deliveryMode: 'single_pass',
+      qaProbeWindowSec: 90,
+      preservesRequestedPlayTime: true
+    });
+    expect(rawDslBrief).toEqual(briefV02);
+    expect(rawDslAuthorityBundle).toEqual(authorityBundle);
+    expect(authorityBundle).toMatchObject({
+      artifactKind: 'authority_bundle',
+      schemaVersion: 'step37.authority-bundle.v1',
+      projectId,
+      runId,
+      canonicalBrief,
+      generationScopePlan,
+      refs: {
+        canonicalBrief: { artifactKind: 'canonical_game_brief', path: 'canonical_game_brief.json', contentHash: canonicalBrief.contentHash },
+        generationScopePlan: { artifactKind: 'generation_scope_plan', path: 'generation_scope_plan.json' }
+      },
+      rawDslConsumption: {
+        mode: 'complete_active_profile_lock',
+        canonicalBriefRef: { artifactKind: 'canonical_game_brief', path: 'canonical_game_brief.json', contentHash: canonicalBrief.contentHash }
+      },
+      bundleHash: expect.stringMatching(/^fnv1a_[0-9a-f]{8}$/)
+    });
+    expect(dslConsumptionReport.authorityBundleRef).toEqual({
+      artifactKind: 'authority_bundle',
+      path: 'authority_bundle.json',
+      bundleHash: authorityBundle.bundleHash
+    });
+    expect(receipt.artifactRefs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ artifactKind: 'canonical_game_brief', path: 'canonical_game_brief.json' }),
+        expect.objectContaining({ artifactKind: 'generation_scope_plan', path: 'generation_scope_plan.json' }),
+        expect.objectContaining({ artifactKind: 'authority_bundle', path: 'authority_bundle.json' })
+      ])
+    );
+    expect(index.artifacts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'canonicalGameBrief', status: 'present', path: 'canonical_game_brief.json', required: true }),
+        expect.objectContaining({ id: 'generationScopePlan', status: 'present', path: 'generation_scope_plan.json', required: true }),
+        expect.objectContaining({ id: 'authorityBundle', status: 'present', path: 'authority_bundle.json', required: true })
+      ])
+    );
+  });
+
+  it('requires active profile lock and scope as behavior-driving inputs on supported production success', async () => {
+    const rawDsl = RawGameDslSchema.parse(createShooterRawDsl());
+    const briefV02: GameBriefV02 = {
+      brief_version: 'game-brief-v0.1',
+      schema_version: '0.2',
+      title: 'Scoped Alien Clear',
+      genre: 'shooter',
+      camera: 'top_down',
+      core_loop: ['Move around the arena.', 'Fire projectiles at enemies.', 'Clear enemies to win.'],
+      difficulty: 'normal',
+      play_time_intent: { mode: 'target', target_sec: 45 }
+    };
+    let rawDslAuthorityBundle: unknown;
+    let compileAuthorityBundle: unknown;
+    let qaTimeoutMs: number | undefined;
+    const pipeline = createPipeline({
+      modelProvider: {
+        async generateGameBrief() {
+          return {
+            ok: true,
+            value: briefV02,
+            rawText: JSON.stringify(briefV02),
+            rawOutputPath: workspace.getModelOutputPath(projectId, runId, 'game-brief.raw.json'),
+            sourceFormat: 'v0.2' as const
+          };
+        },
+        async generateRawGameDsl(input) {
+          rawDslAuthorityBundle = input.authorityBundle;
+          return {
+            ok: true,
+            value: rawDsl,
+            rawText: JSON.stringify(rawDsl),
+            rawOutputPath: workspace.getModelOutputPath(projectId, runId, 'raw-game-dsl.raw.json')
+          };
+        }
+      },
+      compiler: {
+        async compile(input) {
+          compileAuthorityBundle = input.authorityBundle;
+          return compileWithDist();
+        }
+      },
+      buildRunner: {
+        async build() {
+          return { ok: true, projectId, distDir: workspace.getGeneratedProjectDistDir(projectId), logPath: workspace.getBuildLogPath(projectId, runId) };
+        }
+      },
+      qaRunner: {
+        async run(input) {
+          qaTimeoutMs = input.timeoutMs;
+          return createQaReport(input.genre, {}, input.expectedRuntimeAuthority);
+        }
+      }
+    });
+
+    await expect(runPipeline(pipeline, { idea: 'cat shooter for 45 seconds', language: 'en' })).resolves.toBe('PLAYABLE');
+
+    const activeProfileLock = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'active_profile_lock.json'), 'utf8'));
+    const generationScopePlan = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_scope_plan.json'), 'utf8'));
+    const authorityBundle = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'authority_bundle.json'), 'utf8'));
+    const receipt = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_path_receipt.json'), 'utf8'));
+
+    expect(activeProfileLock).toMatchObject({
+      artifactKind: 'active_profile_lock',
+      schemaVersion: 'step37.active-profile-lock.v1',
+      projectId,
+      runId,
+      profileId: 'shooter.v1',
+      runtimeGenre: 'top_down_shooter',
+      selectedPath: 'capability_composed_v1',
+      legacyAdapterPolicy: 'legacy_forbidden'
+    });
+    expect(rawDslAuthorityBundle).toEqual(authorityBundle);
+    expect(compileAuthorityBundle).toEqual(authorityBundle);
+    expect(authorityBundle).toMatchObject({
+      activeProfileLock,
+      generationScopePlan,
+      rawDslConsumption: {
+        mode: 'complete_active_profile_lock',
+        activeProfileLockRef: {
+          artifactKind: 'active_profile_lock',
+          path: 'active_profile_lock.json',
+          lockHash: activeProfileLock.lockHash
+        }
+      }
+    });
+    expect(qaTimeoutMs).toBe(generationScopePlan.qaProbeWindowSec * 1000);
+    expect(receipt).toMatchObject({
+      selectedPath: 'capability_composed_v1',
+      targetPath: 'capability_composed_v1',
+      profileId: 'shooter.v1',
+      capabilityReadiness: 'ready'
+    });
+    expect(receipt.artifactRefs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ artifactKind: 'active_profile_lock', path: 'active_profile_lock.json' }),
+        expect.objectContaining({ artifactKind: 'generation_scope_plan', path: 'generation_scope_plan.json' }),
+        expect.objectContaining({ artifactKind: 'authority_bundle', path: 'authority_bundle.json' })
+      ])
+    );
+  });
+
+  it('fails closed when a QA report claims PASSED runtime authority for the wrong lock hash', async () => {
+    const pipeline = createPipeline({
+      compiler: { compile: compileWithDist },
+      buildRunner: {
+        async build() {
+          return { ok: true, projectId, distDir: workspace.getGeneratedProjectDistDir(projectId), logPath: workspace.getBuildLogPath(projectId, runId) };
+        }
+      },
+      qaRunner: {
+        async run(input: { genre: QaGenre; expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation }) {
+          const report = createQaReport(input.genre, {}, input.expectedRuntimeAuthority);
+          if (input.expectedRuntimeAuthority === undefined) {
+            return report;
+          }
+          return {
+            ...report,
+            runtime_authority: {
+              status: 'PASSED' as const,
+              expected: input.expectedRuntimeAuthority,
+              observed: {
+                ...input.expectedRuntimeAuthority,
+                activeProfileLockRef: {
+                  ...input.expectedRuntimeAuthority.activeProfileLockRef,
+                  lockHash: 'fnv1a_bad00000'
+                }
+              },
+              mismatches: []
+            }
+          };
+        }
+      }
+    });
+
+    await expect(runPipeline(pipeline)).resolves.toBe('QA_FAILED');
+    await expect(readQaReport()).resolves.toMatchObject({
+      status: 'QA_FAILED',
+      code: 'RUNTIME_AUTHORITY_MISMATCH',
+      runtime_authority: {
+        status: 'FAILED',
+        mismatches: expect.arrayContaining([
+          expect.stringContaining('observed.activeProfileLockRef.lockHash')
+        ])
+      }
+    });
+    const cutover = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_capability_cutover_report.json'), 'utf8'));
+    expect(cutover).toMatchObject({
+      defaultCutoverAllowed: false,
+      cutoverStage: 'blocked_by_gap'
+    });
+  });
+
+  it('keeps canonical GameBrief and scope evidence when Raw DSL generation fails after canonicalization', async () => {
+    const briefV02: GameBriefV02 = {
+      brief_version: 'game-brief-v0.1',
+      schema_version: '0.2',
+      title: 'Blocked Alien Clear',
+      genre: 'shooter',
+      camera: 'top_down',
+      core_loop: ['Move around the arena.', 'Fire projectiles at enemies.', 'Clear enemies to win.'],
+      difficulty: 'normal',
+      play_time_intent: { mode: 'target', target_sec: 90 }
+    };
+    let compileRuns = 0;
+    const pipeline = createPipeline({
+      modelProvider: {
+        async generateGameBrief() {
+          return {
+            ok: true,
+            value: briefV02,
+            rawText: JSON.stringify(briefV02),
+            rawOutputPath: workspace.getModelOutputPath(projectId, runId, 'game-brief.raw.json'),
+            sourceFormat: 'v0.2' as const
+          };
+        },
+        async generateRawGameDsl() {
+          return {
+            ok: false,
+            code: 'MODEL_SCHEMA_VALIDATION_FAILED',
+            message: 'Raw DSL schema validation failed.',
+            issues: ['raw DSL invalid']
+          };
+        }
+      },
+      compiler: {
+        async compile() {
+          compileRuns += 1;
+          return compileWithDist();
+        }
+      }
+    });
+
+    await expect(runPipeline(pipeline, { idea: 'cat shooter for 90 seconds', language: 'en' })).resolves.toBe('FAILED');
+    expect(compileRuns).toBe(0);
+
+    const canonicalBrief = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'canonical_game_brief.json'), 'utf8'));
+    const generationScopePlan = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_scope_plan.json'), 'utf8'));
+    const receipt = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_path_receipt.json'), 'utf8'));
+    const index = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_artifact_index.json'), 'utf8'));
+
+    expect(canonicalBrief).toMatchObject({ artifactKind: 'canonical_game_brief', projectId, runId, canonicalBrief: briefV02 });
+    expect(generationScopePlan).toMatchObject({ schemaVersion: 'step37.generation-scope-plan.v1', requestedPlayTime: briefV02.play_time_intent });
+    expect(receipt).toMatchObject({
+      selectedPath: 'fail_closed_model_generation_failed',
+      dslSource: 'not_generated',
+      modelFailureCode: 'MODEL_SCHEMA_VALIDATION_FAILED'
+    });
+    expect(receipt.artifactRefs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ artifactKind: 'canonical_game_brief', path: 'canonical_game_brief.json' }),
+        expect.objectContaining({ artifactKind: 'generation_scope_plan', path: 'generation_scope_plan.json' })
+      ])
+    );
+    expect(index.artifacts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'canonicalGameBrief', status: 'present', path: 'canonical_game_brief.json' }),
+        expect.objectContaining({ id: 'generationScopePlan', status: 'present', path: 'generation_scope_plan.json' }),
+        expect.objectContaining({ id: 'gameDsl', status: 'skipped', reason: 'model_generation_failed_before_dsl' })
+      ])
+    );
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'raw-game-dsl.raw.json'), 'utf8')).rejects.toThrow();
+  });
+
   it('routes supported side-scrolling run-and-gun prompts through compile, build, and QA', async () => {
     const rawDsl = RawGameDslSchema.parse(createSideScrollingRunAndGunRawDsl());
     let compiledTemplateId: string | undefined;
@@ -516,9 +883,9 @@ describe('GenerationPipelineService failure states', () => {
         }
       },
       qaRunner: {
-        async run(input: { genre: QaGenre }) {
+        async run(input: { genre: QaGenre; expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation }) {
           qaGenre = input.genre;
-          return createQaReport(input.genre);
+          return createQaReport(input.genre, {}, input.expectedRuntimeAuthority);
         }
       }
     });
@@ -879,7 +1246,7 @@ describe('GenerationPipelineService failure states', () => {
               play_time_intent: { mode: 'range', min_sec: 480, max_sec: 720 }
             },
             rawText: '{}',
-            rawOutputPath: '/tmp/game-brief.raw.json'
+            rawOutputPath: workspace.getModelOutputPath(projectId, runId, 'game-brief.raw.json')
           };
         },
         async generateRawGameDsl() {
@@ -994,7 +1361,7 @@ describe('GenerationPipelineService failure states', () => {
         }
       },
       qaRunner: {
-        async run(input: { genre: QaGenre }) {
+        async run(input: { genre: QaGenre; expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation }) {
           return {
             status: 'QA_FAILED',
             runtime_status: 'FAILED',
@@ -1034,12 +1401,12 @@ describe('GenerationPipelineService failure states', () => {
         }
       },
       qaRunner: {
-        async run(input: { genre: QaGenre }) {
+        async run(input: { genre: QaGenre; expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation }) {
           qaRuns += 1;
           return createQaReport(input.genre, {
             asset_semantic_status: 'FAILED',
             overall_status: 'NEEDS_ASSET_REPAIR'
-          });
+          }, input.expectedRuntimeAuthority);
         }
       }
     });
@@ -1084,18 +1451,18 @@ describe('GenerationPipelineService failure states', () => {
         }
       },
       qaRunner: {
-        async run(input: { genre: QaGenre }) {
+        async run(input: { genre: QaGenre; expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation }) {
           qaRuns += 1;
           if (qaRuns === 1) {
             return createQaReport(input.genre, {
               asset_semantic_status: 'FAILED',
               overall_status: 'NEEDS_ASSET_REPAIR'
-            });
+            }, input.expectedRuntimeAuthority);
           }
 
           return createQaReport(input.genre, {
             overall_status: 'PLAYABLE_WITH_FALLBACK_ASSETS'
-          });
+          }, input.expectedRuntimeAuthority);
         }
       },
       assetSemanticRepairConfig: { enabled: true, maxAttempts: 3 }
@@ -1166,9 +1533,12 @@ describe('GenerationPipelineService failure states', () => {
           }
         },
         qaRunner: {
-          async run() {
+          async run(input: { genre: QaGenre; expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation }) {
             qaRuns += 1;
-            return report;
+            return createQaReport(input.genre, {
+              asset_semantic_status: report.asset_semantic_status,
+              overall_status: report.overall_status
+            }, input.expectedRuntimeAuthority);
           }
         },
         assetSemanticRepairConfig: { enabled: true, maxAttempts: 1 }
@@ -1203,7 +1573,7 @@ describe('GenerationPipelineService failure states', () => {
         }
       },
       qaRunner: {
-        async run(input: { genre: QaGenre }) {
+        async run(input: { genre: QaGenre; expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation }) {
           qaRuns += 1;
           return createQaReport(input.genre, {
             status: 'QA_FAILED',
@@ -1211,7 +1581,7 @@ describe('GenerationPipelineService failure states', () => {
             asset_semantic_status: 'FAILED',
             overall_status: 'QA_FAILED',
             code: 'PREVIEW_BLANK_SCREEN'
-          });
+          }, input.expectedRuntimeAuthority);
         }
       },
       assetSemanticRepairConfig: { enabled: true, maxAttempts: 1 }
@@ -1246,7 +1616,7 @@ describe('GenerationPipelineService failure states', () => {
         }
       },
       qaRunner: {
-        async run(input: { genre: QaGenre }) {
+        async run(input: { genre: QaGenre; expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation }) {
           qaRuns += 1;
           return createQaReport(input.genre, {
             asset_semantic_status: 'FAILED',
@@ -1269,7 +1639,7 @@ describe('GenerationPipelineService failure states', () => {
                 }
               ]
             }
-          });
+          }, input.expectedRuntimeAuthority);
         }
       },
       assetSemanticRepairConfig: { enabled: true, maxAttempts: 1 }
@@ -1307,12 +1677,12 @@ describe('GenerationPipelineService failure states', () => {
         }
       },
       qaRunner: {
-        async run(input: { genre: QaGenre }) {
+        async run(input: { genre: QaGenre; expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation }) {
           qaRuns += 1;
           return createQaReport(input.genre, {
             asset_semantic_status: 'FAILED',
             overall_status: 'NEEDS_ASSET_REPAIR'
-          });
+          }, input.expectedRuntimeAuthority);
         }
       },
       assetSemanticRepairConfig: { enabled: true, maxAttempts: 1 }
@@ -1350,12 +1720,12 @@ describe('GenerationPipelineService failure states', () => {
         }
       },
       qaRunner: {
-        async run(input: { genre: QaGenre }) {
+        async run(input: { genre: QaGenre; expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation }) {
           qaRuns += 1;
           return createQaReport(input.genre, {
             asset_semantic_status: 'FAILED',
             overall_status: 'NEEDS_ASSET_REPAIR'
-          });
+          }, input.expectedRuntimeAuthority);
         }
       },
       assetSemanticRepairConfig: { enabled: true, maxAttempts: 1 }
@@ -1399,12 +1769,12 @@ describe('GenerationPipelineService failure states', () => {
         }
       },
       qaRunner: {
-        async run(input: { genre: QaGenre }) {
+        async run(input: { genre: QaGenre; expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation }) {
           qaRuns += 1;
           return createQaReport(input.genre, {
             asset_semantic_status: 'FAILED',
             overall_status: 'NEEDS_ASSET_REPAIR'
-          });
+          }, input.expectedRuntimeAuthority);
         }
       },
       assetSemanticRepairConfig: { enabled: true, maxAttempts: 1 }
@@ -1447,14 +1817,14 @@ describe('GenerationPipelineService failure states', () => {
         }
       },
       qaRunner: {
-        async run(input: { genre: QaGenre }) {
+        async run(input: { genre: QaGenre; expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation }) {
           qaRuns += 1;
           return qaRuns === 1
             ? createQaReport(input.genre, {
                 asset_semantic_status: 'FAILED',
                 overall_status: 'NEEDS_ASSET_REPAIR'
-              })
-            : createQaReport(input.genre);
+              }, input.expectedRuntimeAuthority)
+            : createQaReport(input.genre, {}, input.expectedRuntimeAuthority);
         }
       },
       assetSemanticRepairConfig: { enabled: true, maxAttempts: 1 }
@@ -1489,12 +1859,12 @@ describe('GenerationPipelineService failure states', () => {
         }
       },
       qaRunner: {
-        async run(input: { genre: QaGenre }) {
+        async run(input: { genre: QaGenre; expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation }) {
           qaRuns += 1;
           return createQaReport(input.genre, {
             asset_semantic_status: 'FAILED',
             overall_status: 'QA_FAILED'
-          });
+          }, input.expectedRuntimeAuthority);
         }
       },
       assetSemanticRepairConfig: { enabled: true, maxAttempts: 1 }
@@ -1516,14 +1886,7 @@ describe('GenerationPipelineService failure states', () => {
       projectStore,
       runStore,
       workspace,
-      overrides.modelProvider ?? {
-        async generateGameBrief() {
-          return { ok: false, code: 'MODEL_NOT_AVAILABLE', message: 'unit test fallback' };
-        },
-        async generateRawGameDsl() {
-          return { ok: false, code: 'MODEL_NOT_AVAILABLE', message: 'unit test fallback' };
-        }
-      },
+      overrides.modelProvider ?? createModelProviderForRawDsl(RawGameDslSchema.parse(createShooterRawDsl())),
       overrides.compiler ?? { compile: compileWithDist },
       overrides.buildRunner ?? {
         async build() {
@@ -1531,8 +1894,8 @@ describe('GenerationPipelineService failure states', () => {
         }
       },
       overrides.qaRunner ?? {
-        async run(input: { genre: QaGenre }) {
-          return createQaReport(input.genre);
+        async run(input: { genre: QaGenre; expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation }) {
+          return createQaReport(input.genre, {}, input.expectedRuntimeAuthority);
         }
       },
       overrides.assetSemanticRepairConfig ?? { enabled: false, maxAttempts: 1 }
@@ -1929,8 +2292,21 @@ describe('GenerationPipelineService failure states', () => {
     };
   }
 
-  function createQaReport(genre: QaGenre, patch: Partial<QaReport> = {}): QaReport {
+  function createQaReport(
+    genre: QaGenre,
+    patch: Partial<QaReport> = {},
+    expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation
+  ): QaReport {
     const now = new Date().toISOString();
+    const runtimeAuthority =
+      expectedRuntimeAuthority === undefined
+        ? undefined
+        : {
+            status: 'PASSED' as const,
+            expected: expectedRuntimeAuthority,
+            observed: expectedRuntimeAuthority,
+            mismatches: []
+          };
     return {
       status: 'PASSED',
       runtime_status: 'PASSED',
@@ -1946,6 +2322,7 @@ describe('GenerationPipelineService failure states', () => {
       missing_events: [],
       missing_any_groups: [],
       console_errors: [],
+      ...(runtimeAuthority === undefined ? {} : { runtime_authority: runtimeAuthority }),
       started_at: now,
       completed_at: now,
       ...patch

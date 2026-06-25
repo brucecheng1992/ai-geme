@@ -2,13 +2,16 @@ import Phaser from 'phaser';
 
 import { CollectorGameScene } from './GameScene.js';
 import generatedAssetManifest from './asset-manifest.generated.json';
+import generatedRuntimeAuthority from './runtime-authority.generated.json';
 import { createCollectorArtRuntime } from './collector-art-library.js';
+import { buildRuntimeAuthoritySnapshot } from '../../shared/runtime-authority.js';
 import generatedParams from './template-params.generated.json';
 import { defaultCollectorParams, type CollectorTemplateParams } from './template-params.js';
 
 const collectorParams = mergeCollectorParams(generatedParams as Partial<CollectorTemplateParams>);
 const collectorArt = createCollectorArtRuntime(generatedAssetManifest);
-const scene = new CollectorGameScene(collectorParams, collectorArt);
+const runtimeAuthority = buildRuntimeAuthoritySnapshot(generatedRuntimeAuthority);
+const scene = new CollectorGameScene(collectorParams, collectorArt, runtimeAuthority);
 
 if (typeof window !== 'undefined') {
   class CollectorPhaserScene extends Phaser.Scene {

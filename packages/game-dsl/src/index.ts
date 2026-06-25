@@ -25,6 +25,16 @@ export {
   type LegacyRepresentabilityResult
 } from './schemas/legacy-raw-game-dsl-representability.js';
 export {
+  CANONICAL_GAME_BRIEF_ARTIFACT_KIND,
+  CANONICAL_GAME_BRIEF_PATH,
+  CANONICAL_GAME_BRIEF_SCHEMA_VERSION,
+  GAME_BRIEF_RAW_MODEL_OUTPUT_KIND,
+  GAME_BRIEF_RAW_MODEL_OUTPUT_PATH,
+  CanonicalGameBriefArtifactSchema,
+  buildCanonicalGameBriefArtifact,
+  type CanonicalGameBriefArtifact
+} from './canonical-game-brief-artifact.js';
+export {
   CAPABILITY_GAME_DSL_DRAFT_ARTIFACT_KIND,
   CAPABILITY_GAME_DSL_DRAFT_RAW_PATH,
   CAPABILITY_GAME_DSL_DRAFT_SCHEMA_VERSION,
@@ -60,6 +70,33 @@ export {
   buildGenerationScopePlan,
   type GenerationScopePlan
 } from './generation-scope-plan.js';
+export {
+  ACTIVE_PROFILE_LOCK_ARTIFACT_KIND,
+  ACTIVE_PROFILE_LOCK_PATH,
+  ACTIVE_PROFILE_LOCK_SCHEMA_VERSION,
+  GENERATION_CAPABILITY_READINESS_REPORT_PATH,
+  GENERATION_SCOPE_PLAN_ARTIFACT_KIND,
+  GENERATION_SCOPE_PLAN_PATH,
+  ActiveProfileLockSchema,
+  buildActiveProfileLock,
+  type ActiveProfileLock,
+  type BuildActiveProfileLockResult
+} from './active-profile-lock.js';
+export {
+  AUTHORITY_BUNDLE_ARTIFACT_KIND,
+  AUTHORITY_BUNDLE_PATH,
+  AUTHORITY_BUNDLE_SCHEMA_VERSION,
+  ActiveProfileLockRefSchema,
+  AuthorityBundleRefSchema,
+  AuthorityBundleSchema,
+  authorityBundleRef,
+  buildAuthorityBundle,
+  validateAuthorityBundleForRun,
+  type AuthorityBundle,
+  type AuthorityBundleRef,
+  type ActiveProfileLockRef,
+  type BuildAuthorityBundleResult
+} from './authority-bundle.js';
 export {
   GENERATION_PATH_RECEIPT_KIND,
   GENERATION_PATH_RECEIPT_SCHEMA_VERSION,

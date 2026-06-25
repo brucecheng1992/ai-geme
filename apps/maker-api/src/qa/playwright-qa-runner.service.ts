@@ -118,6 +118,7 @@ export class PlaywrightQaRunnerService {
       asset_report: assetReport,
       screenshot_path: browserResult.screenshot_path,
       visual_metrics: browserResult.visual_metrics,
+      runtime_authority: browserResult.runtime_authority,
       started_at: startedAt,
       completed_at: new Date().toISOString()
     };

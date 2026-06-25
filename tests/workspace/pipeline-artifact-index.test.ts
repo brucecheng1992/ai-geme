@@ -7,6 +7,7 @@ import {
   PipelineArtifactIndexSchema,
   buildDslPreconditionBlockedPipelineArtifactIndex,
   buildInvalidDslPipelineArtifactIndex,
+  buildModelGenerationFailedPipelineArtifactIndex,
   buildValidPipelineArtifactIndex,
   writePipelineArtifactIndex
 } from '../../apps/maker-api/src/projects/pipeline-artifact-index.js';
@@ -66,6 +67,11 @@ describe('Pipeline artifact index contract', () => {
     });
     expect(index.artifacts.map((artifact) => artifact.id)).toEqual([
       'generationInputReport',
+      'intentPlan',
+      'canonicalGameBrief',
+      'generationScopePlan',
+      'activeProfileLock',
+      'authorityBundle',
       'generationPathReceipt',
       'capabilityRegistrySnapshot',
       'generationCapabilityReadinessReport',
@@ -78,7 +84,6 @@ describe('Pipeline artifact index contract', () => {
       'shadowRuntimeLoaderReport',
       'shadowCapabilityQaPlan',
       'shadowCapabilityQaReport',
-      'intentPlan',
       'gameDsl',
       'gameDslCandidate',
       'dslValidationReport',
@@ -107,6 +112,10 @@ describe('Pipeline artifact index contract', () => {
     expect(index.artifacts).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: 'generationInputReport', status: 'present', artifactRoot: 'model-output', path: 'generation_input_report.json' }),
+        expect.objectContaining({ id: 'intentPlan', status: 'present', artifactRoot: 'model-output', path: 'intent_plan.json' }),
+        expect.objectContaining({ id: 'canonicalGameBrief', status: 'present', artifactRoot: 'model-output', path: 'canonical_game_brief.json', role: 'prompt' }),
+        expect.objectContaining({ id: 'generationScopePlan', status: 'present', artifactRoot: 'model-output', path: 'generation_scope_plan.json', role: 'runtime' }),
+        expect.objectContaining({ id: 'authorityBundle', status: 'present', artifactRoot: 'model-output', path: 'authority_bundle.json', role: 'runtime' }),
         expect.objectContaining({ id: 'generationPathReceipt', status: 'present', artifactRoot: 'model-output', path: 'generation_path_receipt.json', role: 'runtime' }),
         expect.objectContaining({ id: 'capabilityRegistrySnapshot', status: 'present', artifactRoot: 'model-output', path: 'capability_registry_snapshot.json', role: 'runtime' }),
         expect.objectContaining({
@@ -185,7 +194,6 @@ describe('Pipeline artifact index contract', () => {
           required: false,
           producedBy: 'capability-runtime'
         }),
-        expect.objectContaining({ id: 'intentPlan', status: 'present', artifactRoot: 'model-output', path: 'intent_plan.json' }),
         expect.objectContaining({ id: 'gameDsl', status: 'present', artifactRoot: 'model-output', path: 'game_dsl.json' }),
         expect.objectContaining({ id: 'gameDslCandidate', status: 'skipped', reason: 'valid_dsl_path_uses_game_dsl_json' }),
         expect.objectContaining({ id: 'dslConsumptionReport', status: 'present', artifactRoot: 'model-output', path: 'dsl_consumption_report.json', producedBy: 'dsl-consumption' }),
@@ -326,6 +334,20 @@ describe('Pipeline artifact index contract', () => {
     expect(serialized).toContain('dsl_precondition_blocked_before_compile');
     expect(serialized).toContain('dsl_precondition_blocked/src/asset-manifest.generated.json');
     expect(serialized).not.toContain('model_generation_failed');
+  });
+
+  it('keeps Stage 1 authority artifacts present for post-canonical model failures', () => {
+    const index = buildModelGenerationFailedPipelineArtifactIndex({ projectId, runId, stageOneAuthorityPresent: true });
+
+    expect(PipelineArtifactIndexSchema.parse(index)).toEqual(index);
+    expect(index.artifacts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'canonicalGameBrief', status: 'present', path: 'canonical_game_brief.json' }),
+        expect.objectContaining({ id: 'generationScopePlan', status: 'present', path: 'generation_scope_plan.json' }),
+        expect.objectContaining({ id: 'authorityBundle', status: 'present', path: 'authority_bundle.json' }),
+        expect.objectContaining({ id: 'gameDsl', status: 'skipped', reason: 'model_generation_failed_before_dsl' })
+      ])
+    );
   });
 
   it('writes a parseable index file with a stable trailing newline', async () => {

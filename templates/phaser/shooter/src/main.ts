@@ -3,7 +3,9 @@ import Phaser from 'phaser';
 import { ShooterGameScene } from './GameScene.js';
 import generatedAssetManifest from './asset-manifest.generated.json';
 import generatedLiveEditRegistry from './live-edit-registry.generated.json';
+import generatedRuntimeAuthority from './runtime-authority.generated.json';
 import { createShooterArtRuntime } from './shooter-art-library.js';
+import { buildRuntimeAuthoritySnapshot } from '../../shared/runtime-authority.js';
 import generatedRuntimePlan from './runtime-plan.generated.json';
 import type { ShooterDirection } from './shooter-runtime.js';
 import { defaultShooterRuntimePlan, type ShooterRuntimePlan } from './shooter-runtime-plan.js';
@@ -13,7 +15,8 @@ import { defaultShooterParams, type ShooterTemplateParams } from './template-par
 const shooterParams = mergeShooterParams(generatedParams as Partial<ShooterTemplateParams>);
 const shooterRuntimePlan = mergeShooterRuntimePlan(generatedRuntimePlan as Partial<ShooterRuntimePlan>);
 const shooterArt = createShooterArtRuntime(generatedAssetManifest);
-const scene = new ShooterGameScene(shooterParams, shooterRuntimePlan, shooterArt, generatedLiveEditRegistry);
+const runtimeAuthority = buildRuntimeAuthoritySnapshot(generatedRuntimeAuthority);
+const scene = new ShooterGameScene(shooterParams, shooterRuntimePlan, shooterArt, generatedLiveEditRegistry, runtimeAuthority);
 
 if (typeof window !== 'undefined') {
   class ShooterPhaserScene extends Phaser.Scene {

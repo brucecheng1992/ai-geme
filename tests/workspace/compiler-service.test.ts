@@ -10,7 +10,22 @@ import type { RuntimeCompileResult, RuntimeCompileSuccess } from '../../apps/mak
 import { ViteBuildRunnerService } from '../../apps/maker-api/src/compiler/vite-build-runner.service.js';
 import { LocalWorkspaceService } from '../../apps/maker-api/src/workspace/local-workspace.service.js';
 import { AssetIntentManifestSchema, AssetManifestSchema, AssetResolutionReportSchema } from '../../packages/asset-pipeline/src/index.js';
-import { SceneIrSchema, SemanticExtractionTraceReportSchema, SemanticModelReportSchema, validateAndNormalizeRawGameDsl } from '../../packages/game-dsl/src/index.js';
+import {
+  GameBriefSchema,
+  RawGameDslSchema,
+  SceneIrSchema,
+  SemanticExtractionTraceReportSchema,
+  SemanticModelReportSchema,
+  buildActiveProfileLock,
+  buildAuthorityBundle,
+  buildCanonicalGameBriefArtifact,
+  buildGenerationCapabilityPreflight,
+  buildGenerationScopePlan,
+  parseAndNormalizeGameBrief,
+  validateAndNormalizeRawGameDsl,
+  type AuthorityBundle,
+  type RawGameDsl
+} from '../../packages/game-dsl/src/index.js';
 import { createCollectorRawDsl, createDodgerRawDsl, createShooterRawDsl, createSideScrollingRunAndGunRawDsl } from '../contracts/fixtures.js';
 
 const projectId = 'proj_20260610_020000_abcd';
@@ -32,13 +47,21 @@ describe('Compiler + Build + Preview services', () => {
   });
 
   it('writes a generated project from normalized IR and selected template', async () => {
-    const normalized = validateAndNormalizeRawGameDsl(createCollectorRawDsl());
+    const rawDsl = RawGameDslSchema.parse(createCollectorRawDsl());
+    const normalized = validateAndNormalizeRawGameDsl(rawDsl);
     expect(normalized.ok).toBe(true);
     if (!normalized.ok) {
       return;
     }
 
-    const result = await new TemplateCompilerService(workspace, templateRoot).compile({ projectId, runId, ir: normalized.ir });
+    const authorityBundle = createAuthorityBundleForRawDsl(rawDsl);
+    const result = await new TemplateCompilerService(workspace, templateRoot).compile({
+      projectId,
+      runId,
+      rawDsl,
+      ir: normalized.ir,
+      authorityBundle
+    });
     expectCompileSuccess(result);
 
     expect(result).toMatchObject({
@@ -54,7 +77,7 @@ describe('Compiler + Build + Preview services', () => {
     await expect(readFile(join(result.outputDir, 'collector/src/template-params.generated.json'), 'utf8')).resolves.toContain('collectible');
     await expect(readFile(join(result.outputDir, 'collector/src/main.ts'), 'utf8')).resolves.toContain('template-params.generated.json');
     await expect(readFile(join(result.outputDir, 'collector/src/main.ts'), 'utf8')).resolves.toContain('collectorArt.preload(this)');
-    await expect(readFile(join(result.outputDir, 'collector/src/main.ts'), 'utf8')).resolves.toContain('new CollectorGameScene(collectorParams, collectorArt)');
+    await expect(readFile(join(result.outputDir, 'collector/src/main.ts'), 'utf8')).resolves.toContain('new CollectorGameScene(collectorParams, collectorArt, runtimeAuthority)');
     await expect(readFile(join(result.outputDir, 'index.html'), 'utf8')).resolves.toContain('./src/main.ts');
     await expect(readFile(join(result.outputDir, 'index.html'), 'utf8')).resolves.toContain('agm.preview.key');
     await expect(readFile(join(result.outputDir, 'src/main.ts'), 'utf8')).resolves.toContain("../collector/src/main.js");
@@ -154,7 +177,8 @@ describe('Compiler + Build + Preview services', () => {
   });
 
   it('resolves the default template root from the workspace root when started in the API package', async () => {
-    const normalized = validateAndNormalizeRawGameDsl(createCollectorRawDsl());
+    const rawDsl = RawGameDslSchema.parse(createCollectorRawDsl());
+    const normalized = validateAndNormalizeRawGameDsl(rawDsl);
     expect(normalized.ok).toBe(true);
     if (!normalized.ok) {
       return;
@@ -164,7 +188,13 @@ describe('Compiler + Build + Preview services', () => {
     const originalCwd = process.cwd();
     try {
       process.chdir(join(repoRoot, 'apps/maker-api'));
-      const result = await new TemplateCompilerService(new LocalWorkspaceService()).compile({ projectId: cwdProjectId, runId, ir: normalized.ir });
+      const result = await new TemplateCompilerService(new LocalWorkspaceService()).compile({
+        projectId: cwdProjectId,
+        runId,
+        rawDsl,
+        ir: normalized.ir,
+        authorityBundle: createAuthorityBundleForRawDsl(rawDsl, { projectId: cwdProjectId, runId })
+      });
       expectCompileSuccess(result);
 
       expect(result.outputDir).toBe(join(repoRoot, 'data/generated-projects', cwdProjectId));
@@ -176,8 +206,10 @@ describe('Compiler + Build + Preview services', () => {
   });
 
   it('cleans stale template files before recompiling the same generated project', async () => {
-    const collector = validateAndNormalizeRawGameDsl(createCollectorRawDsl());
-    const shooter = validateAndNormalizeRawGameDsl(createTankShooterRawDsl());
+    const collectorRawDsl = RawGameDslSchema.parse(createCollectorRawDsl());
+    const shooterRawDsl = RawGameDslSchema.parse(createTankShooterRawDsl());
+    const collector = validateAndNormalizeRawGameDsl(collectorRawDsl);
+    const shooter = validateAndNormalizeRawGameDsl(shooterRawDsl);
     expect(collector.ok).toBe(true);
     expect(shooter.ok).toBe(true);
     if (!collector.ok || !shooter.ok) {
@@ -185,11 +217,23 @@ describe('Compiler + Build + Preview services', () => {
     }
 
     const compiler = new TemplateCompilerService(workspace, templateRoot);
-    const first = await compiler.compile({ projectId, runId, ir: collector.ir });
+    const first = await compiler.compile({
+      projectId,
+      runId,
+      rawDsl: collectorRawDsl,
+      ir: collector.ir,
+      authorityBundle: createAuthorityBundleForRawDsl(collectorRawDsl)
+    });
     expectCompileSuccess(first);
     await expect(readFile(join(first.outputDir, 'collector/src/GameScene.ts'), 'utf8')).resolves.toContain('CollectorGameScene');
 
-    const second = await compiler.compile({ projectId, runId, ir: shooter.ir });
+    const second = await compiler.compile({
+      projectId,
+      runId,
+      rawDsl: shooterRawDsl,
+      ir: shooter.ir,
+      authorityBundle: createAuthorityBundleForRawDsl(shooterRawDsl)
+    });
     expectCompileSuccess(second);
     await expect(readFile(join(second.outputDir, 'shooter/src/GameScene.ts'), 'utf8')).resolves.toContain('ShooterGameScene');
     await expect(readFile(join(second.outputDir, 'shooter/src/shooter-art-library.ts'), 'utf8')).resolves.toContain('createShooterArtRuntime');
@@ -214,13 +258,21 @@ describe('Compiler + Build + Preview services', () => {
   });
 
   it('compiles 小猫大战坦克 with mixed local runtime assets and Phaser-loadable textures', async () => {
-    const normalized = validateAndNormalizeRawGameDsl(createCatVsTankShooterRawDsl());
+    const rawDsl = RawGameDslSchema.parse(createCatVsTankShooterRawDsl());
+    const normalized = validateAndNormalizeRawGameDsl(rawDsl);
     expect(normalized.ok).toBe(true);
     if (!normalized.ok) {
       return;
     }
 
-    const result = await new TemplateCompilerService(workspace, templateRoot).compile({ projectId, runId, ir: normalized.ir });
+    const authorityBundle = createAuthorityBundleForRawDsl(rawDsl);
+    const result = await new TemplateCompilerService(workspace, templateRoot).compile({
+      projectId,
+      runId,
+      rawDsl,
+      ir: normalized.ir,
+      authorityBundle
+    });
     expectCompileSuccess(result);
     const manifest = AssetManifestSchema.parse(JSON.parse(await readFile(join(result.outputDir, 'public/asset_manifest.json'), 'utf8')));
     const report = AssetResolutionReportSchema.parse(JSON.parse(await readFile(join(result.outputDir, 'asset_resolution_report.json'), 'utf8')));
@@ -271,13 +323,21 @@ describe('Compiler + Build + Preview services', () => {
   });
 
   it('writes a side-scrolling run-and-gun project from runtime-oriented IR', async () => {
-    const normalized = validateAndNormalizeRawGameDsl(createSideScrollingRunAndGunRawDsl());
+    const rawDsl = RawGameDslSchema.parse(createSideScrollingRunAndGunRawDsl());
+    const normalized = validateAndNormalizeRawGameDsl(rawDsl);
     expect(normalized.ok).toBe(true);
     if (!normalized.ok) {
       return;
     }
 
-    const result = await new TemplateCompilerService(workspace, templateRoot).compile({ projectId, runId, ir: normalized.ir });
+    const authorityBundle = createAuthorityBundleForRawDsl(rawDsl);
+    const result = await new TemplateCompilerService(workspace, templateRoot).compile({
+      projectId,
+      runId,
+      rawDsl,
+      ir: normalized.ir,
+      authorityBundle
+    });
     expectCompileSuccess(result);
 
     expect(result).toMatchObject({
@@ -368,13 +428,22 @@ describe('Compiler + Build + Preview services', () => {
     await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/template-params.generated.json'), 'utf8')).resolves.toContain('"assetLabels"');
     await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/asset-manifest.generated.json'), 'utf8')).resolves.toContain('"loadKey": "agm.enemy"');
     await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/main.ts'), 'utf8')).resolves.toContain('runtime-plan.generated.json');
+    await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/main.ts'), 'utf8')).resolves.toContain('runtime-authority.generated.json');
     await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/main.ts'), 'utf8')).resolves.toContain('scene-ir.generated.json');
     await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/main.ts'), 'utf8')).resolves.toContain('live-edit-registry.generated.json');
     await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/live-edit-registry.generated.json'), 'utf8')).resolves.toContain(`"runId": "${runId}"`);
     await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/live-edit-registry.generated.json'), 'utf8')).resolves.toContain('"/level/waves/*/x"');
     await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/main.ts'), 'utf8')).resolves.toContain('new SideScrollingRunAndGunScene');
+    await expect(readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/GameScene.ts'), 'utf8')).resolves.toContain('runtimeAuthority');
+    const runtimeAuthority = JSON.parse(await readFile(join(result.outputDir, 'side_scrolling_run_and_gun/src/runtime-authority.generated.json'), 'utf8'));
+    expect(runtimeAuthority).toMatchObject({
+      bundleHash: authorityBundle.bundleHash,
+      activeProfileLock: { lockHash: authorityBundle.activeProfileLock.lockHash },
+      refs: { activeProfileLock: authorityBundle.refs.activeProfileLock }
+    });
     await expect(readFile(join(result.outputDir, 'src/main.ts'), 'utf8')).resolves.toContain("../side_scrolling_run_and_gun/src/main.js");
     expect(result.files).toContain('side_scrolling_run_and_gun/src/runtime-plan.generated.json');
+    expect(result.files).toContain('side_scrolling_run_and_gun/src/runtime-authority.generated.json');
     expect(result.files).toContain('side_scrolling_run_and_gun/src/scene-ir.generated.json');
     expect(result.files).toContain('side_scrolling_run_and_gun/src/side-scrolling-live-edit-bridge.ts');
     expect(result.files).toContain('side_scrolling_run_and_gun/src/live-edit-registry.generated.json');
@@ -387,13 +456,20 @@ describe('Compiler + Build + Preview services', () => {
   });
 
   it('writes optional dodger collectible params when the DSL includes coins', async () => {
-    const normalized = validateAndNormalizeRawGameDsl(createDodgerRawDsl());
+    const rawDsl = RawGameDslSchema.parse(createDodgerRawDsl());
+    const normalized = validateAndNormalizeRawGameDsl(rawDsl);
     expect(normalized.ok).toBe(true);
     if (!normalized.ok) {
       return;
     }
 
-    const result = await new TemplateCompilerService(workspace, templateRoot).compile({ projectId, runId, ir: normalized.ir });
+    const result = await new TemplateCompilerService(workspace, templateRoot).compile({
+      projectId,
+      runId,
+      rawDsl,
+      ir: normalized.ir,
+      authorityBundle: createAuthorityBundleForRawDsl(rawDsl)
+    });
     expectCompileSuccess(result);
 
     await expect(readFile(join(result.outputDir, 'dodger/src/template-params.generated.json'), 'utf8')).resolves.toContain('"collectible"');
@@ -411,7 +487,7 @@ describe('Compiler + Build + Preview services', () => {
   });
 
   it('does not emit or preload collectible assets for dodger games without coins', async () => {
-    const raw = createDodgerRawDsl();
+    const raw = RawGameDslSchema.parse(createDodgerRawDsl());
     raw.player.actions = [];
     raw.entities = raw.entities.filter((entity) => entity.kind !== 'collectible');
     raw.rules.collisions = raw.rules.collisions.filter((collision) => collision.target !== 'coin');
@@ -422,7 +498,13 @@ describe('Compiler + Build + Preview services', () => {
       return;
     }
 
-    const result = await new TemplateCompilerService(workspace, templateRoot).compile({ projectId, runId, ir: normalized.ir });
+    const result = await new TemplateCompilerService(workspace, templateRoot).compile({
+      projectId,
+      runId,
+      rawDsl: raw,
+      ir: normalized.ir,
+      authorityBundle: createAuthorityBundleForRawDsl(raw)
+    });
     expectCompileSuccess(result);
 
     await expect(readFile(join(result.outputDir, 'dodger/src/template-params.generated.json'), 'utf8')).resolves.not.toContain('"collectible"');
@@ -504,6 +586,64 @@ function expectCompileSuccess(result: RuntimeCompileResult): asserts result is R
   if (!result.ok) {
     throw new Error(`Expected compile success, got unsupported: ${JSON.stringify(result.unsupportedCapabilities)}`);
   }
+}
+
+function createAuthorityBundleForRawDsl(rawDsl: RawGameDsl, identity = { projectId, runId }): AuthorityBundle {
+  const brief = GameBriefSchema.parse({
+    brief_version: 'game-brief-v0.1',
+    title: rawDsl.metadata.title,
+    genre: rawDsl.game.genre,
+    camera: rawDsl.game.camera,
+    core_loop: ['Use the generated mechanics.', 'Satisfy the generated win objective.'],
+    difficulty: rawDsl.game.difficulty,
+    target_play_time_sec: rawDsl.game.target_play_time_sec
+  });
+  const parsedBrief = parseAndNormalizeGameBrief(brief);
+  const canonicalBrief = buildCanonicalGameBriefArtifact({
+    projectId: identity.projectId,
+    runId: identity.runId,
+    canonicalBrief: parsedBrief.canonical,
+    sourceFormat: parsedBrief.sourceFormat
+  });
+  const generationScopePlan = buildGenerationScopePlan({ requestedPlayTime: canonicalBrief.canonicalBrief.play_time_intent });
+  const preflight = buildGenerationCapabilityPreflight({
+    projectId: identity.projectId,
+    runId: identity.runId,
+    normalizedGenre: runtimeGenreForRawDsl(rawDsl)
+  });
+  const activeProfileLock = buildActiveProfileLock({
+    projectId: identity.projectId,
+    runId: identity.runId,
+    canonicalBrief,
+    generationScopePlan,
+    readinessReport: preflight.readinessReport
+  });
+  if (!activeProfileLock.ok) {
+    throw new Error(`Expected compiler test active profile lock: ${activeProfileLock.issues.join('; ')}`);
+  }
+
+  const bundle = buildAuthorityBundle({
+    projectId: identity.projectId,
+    runId: identity.runId,
+    canonicalBrief,
+    generationScopePlan,
+    activeProfileLock: activeProfileLock.value
+  });
+  if (!bundle.ok) {
+    throw new Error(`Expected compiler test authority bundle: ${bundle.issues.join('; ')}`);
+  }
+
+  return bundle.value;
+}
+
+function runtimeGenreForRawDsl(rawDsl: RawGameDsl): string {
+  if (rawDsl.game.genre === 'shooter') {
+    return 'top_down_shooter';
+  }
+  if (rawDsl.game.genre === 'dodger') {
+    return 'dodger_collector';
+  }
+  return rawDsl.game.genre;
 }
 
 function createCatVsTankShooterRawDsl() {

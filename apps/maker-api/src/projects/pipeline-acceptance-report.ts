@@ -147,6 +147,11 @@ type BuildPipelineAcceptanceReportInput = {
 
 const ARTIFACT_ORDER = [
   'generationInputReport',
+  'intentPlan',
+  'canonicalGameBrief',
+  'generationScopePlan',
+  'activeProfileLock',
+  'authorityBundle',
   'generationPathReceipt',
   'capabilityRegistrySnapshot',
   'generationCapabilityReadinessReport',
@@ -159,7 +164,6 @@ const ARTIFACT_ORDER = [
   'shadowRuntimeLoaderReport',
   'shadowCapabilityQaPlan',
   'shadowCapabilityQaReport',
-  'intentPlan',
   'gameDsl',
   'gameDslCandidate',
   'dslValidationReport',

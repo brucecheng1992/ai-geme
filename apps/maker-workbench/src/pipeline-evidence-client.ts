@@ -31,7 +31,21 @@ export type PipelineEvidenceView =
     };
 
 const GROUPS: Array<{ id: string; title: string; artifactIds: string[] }> = [
-  { id: 'prompt', title: 'Prompt / Provenance', artifactIds: ['generationInputReport', 'generationPathReceipt', 'intentPlan', 'promptOptimizationReport', 'optimizedPrompt'] },
+  {
+    id: 'prompt',
+    title: 'Prompt / Provenance',
+    artifactIds: [
+      'generationInputReport',
+      'intentPlan',
+      'canonicalGameBrief',
+      'generationScopePlan',
+      'activeProfileLock',
+      'authorityBundle',
+      'generationPathReceipt',
+      'promptOptimizationReport',
+      'optimizedPrompt'
+    ]
+  },
   { id: 'dsl', title: 'DSL', artifactIds: ['gameDsl', 'gameDslCandidate', 'dslValidationReport', 'dslConsumptionReport'] },
   {
     id: 'runtime',

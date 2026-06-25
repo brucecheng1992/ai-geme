@@ -16,6 +16,13 @@ import {
 } from '../../../../packages/asset-pipeline/src/index.js';
 import type { NormalizedGameIr, RawGameDsl } from '../../../../packages/game-dsl/src/index.js';
 import {
+  ACTIVE_PROFILE_LOCK_PATH,
+  AUTHORITY_BUNDLE_PATH,
+  CANONICAL_GAME_BRIEF_PATH,
+  GENERATION_SCOPE_PLAN_PATH,
+  authorityBundleRef,
+  buildActiveProfileLock,
+  buildAuthorityBundle,
   buildRuntimeCapabilityReport,
   buildDslConsumptionReport,
   buildUnsupportedRuntimeCapabilityReport,
@@ -28,18 +35,32 @@ import {
   buildGenerationCapabilityResolutionShadow,
   buildGenerationCapabilityPreflight,
   buildGenerationPathReceipt,
+  buildCanonicalGameBriefArtifact,
+  buildGenerationScopePlan,
   buildGameDslArtifact,
   checkPhaserRuntimeCapabilities,
   findRuntimeGenreCapability,
+  GAME_BRIEF_RAW_MODEL_OUTPUT_PATH,
   LEGACY_DSL_NONREPRESENTABLE,
+  parseAndNormalizeGameBrief,
   validateAndNormalizeRawGameDsl,
+  validateAuthorityBundleForRun,
   validateGameDslArtifact,
   withDslValidationSourceArtifact,
+  type ActiveProfileLock,
+  type AuthorityBundle,
+  type CanonicalGameBriefArtifact,
   type DslValidationReport,
+  GenerationCapabilityReadinessReportSchema,
+  GenerationCapabilityResolutionReportSchema,
+  type GenerationCapabilityReadinessReport,
+  type GenerationCapabilityResolutionReport,
   type GenerationCapabilityRuntimeShadowArtifacts,
   type GenerationCapabilityResolutionShadowArtifacts,
   type GenerationCapabilityPreflightArtifacts,
   type GenerationCapabilityGapReport,
+  type GameBriefV02,
+  type GenerationScopePlan,
   type GameDslArtifact,
   type RuntimeCapabilityReport
 } from '../../../../packages/game-dsl/src/index.js';
@@ -59,13 +80,14 @@ import {
   writeRenderFidelityReport
 } from '../qa/render-fidelity-report.js';
 import type { QaAssetSemanticRepairReport, QaAssetSemanticRepairSkippedReason, QaGenre, QaReport } from '../qa/qa.types.js';
+import type { QaRuntimeAuthorityExpectation } from '../qa/qa.types.js';
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
-import { createDeterministicRawGameDsl } from './deterministic-game-dsl.js';
 import { GenerationInputReportSchema, buildGenerationInputReport, type GenerationInputReport } from './generation-input-report.js';
 import { buildPipelineAcceptanceReport, writePipelineAcceptanceReport } from './pipeline-acceptance-report.js';
 import {
   buildCompileFailedPipelineArtifactIndex,
   buildDslPreconditionBlockedPipelineArtifactIndex,
+  buildActiveProfileLockBlockedPipelineArtifactIndex,
   buildInvalidDslPipelineArtifactIndex,
   buildModelGenerationFailedPipelineArtifactIndex,
   buildUnsupportedIntentPipelineArtifactIndex,
@@ -90,8 +112,21 @@ type DslProvider = Pick<GameDslProviderService, 'generateGameBrief' | 'generateR
 type RuntimeCompiler = Pick<TemplateCompilerService, 'compile'>;
 type RuntimeBuilder = Pick<ViteBuildRunnerService, 'build'>;
 type RuntimeQaRunner = Pick<PlaywrightQaRunnerService, 'run'>;
-type DslSource = 'model_provider' | 'deterministic_local_fallback';
-type RawDslGenerationResult = { ok: true; artifact: GameDslArtifact; dslSource: DslSource; brief?: unknown } | { ok: false; status: ProjectStatus };
+type DslSource = 'model_provider';
+type RawDslGenerationResult =
+  | { ok: true; artifact: GameDslArtifact; dslSource: DslSource; stageOneAuthority: StageOneAuthorityArtifacts }
+  | { ok: false; status: ProjectStatus };
+type ProviderGameBriefSuccess = Extract<Awaited<ReturnType<DslProvider['generateGameBrief']>>, { ok: true }>;
+type StageOneAuthorityArtifacts = {
+  canonicalBrief: CanonicalGameBriefArtifact;
+  generationScopePlan: GenerationScopePlan;
+  capabilityPreflight: GenerationCapabilityPreflightArtifacts;
+  capabilityResolution: GenerationCapabilityResolutionShadowArtifacts;
+  activeProfileLock: ActiveProfileLock;
+  authorityBundle: AuthorityBundle;
+  brief: GameBriefV02;
+};
+type StageOneCanonicalAuthorityArtifacts = Pick<StageOneAuthorityArtifacts, 'canonicalBrief' | 'generationScopePlan' | 'brief'>;
 type QaPipelineResult =
   | { kind: 'report'; report: QaReport; assetSemanticRepair: QaAssetSemanticRepairReport }
   | { kind: 'status'; status: ProjectStatus; report: QaReport; assetSemanticRepair: QaAssetSemanticRepairReport };
@@ -149,10 +184,10 @@ export class GenerationPipelineService {
       title: rawDsl.metadata.title,
       genre: rawDsl.game.genre
     });
-    await this.writeDslConsumptionReport(input, rawDsl, normalized.ir);
+    await this.writeDslConsumptionReport(input, rawDsl, normalized.ir, generated.stageOneAuthority.authorityBundle);
     await this.appendEvent(input.runId, 'ir.generated', 'Normalized IR generated from validated DSL.');
 
-    const compiled = await this.compileProject(input, rawDsl, normalized.ir, generated.dslSource, generated.brief);
+    const compiled = await this.compileProject(input, rawDsl, normalized.ir, generated.dslSource, generated.stageOneAuthority);
     if (!compiled.ok) {
       return compiled.status;
     }
@@ -169,7 +204,7 @@ export class GenerationPipelineService {
       return 'RUNTIME_UNSUPPORTED';
     }
 
-    return await this.runQa(input, qaGenre, compiled);
+    return await this.runQa(input, qaGenre, compiled, generated.stageOneAuthority);
   }
 
   private async generateRawDsl(input: GenerationPipelineInput): Promise<RawDslGenerationResult> {
@@ -177,17 +212,16 @@ export class GenerationPipelineService {
     const language = normalizeLanguage(input.language);
     const intentPlan = buildIntentPlan({ idea: input.idea, language });
     await this.writeIntentPlan(input, intentPlan);
-    await this.writeGenerationCapabilityPreflightArtifacts(
-      input,
-      buildGenerationCapabilityPreflight({
-        projectId: input.projectId,
-        runId: input.runId,
-        normalizedGenre: intentPlan.normalizedGenre
-      })
-    );
+    const intentPreflight = buildGenerationCapabilityPreflight({
+      projectId: input.projectId,
+      runId: input.runId,
+      normalizedGenre: intentPlan.normalizedGenre
+    });
+    await this.writeGenerationCapabilityPreflightArtifacts(input, intentPreflight);
     await this.appendEvent(input.runId, 'intent.planned', `Intent normalized to ${intentPlan.normalizedGenre}.`);
 
     if (intentPlan.runtimeDslSupport === 'unsupported') {
+      await this.writeGenerationCapabilityBlockedClosureArtifacts(input, intentPreflight);
       await this.writeUnsupportedIntentArtifacts(input, intentPlan);
       await this.setStatus(input.projectId, input.runId, 'RUNTIME_UNSUPPORTED', 'dsl-generation', 'FAILED');
       await this.appendEvent(
@@ -207,12 +241,43 @@ export class GenerationPipelineService {
     }
 
     if (brief.ok) {
+      const authority = await this.writeStageOneAuthorityArtifacts(input, brief);
+      if (!authority.ok) {
+        return { ok: false, status: 'FAILED' };
+      }
+
+      const canonicalPreflight = buildGenerationCapabilityPreflight({
+        projectId: input.projectId,
+        runId: input.runId,
+        normalizedGenre: normalizedRuntimeGenreForCanonicalBrief(authority.value.brief)
+      });
+      const canonicalResolution = await this.writeGenerationCapabilityPreflightArtifacts(input, canonicalPreflight);
+      const activeProfileLock = await this.writeActiveProfileLock(input, authority.value, canonicalPreflight);
+      if (!activeProfileLock.ok) {
+        return { ok: false, status: 'FAILED' };
+      }
+      const authorityBundle = await this.writeAuthorityBundle(input, authority.value, activeProfileLock.value);
+      if (!authorityBundle.ok) {
+        return { ok: false, status: 'FAILED' };
+      }
+      const stageOneAuthority: StageOneAuthorityArtifacts = {
+        ...authority.value,
+        capabilityPreflight: canonicalPreflight,
+        capabilityResolution: canonicalResolution,
+        activeProfileLock: activeProfileLock.value,
+        authorityBundle: authorityBundle.value
+      };
       let raw: Awaited<ReturnType<DslProvider['generateRawGameDsl']>>;
 
       try {
-        raw = await this.modelProvider.generateRawGameDsl({ ...input, language, brief: brief.value });
+        raw = await this.modelProvider.generateRawGameDsl({
+          ...input,
+          language,
+          brief: authority.value.brief,
+          authorityBundle: stageOneAuthority.authorityBundle
+        });
       } catch (error) {
-        return await this.failThrownModelGeneration(input, error);
+        return await this.failThrownModelGeneration(input, error, { stageOneAuthorityEstablished: true });
       }
 
       if (raw.ok) {
@@ -222,10 +287,10 @@ export class GenerationPipelineService {
           return { ok: false, status: 'DSL_VALIDATION_FAILED' };
         }
         await this.setStatus(input.projectId, input.runId, 'DSL_GENERATED', 'dsl-generation', 'DONE');
-        return { ok: true, artifact: artifact.value, dslSource: 'model_provider', brief: brief.value };
+        return { ok: true, artifact: artifact.value, dslSource: 'model_provider', stageOneAuthority };
       }
 
-      return await this.handleModelGenerationFailure(input, raw);
+      return await this.handleModelGenerationFailure(input, raw, { stageOneAuthorityEstablished: true });
     }
 
     return await this.handleModelGenerationFailure(input, brief);
@@ -236,11 +301,16 @@ export class GenerationPipelineService {
     rawDsl: RawGameDsl,
     ir: NormalizedGameIr,
     dslSource: DslSource,
-    brief?: unknown
+    stageOneAuthority: StageOneAuthorityArtifacts
   ): Promise<RuntimeCompileSuccess | { ok: false; status: ProjectStatus }> {
     await this.setStatus(input.projectId, input.runId, 'RUNTIME_CHECKING', 'project-generation', 'RUNNING');
     const runtimeGate = checkPhaserRuntimeCapabilities(ir);
     if (!runtimeGate.ok) {
+      await this.writeGenerationCapabilityBlockedClosureArtifacts(
+        input,
+        stageOneAuthority.capabilityPreflight,
+        stageOneAuthority.capabilityResolution
+      );
       await this.writeGenerationPathReceipt(input, {
         selectedPath: 'fail_closed_runtime_unsupported',
         dslSource,
@@ -248,6 +318,7 @@ export class GenerationPipelineService {
         profileId: ir.template_params.template_id,
         capabilityReadiness: 'blocked',
         artifactRefs: [
+          ...stageOneAuthorityArtifactRefs(),
           { artifactKind: 'game_dsl', path: 'game_dsl.json' },
           { artifactKind: 'dsl_consumption_report', path: 'dsl_consumption_report.json' },
           { artifactKind: 'runtime_capability_report', path: 'runtime_capability_report.json' }
@@ -272,9 +343,15 @@ export class GenerationPipelineService {
         runId: input.runId,
         rawDsl,
         ir,
-        semanticTraceContext: { originalPrompt: input.idea, brief }
+        semanticTraceContext: { originalPrompt: input.idea, brief: stageOneAuthority.brief },
+        authorityBundle: stageOneAuthority.authorityBundle
       });
     } catch (error) {
+      await this.writeGenerationCapabilityBlockedClosureArtifacts(
+        input,
+        stageOneAuthority.capabilityPreflight,
+        stageOneAuthority.capabilityResolution
+      );
       await this.writeGenerationPathReceipt(input, {
         selectedPath: 'fail_closed_compile_failed',
         dslSource,
@@ -282,6 +359,7 @@ export class GenerationPipelineService {
         profileId: ir.template_params.template_id,
         capabilityReadiness: 'not_evaluated',
         artifactRefs: [
+          ...stageOneAuthorityArtifactRefs(),
           { artifactKind: 'game_dsl', path: 'game_dsl.json' },
           { artifactKind: 'dsl_consumption_report', path: 'dsl_consumption_report.json' },
           { artifactKind: 'runtime_capability_report', path: 'runtime_capability_report.json' }
@@ -294,6 +372,11 @@ export class GenerationPipelineService {
     }
 
     if (!compiled.ok) {
+      await this.writeGenerationCapabilityBlockedClosureArtifacts(
+        input,
+        stageOneAuthority.capabilityPreflight,
+        stageOneAuthority.capabilityResolution
+      );
       await this.writeGenerationPathReceipt(input, {
         selectedPath: 'fail_closed_runtime_unsupported',
         dslSource,
@@ -301,6 +384,7 @@ export class GenerationPipelineService {
         profileId: ir.template_params.template_id,
         capabilityReadiness: 'blocked',
         artifactRefs: [
+          ...stageOneAuthorityArtifactRefs(),
           { artifactKind: 'game_dsl', path: 'game_dsl.json' },
           { artifactKind: 'dsl_consumption_report', path: 'dsl_consumption_report.json' },
           { artifactKind: 'runtime_capability_report', path: 'runtime_capability_report.json' }
@@ -318,18 +402,24 @@ export class GenerationPipelineService {
 
     await this.setStatus(input.projectId, input.runId, 'COMPILED', 'project-generation', 'DONE');
     await this.writeGenerationPathReceipt(input, {
-      selectedPath: 'legacy_template_v1',
+      selectedPath: 'capability_composed_v1',
+      targetPath: 'capability_composed_v1',
       dslSource,
-      selectionReason: 'Legacy template path is the actual compiled path until capability_composed_v1 cutover gates pass.',
-      profileId: ir.template_params.template_id,
-      capabilityReadiness: 'not_evaluated',
+      selectionReason: 'Active profile lock selected capability_composed_v1 with legacy fallback forbidden; QA must observe the same runtime authority bundle and active profile lock before cutover evidence is authoritative.',
+      profileId: stageOneAuthority.authorityBundle.activeProfileLock.profileId,
+      capabilityReadiness: 'ready',
       artifactRefs: [
-        ...(dslSource === 'deterministic_local_fallback' ? [{ artifactKind: 'raw_game_dsl_fallback', path: 'raw-game-dsl.raw.json' }] : []),
+        ...stageOneAuthorityArtifactRefs(),
         { artifactKind: 'game_dsl', path: 'game_dsl.json' },
         { artifactKind: 'dsl_consumption_report', path: 'dsl_consumption_report.json' },
         { artifactKind: 'runtime_capability_report', path: 'runtime_capability_report.json' }
       ]
     });
+    await this.writeGenerationCapabilityBlockedClosureArtifacts(
+      input,
+      stageOneAuthority.capabilityPreflight,
+      stageOneAuthority.capabilityResolution
+    );
     await this.writeValidPipelineArtifactIndex(input, compiled);
     await this.appendEvent(input.runId, 'project.generated', `Phaser/Vite project generated at ${compiled.outputDir}.`);
     return compiled;
@@ -369,18 +459,24 @@ export class GenerationPipelineService {
     return 'PREVIEW_READY';
   }
 
-  private async runQa(input: GenerationPipelineInput, genre: QaGenre, compiled: RuntimeCompileSuccess): Promise<ProjectStatus> {
-    const firstReport = await this.runQaAttempt(input, genre, 'initial');
-    const repairResult = await this.maybeRunAssetSemanticRepair(input, genre, compiled, firstReport);
+  private async runQa(
+    input: GenerationPipelineInput,
+    genre: QaGenre,
+    compiled: RuntimeCompileSuccess,
+    stageOneAuthority: StageOneAuthorityArtifacts
+  ): Promise<ProjectStatus> {
+    const firstReport = await this.runQaAttempt(input, genre, 'initial', stageOneAuthority);
+    const repairResult = await this.maybeRunAssetSemanticRepair(input, genre, compiled, firstReport, stageOneAuthority);
     const finalReport = withAssetSemanticRepairReport(repairResult.report, repairResult.assetSemanticRepair);
 
     await this.writeObservedRuntimeSceneBindingReport(input, finalReport);
     const renderFidelityReport = await this.writeRenderFidelityReport(input, finalReport);
-    const finalReportWithRenderFidelity: QaReport = {
+    const finalReportWithRenderFidelity = this.enforceRuntimeAuthorityQaGate(stageOneAuthority, {
       ...finalReport,
       render_fidelity: summarizeRenderFidelityForQaReport(renderFidelityReport)
-    };
+    });
     await this.writeQaReport(input.projectId, input.runId, finalReportWithRenderFidelity);
+    await this.writeGenerationCapabilityQaClosureArtifacts(input, stageOneAuthority, finalReportWithRenderFidelity);
     await this.writeValidPipelineArtifactIndex(input, compiled, { buildLogPresent: true, qaReportPresent: true, renderFidelityReportPresent: true });
 
     if (repairResult.kind === 'status') {
@@ -391,7 +487,12 @@ export class GenerationPipelineService {
     return await this.completeQa(input, finalReportWithRenderFidelity);
   }
 
-  private async runQaAttempt(input: GenerationPipelineInput, genre: QaGenre, phase: 'initial' | 'repair-rerun'): Promise<QaReport> {
+  private async runQaAttempt(
+    input: GenerationPipelineInput,
+    genre: QaGenre,
+    phase: 'initial' | 'repair-rerun',
+    stageOneAuthority: StageOneAuthorityArtifacts
+  ): Promise<QaReport> {
     await this.setStatus(input.projectId, input.runId, 'QA_RUNNING', 'qa', 'RUNNING');
     await this.appendEvent(
       input.runId,
@@ -399,19 +500,59 @@ export class GenerationPipelineService {
       phase === 'initial' ? 'Playwright QA started.' : 'Playwright QA rerun started after semantic asset repair.'
     );
     const previewUrl = this.getPreviewUrl(input.projectId);
+    const timeoutMs = stageOneAuthority.authorityBundle.generationScopePlan.qaProbeWindowSec * 1000;
+    const expectedRuntimeAuthority = buildQaRuntimeAuthorityExpectation(stageOneAuthority.authorityBundle);
 
     try {
-      return await this.qaRunner.run({ projectId: input.projectId, runId: input.runId, genre, previewUrl });
+      return await this.qaRunner.run({ projectId: input.projectId, runId: input.runId, genre, previewUrl, timeoutMs, expectedRuntimeAuthority });
     } catch (error) {
       return await this.writeQaFailureReport(input, genre, previewUrl, errorMessage(error, 'Playwright QA runner failed.'));
     }
+  }
+
+  private enforceRuntimeAuthorityQaGate(stageOneAuthority: StageOneAuthorityArtifacts, report: QaReport): QaReport {
+    const expected = buildQaRuntimeAuthorityExpectation(stageOneAuthority.authorityBundle);
+    if (qaRuntimeAuthorityMatchesExpected(report.runtime_authority, expected)) {
+      return report;
+    }
+
+    const runtimeAuthority = report.runtime_authority ?? {
+      status: 'FAILED' as const,
+      expected,
+      mismatches: ['runtime_authority_evidence_missing']
+    };
+    const mismatches =
+      runtimeAuthority.status === 'FAILED'
+        ? runtimeAuthority.mismatches
+        : [
+            ...compareQaRuntimeAuthorityEvidence('expected', runtimeAuthority.expected, expected),
+            ...compareQaRuntimeAuthorityEvidence('observed', runtimeAuthority.observed, expected)
+          ];
+
+    if (report.status === 'QA_FAILED') {
+      return {
+        ...report,
+        runtime_authority: { ...runtimeAuthority, status: 'FAILED', expected, mismatches }
+      };
+    }
+
+    return {
+      ...report,
+      status: 'QA_FAILED',
+      runtime_status: 'FAILED',
+      overall_status: 'QA_FAILED',
+      code: 'RUNTIME_AUTHORITY_MISMATCH',
+      message: `Runtime authority QA did not observe the active bundle/lock hash: ${mismatches.join('; ')}`,
+      runtime_authority: { ...runtimeAuthority, status: 'FAILED', expected, mismatches }
+    };
   }
 
   private async maybeRunAssetSemanticRepair(
     input: GenerationPipelineInput,
     genre: QaGenre,
     compiled: RuntimeCompileSuccess,
-    firstReport: QaReport
+    firstReport: QaReport,
+    stageOneAuthority: StageOneAuthorityArtifacts
   ): Promise<QaPipelineResult> {
     const maxAttempts = normalizeAssetRepairMaxAttempts(this.assetSemanticRepairConfig.maxAttempts);
     const baseReport = buildAssetSemanticRepairReport({
@@ -516,7 +657,7 @@ export class GenerationPipelineService {
       };
     }
 
-    const finalReport = await this.runQaAttempt(input, genre, 'repair-rerun');
+    const finalReport = await this.runQaAttempt(input, genre, 'repair-rerun', stageOneAuthority);
     return {
       kind: 'report',
       report: finalReport,
@@ -580,10 +721,12 @@ export class GenerationPipelineService {
 
   private async handleModelGenerationFailure(
     input: GenerationPipelineInput,
-    failure: GameDslProviderResult<unknown>
+    failure: GameDslProviderResult<unknown>,
+    options: { stageOneAuthorityEstablished?: boolean } = {}
   ): Promise<RawDslGenerationResult> {
-    if (shouldUseLocalFallback(failure)) {
-      return await this.writeDeterministicFallback(input, failure);
+    if (!failure.ok && failure.code === 'MODEL_NOT_AVAILABLE') {
+      await this.failModelUnavailable(input, failure.message, options);
+      return { ok: false, status: 'FAILED' };
     }
 
     if (!failure.ok && failure.code === LEGACY_DSL_NONREPRESENTABLE) {
@@ -592,16 +735,25 @@ export class GenerationPipelineService {
     }
 
     const reason = failure.ok ? 'unknown' : `${failure.code}: ${failure.message}`;
-    await this.failModelGeneration(input, `Model generation failed: ${reason}`, failure.ok ? 'UNKNOWN_MODEL_FAILURE' : failure.code);
+    await this.failModelGeneration(input, `Model generation failed: ${reason}`, failure.ok ? 'UNKNOWN_MODEL_FAILURE' : failure.code, options);
     return { ok: false, status: 'FAILED' };
   }
 
-  private async failThrownModelGeneration(input: GenerationPipelineInput, error: unknown): Promise<RawDslGenerationResult> {
-    await this.failModelGeneration(input, `Model generation threw: ${errorMessage(error, 'unknown error')}`, 'PROVIDER_THROWN');
+  private async failThrownModelGeneration(
+    input: GenerationPipelineInput,
+    error: unknown,
+    options: { stageOneAuthorityEstablished?: boolean } = {}
+  ): Promise<RawDslGenerationResult> {
+    await this.failModelGeneration(input, `Model generation threw: ${errorMessage(error, 'unknown error')}`, 'PROVIDER_THROWN', options);
     return { ok: false, status: 'FAILED' };
   }
 
-  private async failModelGeneration(input: GenerationPipelineInput, message: string, modelFailureCode: string): Promise<void> {
+  private async failModelGeneration(
+    input: GenerationPipelineInput,
+    message: string,
+    modelFailureCode: string,
+    options: { stageOneAuthorityEstablished?: boolean } = {}
+  ): Promise<void> {
     await this.writeGenerationPathReceipt(input, {
       selectedPath: 'fail_closed_model_generation_failed',
       dslSource: 'not_generated',
@@ -610,12 +762,47 @@ export class GenerationPipelineService {
       capabilityReadiness: 'not_evaluated',
       artifactRefs: [
         { artifactKind: 'generation_input_report', path: 'generation_input_report.json' },
-        { artifactKind: 'intent_plan', path: 'intent_plan.json' }
+        { artifactKind: 'intent_plan', path: 'intent_plan.json' },
+        ...(options.stageOneAuthorityEstablished === true ? stageOneAuthorityArtifactRefs() : [])
       ]
     });
-    await this.writeModelGenerationFailedPipelineArtifactIndex(input);
+    await this.writeGenerationCapabilityBlockedClosureFromPersistedArtifacts(input);
+    await this.writeModelGenerationFailedPipelineArtifactIndex(input, options);
     await this.setStatus(input.projectId, input.runId, 'FAILED', 'dsl-generation', 'FAILED');
     await this.appendEvent(input.runId, 'model.failed', message);
+  }
+
+  private async failModelUnavailable(
+    input: GenerationPipelineInput,
+    message: string,
+    options: { stageOneAuthorityEstablished?: boolean } = {}
+  ): Promise<void> {
+    const selectionReason =
+      options.stageOneAuthorityEstablished === true
+        ? `Model unavailable after canonical GameBrief v0.2 authority was established: ${message}`
+        : `Model unavailable before canonical GameBrief v0.2 authority could be established: ${message}`;
+    await this.writeGenerationPathReceipt(input, {
+      selectedPath: 'fail_closed_model_unavailable',
+      dslSource: 'not_generated',
+      selectionReason,
+      modelFailureCode: 'MODEL_NOT_AVAILABLE',
+      capabilityReadiness: 'not_evaluated',
+      artifactRefs: [
+        { artifactKind: 'generation_input_report', path: 'generation_input_report.json' },
+        { artifactKind: 'intent_plan', path: 'intent_plan.json' },
+        ...(options.stageOneAuthorityEstablished === true ? stageOneAuthorityArtifactRefs() : []),
+        { artifactKind: 'capability_registry_snapshot', path: 'capability_registry_snapshot.json' },
+        { artifactKind: 'generation_capability_readiness_report', path: 'generation_capability_readiness_report.json' },
+        { artifactKind: 'generation_capability_resolution_report', path: 'generation_capability_resolution_report.json' },
+        { artifactKind: 'generation_capability_runtime_report', path: 'generation_capability_runtime_report.json' },
+        { artifactKind: 'generation_capability_gap_report', path: 'generation_capability_gap_report.json' },
+        { artifactKind: 'generation_capability_cutover_report', path: 'generation_capability_cutover_report.json' }
+      ]
+    });
+    await this.writeGenerationCapabilityBlockedClosureFromPersistedArtifacts(input);
+    await this.writeModelGenerationFailedPipelineArtifactIndex(input, options);
+    await this.setStatus(input.projectId, input.runId, 'FAILED', 'dsl-generation', 'FAILED');
+    await this.appendEvent(input.runId, 'model.failed', `MODEL_NOT_AVAILABLE: ${message}`);
   }
 
   private async failLegacyDslPrecondition(input: GenerationPipelineInput, message: string, issues: string[] = []): Promise<void> {
@@ -629,30 +816,70 @@ export class GenerationPipelineService {
       blocker: 'CAPABILITY_COMPOSED_PATH_NOT_ACTIVE',
       capabilityReadiness: 'blocked',
       artifactRefs: [
+        ...stageOneAuthorityArtifactRefs(),
         { artifactKind: 'generation_input_report', path: 'generation_input_report.json' },
         { artifactKind: 'intent_plan', path: 'intent_plan.json' }
       ]
     });
+    await this.writeGenerationCapabilityBlockedClosureFromPersistedArtifacts(input);
     await this.writeDslPreconditionBlockedPipelineArtifactIndex(input);
     await this.setStatus(input.projectId, input.runId, 'FAILED', 'dsl-generation', 'FAILED');
     await this.appendEvent(input.runId, 'dsl.blocked_precondition', `${LEGACY_DSL_NONREPRESENTABLE}: ${issueSummary}`);
   }
 
-  private async writeDeterministicFallback(input: GenerationPipelineInput, failure: GameDslProviderResult<unknown>): Promise<RawDslGenerationResult> {
-    const fallback = createDeterministicRawGameDsl(input.idea, input.language);
-    const outputPath = this.workspace.getModelOutputPath(input.projectId, input.runId, 'raw-game-dsl.raw.json');
-    const reason = failure.ok ? 'unknown' : `${failure.code}: ${failure.message}`;
+  private async failActiveProfileLockPrecondition(input: GenerationPipelineInput, message: string): Promise<void> {
+    await this.writeGenerationPathReceipt(input, {
+      selectedPath: 'blocked',
+      targetPath: 'capability_composed_v1',
+      dslSource: 'not_generated',
+      selectionReason: `Generation blocked before Raw DSL because active profile lock is not authoritative: ${message}`,
+      blocker: 'ACTIVE_PROFILE_LOCK_UNRESOLVED',
+      capabilityReadiness: 'blocked',
+      artifactRefs: [
+        { artifactKind: 'generation_input_report', path: 'generation_input_report.json' },
+        { artifactKind: 'intent_plan', path: 'intent_plan.json' },
+        { artifactKind: 'canonical_game_brief', path: CANONICAL_GAME_BRIEF_PATH },
+        { artifactKind: 'generation_scope_plan', path: GENERATION_SCOPE_PLAN_PATH },
+        { artifactKind: 'capability_registry_snapshot', path: 'capability_registry_snapshot.json' },
+        { artifactKind: 'generation_capability_readiness_report', path: 'generation_capability_readiness_report.json' },
+        { artifactKind: 'generation_capability_resolution_report', path: 'generation_capability_resolution_report.json' },
+        { artifactKind: 'generation_capability_runtime_report', path: 'generation_capability_runtime_report.json' },
+        { artifactKind: 'generation_capability_gap_report', path: 'generation_capability_gap_report.json' },
+        { artifactKind: 'generation_capability_cutover_report', path: 'generation_capability_cutover_report.json' }
+      ]
+    });
+    await this.writeGenerationCapabilityBlockedClosureFromPersistedArtifacts(input);
+    await this.writeActiveProfileLockBlockedPipelineArtifactIndex(input);
+    await this.setStatus(input.projectId, input.runId, 'FAILED', 'dsl-generation', 'FAILED');
+    await this.appendEvent(input.runId, 'profile.lock_blocked', message);
+  }
 
-    await mkdir(dirname(outputPath), { recursive: true });
-    await writeFile(outputPath, `${JSON.stringify(fallback, null, 2)}\n`, 'utf8');
-    const intentPlan = buildIntentPlan({ idea: input.idea, language: normalizeLanguage(input.language) });
-    const artifact = await this.writeValidatedGameDslArtifact(input, fallback, intentPlan, 'deterministic_local_fallback');
-    if (!artifact.ok) {
-      return { ok: false, status: 'DSL_VALIDATION_FAILED' };
-    }
-    await this.setStatus(input.projectId, input.runId, 'DSL_GENERATED', 'dsl-generation', 'DONE');
-    await this.appendEvent(input.runId, 'model.fallback', `Using deterministic local DSL fallback because model generation failed: ${reason}`);
-    return { ok: true, artifact: artifact.value, dslSource: 'deterministic_local_fallback' };
+  private async failAuthorityBundlePrecondition(input: GenerationPipelineInput, message: string): Promise<void> {
+    await this.writeGenerationPathReceipt(input, {
+      selectedPath: 'blocked',
+      targetPath: 'capability_composed_v1',
+      dslSource: 'not_generated',
+      selectionReason: `Generation blocked before Raw DSL because authority bundle is not authoritative: ${message}`,
+      blocker: 'AUTHORITY_BUNDLE_INVALID',
+      capabilityReadiness: 'blocked',
+      artifactRefs: [
+        { artifactKind: 'generation_input_report', path: 'generation_input_report.json' },
+        { artifactKind: 'intent_plan', path: 'intent_plan.json' },
+        { artifactKind: 'canonical_game_brief', path: CANONICAL_GAME_BRIEF_PATH },
+        { artifactKind: 'generation_scope_plan', path: GENERATION_SCOPE_PLAN_PATH },
+        { artifactKind: 'active_profile_lock', path: ACTIVE_PROFILE_LOCK_PATH },
+        { artifactKind: 'capability_registry_snapshot', path: 'capability_registry_snapshot.json' },
+        { artifactKind: 'generation_capability_readiness_report', path: 'generation_capability_readiness_report.json' },
+        { artifactKind: 'generation_capability_resolution_report', path: 'generation_capability_resolution_report.json' },
+        { artifactKind: 'generation_capability_runtime_report', path: 'generation_capability_runtime_report.json' },
+        { artifactKind: 'generation_capability_gap_report', path: 'generation_capability_gap_report.json' },
+        { artifactKind: 'generation_capability_cutover_report', path: 'generation_capability_cutover_report.json' }
+      ]
+    });
+    await this.writeGenerationCapabilityBlockedClosureFromPersistedArtifacts(input);
+    await this.writeActiveProfileLockBlockedPipelineArtifactIndex(input);
+    await this.setStatus(input.projectId, input.runId, 'FAILED', 'dsl-generation', 'FAILED');
+    await this.appendEvent(input.runId, 'authority.bundle_blocked', message);
   }
 
   private async writeValidatedGameDslArtifact(
@@ -675,10 +902,12 @@ export class GenerationPipelineService {
         selectionReason: 'DSL candidate validation failed before runtime generation.',
         capabilityReadiness: 'not_evaluated',
         artifactRefs: [
+          ...stageOneAuthorityArtifactRefs(),
           { artifactKind: 'game_dsl_candidate', path: 'game_dsl.candidate.json' },
           { artifactKind: 'dsl_validation_report', path: 'dsl_validation_report.json' }
         ]
       });
+      await this.writeGenerationCapabilityBlockedClosureFromPersistedArtifacts(input);
       await this.writeInvalidDslPipelineArtifactIndex(input);
       await this.setStatus(input.projectId, input.runId, 'DSL_VALIDATION_FAILED', 'dsl-validation', 'FAILED');
       await this.appendEvent(input.runId, 'dsl.validation.failed', report.errors.map((issue) => `${issue.path}: ${issue.message}`).join('; '));
@@ -727,10 +956,126 @@ export class GenerationPipelineService {
     await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   }
 
+  private async writeStageOneAuthorityArtifacts(
+    input: GenerationPipelineInput,
+    providerBrief: ProviderGameBriefSuccess
+  ): Promise<{ ok: true; value: StageOneCanonicalAuthorityArtifacts } | { ok: false }> {
+    try {
+      const expectedRawOutputPath = this.workspace.getModelOutputPath(
+        input.projectId,
+        input.runId,
+        GAME_BRIEF_RAW_MODEL_OUTPUT_PATH
+      );
+      if (providerBrief.rawOutputPath !== expectedRawOutputPath) {
+        throw new Error(`Game Brief raw output path must be the current run artifact ${GAME_BRIEF_RAW_MODEL_OUTPUT_PATH}.`);
+      }
+
+      const parsed = parseAndNormalizeGameBrief(providerBrief.value);
+      const canonicalBrief = buildCanonicalGameBriefArtifact({
+        projectId: input.projectId,
+        runId: input.runId,
+        canonicalBrief: parsed.canonical,
+        sourceFormat: providerBrief.sourceFormat ?? parsed.sourceFormat
+      });
+      const generationScopePlan = buildGenerationScopePlan({ requestedPlayTime: canonicalBrief.canonicalBrief.play_time_intent });
+
+      await this.writeModelOutputJson(input, CANONICAL_GAME_BRIEF_PATH, canonicalBrief);
+      await this.writeModelOutputJson(input, GENERATION_SCOPE_PLAN_PATH, generationScopePlan);
+      await this.appendEvent(input.runId, 'game_brief.canonicalized', 'Canonical GameBrief v0.2 and GenerationScopePlan persisted.');
+      return {
+        ok: true,
+        value: {
+          canonicalBrief,
+          generationScopePlan,
+          brief: canonicalBrief.canonicalBrief
+        }
+      };
+    } catch (error) {
+      await this.failModelGeneration(
+        input,
+        `Canonical GameBrief v0.2 artifact/provenance failed: ${errorMessage(error, 'unknown error')}`,
+        'CANONICAL_GAME_BRIEF_ARTIFACT_FAILED'
+      );
+      return { ok: false };
+    }
+  }
+
+  private async writeActiveProfileLock(
+    input: GenerationPipelineInput,
+    authority: StageOneCanonicalAuthorityArtifacts,
+    preflight: GenerationCapabilityPreflightArtifacts
+  ): Promise<{ ok: true; value: ActiveProfileLock } | { ok: false }> {
+    try {
+      const lock = buildActiveProfileLock({
+        projectId: input.projectId,
+        runId: input.runId,
+        canonicalBrief: authority.canonicalBrief,
+        generationScopePlan: authority.generationScopePlan,
+        readinessReport: preflight.readinessReport
+      });
+
+      if (!lock.ok) {
+        await this.writeGenerationCapabilityBlockedClosureArtifacts(input, preflight);
+        await this.failActiveProfileLockPrecondition(input, `Active profile lock could not be established: ${lock.issues.join('; ')}`);
+        return { ok: false };
+      }
+
+      await this.writeModelOutputJson(input, ACTIVE_PROFILE_LOCK_PATH, lock.value);
+      await this.appendEvent(input.runId, 'profile.locked', `Active profile lock established for ${lock.value.profileId}.`);
+      return lock;
+    } catch (error) {
+      await this.writeGenerationCapabilityBlockedClosureArtifacts(input, preflight);
+      await this.failActiveProfileLockPrecondition(
+        input,
+        `Active profile lock artifact/provenance failed: ${errorMessage(error, 'unknown error')}`
+      );
+      return { ok: false };
+    }
+  }
+
+  private async writeAuthorityBundle(
+    input: GenerationPipelineInput,
+    authority: StageOneCanonicalAuthorityArtifacts,
+    activeProfileLock: ActiveProfileLock
+  ): Promise<{ ok: true; value: AuthorityBundle } | { ok: false }> {
+    try {
+      const bundle = buildAuthorityBundle({
+        projectId: input.projectId,
+        runId: input.runId,
+        canonicalBrief: authority.canonicalBrief,
+        generationScopePlan: authority.generationScopePlan,
+        activeProfileLock
+      });
+
+      if (!bundle.ok) {
+        await this.failAuthorityBundlePrecondition(input, `Authority bundle could not be established: ${bundle.issues.join('; ')}`);
+        return { ok: false };
+      }
+
+      const validation = validateAuthorityBundleForRun({
+        projectId: input.projectId,
+        runId: input.runId,
+        bundle: bundle.value,
+        brief: authority.brief
+      });
+      if (!validation.ok) {
+        await this.failAuthorityBundlePrecondition(input, `Authority bundle failed current-run validation: ${validation.issues.join('; ')}`);
+        return { ok: false };
+      }
+
+      await this.writeModelOutputJson(input, AUTHORITY_BUNDLE_PATH, bundle.value);
+      await this.appendEvent(input.runId, 'authority.bundle_locked', `Authority bundle established with ${bundle.value.rawDslConsumption.mode}.`);
+      return bundle;
+    } catch (error) {
+      await this.failAuthorityBundlePrecondition(input, `Authority bundle artifact/provenance failed: ${errorMessage(error, 'unknown error')}`);
+      return { ok: false };
+    }
+  }
+
   private async writeGenerationCapabilityPreflightArtifacts(
     input: GenerationPipelineInput,
     artifacts: GenerationCapabilityPreflightArtifacts
-  ): Promise<void> {
+  ): Promise<GenerationCapabilityResolutionShadowArtifacts> {
     await this.writeModelOutputJson(input, 'capability_registry_snapshot.json', artifacts.registrySnapshot);
     await this.writeModelOutputJson(input, 'generation_capability_readiness_report.json', artifacts.readinessReport);
     const resolutionArtifacts = buildGenerationCapabilityResolutionShadow({
@@ -741,19 +1086,88 @@ export class GenerationPipelineService {
       readinessReport: artifacts.readinessReport
     });
     await this.writeGenerationCapabilityResolutionShadowArtifacts(input, resolutionArtifacts);
+    return resolutionArtifacts;
+  }
+
+  private async writeGenerationCapabilityBlockedClosureArtifacts(
+    input: GenerationPipelineInput,
+    preflight: GenerationCapabilityPreflightArtifacts,
+    resolutionArtifacts?: GenerationCapabilityResolutionShadowArtifacts
+  ): Promise<void> {
+    const resolution = resolutionArtifacts ?? buildGenerationCapabilityResolutionShadow({
+      projectId: input.projectId,
+      runId: input.runId,
+      normalizedGenre: preflight.readinessReport.normalizedGenre,
+      registrySnapshot: preflight.registrySnapshot,
+      readinessReport: preflight.readinessReport
+    });
+    await this.writeGenerationCapabilityClosureReports(input, {
+      normalizedGenre: preflight.readinessReport.normalizedGenre,
+      readinessReport: preflight.readinessReport,
+      resolutionReport: resolution.resolutionReport
+    });
+  }
+
+  private async writeGenerationCapabilityBlockedClosureFromPersistedArtifacts(input: GenerationPipelineInput): Promise<void> {
+    const readinessReport = GenerationCapabilityReadinessReportSchema.parse(
+      await this.readModelOutputJson(input.projectId, input.runId, 'generation_capability_readiness_report.json')
+    );
+    const resolutionReport = GenerationCapabilityResolutionReportSchema.parse(
+      await this.readModelOutputJson(input.projectId, input.runId, 'generation_capability_resolution_report.json')
+    );
+    await this.writeGenerationCapabilityClosureReports(input, {
+      normalizedGenre: readinessReport.normalizedGenre,
+      readinessReport,
+      resolutionReport
+    });
+  }
+
+  private async writeGenerationCapabilityInvalidDslClosureArtifacts(
+    input: GenerationPipelineInput,
+    artifact: GameDslArtifact
+  ): Promise<void> {
+    const readinessPath = this.workspace.getModelOutputPath(input.projectId, input.runId, 'generation_capability_readiness_report.json');
+    const resolutionPath = this.workspace.getModelOutputPath(input.projectId, input.runId, 'generation_capability_resolution_report.json');
+    if ((await pathExists(readinessPath)) && (await pathExists(resolutionPath))) {
+      await this.writeGenerationCapabilityBlockedClosureFromPersistedArtifacts(input);
+      return;
+    }
+
+    const preflight = buildGenerationCapabilityPreflight({
+      projectId: input.projectId,
+      runId: input.runId,
+      normalizedGenre: artifact.sourceDsl.game.genre
+    });
+    const resolution = await this.writeGenerationCapabilityPreflightArtifacts(input, preflight);
+    await this.writeGenerationCapabilityBlockedClosureArtifacts(input, preflight, resolution);
+  }
+
+  private async writeGenerationCapabilityClosureReports(
+    input: GenerationPipelineInput,
+    closure: {
+      normalizedGenre: string;
+      readinessReport: GenerationCapabilityReadinessReport;
+      resolutionReport: GenerationCapabilityResolutionReport;
+      activeRuntimeAuthority?: {
+        authorityBundleRef: ReturnType<typeof authorityBundleRef>;
+        activeProfileLockRef: AuthorityBundle['refs']['activeProfileLock'];
+      };
+    }
+  ): Promise<void> {
     const runtimeArtifacts = buildGenerationCapabilityRuntimeShadow({
       projectId: input.projectId,
       runId: input.runId,
-      normalizedGenre: resolutionArtifacts.resolutionReport.normalizedGenre,
-      resolutionReport: resolutionArtifacts.resolutionReport
+      normalizedGenre: closure.resolutionReport.normalizedGenre,
+      resolutionReport: closure.resolutionReport,
+      activeRuntimeAuthority: closure.activeRuntimeAuthority
     });
     await this.writeGenerationCapabilityRuntimeShadowArtifacts(input, runtimeArtifacts);
     const gapReport = buildGenerationCapabilityGapReport({
       projectId: input.projectId,
       runId: input.runId,
-      normalizedGenre: artifacts.readinessReport.normalizedGenre,
-      readinessReport: artifacts.readinessReport,
-      resolutionReport: resolutionArtifacts.resolutionReport,
+      normalizedGenre: closure.normalizedGenre,
+      readinessReport: closure.readinessReport,
+      resolutionReport: closure.resolutionReport,
       runtimeReport: runtimeArtifacts.runtimeReport
     });
     await this.writeGenerationCapabilityGapReport(input, gapReport);
@@ -763,11 +1177,32 @@ export class GenerationPipelineService {
       buildGenerationCapabilityCutoverReport({
         projectId: input.projectId,
         runId: input.runId,
-        normalizedGenre: artifacts.readinessReport.normalizedGenre,
+        normalizedGenre: closure.normalizedGenre,
         gapReport,
         runtimeReport: runtimeArtifacts.runtimeReport
       })
     );
+  }
+
+  private async writeGenerationCapabilityQaClosureArtifacts(
+    input: GenerationPipelineInput,
+    stageOneAuthority: StageOneAuthorityArtifacts,
+    qaReport: QaReport
+  ): Promise<void> {
+    const expected = buildQaRuntimeAuthorityExpectation(stageOneAuthority.authorityBundle);
+    const authorityPassed = qaRuntimeAuthorityMatchesExpected(qaReport.runtime_authority, expected);
+    await this.writeGenerationCapabilityClosureReports(input, {
+      normalizedGenre: stageOneAuthority.capabilityPreflight.readinessReport.normalizedGenre,
+      readinessReport: stageOneAuthority.capabilityPreflight.readinessReport,
+      resolutionReport: stageOneAuthority.capabilityResolution.resolutionReport,
+      activeRuntimeAuthority:
+        authorityPassed
+          ? {
+              authorityBundleRef: expected.authorityBundleRef,
+              activeProfileLockRef: expected.activeProfileLockRef
+            }
+          : undefined
+    });
   }
 
   private async writeGenerationCapabilityResolutionShadowArtifacts(
@@ -825,9 +1260,9 @@ export class GenerationPipelineService {
     await writeFile(outputPath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
   }
 
-  private async writeDslConsumptionReport(input: GenerationPipelineInput, rawDsl: RawGameDsl, ir: NormalizedGameIr): Promise<void> {
+  private async writeDslConsumptionReport(input: GenerationPipelineInput, rawDsl: RawGameDsl, ir: NormalizedGameIr, authorityBundle: AuthorityBundle): Promise<void> {
     const outputPath = this.workspace.getModelOutputPath(input.projectId, input.runId, 'dsl_consumption_report.json');
-    const report = buildDslConsumptionReport({ projectId: input.projectId, runId: input.runId, rawDsl, ir });
+    const report = buildDslConsumptionReport({ projectId: input.projectId, runId: input.runId, rawDsl, ir, authorityBundleRef: authorityBundleRef(authorityBundle) });
 
     await mkdir(dirname(outputPath), { recursive: true });
     await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
@@ -879,11 +1314,13 @@ export class GenerationPipelineService {
       selectionReason: 'Validated Game DSL artifact failed normalization before runtime generation.',
       capabilityReadiness: 'not_evaluated',
       artifactRefs: [
+        ...stageOneAuthorityArtifactRefs(),
         { artifactKind: 'game_dsl', path: 'game_dsl.json' },
         { artifactKind: 'dsl_validation_report', path: 'dsl_validation_report.json' },
         { artifactKind: 'runtime_capability_report', path: 'runtime_capability_report.json' }
       ]
     });
+    await this.writeGenerationCapabilityInvalidDslClosureArtifacts(input, artifact);
     await this.writeInvalidDslPipelineArtifactIndex(input);
   }
 
@@ -946,8 +1383,15 @@ export class GenerationPipelineService {
     await writePipelineArtifactIndex(this.workspace.getModelOutputPath(input.projectId, input.runId, 'pipeline_artifact_index.json'), index);
   }
 
-  private async writeModelGenerationFailedPipelineArtifactIndex(input: GenerationPipelineInput): Promise<void> {
-    const index = buildModelGenerationFailedPipelineArtifactIndex({ projectId: input.projectId, runId: input.runId });
+  private async writeModelGenerationFailedPipelineArtifactIndex(
+    input: GenerationPipelineInput,
+    options: { stageOneAuthorityEstablished?: boolean } = {}
+  ): Promise<void> {
+    const index = buildModelGenerationFailedPipelineArtifactIndex({
+      projectId: input.projectId,
+      runId: input.runId,
+      stageOneAuthorityPresent: options.stageOneAuthorityEstablished === true
+    });
     await this.writePipelineAcceptanceReport(input, index, {
       dslValidation: {
         valid: false
@@ -958,6 +1402,16 @@ export class GenerationPipelineService {
 
   private async writeDslPreconditionBlockedPipelineArtifactIndex(input: GenerationPipelineInput): Promise<void> {
     const index = buildDslPreconditionBlockedPipelineArtifactIndex({ projectId: input.projectId, runId: input.runId });
+    await this.writePipelineAcceptanceReport(input, index, {
+      dslValidation: {
+        valid: false
+      }
+    });
+    await writePipelineArtifactIndex(this.workspace.getModelOutputPath(input.projectId, input.runId, 'pipeline_artifact_index.json'), index);
+  }
+
+  private async writeActiveProfileLockBlockedPipelineArtifactIndex(input: GenerationPipelineInput): Promise<void> {
+    const index = buildActiveProfileLockBlockedPipelineArtifactIndex({ projectId: input.projectId, runId: input.runId });
     await this.writePipelineAcceptanceReport(input, index, {
       dslValidation: {
         valid: false
@@ -1277,6 +1731,25 @@ function runtimeGenreByRawGenre(genre: RawGameDsl['game']['genre']): string {
   return genre;
 }
 
+function normalizedRuntimeGenreForCanonicalBrief(brief: GameBriefV02): string {
+  if (brief.genre === 'shooter') {
+    return 'top_down_shooter';
+  }
+  if (brief.genre === 'dodger') {
+    return 'dodger_collector';
+  }
+  return brief.genre;
+}
+
+function stageOneAuthorityArtifactRefs(): Array<{ artifactKind: string; path: string }> {
+  return [
+    { artifactKind: 'canonical_game_brief', path: CANONICAL_GAME_BRIEF_PATH },
+    { artifactKind: 'generation_scope_plan', path: GENERATION_SCOPE_PLAN_PATH },
+    { artifactKind: 'active_profile_lock', path: ACTIVE_PROFILE_LOCK_PATH },
+    { artifactKind: 'authority_bundle', path: AUTHORITY_BUNDLE_PATH }
+  ];
+}
+
 function isQaGenre(value: unknown): value is QaGenre {
   return value === 'collector' || value === 'dodger' || value === 'shooter' || value === 'side_scrolling_run_and_gun';
 }
@@ -1292,10 +1765,6 @@ async function pathExists(path: string): Promise<boolean> {
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
-}
-
-function shouldUseLocalFallback(failure: GameDslProviderResult<unknown>): boolean {
-  return !failure.ok && failure.code === 'MODEL_NOT_AVAILABLE';
 }
 
 export function readAssetSemanticRepairConfig(env: NodeJS.ProcessEnv = process.env): AssetSemanticRepairConfig {
@@ -1389,6 +1858,54 @@ function withAssetSemanticRepairReport(report: QaReport, assetSemanticRepair: Qa
     ...report,
     asset_semantic_repair: assetSemanticRepair
   };
+}
+
+function buildQaRuntimeAuthorityExpectation(authorityBundle: AuthorityBundle): QaRuntimeAuthorityExpectation {
+  return {
+    authorityBundleRef: authorityBundleRef(authorityBundle),
+    activeProfileLockRef: authorityBundle.refs.activeProfileLock,
+    profileId: authorityBundle.activeProfileLock.profileId,
+    runtimeTemplateId: authorityBundle.activeProfileLock.runtimeTemplateId,
+    runtimeTemplateManifestId: authorityBundle.activeProfileLock.runtimeTemplateManifestId,
+    qaProfile: authorityBundle.activeProfileLock.qaProfile
+  };
+}
+
+function qaRuntimeAuthorityMatchesExpected(
+  evidence: QaReport['runtime_authority'],
+  expected: QaRuntimeAuthorityExpectation
+): boolean {
+  return (
+    evidence?.status === 'PASSED' &&
+    compareQaRuntimeAuthorityEvidence('expected', evidence.expected, expected).length === 0 &&
+    compareQaRuntimeAuthorityEvidence('observed', evidence.observed, expected).length === 0
+  );
+}
+
+function compareQaRuntimeAuthorityEvidence(
+  label: 'expected' | 'observed',
+  actual: Partial<QaRuntimeAuthorityExpectation> | undefined,
+  expected: QaRuntimeAuthorityExpectation
+): string[] {
+  if (actual === undefined) {
+    return [`runtime_authority.${label}: missing`];
+  }
+  return [
+    ...compareRuntimeAuthorityScalar(`${label}.authorityBundleRef.artifactKind`, actual.authorityBundleRef?.artifactKind, expected.authorityBundleRef.artifactKind),
+    ...compareRuntimeAuthorityScalar(`${label}.authorityBundleRef.path`, actual.authorityBundleRef?.path, expected.authorityBundleRef.path),
+    ...compareRuntimeAuthorityScalar(`${label}.authorityBundleRef.bundleHash`, actual.authorityBundleRef?.bundleHash, expected.authorityBundleRef.bundleHash),
+    ...compareRuntimeAuthorityScalar(`${label}.activeProfileLockRef.artifactKind`, actual.activeProfileLockRef?.artifactKind, expected.activeProfileLockRef.artifactKind),
+    ...compareRuntimeAuthorityScalar(`${label}.activeProfileLockRef.path`, actual.activeProfileLockRef?.path, expected.activeProfileLockRef.path),
+    ...compareRuntimeAuthorityScalar(`${label}.activeProfileLockRef.lockHash`, actual.activeProfileLockRef?.lockHash, expected.activeProfileLockRef.lockHash),
+    ...compareRuntimeAuthorityScalar(`${label}.profileId`, actual.profileId, expected.profileId),
+    ...compareRuntimeAuthorityScalar(`${label}.runtimeTemplateId`, actual.runtimeTemplateId, expected.runtimeTemplateId),
+    ...compareRuntimeAuthorityScalar(`${label}.runtimeTemplateManifestId`, actual.runtimeTemplateManifestId, expected.runtimeTemplateManifestId),
+    ...compareRuntimeAuthorityScalar(`${label}.qaProfile`, actual.qaProfile, expected.qaProfile)
+  ];
+}
+
+function compareRuntimeAuthorityScalar(path: string, actual: string | undefined, expected: string): string[] {
+  return actual === expected ? [] : [`runtime_authority.${path}: expected ${expected}, observed ${actual ?? '<missing>'}`];
 }
 
 function buildRepairedRequirements(

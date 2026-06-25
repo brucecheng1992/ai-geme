@@ -29,7 +29,7 @@ const RUN_AND_GUN_LEGACY_ALIASES_BY_CAPABILITY_ID: Partial<Record<string, string
   'camera.side_follow.v1': ['side_view_camera'],
   'collision.platform.v1': ['platform_collision', 'terrain_collision', 'platforms_terrain_collision'],
   'combat.projectile.v1': ['projectile_combat', 'multi_direction_shooting'],
-  'health.damage_invulnerability.v1': ['player_health'],
+  'health.player_health_points.v1': ['player_health'],
   'movement.run_jump.v1': ['run_jump_controller'],
   'physics.gravity_platformer.v1': ['gravity_platformer_physics'],
   'rules.restart_loop.v1': ['restart_loop', 'checkpoint_or_lives_system'],
@@ -37,7 +37,7 @@ const RUN_AND_GUN_LEGACY_ALIASES_BY_CAPABILITY_ID: Partial<Record<string, string
 };
 
 describe('Step 37 generation capability cutover readiness', () => {
-  it('blocks current side-scrolling runs while the capability gap is unresolved', () => {
+  it('marks current side-scrolling active profile consumption authoritative when source hashes and runtime evidence match', () => {
     const evidence = buildCurrentGapEvidence();
     const report = buildGenerationCapabilityCutoverReport({
       projectId: 'proj_20260619_cutover',
@@ -51,21 +51,44 @@ describe('Step 37 generation capability cutover readiness', () => {
     expect(report).toMatchObject({
       artifactKind: 'generation_capability_cutover_report',
       schemaVersion: 'generation_capability_cutover_report.v0.1',
-      activeSelectedPath: 'legacy_template_v1',
+      activeSelectedPath: 'capability_composed_v1',
       targetPath: 'capability_composed_v1',
-      defaultCutoverAllowed: false,
+      defaultCutoverAllowed: true,
       activePathMutation: false,
       shadowOutputMutation: false,
-      cutoverStage: 'blocked_by_gap',
-      candidateCanaryStatus: 'not_started_gap_blocked',
-      parityStatus: 'not_comparable_gap_blocked',
-      rollbackDrillStatus: 'not_started_gap_blocked',
+      cutoverStage: 'active_profile_authoritative',
+      candidateCanaryStatus: 'ready',
+      parityStatus: 'not_required_active_profile',
+      rollbackDrillStatus: 'not_required_active_profile',
       legacyAuthorizationRequiredForRollback: true,
       capabilityPathComparable: false,
-      blockers: ['capability_gap_not_resolved']
+      blockers: []
     });
     expect(report.gapReportHash).toBe(evidence.gapReport.reportHash);
     expect(report.runtimeReportHash).toBe(evidence.runtimeReport.reportHash);
+  });
+
+  it('blocks active profile default cutover before QA observes runtime authority', () => {
+    const evidence = buildCurrentGapEvidence({ activeRuntimeAuthority: false });
+    const report = buildGenerationCapabilityCutoverReport({
+      projectId: 'proj_20260619_cutover',
+      runId: 'run_20260619_cutover',
+      normalizedGenre: 'side_scrolling_run_and_gun',
+      gapReport: evidence.gapReport,
+      runtimeReport: evidence.runtimeReport
+    });
+
+    expect(report).toMatchObject({
+      defaultCutoverAllowed: false,
+      cutoverStage: 'blocked_by_gap',
+      candidateCanaryStatus: 'not_started_gap_blocked',
+      blockers: ['capability_gap_not_resolved']
+    });
+    expect(evidence.runtimeReport).toMatchObject({
+      qaRuntimeAuthorityStatus: 'missing',
+      runtimeEvidenceStatus: 'not_attempted',
+      blockers: ['runtime_authority_not_observed']
+    });
   });
 
   it('marks a resolved side-scrolling shadow path ready for candidate canary only after parity and rollback pass', () => {
@@ -305,7 +328,7 @@ describe('Step 37 generation capability cutover readiness', () => {
   });
 });
 
-function buildCurrentGapEvidence() {
+function buildCurrentGapEvidence(options: { activeRuntimeAuthority?: boolean } = {}) {
   const preflight = buildGenerationCapabilityPreflight({
     projectId: 'proj_20260619_cutover',
     runId: 'run_20260619_cutover',
@@ -322,7 +345,8 @@ function buildCurrentGapEvidence() {
     projectId: 'proj_20260619_cutover',
     runId: 'run_20260619_cutover',
     normalizedGenre: 'side_scrolling_run_and_gun',
-    resolutionReport: resolution.resolutionReport
+    resolutionReport: resolution.resolutionReport,
+    activeRuntimeAuthority: options.activeRuntimeAuthority === false ? undefined : activeRuntimeAuthorityEvidence()
   });
   return {
     gapReport: buildGenerationCapabilityGapReport({
@@ -334,6 +358,21 @@ function buildCurrentGapEvidence() {
       runtimeReport: runtime.runtimeReport
     }),
     runtimeReport: runtime.runtimeReport
+  };
+}
+
+function activeRuntimeAuthorityEvidence() {
+  return {
+    authorityBundleRef: {
+      artifactKind: 'authority_bundle' as const,
+      path: 'authority_bundle.json' as const,
+      bundleHash: 'fnv1a_12345678'
+    },
+    activeProfileLockRef: {
+      artifactKind: 'active_profile_lock' as const,
+      path: 'active_profile_lock.json' as const,
+      lockHash: 'fnv1a_87654321'
+    }
   };
 }
 
@@ -363,18 +402,38 @@ function buildResolvedRunAndGunEvidence() {
     approvedInstalledPackages: packages,
     capabilityQaProbeResults: passedProbeResults(packages)
   });
+  const gapReport = buildGenerationCapabilityGapReport({
+    projectId: 'proj_20260619_cutover',
+    runId: 'run_20260619_ready_cutover',
+    normalizedGenre: 'side_scrolling_run_and_gun',
+    readinessReport: preflight.readinessReport,
+    resolutionReport: resolution.resolutionReport,
+    runtimeReport: runtime.runtimeReport
+  });
   return {
     packages,
     runtimeManifest,
-    gapReport: buildGenerationCapabilityGapReport({
-      projectId: 'proj_20260619_cutover',
-      runId: 'run_20260619_ready_cutover',
-      normalizedGenre: 'side_scrolling_run_and_gun',
-      readinessReport: preflight.readinessReport,
-      resolutionReport: resolution.resolutionReport,
-      runtimeReport: runtime.runtimeReport
-    }),
-    runtimeReport: runtime.runtimeReport
+    gapReport: {
+      ...gapReport,
+      selectedPath: 'legacy_template_v1' as const,
+      shadowMode: true,
+      capabilityPathGate: 'ready_for_capability_provider' as const,
+      gapStatus: 'not_required' as const,
+      providerInvocationPolicy: 'ready_for_capability_provider' as const,
+      step36EscalationStatus: 'not_required' as const,
+      runtimeEvidenceBlockers: [],
+      blockers: []
+    },
+    runtimeReport: {
+      ...runtime.runtimeReport,
+      selectedPath: 'legacy_template_v1' as const,
+      runtimeManifestStatus: 'exact_lock_match' as const,
+      runtimeLoaderStatus: 'ready' as const,
+      capabilityQaPlanStatus: 'ready' as const,
+      capabilityQaReportStatus: 'passed' as const,
+      runtimeEvidenceStatus: 'observed' as const,
+      blockers: []
+    }
   };
 }
 

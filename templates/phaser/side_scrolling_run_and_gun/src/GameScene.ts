@@ -14,6 +14,7 @@ import {
   exposeRuntime
 } from '../../shared/kernel.js';
 import { EndScreenRenderer } from '../../shared/end-screen.js';
+import type { RuntimeAuthoritySnapshot } from '../../shared/runtime-authority.js';
 import type { SideScrollingRuntimeSceneBindingState } from './side-scrolling-scene-ir.js';
 import { createSideScrollingRuntimeBridge } from './side-scrolling-live-edit-bridge.js';
 import type { SideScrollingArtRuntime } from './side-scrolling-art-library.js';
@@ -88,7 +89,8 @@ export class SideScrollingRunAndGunScene {
     private readonly params: SideScrollingTemplateParams,
     runtimePlan: SideScrollingRuntimePlan = defaultSideScrollingRuntimePlan,
     private readonly art?: SideScrollingArtRuntime,
-    private readonly sceneBindingState?: SideScrollingRuntimeSceneBindingState
+    private readonly sceneBindingState?: SideScrollingRuntimeSceneBindingState,
+    private readonly runtimeAuthority?: RuntimeAuthoritySnapshot
   ) {
     this.plan = resolveSideScrollingRuntimeSlice(runtimePlan);
     this.state = createRuntimeState(this.plan.player.health);
@@ -126,6 +128,7 @@ export class SideScrollingRunAndGunScene {
         platforms: this.plan.platforms,
         goals: this.plan.goals ?? [],
         sceneBindings: this.sceneBindingState,
+        runtimeAuthority: this.runtimeAuthority,
         enemies: this.enemies.map((enemy) => this.enemySnapshot(enemy)),
         projectiles: this.projectiles.map((projectile) => ({ id: projectile.id, owner: projectile.owner, x: projectile.x, y: projectile.y })),
         waves: this.plan.waves.map((wave) => ({ ...wave, triggered: this.triggeredWaves.has(wave.id) })),

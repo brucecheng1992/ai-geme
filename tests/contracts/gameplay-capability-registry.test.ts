@@ -178,7 +178,9 @@ describe('Gameplay capability registry', () => {
 
     expect(statuses.find((status) => status.runtimeGenre === 'side_scrolling_run_and_gun')).toMatchObject({
       runtimeSupportStatus: 'supported',
-      profileSupportStatus: 'legacy_runtime_supported'
+      profileSupportStatus: 'active_profile_supported',
+      activeRequirementCapabilityIds: expect.arrayContaining(['health.player_health_points.v1']),
+      declaredProfileCapabilityIds: expect.arrayContaining(['health.damage_invulnerability.v1'])
     });
     expect(statuses.find((status) => status.runtimeGenre === 'side_scrolling_platformer')).toMatchObject({
       runtimeSupportStatus: 'unsupported',
@@ -188,7 +190,7 @@ describe('Gameplay capability registry', () => {
     });
   });
 
-  it('does not mark a profile complete when planned profile-owned capabilities are outside legacy required aliases', () => {
+  it('marks active runtime requirements complete without hiding planned profile-owned gaps', () => {
     const platformerRuntime = RuntimeGenreRegistry.find((entry) => entry.genre === 'side_scrolling_platformer');
     if (platformerRuntime === undefined) {
       throw new Error('expected side_scrolling_platformer runtime registry entry');
@@ -215,7 +217,11 @@ describe('Gameplay capability registry', () => {
     });
 
     expect(status.runtimeExecutable).toBe(true);
-    expect(status.profileSupportStatus).toBe('legacy_runtime_supported');
+    expect(status.profileSupportStatus).toBe('capability_complete_supported');
+    expect(status.activeRequirementCapabilityIds).toEqual(
+      expect.arrayContaining(['camera.side_follow.v1', 'collision.platform.v1', 'movement.run_jump.v1', 'physics.gravity_platformer.v1'])
+    );
+    expect(status.declaredProfileCapabilityIds).toEqual(expect.arrayContaining(['goal.reach_exit.v1', 'pickup.drop_collect.v1']));
     expect(status.incompleteCapabilityIds).toEqual(expect.arrayContaining(['goal.reach_exit.v1', 'pickup.drop_collect.v1']));
     expect(status.completeSupportedCapabilityIds).toEqual(
       expect.arrayContaining(['camera.side_follow.v1', 'collision.platform.v1', 'movement.run_jump.v1', 'physics.gravity_platformer.v1'])

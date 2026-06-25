@@ -6,8 +6,9 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { PlayableQaGateService } from '../../apps/maker-api/src/qa/playable-qa-gate.service.js';
+import { evaluateRuntimeAuthorityEvidence } from '../../apps/maker-api/src/qa/playwright-browser-runner.js';
 import { PlaywrightQaRunnerService } from '../../apps/maker-api/src/qa/playwright-qa-runner.service.js';
-import type { QaAssetRuntimeTelemetry, QaBrowserRunner } from '../../apps/maker-api/src/qa/qa.types.js';
+import type { QaAssetRuntimeTelemetry, QaBrowserRunner, QaRuntimeAuthorityExpectation } from '../../apps/maker-api/src/qa/qa.types.js';
 import { LocalWorkspaceService } from '../../apps/maker-api/src/workspace/local-workspace.service.js';
 import type { TelemetryEvent } from '../../packages/runtime-core/src/index.js';
 
@@ -78,6 +79,91 @@ describe('Playable QA gate and runner', () => {
     await expect(readFile(workspace.getQaReportPath(projectId, runId), 'utf8')).resolves.toContain('"overall_status": "PLAYABLE"');
     await expect(readFile(workspace.getQaReportPath(projectId, runId), 'utf8')).resolves.toContain('"asset_manifest_summary"');
     await expect(readFile(workspace.getQaReportPath(projectId, runId), 'utf8')).resolves.toContain('"asset_report"');
+  });
+
+  it('passes runtime authority evidence through the QA report', async () => {
+    const expectedRuntimeAuthority = createRuntimeAuthorityExpectation();
+    const browserRunner: QaBrowserRunner = async () => ({
+      ok: true,
+      visual_ok: true,
+      interaction_ok: true,
+      telemetry: missingObservedBase().map((type, index) => ({ type, timestamp_ms: index, frame: index })),
+      observed_events: missingObservedBase(),
+      snapshot: { runtimeAuthority: expectedRuntimeAuthority },
+      console_errors: [],
+      asset_runtime: validQaAssetRuntime(['background_main', 'player', 'enemy', 'projectile']),
+      runtime_authority: {
+        status: 'PASSED',
+        expected: expectedRuntimeAuthority,
+        observed: expectedRuntimeAuthority,
+        mismatches: []
+      }
+    });
+    const runner = new PlaywrightQaRunnerService(workspace, gate, browserRunner);
+
+    const report = await runner.run({
+      projectId,
+      runId,
+      genre: 'shooter',
+      previewUrl: 'http://localhost:3000/preview/proj/index.html',
+      expectedRuntimeAuthority
+    });
+
+    expect(report.status).toBe('PASSED');
+    expect(report.runtime_authority).toEqual({
+      status: 'PASSED',
+      expected: expectedRuntimeAuthority,
+      observed: expectedRuntimeAuthority,
+      mismatches: []
+    });
+  });
+
+  it('fails QA when runtime authority evidence mismatches the expected bundle hash', async () => {
+    const expectedRuntimeAuthority = createRuntimeAuthorityExpectation();
+    const runtimeAuthority = evaluateRuntimeAuthorityEvidence(
+      {
+        runtimeAuthority: {
+          ...expectedRuntimeAuthority,
+          authorityBundleRef: {
+            ...expectedRuntimeAuthority.authorityBundleRef,
+            bundleHash: 'fnv1a_bad00000'
+          }
+        }
+      },
+      expectedRuntimeAuthority
+    );
+    const browserRunner: QaBrowserRunner = async () => ({
+      ok: false,
+      visual_ok: true,
+      interaction_ok: false,
+      telemetry: missingObservedBase().map((type, index) => ({ type, timestamp_ms: index, frame: index })),
+      observed_events: missingObservedBase(),
+      snapshot: { runtimeAuthority: runtimeAuthority?.observed },
+      console_errors: [],
+      failure_code: 'RUNTIME_AUTHORITY_MISMATCH',
+      message: runtimeAuthority?.mismatches.join('; '),
+      asset_runtime: validQaAssetRuntime(['background_main', 'player', 'enemy', 'projectile']),
+      runtime_authority: runtimeAuthority
+    });
+    const runner = new PlaywrightQaRunnerService(workspace, gate, browserRunner);
+
+    const report = await runner.run({
+      projectId,
+      runId,
+      genre: 'shooter',
+      previewUrl: 'http://localhost:3000/preview/proj/index.html',
+      expectedRuntimeAuthority
+    });
+
+    expect(runtimeAuthority).toMatchObject({
+      status: 'FAILED',
+      mismatches: ['authorityBundleRef.bundleHash: expected fnv1a_12345678, observed fnv1a_bad00000']
+    });
+    expect(report).toMatchObject({
+      status: 'QA_FAILED',
+      code: 'RUNTIME_AUTHORITY_MISMATCH',
+      runtime_authority: runtimeAuthority
+    });
   });
 
   it('keeps runtime QA passed but marks hard semantic mismatch as asset repair needed', async () => {
@@ -1958,6 +2044,25 @@ async function rewriteManifestAssetSemanticFit(
 
   asset.semanticFit = semanticFit;
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+}
+
+function createRuntimeAuthorityExpectation(): QaRuntimeAuthorityExpectation {
+  return {
+    authorityBundleRef: {
+      artifactKind: 'authority_bundle',
+      path: 'authority_bundle.json',
+      bundleHash: 'fnv1a_12345678'
+    },
+    activeProfileLockRef: {
+      artifactKind: 'active_profile_lock',
+      path: 'active_profile_lock.json',
+      lockHash: 'fnv1a_87654321'
+    },
+    profileId: 'side_scrolling_run_and_gun.v1',
+    runtimeTemplateId: 'phaser/side_scrolling_run_and_gun.v1',
+    runtimeTemplateManifestId: 'side_scrolling_run_and_gun.v1',
+    qaProfile: 'side_scrolling_run_and_gun_smoke'
+  };
 }
 
 async function closeServer(server: Server): Promise<void> {

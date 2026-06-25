@@ -1,5 +1,6 @@
 import type { TelemetryEvent } from '../../../../packages/runtime-core/src/index.js';
 import type { AssetManifest } from '../../../../packages/asset-pipeline/src/index.js';
+import type { AuthorityBundleRef } from '../../../../packages/game-dsl/src/index.js';
 
 export type QaGenre = 'collector' | 'dodger' | 'shooter' | 'side_scrolling_run_and_gun';
 export type QaStatus = 'PASSED' | 'QA_FAILED';
@@ -19,6 +20,7 @@ export type QaFailureCode =
   | 'PREVIEW_BLANK_SCREEN'
   | 'FATAL_CONSOLE_ERROR'
   | 'QA_BRIDGE_MISSING'
+  | 'RUNTIME_AUTHORITY_MISMATCH'
   | 'REQUIRED_TELEMETRY_MISSING'
   | 'QA_RUNNER_FAILED';
 
@@ -46,6 +48,7 @@ export type QaBrowserResult = {
   screenshot_path?: string;
   visual_metrics?: QaVisualMetrics;
   asset_runtime?: QaAssetRuntimeTelemetry;
+  runtime_authority?: QaRuntimeAuthorityEvidence;
 };
 
 export type RunQaInput = {
@@ -56,6 +59,7 @@ export type RunQaInput = {
   seed?: string;
   timeoutMs?: number;
   screenshotPath?: string;
+  expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation;
 };
 
 export type QaVisualMetrics = {
@@ -93,8 +97,25 @@ export type QaReport = {
   screenshot_path?: string;
   visual_metrics?: QaVisualMetrics;
   asset_semantic_repair?: QaAssetSemanticRepairReport;
+  runtime_authority?: QaRuntimeAuthorityEvidence;
   started_at: string;
   completed_at: string;
+};
+
+export type QaRuntimeAuthorityExpectation = {
+  authorityBundleRef: AuthorityBundleRef;
+  activeProfileLockRef: { artifactKind: 'active_profile_lock'; path: 'active_profile_lock.json'; lockHash: string };
+  profileId: string;
+  runtimeTemplateId: string;
+  runtimeTemplateManifestId: string;
+  qaProfile: string;
+};
+
+export type QaRuntimeAuthorityEvidence = {
+  status: 'PASSED' | 'FAILED' | 'NOT_REQUIRED';
+  expected?: QaRuntimeAuthorityExpectation;
+  observed?: Partial<QaRuntimeAuthorityExpectation>;
+  mismatches: string[];
 };
 
 export type QaRenderFidelitySummary = {

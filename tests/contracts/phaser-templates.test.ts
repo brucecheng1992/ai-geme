@@ -81,6 +81,14 @@ type SideScrollingTemplateSnapshot = TemplateSnapshot & {
     };
     bindings: Array<{ kind: string; sceneRuntimeId: string; runtimeInstanceId: string; sourceDslPath?: string; status: string }>;
   };
+  runtimeAuthority?: {
+    authorityBundleRef: { artifactKind: 'authority_bundle'; path: 'authority_bundle.json'; bundleHash: string };
+    activeProfileLockRef: { artifactKind: 'active_profile_lock'; path: 'active_profile_lock.json'; lockHash: string };
+    profileId: string;
+    runtimeTemplateId: string;
+    runtimeTemplateManifestId: string;
+    qaProfile: string;
+  };
   enemies: Array<{ id: string; entityId: string; x: number; y: number; health: number; cleared: boolean }>;
   projectiles: Array<{ id: string; x: number; y: number }>;
   waves: Array<{ id: string; triggered: boolean }>;
@@ -190,12 +198,14 @@ describe('Phaser templates', () => {
       expect(main).toContain("from './template-params.generated.json'");
       if (genre === 'dodger') {
         expect(main).toContain("from './runtime-plan.generated.json'");
-        expect(main).toContain('new DodgerGameScene(dodgerParams, dodgerRuntimePlan, dodgerArt)');
+        expect(main).toContain("from './runtime-authority.generated.json'");
+        expect(main).toContain('new DodgerGameScene(dodgerParams, dodgerRuntimePlan, dodgerArt, runtimeAuthority)');
       } else if (genre === 'shooter') {
         expect(main).toContain("from './runtime-plan.generated.json'");
         expect(main).toContain("from './asset-manifest.generated.json'");
         expect(main).toContain("from './live-edit-registry.generated.json'");
-        expect(main).toContain('new ShooterGameScene(shooterParams, shooterRuntimePlan, shooterArt, generatedLiveEditRegistry)');
+        expect(main).toContain("from './runtime-authority.generated.json'");
+        expect(main).toContain('new ShooterGameScene(shooterParams, shooterRuntimePlan, shooterArt, generatedLiveEditRegistry, runtimeAuthority)');
         expect(main).toContain('AIGAME_RUNTIME_READY');
         expect(main).toContain('AIGAME_GET_CAPABILITIES');
         expect(main).toContain('AIGAME_APPLY_PATCH');
@@ -205,14 +215,17 @@ describe('Phaser templates', () => {
         expect(main).toContain('requestPatchId === undefined');
       } else if (genre === 'collector') {
         expect(main).toContain("from './asset-manifest.generated.json'");
-        expect(main).toContain('new CollectorGameScene(collectorParams, collectorArt)');
+        expect(main).toContain("from './runtime-authority.generated.json'");
+        expect(main).toContain('new CollectorGameScene(collectorParams, collectorArt, runtimeAuthority)');
       } else if (genre === 'side_scrolling_run_and_gun') {
         expect(main).toContain("from './runtime-plan.generated.json'");
         expect(main).toContain("from './scene-ir.generated.json'");
         expect(main).toContain("from './asset-manifest.generated.json'");
         expect(main).toContain("from './live-edit-registry.generated.json'");
+        expect(main).toContain("from './runtime-authority.generated.json'");
         expect(main).toContain('resolveSideScrollingRuntimeSliceWithSceneIr(sideScrollingRuntimePlan');
-        expect(main).toContain('new SideScrollingRunAndGunScene(sideScrollingParams, { side_scrolling: sideScrollingRuntimeSlice }, sideScrollingArt, sideScrollingSceneRuntime.bindingState)');
+        expect(main).toContain('new SideScrollingRunAndGunScene(');
+        expect(main).toContain('runtimeAuthority');
         expect(main).toContain('AIGAME_RUNTIME_READY');
         expect(main).toContain('AIGAME_GET_CAPABILITIES');
         expect(main).toContain('AIGAME_APPLY_PATCH');
@@ -1027,8 +1040,11 @@ describe('Phaser templates', () => {
 
   it('uses generated Scene IR to drive side-scrolling runtime structure and binding evidence', async () => {
     const sideScrollingMain = await readFile('templates/phaser/side_scrolling_run_and_gun/src/main.ts', 'utf8');
+    const runtimeAuthorityHelper = await readFile('templates/phaser/shared/runtime-authority.ts', 'utf8');
     expect(sideScrollingMain).toContain('scene-ir.generated.json');
     expect(sideScrollingMain).toContain('resolveSideScrollingRuntimeSliceWithSceneIr');
+    expect(runtimeAuthorityHelper).toContain('runtime-authority.generated.json must contain an authority bundle object.');
+    expect(runtimeAuthorityHelper).toContain('runtime-authority.generated.json is missing required active profile authority fields.');
     expect(sideScrollingManifest.source_files).toEqual(expect.arrayContaining(['src/side-scrolling-scene-ir.ts', 'src/scene-ir.generated.json']));
 
     const { SideScrollingRunAndGunScene } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/GameScene.js');
@@ -1063,7 +1079,21 @@ describe('Phaser templates', () => {
       }
     });
 
-    const scene = new SideScrollingRunAndGunScene(defaultSideScrollingParams, { side_scrolling: resolved.plan }, undefined, resolved.bindingState);
+    const runtimeAuthority = {
+      authorityBundleRef: { artifactKind: 'authority_bundle' as const, path: 'authority_bundle.json' as const, bundleHash: 'fnv1a_round4_bundle' },
+      activeProfileLockRef: { artifactKind: 'active_profile_lock' as const, path: 'active_profile_lock.json' as const, lockHash: 'fnv1a_round4_lock' },
+      profileId: 'side_scrolling_run_and_gun.v1',
+      runtimeTemplateId: 'phaser/side_scrolling_run_and_gun.v1',
+      runtimeTemplateManifestId: 'side_scrolling_run_and_gun.v1',
+      qaProfile: 'side_scrolling_run_and_gun_smoke'
+    };
+    const scene = new SideScrollingRunAndGunScene(
+      defaultSideScrollingParams,
+      { side_scrolling: resolved.plan },
+      undefined,
+      resolved.bindingState,
+      runtimeAuthority
+    );
     scene.create();
 
     const snapshot = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
@@ -1078,6 +1108,13 @@ describe('Phaser templates', () => {
       sceneBindings: {
         source: 'scene_ir',
         summary: expect.objectContaining({ boundCount: 7, unboundCount: 0 })
+      },
+      runtimeAuthority: {
+        authorityBundleRef: { bundleHash: 'fnv1a_round4_bundle' },
+        activeProfileLockRef: { lockHash: 'fnv1a_round4_lock' },
+        profileId: 'side_scrolling_run_and_gun.v1',
+        runtimeTemplateManifestId: 'side_scrolling_run_and_gun.v1',
+        qaProfile: 'side_scrolling_run_and_gun_smoke'
       }
     });
   });
