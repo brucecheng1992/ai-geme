@@ -255,6 +255,16 @@ export {
   type DeepSeekRunAndGunVerificationClass
 } from './deepseek-run-and-gun-validation-profile-v1.js';
 export {
+  GENERATION_TARGET_PROFILE_RUNTIME_SUPPORT_REPORT_KIND,
+  GENERATION_TARGET_PROFILE_RUNTIME_SUPPORT_REPORT_PATH,
+  GENERATION_TARGET_PROFILE_RUNTIME_SUPPORT_REPORT_SCHEMA_VERSION,
+  GenerationTargetProfileRuntimeSupportCapabilitySchema,
+  GenerationTargetProfileRuntimeSupportReportSchema,
+  buildGenerationTargetProfileRuntimeSupportReport,
+  type GenerationTargetProfileRuntimeSupportCapability,
+  type GenerationTargetProfileRuntimeSupportReport
+} from './generation-target-profile-runtime-support.js';
+export {
   buildSceneIr,
   buildSceneIrAuthorityReport,
   buildSceneIrCoverageReport,

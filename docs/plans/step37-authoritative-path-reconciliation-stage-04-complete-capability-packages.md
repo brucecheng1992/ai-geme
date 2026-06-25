@@ -736,9 +736,124 @@ Stage 4 Package Closure Gate: CHECKPOINT_COMMITTED
 Stage 4 Default Weapon Browser QA Evidence: CHECKPOINT_COMMITTED
 Stage 4 Support Evidence Prerequisite Gate: CHECKPOINT_COMMITTED
 Stage 4 Default Weapon Package Contract Prerequisite: CHECKPOINT_COMMITTED
-Stage 4 Required Probe QA Report Bridge: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 Required Probe QA Report Bridge: CHECKPOINT_COMMITTED
+Stage 4 Required Probe QA Report Bridge checkpoint: 8ce5c3a8
+Stage 4 Exit gate: NOT_MET
+Next: continue Stage 4 next closure requirement review
+```
+
+Stop marker: Stage 4 required-probe QA report bridge checkpoint commit `8ce5c3a8` is complete. Do not enter Stage 5 and do not claim complete package closure.
+
+## Stage 4 Closure Implementation — Target Profile Runtime Support Overlay
+
+### Scope Lock
+
+- scope: Stage 4 implementation only.
+- baseline: Stage 4 required-probe QA report bridge checkpoint commit `8ce5c3a8` (`feat(game-dsl): bridge default weapon QA report evidence`).
+- implementation target: consume `shadow_capability_qa_report.json` into a runtime-observed target-profile support overlay report.
+- non-goals: no registry `qa_observed=true`, no registry `completeSupported=true`, no static support summary promotion, no complete package set, no Stage 5 exact lock, no production default cutover.
+- starting conclusion: `Stage 4 Exit gate: NOT_MET`; package-owned QA report existed, but no downstream support-level report consumed it.
+
+### Current Stage Review Conclusion
+
+The previous Stage 4 slice proved the default weapon required probe can be evaluated from same-run runtime evidence and written as `shadow_capability_qa_report.json`. That was still not enough for support closure because `buildDeepSeekRunAndGunValidationProfileSupportSummary()` remained static registry authority and still reported `qa_observed=false`, `completeSupported=false`, and `completeSupportedCount=0`.
+
+The next minimal closure requirement is therefore not a registry promotion. It is a separate runtime-observed overlay that records which static blockers were observed by the same-run package QA report while preserving the static support summary as incomplete.
+
+### Extracted Minimal Closure Requirements
+
+1. Produce `generation_target_profile_runtime_support_report.json` only from the static DeepSeek target support summary plus same-run `CapabilityQaReport`.
+2. Derive `runtimeVerified` from passed required probe IDs with passed assertion results; generic `status='passed'` alone is not sufficient.
+3. Let the default weapon show `observedCompleteSupported=true` in the overlay when its static non-QA dimensions are true and the required probe is verified.
+4. Keep `staticCompleteSupportedCount=0`, `targetProfileCompleteSupported=false`, and `status=blocked_incomplete_target_profile` while the full target profile is incomplete.
+5. Fail closed when a required probe assertion is missing, keeping `runtimeVerified=false` and listing the missing probe blocker.
+6. Do not add Stage 5 exact-lock behavior or production default cutover behavior.
+
+### RED Evidence
+
+```text
+npx vitest run tests/workspace/generation-pipeline.service.test.ts -t "rewrites side-scrolling runtime scene binding report from QA snapshot evidence"
+# RED before implementation: ENOENT generation_target_profile_runtime_support_report.json
+```
+
+### Implemented Scope
+
+- Added `GenerationTargetProfileRuntimeSupportReportSchema` and `buildGenerationTargetProfileRuntimeSupportReport()`.
+- The report hashes the static target support summary, records the consumed `capabilityQaReportHash`, and exposes per-capability static evidence, observed overlay evidence, required probe IDs, verified probe IDs, and missing required probe IDs.
+- `GenerationPipelineService` now writes `generation_target_profile_runtime_support_report.json` when `buildGenerationCapabilityRuntimeShadow()` produced `shadowCapabilityQaReport`.
+- Focused contract tests prove the default weapon overlay passes only when both required runtime events are observed and fails closed when one assertion event is missing.
+
+### Compatibility & Cutover
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Active-profile closure can now produce `generation_target_profile_runtime_support_report.json` after `shadow_capability_qa_report.json` exists. |
+| Consumer list | `GenerationPipelineService`, `buildGenerationTargetProfileRuntimeSupportReport`, focused contract tests, Stage 37 report readers, and future Stage 4 promotion gates read the overlay. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: static support summary remains authoritative and incomplete; the new overlay is the first support-level consumer of the package QA report. |
+| Authority | `buildDeepSeekRunAndGunValidationProfileSupportSummary()` remains static support authority; `shadow_capability_qa_report.json` is same-run dynamic QA authority; the overlay is derived evidence only. |
+| Legacy strategy | Legacy/static registry evidence is not mutated. Historical runs without `shadow_capability_qa_report.json` simply do not produce this overlay. |
+| Failure policy | Missing QA report, blocked QA plan, failed required probe, or missing assertion results keeps `runtimeVerified=false`, keeps target profile blocked, and emits blockers. |
+| Evidence | RED proved the artifact was not produced; GREEN focused and full tests prove the artifact is written from same-run QA report and keeps static complete support at `0/59`. |
+| Rollback | Reverting this slice removes only the additive overlay report and focused tests; existing required-probe QA report bridge remains intact. |
+
+Compatibility disposition:
+
+```ts
+const STAGE_4_TARGET_PROFILE_RUNTIME_SUPPORT_OVERLAY_DISPOSITION = "NEW_CONSUMER_REQUIRED";
+```
+
+### Validation
+
+```text
+npx vitest run tests/contracts/generation-target-profile-runtime-support.test.ts tests/workspace/generation-pipeline.service.test.ts -t "target profile runtime support overlay|rewrites side-scrolling runtime scene binding report"
+# PASS, 2 files / 3 selected tests
+
+npx vitest run tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-capability-runtime.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/workspace/generation-pipeline.service.test.ts tests/workspace/playwright-qa-runner.test.ts
+# PASS, 7 files / 119 tests
+
+npm test
+# PASS, contracts 94 files / 1042 tests; workspace 34 files / 401 tests
+
+npm run typecheck
+# PASS
+
+git diff --check
+# PASS
+
+npx tsx -e "import { buildDeepSeekRunAndGunValidationProfileSupportSummary } from './packages/game-dsl/src/deepseek-run-and-gun-validation-profile-v1.ts'; const support = buildDeepSeekRunAndGunValidationProfileSupportSummary(); const weapon = support.capabilities.find((capability) => capability.capabilityId === 'weapon.default_straight_single.v1'); console.log(JSON.stringify({summary:support.summary, weapon}, null, 2));"
+# PASS: requiredCapabilityCount=59, completeSupportedCount=0; weapon.default_straight_single.v1 remains qa_observed=false, completeSupported=false, and only lists requiredProbesVerified as missing prerequisite
+```
+
+### Implementation Oracle Review
+
+Oracle PASS / no P0/P1/P2 blocking findings. After P3 remediation, Oracle re-review PASS / no P0/P1/P2/P3. Checkpoint commit is allowed for this Stage 4 target profile runtime support overlay only.
+
+Oracle confirmed:
+
+- no current consumer reads the overlay as Stage 5 exact-lock or cutover authority;
+- arbitrary external QA reports should not be fed to this builder without report/plan authority validation;
+- Stage 4 Exit gate remains `NOT_MET`;
+- Stage 5 must not be entered.
+
+P3 remediation before checkpoint: the terminal overlay status name was narrowed from `ready_for_exact_lock` to `observed_target_profile_complete` so the artifact no longer encodes an exact-lock authorization signal. Oracle re-review accepted this remediation.
+
+Retained P3 guardrail: future external callers must validate the supplied `CapabilityQaReport` authority and plan identity before using it; the current production pipeline path supplies a same-run report produced by `evaluateCapabilityQaReport()`.
+
+### Implementation Exit Assessment
+
+```text
+Stage 1: AUTHORITATIVE_AND_CONNECTED
+Stage 2: PROFILE_RESOLUTION_CLOSED
+Stage 3: CAPABILITY_REQUIREMENTS_CLOSED
+Stage 4 Audit: COMPLETE_PACKAGE_CLOSURE_NOT_MET
+Stage 4 Package Closure Gate: CHECKPOINT_COMMITTED
+Stage 4 Default Weapon Browser QA Evidence: CHECKPOINT_COMMITTED
+Stage 4 Support Evidence Prerequisite Gate: CHECKPOINT_COMMITTED
+Stage 4 Default Weapon Package Contract Prerequisite: CHECKPOINT_COMMITTED
+Stage 4 Required Probe QA Report Bridge: CHECKPOINT_COMMITTED
+Stage 4 Target Profile Runtime Support Overlay: ORACLE_PASSED_AWAITING_COMMIT
 Stage 4 Exit gate: NOT_MET
 Next: checkpoint commit, then continue Stage 4 next closure requirement review
 ```
 
-Stop marker: Stage 4 required-probe QA report bridge passed Oracle and is awaiting checkpoint commit. Do not enter Stage 5 and do not claim complete package closure.
+Stop marker: Stage 4 target profile runtime support overlay passed Oracle and awaits checkpoint commit. Do not enter Stage 5 and do not claim complete package closure.

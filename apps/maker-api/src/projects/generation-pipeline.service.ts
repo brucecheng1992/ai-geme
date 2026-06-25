@@ -32,6 +32,7 @@ import {
   buildGenerationCapabilityCutoverReport,
   buildGenerationCapabilityGapReport,
   buildGenerationCapabilityRuntimeShadow,
+  buildGenerationTargetProfileRuntimeSupportReport,
   buildGenerationCapabilityResolutionShadow,
   buildGenerationCapabilityPreflight,
   buildGenerationPathReceipt,
@@ -60,6 +61,7 @@ import {
   type GenerationCapabilityResolutionShadowArtifacts,
   type GenerationCapabilityPreflightArtifacts,
   type GenerationCapabilityGapReport,
+  GENERATION_TARGET_PROFILE_RUNTIME_SUPPORT_REPORT_PATH,
   type GameBriefV02,
   type GenerationScopePlan,
   type GameDslArtifact,
@@ -1169,6 +1171,17 @@ export class GenerationPipelineService {
       activeRuntimeAuthority: closure.activeRuntimeAuthority
     });
     await this.writeGenerationCapabilityRuntimeShadowArtifacts(input, runtimeArtifacts);
+    if (runtimeArtifacts.shadowCapabilityQaReport !== undefined) {
+      await this.writeModelOutputJson(
+        input,
+        GENERATION_TARGET_PROFILE_RUNTIME_SUPPORT_REPORT_PATH,
+        buildGenerationTargetProfileRuntimeSupportReport({
+          projectId: input.projectId,
+          runId: input.runId,
+          capabilityQaReport: runtimeArtifacts.shadowCapabilityQaReport
+        })
+      );
+    }
     const gapReport = buildGenerationCapabilityGapReport({
       projectId: input.projectId,
       runId: input.runId,

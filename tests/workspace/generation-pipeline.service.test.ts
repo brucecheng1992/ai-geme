@@ -179,6 +179,7 @@ describe('GenerationPipelineService failure states', () => {
     const capabilityResolution = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_capability_resolution_report.json'), 'utf8'));
     const capabilityRuntime = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_capability_runtime_report.json'), 'utf8'));
     const capabilityQaReport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'shadow_capability_qa_report.json'), 'utf8'));
+    const targetRuntimeSupport = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_target_profile_runtime_support_report.json'), 'utf8'));
     const capabilityGap = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_capability_gap_report.json'), 'utf8'));
     const capabilityCutover = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_capability_cutover_report.json'), 'utf8'));
     const runtimeSceneBindingReport = JSON.parse(await readFile(join(workspace.getGeneratedProjectDir(projectId), 'runtime_scene_binding_report.json'), 'utf8'));
@@ -259,6 +260,24 @@ describe('GenerationPipelineService failure states', () => {
     expect(capabilityRuntime.resolutionReportHash).toBe(capabilityResolution.reportHash);
     expect(capabilityRuntime.authorityBundleRef).toEqual(qaReport.runtime_authority?.expected?.authorityBundleRef);
     expect(capabilityRuntime.activeProfileLockRef).toEqual(qaReport.runtime_authority?.expected?.activeProfileLockRef);
+    expect(targetRuntimeSupport).toMatchObject({
+      artifactKind: 'generation_target_profile_runtime_support_report',
+      status: 'blocked_incomplete_target_profile',
+      staticCompleteSupportedCount: 0,
+      observedCompleteSupportedCount: 1,
+      targetProfileCompleteSupported: false,
+      capabilityQaReportHash: capabilityQaReport.reportHash,
+      observedCapabilityIds: ['weapon.default_straight_single.v1'],
+      capabilities: expect.arrayContaining([
+        expect.objectContaining({
+          capabilityId: 'weapon.default_straight_single.v1',
+          runtimeVerified: true,
+          observedCompleteSupported: true,
+          verifiedRequiredProbeIds: ['weapon.default_straight_single.v1.fire.browser_qa.v1'],
+          missingRequiredProbeIds: []
+        })
+      ])
+    });
     expect(capabilityGap).toMatchObject({
       artifactKind: 'generation_capability_gap_report',
       selectedPath: 'capability_composed_v1',

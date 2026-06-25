@@ -1,7 +1,7 @@
 # Step 37 Authoritative Path Reconciliation Audit
 
 > - 文档定位：Step 37 authoritative production chain 的逐段只读审计状态文档。
-> - 当前状态：Stage 4 default weapon package contract prerequisite Oracle PASS; checkpoint commit pending
+> - 当前状态：Stage 4 target profile runtime support overlay Oracle PASS; checkpoint commit pending
 > - 任务契约：`/Users/dahufa/Downloads/step37-authoritative-path-reconciliation-prompt.md`
 > - 当前分片：`docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`
 > - 更新日期：2026-06-25
@@ -48,13 +48,13 @@
 
 ## 4. 当前状态
 
-- 状态：Stage 4 default weapon required-probe QA report bridge Oracle PASS; checkpoint commit pending.
-- 当前步骤：Stage 4 default weapon package contract prerequisite checkpoint commit `9d3e0967` 已创建；当前 Stage 4 micro-loop 将同 run `QaReport.capability_runtime` 转换为 package-owned `CapabilityQaReport` probe results，并让 active-profile closure 写出 `shadow_capability_qa_report.json`。
-- 最近完成：Stage 4 default weapon package contract prerequisite 已 checkpoint；它把 default weapon package contract 和 probe id 收敛到 package-owned namespace，但不提升 `qa_observed`。
-- 最近验证：default weapon required-probe bridge RED focused failed as expected for missing `shadow_capability_qa_report.json`；GREEN focused PASS, 2 files / 2 selected tests；expanded focused PASS, 6 files / 117 tests；full `npm test` PASS, contracts 93 files / 1040 tests and workspace 34 files / 401 tests；full `npm run typecheck` PASS；`git diff --check` PASS；support summary read-only probe confirms `requiredCapabilityCount=59`, `completeSupportedCount=0`, and `weapon.default_straight_single.v1` remains `qa_observed=false` / `completeSupported=false` with only `requiredProbesVerified` missing。
-- 最近 Oracle 结论：Stage 1 final Oracle PASS；Stage 2 Profile Resolution audit Oracle PASS；Stage 2 closure Oracle PASS / no P0/P1/P2/P3；Stage 3 audit Oracle re-review PASS / no P0/P1/P2/P3；Stage 3 closure Oracle re-review PASS / no P0/P1/P2/P3；Stage 4 audit Oracle PASS / no P0/P1/P2, P3 remediated；Stage 4 package closure gate implementation Oracle PASS / no P0/P1/P2/P3；Stage 4 default weapon browser QA evidence implementation Oracle PASS / no P0/P1/P2，P3 notes direct `PlaywrightQaRunnerService.run` capability evidence gate remains opt-in outside production pipeline；Stage 4 support prerequisite gate first Oracle BLOCKED on same-version schema compatibility；adapter fix Oracle re-review PASS / no P0/P1/P2/P3，checkpoint committed as `f5f1daa3`；Stage 4 default weapon package contract prerequisite Oracle PASS / no P0/P1/P2/P3；Stage 4 required-probe QA report bridge Oracle PASS / no P0/P1/P2, non-blocking P3 notes older active-profile no-package behavior can still report passed/observed without shadow QA refs; checkpoint commit allowed。
+- 状态：Stage 4 target profile runtime support overlay Oracle PASS; checkpoint commit pending.
+- 当前步骤：Stage 4 required-probe QA report bridge checkpoint commit `8ce5c3a8` 已创建；当前 Stage 4 micro-loop 将 `shadow_capability_qa_report.json` 消费为 `generation_target_profile_runtime_support_report.json` runtime-observed overlay。
+- 最近完成：Stage 4 required-probe QA report bridge 已 checkpoint；它把同 run `QaReport.capability_runtime` 转换为 package-owned `CapabilityQaReport` probe results，但不提升 registry `qa_observed`。
+- 最近验证：target runtime support overlay RED focused failed as expected for missing `generation_target_profile_runtime_support_report.json`；GREEN focused PASS, 2 files / 3 selected tests；expanded focused PASS, 7 files / 119 tests；full `npm test` PASS, contracts 94 files / 1042 tests and workspace 34 files / 401 tests；full `npm run typecheck` PASS；`git diff --check` PASS；support summary read-only probe confirms `requiredCapabilityCount=59`, `completeSupportedCount=0`, and `weapon.default_straight_single.v1` remains `qa_observed=false` / `completeSupported=false` with only `requiredProbesVerified` missing。
+- 最近 Oracle 结论：Stage 1 final Oracle PASS；Stage 2 Profile Resolution audit Oracle PASS；Stage 2 closure Oracle PASS / no P0/P1/P2/P3；Stage 3 audit Oracle re-review PASS / no P0/P1/P2/P3；Stage 3 closure Oracle re-review PASS / no P0/P1/P2/P3；Stage 4 audit Oracle PASS / no P0/P1/P2, P3 remediated；Stage 4 package closure gate implementation Oracle PASS / no P0/P1/P2/P3；Stage 4 default weapon browser QA evidence implementation Oracle PASS / no P0/P1/P2，P3 notes direct `PlaywrightQaRunnerService.run` capability evidence gate remains opt-in outside production pipeline；Stage 4 support prerequisite gate first Oracle BLOCKED on same-version schema compatibility；adapter fix Oracle re-review PASS / no P0/P1/P2/P3，checkpoint committed as `f5f1daa3`；Stage 4 default weapon package contract prerequisite Oracle PASS / no P0/P1/P2/P3；Stage 4 required-probe QA report bridge Oracle PASS / no P0/P1/P2, non-blocking P3 notes older active-profile no-package behavior can still report passed/observed without shadow QA refs; checkpoint commit allowed；Stage 4 target profile runtime support overlay Oracle PASS / P3 exact-lock wording remediated；Oracle re-review PASS / no P0/P1/P2/P3, checkpoint commit allowed for overlay only。
 - 未处理风险：Stage 4 complete package closure 尚未达成；Stage 5 Exact Capability Lock 尚未进入；Stage 3 Gate E 仍不证明 `profileRequirements.requirementsHash` / `requiredCapabilityIds` 字段级 downstream action；post-Stage-1 shadow/canary parity/rollback 仍未实施。`QaReport` status consistency 作为非阻塞债务登记，不重新打开 Stage 1。
-- 工作区核对：当前仅允许 Stage 4 required-probe QA report bridge 相关 files：QA runner capability-runtime evidence aggregation、generation runtime QA report bridge、generation pipeline active-profile closure wiring、相关 focused tests、本状态文档和 Stage 4 分片。
+- 工作区核对：当前仅允许 Stage 4 target runtime support overlay 相关 files：`generation-target-profile-runtime-support.ts` builder、generation pipeline overlay artifact wiring、focused tests、本状态文档和 Stage 4 分片。
 
 ## 5. 下一步
 
@@ -78,11 +78,13 @@ Stage 4 package closure gate checkpoint: 2cfe1f54
 Stage 4 default weapon QA evidence checkpoint: 5cefcee1
 Stage 4 support prerequisite gate checkpoint: f5f1daa3
 Stage 4 default weapon package contract checkpoint: 9d3e0967
-Stage 4 required-probe QA report bridge: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 required-probe QA report bridge: CHECKPOINT_COMMITTED
+Stage 4 required-probe QA report bridge checkpoint: 8ce5c3a8
+Stage 4 target profile runtime support overlay: ORACLE_PASSED_AWAITING_COMMIT
 Stage 4 Exit gate: NOT_MET
 ```
 
-下一步完成当前 Stage 4 required-probe QA report bridge 的 checkpoint commit，然后继续 Stage 4 下一 closure requirement 审查。不要把 package-owned QA report 消费链等同于 Stage 4 closure；support summary 仍保持 `requiredProbesVerified` 阻塞 `qa_observed` 和 `completeSupported`。
+下一步完成当前 Stage 4 target profile runtime support overlay 的 checkpoint commit，然后继续 Stage 4 下一 closure requirement 审查。不要把 runtime-observed overlay 等同于 registry/static support promotion；support summary 仍保持 `requiredProbesVerified` 阻塞 `qa_observed` 和 `completeSupported`。
 
 ## 6. 恢复检查清单
 
