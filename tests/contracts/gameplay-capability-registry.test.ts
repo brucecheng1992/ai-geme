@@ -35,6 +35,10 @@ describe('Gameplay capability registry', () => {
       status: 'planned',
       legacyRuntimeCapabilities: ['run_jump_controller']
     });
+    expect(findGameplayCapability('spawn.static.v1')).toMatchObject({
+      status: 'planned',
+      legacyRuntimeCapabilities: ['enemy_spawn', 'enemy_spawn_triggers']
+    });
     expect(GameplayCapabilityRegistry.entries.some(isCompleteSupportedGameplayCapability)).toBe(false);
   });
 
@@ -207,6 +211,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(collision)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(collision)).toBe(false);
+  });
+
+  it('scopes spawn static package-owned QA without static support promotion', () => {
+    const spawnStatic = findGameplayCapability('spawn.static.v1');
+
+    if (spawnStatic === undefined) {
+      throw new Error('Expected spawn.static.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(spawnStatic)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(spawnStatic.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(spawnStatic.qa).toEqual({
+      requiredProbeIds: ['spawn.static.v1.triggered.browser_qa.v1'],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(spawnStatic)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(spawnStatic)).toBe(false);
   });
 
   it('derives profile runtime status from RuntimeGenreRegistry instead of a second supported list', () => {

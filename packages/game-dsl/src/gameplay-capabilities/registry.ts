@@ -21,6 +21,10 @@ import {
   MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID,
   createMovementRunJumpPackageContract
 } from './movement-run-jump-package.js';
+import {
+  SPAWN_STATIC_REQUIRED_PROBE_ID,
+  createSpawnStaticPackageContract
+} from './spawn-static-package.js';
 import { validateGameplayCapabilityPackage } from './package-contract.js';
 import { hashStableJson } from './stable-json.js';
 
@@ -395,6 +399,19 @@ const movementRunJumpPackageEvidence: GameplayCapabilityEvidence = movementRunJu
 const movementRunJumpPackageQa: GameplayCapabilityQaEvidence = movementRunJumpPackageReport.supportEligible
   ? { requiredProbeIds: [MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const spawnStaticPackageReport = validateGameplayCapabilityPackage(createSpawnStaticPackageContract());
+const spawnStaticPackageEvidence: GameplayCapabilityEvidence = spawnStaticPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const spawnStaticPackageQa: GameplayCapabilityQaEvidence = spawnStaticPackageReport.supportEligible
+  ? { requiredProbeIds: [SPAWN_STATIC_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 
 const contractCompilerEvidence: GameplayCapabilityEvidence = {
   ...contractSeedEvidence,
@@ -479,10 +496,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     collisionPlatformPackageEvidence,
     collisionPlatformPackageQa
   ),
-  runtimeBacked('spawn.static.v1', 'spawn', 'Static and trigger-based spawning', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], [
-    'enemy_spawn',
-    'enemy_spawn_triggers'
-  ]),
+  planned(
+    'spawn.static.v1',
+    'spawn',
+    'Static and trigger-based spawning',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    ['enemy_spawn', 'enemy_spawn_triggers'],
+    spawnStaticPackageEvidence,
+    spawnStaticPackageQa
+  ),
   runtimeBacked('rules.restart_loop.v1', 'rules', 'Restart and checkpoint loop', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], [
     'restart_loop',
     'checkpoint_or_lives_system'

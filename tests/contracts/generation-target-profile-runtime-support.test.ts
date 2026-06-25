@@ -7,6 +7,7 @@ import {
   DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
   GenerationTargetProfileRuntimeSupportReportSchema,
   MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID,
+  SPAWN_STATIC_REQUIRED_PROBE_ID,
   buildCapabilityQaProbeResultsFromRuntimeEvidence,
   buildCapabilityRuntimeQaPlan,
   buildGenerationTargetProfileRuntimeSupportReport,
@@ -15,6 +16,7 @@ import {
   createCombatProjectilePackageContract,
   createDefaultStraightSingleWeaponPackageContract,
   createMovementRunJumpPackageContract,
+  createSpawnStaticPackageContract,
   evaluateCapabilityQaReport,
   resolveGameplayCapabilityGraph
 } from '../../packages/game-dsl/src/index.js';
@@ -24,6 +26,7 @@ const collisionCapabilityId = 'collision.platform.v1';
 const defaultWeaponCapabilityId = 'weapon.default_straight_single.v1';
 const projectileCapabilityId = 'combat.projectile.v1';
 const movementCapabilityId = 'movement.run_jump.v1';
+const spawnStaticCapabilityId = 'spawn.static.v1';
 
 describe('Step 37 target profile runtime support overlay', () => {
   it('records runtime-observed support without mutating static completeSupported evidence', () => {
@@ -32,7 +35,8 @@ describe('Step 37 target profile runtime support overlay', () => {
       'collision.platform.grounded',
       'player.fired',
       'projectile.spawned',
-      'player.jumped'
+      'player.jumped',
+      'spawn.static.triggered'
     ]);
     const report = buildGenerationTargetProfileRuntimeSupportReport({
       projectId: 'proj_20260625_target_runtime_support',
@@ -44,6 +48,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     const defaultWeapon = report.capabilities.find((entry) => entry.capabilityId === defaultWeaponCapabilityId);
     const projectile = report.capabilities.find((entry) => entry.capabilityId === projectileCapabilityId);
     const movement = report.capabilities.find((entry) => entry.capabilityId === movementCapabilityId);
+    const spawnStatic = report.capabilities.find((entry) => entry.capabilityId === spawnStaticCapabilityId);
 
     expect(GenerationTargetProfileRuntimeSupportReportSchema.parse(report)).toEqual(report);
     expect(report).toMatchObject({
@@ -52,11 +57,11 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 5,
+      observedCompleteSupportedCount: 6,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
-      observedCapabilityIds: [cameraCapabilityId, collisionCapabilityId, projectileCapabilityId, movementCapabilityId, defaultWeaponCapabilityId],
-      blockers: ['target_profile_runtime_support_incomplete:5/59']
+      observedCapabilityIds: [cameraCapabilityId, collisionCapabilityId, projectileCapabilityId, movementCapabilityId, spawnStaticCapabilityId, defaultWeaponCapabilityId],
+      blockers: ['target_profile_runtime_support_incomplete:6/59']
     });
     expect(camera).toMatchObject({
       capabilityId: cameraCapabilityId,
@@ -113,6 +118,17 @@ describe('Step 37 target profile runtime support overlay', () => {
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
     });
+    expect(spawnStatic).toMatchObject({
+      capabilityId: spawnStaticCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [SPAWN_STATIC_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [SPAWN_STATIC_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
   });
 
   it('keeps runtime support blocked when the required package QA assertion is missing', () => {
@@ -135,6 +151,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         `capability_qa_report_missing_required_probe:${COLLISION_PLATFORM_REQUIRED_PROBE_ID}`,
         `capability_qa_report_missing_required_probe:${COMBAT_PROJECTILE_REQUIRED_PROBE_ID}`,
         `capability_qa_report_missing_required_probe:${MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID}`,
+        `capability_qa_report_missing_required_probe:${SPAWN_STATIC_REQUIRED_PROBE_ID}`,
         `capability_qa_report_missing_required_probe:${DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID}`,
         'target_profile_runtime_support_incomplete:0/59'
       ]
@@ -156,10 +173,11 @@ function buildDefaultWeaponQaReport(eventTypes: readonly string[]) {
     createCollisionPlatformPackageContract(),
     createDefaultStraightSingleWeaponPackageContract(),
     createCombatProjectilePackageContract(),
-    createMovementRunJumpPackageContract()
+    createMovementRunJumpPackageContract(),
+    createSpawnStaticPackageContract()
   ];
   const lockReport = resolveGameplayCapabilityGraph({
-    requestedCapabilities: [cameraCapabilityId, collisionCapabilityId, defaultWeaponCapabilityId, projectileCapabilityId, movementCapabilityId],
+    requestedCapabilities: [cameraCapabilityId, collisionCapabilityId, defaultWeaponCapabilityId, projectileCapabilityId, movementCapabilityId, spawnStaticCapabilityId],
     packages,
     runtimeFamily: 'phaser_2d_action_arcade.v1'
   });
@@ -235,6 +253,19 @@ function buildDefaultWeaponQaReport(eventTypes: readonly string[]) {
             eventTypes,
             status: 'observed' as const,
             sourceRef: 'qa_report.capability_runtime'
+          }
+        ]
+      : []),
+    ...(eventTypes.includes('spawn.static.triggered')
+      ? [
+          {
+            capabilityId: spawnStaticCapabilityId,
+            probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
+            action: 'spawn',
+            eventType: 'spawn.static.triggered',
+            eventTypes,
+            status: 'observed' as const,
+            sourceRef: 'qa_report.snapshot.waves'
           }
         ]
       : [])

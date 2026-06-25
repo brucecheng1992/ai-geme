@@ -13,6 +13,8 @@ export * from './combat-projectile-runtime-module.js';
 export * from './combat-projectile-package.js';
 export * from './movement-run-jump-runtime-module.js';
 export * from './movement-run-jump-package.js';
+export * from './spawn-static-runtime-module.js';
+export * from './spawn-static-package.js';
 export * from './profile-recipe-compiler.js';
 export * from './capability-lock.js';
 export * from './capability-resolver.js';

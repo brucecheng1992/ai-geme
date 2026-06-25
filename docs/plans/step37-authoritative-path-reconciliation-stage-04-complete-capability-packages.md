@@ -1608,3 +1608,106 @@ Stage 4 Exit gate: NOT_MET
 ```
 
 Stop marker: Stage 4 spawn.static package-owned QA slice audit is recorded. Implementation may start for this slice only; do not enter Stage 5 and do not claim complete package closure.
+
+## Stage 4 Closure Implementation — Spawn Static Package-Owned QA Slice
+
+### Scope Lock
+
+- scope: Stage 4 `spawn.static.v1` package-owned QA slice only.
+- baseline: Stage 4 spawn.static package-owned QA slice audit checkpoint commit `5fb63428` (`docs: record stage 4 spawn package audit`).
+- implementation target: add package-owned QA evidence for existing side-scrolling triggered-wave spawn behavior.
+- non-goals: no Stage 5 exact lock, no composed schema, no canonical DSL/provider run, no production default cutover, no legacy authoritative path exit, no `spawn.enemy_wave.v1` promotion, no Stage 4 full closure claim.
+
+### Implementation Summary
+
+- Added `spawn.static.v1` runtime constants and package contract with a required triggered-wave browser QA probe.
+- Reclassified `spawn.static.v1` from legacy-backed runtime evidence to package-backed planned evidence with `requiredProbesVerified=false`.
+- Installed the spawn static package in the side-scrolling active-profile package set and QA runtime expectation.
+- Added runtime snapshot evidence in `SideScrollingRunAndGunScene.triggerWave()` after a wave is actually triggered and enemy state is created.
+- Extended Playwright QA runtime evidence, capability QA report, target profile runtime support overlay, and pipeline fixture tests to consume the new required probe.
+- Kept static target support incomplete; runtime-observed overlay advances from `5/59` to `6/59` only.
+
+### Compatibility & Cutover
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds `spawn.static.v1` package contract, runtime constants, registry package evidence, QA expectation, and runtime snapshot probe. |
+| Consumer list | `GameplayCapabilityRegistry`, target profile support summary, active-profile package installer, Playwright QA runtime evidence reader, `CapabilityQaReport`, target runtime support overlay, and Stage 4 tests consume it. |
+| Compatibility type | `ADAPTER_REQUIRED`: legacy side-scrolling spawn behavior is only Stage 4 evidence after named package/probe wiring observes the existing triggered-wave runtime state. |
+| Authority | `spawn.static.v1` package contract and `capability_qa_report` required probe result are the semantic authority for this slice; `generation_target_profile_runtime_support_report` is only observed overlay evidence. |
+| Legacy strategy | Legacy runtime behavior remains executable but is not authoritative for complete support without the package-owned probe and QA report bridge. `spawn.enemy_wave.v1` remains top-down scoped and is not promoted by this slice. |
+| Failure policy | Missing package probe, missing runtime evidence, or missing required QA assertion keeps `requiredProbesVerified=false` and target profile support blocked. |
+| Evidence | RED failed before export/contract existed; GREEN focused tests, related suite, support probe, full tests, and typecheck prove downstream consumption and `observedCompleteSupportedCount=6/59`. |
+| Rollback | Revert this slice to return `spawn.static.v1` to legacy-backed incomplete evidence and remove the sixth side-scrolling required probe without rewriting prior package slice evidence. |
+
+Disposition: `ADAPTER_REQUIRED`; same-run evidence is required and recorded below.
+
+### Verification
+
+```text
+RED:
+npx tsx --eval "import { createSpawnStaticPackageContract, SPAWN_STATIC_REQUIRED_PROBE_ID } from './packages/game-dsl/src/gameplay-capabilities/index.ts'; const contract = createSpawnStaticPackageContract(); if (contract.manifest.id !== 'spawn.static.v1') throw new Error('wrong spawn static package id'); if (!contract.qa.probes.some((probe) => probe.id === SPAWN_STATIC_REQUIRED_PROBE_ID && probe.severity === 'required')) throw new Error('missing required spawn static probe');"
+# FAIL before implementation: TypeError: createSpawnStaticPackageContract is not a function
+
+GREEN:
+npx tsx --eval "import { createSpawnStaticPackageContract, SPAWN_STATIC_REQUIRED_PROBE_ID } from './packages/game-dsl/src/gameplay-capabilities/index.ts'; const contract = createSpawnStaticPackageContract(); if (contract.manifest.id !== 'spawn.static.v1') throw new Error('wrong spawn static package id'); if (!contract.qa.probes.some((probe) => probe.id === SPAWN_STATIC_REQUIRED_PROBE_ID && probe.severity === 'required')) throw new Error('missing required spawn static probe'); console.log(JSON.stringify({packageId: contract.manifest.id, requiredProbeId: SPAWN_STATIC_REQUIRED_PROBE_ID, status: contract.manifest.status}, null, 2));"
+# PASS: packageId=spawn.static.v1; requiredProbeId=spawn.static.v1.triggered.browser_qa.v1; status=supported
+
+Focused tests:
+npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/generation-pipeline.service.test.ts -t "spawn static|runtime-observed support|package-owned capability runtime evidence|capability runtime probe evidence|capability runtime evidence when a required probe is absent|passes capability runtime evidence|passes active profile capability runtime expectation|keeps capability IDs unique|keeps legacy-backed|rewrites side-scrolling runtime scene binding report|routes supported side-scrolling"
+# PASS: 7 files, 11 selected tests
+
+Related suite:
+npx vitest run tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/generation-capability-resolution.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/generation-pipeline.service.test.ts
+# PASS: 10 files, 177 tests
+
+Support probe:
+# PASS: staticCompleteSupportedCount=0; capability QA requiredResults=6; runtime overlay observedCompleteSupportedCount=6; observedCapabilityIds=[camera.side_follow.v1, collision.platform.v1, combat.projectile.v1, movement.run_jump.v1, spawn.static.v1, weapon.default_straight_single.v1]; targetProfileCompleteSupported=false; blocker target_profile_runtime_support_incomplete:6/59
+
+Full tests:
+npm test
+# PASS: contracts 94 files / 1049 tests; workspace 34 files / 402 tests
+
+Typecheck:
+npm run typecheck
+# PASS
+```
+
+### Exit Assessment Before Oracle
+
+```text
+Stage 4 Spawn Static Package-Owned QA Slice Audit: RECORDED
+Stage 4 Spawn Static Package-Owned QA Slice Implementation: LOCALLY_VALIDATED
+Stage 4 Exit gate: NOT_MET
+Next: Oracle review for this spawn.static slice
+```
+
+Stop marker: Stage 4 spawn.static package-owned QA slice implementation is locally validated. Do not checkpoint or enter the next Stage 4 audit until Oracle review completes.
+
+### Implementation Oracle Review
+
+Oracle PASS / no P0/P1/P2 blocking findings.
+
+Non-blocking P3:
+
+- `Playwright` capability runtime evaluator still does not hard-assert `runtimeModuleId` against the package observation's `runtimeSystemId`. The current bridge checks `capabilityId`, `action`, and `eventType`; the template does write `runtimeModuleId: spawn.static`, and downstream capability QA checks required probe status. This matches the existing Stage 4 bridge pattern and does not block this spawn slice, but a future hardening step should assert runtime module/system identity.
+
+Oracle confirmed checkpoint is allowed for this Stage 4 Spawn Static Package-Owned QA Slice only.
+
+Oracle scope guard:
+
+- does not approve Stage 4 full closure;
+- does not approve Stage 5 exact lock entry;
+- does not approve production default cutover;
+- does not treat runtime overlay `6/59` as authority closure.
+
+### Exit Assessment After Oracle
+
+```text
+Stage 4 Spawn Static Package-Owned QA Slice Audit: RECORDED
+Stage 4 Spawn Static Package-Owned QA Slice Implementation: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 Exit gate: NOT_MET
+Next: checkpoint commit for this spawn.static slice only
+```
+
+Stop marker: Stage 4 spawn.static package-owned QA slice passed Oracle and is awaiting checkpoint commit. Do not enter Stage 5 and do not claim complete package closure.

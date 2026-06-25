@@ -45,6 +45,14 @@ import {
 import {
   MOVEMENT_RUN_JUMP_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/movement-run-jump-runtime-module.js';
+import {
+  SPAWN_STATIC_PACKAGE_REQUIRED_EVIDENCE_ID,
+  SPAWN_STATIC_REQUIRED_PROBE_ID,
+  createSpawnStaticPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/spawn-static-package.js';
+import {
+  SPAWN_STATIC_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/spawn-static-runtime-module.js';
 
 describe('Gameplay capability package contract', () => {
   it('accepts a complete supported package and keeps hashes deterministic', () => {
@@ -188,6 +196,32 @@ describe('Gameplay capability package contract', () => {
       capabilityId: 'movement.run_jump.v1',
       severity: 'required',
       observations: [expect.objectContaining({ runtimeSystemId: MOVEMENT_RUN_JUMP_RUNTIME_SYSTEM_ID, ref: 'player.jumped' })]
+    });
+  });
+
+  it('accepts the spawn static package-owned QA contract', () => {
+    const contract = createSpawnStaticPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === SPAWN_STATIC_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'spawn.static.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([SPAWN_STATIC_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: SPAWN_STATIC_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'spawn.static.v1',
+      severity: 'required',
+      observations: [expect.objectContaining({ kind: 'state_probe', runtimeSystemId: SPAWN_STATIC_RUNTIME_SYSTEM_ID, ref: 'spawn.static.triggered' })]
     });
   });
 

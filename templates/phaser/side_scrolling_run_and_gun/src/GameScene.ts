@@ -61,8 +61,14 @@ type CapabilityRuntimeProbe = {
   capabilityId: string;
   probeId: string;
   runtimeModuleId: string;
-  action: 'collide' | 'fire' | 'jump' | 'move';
-  eventType: 'collision.platform.grounded' | 'player.fired' | 'projectile.spawned' | 'player.jumped' | 'camera.side_follow.active';
+  action: 'collide' | 'fire' | 'jump' | 'move' | 'spawn';
+  eventType:
+    | 'collision.platform.grounded'
+    | 'player.fired'
+    | 'projectile.spawned'
+    | 'player.jumped'
+    | 'camera.side_follow.active'
+    | 'spawn.static.triggered';
   eventTypes?: string[];
   projectileEntityId?: string;
   projectileId?: string;
@@ -91,6 +97,11 @@ const MOVEMENT_RUN_JUMP_CAPABILITY_ID = 'movement.run_jump.v1';
 const MOVEMENT_RUN_JUMP_CAPABILITY_PROBE_ID = 'movement.run_jump.v1.jump.browser_qa.v1';
 const MOVEMENT_RUN_JUMP_RUNTIME_MODULE_ID = 'movement.run_jump';
 const MOVEMENT_RUN_JUMP_SOURCE_REF = 'runtime_plan.side_scrolling.player.jumpVelocity';
+const SPAWN_STATIC_CAPABILITY_ID = 'spawn.static.v1';
+const SPAWN_STATIC_CAPABILITY_PROBE_ID = 'spawn.static.v1.triggered.browser_qa.v1';
+const SPAWN_STATIC_RUNTIME_MODULE_ID = 'spawn.static';
+const SPAWN_STATIC_TRIGGERED_EVENT_TYPE = 'spawn.static.triggered';
+const SPAWN_STATIC_SOURCE_REF = 'runtime_plan.side_scrolling.waves';
 
 export class SideScrollingRunAndGunScene {
   private readonly plan: SideScrollingRuntimeSlice;
@@ -422,6 +433,19 @@ export class SideScrollingRunAndGunScene {
     };
   }
 
+  private createSpawnStaticCapabilityRuntimeProbe(): CapabilityRuntimeProbe {
+    return {
+      capabilityId: SPAWN_STATIC_CAPABILITY_ID,
+      probeId: SPAWN_STATIC_CAPABILITY_PROBE_ID,
+      runtimeModuleId: SPAWN_STATIC_RUNTIME_MODULE_ID,
+      action: 'spawn',
+      eventType: SPAWN_STATIC_TRIGGERED_EVENT_TYPE,
+      eventTypes: [SPAWN_STATIC_TRIGGERED_EVENT_TYPE],
+      sourceRef: SPAWN_STATIC_SOURCE_REF,
+      status: 'observed'
+    };
+  }
+
   private capabilityRuntimeSnapshot(): { source: 'side_scrolling_runtime'; probes: CapabilityRuntimeProbe[] } {
     return {
       source: 'side_scrolling_runtime',
@@ -465,6 +489,8 @@ export class SideScrollingRunAndGunScene {
       this.spawn.spawn('enemy', { enemyId: enemy.id, entityId: enemy.entityId, waveId: wave.id });
       this.renderEnemy(enemy);
     }
+    const capabilityRuntime = this.createSpawnStaticCapabilityRuntimeProbe();
+    this.capabilityRuntimeProbes.set(capabilityRuntime.probeId, capabilityRuntime);
   }
 
   private advanceEnemies(deltaMs: number, nowMs: number): void {

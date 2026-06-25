@@ -1199,6 +1199,16 @@ describe('Phaser templates', () => {
       sourceRef: 'runtime_plan.side_scrolling.player.jumpVelocity',
       status: 'observed'
     };
+    const expectedSpawnStaticProbe = {
+      capabilityId: 'spawn.static.v1',
+      probeId: 'spawn.static.v1.triggered.browser_qa.v1',
+      runtimeModuleId: 'spawn.static',
+      action: 'spawn',
+      eventType: 'spawn.static.triggered',
+      eventTypes: ['spawn.static.triggered'],
+      sourceRef: 'runtime_plan.side_scrolling.waves',
+      status: 'observed'
+    };
     const snapshot = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
     const telemetry = globalThis.__GAME_QA__?.telemetry() ?? [];
     const jumpedEvent = telemetry.find((event) => event.type === 'player.jumped');
@@ -1219,11 +1229,14 @@ describe('Phaser templates', () => {
         expect.objectContaining(expectedCameraProbe),
         expect.objectContaining(expectedCollisionProbe),
         expect.objectContaining(expectedMovementProbe),
+        expect.objectContaining(expectedSpawnStaticProbe),
         expect.objectContaining(expectedProjectileProbe),
         expect.objectContaining(expectedWeaponProbe)
       ])
     });
-    expect(snapshot?.capabilityRuntime?.probes).toHaveLength(5);
+    expect(snapshot?.capabilityRuntime?.probes).toHaveLength(6);
+    expect(snapshot?.waves.some((wave) => wave.triggered)).toBe(true);
+    expect(snapshot?.enemies.length).toBeGreaterThan(0);
     expect(snapshot?.projectiles.find((projectile) => projectile.owner === 'player')).toMatchObject({
       owner: 'player',
       sourceId: 'pulse_bolt',

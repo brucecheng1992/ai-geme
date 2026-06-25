@@ -47,6 +47,8 @@ import {
   DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
   MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID,
   createMovementRunJumpPackageContract,
+  SPAWN_STATIC_REQUIRED_PROBE_ID,
+  createSpawnStaticPackageContract,
   buildGenerationScopePlan,
   buildGameDslArtifact,
   checkPhaserRuntimeCapabilities,
@@ -1946,6 +1948,12 @@ function buildQaCapabilityRuntimeExpectation(genre: QaGenre): QaCapabilityRuntim
         eventType: 'player.jumped'
       },
       {
+        capabilityId: 'spawn.static.v1',
+        probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
+        action: 'spawn',
+        eventType: 'spawn.static.triggered'
+      },
+      {
         capabilityId: 'weapon.default_straight_single.v1',
         probeId: DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
         action: 'fire',
@@ -1962,7 +1970,8 @@ function buildApprovedInstalledCapabilityQaPackages(normalizedGenre: string): re
         createCollisionPlatformPackageContract(),
         createDefaultStraightSingleWeaponPackageContract(),
         createCombatProjectilePackageContract(),
-        createMovementRunJumpPackageContract()
+        createMovementRunJumpPackageContract(),
+        createSpawnStaticPackageContract()
       ]
     : [];
 }
