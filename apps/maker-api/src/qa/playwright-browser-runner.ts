@@ -286,6 +286,31 @@ export function evaluateCapabilityRuntimeEvidence(
         )
       );
     }
+    if (expectedProbe.orderedWaveSequence !== undefined) {
+      mismatches.push(
+        ...compareBoolean(
+          `capabilityRuntime.probes[${expectedProbe.probeId}].orderedWaveSequence`,
+          observedProbe.orderedWaveSequence,
+          expectedProbe.orderedWaveSequence
+        )
+      );
+    }
+    if (expectedProbe.gateTriggered !== undefined) {
+      mismatches.push(
+        ...compareBoolean(`capabilityRuntime.probes[${expectedProbe.probeId}].gateTriggered`, observedProbe.gateTriggered, expectedProbe.gateTriggered)
+      );
+    }
+    if (expectedProbe.waveSpawned !== undefined) {
+      mismatches.push(...compareBoolean(`capabilityRuntime.probes[${expectedProbe.probeId}].waveSpawned`, observedProbe.waveSpawned, expectedProbe.waveSpawned));
+    }
+    if (expectedProbe.sequenceIndex !== undefined) {
+      mismatches.push(
+        ...compareNumber(`capabilityRuntime.probes[${expectedProbe.probeId}].sequenceIndex`, observedProbe.sequenceIndex, expectedProbe.sequenceIndex)
+      );
+    }
+    if (expectedProbe.waveId !== undefined) {
+      mismatches.push(...compareScalar(`capabilityRuntime.probes[${expectedProbe.probeId}].waveId`, observedProbe.waveId, expectedProbe.waveId));
+    }
   }
 
   return {
@@ -417,6 +442,11 @@ function readCapabilityRuntimeProbe(value: unknown, eventTypeFallback?: string):
   const pickupCollected = readBoolean(value.pickupCollected);
   const pickupConsumed = readBoolean(value.pickupConsumed);
   const pickupStateChanged = readBoolean(value.pickupStateChanged);
+  const orderedWaveSequence = readBoolean(value.orderedWaveSequence);
+  const gateTriggered = readBoolean(value.gateTriggered);
+  const waveSpawned = readBoolean(value.waveSpawned);
+  const sequenceIndex = readNumber(value.sequenceIndex);
+  const waveId = readString(value.waveId);
   const projectileEntityId = readString(value.projectileEntityId);
   const runtimeModuleId = readString(value.runtimeModuleId);
   const projectileId = readString(value.projectileId);
@@ -442,6 +472,11 @@ function readCapabilityRuntimeProbe(value: unknown, eventTypeFallback?: string):
     ...(pickupCollected === undefined ? {} : { pickupCollected }),
     ...(pickupConsumed === undefined ? {} : { pickupConsumed }),
     ...(pickupStateChanged === undefined ? {} : { pickupStateChanged }),
+    ...(orderedWaveSequence === undefined ? {} : { orderedWaveSequence }),
+    ...(gateTriggered === undefined ? {} : { gateTriggered }),
+    ...(waveSpawned === undefined ? {} : { waveSpawned }),
+    ...(sequenceIndex === undefined ? {} : { sequenceIndex }),
+    ...(waveId === undefined ? {} : { waveId }),
     ...(projectileEntityId === undefined ? {} : { projectileEntityId }),
     ...(runtimeModuleId === undefined ? {} : { runtimeModuleId }),
     ...(projectileId === undefined ? {} : { projectileId }),
@@ -477,6 +512,11 @@ function mergeOptionalProbeFields(existing: QaCapabilityRuntimeObservedProbe, pr
   if (existing.pickupCollected === undefined && probe.pickupCollected !== undefined) existing.pickupCollected = probe.pickupCollected;
   if (existing.pickupConsumed === undefined && probe.pickupConsumed !== undefined) existing.pickupConsumed = probe.pickupConsumed;
   if (existing.pickupStateChanged === undefined && probe.pickupStateChanged !== undefined) existing.pickupStateChanged = probe.pickupStateChanged;
+  if (existing.orderedWaveSequence === undefined && probe.orderedWaveSequence !== undefined) existing.orderedWaveSequence = probe.orderedWaveSequence;
+  if (existing.gateTriggered === undefined && probe.gateTriggered !== undefined) existing.gateTriggered = probe.gateTriggered;
+  if (existing.waveSpawned === undefined && probe.waveSpawned !== undefined) existing.waveSpawned = probe.waveSpawned;
+  if (existing.sequenceIndex === undefined && probe.sequenceIndex !== undefined) existing.sequenceIndex = probe.sequenceIndex;
+  if (existing.waveId === undefined && probe.waveId !== undefined) existing.waveId = probe.waveId;
   if (existing.projectileEntityId === undefined && probe.projectileEntityId !== undefined) existing.projectileEntityId = probe.projectileEntityId;
   if (existing.runtimeModuleId === undefined && probe.runtimeModuleId !== undefined) existing.runtimeModuleId = probe.runtimeModuleId;
   if (existing.projectileId === undefined && probe.projectileId !== undefined) existing.projectileId = probe.projectileId;

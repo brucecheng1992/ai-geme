@@ -136,6 +136,11 @@ export type QaCapabilityRuntimeProbeExpectation = {
   pickupCollected?: boolean;
   pickupConsumed?: boolean;
   pickupStateChanged?: boolean;
+  orderedWaveSequence?: boolean;
+  gateTriggered?: boolean;
+  waveSpawned?: boolean;
+  sequenceIndex?: number;
+  waveId?: string;
 };
 
 export type QaCapabilityRuntimeExpectation = {
@@ -152,6 +157,11 @@ export type QaCapabilityRuntimeObservedProbe = QaCapabilityRuntimeProbeExpectati
   pickupCollected?: boolean;
   pickupConsumed?: boolean;
   pickupStateChanged?: boolean;
+  orderedWaveSequence?: boolean;
+  gateTriggered?: boolean;
+  waveSpawned?: boolean;
+  sequenceIndex?: number;
+  waveId?: string;
   runtimeModuleId?: string;
   projectileId?: string;
   sourceRef?: string;

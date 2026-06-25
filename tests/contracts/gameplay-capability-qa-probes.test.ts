@@ -488,6 +488,93 @@ describe('Capability-owned runtime QA probes', () => {
     ]);
     expect(observedState.status).toBe('passed');
   });
+
+  it('does not verify spawn enemy wave when ordered event evidence lacks gate and sequence fields', () => {
+    const capabilityId = 'spawn.enemy_wave.v1';
+    const probeId = 'spawn.enemy_wave.v1.ordered.browser_qa.v1';
+    const packages = [
+      createPackage(capabilityId, {
+        probes: [
+          {
+            ...createRuntimeEventProbe(probeId, capabilityId, `${capabilityId}.system`, ['spawn.enemy_wave.ordered']),
+            assertions: [
+              {
+                id: `${probeId}.assertion.ordered_wave`,
+                observationId: `${probeId}.observation.spawn_enemy_wave_ordered`,
+                comparator: 'exists',
+                expected: { orderedWaveSequence: true, gateTriggered: true, waveSpawned: true, sequenceIndex: 0 },
+                message: 'ordered enemy wave observed after gate trigger'
+              }
+            ]
+          }
+        ]
+      })
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingOrder = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'spawn',
+              eventType: 'spawn.enemy_wave.ordered',
+              eventTypes: ['spawn.enemy_wave.ordered'],
+              waveId: 'wave_approach',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedOrder = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'spawn',
+              eventType: 'spawn.enemy_wave.ordered',
+              eventTypes: ['spawn.enemy_wave.ordered'],
+              orderedWaveSequence: true,
+              gateTriggered: true,
+              waveSpawned: true,
+              sequenceIndex: 0,
+              waveId: 'wave_approach',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingOrder.status).toBe('failed');
+    expect(missingOrder.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingOrder.requiredResults[0]?.assertionResults).toEqual([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.ordered_wave`,
+        status: 'failed',
+        message: expect.stringContaining('expected orderedWaveSequence=true, observed <missing>')
+      })
+    ]);
+    expect(observedOrder.status).toBe('passed');
+  });
 });
 
 function createLock(packages: readonly GameplayCapabilityPackageContract[], requestedCapabilities: readonly string[]) {

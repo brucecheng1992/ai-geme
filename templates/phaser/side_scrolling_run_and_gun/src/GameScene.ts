@@ -91,6 +91,7 @@ type CapabilityRuntimeProbe = {
     | 'projectile.spawned'
     | 'player.jumped'
     | 'camera.side_follow.active'
+    | 'spawn.enemy_wave.ordered'
     | 'spawn.static.triggered';
   eventTypes?: string[];
   airborne?: boolean;
@@ -107,6 +108,11 @@ type CapabilityRuntimeProbe = {
   pickupCollected?: boolean;
   pickupConsumed?: boolean;
   pickupStateChanged?: boolean;
+  orderedWaveSequence?: boolean;
+  gateTriggered?: boolean;
+  waveSpawned?: boolean;
+  sequenceIndex?: number;
+  waveId?: string;
   sourceRef: string;
   status: 'observed';
 };
@@ -148,6 +154,11 @@ const SPAWN_STATIC_CAPABILITY_PROBE_ID = 'spawn.static.v1.triggered.browser_qa.v
 const SPAWN_STATIC_RUNTIME_MODULE_ID = 'spawn.static';
 const SPAWN_STATIC_TRIGGERED_EVENT_TYPE = 'spawn.static.triggered';
 const SPAWN_STATIC_SOURCE_REF = 'runtime_plan.side_scrolling.waves';
+const SPAWN_ENEMY_WAVE_CAPABILITY_ID = 'spawn.enemy_wave.v1';
+const SPAWN_ENEMY_WAVE_CAPABILITY_PROBE_ID = 'spawn.enemy_wave.v1.ordered.browser_qa.v1';
+const SPAWN_ENEMY_WAVE_RUNTIME_MODULE_ID = 'spawn.enemy_wave';
+const SPAWN_ENEMY_WAVE_ORDERED_EVENT_TYPE = 'spawn.enemy_wave.ordered';
+const SPAWN_ENEMY_WAVE_SOURCE_REF = 'runtime_plan.side_scrolling.waves.ordered_sequence';
 const HEALTH_PLAYER_HEALTH_POINTS_CAPABILITY_ID = 'health.player_health_points.v1';
 const HEALTH_PLAYER_HEALTH_POINTS_CAPABILITY_PROBE_ID = 'health.player_health_points.v1.current.browser_qa.v1';
 const HEALTH_PLAYER_HEALTH_POINTS_RUNTIME_MODULE_ID = 'health.player_health_points';
@@ -646,6 +657,24 @@ export class SideScrollingRunAndGunScene {
     };
   }
 
+  private createSpawnEnemyWaveCapabilityRuntimeProbe(wave: SideScrollingWave): CapabilityRuntimeProbe {
+    return {
+      capabilityId: SPAWN_ENEMY_WAVE_CAPABILITY_ID,
+      probeId: SPAWN_ENEMY_WAVE_CAPABILITY_PROBE_ID,
+      runtimeModuleId: SPAWN_ENEMY_WAVE_RUNTIME_MODULE_ID,
+      action: 'spawn',
+      eventType: SPAWN_ENEMY_WAVE_ORDERED_EVENT_TYPE,
+      eventTypes: [SPAWN_ENEMY_WAVE_ORDERED_EVENT_TYPE],
+      orderedWaveSequence: true,
+      gateTriggered: true,
+      waveSpawned: true,
+      sequenceIndex: Math.max(0, this.plan.waves.findIndex((candidate) => candidate.id === wave.id)),
+      waveId: wave.id,
+      sourceRef: SPAWN_ENEMY_WAVE_SOURCE_REF,
+      status: 'observed'
+    };
+  }
+
   private createHealthPlayerHealthPointsCapabilityRuntimeProbe(): CapabilityRuntimeProbe {
     return {
       capabilityId: HEALTH_PLAYER_HEALTH_POINTS_CAPABILITY_ID,
@@ -748,8 +777,10 @@ export class SideScrollingRunAndGunScene {
       this.spawn.spawn('enemy', { enemyId: enemy.id, entityId: enemy.entityId, waveId: wave.id });
       this.renderEnemy(enemy);
     }
-    const capabilityRuntime = this.createSpawnStaticCapabilityRuntimeProbe();
-    this.capabilityRuntimeProbes.set(capabilityRuntime.probeId, capabilityRuntime);
+    const staticCapabilityRuntime = this.createSpawnStaticCapabilityRuntimeProbe();
+    const enemyWaveCapabilityRuntime = this.createSpawnEnemyWaveCapabilityRuntimeProbe(wave);
+    this.capabilityRuntimeProbes.set(staticCapabilityRuntime.probeId, staticCapabilityRuntime);
+    this.capabilityRuntimeProbes.set(enemyWaveCapabilityRuntime.probeId, enemyWaveCapabilityRuntime);
   }
 
   private advanceEnemies(deltaMs: number, nowMs: number): void {

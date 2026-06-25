@@ -206,6 +206,21 @@ describe('Playable QA gate and runner', () => {
       sourceRef: 'runtime_plan.side_scrolling.waves',
       status: 'observed'
     };
+    const spawnEnemyWaveProbe = {
+      capabilityId: 'spawn.enemy_wave.v1',
+      probeId: 'spawn.enemy_wave.v1.ordered.browser_qa.v1',
+      runtimeModuleId: 'spawn.enemy_wave',
+      action: 'spawn',
+      eventType: 'spawn.enemy_wave.ordered',
+      eventTypes: ['spawn.enemy_wave.ordered'],
+      orderedWaveSequence: true,
+      gateTriggered: true,
+      waveSpawned: true,
+      sequenceIndex: 0,
+      waveId: 'wave_approach',
+      sourceRef: 'runtime_plan.side_scrolling.waves.ordered_sequence',
+      status: 'observed'
+    };
     const pickupProbe = {
       capabilityId: 'pickup.collectible.v1',
       probeId: 'pickup.collectible.v1.collection.browser_qa.v1',
@@ -277,6 +292,12 @@ describe('Playable QA gate and runner', () => {
         timestamp_ms: 5,
         frame: 5,
         payload: { capabilityRuntime: pickupProbe }
+      },
+      {
+        type: 'spawn.enemy_wave.ordered',
+        timestamp_ms: 6,
+        frame: 6,
+        payload: { capabilityRuntime: spawnEnemyWaveProbe }
       }
     ];
 
@@ -298,6 +319,7 @@ describe('Playable QA gate and runner', () => {
               crouchProbe,
               movementProbe,
               pickupProbe,
+              spawnEnemyWaveProbe,
               spawnStaticProbe,
               damageInvulnerabilityProbe,
               healthProbe,
@@ -400,6 +422,18 @@ describe('Playable QA gate and runner', () => {
           action: 'fire',
           eventType: 'player.fired',
           eventTypes: ['player.fired', 'projectile.spawned'],
+          observedIn: ['snapshot', 'telemetry']
+        }),
+        expect.objectContaining({
+          capabilityId: 'spawn.enemy_wave.v1',
+          probeId: 'spawn.enemy_wave.v1.ordered.browser_qa.v1',
+          action: 'spawn',
+          eventType: 'spawn.enemy_wave.ordered',
+          orderedWaveSequence: true,
+          gateTriggered: true,
+          waveSpawned: true,
+          sequenceIndex: 0,
+          waveId: 'wave_approach',
           observedIn: ['snapshot', 'telemetry']
         })
       ])
@@ -644,6 +678,56 @@ describe('Playable QA gate and runner', () => {
     });
   });
 
+  it('fails capability runtime evidence when enemy wave spawn lacks ordered gate proof', () => {
+    const expectedCapabilityRuntime: QaCapabilityRuntimeExpectation = {
+      requiredProbes: [
+        {
+          capabilityId: 'spawn.enemy_wave.v1',
+          probeId: 'spawn.enemy_wave.v1.ordered.browser_qa.v1',
+          action: 'spawn',
+          eventType: 'spawn.enemy_wave.ordered',
+          orderedWaveSequence: true,
+          gateTriggered: true,
+          waveSpawned: true,
+          sequenceIndex: 0
+        }
+      ]
+    };
+    const result = evaluateCapabilityRuntimeEvidence(
+      {
+        capabilityRuntime: {
+          source: 'side_scrolling_runtime',
+          probes: [
+            {
+              capabilityId: 'spawn.enemy_wave.v1',
+              probeId: 'spawn.enemy_wave.v1.ordered.browser_qa.v1',
+              runtimeModuleId: 'spawn.enemy_wave',
+              action: 'spawn',
+              eventType: 'spawn.enemy_wave.ordered',
+              eventTypes: ['spawn.enemy_wave.ordered'],
+              waveId: 'wave_approach',
+              sourceRef: 'runtime_plan.side_scrolling.waves.ordered_sequence',
+              status: 'observed'
+            }
+          ]
+        }
+      },
+      [{ type: 'spawn.enemy_wave.ordered', timestamp_ms: 1, frame: 1 }],
+      expectedCapabilityRuntime
+    );
+
+    expect(result).toMatchObject({
+      status: 'FAILED',
+      missingProbeIds: [],
+      mismatches: [
+        'capabilityRuntime.probes[spawn.enemy_wave.v1.ordered.browser_qa.v1].orderedWaveSequence: expected true, observed <missing>',
+        'capabilityRuntime.probes[spawn.enemy_wave.v1.ordered.browser_qa.v1].gateTriggered: expected true, observed <missing>',
+        'capabilityRuntime.probes[spawn.enemy_wave.v1.ordered.browser_qa.v1].waveSpawned: expected true, observed <missing>',
+        'capabilityRuntime.probes[spawn.enemy_wave.v1.ordered.browser_qa.v1].sequenceIndex: expected 0, observed <missing>'
+      ]
+    });
+  });
+
   it('passes capability runtime evidence through the QA report', async () => {
     const expectedCapabilityRuntime = createDefaultWeaponCapabilityRuntimeExpectation();
     const capabilityRuntime = evaluateCapabilityRuntimeEvidence(
@@ -718,6 +802,21 @@ describe('Playable QA gate and runner', () => {
               eventType: 'spawn.static.triggered',
               eventTypes: ['spawn.static.triggered'],
               sourceRef: 'runtime_plan.side_scrolling.waves',
+              status: 'observed'
+            },
+            {
+              capabilityId: 'spawn.enemy_wave.v1',
+              probeId: 'spawn.enemy_wave.v1.ordered.browser_qa.v1',
+              runtimeModuleId: 'spawn.enemy_wave',
+              action: 'spawn',
+              eventType: 'spawn.enemy_wave.ordered',
+              eventTypes: ['spawn.enemy_wave.ordered'],
+              orderedWaveSequence: true,
+              gateTriggered: true,
+              waveSpawned: true,
+              sequenceIndex: 0,
+              waveId: 'wave_approach',
+              sourceRef: 'runtime_plan.side_scrolling.waves.ordered_sequence',
               status: 'observed'
             },
             {
@@ -3007,6 +3106,16 @@ function createDefaultWeaponCapabilityRuntimeExpectation(): QaCapabilityRuntimeE
         probeId: 'movement.run_jump.v1.jump.browser_qa.v1',
         action: 'jump',
         eventType: 'player.jumped'
+      },
+      {
+        capabilityId: 'spawn.enemy_wave.v1',
+        probeId: 'spawn.enemy_wave.v1.ordered.browser_qa.v1',
+        action: 'spawn',
+        eventType: 'spawn.enemy_wave.ordered',
+        orderedWaveSequence: true,
+        gateTriggered: true,
+        waveSpawned: true,
+        sequenceIndex: 0
       },
       {
         capabilityId: 'spawn.static.v1',

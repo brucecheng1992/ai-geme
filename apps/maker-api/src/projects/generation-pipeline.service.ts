@@ -56,6 +56,8 @@ import {
   createMovementRunJumpPackageContract,
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
   createPickupCollectiblePackageContract,
+  SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+  createSpawnEnemyWavePackageContract,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
   createSpawnStaticPackageContract,
   HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
@@ -1991,6 +1993,16 @@ function buildQaCapabilityRuntimeExpectation(genre: QaGenre): QaCapabilityRuntim
         eventType: 'player.jumped'
       },
       {
+        capabilityId: 'spawn.enemy_wave.v1',
+        probeId: SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+        action: 'spawn',
+        eventType: 'spawn.enemy_wave.ordered',
+        orderedWaveSequence: true,
+        gateTriggered: true,
+        waveSpawned: true,
+        sequenceIndex: 0
+      },
+      {
         capabilityId: 'spawn.static.v1',
         probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
         action: 'spawn',
@@ -2024,6 +2036,7 @@ function buildApprovedInstalledCapabilityQaPackages(normalizedGenre: string): re
         createHealthDamageInvulnerabilityPackageContract(),
         createPickupCollectiblePackageContract(),
         createMovementRunJumpPackageContract(),
+        createSpawnEnemyWavePackageContract(),
         createSpawnStaticPackageContract(),
         createHealthPlayerHealthPointsPackageContract()
       ]

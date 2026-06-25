@@ -1254,6 +1254,21 @@ describe('Phaser templates', () => {
       sourceRef: 'runtime_plan.side_scrolling.waves',
       status: 'observed'
     };
+    const expectedSpawnEnemyWaveProbe = {
+      capabilityId: 'spawn.enemy_wave.v1',
+      probeId: 'spawn.enemy_wave.v1.ordered.browser_qa.v1',
+      runtimeModuleId: 'spawn.enemy_wave',
+      action: 'spawn',
+      eventType: 'spawn.enemy_wave.ordered',
+      eventTypes: ['spawn.enemy_wave.ordered'],
+      orderedWaveSequence: true,
+      gateTriggered: true,
+      waveSpawned: true,
+      sequenceIndex: 0,
+      waveId: expect.any(String),
+      sourceRef: 'runtime_plan.side_scrolling.waves.ordered_sequence',
+      status: 'observed'
+    };
     const expectedHealthProbe = {
       capabilityId: 'health.player_health_points.v1',
       probeId: 'health.player_health_points.v1.current.browser_qa.v1',
@@ -1326,12 +1341,13 @@ describe('Phaser templates', () => {
         expect.objectContaining(expectedHealthProbe),
         expect.objectContaining(expectedMovementProbe),
         expect.objectContaining(expectedPickupProbe),
+        expect.objectContaining(expectedSpawnEnemyWaveProbe),
         expect.objectContaining(expectedSpawnStaticProbe),
         expect.objectContaining(expectedProjectileProbe),
         expect.objectContaining(expectedWeaponProbe)
       ])
     });
-    expect(snapshot?.capabilityRuntime?.probes).toHaveLength(11);
+    expect(snapshot?.capabilityRuntime?.probes).toHaveLength(12);
     expect(snapshot?.player).toMatchObject({ crouching: true, height: 32.48, standingHeight: 56, heightScale: 0.58 });
     expect(snapshot?.pickups).toEqual([expect.objectContaining({ id: 'qa_pickup', active: false })]);
     const observedHealthProbe = snapshot?.capabilityRuntime?.probes.find((probe) => probe.probeId === 'health.player_health_points.v1.current.browser_qa.v1');

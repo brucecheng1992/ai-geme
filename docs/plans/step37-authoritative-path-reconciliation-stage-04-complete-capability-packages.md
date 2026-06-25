@@ -4009,3 +4009,156 @@ parent_loop:
 ```
 
 Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4_spawn_enemy_wave_package_owned_qa_audit`. It does not close the `spawn.enemy_wave.v1` capability, Stage 4, Step37, production default cutover, legacy authoritative path exit, or final global loop. Parent Loop Driver must continue with `stage4_spawn_enemy_wave_package_owned_qa_implementation` while global exits remain false and no verified user blocker exists.
+
+## Stage 4 Closure Implementation — spawn.enemy_wave.v1 Package-Owned QA Slice
+
+- checkpoint_id: `stage4_spawn_enemy_wave_package_owned_qa_implementation`.
+- record_type: `implementation_candidate`.
+- closure_scope: `atomic_step`.
+- implementation_status: `complete`.
+- local_validation_status: `passed`.
+- review_required: `true`.
+- candidate_status: `ready_for_commit`.
+- oracle_status: `not_submitted`.
+- closure_status: `not_closed`.
+- capability_closure_status: `not_met`.
+- parent_stage_status: `running`.
+- parent_loop_status: `running`.
+- global_exit_conditions_met: `false`.
+- user_input_required: `false`.
+- skill_revision_type: `sha256_bundle`.
+- skill_bundle_format: `step37_manifest_v1_path_size_sha`.
+- active_skill_identity: `code-change-discipline@/Users/dahufa/.agents/skills/code-change-discipline, review-gated-delivery@/Users/dahufa/.agents/skills/review-gated-delivery`.
+- active_skill_realpaths: `/Users/dahufa/.agents/skills/code-change-discipline, /Users/dahufa/.agents/skills/review-gated-delivery`.
+- skill_file_count: `8`.
+- skill_revision: `be625c8c69d3fffb983dea5c40ee1cae584e2b5b0f7b82dce4338c9bcf744d78`.
+- candidate_commit: `not_created_in_this_record`.
+- receipt_commit: `not_created`.
+- repo_revision_binding: `candidate commit SHA will be created after this record is staged; this candidate record intentionally does not self-reference its own commit SHA`.
+
+Implementation summary:
+
+This implementation adds a package-owned QA slice for `spawn.enemy_wave.v1` without promoting static `completeSupported`, production default cutover, Stage 5 exact lock, or legacy authoritative path exit. The slice keeps `spawn.static.v1` triggered-spawn evidence separate from ordered enemy-wave evidence.
+
+Actual modified paths for this implementation candidate:
+
+- `packages/game-dsl/src/gameplay-capabilities/spawn-enemy-wave-runtime-module.ts`
+- `packages/game-dsl/src/gameplay-capabilities/spawn-enemy-wave-package.ts`
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`
+- `apps/maker-api/src/projects/generation-pipeline.service.ts`
+- `apps/maker-api/src/qa/playwright-browser-runner.ts`
+- `apps/maker-api/src/qa/qa.types.ts`
+- `templates/phaser/side_scrolling_run_and_gun/src/GameScene.ts`
+- `tests/contracts/gameplay-capability-package-contract.test.ts`
+- `tests/contracts/gameplay-capability-registry.test.ts`
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`
+- `tests/contracts/phaser-templates.test.ts`
+- `tests/workspace/generation-pipeline.service.test.ts`
+- `tests/workspace/playwright-qa-runner.test.ts`
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`
+
+Evidence/probe chain:
+
+- Capability id: `spawn.enemy_wave.v1`.
+- Runtime system id: `spawn.enemy_wave`.
+- Required probe id: `spawn.enemy_wave.v1.ordered.browser_qa.v1`.
+- Required evidence id: `spawn.enemy_wave.v1.evidence.capability_qa_report.v1`.
+- Runtime event: `spawn.enemy_wave.ordered`.
+- Required fields: `orderedWaveSequence=true`, `gateTriggered=true`, `waveSpawned=true`, `sequenceIndex=0`; `waveId` is preserved as stable wave identity.
+- Producer chain: `templates/phaser/side_scrolling_run_and_gun/src/GameScene.ts` emits the ordered-wave runtime probe when a wave is triggered.
+- Reader chain: `apps/maker-api/src/qa/playwright-browser-runner.ts` reads and compares ordered-wave fields; `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts` evaluates package QA assertions from runtime evidence.
+- Planning/overlay chain: `apps/maker-api/src/projects/generation-pipeline.service.ts` installs the package contract and QA expectation; `generation-target-profile-runtime-support` overlay advances same-run observed support only when required probe evidence passes.
+- Registry chain: `packages/game-dsl/src/gameplay-capabilities/registry.ts` records package-owned evidence and required probe ids while leaving `requiredProbesVerified=false`, `completeSupported=false`.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds the `spawn.enemy_wave.v1` package/runtime module, ordered-wave required probe, runtime telemetry event schema entry, and side-scrolling runtime probe emission. |
+| Consumer list | Registry support evidence, package QA plan/report builder, Playwright capability runtime reader, generation pipeline QA expectation, target-profile runtime overlay, template QA snapshot, and telemetry schema freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: `spawn.static.v1` triggered-spawn evidence remains valid but cannot prove ordered enemy-wave semantics. |
+| Authority | `spawn.enemy_wave.v1` package contract plus same-run capability QA evidence for `spawn.enemy_wave.ordered` and its ordered/gated fields. |
+| Legacy strategy | Legacy `enemy_waves` remains non-authoritative for side-scrolling Stage 4 closure; no production default cutover or legacy authoritative path exit is introduced. |
+| Failure policy | Missing event, missing gate/order/spawn fields, missing sequence index, static-spawn-only evidence, or wrong capability identity fails closed as missing required probe evidence. |
+| Evidence | Focused and full tests verify package contract, registry evidence, QA reader field comparison, template probe emission, pipeline expectation, target-profile overlay, and telemetry schema freeze. |
+| Rollback | Reverting this candidate removes the new package slice and returns `spawn.enemy_wave.v1` to prior non-package-owned status without altering completed audit history or `spawn.static.v1` evidence. |
+
+Validation commands for this implementation candidate:
+
+```text
+npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/phaser-templates.test.ts tests/contracts/contract-freeze.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/generation-pipeline.service.test.ts
+exitCode=0
+duration=48.67s
+result=PASS: 8 focused files and 206 tests passed.
+selection_reason=Current diff changes package contracts, registry evidence, QA reader fields, template probe emission, pipeline expectation, target-profile overlay, and telemetry event schema; `contract-freeze` is included because `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts` changed.
+
+npm run typecheck
+exitCode=0
+duration=6.38s
+result=PASS: root, maker-api, and maker-workbench TypeScript checks passed.
+
+npm test
+exitCode=0
+duration=contracts 10.56s + workspace 50.28s
+result=PASS: 96 contract files / 1123 tests and 34 workspace files / 410 tests passed.
+
+git diff --check
+exitCode=0
+result=PASS: no whitespace or patch format errors.
+
+realpath /Users/dahufa/.agents/skills/code-change-discipline /Users/dahufa/.agents/skills/review-gated-delivery /Users/dahufa/.agents/skills/code-change-discipline/SKILL.md /Users/dahufa/.agents/skills/review-gated-delivery/SKILL.md
+exitCode=0
+result=PASS: active Skill roots resolved to /Users/dahufa/.agents/skills/code-change-discipline and /Users/dahufa/.agents/skills/review-gated-delivery; SKILL.md realpaths are inside those roots.
+
+{ for f in /Users/dahufa/.agents/skills/code-change-discipline/SKILL.md /Users/dahufa/.agents/skills/review-gated-delivery/SKILL.md /Users/dahufa/.agents/skills/review-gated-delivery/assets/*.txt /Users/dahufa/.agents/skills/review-gated-delivery/assets/*.md; do case "$f" in /Users/dahufa/.agents/skills/code-change-discipline/*) rel="code-change-discipline/${f#/Users/dahufa/.agents/skills/code-change-discipline/}" ;; /Users/dahufa/.agents/skills/review-gated-delivery/*) rel="review-gated-delivery/${f#/Users/dahufa/.agents/skills/review-gated-delivery/}" ;; *) exit 2 ;; esac; size=$(wc -c < "$f" | tr -d ' '); sha=$(shasum -a 256 "$f" | awk '{print $1}'); printf "%s\t%s\t%s\n" "$rel" "$size" "$sha"; done; } | LC_ALL=C sort > /tmp/step37_skill_manifest.tsv && wc -l /tmp/step37_skill_manifest.tsv && shasum -a 256 /tmp/step37_skill_manifest.tsv
+exitCode=0
+result=PASS: skill_bundle_format=step37_manifest_v1_path_size_sha; skill_file_count=8; skill_bundle_digest=be625c8c69d3fffb983dea5c40ee1cae584e2b5b0f7b82dce4338c9bcf744d78.
+```
+
+Focused RED/GREEN notes:
+
+- RED: initial focused implementation tests failed because the package contract was absent, the registry still treated `spawn.enemy_wave.v1` as non-package-owned, and QA readers did not preserve ordered-wave fields.
+- GREEN: final focused set proves ordered-wave fields are required and preserved; `player/spawn event only` or static triggered spawn alone is insufficient.
+
+Unresolved items:
+
+- Oracle review has not been submitted for this implementation candidate.
+- Candidate commit has not yet been created.
+- Receipt commit has not yet been created.
+- Stage 4 full package closure remains `NOT_MET`.
+- Step37 global exit conditions remain `false`; production default cutover is not active and legacy authoritative path has not exited.
+
+Scoped candidate boundary:
+
+```yaml
+closure_scope: atomic_step
+atomic_step:
+  id: stage4_spawn_enemy_wave_package_owned_qa_implementation
+  status: locally_validated_not_closed
+  implementation_status: complete
+  local_validation_status: passed
+  review_required: true
+  candidate_status: ready_for_commit
+  candidate_commit: not_created_in_this_record
+  receipt_commit: not_created
+  oracle_status: not_submitted
+  capability_closure_status: not_met
+parent_stage:
+  id: stage4
+  status: running
+  exit_conditions_met: false
+parent_loop:
+  id: step37
+  status: running
+  global_exit_conditions_met: false
+  user_input_required: false
+  next_action: CONTINUE_PARENT_LOOP
+  next_atomic_step: current_atomic_step_oracle_review_then_receipt
+  next_atomic_step_scope: implementation_review
+```
+
+Exit assessment: `LOCAL_VALIDATION_PASSED_AWAITING_CANDIDATE_COMMIT_ORACLE`. This record does not close the atomic step. It freezes the locally validated implementation facts so a candidate commit can be created and reviewed by Oracle. The current step must remain open until candidate commit creation, Oracle PASS, receipt-only closure, post-receipt checks, and Parent Loop Driver reevaluation complete.

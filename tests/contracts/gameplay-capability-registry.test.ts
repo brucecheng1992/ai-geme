@@ -15,6 +15,7 @@ import {
   validateGameplayCapabilityRegistry,
   MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+  SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   type GameplayCapabilityDescriptor,
   type RuntimeGenreCapability
 } from '../../packages/game-dsl/src/index.js';
@@ -40,6 +41,11 @@ describe('Gameplay capability registry', () => {
     expect(findGameplayCapability('spawn.static.v1')).toMatchObject({
       status: 'planned',
       legacyRuntimeCapabilities: ['enemy_spawn', 'enemy_spawn_triggers']
+    });
+    expect(findGameplayCapability('spawn.enemy_wave.v1')).toMatchObject({
+      status: 'planned',
+      profiles: ['side_scrolling_run_and_gun.v1', 'shooter.v1'],
+      legacyRuntimeCapabilities: ['enemy_waves']
     });
     expect(findGameplayCapability('health.player_health_points.v1')).toMatchObject({
       status: 'planned',
@@ -260,6 +266,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(spawnStatic)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(spawnStatic)).toBe(false);
+  });
+
+  it('scopes spawn enemy wave package-owned QA without static support promotion', () => {
+    const spawnEnemyWave = findGameplayCapability('spawn.enemy_wave.v1');
+
+    if (spawnEnemyWave === undefined) {
+      throw new Error('Expected spawn.enemy_wave.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(spawnEnemyWave)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(spawnEnemyWave.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(spawnEnemyWave.qa).toEqual({
+      requiredProbeIds: [SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(spawnEnemyWave)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(spawnEnemyWave)).toBe(false);
   });
 
   it('scopes health player health points package-owned QA without static support promotion', () => {

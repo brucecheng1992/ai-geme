@@ -34,6 +34,10 @@ import {
   createSpawnStaticPackageContract
 } from './spawn-static-package.js';
 import {
+  SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+  createSpawnEnemyWavePackageContract
+} from './spawn-enemy-wave-package.js';
+import {
   HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
   createHealthPlayerHealthPointsPackageContract
 } from './health-player-health-points-package.js';
@@ -458,6 +462,19 @@ const spawnStaticPackageEvidence: GameplayCapabilityEvidence = spawnStaticPackag
 const spawnStaticPackageQa: GameplayCapabilityQaEvidence = spawnStaticPackageReport.supportEligible
   ? { requiredProbeIds: [SPAWN_STATIC_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const spawnEnemyWavePackageReport = validateGameplayCapabilityPackage(createSpawnEnemyWavePackageContract());
+const spawnEnemyWavePackageEvidence: GameplayCapabilityEvidence = spawnEnemyWavePackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const spawnEnemyWavePackageQa: GameplayCapabilityQaEvidence = spawnEnemyWavePackageReport.supportEligible
+  ? { requiredProbeIds: [SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const healthPlayerHealthPointsPackageReport = validateGameplayCapabilityPackage(createHealthPlayerHealthPointsPackageContract());
 const healthPlayerHealthPointsPackageEvidence: GameplayCapabilityEvidence = healthPlayerHealthPointsPackageReport.supportEligible
   ? {
@@ -548,7 +565,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     combatProjectilePackageEvidence,
     combatProjectilePackageQa
   ),
-  runtimeBacked('spawn.enemy_wave.v1', 'spawn', 'Enemy wave spawning', [topDownActionArcade], ['shooter.v1'], ['enemy_waves']),
+  planned(
+    'spawn.enemy_wave.v1',
+    'spawn',
+    'Ordered enemy wave spawning',
+    [phaser2dActionArcade, topDownActionArcade],
+    ['side_scrolling_run_and_gun.v1', 'shooter.v1'],
+    ['enemy_waves'],
+    spawnEnemyWavePackageEvidence,
+    spawnEnemyWavePackageQa
+  ),
   planned(
     'camera.side_follow.v1',
     'camera',

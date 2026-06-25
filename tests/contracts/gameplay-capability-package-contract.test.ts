@@ -71,6 +71,15 @@ import {
   SPAWN_STATIC_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/spawn-static-runtime-module.js';
 import {
+  SPAWN_ENEMY_WAVE_PACKAGE_REQUIRED_EVIDENCE_ID,
+  SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+  createSpawnEnemyWavePackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/spawn-enemy-wave-package.js';
+import {
+  SPAWN_ENEMY_WAVE_ORDERED_EVENT_TYPE,
+  SPAWN_ENEMY_WAVE_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/spawn-enemy-wave-runtime-module.js';
+import {
   HEALTH_PLAYER_HEALTH_POINTS_PACKAGE_REQUIRED_EVIDENCE_ID,
   HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
   createHealthPlayerHealthPointsPackageContract
@@ -324,6 +333,38 @@ describe('Gameplay capability package contract', () => {
       capabilityId: 'spawn.static.v1',
       severity: 'required',
       observations: [expect.objectContaining({ kind: 'state_probe', runtimeSystemId: SPAWN_STATIC_RUNTIME_SYSTEM_ID, ref: 'spawn.static.triggered' })]
+    });
+  });
+
+  it('accepts the spawn enemy wave package-owned QA contract with ordered gate evidence', () => {
+    const contract = createSpawnEnemyWavePackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'spawn.enemy_wave.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([SPAWN_ENEMY_WAVE_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: SPAWN_ENEMY_WAVE_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'spawn.enemy_wave.v1',
+      severity: 'required',
+      observations: [expect.objectContaining({ kind: 'state_probe', runtimeSystemId: SPAWN_ENEMY_WAVE_RUNTIME_SYSTEM_ID, ref: SPAWN_ENEMY_WAVE_ORDERED_EVENT_TYPE })],
+      assertions: [
+        expect.objectContaining({
+          id: `${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}.assertion.ordered_wave`,
+          expected: { orderedWaveSequence: true, gateTriggered: true, waveSpawned: true, sequenceIndex: 0 }
+        })
+      ]
     });
   });
 

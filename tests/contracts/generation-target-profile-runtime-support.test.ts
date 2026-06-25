@@ -13,6 +13,7 @@ import {
   MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
   MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID,
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+  SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
   buildCapabilityQaProbeResultsFromRuntimeEvidence,
   buildCapabilityRuntimeQaPlan,
@@ -27,6 +28,7 @@ import {
   createMovementCrouchPackageContract,
   createMovementRunJumpPackageContract,
   createPickupCollectiblePackageContract,
+  createSpawnEnemyWavePackageContract,
   createSpawnStaticPackageContract,
   evaluateCapabilityQaReport,
   resolveGameplayCapabilityGraph
@@ -39,6 +41,7 @@ const defaultWeaponCapabilityId = 'weapon.default_straight_single.v1';
 const projectileCapabilityId = 'combat.projectile.v1';
 const crouchCapabilityId = 'movement.crouch.v1';
 const movementCapabilityId = 'movement.run_jump.v1';
+const spawnEnemyWaveCapabilityId = 'spawn.enemy_wave.v1';
 const spawnStaticCapabilityId = 'spawn.static.v1';
 const damageInvulnerabilityCapabilityId = 'health.damage_invulnerability.v1';
 const healthCapabilityId = 'health.player_health_points.v1';
@@ -56,6 +59,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       'player.jumped',
       'pickup.collectible.collected',
       'pickup.collectible.state_changed',
+      'spawn.enemy_wave.ordered',
       'spawn.static.triggered',
       'health.damage_invulnerability.activated',
       'health.damage_invulnerability.blocked',
@@ -83,7 +87,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 11,
+      observedCompleteSupportedCount: 12,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
@@ -96,10 +100,11 @@ describe('Step 37 target profile runtime support overlay', () => {
         crouchCapabilityId,
         movementCapabilityId,
         pickupCapabilityId,
+        spawnEnemyWaveCapabilityId,
         spawnStaticCapabilityId,
         defaultWeaponCapabilityId
       ],
-      blockers: ['target_profile_runtime_support_incomplete:11/59']
+      blockers: ['target_profile_runtime_support_incomplete:12/59']
     });
     expect(camera).toMatchObject({
       capabilityId: cameraCapabilityId,
@@ -189,6 +194,17 @@ describe('Step 37 target profile runtime support overlay', () => {
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
     });
+    expect(report.capabilities.find((entry) => entry.capabilityId === spawnEnemyWaveCapabilityId)).toMatchObject({
+      capabilityId: spawnEnemyWaveCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
     expect(damageInvulnerability).toMatchObject({
       capabilityId: damageInvulnerabilityCapabilityId,
       runtimeVerified: true,
@@ -262,6 +278,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       'player.jumped',
       'pickup.collectible.collected',
       'pickup.collectible.state_changed',
+      'spawn.enemy_wave.ordered',
       'spawn.static.triggered',
       'health.damage_invulnerability.blocked',
       'health.player_health.current'
@@ -288,7 +305,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 10,
+      observedCompleteSupportedCount: 11,
       targetProfileCompleteSupported: false,
       observedCapabilityIds: [
         cameraCapabilityId,
@@ -299,12 +316,13 @@ describe('Step 37 target profile runtime support overlay', () => {
         crouchCapabilityId,
         movementCapabilityId,
         pickupCapabilityId,
+        spawnEnemyWaveCapabilityId,
         spawnStaticCapabilityId,
         defaultWeaponCapabilityId
       ],
       blockers: [
         `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:10/59'
+        'target_profile_runtime_support_incomplete:11/59'
       ]
     });
     expect(damageInvulnerability).toMatchObject({
@@ -328,6 +346,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         'player.jumped',
         'pickup.collectible.collected',
         'pickup.collectible.state_changed',
+        'spawn.enemy_wave.ordered',
         'spawn.static.triggered',
         'health.damage_invulnerability.activated',
         'health.damage_invulnerability.blocked',
@@ -357,11 +376,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 10,
+      observedCompleteSupportedCount: 11,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:10/59'
+        'target_profile_runtime_support_incomplete:11/59'
       ]
     });
     expect(pickup).toMatchObject({
@@ -369,6 +388,61 @@ describe('Step 37 target profile runtime support overlay', () => {
       observedCompleteSupported: false,
       verifiedRequiredProbeIds: [],
       missingRequiredProbeIds: [PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+  });
+
+  it('keeps spawn enemy wave unverified when ordered wave evidence lacks gate and order proof', () => {
+    const capabilityQaReport = buildDefaultWeaponQaReport(
+      [
+        'camera.side_follow.active',
+        'collision.platform.grounded',
+        'combat.airborne_fire.fired',
+        'player.fired',
+        'projectile.spawned',
+        'movement.crouch.entered',
+        'player.jumped',
+        'pickup.collectible.collected',
+        'pickup.collectible.state_changed',
+        'spawn.enemy_wave.ordered',
+        'spawn.static.triggered',
+        'health.damage_invulnerability.activated',
+        'health.damage_invulnerability.blocked',
+        'health.player_health.current'
+      ],
+      { spawnEnemyWaveOrderedFields: false }
+    );
+    const report = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260625_target_runtime_support',
+      runId: 'run_20260625_spawn_enemy_wave_missing_order',
+      capabilityQaReport
+    });
+    const spawnEnemyWave = report.capabilities.find((entry) => entry.capabilityId === spawnEnemyWaveCapabilityId);
+
+    expect(capabilityQaReport.requiredResults.find((entry) => entry.probeId === SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: 'spawn.enemy_wave.v1.ordered.browser_qa.v1.assertion.ordered_wave',
+          status: 'failed',
+          message: expect.stringContaining('expected orderedWaveSequence=true, observed <missing>')
+        })
+      ])
+    });
+    expect(report).toMatchObject({
+      status: 'blocked_incomplete_target_profile',
+      observedCompleteSupportedCount: 11,
+      targetProfileCompleteSupported: false,
+      blockers: [
+        `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
+        'target_profile_runtime_support_incomplete:11/59'
+      ]
+    });
+    expect(spawnEnemyWave).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID],
       observedEvidenceDimensions: { qa_observed: false }
     });
   });
@@ -384,13 +458,14 @@ describe('Step 37 target profile runtime support overlay', () => {
       `capability_qa_report_missing_required_probe:${MOVEMENT_CROUCH_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${SPAWN_STATIC_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID}`
     ]);
   });
 });
 
-function buildDefaultWeaponQaReport(eventTypes: readonly string[], options: { pickupStateFields?: boolean } = {}) {
+function buildDefaultWeaponQaReport(eventTypes: readonly string[], options: { pickupStateFields?: boolean; spawnEnemyWaveOrderedFields?: boolean } = {}) {
   const { plan } = buildDefaultWeaponQaPlan();
   const observed = [
     ...(eventTypes.includes('camera.side_follow.active')
@@ -532,6 +607,28 @@ function buildDefaultWeaponQaReport(eventTypes: readonly string[], options: { pi
           }
         ]
       : []),
+    ...(eventTypes.includes('spawn.enemy_wave.ordered')
+      ? [
+          {
+            capabilityId: spawnEnemyWaveCapabilityId,
+            probeId: SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+            action: 'spawn',
+            eventType: 'spawn.enemy_wave.ordered',
+            eventTypes,
+            ...(options.spawnEnemyWaveOrderedFields === false
+              ? {}
+              : {
+                  orderedWaveSequence: true,
+                  gateTriggered: true,
+                  waveSpawned: true,
+                  sequenceIndex: 0,
+                  waveId: 'wave_approach'
+                }),
+            status: 'observed' as const,
+            sourceRef: 'runtime_plan.side_scrolling.waves.ordered_sequence'
+          }
+        ]
+      : []),
     ...(eventTypes.includes('health.player_health.current')
       ? [
           {
@@ -575,6 +672,7 @@ function buildDefaultWeaponQaPlan() {
     createHealthDamageInvulnerabilityPackageContract(),
     createPickupCollectiblePackageContract(),
     createMovementRunJumpPackageContract(),
+    createSpawnEnemyWavePackageContract(),
     createSpawnStaticPackageContract(),
     createHealthPlayerHealthPointsPackageContract()
   ];
@@ -589,6 +687,7 @@ function buildDefaultWeaponQaPlan() {
       damageInvulnerabilityCapabilityId,
       pickupCapabilityId,
       movementCapabilityId,
+      spawnEnemyWaveCapabilityId,
       spawnStaticCapabilityId,
       healthCapabilityId
     ],

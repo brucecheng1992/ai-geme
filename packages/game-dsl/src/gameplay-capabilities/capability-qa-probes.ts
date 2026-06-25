@@ -121,6 +121,11 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   pickupCollected?: boolean;
   pickupConsumed?: boolean;
   pickupStateChanged?: boolean;
+  orderedWaveSequence?: boolean;
+  gateTriggered?: boolean;
+  waveSpawned?: boolean;
+  sequenceIndex?: number;
+  waveId?: string;
   status?: string;
   sourceRef?: string;
 };
@@ -367,7 +372,12 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedStringField('projectileEntityId', expected, observed.projectileEntityId),
     ...compareExpectedBooleanField('pickupCollected', expected, observed.pickupCollected),
     ...compareExpectedBooleanField('pickupConsumed', expected, observed.pickupConsumed),
-    ...compareExpectedBooleanField('pickupStateChanged', expected, observed.pickupStateChanged)
+    ...compareExpectedBooleanField('pickupStateChanged', expected, observed.pickupStateChanged),
+    ...compareExpectedBooleanField('orderedWaveSequence', expected, observed.orderedWaveSequence),
+    ...compareExpectedBooleanField('gateTriggered', expected, observed.gateTriggered),
+    ...compareExpectedBooleanField('waveSpawned', expected, observed.waveSpawned),
+    ...compareExpectedNumberField('sequenceIndex', expected, observed.sequenceIndex),
+    ...compareExpectedStringField('waveId', expected, observed.waveId)
   ];
 }
 
