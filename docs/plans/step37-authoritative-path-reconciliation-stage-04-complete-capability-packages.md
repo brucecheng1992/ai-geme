@@ -2,7 +2,7 @@
 
 > - Parent plan: `docs/plans/step37-authoritative-path-reconciliation-audit.md`
 > - Stage: 4 — Complete Capability Packages
-> - Current status: camera.side_follow package-owned QA slice checkpoint committed; collision.platform package-owned QA slice audit recorded
+> - Current status: collision.platform package-owned QA slice checkpoint committed; spawn.static package-owned QA slice audit recorded
 > - Updated: 2026-06-25
 
 ## Scope Lock
@@ -1565,3 +1565,46 @@ Next: continue Stage 4 next closure requirement audit
 ```
 
 Stop marker: Stage 4 collision.platform package-owned QA slice checkpoint commit is complete. Do not enter Stage 5 and do not claim complete package closure.
+
+## Stage 4 Review — Spawn Static Package-Owned QA Slice
+
+### Scope Lock
+
+- scope: Stage 4 audit only.
+- baseline: Stage 4 collision.platform package-owned QA slice checkpoint commit `638bc34a` (`feat(game-dsl): add collision platform QA package slice`).
+- implementation target: close the next smallest real package-owned QA slice for `spawn.static.v1` using existing side-scrolling wave-trigger runtime behavior and browser QA snapshot evidence.
+- non-goals: no Stage 5 exact lock, no composed schema, no canonical DSL, no provider run, no production default cutover, no legacy authoritative path exit, no full Stage 4 closure claim, no `spawn.enemy_wave.v1` top-down profile promotion.
+- starting conclusion: runtime overlay can observe camera, collision, projectile, movement, and default weapon as complete for the same run, but the target profile remains `target_profile_runtime_support_incomplete:5/59`.
+
+### Current Stage Review Conclusion
+
+`spawn.static.v1` is the next minimal real package-owned QA slice because the production side-scrolling runtime already triggers static wave spawns from runtime-plan data and exposes wave/enemy state in the QA snapshot, but the support summary still treats that behavior as legacy-backed:
+
+- `buildDeepSeekRunAndGunValidationProfileSupportSummary()` reports `spawn.static.v1` as `CONDITIONAL_LEGACY_BACKED` with `schema_expressible=true`, `normalized=true`, `compiled=true`, `runtime_consumed=true`, `qa_observed=false`, and missing prerequisites `amendmentOperations`, `capabilityOwnedQa`, `requiredProbeIds`, and `requiredProbesVerified`;
+- `GameplayCapabilityRegistry` scopes `spawn.static.v1` to `side_scrolling_run_and_gun.v1` and legacy aliases `enemy_spawn` / `enemy_spawn_triggers`;
+- `SideScrollingRunAndGunScene.spawnTriggeredWaves()` calls `triggerWave()` once the player reaches a wave trigger window, and `triggerWave()` adds the wave id to `triggeredWaves` and creates concrete `EnemyActor` instances;
+- the side-scrolling QA snapshot exposes `waves[*].triggered` and `enemies`, so browser QA can observe a real wave-triggered spawn without relying on synthetic telemetry;
+- `SpawnSystem` intentionally does not emit `enemy.spawned`, so this slice should use package-owned runtime snapshot probe evidence rather than inventing a legacy event.
+
+Therefore, the next minimal closure requirement is to add a real `spawn.static.v1` package-owned QA probe and wire the runtime/QA consumer to observe the existing triggered-wave spawn state as package evidence. This may raise runtime-observed support from `5/59` to `6/59`, but Stage 4 exit still remains `NOT_MET`.
+
+### Extracted Minimal Closure Requirements
+
+1. Add a `spawn.static.v1` package contract with a required triggered-wave/static-spawn QA probe.
+2. Install the spawn static package on the side-scrolling active-profile path alongside camera, collision, default weapon, projectile, and movement packages.
+3. Extend the side-scrolling runtime snapshot/probe evidence only when `triggerWave()` actually records a triggered wave and creates spawn state.
+4. Extend the Playwright QA expectation to require the spawn static probe while keeping prior five probes unchanged.
+5. Keep `spawn.enemy_wave.v1` out of this slice because its current registry scope is top-down `shooter.v1`, not the side-scrolling active profile.
+6. Keep static support summary incomplete; only the runtime overlay may report `observedCompleteSupported=true` for this capability.
+7. Keep Stage 4 exit blocked until all 59 required target capabilities are observed complete.
+
+### Exit Assessment Before Implementation
+
+```text
+Stage 4 Spawn Static Package-Owned QA Slice Audit: RECORDED
+Stage 4 Spawn Static Package-Owned QA Slice Implementation: NOT_ENTERED
+Expected post-implementation overlay: observedCompleteSupportedCount=6/59
+Stage 4 Exit gate: NOT_MET
+```
+
+Stop marker: Stage 4 spawn.static package-owned QA slice audit is recorded. Implementation may start for this slice only; do not enter Stage 5 and do not claim complete package closure.
