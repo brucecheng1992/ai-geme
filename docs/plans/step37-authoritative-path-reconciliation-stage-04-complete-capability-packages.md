@@ -2514,3 +2514,18 @@ This log records the clean-baseline discipline used before writing the closure r
 6. Audit history preservation: existing audit/guardrail history remains unchanged; closure is appended as an independent section.
 
 Repository guardrail added: `tests/contracts/step37-closure-implementation-trace.test.ts` verifies the clean-baseline closure record requires expected `HEAD`, status/diff checks, directed cleanup, expected file scope, validation receipts, Oracle conclusion, unresolved items, and exit assessment.
+
+## Stage 4 Improvement Log — Timeout Diagnosis Guardrail
+
+This independent guardrail step records the suite-only timeout diagnosis used while validating the Step37 audit/identifier closure checkpoint.
+
+1. Timeout as signal: a test timeout is first treated as a diagnostic signal, not as immediate permission to relax thresholds.
+2. Required isolation sequence: when a timeout appears only in a suite, record the original full command result, the isolated failing test result, and an equivalent full command that changes only timeout.
+3. Equivalent-command discipline: the comparison command must preserve the same test collection, config, environment, setup, concurrency strategy, and exit semantics; timeout is the only changed variable.
+4. Diagnosis split: distinguish real behavior slowness/hang, suite resource contention, fixed waits or brittle timing inside the test, and an existing timeout threshold that is too tight for the test's work.
+5. Timeout adjustment gate: passing with a longer timeout is not enough to make a permanent change. Record isolated and full-suite timings, check for removable waits or contention, and confirm the test is not meant to be a performance guardrail.
+6. Locality: if adjustment is justified, prefer the smallest local timeout on the affected test or test group. Do not raise global timeout or use a very large timeout to hide hangs.
+7. Inconclusive evidence: if evidence cannot separate resource jitter from an implementation regression, the gate remains `inconclusive` or `blocked`.
+8. Closure evidence: a pass conclusion requires the relevant contracts, workspace tests, typecheck, and diff-check to pass with recorded commands, exit codes, timings, and environment.
+
+Repository guardrail added: `tests/contracts/step37-closure-implementation-trace.test.ts` verifies timeout-diagnosis records include the original full run, isolated test run, timeout-only equivalent run, local timeout decision, and inconclusive/blocking fallbacks.

@@ -14,6 +14,7 @@ const auditBoundaryAndIdentifierGuardrailTitle = '## Stage 4 Improvement Log —
 const auditBoundaryIdentifierClosureTitle = '## Stage 4 Closure Implementation — Audit Boundary And Identifier Guardrails';
 const auditBoundaryIdentifierCheckpointCommit = '2d49b17e';
 const cleanBaselineClosureGuardrailTitle = '## Stage 4 Improvement Log — Clean Baseline Closure Guardrail';
+const timeoutDiagnosisGuardrailTitle = '## Stage 4 Improvement Log — Timeout Diagnosis Guardrail';
 
 const claimedAuditBoundaryIdentifierPaths = [
   stage4PlanPath,
@@ -459,6 +460,105 @@ describe('Step37 closure implementation traceability', () => {
       })
     ).toEqual('blocked_missing_closure_evidence');
   });
+
+  it('records timeout diagnosis as isolation evidence instead of immediate threshold relaxation', async () => {
+    const document = await readFile(stage4PlanPath, 'utf8');
+    const section = extractSection(document, timeoutDiagnosisGuardrailTitle);
+
+    expect(section).toContain('Timeout as signal');
+    expect(section).toContain('Required isolation sequence');
+    expect(section).toContain('Equivalent-command discipline');
+    expect(section).toContain('timeout is the only changed variable');
+    expect(section).toContain('Locality');
+    expect(section).toContain('inconclusive');
+    expect(section).toContain('blocked');
+    expect(section).toContain('contracts, workspace tests, typecheck, and diff-check');
+
+    expect(
+      evaluateSuiteTimeoutDiagnosis({
+        originalFullRun: timeoutObservation('npm test', 'failed', 5_000, 5_014),
+        isolatedRun: timeoutObservation(
+          'npx vitest run tests/contracts/art-asset-metadata-runtime-export-cli.test.ts -t "returns exit code 2 for usage errors"',
+          'passed',
+          5_000,
+          2_208
+        ),
+        equivalentTimeoutOnlyRun: {
+          ...timeoutObservation('npx vitest run tests/contracts --testTimeout=10000', 'passed', 10_000, 4_458),
+          changedVariables: ['timeout']
+        },
+        proposedAdjustment: { scope: 'test', timeoutMs: 10_000, performanceGuardrail: false, removableWaitChecked: true },
+        closureValidation: { contractsPassed: true, workspacePassed: true, typecheckPassed: true, diffCheckPassed: true }
+      })
+    ).toEqual('local_timeout_adjustment_supported');
+
+    expect(
+      evaluateSuiteTimeoutDiagnosis({
+        originalFullRun: timeoutObservation('npm test', 'failed', 5_000, 5_014),
+        isolatedRun: undefined,
+        equivalentTimeoutOnlyRun: {
+          ...timeoutObservation('npx vitest run tests/contracts --testTimeout=10000', 'passed', 10_000, 4_458),
+          changedVariables: ['timeout']
+        },
+        proposedAdjustment: { scope: 'test', timeoutMs: 10_000, performanceGuardrail: false, removableWaitChecked: true },
+        closureValidation: { contractsPassed: true, workspacePassed: true, typecheckPassed: true, diffCheckPassed: true }
+      })
+    ).toEqual('blocked_missing_isolation_evidence');
+
+    expect(
+      evaluateSuiteTimeoutDiagnosis({
+        originalFullRun: timeoutObservation('npm test', 'failed', 5_000, 5_014),
+        isolatedRun: timeoutObservation(
+          'npx vitest run tests/contracts/art-asset-metadata-runtime-export-cli.test.ts -t "returns exit code 2 for usage errors"',
+          'passed',
+          5_000,
+          2_208
+        ),
+        equivalentTimeoutOnlyRun: {
+          ...timeoutObservation('npx vitest run tests/contracts --testTimeout=10000 --pool=forks', 'passed', 10_000, 4_458),
+          changedVariables: ['timeout', 'concurrency']
+        },
+        proposedAdjustment: { scope: 'test', timeoutMs: 10_000, performanceGuardrail: false, removableWaitChecked: true },
+        closureValidation: { contractsPassed: true, workspacePassed: true, typecheckPassed: true, diffCheckPassed: true }
+      })
+    ).toEqual('blocked_non_equivalent_timeout_run');
+
+    expect(
+      evaluateSuiteTimeoutDiagnosis({
+        originalFullRun: timeoutObservation('npm test', 'failed', 5_000, 5_014),
+        isolatedRun: timeoutObservation(
+          'npx vitest run tests/contracts/art-asset-metadata-runtime-export-cli.test.ts -t "returns exit code 2 for usage errors"',
+          'passed',
+          5_000,
+          2_208
+        ),
+        equivalentTimeoutOnlyRun: {
+          ...timeoutObservation('npx vitest run tests/contracts --testTimeout=10000', 'passed', 10_000, 4_458),
+          changedVariables: ['timeout']
+        },
+        proposedAdjustment: { scope: 'global', timeoutMs: 120_000, performanceGuardrail: false, removableWaitChecked: true },
+        closureValidation: { contractsPassed: true, workspacePassed: true, typecheckPassed: true, diffCheckPassed: true }
+      })
+    ).toEqual('blocked_overbroad_timeout_adjustment');
+
+    expect(
+      evaluateSuiteTimeoutDiagnosis({
+        originalFullRun: timeoutObservation('npm test', 'failed', 5_000, 5_014),
+        isolatedRun: timeoutObservation(
+          'npx vitest run tests/contracts/art-asset-metadata-runtime-export-cli.test.ts -t "returns exit code 2 for usage errors"',
+          'passed',
+          5_000,
+          2_208
+        ),
+        equivalentTimeoutOnlyRun: {
+          ...timeoutObservation('npx vitest run tests/contracts --testTimeout=10000', 'passed', 10_000, 4_458),
+          changedVariables: ['timeout']
+        },
+        proposedAdjustment: { scope: 'test', timeoutMs: 10_000, performanceGuardrail: false, removableWaitChecked: true },
+        closureValidation: { contractsPassed: true, workspacePassed: false, typecheckPassed: true, diffCheckPassed: true }
+      })
+    ).toEqual('blocked_missing_closure_validation');
+  });
 });
 
 function extractSection(document: string, title: string): string {
@@ -678,3 +778,76 @@ type ClosureBaselineDecision =
   | 'blocked_unexpected_closure_diff'
   | 'blocked_missing_post_write_status'
   | 'blocked_missing_closure_evidence';
+
+function timeoutObservation(command: string, status: TimeoutObservation['status'], timeoutMs: number, durationMs: number): TimeoutObservation {
+  return { command, status, timeoutMs, durationMs, environment: 'local-vitest-node' };
+}
+
+function evaluateSuiteTimeoutDiagnosis(input: SuiteTimeoutDiagnosis): TimeoutDiagnosisDecision {
+  if (input.originalFullRun.status !== 'failed') {
+    return 'inconclusive';
+  }
+  if (input.isolatedRun === undefined || input.equivalentTimeoutOnlyRun === undefined) {
+    return 'blocked_missing_isolation_evidence';
+  }
+  if (
+    input.isolatedRun.status !== 'passed' ||
+    input.equivalentTimeoutOnlyRun.status !== 'passed' ||
+    input.equivalentTimeoutOnlyRun.changedVariables.length !== 1 ||
+    input.equivalentTimeoutOnlyRun.changedVariables[0] !== 'timeout'
+  ) {
+    return 'blocked_non_equivalent_timeout_run';
+  }
+  if (input.proposedAdjustment.scope === 'global' || input.proposedAdjustment.timeoutMs > 30_000) {
+    return 'blocked_overbroad_timeout_adjustment';
+  }
+  if (input.proposedAdjustment.performanceGuardrail || !input.proposedAdjustment.removableWaitChecked) {
+    return 'inconclusive';
+  }
+  if (
+    !input.closureValidation.contractsPassed ||
+    !input.closureValidation.workspacePassed ||
+    !input.closureValidation.typecheckPassed ||
+    !input.closureValidation.diffCheckPassed
+  ) {
+    return 'blocked_missing_closure_validation';
+  }
+
+  return 'local_timeout_adjustment_supported';
+}
+
+type SuiteTimeoutDiagnosis = {
+  originalFullRun: TimeoutObservation;
+  isolatedRun?: TimeoutObservation;
+  equivalentTimeoutOnlyRun?: TimeoutObservation & { changedVariables: readonly TimeoutRunVariable[] };
+  proposedAdjustment: {
+    scope: 'test' | 'test_group' | 'global';
+    timeoutMs: number;
+    performanceGuardrail: boolean;
+    removableWaitChecked: boolean;
+  };
+  closureValidation: {
+    contractsPassed: boolean;
+    workspacePassed: boolean;
+    typecheckPassed: boolean;
+    diffCheckPassed: boolean;
+  };
+};
+
+type TimeoutObservation = {
+  command: string;
+  status: 'passed' | 'failed' | 'timed_out';
+  timeoutMs: number;
+  durationMs: number;
+  environment: string;
+};
+
+type TimeoutRunVariable = 'timeout' | 'test_collection' | 'config' | 'environment' | 'setup' | 'concurrency' | 'exit_semantics';
+
+type TimeoutDiagnosisDecision =
+  | 'local_timeout_adjustment_supported'
+  | 'blocked_missing_isolation_evidence'
+  | 'blocked_non_equivalent_timeout_run'
+  | 'blocked_overbroad_timeout_adjustment'
+  | 'blocked_missing_closure_validation'
+  | 'inconclusive';
