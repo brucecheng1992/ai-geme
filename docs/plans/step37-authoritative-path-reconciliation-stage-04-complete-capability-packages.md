@@ -3818,7 +3818,18 @@ Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4_pic
 - oracle_status: `not_submitted`.
 - closure_status: `not_closed`.
 - skill_revision_type: `sha256_bundle`.
-- skill_revision: `d85fb9ec2a1a8a67d2d956155c01ea2ccda8ea3c41f416f2ae9c3dcc9325cfeb`.
+- skill_bundle_format: `step37_manifest_v1_path_size_sha`.
+- active_skill_identity: `code-change-discipline@/Users/dahufa/.agents/skills/code-change-discipline, review-gated-delivery@/Users/dahufa/.agents/skills/review-gated-delivery`.
+- active_skill_realpaths: `/Users/dahufa/.agents/skills/code-change-discipline, /Users/dahufa/.agents/skills/review-gated-delivery`.
+- skill_file_count: `8`.
+- skill_revision: `be625c8c69d3fffb983dea5c40ee1cae584e2b5b0f7b82dce4338c9bcf744d78`.
+- skill_revision_replaces_stale_value: `d85fb9ec2a1a8a67d2d956155c01ea2ccda8ea3c41f416f2ae9c3dcc9325cfeb`.
+- digest_command: `{ for f in /Users/dahufa/.agents/skills/code-change-discipline/SKILL.md /Users/dahufa/.agents/skills/review-gated-delivery/SKILL.md /Users/dahufa/.agents/skills/review-gated-delivery/assets/*.txt /Users/dahufa/.agents/skills/review-gated-delivery/assets/*.md; do case "$f" in /Users/dahufa/.agents/skills/code-change-discipline/*) rel="code-change-discipline/${f#/Users/dahufa/.agents/skills/code-change-discipline/}" ;; /Users/dahufa/.agents/skills/review-gated-delivery/*) rel="review-gated-delivery/${f#/Users/dahufa/.agents/skills/review-gated-delivery/}" ;; *) exit 2 ;; esac; size=$(wc -c < "$f" | tr -d ' '); sha=$(shasum -a 256 "$f" | awk '{print $1}'); printf "%s\t%s\t%s\n" "$rel" "$size" "$sha"; done; } | LC_ALL=C sort > /tmp/step37_skill_manifest.tsv && shasum -a 256 /tmp/step37_skill_manifest.tsv`.
+- digest_exit_code: `0`.
+- skill_bundle_inputs: `code-change-discipline/SKILL.md; review-gated-delivery/SKILL.md; review-gated-delivery/assets/*.txt; review-gated-delivery/assets/*.md`.
+- skill_bundle_absent_behavior_dirs: `scripts and references directories not present under the active Skill roots during this audit`.
+- skill_symlink_status: `none observed in the active Skill bundle file set`.
+- repo_revision_binding: `candidate commit SHA is bound by the Oracle review request and later receipt; this candidate document intentionally does not self-reference its own commit SHA`.
 - closure_scope: `atomic_step`.
 - parent_loop_id: `step37`.
 - parent_loop_status: `running`.
@@ -3885,9 +3896,13 @@ npx tsx -e "... DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1 ..."
 exitCode=0
 result=PASS: M5 requires spawn.enemy_wave.v1; R034 requires ordered_wave_sequence; current support classification is CONDITIONAL_LEGACY_BACKED and completeSupported=false.
 
-node - <<'NODE' ... compute deterministic external Skill bundle digest ...
+realpath /Users/dahufa/.agents/skills/code-change-discipline /Users/dahufa/.agents/skills/review-gated-delivery /Users/dahufa/.agents/skills/code-change-discipline/SKILL.md /Users/dahufa/.agents/skills/review-gated-delivery/SKILL.md
 exitCode=0
-result=PASS: skill_bundle_digest=d85fb9ec2a1a8a67d2d956155c01ea2ccda8ea3c41f416f2ae9c3dcc9325cfeb; manifest includes code-change-discipline/SKILL.md, review-gated-delivery/SKILL.md, and review-gated-delivery/assets entries sorted by root and relative path.
+result=PASS: active Skill roots resolved to /Users/dahufa/.agents/skills/code-change-discipline and /Users/dahufa/.agents/skills/review-gated-delivery; SKILL.md realpaths are inside those roots.
+
+{ for f in /Users/dahufa/.agents/skills/code-change-discipline/SKILL.md /Users/dahufa/.agents/skills/review-gated-delivery/SKILL.md /Users/dahufa/.agents/skills/review-gated-delivery/assets/*.txt /Users/dahufa/.agents/skills/review-gated-delivery/assets/*.md; do case "$f" in /Users/dahufa/.agents/skills/code-change-discipline/*) rel="code-change-discipline/${f#/Users/dahufa/.agents/skills/code-change-discipline/}" ;; /Users/dahufa/.agents/skills/review-gated-delivery/*) rel="review-gated-delivery/${f#/Users/dahufa/.agents/skills/review-gated-delivery/}" ;; *) exit 2 ;; esac; size=$(wc -c < "$f" | tr -d ' '); sha=$(shasum -a 256 "$f" | awk '{print $1}'); printf "%s\t%s\t%s\n" "$rel" "$size" "$sha"; done; } | LC_ALL=C sort > /tmp/step37_skill_manifest.tsv && shasum -a 256 /tmp/step37_skill_manifest.tsv
+exitCode=0
+result=PASS: skill_bundle_format=step37_manifest_v1_path_size_sha; skill_file_count=8; skill_bundle_digest=be625c8c69d3fffb983dea5c40ee1cae584e2b5b0f7b82dce4338c9bcf744d78; previous d85fb9ec2a1a8a67d2d956155c01ea2ccda8ea3c41f416f2ae9c3dcc9325cfeb was rejected as stale/unreproducible for this checkpoint and is not valid current evidence.
 
 npx vitest run tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/step37-parent-loop-driver.test.ts
 exitCode=0
