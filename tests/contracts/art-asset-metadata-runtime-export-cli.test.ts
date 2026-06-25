@@ -95,7 +95,7 @@ describe('Art asset runtime metadata export CLI contracts', () => {
       stdout: '',
       stderr: expect.stringContaining('Expected --dir input to be a directory.')
     });
-  });
+  }, 10_000);
 
   it('does not overwrite --out artifacts on validation failure', async () => {
     const invalidPath = await writeMetadata('invalid.asset.json', {

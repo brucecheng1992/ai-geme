@@ -8,6 +8,9 @@ import { createHealthDamageInvulnerabilityPackageContract } from '../../packages
 const stage4PlanPath = 'docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md';
 const healthDamageInvulnerabilityClosureTitle = '## Stage 4 Closure Implementation — Health Damage Invulnerability Package-Owned QA Slice';
 const healthDamageInvulnerabilityCheckpointCommit = 'd8225bf1';
+const movementCrouchAuditTitle = '## Stage 4 Audit — Movement Crouch Package-Owned QA Slice';
+const movementCrouchAuditCheckpointCommit = '09c1ea60';
+const auditBoundaryAndIdentifierGuardrailTitle = '## Stage 4 Improvement Log — Audit Boundary And Identifier Guardrails';
 
 const claimedHealthDamageInvulnerabilityPaths = [
   'packages/game-dsl/src/gameplay-capabilities/health-damage-invulnerability-package.ts',
@@ -155,6 +158,97 @@ describe('Step37 closure implementation traceability', () => {
     expect(section).toContain('claimed modifications are visible in diff or commit history');
     expect(section).toContain('tests/contracts/step37-closure-implementation-trace.test.ts');
   });
+
+  it('keeps the movement crouch audit checkpoint docs-only and implementation-free', async () => {
+    const document = await readFile(stage4PlanPath, 'utf8');
+    const section = extractSection(document, movementCrouchAuditTitle);
+    const checkpointPaths = changedPathsForCommit(movementCrouchAuditCheckpointCommit);
+
+    expect(checkpointPaths).toEqual([stage4PlanPath]);
+    expect(section).toContain('Current Stage review conclusion: `movement.crouch.v1`');
+    expect(section).toContain('### Minimal Closure Requirements');
+    expect(section).toContain('### Compatibility & Cutover');
+    expect(section).toContain('### Audit Exit Assessment');
+    expect(section).toContain('Stage 4 Movement Crouch Package-Owned QA Slice Implementation: NOT_ENTERED');
+    expect(section).toContain('Stage 4 Exit gate: NOT_MET');
+    expect(section).toContain('Stop marker: Stage 4 `movement.crouch.v1`');
+    expect(section).toContain('Do not implement this slice');
+    expect(section).toContain('NEW_CONSUMER_REQUIRED');
+    expect(section).not.toContain('## Stage 4 Closure Implementation — Movement Crouch');
+    expect(section).not.toContain('Actual code paths');
+    expect(section).not.toContain('planned -> landed');
+  });
+
+  it('records audit boundary and typed identifier guardrails as traceable process contracts', async () => {
+    const document = await readFile(stage4PlanPath, 'utf8');
+    const section = extractSection(document, auditBoundaryAndIdentifierGuardrailTitle);
+
+    expect(section).toContain('audit steps produce traceable conclusions');
+    expect(section).toContain('implementation steps modify code and verify behavior');
+    expect(section).toContain('Runtime/test/source edits belong to a later implementation step');
+    expect(section).toContain('Existing audit history must not be rewritten');
+    expect(section).toContain('submission_id');
+    expect(section).toContain('agent_id');
+    expect(section).toContain('run_id');
+    expect(section).toContain('wait_agent` requires an `agent_id`');
+    expect(section).toContain('send_input` returns a `submission_id`');
+    expect(section).toContain('submission/agent relationship');
+  });
+
+  it('rejects using submission identifiers for agent polling and binds results to the original mapping', () => {
+    const correctPollingIssues = validateOraclePollingIdentifierLink({
+      oracleSubmissionId: 'submission_019effe6',
+      oracleAgentId: 'agent_019effae',
+      waitTargetFieldName: 'agent_id',
+      waitTargetValue: 'agent_019effae',
+      waitTargetSource: 'spawn_agent.agent_id',
+      logEntries: [
+        { fieldName: 'submission_id', value: 'submission_019effe6', source: 'send_input.submission_id' },
+        { fieldName: 'agent_id', value: 'agent_019effae', source: 'spawn_agent.agent_id' }
+      ]
+    });
+
+    expect(correctPollingIssues).toEqual([]);
+
+    const wrongPollingIssues = validateOraclePollingIdentifierLink({
+      oracleSubmissionId: 'submission_019effe6',
+      oracleAgentId: 'agent_019effae',
+      waitTargetFieldName: 'agent_id',
+      waitTargetValue: 'submission_019effe6',
+      waitTargetSource: 'send_input.submission_id',
+      logEntries: [
+        { fieldName: 'submission_id', value: 'submission_019effe6', source: 'send_input.submission_id' },
+        { fieldName: 'agent_id', value: 'agent_019effae', source: 'spawn_agent.agent_id' }
+      ]
+    });
+
+    expect(wrongPollingIssues).toEqual(['SUBMISSION_ID_USED_AS_AGENT_ID', 'AGENT_ID_POLL_TARGET_MISMATCH']);
+
+    expect(
+      validateOraclePollingResultBinding({
+        oracleSubmissionId: 'submission_019effe6',
+        oracleAgentId: 'agent_019effae',
+        resultAgentId: 'agent_019effae',
+        resultSubmissionId: 'submission_019effe6'
+      })
+    ).toEqual([]);
+    expect(
+      validateOraclePollingResultBinding({
+        oracleSubmissionId: 'submission_019effe6',
+        oracleAgentId: 'agent_019effae',
+        resultAgentId: 'agent_other',
+        resultSubmissionId: 'submission_019effe6'
+      })
+    ).toEqual(['ORACLE_RESULT_AGENT_MISMATCH']);
+    expect(
+      validateOraclePollingResultBinding({
+        oracleSubmissionId: 'submission_019effe6',
+        oracleAgentId: 'agent_019effae',
+        resultAgentId: 'agent_019effae',
+        resultSubmissionId: 'submission_other'
+      })
+    ).toEqual(['ORACLE_RESULT_SUBMISSION_MISMATCH']);
+  });
 });
 
 function extractSection(document: string, title: string): string {
@@ -256,4 +350,62 @@ type ValidationReceipt = {
   command: string;
   exitCode: number;
   result: string;
+};
+
+function validateOraclePollingIdentifierLink(input: OraclePollingIdentifierLink): string[] {
+  const issues: string[] = [];
+  if (input.waitTargetFieldName !== 'agent_id') {
+    issues.push('WAIT_TARGET_FIELD_NOT_AGENT_ID');
+  }
+  if (input.waitTargetValue === input.oracleSubmissionId) {
+    issues.push('SUBMISSION_ID_USED_AS_AGENT_ID');
+  }
+  if (input.waitTargetValue !== input.oracleAgentId) {
+    issues.push('AGENT_ID_POLL_TARGET_MISMATCH');
+  }
+  if (input.waitTargetSource.length === 0) {
+    issues.push('WAIT_TARGET_SOURCE_MISSING');
+  }
+
+  for (const requiredFieldName of ['submission_id', 'agent_id']) {
+    const matchingLogEntry = input.logEntries.find((entry) => entry.fieldName === requiredFieldName);
+    if (matchingLogEntry === undefined || matchingLogEntry.value.length === 0 || matchingLogEntry.source.length === 0) {
+      issues.push(`ID_LOG_MISSING_${requiredFieldName.toUpperCase()}`);
+    }
+  }
+
+  return issues;
+}
+
+function validateOraclePollingResultBinding(input: OraclePollingResultBinding): string[] {
+  const issues: string[] = [];
+  if (input.resultAgentId !== input.oracleAgentId) {
+    issues.push('ORACLE_RESULT_AGENT_MISMATCH');
+  }
+  if (input.resultSubmissionId !== input.oracleSubmissionId) {
+    issues.push('ORACLE_RESULT_SUBMISSION_MISMATCH');
+  }
+  return issues;
+}
+
+type OraclePollingIdentifierLink = {
+  oracleSubmissionId: string;
+  oracleAgentId: string;
+  waitTargetFieldName: 'agent_id' | 'submission_id' | 'run_id';
+  waitTargetValue: string;
+  waitTargetSource: string;
+  logEntries: readonly IdentifierLogEntry[];
+};
+
+type OraclePollingResultBinding = {
+  oracleSubmissionId: string;
+  oracleAgentId: string;
+  resultSubmissionId: string;
+  resultAgentId: string;
+};
+
+type IdentifierLogEntry = {
+  fieldName: 'submission_id' | 'agent_id' | 'run_id' | 'thread_id' | 'operation_id';
+  value: string;
+  source: string;
 };

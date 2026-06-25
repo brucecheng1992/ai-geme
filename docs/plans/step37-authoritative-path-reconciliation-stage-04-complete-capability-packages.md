@@ -2399,3 +2399,18 @@ Next: checkpoint commit for this audit only
 ```
 
 Stop marker: Stage 4 `movement.crouch.v1` package-owned QA slice audit passed Oracle and is awaiting checkpoint commit. Do not implement this slice, do not enter Stage 5, and do not claim complete package closure until checkpoint commit completes.
+
+## Stage 4 Improvement Log — Audit Boundary And Identifier Guardrails
+
+This log records durable process improvements discovered during the `movement.crouch.v1` audit checkpoint and Oracle polling handoff.
+
+1. Audit and implementation separation: audit steps produce traceable conclusions and clear boundaries; implementation steps modify code and verify behavior. They must not be implicitly mixed inside one atomic step.
+2. Audit-only section shape: independent audit sections record the current review conclusion, traceable evidence basis, minimal closure requirements, Compatibility & Cutover, exit assessment, and stop marker. Runtime/test/source edits belong to a later implementation step.
+3. Audit history preservation: new audit or implementation records are appended as independent sections. Existing audit history must not be rewritten to make later closure look cleaner.
+4. Unmet closure requirements: an audit record with unmet requirements must keep exit assessment at `NOT_MET`, `NOT_ENTERED`, `incomplete`, or `blocked`; audit prose alone cannot mark a capability closed.
+5. Stop marker specificity: the stop marker must say where the step stops, what is out of scope, and which gate must pass before implementation may begin.
+6. Identifier type hygiene: asynchronous task records must distinguish `submission_id`, `agent_id`, `run_id`, `thread_id`, and `operation_id`. Polling interfaces must receive the ID type required by their schema.
+7. Oracle polling guardrail: `send_input` returns a `submission_id`, while `wait_agent` requires an `agent_id`; using the submission id as the wait target causes a caller-side false timeout and must not be diagnosed as an Oracle agent failure.
+8. Identifier traceability: logs must record the ID field name, value, and source, and the result must map back to the original submission/agent relationship. Results from another task, agent, or run are not valid closure evidence.
+
+Repository guardrail added: `tests/contracts/step37-closure-implementation-trace.test.ts` verifies audit-only boundaries and typed Oracle polling identifiers, including a negative contract where a `submission_id` cannot satisfy an `agent_id` polling path.
