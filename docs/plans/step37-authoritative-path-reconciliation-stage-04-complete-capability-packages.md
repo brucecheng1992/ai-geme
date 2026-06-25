@@ -2055,3 +2055,76 @@ For `combat.airborne_fire.v1`, the must-pass check is stable:
 - `player.fired` and `projectile.spawned` alone do not verify `combat.airborne_fire.v1`.
 - A negative regression must continue to fail when `player.fired` exists but airborne proof is missing or false.
 - Future Step37 loop work must not delete, weaken, bypass, or rename this check without a new audit, Oracle review, and replacement evidence that proves the same action-plus-condition semantics.
+
+## Stage 4 Review — Health Damage Invulnerability Package-Owned QA Slice
+
+### Scope And Starting Conclusion
+
+- scope: Stage 4 audit only.
+- baseline: Stage 4 `combat.airborne_fire.v1` package-owned QA slice checkpoint commit `7372d900` (`feat(game-dsl): add airborne fire QA package slice`) plus compound evidence guard checkpoint `99848d7a` (`docs: preserve airborne fire evidence guard`).
+- starting conclusion: `Stage 4 Exit gate: NOT_MET`; static support remains `completeSupportedCount=0/59`, and runtime-observed support is only `8/59`.
+- non-goals: no implementation in this audit checkpoint, no Stage 5 exact lock, no composed schema, no canonical DSL/provider run, no production default cutover, no legacy authoritative path exit, no `movement.crouch.v1`, `pickup.collectible.v1`, `spawn.enemy_wave.v1`, or Stage 4 full closure claim.
+
+### Current Stage Review Findings
+
+- `buildDeepSeekRunAndGunValidationProfileSupportSummary()` reports `health.damage_invulnerability.v1` as `CONTRACT_SEEDED` with `schema_expressible=true`, `normalized=true`, `compiled=true`, `runtime_consumed=true`, `qa_observed=false`, and missing prerequisites `amendmentOperations`, `capabilityOwnedQa`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
+- The side-scrolling runtime has player damage and health point evidence, but `SideScrollingRunAndGunScene.damagePlayer()` currently subtracts health on every accepted hit and does not record an invulnerability window, active state, expiry, or ignored-damage event.
+- Therefore, ordinary `player.damaged`, `collision.detected`, and `health.player_health.current` evidence can prove that damage happened and health changed, but cannot prove that the player became briefly invulnerable after damage.
+- Following the compound evidence rule, `health.damage_invulnerability.v1` requires evidence for both the trigger action and the conditional state/effect: damage must activate invulnerability, and a subsequent hit inside the window must be ignored or blocked.
+
+### Minimal Closure Requirements
+
+1. Add a `health.damage_invulnerability.v1` package contract with package-owned QA probe, runtime module identity, required evidence, action, observation, and assertion metadata.
+2. Add real side-scrolling runtime behavior for a bounded post-damage invulnerability window. The runtime must preserve machine-readable evidence for window activation and blocked damage, not only a damage event.
+3. Extend QA runtime evidence types/readers to preserve and verify the invulnerability state/effect fields required by the probe.
+4. Wire the package into the active side-scrolling package installer, `CapabilityQaReport`, and target profile runtime support overlay so only same-run verified evidence can raise runtime-observed support from `8/59` to `9/59`.
+5. Add a negative regression proving `player.damaged` plus health evidence is insufficient when no invulnerability-window proof exists.
+6. Keep static registry support incomplete; this slice may only add runtime-observed overlay evidence and must keep Stage 4 exit blocked until all 59 target capabilities are observed complete.
+
+### Compatibility & Cutover
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Future implementation must add a health damage-invulnerability package contract, side-scrolling invulnerability runtime state/evidence, and QA runtime probe fields. |
+| Consumer list | Consumers must include `GameplayCapabilityRegistry`, target profile support summary, active-profile package installer, side-scrolling runtime snapshot/telemetry, Playwright QA runtime evidence reader, `CapabilityQaReport`, target runtime support overlay, and Stage 4 tests. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: current damage/health evidence cannot preserve invulnerability semantics until a real runtime state consumer and QA reader are active. |
+| Authority | The package QA plan is assertion authority; same-run side-scrolling runtime evidence is observation authority; static registry support remains incomplete authority for non-QA dimensions only. |
+| Legacy strategy | Legacy damage events remain valid only for damage/health capabilities and are forbidden from proving invulnerability support without explicit window evidence. |
+| Failure policy | Missing invulnerability package probe, missing active-window evidence, missing blocked-damage evidence, or action-only `player.damaged` evidence must keep the package unverified and the target profile blocked. |
+| Evidence | Closure must include RED, focused tests, related suite, support probe, full tests, typecheck, and Oracle review proving downstream consumption rather than field acceptance. |
+| Rollback | Reverting the slice removes only the new package/runtime/probe evidence and returns runtime-observed support to `8/59` without rewriting existing damage or health semantics. |
+
+### Exit Assessment
+
+```text
+Stage 4 Health Damage Invulnerability Package-Owned QA Slice Audit: RECORDED
+Stage 4 Health Damage Invulnerability Package-Owned QA Slice Implementation: NOT_ENTERED
+Stage 4 Exit gate: NOT_MET
+Next: Oracle review for this audit only
+```
+
+Stop marker: Stage 4 `health.damage_invulnerability.v1` package-owned QA slice audit is recorded. Do not implement this slice, do not enter Stage 5, and do not claim complete package closure until audit Oracle/checkpoint completes.
+
+### Audit Oracle Review
+
+Oracle PASS / no P0/P1/P2 blocking findings.
+
+Oracle confirmed:
+
+- the audit does not promote Stage 4 closure, `qa_observed`, `completeSupported`, Stage 5, production default cutover, or legacy authoritative path exit;
+- current side-scrolling `damagePlayer()` evidence proves damage and health change but not an invulnerability window, expiry, active state, or ignored-damage event;
+- the minimal closure requirements are sufficiently strict because they require both damage-triggered window activation and a subsequent hit blocked inside that window;
+- the audit remains docs-only and implementation remains `NOT_ENTERED`.
+
+P3 notes: none blocking.
+
+### Exit Assessment After Oracle
+
+```text
+Stage 4 Health Damage Invulnerability Package-Owned QA Slice Audit: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 Health Damage Invulnerability Package-Owned QA Slice Implementation: NOT_ENTERED
+Stage 4 Exit gate: NOT_MET
+Next: checkpoint commit for this audit only
+```
+
+Stop marker: Stage 4 `health.damage_invulnerability.v1` package-owned QA slice audit passed Oracle and is awaiting checkpoint commit. Do not implement this slice, do not enter Stage 5, and do not claim complete package closure until checkpoint commit completes.
