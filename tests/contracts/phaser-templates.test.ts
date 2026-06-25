@@ -93,16 +93,17 @@ type SideScrollingTemplateSnapshot = TemplateSnapshot & {
     source: 'side_scrolling_runtime';
     probes: Array<{
       capabilityId: string;
-	      probeId: string;
-	      runtimeModuleId: string;
-	      action: string;
-	      eventType: string;
-	      eventTypes?: string[];
-	      health?: number;
-	      maxHealth?: number;
-	      projectileEntityId?: string;
-	      projectileId?: string;
-	      sourceRef: string;
+      probeId: string;
+      runtimeModuleId: string;
+      action: string;
+      eventType: string;
+      eventTypes?: string[];
+      airborne?: boolean;
+      health?: number;
+      maxHealth?: number;
+      projectileEntityId?: string;
+      projectileId?: string;
+      sourceRef: string;
       status: 'observed';
     }>;
   };
@@ -1192,6 +1193,18 @@ describe('Phaser templates', () => {
       sourceRef: 'runtime_plan.side_scrolling.player.projectileEntityId',
       status: 'observed'
     };
+    const expectedAirborneFireProbe = {
+      capabilityId: 'combat.airborne_fire.v1',
+      probeId: 'combat.airborne_fire.v1.fired.browser_qa.v1',
+      runtimeModuleId: 'combat.airborne_fire',
+      action: 'fire',
+      eventType: 'combat.airborne_fire.fired',
+      eventTypes: ['combat.airborne_fire.fired'],
+      airborne: true,
+      projectileEntityId: 'pulse_bolt',
+      sourceRef: 'runtime_plan.side_scrolling.player.jumpVelocity + projectileEntityId',
+      status: 'observed'
+    };
     const expectedMovementProbe = {
       capabilityId: 'movement.run_jump.v1',
       probeId: 'movement.run_jump.v1.jump.browser_qa.v1',
@@ -1235,13 +1248,18 @@ describe('Phaser templates', () => {
     expect(firedEvent?.payload?.capabilityRuntime).toMatchObject(expectedWeaponProbe);
     expect(projectileEvent?.payload?.capabilityRuntime).toMatchObject(expectedWeaponProbe);
     expect(projectileEvent?.payload?.capabilityRuntimeProbes).toEqual(
-      expect.arrayContaining([expect.objectContaining(expectedProjectileProbe), expect.objectContaining(expectedWeaponProbe)])
+      expect.arrayContaining([
+        expect.objectContaining(expectedAirborneFireProbe),
+        expect.objectContaining(expectedProjectileProbe),
+        expect.objectContaining(expectedWeaponProbe)
+      ])
     );
     expect(snapshot?.capabilityRuntime).toMatchObject({
       source: 'side_scrolling_runtime',
       probes: expect.arrayContaining([
         expect.objectContaining(expectedCameraProbe),
         expect.objectContaining(expectedCollisionProbe),
+        expect.objectContaining(expectedAirborneFireProbe),
         expect.objectContaining(expectedHealthProbe),
         expect.objectContaining(expectedMovementProbe),
         expect.objectContaining(expectedSpawnStaticProbe),
@@ -1249,7 +1267,7 @@ describe('Phaser templates', () => {
         expect.objectContaining(expectedWeaponProbe)
       ])
     });
-    expect(snapshot?.capabilityRuntime?.probes).toHaveLength(7);
+    expect(snapshot?.capabilityRuntime?.probes).toHaveLength(8);
     const observedHealthProbe = snapshot?.capabilityRuntime?.probes.find((probe) => probe.probeId === 'health.player_health_points.v1.current.browser_qa.v1');
     expect(observedHealthProbe?.health).toBe(snapshot?.health);
     expect(observedHealthProbe?.maxHealth).toBe(3);
@@ -1261,6 +1279,28 @@ describe('Phaser templates', () => {
       capabilityId: 'weapon.default_straight_single.v1',
       probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1'
     });
+  });
+
+  it('does not expose airborne fire capability evidence for grounded side-scrolling shots', async () => {
+    const { SideScrollingRunAndGunScene } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/GameScene.js');
+    const { defaultSideScrollingRuntimeSlice } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/side-scrolling-runtime-plan.js');
+    const { defaultSideScrollingParams } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/template-params.js');
+    const scene = new SideScrollingRunAndGunScene(defaultSideScrollingParams, { side_scrolling: defaultSideScrollingRuntimeSlice });
+
+    scene.create();
+    scene.start();
+    scene.fire(1_000);
+
+    const snapshot = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
+    const projectileEvent = globalThis.__GAME_QA__?.telemetry().find(
+      (event) => event.type === 'projectile.spawned' && Array.isArray((event.payload as { capabilityRuntimeProbes?: unknown } | undefined)?.capabilityRuntimeProbes)
+    );
+    const probeIds = snapshot?.capabilityRuntime?.probes.map((probe) => probe.probeId) ?? [];
+
+    expect(probeIds).not.toContain('combat.airborne_fire.v1.fired.browser_qa.v1');
+    expect(projectileEvent?.payload?.capabilityRuntimeProbes).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ probeId: 'combat.airborne_fire.v1.fired.browser_qa.v1' })])
+    );
   });
 
   it('preserves Scene IR wave counts and fails closed for unsupported runtime goals', async () => {

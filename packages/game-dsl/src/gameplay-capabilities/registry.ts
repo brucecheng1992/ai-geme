@@ -14,6 +14,10 @@ import {
   createDefaultStraightSingleWeaponPackageContract
 } from './default-straight-single-weapon-package.js';
 import {
+  COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID,
+  createCombatAirborneFirePackageContract
+} from './combat-airborne-fire-package.js';
+import {
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   createCombatProjectilePackageContract
 } from './combat-projectile-package.js';
@@ -377,6 +381,19 @@ const defaultStraightSingleWeaponPackageEvidence: GameplayCapabilityEvidence = d
 const defaultStraightSingleWeaponPackageQa: GameplayCapabilityQaEvidence = defaultStraightSingleWeaponPackageReport.supportEligible
   ? { requiredProbeIds: [DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const combatAirborneFirePackageReport = validateGameplayCapabilityPackage(createCombatAirborneFirePackageContract());
+const combatAirborneFirePackageEvidence: GameplayCapabilityEvidence = combatAirborneFirePackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const combatAirborneFirePackageQa: GameplayCapabilityQaEvidence = combatAirborneFirePackageReport.supportEligible
+  ? { requiredProbeIds: [COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const combatProjectilePackageReport = validateGameplayCapabilityPackage(createCombatProjectilePackageContract());
 const combatProjectilePackageEvidence: GameplayCapabilityEvidence = combatProjectilePackageReport.supportEligible
   ? {
@@ -458,7 +475,8 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [phaser2dActionArcade],
     ['side_scrolling_run_and_gun.v1'],
     [],
-    canonicalRuntimeLoaderEvidence
+    combatAirborneFirePackageEvidence,
+    combatAirborneFirePackageQa
   ),
   planned(
     'combat.projectile.v1',

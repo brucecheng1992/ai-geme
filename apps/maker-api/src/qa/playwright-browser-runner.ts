@@ -231,6 +231,9 @@ export function evaluateCapabilityRuntimeEvidence(
     mismatches.push(...compareScalar(`capabilityRuntime.probes[${expectedProbe.probeId}].capabilityId`, observedProbe.capabilityId, expectedProbe.capabilityId));
     mismatches.push(...compareScalar(`capabilityRuntime.probes[${expectedProbe.probeId}].action`, observedProbe.action, expectedProbe.action));
     mismatches.push(...compareScalar(`capabilityRuntime.probes[${expectedProbe.probeId}].eventType`, observedProbe.eventType, expectedProbe.eventType));
+    if (expectedProbe.airborne !== undefined) {
+      mismatches.push(...compareBoolean(`capabilityRuntime.probes[${expectedProbe.probeId}].airborne`, observedProbe.airborne, expectedProbe.airborne));
+    }
     if (expectedProbe.projectileEntityId !== undefined) {
       mismatches.push(
         ...compareScalar(
@@ -305,6 +308,10 @@ function readString(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;
 }
 
+function readBoolean(value: unknown): boolean | undefined {
+  return typeof value === 'boolean' ? value : undefined;
+}
+
 function collectCapabilityRuntimeObservedProbes(snapshot: unknown, telemetry: readonly TelemetryEvent[]): QaCapabilityRuntimeObservedProbe[] {
   const probesById = new Map<string, QaCapabilityRuntimeObservedProbe>();
   for (const probe of readSnapshotCapabilityRuntimeProbes(snapshot)) {
@@ -355,6 +362,7 @@ function readCapabilityRuntimeProbe(value: unknown, eventTypeFallback?: string):
     return undefined;
   }
 
+  const airborne = readBoolean(value.airborne);
   const projectileEntityId = readString(value.projectileEntityId);
   const runtimeModuleId = readString(value.runtimeModuleId);
   const projectileId = readString(value.projectileId);
@@ -372,6 +380,7 @@ function readCapabilityRuntimeProbe(value: unknown, eventTypeFallback?: string):
     action,
     eventType,
     eventTypes,
+    ...(airborne === undefined ? {} : { airborne }),
     ...(projectileEntityId === undefined ? {} : { projectileEntityId }),
     ...(runtimeModuleId === undefined ? {} : { runtimeModuleId }),
     ...(projectileId === undefined ? {} : { projectileId }),
@@ -399,6 +408,10 @@ function mergeCapabilityRuntimeProbe(
 
 function compareScalar(path: string, observed: string | undefined, expected: string): string[] {
   return observed === expected ? [] : [`${path}: expected ${expected}, observed ${observed ?? '<missing>'}`];
+}
+
+function compareBoolean(path: string, observed: boolean | undefined, expected: boolean): string[] {
+  return observed === expected ? [] : [`${path}: expected ${expected}, observed ${observed === undefined ? '<missing>' : String(observed)}`];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -173,6 +173,7 @@ describe('GenerationPipelineService failure states', () => {
                 probes: [
                   cameraSideFollowObservedProbe(),
                   collisionPlatformObservedProbe(),
+                  airborneFireObservedProbe(),
                   projectileObservedProbe(),
                   healthPlayerHealthPointsObservedProbe(),
                   movementRunJumpObservedProbe(),
@@ -280,6 +281,16 @@ describe('GenerationPipelineService failure states', () => {
           ])
         }),
         expect.objectContaining({
+          probeId: 'combat.airborne_fire.v1.fired.browser_qa.v1',
+          status: 'passed',
+          assertionResults: expect.arrayContaining([
+            expect.objectContaining({
+              assertionId: 'combat.airborne_fire.v1.fired.browser_qa.v1.assertion.airborne_fire',
+              status: 'passed'
+            })
+          ])
+        }),
+        expect.objectContaining({
           probeId: 'combat.projectile.v1.spawn.browser_qa.v1',
           status: 'passed',
           assertionResults: expect.arrayContaining([
@@ -335,7 +346,7 @@ describe('GenerationPipelineService failure states', () => {
         })
       ])
     );
-    expect(capabilityQaReport.requiredResults).toHaveLength(7);
+    expect(capabilityQaReport.requiredResults).toHaveLength(8);
     expect(capabilityRuntime.resolutionReportHash).toBe(capabilityResolution.reportHash);
     expect(capabilityRuntime.authorityBundleRef).toEqual(qaReport.runtime_authority?.expected?.authorityBundleRef);
     expect(capabilityRuntime.activeProfileLockRef).toEqual(qaReport.runtime_authority?.expected?.activeProfileLockRef);
@@ -343,12 +354,13 @@ describe('GenerationPipelineService failure states', () => {
       artifactKind: 'generation_target_profile_runtime_support_report',
       status: 'blocked_incomplete_target_profile',
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 7,
+      observedCompleteSupportedCount: 8,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
         'camera.side_follow.v1',
         'collision.platform.v1',
+        'combat.airborne_fire.v1',
         'combat.projectile.v1',
         'health.player_health_points.v1',
         'movement.run_jump.v1',
@@ -368,6 +380,13 @@ describe('GenerationPipelineService failure states', () => {
           runtimeVerified: true,
           observedCompleteSupported: true,
           verifiedRequiredProbeIds: ['collision.platform.v1.grounded.browser_qa.v1'],
+          missingRequiredProbeIds: []
+        }),
+        expect.objectContaining({
+          capabilityId: 'combat.airborne_fire.v1',
+          runtimeVerified: true,
+          observedCompleteSupported: true,
+          verifiedRequiredProbeIds: ['combat.airborne_fire.v1.fired.browser_qa.v1'],
           missingRequiredProbeIds: []
         }),
         expect.objectContaining({
@@ -1119,6 +1138,13 @@ describe('GenerationPipelineService failure states', () => {
           eventType: 'collision.platform.grounded'
         },
         {
+          capabilityId: 'combat.airborne_fire.v1',
+          probeId: 'combat.airborne_fire.v1.fired.browser_qa.v1',
+          action: 'fire',
+          eventType: 'combat.airborne_fire.fired',
+          airborne: true
+        },
+        {
           capabilityId: 'combat.projectile.v1',
           probeId: 'combat.projectile.v1.spawn.browser_qa.v1',
           action: 'fire',
@@ -1150,7 +1176,7 @@ describe('GenerationPipelineService failure states', () => {
         }
       ])
     });
-    expect(qaCapabilityRuntimeExpectation?.requiredProbes).toHaveLength(7);
+    expect(qaCapabilityRuntimeExpectation?.requiredProbes).toHaveLength(8);
     expect(intentPlan).toMatchObject({
       normalizedGenre: 'side_scrolling_run_and_gun',
       runtimeDslSupport: 'supported',
@@ -2590,6 +2616,7 @@ describe('GenerationPipelineService failure states', () => {
       observed: [
         cameraSideFollowObservedProbe(),
         collisionPlatformObservedProbe(),
+        airborneFireObservedProbe(),
         projectileObservedProbe(),
         healthPlayerHealthPointsObservedProbe(),
         movementRunJumpObservedProbe(),
@@ -2626,6 +2653,21 @@ describe('GenerationPipelineService failure states', () => {
       sourceRef: 'runtime_plan.side_scrolling.platforms',
       status: 'observed',
       observedIn: ['snapshot']
+    };
+  }
+
+  function airborneFireObservedProbe(): QaCapabilityRuntimeEvidence['observed'][number] {
+    return {
+      capabilityId: 'combat.airborne_fire.v1',
+      probeId: 'combat.airborne_fire.v1.fired.browser_qa.v1',
+      runtimeModuleId: 'combat.airborne_fire',
+      action: 'fire',
+      eventType: 'combat.airborne_fire.fired',
+      eventTypes: ['combat.airborne_fire.fired'],
+      airborne: true,
+      sourceRef: 'runtime_plan.side_scrolling.player.jumpVelocity + projectileEntityId',
+      status: 'observed',
+      observedIn: ['snapshot', 'telemetry']
     };
   }
 

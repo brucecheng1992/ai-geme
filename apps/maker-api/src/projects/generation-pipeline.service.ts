@@ -41,6 +41,8 @@ import {
   createCameraSideFollowPackageContract,
   COLLISION_PLATFORM_REQUIRED_PROBE_ID,
   createCollisionPlatformPackageContract,
+  COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID,
+  createCombatAirborneFirePackageContract,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   createCombatProjectilePackageContract,
   createDefaultStraightSingleWeaponPackageContract,
@@ -1938,6 +1940,13 @@ function buildQaCapabilityRuntimeExpectation(genre: QaGenre): QaCapabilityRuntim
         eventType: 'collision.platform.grounded'
       },
       {
+        capabilityId: 'combat.airborne_fire.v1',
+        probeId: COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID,
+        action: 'fire',
+        eventType: 'combat.airborne_fire.fired',
+        airborne: true
+      },
+      {
         capabilityId: 'combat.projectile.v1',
         probeId: COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
         action: 'fire',
@@ -1976,6 +1985,7 @@ function buildApprovedInstalledCapabilityQaPackages(normalizedGenre: string): re
     ? [
         createCameraSideFollowPackageContract(),
         createCollisionPlatformPackageContract(),
+        createCombatAirborneFirePackageContract(),
         createDefaultStraightSingleWeaponPackageContract(),
         createCombatProjectilePackageContract(),
         createMovementRunJumpPackageContract(),

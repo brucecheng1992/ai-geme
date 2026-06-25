@@ -38,6 +38,14 @@ import {
   COMBAT_PROJECTILE_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/combat-projectile-runtime-module.js';
 import {
+  COMBAT_AIRBORNE_FIRE_PACKAGE_REQUIRED_EVIDENCE_ID,
+  COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID,
+  createCombatAirborneFirePackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/combat-airborne-fire-package.js';
+import {
+  COMBAT_AIRBORNE_FIRE_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/combat-airborne-fire-runtime-module.js';
+import {
   MOVEMENT_RUN_JUMP_PACKAGE_REQUIRED_EVIDENCE_ID,
   MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID,
   createMovementRunJumpPackageContract
@@ -178,6 +186,33 @@ describe('Gameplay capability package contract', () => {
       capabilityId: 'combat.projectile.v1',
       severity: 'required',
       observations: [expect.objectContaining({ runtimeSystemId: COMBAT_PROJECTILE_RUNTIME_SYSTEM_ID, ref: 'projectile.spawned' })]
+    });
+  });
+
+  it('accepts the combat airborne fire package-owned QA contract', () => {
+    const contract = createCombatAirborneFirePackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'combat.airborne_fire.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([COMBAT_AIRBORNE_FIRE_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: COMBAT_AIRBORNE_FIRE_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'combat.airborne_fire.v1',
+      severity: 'required',
+      actions: [expect.objectContaining({ target: 'combat.airborne_fire.fired', parameters: expect.objectContaining({ airborne: true }) })],
+      observations: [expect.objectContaining({ runtimeSystemId: COMBAT_AIRBORNE_FIRE_RUNTIME_SYSTEM_ID, ref: 'combat.airborne_fire.fired' })]
     });
   });
 

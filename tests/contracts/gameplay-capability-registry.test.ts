@@ -43,6 +43,10 @@ describe('Gameplay capability registry', () => {
       status: 'planned',
       legacyRuntimeCapabilities: ['player_health']
     });
+    expect(findGameplayCapability('combat.airborne_fire.v1')).toMatchObject({
+      status: 'planned',
+      legacyRuntimeCapabilities: []
+    });
     expect(GameplayCapabilityRegistry.entries.some(isCompleteSupportedGameplayCapability)).toBe(false);
   });
 
@@ -269,6 +273,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(health)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(health)).toBe(false);
+  });
+
+  it('scopes combat airborne fire package-owned QA without static support promotion', () => {
+    const airborneFire = findGameplayCapability('combat.airborne_fire.v1');
+
+    if (airborneFire === undefined) {
+      throw new Error('Expected combat.airborne_fire.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(airborneFire)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(airborneFire.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(airborneFire.qa).toEqual({
+      requiredProbeIds: ['combat.airborne_fire.v1.fired.browser_qa.v1'],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(airborneFire)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(airborneFire)).toBe(false);
   });
 
   it('derives profile runtime status from RuntimeGenreRegistry instead of a second supported list', () => {

@@ -2,7 +2,7 @@
 
 > - Parent plan: `docs/plans/step37-authoritative-path-reconciliation-audit.md`
 > - Stage: 4 — Complete Capability Packages
-> - Current status: combat.airborne_fire package-owned QA slice audit recorded; Oracle review pending; Stage 4 exit not met
+> - Current status: combat.airborne_fire package-owned QA slice implementation locally validated; Oracle review pending; Stage 4 exit not met
 > - Updated: 2026-06-25
 
 ## Scope Lock
@@ -1940,3 +1940,107 @@ Oracle confirmed:
 - no Stage 5 exact lock, production default cutover, or complete loop closure is approved.
 
 Stop marker: Stage 4 combat.airborne_fire package-owned QA slice audit passed Oracle and is awaiting checkpoint commit. Implementation remains `NOT_ENTERED`.
+
+## Stage 4 Closure Implementation — Combat Airborne Fire Package-Owned QA Slice
+
+### Scope Lock
+
+- scope: Stage 4 `combat.airborne_fire.v1` package-owned QA slice only.
+- baseline: Stage 4 combat.airborne_fire package-owned QA slice audit checkpoint commit `217c67a8` (`docs: record stage 4 airborne fire package audit`).
+- implementation target: add package-owned QA evidence for existing side-scrolling jump-then-fire runtime behavior, proving that fire occurs while the player is airborne.
+- non-goals: no Stage 5 exact lock, no composed schema, no canonical DSL/provider run, no production default cutover, no legacy authoritative path exit, no `movement.crouch.v1`, `health.damage_invulnerability.v1`, `pickup.collectible.v1`, or `spawn.enemy_wave.v1` promotion, no Stage 4 full closure claim.
+
+### Implementation Summary
+
+- Added `combat.airborne_fire.v1` runtime constants and package contract with required `combat.airborne_fire.fired` browser QA probe.
+- Reclassified `combat.airborne_fire.v1` from canonical runtime-loader planned evidence to package-backed planned evidence with `requiredProbesVerified=false`.
+- Installed the airborne-fire package in the side-scrolling active-profile package set and QA runtime expectation.
+- Extended side-scrolling runtime evidence so `combat.airborne_fire.v1.fired.browser_qa.v1` is recorded only when `fire()` happens while `player.vy !== 0`.
+- Extended Playwright capability runtime evidence types/reader to preserve and verify `airborne: true` for required probes.
+- Added a negative regression test proving `player.fired` plus a combat-airborne probe without airborne proof fails with `airborne: expected true, observed <missing>`.
+- Extended capability QA report, target profile runtime support overlay, template runtime probe tests, and pipeline fixture tests to consume the new required probe.
+- Kept static target support incomplete; runtime-observed overlay advances from `7/59` to `8/59` only.
+
+### Compatibility & Cutover
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds `combat.airborne_fire.v1` package contract, runtime constants, registry package evidence, QA expectation, Playwright airborne evidence field, and side-scrolling runtime snapshot probe. |
+| Consumer list | `GameplayCapabilityRegistry`, target profile support summary, active-profile package installer, Playwright QA runtime evidence reader, `CapabilityQaReport`, target runtime support overlay, side-scrolling runtime snapshot, and Stage 4 tests consume it. |
+| Compatibility type | `ADAPTER_REQUIRED`: existing fire/projectile evidence counts only after the named airborne-fire probe is emitted with `airborne: true`. |
+| Authority | `combat.airborne_fire.v1` package contract plus same-run `capability_qa_report` required probe result are semantic authority for this slice; Playwright `capability_runtime` must-pass validates the airborne condition before the QA report can count it. |
+| Legacy strategy | Ordinary `player.fired` and `projectile.spawned` probes remain valid for their own capabilities but are forbidden from proving airborne-fire support without the airborne-fire probe and airborne state field. |
+| Failure policy | Missing airborne-fire probe, missing `airborne: true`, grounded-only fire evidence, or missing required QA assertion keeps `requiredProbesVerified=false` and target profile support blocked. |
+| Evidence | RED failed before export/contract existed; GREEN focused tests, related suite, support probe, full tests, and typecheck prove downstream consumption and `observedCompleteSupportedCount=8/59`. |
+| Rollback | Revert this slice to return `combat.airborne_fire.v1` to planned runtime-loader incomplete evidence and remove only its eighth side-scrolling required probe without rewriting prior package slice evidence. |
+
+Disposition: `ADAPTER_REQUIRED`; same-run evidence is required and recorded below.
+
+### Verification
+
+```text
+RED:
+npx tsx --eval "import { createCombatAirborneFirePackageContract, COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID } from './packages/game-dsl/src/gameplay-capabilities/index.ts'; const contract = createCombatAirborneFirePackageContract(); if (contract.manifest.id !== 'combat.airborne_fire.v1') throw new Error('wrong airborne fire package id'); if (!contract.qa.probes.some((probe) => probe.id === COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID && probe.severity === 'required')) throw new Error('missing required airborne fire probe');"
+# FAIL before implementation: TypeError: createCombatAirborneFirePackageContract is not a function
+
+GREEN:
+npx tsx --eval "import { createCombatAirborneFirePackageContract, COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID } from './packages/game-dsl/src/gameplay-capabilities/index.ts'; const contract = createCombatAirborneFirePackageContract(); if (contract.manifest.id !== 'combat.airborne_fire.v1') throw new Error('wrong airborne fire package id'); if (!contract.qa.probes.some((probe) => probe.id === COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID && probe.severity === 'required')) throw new Error('missing required airborne fire probe'); console.log(JSON.stringify({packageId: contract.manifest.id, requiredProbeId: COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID, status: contract.manifest.status}, null, 2));"
+# PASS: packageId=combat.airborne_fire.v1; requiredProbeId=combat.airborne_fire.v1.fired.browser_qa.v1; status=supported
+
+Focused tests:
+npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/generation-pipeline.service.test.ts -t "combat airborne fire|airborne fire|runtime-observed support|package-owned capability runtime evidence|capability runtime probe evidence|capability runtime evidence when player fire lacks airborne proof|passes capability runtime evidence|passes active profile capability runtime expectation|keeps capability IDs unique|reports M2 action-state|rewrites side-scrolling runtime scene binding report|routes supported side-scrolling"
+# PASS: 7 files, 12 selected tests
+
+Related suite:
+npx vitest run tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/generation-capability-resolution.test.ts tests/contracts/generation-capability-runtime.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/generation-pipeline.service.test.ts
+# PASS: 11 files, 188 tests
+
+Support probe:
+# PASS: staticCompleteSupportedCount=0; combat.airborne_fire.v1 missingSupportEvidencePrerequisites=[requiredProbesVerified]; capability QA requiredResults=8; runtime overlay observedCompleteSupportedCount=8; observedCapabilityIds=[camera.side_follow.v1, collision.platform.v1, combat.airborne_fire.v1, combat.projectile.v1, health.player_health_points.v1, movement.run_jump.v1, spawn.static.v1, weapon.default_straight_single.v1]; targetProfileCompleteSupported=false; blocker target_profile_runtime_support_incomplete:8/59
+
+Full tests:
+npm test
+# PASS: contracts 94 files / 1054 tests; workspace 34 files / 403 tests
+
+Typecheck:
+npm run typecheck
+# PASS
+```
+
+### Exit Assessment Before Oracle
+
+```text
+Stage 4 Combat Airborne Fire Package-Owned QA Slice Audit: CHECKPOINT_COMMITTED
+Stage 4 Combat Airborne Fire Package-Owned QA Slice Implementation: LOCALLY_VALIDATED
+Stage 4 Exit gate: NOT_MET
+Next: Oracle review for this combat.airborne_fire slice
+```
+
+Stop marker: Stage 4 combat.airborne_fire package-owned QA slice implementation is locally validated. Do not checkpoint or enter the next Stage 4 audit until Oracle review completes.
+
+### Implementation Oracle Review
+
+Oracle PASS / no P0/P1/P2 blocking findings.
+
+P3 non-blocking:
+
+- `generation_target_profile_runtime_support_report` derives observed overlay from passed `CapabilityQaReport.requiredResults`; its unit fixture can synthesize an airborne-fire required result without carrying `airborne: true` in that fixture. Production path remains guarded because Playwright capability runtime evidence must preserve and compare `airborne: true` before passed runtime evidence can become a capability QA result. A future hardening step may add a pipeline-level negative fixture proving failed `capability_runtime` evidence does not advance the overlay.
+
+Oracle confirmed:
+
+- no crouch, damage invulnerability, pickup, enemy wave, Stage 5, production default cutover, or complete loop closure was promoted;
+- Playwright QA runtime evidence reads and compares `airborne` instead of accepting `player.fired` alone;
+- the negative regression covers `player.fired` plus missing airborne proof;
+- `combat.airborne_fire.v1` remains static incomplete with `requiredProbesVerified=false`;
+- runtime overlay advances only to `8/59`, and Stage 4 exit remains `NOT_MET`.
+
+### Exit Assessment After Oracle
+
+```text
+Stage 4 Combat Airborne Fire Package-Owned QA Slice Audit: CHECKPOINT_COMMITTED
+Stage 4 Combat Airborne Fire Package-Owned QA Slice Implementation: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 Exit gate: NOT_MET
+Next: checkpoint commit for this combat.airborne_fire slice only
+```
+
+Stop marker: Stage 4 combat.airborne_fire package-owned QA slice passed Oracle and is awaiting checkpoint commit. Do not enter the next Stage 4 audit, do not enter Stage 5, and do not claim complete package closure until checkpoint commit completes.

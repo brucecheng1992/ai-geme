@@ -162,6 +162,19 @@ describe('Playable QA gate and runner', () => {
       sourceRef: 'runtime_plan.side_scrolling.player.projectileEntityId',
       status: 'observed'
     };
+    const airborneFireProbe = {
+      capabilityId: 'combat.airborne_fire.v1',
+      probeId: 'combat.airborne_fire.v1.fired.browser_qa.v1',
+      runtimeModuleId: 'combat.airborne_fire',
+      action: 'fire',
+      eventType: 'combat.airborne_fire.fired',
+      eventTypes: ['combat.airborne_fire.fired'],
+      airborne: true,
+      projectileEntityId: 'pulse_bolt',
+      projectileId: 'projectile_1_0',
+      sourceRef: 'runtime_plan.side_scrolling.player.jumpVelocity + projectileEntityId',
+      status: 'observed'
+    };
     const movementProbe = {
       capabilityId: 'movement.run_jump.v1',
       probeId: 'movement.run_jump.v1.jump.browser_qa.v1',
@@ -208,7 +221,7 @@ describe('Playable QA gate and runner', () => {
         type: 'projectile.spawned',
         timestamp_ms: 2,
         frame: 2,
-        payload: { capabilityRuntime: probe, capabilityRuntimeProbes: [probe, projectileProbe] }
+        payload: { capabilityRuntime: probe, capabilityRuntimeProbes: [probe, projectileProbe, airborneFireProbe] }
       }
     ];
 
@@ -224,7 +237,7 @@ describe('Playable QA gate and runner', () => {
           },
           capabilityRuntime: {
             source: 'side_scrolling_runtime',
-            probes: [cameraProbe, collisionProbe, movementProbe, spawnStaticProbe, healthProbe, probe, projectileProbe]
+            probes: [cameraProbe, collisionProbe, movementProbe, spawnStaticProbe, healthProbe, probe, projectileProbe, airborneFireProbe]
           }
         },
         telemetry,
@@ -249,6 +262,14 @@ describe('Playable QA gate and runner', () => {
           action: 'collide',
           eventType: 'collision.platform.grounded',
           observedIn: ['snapshot']
+        }),
+        expect.objectContaining({
+          capabilityId: 'combat.airborne_fire.v1',
+          probeId: 'combat.airborne_fire.v1.fired.browser_qa.v1',
+          action: 'fire',
+          eventType: 'combat.airborne_fire.fired',
+          airborne: true,
+          observedIn: ['snapshot', 'telemetry']
         }),
         expect.objectContaining({
           capabilityId: 'combat.projectile.v1',
@@ -300,6 +321,7 @@ describe('Playable QA gate and runner', () => {
       missingProbeIds: [
         'camera.side_follow.v1.scroll.browser_qa.v1',
         'collision.platform.v1.grounded.browser_qa.v1',
+        'combat.airborne_fire.v1.fired.browser_qa.v1',
         'combat.projectile.v1.spawn.browser_qa.v1',
         'health.player_health_points.v1.current.browser_qa.v1',
         'movement.run_jump.v1.jump.browser_qa.v1',
@@ -309,12 +331,62 @@ describe('Playable QA gate and runner', () => {
       mismatches: [
         'capabilityRuntime.probes[camera.side_follow.v1.scroll.browser_qa.v1]: missing',
         'capabilityRuntime.probes[collision.platform.v1.grounded.browser_qa.v1]: missing',
+        'capabilityRuntime.probes[combat.airborne_fire.v1.fired.browser_qa.v1]: missing',
         'capabilityRuntime.probes[combat.projectile.v1.spawn.browser_qa.v1]: missing',
         'capabilityRuntime.probes[health.player_health_points.v1.current.browser_qa.v1]: missing',
         'capabilityRuntime.probes[movement.run_jump.v1.jump.browser_qa.v1]: missing',
         'capabilityRuntime.probes[spawn.static.v1.triggered.browser_qa.v1]: missing',
         'capabilityRuntime.probes[weapon.default_straight_single.v1.fire.browser_qa.v1]: missing'
       ]
+    });
+  });
+
+  it('fails capability runtime evidence when player fire lacks airborne proof', () => {
+    const expectedCapabilityRuntime: QaCapabilityRuntimeExpectation = {
+      requiredProbes: [
+        {
+          capabilityId: 'combat.airborne_fire.v1',
+          probeId: 'combat.airborne_fire.v1.fired.browser_qa.v1',
+          action: 'fire',
+          eventType: 'combat.airborne_fire.fired',
+          airborne: true
+        }
+      ]
+    };
+    const result = evaluateCapabilityRuntimeEvidence(
+      {
+        capabilityRuntime: {
+          source: 'side_scrolling_runtime',
+          probes: [
+            {
+              capabilityId: 'weapon.default_straight_single.v1',
+              probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1',
+              runtimeModuleId: 'weapon.default_straight_single',
+              action: 'fire',
+              eventType: 'player.fired',
+              sourceRef: 'runtime_plan.side_scrolling.player.projectileEntityId',
+              status: 'observed'
+            },
+            {
+              capabilityId: 'combat.airborne_fire.v1',
+              probeId: 'combat.airborne_fire.v1.fired.browser_qa.v1',
+              runtimeModuleId: 'combat.airborne_fire',
+              action: 'fire',
+              eventType: 'combat.airborne_fire.fired',
+              sourceRef: 'runtime_plan.side_scrolling.player.jumpVelocity + projectileEntityId',
+              status: 'observed'
+            }
+          ]
+        }
+      },
+      [{ type: 'player.fired', timestamp_ms: 1, frame: 1 }],
+      expectedCapabilityRuntime
+    );
+
+    expect(result).toMatchObject({
+      status: 'FAILED',
+      missingProbeIds: [],
+      mismatches: ['capabilityRuntime.probes[combat.airborne_fire.v1.fired.browser_qa.v1].airborne: expected true, observed <missing>']
     });
   });
 
@@ -390,6 +462,19 @@ describe('Playable QA gate and runner', () => {
               eventType: 'health.player_health.current',
               eventTypes: ['health.player_health.current'],
               sourceRef: 'runtime_plan.side_scrolling.player.health',
+              status: 'observed'
+            },
+            {
+              capabilityId: 'combat.airborne_fire.v1',
+              probeId: 'combat.airborne_fire.v1.fired.browser_qa.v1',
+              runtimeModuleId: 'combat.airborne_fire',
+              action: 'fire',
+              eventType: 'combat.airborne_fire.fired',
+              eventTypes: ['combat.airborne_fire.fired'],
+              airborne: true,
+              projectileEntityId: 'pulse_bolt',
+              projectileId: 'projectile_1_0',
+              sourceRef: 'runtime_plan.side_scrolling.player.jumpVelocity + projectileEntityId',
               status: 'observed'
             },
             {
@@ -2414,6 +2499,13 @@ function createDefaultWeaponCapabilityRuntimeExpectation(): QaCapabilityRuntimeE
         probeId: 'collision.platform.v1.grounded.browser_qa.v1',
         action: 'collide',
         eventType: 'collision.platform.grounded'
+      },
+      {
+        capabilityId: 'combat.airborne_fire.v1',
+        probeId: 'combat.airborne_fire.v1.fired.browser_qa.v1',
+        action: 'fire',
+        eventType: 'combat.airborne_fire.fired',
+        airborne: true
       },
       {
         capabilityId: 'combat.projectile.v1',

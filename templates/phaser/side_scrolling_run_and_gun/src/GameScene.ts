@@ -63,6 +63,7 @@ type CapabilityRuntimeProbe = {
   runtimeModuleId: string;
   action: 'collide' | 'fire' | 'jump' | 'move' | 'observe' | 'spawn';
   eventType:
+    | 'combat.airborne_fire.fired'
     | 'collision.platform.grounded'
     | 'health.player_health.current'
     | 'player.fired'
@@ -71,6 +72,7 @@ type CapabilityRuntimeProbe = {
     | 'camera.side_follow.active'
     | 'spawn.static.triggered';
   eventTypes?: string[];
+  airborne?: boolean;
   health?: number;
   maxHealth?: number;
   projectileEntityId?: string;
@@ -93,6 +95,11 @@ const DEFAULT_WEAPON_CAPABILITY_ID = 'weapon.default_straight_single.v1';
 const DEFAULT_WEAPON_CAPABILITY_PROBE_ID = 'weapon.default_straight_single.v1.fire.browser_qa.v1';
 const DEFAULT_WEAPON_RUNTIME_MODULE_ID = 'weapon.default_straight_single';
 const DEFAULT_WEAPON_PROJECTILE_SOURCE_REF = 'runtime_plan.side_scrolling.player.projectileEntityId';
+const COMBAT_AIRBORNE_FIRE_CAPABILITY_ID = 'combat.airborne_fire.v1';
+const COMBAT_AIRBORNE_FIRE_CAPABILITY_PROBE_ID = 'combat.airborne_fire.v1.fired.browser_qa.v1';
+const COMBAT_AIRBORNE_FIRE_RUNTIME_MODULE_ID = 'combat.airborne_fire';
+const COMBAT_AIRBORNE_FIRE_FIRED_EVENT_TYPE = 'combat.airborne_fire.fired';
+const COMBAT_AIRBORNE_FIRE_SOURCE_REF = 'runtime_plan.side_scrolling.player.jumpVelocity + projectileEntityId';
 const COMBAT_PROJECTILE_CAPABILITY_ID = 'combat.projectile.v1';
 const COMBAT_PROJECTILE_CAPABILITY_PROBE_ID = 'combat.projectile.v1.spawn.browser_qa.v1';
 const COMBAT_PROJECTILE_RUNTIME_MODULE_ID = 'combat.projectile';
@@ -256,17 +263,21 @@ export class SideScrollingRunAndGunScene {
     };
     const defaultWeaponRuntime = this.createDefaultWeaponCapabilityRuntimeProbe(projectile.id);
     const projectileRuntime = this.createCombatProjectileCapabilityRuntimeProbe(projectile.id);
+    const airborneFireRuntime = this.player.vy === 0 ? undefined : this.createCombatAirborneFireCapabilityRuntimeProbe(projectile.id);
     projectile.capabilityId = defaultWeaponRuntime.capabilityId;
     projectile.probeId = defaultWeaponRuntime.probeId;
     this.projectiles.push(projectile);
     this.capabilityRuntimeProbes.set(defaultWeaponRuntime.probeId, defaultWeaponRuntime);
     this.capabilityRuntimeProbes.set(projectileRuntime.probeId, projectileRuntime);
+    if (airborneFireRuntime !== undefined) {
+      this.capabilityRuntimeProbes.set(airborneFireRuntime.probeId, airborneFireRuntime);
+    }
     this.nextProjectileAtMs = nowMs + this.plan.player.fireCooldownMs;
     this.telemetry.emit('player.fired', { projectileEntityId: this.plan.player.projectileEntityId, capabilityRuntime: defaultWeaponRuntime });
     this.spawn.spawn('projectile', {
       projectileId: projectile.id,
       capabilityRuntime: defaultWeaponRuntime,
-      capabilityRuntimeProbes: [defaultWeaponRuntime, projectileRuntime]
+      capabilityRuntimeProbes: [defaultWeaponRuntime, projectileRuntime, ...(airborneFireRuntime === undefined ? [] : [airborneFireRuntime])]
     });
     this.renderProjectile(projectile);
   }
@@ -402,6 +413,22 @@ export class SideScrollingRunAndGunScene {
       projectileEntityId: this.plan.player.projectileEntityId,
       projectileId,
       sourceRef: DEFAULT_WEAPON_PROJECTILE_SOURCE_REF,
+      status: 'observed'
+    };
+  }
+
+  private createCombatAirborneFireCapabilityRuntimeProbe(projectileId: string): CapabilityRuntimeProbe {
+    return {
+      capabilityId: COMBAT_AIRBORNE_FIRE_CAPABILITY_ID,
+      probeId: COMBAT_AIRBORNE_FIRE_CAPABILITY_PROBE_ID,
+      runtimeModuleId: COMBAT_AIRBORNE_FIRE_RUNTIME_MODULE_ID,
+      action: 'fire',
+      eventType: COMBAT_AIRBORNE_FIRE_FIRED_EVENT_TYPE,
+      eventTypes: [COMBAT_AIRBORNE_FIRE_FIRED_EVENT_TYPE],
+      airborne: true,
+      projectileEntityId: this.plan.player.projectileEntityId,
+      projectileId,
+      sourceRef: COMBAT_AIRBORNE_FIRE_SOURCE_REF,
       status: 'observed'
     };
   }

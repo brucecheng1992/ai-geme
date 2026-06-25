@@ -169,7 +169,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
     const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
     const capabilities = new Map(support.capabilities.map((capability) => [capability.capabilityId, capability]));
 
-    for (const capabilityId of ['movement.crouch.v1', 'combat.airborne_fire.v1']) {
+    for (const capabilityId of ['movement.crouch.v1']) {
       expect(capabilities.get(capabilityId)).toMatchObject({
         registered: true,
         classification: 'DEFERRED',
@@ -185,6 +185,21 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
         missingEvidenceDimensions: ['qa_observed']
       });
     }
+    expect(capabilities.get('combat.airborne_fire.v1')).toMatchObject({
+      registered: true,
+      classification: 'DEFERRED',
+      completeSupported: false,
+      legacyBacked: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
   });
 
   it('reports M2 damage invulnerability runtime loader evidence without QA completion', () => {

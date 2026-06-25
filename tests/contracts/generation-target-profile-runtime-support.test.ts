@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   COLLISION_PLATFORM_REQUIRED_PROBE_ID,
+  COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
   GenerationTargetProfileRuntimeSupportReportSchema,
@@ -14,6 +15,7 @@ import {
   buildGenerationTargetProfileRuntimeSupportReport,
   createCameraSideFollowPackageContract,
   createCollisionPlatformPackageContract,
+  createCombatAirborneFirePackageContract,
   createCombatProjectilePackageContract,
   createDefaultStraightSingleWeaponPackageContract,
   createHealthPlayerHealthPointsPackageContract,
@@ -25,6 +27,7 @@ import {
 
 const cameraCapabilityId = 'camera.side_follow.v1';
 const collisionCapabilityId = 'collision.platform.v1';
+const airborneFireCapabilityId = 'combat.airborne_fire.v1';
 const defaultWeaponCapabilityId = 'weapon.default_straight_single.v1';
 const projectileCapabilityId = 'combat.projectile.v1';
 const movementCapabilityId = 'movement.run_jump.v1';
@@ -36,6 +39,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     const capabilityQaReport = buildDefaultWeaponQaReport([
       'camera.side_follow.active',
       'collision.platform.grounded',
+      'combat.airborne_fire.fired',
       'player.fired',
       'projectile.spawned',
       'player.jumped',
@@ -62,11 +66,20 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 7,
+      observedCompleteSupportedCount: 8,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
-      observedCapabilityIds: [cameraCapabilityId, collisionCapabilityId, projectileCapabilityId, healthCapabilityId, movementCapabilityId, spawnStaticCapabilityId, defaultWeaponCapabilityId],
-      blockers: ['target_profile_runtime_support_incomplete:7/59']
+      observedCapabilityIds: [
+        cameraCapabilityId,
+        collisionCapabilityId,
+        airborneFireCapabilityId,
+        projectileCapabilityId,
+        healthCapabilityId,
+        movementCapabilityId,
+        spawnStaticCapabilityId,
+        defaultWeaponCapabilityId
+      ],
+      blockers: ['target_profile_runtime_support_incomplete:8/59']
     });
     expect(camera).toMatchObject({
       capabilityId: cameraCapabilityId,
@@ -108,6 +121,17 @@ describe('Step 37 target profile runtime support overlay', () => {
       observedCompleteSupported: true,
       requiredProbeIds: [COMBAT_PROJECTILE_REQUIRED_PROBE_ID],
       verifiedRequiredProbeIds: [COMBAT_PROJECTILE_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+    expect(report.capabilities.find((entry) => entry.capabilityId === airborneFireCapabilityId)).toMatchObject({
+      capabilityId: airborneFireCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID],
       missingRequiredProbeIds: [],
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
@@ -165,6 +189,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       blockers: [
         `capability_qa_report_missing_required_probe:${CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID}`,
         `capability_qa_report_missing_required_probe:${COLLISION_PLATFORM_REQUIRED_PROBE_ID}`,
+        `capability_qa_report_missing_required_probe:${COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID}`,
         `capability_qa_report_missing_required_probe:${COMBAT_PROJECTILE_REQUIRED_PROBE_ID}`,
         `capability_qa_report_missing_required_probe:${HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID}`,
         `capability_qa_report_missing_required_probe:${MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID}`,
@@ -188,6 +213,7 @@ function buildDefaultWeaponQaReport(eventTypes: readonly string[]) {
   const packages = [
     createCameraSideFollowPackageContract(),
     createCollisionPlatformPackageContract(),
+    createCombatAirborneFirePackageContract(),
     createDefaultStraightSingleWeaponPackageContract(),
     createCombatProjectilePackageContract(),
     createMovementRunJumpPackageContract(),
@@ -195,7 +221,16 @@ function buildDefaultWeaponQaReport(eventTypes: readonly string[]) {
     createHealthPlayerHealthPointsPackageContract()
   ];
   const lockReport = resolveGameplayCapabilityGraph({
-    requestedCapabilities: [cameraCapabilityId, collisionCapabilityId, defaultWeaponCapabilityId, projectileCapabilityId, movementCapabilityId, spawnStaticCapabilityId, healthCapabilityId],
+    requestedCapabilities: [
+      cameraCapabilityId,
+      collisionCapabilityId,
+      airborneFireCapabilityId,
+      defaultWeaponCapabilityId,
+      projectileCapabilityId,
+      movementCapabilityId,
+      spawnStaticCapabilityId,
+      healthCapabilityId
+    ],
     packages,
     runtimeFamily: 'phaser_2d_action_arcade.v1'
   });
@@ -242,6 +277,19 @@ function buildDefaultWeaponQaReport(eventTypes: readonly string[]) {
             probeId: DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
             action: 'fire',
             eventType: 'player.fired',
+            eventTypes,
+            status: 'observed' as const,
+            sourceRef: 'qa_report.capability_runtime'
+          }
+        ]
+      : []),
+    ...(eventTypes.includes('combat.airborne_fire.fired')
+      ? [
+          {
+            capabilityId: airborneFireCapabilityId,
+            probeId: COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID,
+            action: 'fire',
+            eventType: 'combat.airborne_fire.fired',
             eventTypes,
             status: 'observed' as const,
             sourceRef: 'qa_report.capability_runtime'
