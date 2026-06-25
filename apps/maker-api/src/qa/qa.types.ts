@@ -21,6 +21,7 @@ export type QaFailureCode =
   | 'FATAL_CONSOLE_ERROR'
   | 'QA_BRIDGE_MISSING'
   | 'RUNTIME_AUTHORITY_MISMATCH'
+  | 'CAPABILITY_RUNTIME_MISMATCH'
   | 'REQUIRED_TELEMETRY_MISSING'
   | 'QA_RUNNER_FAILED';
 
@@ -49,6 +50,7 @@ export type QaBrowserResult = {
   visual_metrics?: QaVisualMetrics;
   asset_runtime?: QaAssetRuntimeTelemetry;
   runtime_authority?: QaRuntimeAuthorityEvidence;
+  capability_runtime?: QaCapabilityRuntimeEvidence;
 };
 
 export type RunQaInput = {
@@ -60,6 +62,7 @@ export type RunQaInput = {
   timeoutMs?: number;
   screenshotPath?: string;
   expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation;
+  expectedCapabilityRuntime?: QaCapabilityRuntimeExpectation;
 };
 
 export type QaVisualMetrics = {
@@ -98,6 +101,7 @@ export type QaReport = {
   visual_metrics?: QaVisualMetrics;
   asset_semantic_repair?: QaAssetSemanticRepairReport;
   runtime_authority?: QaRuntimeAuthorityEvidence;
+  capability_runtime?: QaCapabilityRuntimeEvidence;
   started_at: string;
   completed_at: string;
 };
@@ -115,6 +119,34 @@ export type QaRuntimeAuthorityEvidence = {
   status: 'PASSED' | 'FAILED' | 'NOT_REQUIRED';
   expected?: QaRuntimeAuthorityExpectation;
   observed?: Partial<QaRuntimeAuthorityExpectation>;
+  mismatches: string[];
+};
+
+export type QaCapabilityRuntimeProbeExpectation = {
+  capabilityId: string;
+  probeId: string;
+  action: string;
+  eventType: string;
+  projectileEntityId?: string;
+};
+
+export type QaCapabilityRuntimeExpectation = {
+  requiredProbes: QaCapabilityRuntimeProbeExpectation[];
+};
+
+export type QaCapabilityRuntimeObservedProbe = QaCapabilityRuntimeProbeExpectation & {
+  runtimeModuleId?: string;
+  projectileId?: string;
+  sourceRef?: string;
+  status?: string;
+  observedIn: Array<'snapshot' | 'telemetry'>;
+};
+
+export type QaCapabilityRuntimeEvidence = {
+  status: 'PASSED' | 'FAILED' | 'NOT_REQUIRED';
+  expected?: QaCapabilityRuntimeExpectation;
+  observed: QaCapabilityRuntimeObservedProbe[];
+  missingProbeIds: string[];
   mismatches: string[];
 };
 

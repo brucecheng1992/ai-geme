@@ -14,7 +14,7 @@ import { RunStoreService } from '../../apps/maker-api/src/projects/run-store.ser
 import { LocalWorkspaceService } from '../../apps/maker-api/src/workspace/local-workspace.service.js';
 import { TemplateCompilerService } from '../../apps/maker-api/src/compiler/template-compiler.service.js';
 import type { RuntimeCompileResult } from '../../apps/maker-api/src/compiler/compiler.types.js';
-import type { QaGenre, QaReport, QaRuntimeAuthorityExpectation } from '../../apps/maker-api/src/qa/qa.types.js';
+import type { QaCapabilityRuntimeExpectation, QaGenre, QaReport, QaRuntimeAuthorityExpectation } from '../../apps/maker-api/src/qa/qa.types.js';
 import {
   AssetManifestSchema,
   AssetResolutionReportSchema,
@@ -855,6 +855,7 @@ describe('GenerationPipelineService failure states', () => {
     const rawDsl = RawGameDslSchema.parse(createSideScrollingRunAndGunRawDsl());
     let compiledTemplateId: string | undefined;
     let qaGenre: QaGenre | undefined;
+    let qaCapabilityRuntimeExpectation: QaCapabilityRuntimeExpectation | undefined;
     const pipeline = createPipeline({
       modelProvider: createModelProviderForRawDsl(rawDsl),
       compiler: {
@@ -883,8 +884,13 @@ describe('GenerationPipelineService failure states', () => {
         }
       },
       qaRunner: {
-        async run(input: { genre: QaGenre; expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation }) {
+        async run(input: {
+          genre: QaGenre;
+          expectedRuntimeAuthority?: QaRuntimeAuthorityExpectation;
+          expectedCapabilityRuntime?: QaCapabilityRuntimeExpectation;
+        }) {
           qaGenre = input.genre;
+          qaCapabilityRuntimeExpectation = input.expectedCapabilityRuntime;
           return createQaReport(input.genre, {}, input.expectedRuntimeAuthority);
         }
       }
@@ -897,6 +903,16 @@ describe('GenerationPipelineService failure states', () => {
     const index = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'pipeline_artifact_index.json'), 'utf8'));
     expect(compiledTemplateId).toBe('side_scrolling_run_and_gun.v1');
     expect(qaGenre).toBe('side_scrolling_run_and_gun');
+    expect(qaCapabilityRuntimeExpectation).toEqual({
+      requiredProbes: [
+        {
+          capabilityId: 'weapon.default_straight_single.v1',
+          probeId: 'weapon.default_straight_single.fire.browser_qa.v1',
+          action: 'fire',
+          eventType: 'player.fired'
+        }
+      ]
+    });
     expect(intentPlan).toMatchObject({
       normalizedGenre: 'side_scrolling_run_and_gun',
       runtimeDslSupport: 'supported',

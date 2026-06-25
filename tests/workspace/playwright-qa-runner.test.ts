@@ -6,9 +6,9 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { PlayableQaGateService } from '../../apps/maker-api/src/qa/playable-qa-gate.service.js';
-import { evaluateRuntimeAuthorityEvidence } from '../../apps/maker-api/src/qa/playwright-browser-runner.js';
+import { evaluateCapabilityRuntimeEvidence, evaluateRuntimeAuthorityEvidence } from '../../apps/maker-api/src/qa/playwright-browser-runner.js';
 import { PlaywrightQaRunnerService } from '../../apps/maker-api/src/qa/playwright-qa-runner.service.js';
-import type { QaAssetRuntimeTelemetry, QaBrowserRunner, QaRuntimeAuthorityExpectation } from '../../apps/maker-api/src/qa/qa.types.js';
+import type { QaAssetRuntimeTelemetry, QaBrowserRunner, QaCapabilityRuntimeExpectation, QaRuntimeAuthorityExpectation } from '../../apps/maker-api/src/qa/qa.types.js';
 import { LocalWorkspaceService } from '../../apps/maker-api/src/workspace/local-workspace.service.js';
 import type { TelemetryEvent } from '../../packages/runtime-core/src/index.js';
 
@@ -116,6 +116,118 @@ describe('Playable QA gate and runner', () => {
       observed: expectedRuntimeAuthority,
       mismatches: []
     });
+  });
+
+  it('evaluates capability runtime probe evidence from QA snapshot and telemetry', () => {
+    const expectedCapabilityRuntime = createDefaultWeaponCapabilityRuntimeExpectation();
+    const probe = {
+      capabilityId: 'weapon.default_straight_single.v1',
+      probeId: 'weapon.default_straight_single.fire.browser_qa.v1',
+      runtimeModuleId: 'weapon.default_straight_single',
+      action: 'fire',
+      eventType: 'player.fired',
+      projectileEntityId: 'pulse_bolt',
+      projectileId: 'projectile_1_0',
+      sourceRef: 'runtime_plan.side_scrolling.player.projectileEntityId',
+      status: 'observed'
+    };
+    const telemetry: TelemetryEvent[] = [
+      {
+        type: 'player.fired',
+        timestamp_ms: 1,
+        frame: 1,
+        payload: { capabilityRuntime: probe }
+      }
+    ];
+
+    expect(
+      evaluateCapabilityRuntimeEvidence(
+        {
+          capabilityRuntime: {
+            source: 'side_scrolling_runtime',
+            probes: [probe]
+          }
+        },
+        telemetry,
+        expectedCapabilityRuntime
+      )
+    ).toMatchObject({
+      status: 'PASSED',
+      expected: expectedCapabilityRuntime,
+      missingProbeIds: [],
+      mismatches: [],
+      observed: [
+        expect.objectContaining({
+          capabilityId: 'weapon.default_straight_single.v1',
+          probeId: 'weapon.default_straight_single.fire.browser_qa.v1',
+          action: 'fire',
+          eventType: 'player.fired',
+          observedIn: ['snapshot', 'telemetry']
+        })
+      ]
+    });
+  });
+
+  it('fails capability runtime evidence when a required probe is absent', () => {
+    const expectedCapabilityRuntime = createDefaultWeaponCapabilityRuntimeExpectation();
+
+    expect(evaluateCapabilityRuntimeEvidence({}, [], expectedCapabilityRuntime)).toEqual({
+      status: 'FAILED',
+      expected: expectedCapabilityRuntime,
+      observed: [],
+      missingProbeIds: ['weapon.default_straight_single.fire.browser_qa.v1'],
+      mismatches: ['capabilityRuntime.probes[weapon.default_straight_single.fire.browser_qa.v1]: missing']
+    });
+  });
+
+  it('passes capability runtime evidence through the QA report', async () => {
+    const expectedCapabilityRuntime = createDefaultWeaponCapabilityRuntimeExpectation();
+    const capabilityRuntime = evaluateCapabilityRuntimeEvidence(
+      {
+        capabilityRuntime: {
+          source: 'side_scrolling_runtime',
+          probes: [
+            {
+              capabilityId: 'weapon.default_straight_single.v1',
+              probeId: 'weapon.default_straight_single.fire.browser_qa.v1',
+              runtimeModuleId: 'weapon.default_straight_single',
+              action: 'fire',
+              eventType: 'player.fired',
+              projectileEntityId: 'pulse_bolt',
+              projectileId: 'projectile_1_0',
+              sourceRef: 'runtime_plan.side_scrolling.player.projectileEntityId',
+              status: 'observed'
+            }
+          ]
+        }
+      },
+      [],
+      expectedCapabilityRuntime
+    );
+    const browserRunner: QaBrowserRunner = async () => ({
+      ok: true,
+      visual_ok: true,
+      interaction_ok: true,
+      telemetry: sideScrollingObservedBase().map((type, index) => ({ type, timestamp_ms: index, frame: index })),
+      observed_events: sideScrollingObservedBase(),
+      snapshot: {},
+      console_errors: [],
+      asset_runtime: validQaAssetRuntime(['background_main', 'player', 'enemy', 'projectile']),
+      capability_runtime: capabilityRuntime
+    });
+    const runner = new PlaywrightQaRunnerService(workspace, gate, browserRunner);
+
+    const report = await runner.run({
+      projectId,
+      runId,
+      genre: 'side_scrolling_run_and_gun',
+      previewUrl: 'http://localhost:3000/preview/proj/index.html',
+      expectedCapabilityRuntime
+    });
+
+    expect(report.status).toBe('PASSED');
+    expect(report.capability_runtime).toEqual(capabilityRuntime);
+    await expect(readFile(workspace.getQaReportPath(projectId, runId), 'utf8')).resolves.toContain('"capability_runtime"');
   });
 
   it('fails QA when runtime authority evidence mismatches the expected bundle hash', async () => {
@@ -1239,6 +1351,23 @@ function missingObservedBase(): TelemetryEvent['type'][] {
   return ['game.ready', 'game.started', 'input.received', 'player.moved', 'player.fired', 'projectile.spawned', 'enemy.hit', 'game.restarted', 'score.changed'];
 }
 
+function sideScrollingObservedBase(): TelemetryEvent['type'][] {
+  return [
+    'game.ready',
+    'game.started',
+    'input.received',
+    'player.moved',
+    'player.jumped',
+    'player.fired',
+    'enemy.fired',
+    'projectile.spawned',
+    'enemy.hit',
+    'checkpoint.reached',
+    'game.restarted',
+    'level.segment.completed'
+  ];
+}
+
 async function writeValidAssetManifest(workspace: LocalWorkspaceService, id: string): Promise<void> {
   const assets = [
     { id: 'background_main', role: 'background', size: { w: 640, h: 360 } },
@@ -2062,6 +2191,19 @@ function createRuntimeAuthorityExpectation(): QaRuntimeAuthorityExpectation {
     runtimeTemplateId: 'phaser/side_scrolling_run_and_gun.v1',
     runtimeTemplateManifestId: 'side_scrolling_run_and_gun.v1',
     qaProfile: 'side_scrolling_run_and_gun_smoke'
+  };
+}
+
+function createDefaultWeaponCapabilityRuntimeExpectation(): QaCapabilityRuntimeExpectation {
+  return {
+    requiredProbes: [
+      {
+        capabilityId: 'weapon.default_straight_single.v1',
+        probeId: 'weapon.default_straight_single.fire.browser_qa.v1',
+        action: 'fire',
+        eventType: 'player.fired'
+      }
+    ]
   };
 }
 

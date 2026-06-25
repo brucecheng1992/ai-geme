@@ -89,8 +89,22 @@ type SideScrollingTemplateSnapshot = TemplateSnapshot & {
     runtimeTemplateManifestId: string;
     qaProfile: string;
   };
+  capabilityRuntime?: {
+    source: 'side_scrolling_runtime';
+    probes: Array<{
+      capabilityId: string;
+      probeId: string;
+      runtimeModuleId: string;
+      action: string;
+      eventType: string;
+      projectileEntityId: string;
+      projectileId?: string;
+      sourceRef: string;
+      status: 'observed';
+    }>;
+  };
   enemies: Array<{ id: string; entityId: string; x: number; y: number; health: number; cleared: boolean }>;
-  projectiles: Array<{ id: string; x: number; y: number }>;
+  projectiles: Array<{ id: string; owner: string; x: number; y: number; sourceId?: string; capabilityId?: string; probeId?: string }>;
   waves: Array<{ id: string; triggered: boolean }>;
 };
 
@@ -1116,6 +1130,45 @@ describe('Phaser templates', () => {
         runtimeTemplateManifestId: 'side_scrolling_run_and_gun.v1',
         qaProfile: 'side_scrolling_run_and_gun_smoke'
       }
+    });
+  });
+
+  it('exposes default weapon capability runtime evidence through side-scrolling QA telemetry', async () => {
+    const { SideScrollingRunAndGunScene } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/GameScene.js');
+    const { defaultSideScrollingRuntimeSlice } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/side-scrolling-runtime-plan.js');
+    const { defaultSideScrollingParams } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/template-params.js');
+    const scene = new SideScrollingRunAndGunScene(defaultSideScrollingParams, { side_scrolling: defaultSideScrollingRuntimeSlice });
+
+    scene.create();
+    scene.start();
+    scene.fire(1_000);
+
+    const expectedProbe = {
+      capabilityId: 'weapon.default_straight_single.v1',
+      probeId: 'weapon.default_straight_single.fire.browser_qa.v1',
+      runtimeModuleId: 'weapon.default_straight_single',
+      action: 'fire',
+      eventType: 'player.fired',
+      projectileEntityId: 'pulse_bolt',
+      sourceRef: 'runtime_plan.side_scrolling.player.projectileEntityId',
+      status: 'observed'
+    };
+    const snapshot = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
+    const telemetry = globalThis.__GAME_QA__?.telemetry() ?? [];
+    const firedEvent = telemetry.find((event) => event.type === 'player.fired');
+    const projectileEvent = telemetry.find((event) => event.type === 'projectile.spawned');
+
+    expect(firedEvent?.payload?.capabilityRuntime).toMatchObject(expectedProbe);
+    expect(projectileEvent?.payload?.capabilityRuntime).toMatchObject(expectedProbe);
+    expect(snapshot?.capabilityRuntime).toMatchObject({
+      source: 'side_scrolling_runtime',
+      probes: [expect.objectContaining(expectedProbe)]
+    });
+    expect(snapshot?.projectiles[0]).toMatchObject({
+      owner: 'player',
+      sourceId: 'pulse_bolt',
+      capabilityId: 'weapon.default_straight_single.v1',
+      probeId: 'weapon.default_straight_single.fire.browser_qa.v1'
     });
   });
 

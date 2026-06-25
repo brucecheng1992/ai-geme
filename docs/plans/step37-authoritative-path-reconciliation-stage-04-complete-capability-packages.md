@@ -276,3 +276,106 @@ Next: Stage 4 implementation checkpoint commit
 ```
 
 Stop marker: Stage 4 implementation passed Oracle for package closure gate only. Do not enter Stage 5 and do not claim complete package closure until checkpoint commit complete.
+
+## Stage 4 Closure Implementation — Default Weapon Browser QA Evidence Surface
+
+### Scope Lock
+
+- scope: Stage 4 implementation only.
+- baseline: Stage 4 package closure gate checkpoint commit `2cfe1f54` (`feat(game-dsl): expose stage 4 package closure gate`).
+- implementation target: create a browser-observed capability runtime evidence surface for `weapon.default_straight_single.v1` and ensure QA report consumers can read and fail closed on the required probe.
+- non-goals: no registry `qa_observed` promotion, no `completeSupported` promotion, no complete package set, no Stage 5 exact lock, no composed schema, no canonical DSL change, no runtime loader rewrite, no production default cutover.
+- starting conclusion: `Stage 4 Exit gate: NOT_MET`; nearest partial slice is `weapon.default_straight_single.v1` with `schema_expressible=true`, `normalized=true`, `compiled=true`, `runtime_consumed=true`, `qa_observed=false`.
+
+### Extracted Minimal Closure Requirements
+
+1. Keep Stage 4 package closure fail-closed while adding only browser-observable evidence plumbing for the default weapon capability.
+2. Emit a stable probe from the real side-scrolling `fire()` action path, not from a static report or synthetic support summary.
+3. Surface the probe through both `__GAME_QA__.telemetry()` and `__GAME_QA__.snapshot()` so browser QA can observe it after deterministic interaction.
+4. Make Playwright QA evaluate required capability runtime probes when the pipeline passes an expectation, and write the evidence into `qa_report.json`.
+5. Pass the default weapon probe expectation only for `side_scrolling_run_and_gun` QA; leave other genres unchanged.
+6. Do not mark `weapon.default_straight_single.v1` `qa_observed=true` until the package registry/support summary has an explicit Stage 4 promotion gate.
+
+### Implemented Scope
+
+- Added optional `QaCapabilityRuntimeExpectation` / `QaCapabilityRuntimeEvidence` to QA input, browser result, and QA report types.
+- Added `evaluateCapabilityRuntimeEvidence` to Playwright browser QA:
+  - reads capability probes from `snapshot.capabilityRuntime.probes`;
+  - reads matching probes from telemetry payload `capabilityRuntime`;
+  - fails closed with `CAPABILITY_RUNTIME_MISMATCH` when an expected probe is absent or mismatched.
+- Side-scrolling runtime now emits default weapon probe evidence when `fire()` creates a player projectile:
+  - `capabilityId: weapon.default_straight_single.v1`;
+  - `probeId: weapon.default_straight_single.fire.browser_qa.v1`;
+  - `action: fire`;
+  - `eventType: player.fired`;
+  - `sourceRef: runtime_plan.side_scrolling.player.projectileEntityId`.
+- `PlaywrightQaRunnerService` preserves `capability_runtime` in `qa_report.json`.
+- `GenerationPipelineService` passes the default weapon expected probe to QA only for `side_scrolling_run_and_gun`.
+- Existing package closure gate remains blocked at `completeSupportedCount=0/59`; Stage 5 exact lock remains blocked.
+
+### Compatibility & Cutover
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Side-scrolling `fire()` now produces `capabilityRuntime` probe evidence in `player.fired`, `projectile.spawned`, projectile snapshot metadata, and `snapshot.capabilityRuntime.probes`; QA report schemas add optional `capability_runtime`. |
+| Consumer list | Playwright browser QA reads the probe from browser snapshot/telemetry; `PlaywrightQaRunnerService` writes it to `qa_report.json`; `GenerationPipelineService` passes the side-scrolling expected probe to QA. |
+| Compatibility type | `LEGACY_FORBIDDEN` for the expected probe gate: a side-scrolling preview that cannot expose the default weapon probe fails closed with `CAPABILITY_RUNTIME_MISMATCH` instead of silently claiming browser-observed capability evidence. |
+| Authority | Runtime action evidence is authoritative only when produced by the side-scrolling runtime session after `fire()`; the expected probe identity is owned by the Stage 4 QA expectation in the production pipeline. |
+| Legacy strategy | Old previews without `capabilityRuntime` are not accepted for this evidence gate; they must be rebuilt through the current template before browser QA can satisfy the probe. |
+| Failure policy | Missing probe, wrong capability id, wrong action, wrong event type, or wrong projectile entity id produces failed capability runtime evidence and blocks QA success when the expectation is required. |
+| Evidence | RED/GREEN focused tests prove missing runtime evidence failed first, then browser QA evaluator/report/pipeline all consumed the new probe; full tests and typecheck passed. |
+| Rollback | Reverting this implementation removes only optional QA evidence plumbing and the side-scrolling probe; package closure gate remains blocked and Stage 5 stays unentered. |
+
+Compatibility disposition:
+
+```ts
+const STAGE_4_DEFAULT_WEAPON_BROWSER_QA_DISPOSITION = "LEGACY_FORBIDDEN";
+```
+
+Completion rule result:
+
+- Same-run consumer evidence exists for the named downstream consumer: Playwright browser QA evaluates the probe and the QA runner writes it into `qa_report.json`.
+- Stage 4 package closure is still not met because registry/support summary still records `qa_observed=false` and `completeSupported=false` for `weapon.default_straight_single.v1`.
+
+### Validation
+
+```text
+npx vitest run tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts
+# RED: failed before implementation because side-scrolling telemetry lacked capabilityRuntime and evaluateCapabilityRuntimeEvidence was missing
+
+npx vitest run tests/workspace/generation-pipeline.service.test.ts -t "routes supported side-scrolling run-and-gun prompts through compile, build, and QA"
+# RED: failed before pipeline wiring because expectedCapabilityRuntime was undefined
+
+npx vitest run tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/generation-pipeline.service.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-profile-recipe-compiler.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/generation-capability-resolution.test.ts tests/contracts/generation-capability-gap.test.ts
+# PASS, 11 files / 178 tests
+
+npm test
+# PASS, contracts 93 files / 1037 tests; workspace 34 files / 401 tests
+
+npm run typecheck
+# PASS
+```
+
+### Implementation Oracle Review
+
+- review status: PASS.
+- agent: `019efeb5-9986-7af3-a415-0ffd8b9826ce`.
+- findings: P0/P1/P2 none.
+- P3: Direct `PlaywrightQaRunnerService.run` calls remain opt-in for `expectedCapabilityRuntime`; production `GenerationPipelineService` passes the side-scrolling expectation, so this does not block the current micro-loop. Future Workbench/manual QA evidence claims should centralize or require the expectation at the QA service boundary.
+- checkpoint decision: Stage 4 default weapon browser QA evidence implementation may enter checkpoint commit.
+- scope guard: This review approves only the default weapon browser-observed capability runtime evidence surface and QA report propagation. It does not approve registry `qa_observed` promotion, complete package closure, Stage 5 exact lock, composed schema, canonical DSL, runtime-loader cutover, or production default cutover.
+
+### Implementation Exit Assessment
+
+```text
+Stage 1: AUTHORITATIVE_AND_CONNECTED
+Stage 2: PROFILE_RESOLUTION_CLOSED
+Stage 3: CAPABILITY_REQUIREMENTS_CLOSED
+Stage 4 Audit: COMPLETE_PACKAGE_CLOSURE_NOT_MET
+Stage 4 Package Closure Gate: CHECKPOINT_COMMITTED
+Stage 4 Default Weapon Browser QA Evidence: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 Exit gate: NOT_MET
+Next: Stage 4 default weapon browser QA evidence checkpoint commit
+```
+
+Stop marker: Stage 4 default weapon browser QA evidence implementation passed Oracle and is awaiting checkpoint commit. Do not enter Stage 5 and do not claim complete package closure.

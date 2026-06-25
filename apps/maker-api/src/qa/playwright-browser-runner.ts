@@ -3,11 +3,14 @@ import { dirname } from 'node:path';
 
 import type { Browser, Page } from 'playwright';
 
-import { TelemetryEventSchema } from '../../../../packages/runtime-core/src/index.js';
+import { TelemetryEventSchema, type TelemetryEvent } from '../../../../packages/runtime-core/src/index.js';
 import type {
   QaAssetRuntimeTelemetry,
   QaBrowserResult,
   QaBrowserRunner,
+  QaCapabilityRuntimeEvidence,
+  QaCapabilityRuntimeExpectation,
+  QaCapabilityRuntimeObservedProbe,
   QaFailureCode,
   QaGenre,
   QaRequiredEvents,
@@ -115,8 +118,10 @@ export const runPlaywrightQaBrowser: QaBrowserRunner = async (input, requiredEve
     const telemetry = result.telemetry.map((event) => TelemetryEventSchema.parse(event));
     const gateReady = requiredTelemetryObserved(telemetry.map((event) => event.type), requiredEvents);
     const runtimeAuthority = evaluateRuntimeAuthorityEvidence(result.snapshot, input.expectedRuntimeAuthority);
+    const capabilityRuntime = evaluateCapabilityRuntimeEvidence(result.snapshot, telemetry, input.expectedCapabilityRuntime);
     const runtimeAuthorityReady = runtimeAuthority?.status !== 'FAILED';
-    const interactionReady = consoleErrors.length === 0 && gateReady && interactionAssertion.ok && runtimeAuthorityReady;
+    const capabilityRuntimeReady = capabilityRuntime?.status !== 'FAILED';
+    const interactionReady = consoleErrors.length === 0 && gateReady && interactionAssertion.ok && runtimeAuthorityReady && capabilityRuntimeReady;
 
     return {
       ok: interactionReady && visualGate.ok,
@@ -126,12 +131,13 @@ export const runPlaywrightQaBrowser: QaBrowserRunner = async (input, requiredEve
       telemetry,
       snapshot: result.snapshot,
       console_errors: consoleErrors,
-      failure_code: resolveInteractionFailureCode({ consoleErrors, gateReady, interactionAssertion, runtimeAuthority }),
-      message: buildInteractionMessage(interactionAssertion.message, runtimeAuthority),
+      failure_code: resolveInteractionFailureCode({ consoleErrors, gateReady, interactionAssertion, runtimeAuthority, capabilityRuntime }),
+      message: buildInteractionMessage(interactionAssertion.message, runtimeAuthority, capabilityRuntime),
       screenshot_path: visualGate.screenshot_path,
       visual_metrics: visualGate.visual_metrics,
       asset_runtime: assetAssertion.telemetry,
-      runtime_authority: runtimeAuthority
+      runtime_authority: runtimeAuthority,
+      capability_runtime: capabilityRuntime
     };
   } catch (error) {
     return {
@@ -200,6 +206,51 @@ export function evaluateRuntimeAuthorityEvidence(
   };
 }
 
+export function evaluateCapabilityRuntimeEvidence(
+  snapshot: unknown,
+  telemetry: readonly TelemetryEvent[],
+  expected: QaCapabilityRuntimeExpectation | undefined
+): QaCapabilityRuntimeEvidence | undefined {
+  if (expected === undefined) {
+    return undefined;
+  }
+
+  const observed = collectCapabilityRuntimeObservedProbes(snapshot, telemetry);
+  const observedByProbeId = new Map(observed.map((probe) => [probe.probeId, probe]));
+  const missingProbeIds: string[] = [];
+  const mismatches: string[] = [];
+
+  for (const expectedProbe of expected.requiredProbes) {
+    const observedProbe = observedByProbeId.get(expectedProbe.probeId);
+    if (observedProbe === undefined) {
+      missingProbeIds.push(expectedProbe.probeId);
+      mismatches.push(`capabilityRuntime.probes[${expectedProbe.probeId}]: missing`);
+      continue;
+    }
+
+    mismatches.push(...compareScalar(`capabilityRuntime.probes[${expectedProbe.probeId}].capabilityId`, observedProbe.capabilityId, expectedProbe.capabilityId));
+    mismatches.push(...compareScalar(`capabilityRuntime.probes[${expectedProbe.probeId}].action`, observedProbe.action, expectedProbe.action));
+    mismatches.push(...compareScalar(`capabilityRuntime.probes[${expectedProbe.probeId}].eventType`, observedProbe.eventType, expectedProbe.eventType));
+    if (expectedProbe.projectileEntityId !== undefined) {
+      mismatches.push(
+        ...compareScalar(
+          `capabilityRuntime.probes[${expectedProbe.probeId}].projectileEntityId`,
+          observedProbe.projectileEntityId,
+          expectedProbe.projectileEntityId
+        )
+      );
+    }
+  }
+
+  return {
+    status: missingProbeIds.length === 0 && mismatches.length === 0 ? 'PASSED' : 'FAILED',
+    expected,
+    observed,
+    missingProbeIds,
+    mismatches
+  };
+}
+
 function readRuntimeAuthoritySnapshot(snapshot: unknown): Partial<QaRuntimeAuthorityExpectation> | undefined {
   if (snapshot === null || typeof snapshot !== 'object' || !('runtimeAuthority' in snapshot)) {
     return undefined;
@@ -254,8 +305,88 @@ function readString(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;
 }
 
+function collectCapabilityRuntimeObservedProbes(snapshot: unknown, telemetry: readonly TelemetryEvent[]): QaCapabilityRuntimeObservedProbe[] {
+  const probesById = new Map<string, QaCapabilityRuntimeObservedProbe>();
+  for (const probe of readSnapshotCapabilityRuntimeProbes(snapshot)) {
+    mergeCapabilityRuntimeProbe(probesById, probe, 'snapshot');
+  }
+
+  for (const event of telemetry) {
+    const payload = isRecord(event.payload) ? event.payload : undefined;
+    const probe = readCapabilityRuntimeProbe(payload?.capabilityRuntime, event.type);
+    if (probe !== undefined) {
+      mergeCapabilityRuntimeProbe(probesById, probe, 'telemetry');
+    }
+  }
+
+  return [...probesById.values()].sort((left, right) => left.probeId.localeCompare(right.probeId));
+}
+
+function readSnapshotCapabilityRuntimeProbes(snapshot: unknown): Array<Omit<QaCapabilityRuntimeObservedProbe, 'observedIn'>> {
+  if (!isRecord(snapshot) || !isRecord(snapshot.capabilityRuntime) || !Array.isArray(snapshot.capabilityRuntime.probes)) {
+    return [];
+  }
+
+  return snapshot.capabilityRuntime.probes.flatMap((probe) => {
+    const observed = readCapabilityRuntimeProbe(probe);
+    return observed === undefined ? [] : [observed];
+  });
+}
+
+function readCapabilityRuntimeProbe(value: unknown, eventTypeFallback?: string): Omit<QaCapabilityRuntimeObservedProbe, 'observedIn'> | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const capabilityId = readString(value.capabilityId);
+  const probeId = readString(value.probeId);
+  const action = readString(value.action);
+  const eventType = readString(value.eventType) ?? eventTypeFallback;
+  if (capabilityId === undefined || probeId === undefined || action === undefined || eventType === undefined) {
+    return undefined;
+  }
+
+  const projectileEntityId = readString(value.projectileEntityId);
+  const runtimeModuleId = readString(value.runtimeModuleId);
+  const projectileId = readString(value.projectileId);
+  const sourceRef = readString(value.sourceRef);
+  const status = readString(value.status);
+
+  return {
+    capabilityId,
+    probeId,
+    action,
+    eventType,
+    ...(projectileEntityId === undefined ? {} : { projectileEntityId }),
+    ...(runtimeModuleId === undefined ? {} : { runtimeModuleId }),
+    ...(projectileId === undefined ? {} : { projectileId }),
+    ...(sourceRef === undefined ? {} : { sourceRef }),
+    ...(status === undefined ? {} : { status })
+  };
+}
+
+function mergeCapabilityRuntimeProbe(
+  probesById: Map<string, QaCapabilityRuntimeObservedProbe>,
+  probe: Omit<QaCapabilityRuntimeObservedProbe, 'observedIn'>,
+  observedIn: 'snapshot' | 'telemetry'
+): void {
+  const existing = probesById.get(probe.probeId);
+  if (existing === undefined) {
+    probesById.set(probe.probeId, { ...probe, observedIn: [observedIn] });
+    return;
+  }
+
+  if (!existing.observedIn.includes(observedIn)) {
+    existing.observedIn.push(observedIn);
+  }
+}
+
 function compareScalar(path: string, observed: string | undefined, expected: string): string[] {
   return observed === expected ? [] : [`${path}: expected ${expected}, observed ${observed ?? '<missing>'}`];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function resolveInteractionFailureCode(input: {
@@ -263,6 +394,7 @@ function resolveInteractionFailureCode(input: {
   gateReady: boolean;
   interactionAssertion: { ok: boolean };
   runtimeAuthority: QaRuntimeAuthorityEvidence | undefined;
+  capabilityRuntime: QaCapabilityRuntimeEvidence | undefined;
 }): QaFailureCode | undefined {
   if (input.consoleErrors.length > 0) {
     return 'FATAL_CONSOLE_ERROR';
@@ -273,13 +405,21 @@ function resolveInteractionFailureCode(input: {
   if (input.runtimeAuthority?.status === 'FAILED') {
     return 'RUNTIME_AUTHORITY_MISMATCH';
   }
+  if (input.capabilityRuntime?.status === 'FAILED') {
+    return 'CAPABILITY_RUNTIME_MISMATCH';
+  }
   return input.interactionAssertion.ok ? undefined : 'QA_RUNNER_FAILED';
 }
 
-function buildInteractionMessage(interactionMessage: string | undefined, runtimeAuthority: QaRuntimeAuthorityEvidence | undefined): string | undefined {
+function buildInteractionMessage(
+  interactionMessage: string | undefined,
+  runtimeAuthority: QaRuntimeAuthorityEvidence | undefined,
+  capabilityRuntime: QaCapabilityRuntimeEvidence | undefined
+): string | undefined {
   const messages = [
     interactionMessage,
-    runtimeAuthority?.status === 'FAILED' ? `Runtime authority mismatch: ${runtimeAuthority.mismatches.join('; ')}` : undefined
+    runtimeAuthority?.status === 'FAILED' ? `Runtime authority mismatch: ${runtimeAuthority.mismatches.join('; ')}` : undefined,
+    capabilityRuntime?.status === 'FAILED' ? `Capability runtime mismatch: ${capabilityRuntime.mismatches.join('; ')}` : undefined
   ].filter((message): message is string => message !== undefined && message.length > 0);
   return messages.length === 0 ? undefined : messages.join(' ');
 }

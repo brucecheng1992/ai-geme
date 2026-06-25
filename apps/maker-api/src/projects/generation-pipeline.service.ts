@@ -79,7 +79,7 @@ import {
   summarizeRenderFidelityForQaReport,
   writeRenderFidelityReport
 } from '../qa/render-fidelity-report.js';
-import type { QaAssetSemanticRepairReport, QaAssetSemanticRepairSkippedReason, QaGenre, QaReport } from '../qa/qa.types.js';
+import type { QaAssetSemanticRepairReport, QaAssetSemanticRepairSkippedReason, QaCapabilityRuntimeExpectation, QaGenre, QaReport } from '../qa/qa.types.js';
 import type { QaRuntimeAuthorityExpectation } from '../qa/qa.types.js';
 import { LocalWorkspaceService } from '../workspace/local-workspace.service.js';
 import { GenerationInputReportSchema, buildGenerationInputReport, type GenerationInputReport } from './generation-input-report.js';
@@ -502,9 +502,10 @@ export class GenerationPipelineService {
     const previewUrl = this.getPreviewUrl(input.projectId);
     const timeoutMs = stageOneAuthority.authorityBundle.generationScopePlan.qaProbeWindowSec * 1000;
     const expectedRuntimeAuthority = buildQaRuntimeAuthorityExpectation(stageOneAuthority.authorityBundle);
+    const expectedCapabilityRuntime = buildQaCapabilityRuntimeExpectation(genre);
 
     try {
-      return await this.qaRunner.run({ projectId: input.projectId, runId: input.runId, genre, previewUrl, timeoutMs, expectedRuntimeAuthority });
+      return await this.qaRunner.run({ projectId: input.projectId, runId: input.runId, genre, previewUrl, timeoutMs, expectedRuntimeAuthority, expectedCapabilityRuntime });
     } catch (error) {
       return await this.writeQaFailureReport(input, genre, previewUrl, errorMessage(error, 'Playwright QA runner failed.'));
     }
@@ -1868,6 +1869,23 @@ function buildQaRuntimeAuthorityExpectation(authorityBundle: AuthorityBundle): Q
     runtimeTemplateId: authorityBundle.activeProfileLock.runtimeTemplateId,
     runtimeTemplateManifestId: authorityBundle.activeProfileLock.runtimeTemplateManifestId,
     qaProfile: authorityBundle.activeProfileLock.qaProfile
+  };
+}
+
+function buildQaCapabilityRuntimeExpectation(genre: QaGenre): QaCapabilityRuntimeExpectation | undefined {
+  if (genre !== 'side_scrolling_run_and_gun') {
+    return undefined;
+  }
+
+  return {
+    requiredProbes: [
+      {
+        capabilityId: 'weapon.default_straight_single.v1',
+        probeId: 'weapon.default_straight_single.fire.browser_qa.v1',
+        action: 'fire',
+        eventType: 'player.fired'
+      }
+    ]
   };
 }
 

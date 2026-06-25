@@ -1,7 +1,7 @@
 # Step 37 Authoritative Path Reconciliation Audit
 
 > - 文档定位：Step 37 authoritative production chain 的逐段只读审计状态文档。
-> - 当前状态：Stage 4 Complete Capability Packages implementation Oracle PASS; checkpoint commit pending
+> - 当前状态：Stage 4 default weapon browser QA evidence implementation Oracle PASS; checkpoint commit pending
 > - 任务契约：`/Users/dahufa/Downloads/step37-authoritative-path-reconciliation-prompt.md`
 > - 当前分片：`docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`
 > - 更新日期：2026-06-25
@@ -48,13 +48,13 @@
 
 ## 4. 当前状态
 
-- 状态：Stage 4 Complete Capability Packages implementation Oracle PASS; checkpoint commit pending.
-- 当前步骤：Stage 4 audit checkpoint commit `d75d49ce` 已创建；Stage 4 implementation 已把 package closure gate 接入 `targetProfileSupport`，使 target profile report 明确暴露 required/registered counts、incomplete IDs 和 Stage 5 exact-lock blocker，等待 checkpoint commit。
-- 最近完成：Stage 4 Complete Capability Packages audit；结论为 `COMPLETE_PACKAGE_CLOSURE_NOT_MET`，Oracle PASS / no P0/P1/P2，P3 remediated。
-- 最近验证：Stage 4 implementation RED `tests/contracts/dsl-consumption-report.test.ts` failed as expected for missing closure fields；GREEN same test PASS；focused suite PASS；full `npm test` PASS；full `npm run typecheck` PASS；`git diff --check` PASS；trailing whitespace scan PASS。
-- 最近 Oracle 结论：Stage 1 final Oracle PASS；Stage 2 Profile Resolution audit Oracle PASS；Stage 2 closure Oracle PASS / no P0/P1/P2/P3；Stage 3 audit Oracle re-review PASS / no P0/P1/P2/P3；Stage 3 closure Oracle re-review PASS / no P0/P1/P2/P3；Stage 4 audit Oracle PASS / no P0/P1/P2, P3 remediated；Stage 4 implementation Oracle PASS / no P0/P1/P2/P3。
+- 状态：Stage 4 default weapon browser QA evidence implementation Oracle PASS; checkpoint commit pending.
+- 当前步骤：Stage 4 package closure gate checkpoint commit `2cfe1f54` 已创建；当前 Stage 4 micro-loop 已把 `weapon.default_straight_single.v1` browser-observed runtime probe 暴露到 side-scrolling QA telemetry/snapshot，并让 QA runner/report/pipeline 消费该 probe expectation。
+- 最近完成：Stage 4 当前最小 closure requirement：为 default weapon capability 建立真实 browser QA 可观察 evidence surface，但不提升 registry `qa_observed`、不声称 `completeSupported`、不进入 Stage 5。
+- 最近验证：RED `tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts` failed as expected for missing `capabilityRuntime`/missing evaluator；RED `tests/workspace/generation-pipeline.service.test.ts -t "routes supported side-scrolling run-and-gun prompts through compile, build, and QA"` failed as expected for missing `expectedCapabilityRuntime`；GREEN focused suite PASS, 11 files / 178 tests；full `npm test` PASS, contracts 93 files / 1037 tests and workspace 34 files / 401 tests；full `npm run typecheck` PASS。
+- 最近 Oracle 结论：Stage 1 final Oracle PASS；Stage 2 Profile Resolution audit Oracle PASS；Stage 2 closure Oracle PASS / no P0/P1/P2/P3；Stage 3 audit Oracle re-review PASS / no P0/P1/P2/P3；Stage 3 closure Oracle re-review PASS / no P0/P1/P2/P3；Stage 4 audit Oracle PASS / no P0/P1/P2, P3 remediated；Stage 4 package closure gate implementation Oracle PASS / no P0/P1/P2/P3；Stage 4 default weapon browser QA evidence implementation Oracle PASS / no P0/P1/P2，P3 notes direct `PlaywrightQaRunnerService.run` capability evidence gate remains opt-in outside production pipeline。
 - 未处理风险：Stage 4 complete package closure 尚未达成；Stage 5 Exact Capability Lock 尚未进入；Stage 3 Gate E 仍不证明 `profileRequirements.requirementsHash` / `requiredCapabilityIds` 字段级 downstream action；post-Stage-1 shadow/canary parity/rollback 仍未实施。`QaReport` status consistency 作为非阻塞债务登记，不重新打开 Stage 1。
-- 工作区核对：当前仅允许 Stage 4 implementation 相关 files：`packages/game-dsl/src/dsl-consumption-report.ts`、`tests/contracts/dsl-consumption-report.test.ts`、本状态文档和 Stage 4 分片。
+- 工作区核对：当前仅允许 Stage 4 implementation 相关 files：QA runner/report/pipeline capability-runtime evidence files、side-scrolling template QA evidence files、相关 focused tests、本状态文档和 Stage 4 分片。
 
 ## 5. 下一步
 
@@ -78,7 +78,7 @@ Stage 4 Implementation: ORACLE_PASSED_AWAITING_COMMIT
 Stage 4 Exit gate: NOT_MET
 ```
 
-下一步完成 Stage 4 implementation checkpoint commit。不要把 closure gate 的 fail-closed blocker 误报成 complete package closure；它只阻断 Stage 5 exact lock，直到 `completeSupportedCount=59`。
+下一步完成当前 Stage 4 default weapon browser QA evidence implementation checkpoint commit。不要把 `capabilityRuntime` browser evidence surface 误报成 package closure；它只证明一枚 capability 的 QA 观察链路已经可被生产 QA 消费，直到 registry/package closure 独立升级前 `completeSupportedCount=0/59` 仍保持不变。
 
 ## 6. 恢复检查清单
 

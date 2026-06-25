@@ -53,7 +53,26 @@ type ProjectileActor = RuntimeActor & {
   owner: 'player' | 'enemy';
   damage: number;
   sourceId?: string;
+  capabilityId?: string;
+  probeId?: string;
 };
+
+type CapabilityRuntimeProbe = {
+  capabilityId: string;
+  probeId: string;
+  runtimeModuleId: string;
+  action: 'fire';
+  eventType: 'player.fired';
+  projectileEntityId: string;
+  projectileId: string;
+  sourceRef: string;
+  status: 'observed';
+};
+
+const DEFAULT_WEAPON_CAPABILITY_ID = 'weapon.default_straight_single.v1';
+const DEFAULT_WEAPON_CAPABILITY_PROBE_ID = 'weapon.default_straight_single.fire.browser_qa.v1';
+const DEFAULT_WEAPON_RUNTIME_MODULE_ID = 'weapon.default_straight_single';
+const DEFAULT_WEAPON_PROJECTILE_SOURCE_REF = 'runtime_plan.side_scrolling.player.projectileEntityId';
 
 export class SideScrollingRunAndGunScene {
   private readonly plan: SideScrollingRuntimeSlice;
@@ -81,6 +100,7 @@ export class SideScrollingRunAndGunScene {
   private readonly staticSprites = new Set<Phaser.GameObjects.GameObject>();
   private readonly enemySprites = new Map<string, Phaser.GameObjects.GameObject>();
   private readonly projectileSprites = new Map<string, Phaser.GameObjects.GameObject>();
+  private readonly capabilityRuntimeProbes = new Map<string, CapabilityRuntimeProbe>();
   private playerSprite?: Phaser.GameObjects.GameObject;
   private hudText?: Phaser.GameObjects.Text;
   private cameraScrollX = 0;
@@ -130,7 +150,16 @@ export class SideScrollingRunAndGunScene {
         sceneBindings: this.sceneBindingState,
         runtimeAuthority: this.runtimeAuthority,
         enemies: this.enemies.map((enemy) => this.enemySnapshot(enemy)),
-        projectiles: this.projectiles.map((projectile) => ({ id: projectile.id, owner: projectile.owner, x: projectile.x, y: projectile.y })),
+        capabilityRuntime: this.capabilityRuntimeSnapshot(),
+        projectiles: this.projectiles.map((projectile) => ({
+          id: projectile.id,
+          owner: projectile.owner,
+          x: projectile.x,
+          y: projectile.y,
+          ...(projectile.sourceId === undefined ? {} : { sourceId: projectile.sourceId }),
+          ...(projectile.capabilityId === undefined ? {} : { capabilityId: projectile.capabilityId }),
+          ...(projectile.probeId === undefined ? {} : { probeId: projectile.probeId })
+        })),
         waves: this.plan.waves.map((wave) => ({ ...wave, triggered: this.triggeredWaves.has(wave.id) })),
         lives: this.lives,
         winCondition: this.plan.winCondition,
@@ -185,10 +214,14 @@ export class SideScrollingRunAndGunScene {
       damage: this.plan.player.projectileDamage,
       sourceId: this.plan.player.projectileEntityId
     };
+    const capabilityRuntime = this.createDefaultWeaponCapabilityRuntimeProbe(projectile.id);
+    projectile.capabilityId = capabilityRuntime.capabilityId;
+    projectile.probeId = capabilityRuntime.probeId;
     this.projectiles.push(projectile);
+    this.capabilityRuntimeProbes.set(capabilityRuntime.probeId, capabilityRuntime);
     this.nextProjectileAtMs = nowMs + this.plan.player.fireCooldownMs;
-    this.telemetry.emit('player.fired', { projectileEntityId: this.plan.player.projectileEntityId });
-    this.spawn.spawn('projectile', { projectileId: projectile.id });
+    this.telemetry.emit('player.fired', { projectileEntityId: this.plan.player.projectileEntityId, capabilityRuntime });
+    this.spawn.spawn('projectile', { projectileId: projectile.id, capabilityRuntime });
     this.renderProjectile(projectile);
   }
 
@@ -243,6 +276,7 @@ export class SideScrollingRunAndGunScene {
     this.nextProjectileAtMs = 0;
     this.triggeredWaves.clear();
     this.checkpointsReached.clear();
+    this.capabilityRuntimeProbes.clear();
     this.clearDynamicSprites();
     this.enemies.length = 0;
     this.projectiles.length = 0;
@@ -292,6 +326,27 @@ export class SideScrollingRunAndGunScene {
       this.player.y = standingY;
       this.player.vy = 0;
     }
+  }
+
+  private createDefaultWeaponCapabilityRuntimeProbe(projectileId: string): CapabilityRuntimeProbe {
+    return {
+      capabilityId: DEFAULT_WEAPON_CAPABILITY_ID,
+      probeId: DEFAULT_WEAPON_CAPABILITY_PROBE_ID,
+      runtimeModuleId: DEFAULT_WEAPON_RUNTIME_MODULE_ID,
+      action: 'fire',
+      eventType: 'player.fired',
+      projectileEntityId: this.plan.player.projectileEntityId,
+      projectileId,
+      sourceRef: DEFAULT_WEAPON_PROJECTILE_SOURCE_REF,
+      status: 'observed'
+    };
+  }
+
+  private capabilityRuntimeSnapshot(): { source: 'side_scrolling_runtime'; probes: CapabilityRuntimeProbe[] } {
+    return {
+      source: 'side_scrolling_runtime',
+      probes: [...this.capabilityRuntimeProbes.values()]
+    };
   }
 
   private spawnTriggeredWaves(): void {
