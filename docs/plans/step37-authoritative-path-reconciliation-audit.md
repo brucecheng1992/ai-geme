@@ -1,7 +1,7 @@
 # Step 37 Authoritative Path Reconciliation Audit
 
 > - 文档定位：Step 37 authoritative production chain 的逐段只读审计状态文档。
-> - 当前状态：Stage 1 Round 4 complete after Oracle re-review; exit gate met
+> - 当前状态：Stage 2 Profile Resolution audit Oracle PASS; no Stage 2 implementation entered
 > - 任务契约：`/Users/dahufa/Downloads/step37-authoritative-path-reconciliation-prompt.md`
 > - 当前分片：无
 > - 更新日期：2026-06-25
@@ -20,8 +20,8 @@
 ## 2. 阶段拆分
 
 - [x] 0. Repository and Campaign Baseline：核对 HEAD、工作区、ahead count、最近提交、campaign ledger、support summary、capability cursor、browser QA cursor；不审计业务链路。
-- [ ] 1. GameBrief v0.2：审计 production run 是否生成并下游消费 canonical GameBrief v0.2。
-- [ ] 2. Profile Resolution：审计 profile 是否由当前 run 的 GameBrief 决定并被下游真实消费。
+- [x] 1. GameBrief v0.2：审计 production run 是否生成并下游消费 canonical GameBrief v0.2。
+- [x] 2. Profile Resolution：审计 profile 是否由当前 run 的 GameBrief 决定并被下游真实消费。
 - [ ] 3. Capability Requirements：审计 requirements/capability 映射来源、identity、provenance 和 exact lock 消费。
 - [ ] 4. Complete Capability Packages：审计五维 evidence、completeSupported 和 incomplete package fail-closed。
 - [ ] 5. Exact Capability Lock：审计 lock 是否由 requirements 和 complete packages 共同决定并约束后续消费者。
@@ -46,25 +46,26 @@
 
 ## 4. 当前状态
 
-- 状态：Stage 1 Round 4 complete after Oracle re-review
-- 当前步骤：Stage 1 exit review 已完成，Round 4 Oracle 阻塞项已关闭。
-- 最近完成：Complete Active Profile Consumption；production default 不再选择 `legacy_runtime_supported`；Raw DSL、compiler、runtime、QA 共享同一 `authority_bundle` / `active_profile_lock` hash。
-- 最近验证：focused contracts/workspace PASS；`npm run typecheck` PASS；`npm test` PASS。
-- 最近 Oracle 结论：Round 1 复审 `ORACLE_PASS_WITH_P3`；Round 2 复审 `ORACLE_PASS`；Round 4 复审未发现 P0/P1，前次代码侧 P1/P2 已关闭，文档提前标记 `MET` 的 P2 已由本记录修正。
-- 未处理风险：Stage 2 尚未进入；Stage 2 shadow/canary parity/rollback 只保留为后续 gated path，不是 production default。Oracle P3 建议后续把 `QaReport` status / overall_status / result.status 一致性收进 schema 或 `completeQa` 前置校验。
-- 工作区核对：源码、测试、Workbench evidence client 与本状态文档存在未提交改动，详见 Stage 1 Round 1-4 记录。
+- 状态：Stage 2 Profile Resolution audit Oracle PASS; no Stage 2 implementation entered.
+- 当前步骤：Stage 2 只读审查已完成并通过 Oracle 文档复审；停止等待用户显式授权。
+- 最近完成：Stage 2 Profile Resolution audit；profile 由当前 run 的 canonical GameBrief genre 重算 readiness/resolution，并被 `active_profile_lock`、`authority_bundle`、Raw DSL、compiler、runtime 和 QA 消费。
+- 最近验证：checkpoint commit `b9a0c0cb` 已创建；Stage 2 focused suite PASS；`git diff --check` PASS；Markdown trailing whitespace scan PASS.
+- 最近 Oracle 结论：Stage 1 final Oracle PASS；Stage 2 Profile Resolution 文档复审 Oracle PASS / no P0/P1/P2。
+- 未处理风险：Stage 3 Capability Requirements 尚未审计；post-Stage-1 shadow/canary parity/rollback 仍未实施。`QaReport` status consistency 作为非阻塞债务登记，不重新打开 Stage 1。
+- 工作区核对：Stage 1 Round 4 已提交为 checkpoint commit `b9a0c0cb`；当前仅允许本状态文档承载 Stage 2 审查记录。
 
 ## 5. 下一步
 
-Stage 1 Round 4 已完成 Oracle-gated exit review：
+Stage 2 Profile Resolution audit 已完成并通过 Oracle 文档复审：
 
 ```text
 Stage 1: AUTHORITATIVE_AND_CONNECTED
 Exit gate: MET
-Stage 2: NOT_ENTERED
+Stage 2 Audit: PROFILE_RESOLUTION_RECORDED
+Stage 2 Implementation: NOT_ENTERED
 ```
 
-下一步只能在用户显式授权后进入 Stage 2；不要把 Stage 2 shadow/canary parity/rollback 当成当前 production default。
+下一步停止等待用户显式授权 Stage 3 Capability Requirements 审计。不要直接实施 Stage 2，也不要把 post-Stage-1 shadow/canary parity/rollback 当成当前 production default。
 
 ## 6. 恢复检查清单
 
@@ -507,6 +508,157 @@ git diff --check
 ### Stage Boundary
 
 Stage 2 was not audited or entered.
+
+## Non-Blocking Debt Register
+
+### QaReport Status Consistency
+
+- status: REGISTERED_NON_BLOCKING
+- source: Round 4 Oracle P3.
+- debt: `QaReport.status`, `overall_status`, and nested `result.status` can still be made stricter as a schema or pre-`completeQa` consistency check.
+- boundary: This debt does not reopen Stage 1 because Round 4 authority mismatch/missing evidence is already forced through `enforceRuntimeAuthorityQaGate` and fails closed with `RUNTIME_AUTHORITY_MISMATCH`.
+- next eligible step: a separate hardening task or the first stage that changes QA report schema/acceptance semantics.
+
+## Stage 2 Audit — Profile Resolution
+
+### Scope Lock
+
+- scope: Stage 2 read-only audit only. No Stage 2 implementation, shadow/canary parity, rollback promotion, source code, test, runtime, QA, ledger, or capability evidence edits were made.
+- audit question: Does profile resolution come from the current run's canonical GameBrief, and is the resolved profile consumed downstream as behavior-driving authority?
+- checkpoint baseline: Stage 1 closed in local checkpoint commit `b9a0c0cb` (`feat(game-dsl): enforce active profile authority consumption`).
+- starting conclusion: `Stage 1: AUTHORITATIVE_AND_CONNECTED`; `Exit gate: MET`; `Stage 2 Implementation: NOT_ENTERED`.
+
+### Verdict
+
+`PROFILE_RESOLUTION_AUTHORITATIVE_FOR_ACTIVE_PROFILE_CHAIN`.
+
+The production path now resolves profile authority from the canonical GameBrief-derived runtime genre and carries that identity through `active_profile_lock`, `authority_bundle`, Raw DSL, compiler, runtime, and QA. Stage 2 implementation remains not entered; this section is an audit record only.
+
+### Producer
+
+- Producer entry: `GenerationPipelineService.generateRawDsl`.
+- Current-run source: provider `generateGameBrief` returns raw `game-brief.raw.json`; `writeStageOneAuthorityArtifacts` parses it to `canonical_game_brief.json` and derives `generation_scope_plan.json`.
+- Profile input: after canonicalization, the pipeline reruns capability preflight from `normalizedRuntimeGenreForCanonicalBrief(authority.value.brief)`, not from the earlier intent-only preflight.
+- Profile lock: `writeActiveProfileLock` builds `active_profile_lock.json` from canonical brief, generation scope plan, and canonical readiness report.
+
+### Artifact
+
+| Artifact | Role |
+| --- | --- |
+| `canonical_game_brief.json` | Source of the current run's canonical `genre`, play-time intent, and content hash. |
+| `generation_scope_plan.json` | Current run scope derived from the canonical GameBrief play-time intent. |
+| `generation_capability_readiness_report.json` | Profile resolution report keyed by the canonical brief-derived runtime genre. |
+| `active_profile_lock.json` | Hash-bound active profile authority, including `profileId`, `runtimeGenre`, `runtimeTemplateId`, `runtimeTemplateManifestId`, `qaProfile`, `profileRequirements`, and refs back to canonical brief/scope/readiness. |
+| `authority_bundle.json` | Source-of-truth bundle embedding canonical brief, scope, active profile lock, refs, and Raw DSL authority mode. |
+
+### Consumer
+
+- Raw DSL provider consumes `AuthorityBundle` and validates the bundle against the current `projectId`, `runId`, and canonical brief before the model call.
+- Prompt context includes canonical brief ref, authority bundle ref, active profile lock ref/body, generation scope plan, and Raw DSL authority semantics.
+- Compiler requires the same `AuthorityBundle` before compile and writes runtime authority into generated project files.
+- Runtime templates consume `runtime-authority.generated.json` and expose profile/runtime authority through QA snapshots.
+- Playwright QA compares observed runtime authority against expected bundle/lock/profile/template/manifest/QA profile identity.
+- Receipt, artifact index, acceptance report, and Workbench evidence expose the same profile authority artifacts.
+
+### Actual Data Flow
+
+1. Intent preflight may classify early unsupported intent, but supported production profile authority is recalculated after canonical GameBrief is persisted.
+2. `canonical_game_brief.json` is produced from the current provider output and `generation_scope_plan.json` is derived from its `play_time_intent`.
+3. Canonical GameBrief `genre` is normalized into the runtime genre used by capability readiness and profile resolution.
+4. Active profile lock records the resolved profile and hashes the behavior-bearing profile requirements.
+5. Authority bundle embeds and hash-binds canonical brief, scope, active profile lock, and Raw DSL consumption mode.
+6. Raw DSL, compiler, runtime, QA, receipt/index, and Workbench evidence consume or expose the same bundle/lock identity.
+
+### Authority
+
+`authority_bundle.json` is the Stage 2 audit authority for downstream consumption. Its embedded `active_profile_lock` is the source of truth for resolved profile identity and behavior-bearing profile requirements. `active_profile_lock.canonicalBriefRef`, `generationScopePlanRef`, and `readinessReportRef` prevent the resolved profile from floating away from the current run's canonical GameBrief.
+
+### Fail Closed
+
+- If no runtime profile resolves for the normalized genre, readiness writes `profileResolution.status: unresolved`, selects `fail_closed_unsupported_intent`, and records `runtime_profile_not_resolved`.
+- `buildActiveProfileLock` rejects unresolved, non-executable, legacy-backed, missing template/manifest/QA profile, empty requirement, missing alias, or incomplete requirement states.
+- Raw DSL and compiler both validate `AuthorityBundle` before consumption.
+- QA fails with `RUNTIME_AUTHORITY_MISMATCH` when runtime output omits or forges bundle/lock/profile/template/manifest identity.
+
+### Fallback
+
+Successful production profile resolution does not use `legacy_runtime_supported`. Unsupported or unresolved profiles fail closed; post-Stage-1 shadow/canary parity and rollback evidence are not part of this Stage 2 audit and remain future gated work.
+
+### Test Coverage
+
+- `tests/contracts/generation-capability-readiness.test.ts` covers resolved active profile readiness, complete-supported default path, and unresolved profile fail-closed behavior.
+- `tests/contracts/generation-capability-resolution.test.ts` covers profile-bound resolution report and shadow lock profile identity.
+- `tests/workspace/generation-pipeline.service.test.ts` covers canonical brief/scope/artifact refs, active profile lock, authority bundle, Raw DSL bundle consumption, compiler bundle consumption, QA timeout from scope, and forged runtime authority fail-closed behavior.
+- `tests/workspace/compiler-service.test.ts` covers runtime authority file emission and generated runtime consumption surface.
+- `tests/workspace/playwright-qa-runner.test.ts` covers runtime authority pass-through and bundle-hash mismatch failure.
+
+### Findings
+
+No Stage 2 Profile Resolution blocker was found in the active profile production chain.
+
+P3 follow-up remains registered separately: `QaReport` status consistency can be hardened without reopening Stage 1 or blocking this profile-resolution audit.
+
+### Missing Proof
+
+- This audit does not prove Stage 3 Capability Requirements or later stages.
+- This audit does not enter or implement post-Stage-1 shadow/canary parity, rollback promotion, registry transaction canary/promotion, or complete package cutover.
+- This audit relies on source and test evidence, not a new provider/browser run generated during this step.
+
+### Exit Assessment
+
+```text
+Stage 1: AUTHORITATIVE_AND_CONNECTED
+Exit gate: MET
+Stage 2 Audit: PROFILE_RESOLUTION_RECORDED
+Stage 2 Implementation: NOT_ENTERED
+Next: Stage 3 Capability Requirements audit only after user authorization
+```
+
+Stop marker: Stage 2 Profile Resolution audit recorded. Do not implement Stage 2. Do not proceed to Stage 3 without explicit user instruction.
+
+### Source References
+
+- `apps/maker-api/src/projects/generation-pipeline.service.ts:243-278`
+- `apps/maker-api/src/projects/generation-pipeline.service.ts:973-984`
+- `apps/maker-api/src/projects/generation-pipeline.service.ts:1003-1025`
+- `packages/game-dsl/src/generation-capability-readiness.ts:62-115`
+- `packages/game-dsl/src/active-profile-lock.ts:72-169`
+- `packages/game-dsl/src/authority-bundle.ts:120-180`
+- `apps/maker-api/src/model-provider/game-dsl-provider.service.ts:72-88`
+- `apps/maker-api/src/model-provider/prompt-context.builder.ts:400-416`
+- `apps/maker-api/src/compiler/template-compiler.service.ts:37-41`
+- `apps/maker-api/src/qa/playwright-browser-runner.ts:174-195`
+- `tests/workspace/generation-pipeline.service.test.ts:563-728`
+- `tests/contracts/generation-capability-readiness.test.ts:26-45`
+- `tests/contracts/generation-capability-readiness.test.ts:48-71`
+- `tests/contracts/generation-capability-resolution.test.ts:133-155`
+- `tests/workspace/compiler-service.test.ts:430-446`
+- `tests/workspace/playwright-qa-runner.test.ts:84-166`
+
+### Verification
+
+```text
+git diff --check
+# PASS
+
+rg -n "[ \t]+$" docs/plans/step37-authoritative-path-reconciliation-audit.md
+# PASS, no trailing whitespace matches
+
+npx vitest run tests/contracts/generation-capability-readiness.test.ts tests/contracts/generation-capability-resolution.test.ts tests/workspace/generation-pipeline.service.test.ts tests/workspace/compiler-service.test.ts tests/workspace/playwright-qa-runner.test.ts
+# PASS, 5 files / 88 tests
+```
+
+### Oracle Review
+
+Oracle PASS / no P0/P1/P2.
+
+Oracle confirmed:
+
+- Stage 1 remains closed and tied to checkpoint commit `b9a0c0cb`.
+- Stage 2 is only an audit record; `Stage 2 Implementation: NOT_ENTERED`.
+- Profile Resolution evidence is sufficient for `PROFILE_RESOLUTION_AUTHORITATIVE_FOR_ACTIVE_PROFILE_CHAIN`.
+- `QaReport` status consistency is correctly registered as non-blocking debt and does not reopen Stage 1.
+- Next step is gated on explicit user authorization for Stage 3 Capability Requirements audit.
 
 ## Stage 1 Closure Implementation — Round 4 Complete Active Profile Consumption
 
