@@ -2,6 +2,12 @@ import { z } from 'zod';
 
 import { CAPABILITY_GAME_IR_CONTRACT_VERSION, type CapabilityDrivenGameIr } from './capability-ir.js';
 import { DeclarativeJsonObjectSchema, type DeclarativeJsonValue } from './declarative-json.js';
+import {
+  DEFAULT_STRAIGHT_SINGLE_WEAPON_CAPABILITY_ID,
+  DEFAULT_STRAIGHT_SINGLE_WEAPON_RUNTIME_SYSTEM_ID,
+  isDefaultStraightSingleWeaponFireResult,
+  isDefaultStraightSingleWeaponRuntimeState
+} from './default-straight-single-weapon-runtime-module.js';
 import { GameplayCapabilityIdSchema } from './registry.js';
 import { hashStableJson } from './stable-json.js';
 
@@ -226,6 +232,43 @@ export type RuntimePatchAcknowledgement = {
   revertStrategy?: z.infer<typeof PhaserRuntimePatchDescriptorSchema>['revertStrategy'];
   issues: PhaserRuntimeLoaderIssue[];
 };
+
+export type PhaserRuntimeCapabilityActionRequest = {
+  systemId: string;
+  capabilityId: string;
+  action: string;
+  input: DeclarativeJsonValue;
+};
+
+export type PhaserRuntimeCapabilityActionBlockedReason =
+  | 'module_not_in_plan'
+  | 'module_missing'
+  | 'module_identity_mismatch'
+  | 'module_not_installed'
+  | 'capability_mismatch'
+  | 'action_unavailable'
+  | 'action_blocked'
+  | 'action_threw'
+  | 'invalid_action_result';
+
+export type PhaserRuntimeCapabilityActionResult =
+  | {
+      status: 'observed';
+      systemId: string;
+      capabilityId: string;
+      action: string;
+      runtimeState: DeclarativeJsonObject;
+      result: DeclarativeJsonObject;
+    }
+  | {
+      status: 'blocked';
+      reason: PhaserRuntimeCapabilityActionBlockedReason;
+      systemId: string;
+      capabilityId: string;
+      action: string;
+      runtimeState?: DeclarativeJsonObject;
+      result?: DeclarativeJsonObject;
+    };
 
 export type PhaserRuntimeSystemModule<TConfig = DeclarativeJsonObject> = {
   id: string;
@@ -502,11 +545,14 @@ export function createPhaserRuntimeModuleSession(input: {
   installAll: () => Promise<void>;
   startAll: () => Promise<void>;
   update: (deltaMs: number) => void;
+  dispatchCapabilityAction: (request: PhaserRuntimeCapabilityActionRequest) => PhaserRuntimeCapabilityActionResult;
   snapshot: () => Record<string, DeclarativeJsonObject>;
   dispose: () => Promise<void>;
 } {
   const installed = new Set<string>();
   const started = new Set<string>();
+  const planEntryById = new Map(input.plan.loadOrder.map((entry) => [entry.systemId, entry]));
+  let installCompleted = false;
   let disposed = false;
 
   return {
@@ -520,6 +566,7 @@ export function createPhaserRuntimeModuleSession(input: {
         await module.install?.({ systemId: entry.systemId }, entry.config);
         installed.add(entry.systemId);
       }
+      installCompleted = true;
     },
     async startAll() {
       assertSessionOpen(disposed);
@@ -538,6 +585,64 @@ export function createPhaserRuntimeModuleSession(input: {
         requiredModule(input.modules, systemId).update?.({ systemId }, deltaMs);
       }
     },
+    dispatchCapabilityAction(request) {
+      assertSessionOpen(disposed);
+      const entry = planEntryById.get(request.systemId);
+      if (entry === undefined) {
+        return blockedCapabilityAction(request, 'module_not_in_plan');
+      }
+      if (entry.capabilityId !== request.capabilityId) {
+        return blockedCapabilityAction(request, 'capability_mismatch');
+      }
+
+      const module = input.modules[request.systemId];
+      if (module === undefined) {
+        return blockedCapabilityAction(request, 'module_missing');
+      }
+      if (module.id !== request.systemId) {
+        return blockedCapabilityAction(request, 'module_identity_mismatch');
+      }
+      if (!installCompleted || !installed.has(request.systemId)) {
+        return blockedCapabilityAction(request, 'module_not_installed');
+      }
+
+      const runtimeState = module.snapshot?.() ?? {};
+      if (!isSupportedCapabilityActionRequest(request)) {
+        return blockedCapabilityAction(request, 'action_unavailable', { runtimeState });
+      }
+
+      const action = readRuntimeModuleAction(module, request.action);
+      if (action === undefined) {
+        return blockedCapabilityAction(request, 'action_unavailable', { runtimeState });
+      }
+
+      let rawResult: unknown;
+      try {
+        rawResult = action(request.input);
+      } catch {
+        return blockedCapabilityAction(request, 'action_threw', { runtimeState });
+      }
+
+      const result = DeclarativeJsonObjectSchema.safeParse(rawResult);
+      if (!result.success) {
+        return blockedCapabilityAction(request, 'invalid_action_result', { runtimeState });
+      }
+      if (!isValidCapabilityActionResult(request, runtimeState, result.data)) {
+        return blockedCapabilityAction(request, 'invalid_action_result', { runtimeState });
+      }
+      if (result.data.status === 'blocked') {
+        return blockedCapabilityAction(request, 'action_blocked', { runtimeState, result: result.data });
+      }
+
+      return {
+        status: 'observed',
+        systemId: request.systemId,
+        capabilityId: request.capabilityId,
+        action: request.action,
+        runtimeState,
+        result: result.data
+      };
+    },
     snapshot() {
       assertSessionOpen(disposed);
       return Object.fromEntries(
@@ -553,6 +658,7 @@ export function createPhaserRuntimeModuleSession(input: {
       }
       installed.clear();
       started.clear();
+      installCompleted = false;
       disposed = true;
     }
   };
@@ -705,6 +811,52 @@ function requiredModule(modules: Record<string, PhaserRuntimeSystemModule>, syst
     throw new Error(`Runtime module ${systemId} is missing from the active session.`);
   }
   return module;
+}
+
+function readRuntimeModuleAction(
+  module: PhaserRuntimeSystemModule,
+  action: string
+): ((input: DeclarativeJsonValue) => unknown) | undefined {
+  if (action !== 'fire') {
+    return undefined;
+  }
+  const candidate = (module as PhaserRuntimeSystemModule & Record<string, unknown>)[action];
+  return typeof candidate === 'function' ? (candidate as (input: DeclarativeJsonValue) => unknown) : undefined;
+}
+
+function isSupportedCapabilityActionRequest(request: PhaserRuntimeCapabilityActionRequest): boolean {
+  return (
+    request.systemId === DEFAULT_STRAIGHT_SINGLE_WEAPON_RUNTIME_SYSTEM_ID &&
+    request.capabilityId === DEFAULT_STRAIGHT_SINGLE_WEAPON_CAPABILITY_ID &&
+    request.action === 'fire'
+  );
+}
+
+function isValidCapabilityActionResult(
+  request: PhaserRuntimeCapabilityActionRequest,
+  runtimeState: DeclarativeJsonObject,
+  result: DeclarativeJsonObject
+): boolean {
+  if (isSupportedCapabilityActionRequest(request)) {
+    return isDefaultStraightSingleWeaponRuntimeState(runtimeState) && isDefaultStraightSingleWeaponFireResult(result);
+  }
+
+  return false;
+}
+
+function blockedCapabilityAction(
+  request: PhaserRuntimeCapabilityActionRequest,
+  reason: PhaserRuntimeCapabilityActionBlockedReason,
+  details: { runtimeState?: DeclarativeJsonObject; result?: DeclarativeJsonObject } = {}
+): PhaserRuntimeCapabilityActionResult {
+  return {
+    status: 'blocked',
+    reason,
+    systemId: request.systemId,
+    capabilityId: request.capabilityId,
+    action: request.action,
+    ...details
+  };
 }
 
 function assertSessionOpen(disposed: boolean): void {

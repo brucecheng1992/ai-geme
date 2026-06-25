@@ -1646,3 +1646,118 @@ Next authorization gate:
   - evidence review: RED/GREEN runtime-loader tests, support/report regression, registry regression, root typecheck, and diff-check are sufficient for the prerequisite checkpoint and not for `qa_observed`.
   - Compatibility & Cutover: confirmed complete.
   - commit readiness: approved for one atomic local commit without push.
+
+## 31. CONTINUOUS-M3-DEFAULT-WEAPON-QA-ACTION-PROBE-ENABLING-001
+
+- status: ORACLE_PASSED_AWAITING_COMMIT.
+- iteration_id: `CONTINUOUS-M3-DEFAULT-WEAPON-QA-ACTION-PROBE-ENABLING-001`
+- dependency decision:
+  - Previous checkpoint `CONTINUOUS-M3-DEFAULT-WEAPON-RUNTIME-BEHAVIOR-PREREQ-001` added the capability-owned default weapon `fire(input)` runtime behavior boundary.
+  - Current Phaser templates expose `__GAME_QA__.snapshot()` / `telemetry()` and legacy `SideScrollingRunAndGunScene.fire()`, but do not hold `createPhaserRuntimeModuleSession()`.
+  - This iteration therefore only exposes the minimum session-owned action/probe boundary that a later browser QA bridge can call; it does not wire legacy template keyboard input or declare browser observation.
+- capability_gap: `weapon.default_straight_single.v1` has module-local `fire(input)` behavior, but QA had no runtime-session-owned path that proves the action reaches the already installed module instance instead of direct test-side instantiation or legacy scene firing.
+- affected requirement:
+  - `R014`: Initial weapon is straight single shot.
+- affected cluster: `M3`
+- objective: add a minimal `createPhaserRuntimeModuleSession().dispatchCapabilityAction(...)` path for QA action/probe use, scoped to the installed default weapon module `fire(input)` action and preserving capability-owned projectile/telemetry result shape.
+- file lock:
+  - `packages/game-dsl/src/gameplay-capabilities/phaser-runtime-loader.ts`
+  - `packages/game-dsl/src/gameplay-capabilities/default-straight-single-weapon-runtime-module.ts`
+  - `tests/contracts/phaser-runtime-loader.test.ts`
+  - `docs/refactor-log/deepseek-authoritative-dsl-consumption-m1.md`
+- acceptance assertions:
+  - QA action dispatch is owned by the active runtime module session and only succeeds after `installAll()` completes.
+  - Dispatch locates `system.weapon.default_straight_single.v1` from the loader plan and calls the installed module instance's `fire(input)`.
+  - Successful dispatch returns the module's existing `fire` result with one player-owned `primary` straight projectile spawn plus `player.fired` and `projectile.spawned` telemetry payloads.
+  - Runtime state provenance in the observation comes from the interpreted installed `weapon.default_straight_single.compiled.v1` artifact state.
+  - Pre-install dispatch, module missing, wrong system id, capability mismatch, unavailable/non-`fire` action, invalid fire input, generic passthrough-shaped input, and legacy scene sideload attempts fail closed.
+  - Failed action dispatch does not synthesize successful telemetry or projectile spawn observations.
+  - Support evidence remains unchanged: `qa_observed=false`, `completeSupported=false`, `completeSupportedCount=0`.
+- expected failing tests:
+  - `tests/contracts/phaser-runtime-loader.test.ts` should fail because `session.dispatchCapabilityAction is not a function`.
+  - Follow-up RED should fail because a generic method dispatcher would treat `snapshot` as an observed action instead of blocking it.
+- expected support-evidence change:
+  - none.
+  - `weapon.default_straight_single.v1` remains `qa_observed=false` and `completeSupported=false`.
+- targeted tests:
+  - `npx vitest run tests/contracts/phaser-runtime-loader.test.ts`
+  - `npx vitest run tests/contracts/phaser-runtime-loader.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts`
+- regression tests:
+  - `npx vitest run tests/contracts/gameplay-capability-registry.test.ts tests/contracts/canonical-capability-runtime-compiler.test.ts tests/contracts/active-capability-runtime-evidence.test.ts`
+  - `npm run typecheck:root`
+  - `git diff --check`
+- stop conditions:
+  - Any need to mark `qa_observed=true`.
+  - Any need to modify registry support evidence or target-profile support counts.
+  - Any need to connect legacy/template `SideScrollingRunAndGunScene.fire()` as authoritative capability evidence.
+  - Any need to introduce a generic global action bus, generic event bus, projectile simulation framework, inventory lifecycle, production keyboard cutover, spread/rapid/replacement/death-reset behavior, M2 QA, browser Playwright observation, or push.
+- RED result:
+  - `npx vitest run tests/contracts/phaser-runtime-loader.test.ts`: failed, 2 failed / 22 passed.
+  - failure signature: `session.dispatchCapabilityAction is not a function`.
+  - Follow-up scope RED failed because `snapshot` was treated as an observed action by a generic method dispatcher; expected `action_unavailable`.
+  - Oracle-remediation RED failed because a forged module under the planned default weapon system id could still be treated as `observed`.
+  - Oracle second-review RED failed because a non-default planned module with `fire` was called before the dispatcher rejected the result shape.
+- implementation:
+  - `packages/game-dsl/src/gameplay-capabilities/phaser-runtime-loader.ts` adds a typed, session-owned `dispatchCapabilityAction(...)` action/probe envelope.
+  - Dispatch requires the requested system id to exist in the loader plan, the capability id to match the plan entry, the module to exist in the active session module map, the module identity to match the plan system id, and a complete `installAll()` before it can call an action.
+  - Dispatch is intentionally scoped to `fire`; it cannot be used as a generic module-method bus.
+  - Dispatch allow-lists the default weapon `systemId + capabilityId + fire` target before action lookup, so non-default planned modules cannot receive side-effectful `fire` calls through this probe.
+  - Successful dispatch calls the installed module instance and returns its existing result plus module snapshot state for provenance only after the default weapon runtime state and `fire` result match the existing capability-owned shape.
+  - Module-level blocked results are returned as blocked action results, preserving the module's `projectileSpawns: []` and `telemetryEvents: []`.
+  - `packages/game-dsl/src/gameplay-capabilities/default-straight-single-weapon-runtime-module.ts` validates browser/QA-shaped `fire` input at the module boundary and returns `invalid_input` without firing when the shape is illegal.
+  - `tests/contracts/phaser-runtime-loader.test.ts` covers positive session dispatch and fail-closed negatives for pre-install, module missing, module identity mismatch, wrong id, capability mismatch, non-default planned module fire side effects, unavailable action, invalid input, generic passthrough-shaped input, forged fire results, malformed fire results, thrown actions, and legacy scene sideload.
+  - No registry, support evidence, provider path, template runtime, browser Playwright QA, M2 QA, spread/rapid/replacement/death-reset behavior, or push changed.
+- support evidence:
+
+| capability id | registered | classification | schema_expressible | normalized | compiled | runtime_consumed | qa_observed | complete_supported |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `weapon.default_straight_single.v1` | true | `DEFERRED` | true | true | true | true | false | false |
+
+- Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | `createPhaserRuntimeModuleSession()` adds an additive `dispatchCapabilityAction(...)` QA action/probe boundary, and the default weapon runtime module adds fail-closed validation for browser/QA-shaped `fire` input plus exported validators for the existing runtime state / fire result shape. |
+| Consumer list | `tests/contracts/phaser-runtime-loader.test.ts` consumes the new session dispatch path and proves it reaches the installed default weapon module instance; future browser QA can call this session-owned boundary once the template/runtime session is exposed. Existing session consumers continue to use `installAll`, `startAll`, `update`, `snapshot`, and `dispose`. |
+| Compatibility type | `LOSSLESS_COMPATIBLE`: the session API is additive and does not rewrite loader plans, module installation, compiled artifacts, support reports, or existing snapshot/update behavior. |
+| Authority | `weapon.default_straight_single.compiled.v1` remains the authoritative behavior source; the installed default weapon runtime module owns `fire(input)` interpretation; `GameplayCapabilityRegistry` remains the support-evidence authority. |
+| Legacy strategy | Legacy/template `SideScrollingRunAndGunScene.fire()` is explicitly isolated and forbidden as evidence for this checkpoint; a sideloaded legacy scene is not in the loader plan and cannot satisfy dispatch. |
+| Failure policy | Dispatch fails closed for pre-install, missing module, module identity mismatch, wrong system id, capability mismatch, non-default planned module fire attempts, unavailable/non-`fire` actions, invalid module results, forged result shapes, thrown actions, and module-level blocked fire results; failures do not create successful projectile spawn or telemetry observations. |
+| Evidence | RED/GREEN runtime-loader tests prove the QA action/probe path calls the installed module instance, not a test-side factory or legacy scene; support/report regressions prove `qa_observed=false`, `completeSupported=false`, and complete supported count remain unchanged. |
+| Rollback | Reverting this iteration removes only the session action/probe envelope, module input validation for browser-shaped fire calls, and focused tests; runtime module installation, compiler artifact projection, support evidence, and legacy/template runtime remain unchanged. |
+
+- validation result:
+  - `npx vitest run tests/contracts/phaser-runtime-loader.test.ts`: pass, 1 file / 27 tests.
+  - `npx vitest run tests/contracts/phaser-runtime-loader.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts`: pass, 3 files / 50 tests.
+  - `npx vitest run tests/contracts/gameplay-capability-registry.test.ts tests/contracts/canonical-capability-runtime-compiler.test.ts tests/contracts/active-capability-runtime-evidence.test.ts`: pass, 3 files / 34 tests.
+  - `npm run typecheck:root`: pass.
+  - `git diff --check`: pass.
+- support summary after local validation:
+  - requirements: 60
+  - required capabilities: 59
+  - registered capabilities: 17
+  - complete supported: 0
+  - legacy-backed capabilities: 7
+  - `weapon.default_straight_single.v1`: `qa_observed=false`, `completeSupported=false`.
+- next cursor:
+
+```yaml
+capability: weapon.default_straight_single.v1
+target_evidence: qa_observed
+phase: browser_qa_implementation
+```
+
+- Oracle review:
+  - first review: FAIL.
+  - agent: `019efd2b-f587-7bf1-a774-38aee954e5ac`.
+  - blocking finding: P1, dispatch could observe a forged/generic module placed under the planned default weapon system key because it did not validate `module.id` or the default weapon `fire` result shape.
+  - P3 findings: validation log omitted `git diff --check`; branch coverage should include `module_missing`, `action_threw`, and `invalid_action_result`.
+  - remediation: add module identity check, default weapon runtime state / fire result validators, forged module/result RED coverage, missing/throwing/malformed branch tests, and this validation-log update.
+  - second review: FAIL.
+  - second-review finding: P2, non-default planned modules exposing `fire` would be called before the dispatcher rejected their result shape.
+  - second remediation: add pre-action default weapon target allow-list and RED coverage proving non-default planned modules cannot receive `fire` side effects through this dispatcher.
+  - final review: PASS.
+  - final agent: `019efd2b-f587-7bf1-a774-38aee954e5ac`.
+  - final findings: no P0/P1/P2/P3 findings.
+  - final notes: confirmed forged modules/results cannot be observed, non-default planned module `fire` is not called, API remains session-owned and default-weapon scoped, support evidence remains unchanged, and the checkpoint does not claim browser QA.
+  - current review status: ORACLE_PASSED_AWAITING_COMMIT.

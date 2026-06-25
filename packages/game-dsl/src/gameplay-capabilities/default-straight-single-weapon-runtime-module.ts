@@ -88,13 +88,13 @@ export type DefaultStraightSingleWeaponFireResult =
     }
   | {
       status: 'blocked';
-      reason: 'not_installed' | 'owner_mismatch' | 'action_mismatch';
+      reason: 'not_installed' | 'owner_mismatch' | 'action_mismatch' | 'invalid_input';
       projectileSpawns: [];
       telemetryEvents: [];
     };
 
 export type DefaultStraightSingleWeaponRuntimeModule = PhaserRuntimeSystemModule & {
-  fire: (input: DefaultStraightSingleWeaponFireInput) => DefaultStraightSingleWeaponFireResult;
+  fire: (input: DeclarativeJsonValue) => DefaultStraightSingleWeaponFireResult;
 };
 
 export function createDefaultStraightSingleWeaponRuntimeModule(): DefaultStraightSingleWeaponRuntimeModule {
@@ -122,22 +122,102 @@ export function createDefaultStraightSingleWeaponRuntimeModule(): DefaultStraigh
   };
 }
 
+export function isDefaultStraightSingleWeaponRuntimeState(value: DeclarativeJsonObject): boolean {
+  const owner = isRecord(value.owner) ? value.owner : undefined;
+  const loadout = isRecord(value.loadout) ? value.loadout : undefined;
+  const projectilePattern = isRecord(value.projectilePattern) ? value.projectilePattern : undefined;
+  const provenance = isRecord(value.provenance) ? value.provenance : undefined;
+
+  return (
+    value.installed === true &&
+    owner?.entityId === 'player' &&
+    owner.role === 'player' &&
+    loadout?.slot === 'primary' &&
+    loadout.equipPolicy === 'initial_spawn' &&
+    projectilePattern?.kind === 'straight' &&
+    projectilePattern.projectileCount === 1 &&
+    value.fireAction === 'shoot_projectile' &&
+    provenance?.artifactKind === DEFAULT_STRAIGHT_SINGLE_WEAPON_COMPILED_ARTIFACT_KIND &&
+    typeof provenance.canonicalSystemId === 'string' &&
+    provenance.canonicalSystemId.length > 0 &&
+    typeof provenance.sourceDraftId === 'string' &&
+    provenance.sourceDraftId.length > 0
+  );
+}
+
+export function isDefaultStraightSingleWeaponFireResult(value: DeclarativeJsonObject): boolean {
+  if (value.status === 'blocked') {
+    return (
+      (value.reason === 'not_installed' || value.reason === 'owner_mismatch' || value.reason === 'action_mismatch' || value.reason === 'invalid_input') &&
+      Array.isArray(value.projectileSpawns) &&
+      value.projectileSpawns.length === 0 &&
+      Array.isArray(value.telemetryEvents) &&
+      value.telemetryEvents.length === 0
+    );
+  }
+
+  if (value.status !== 'fired' || !Array.isArray(value.projectileSpawns) || value.projectileSpawns.length !== 1 || !Array.isArray(value.telemetryEvents) || value.telemetryEvents.length !== 2) {
+    return false;
+  }
+
+  const projectileSpawn = isRecord(value.projectileSpawns[0]) ? value.projectileSpawns[0] : undefined;
+  const position = isRecord(projectileSpawn?.position) ? projectileSpawn.position : undefined;
+  const trajectory = isRecord(projectileSpawn?.trajectory) ? projectileSpawn.trajectory : undefined;
+  const playerFired = isRecord(value.telemetryEvents[0]) ? value.telemetryEvents[0] : undefined;
+  const playerFiredPayload = isRecord(playerFired?.payload) ? playerFired.payload : undefined;
+  const projectileSpawned = isRecord(value.telemetryEvents[1]) ? value.telemetryEvents[1] : undefined;
+  const projectileSpawnedPayload = isRecord(projectileSpawned?.payload) ? projectileSpawned.payload : undefined;
+
+  return (
+    typeof projectileSpawn?.id === 'string' &&
+    projectileSpawn.id.length > 0 &&
+    projectileSpawn.owner === 'player' &&
+    projectileSpawn.sourceCapabilityId === DEFAULT_STRAIGHT_SINGLE_WEAPON_CAPABILITY_ID &&
+    projectileSpawn.weaponSlot === 'primary' &&
+    projectileSpawn.pattern === 'straight' &&
+    projectileSpawn.projectileCount === 1 &&
+    typeof projectileSpawn.firedAtMs === 'number' &&
+    Number.isFinite(projectileSpawn.firedAtMs) &&
+    typeof position?.x === 'number' &&
+    Number.isFinite(position.x) &&
+    typeof position.y === 'number' &&
+    Number.isFinite(position.y) &&
+    trajectory?.kind === 'straight' &&
+    trajectory.vx === 1 &&
+    trajectory.vy === 0 &&
+    playerFired?.type === 'player.fired' &&
+    playerFiredPayload?.owner === 'player' &&
+    playerFiredPayload.weaponSlot === 'primary' &&
+    playerFiredPayload.sourceCapabilityId === DEFAULT_STRAIGHT_SINGLE_WEAPON_CAPABILITY_ID &&
+    projectileSpawned?.type === 'projectile.spawned' &&
+    projectileSpawnedPayload?.projectileId === projectileSpawn.id &&
+    projectileSpawnedPayload.owner === 'player' &&
+    projectileSpawnedPayload.sourceCapabilityId === DEFAULT_STRAIGHT_SINGLE_WEAPON_CAPABILITY_ID &&
+    projectileSpawnedPayload.pattern === 'straight' &&
+    projectileSpawnedPayload.projectileCount === 1
+  );
+}
+
 function fireDefaultStraightSingleWeapon(
   state: DefaultStraightSingleWeaponRuntimeState | undefined,
-  input: DefaultStraightSingleWeaponFireInput,
+  input: DeclarativeJsonValue,
   sequence: number
 ): DefaultStraightSingleWeaponFireResult {
   if (state === undefined) {
     return blockedFire('not_installed');
   }
-  if (input.ownerEntityId !== state.owner.entityId) {
+  const parsedInput = parseDefaultStraightSingleWeaponFireInput(input);
+  if (parsedInput === undefined) {
+    return blockedFire('invalid_input');
+  }
+  if (parsedInput.ownerEntityId !== state.owner.entityId) {
     return blockedFire('owner_mismatch');
   }
-  if (input.action !== state.fireAction) {
+  if (parsedInput.action !== state.fireAction) {
     return blockedFire('action_mismatch');
   }
 
-  const projectileId = `weapon_default_straight_single_${state.owner.entityId}_${input.nowMs}_${sequence}`;
+  const projectileId = `weapon_default_straight_single_${state.owner.entityId}_${parsedInput.nowMs}_${sequence}`;
   const projectileSpawn: DefaultStraightSingleWeaponProjectileSpawn = {
     id: projectileId,
     owner: state.owner.entityId,
@@ -145,8 +225,8 @@ function fireDefaultStraightSingleWeapon(
     weaponSlot: state.loadout.slot,
     pattern: state.projectilePattern.kind,
     projectileCount: state.projectilePattern.projectileCount,
-    firedAtMs: input.nowMs,
-    position: { ...input.origin },
+    firedAtMs: parsedInput.nowMs,
+    position: { ...parsedInput.origin },
     trajectory: { kind: 'straight', vx: 1, vy: 0 }
   };
 
@@ -178,6 +258,36 @@ function fireDefaultStraightSingleWeapon(
 
 function blockedFire(reason: Extract<DefaultStraightSingleWeaponFireResult, { status: 'blocked' }>['reason']): DefaultStraightSingleWeaponFireResult {
   return { status: 'blocked', reason, projectileSpawns: [], telemetryEvents: [] };
+}
+
+function parseDefaultStraightSingleWeaponFireInput(input: DeclarativeJsonValue): DefaultStraightSingleWeaponFireInput | undefined {
+  if (!isRecord(input)) {
+    return undefined;
+  }
+
+  const origin = isRecord(input.origin) ? input.origin : undefined;
+  if (
+    typeof input.ownerEntityId !== 'string' ||
+    input.ownerEntityId.length === 0 ||
+    typeof input.action !== 'string' ||
+    input.action.length === 0 ||
+    origin === undefined ||
+    typeof origin.x !== 'number' ||
+    !Number.isFinite(origin.x) ||
+    typeof origin.y !== 'number' ||
+    !Number.isFinite(origin.y) ||
+    typeof input.nowMs !== 'number' ||
+    !Number.isFinite(input.nowMs)
+  ) {
+    return undefined;
+  }
+
+  return {
+    ownerEntityId: input.ownerEntityId,
+    action: input.action,
+    origin: { x: origin.x, y: origin.y },
+    nowMs: input.nowMs
+  };
 }
 
 function interpretDefaultStraightSingleWeaponConfig(config: DeclarativeJsonObject): DefaultStraightSingleWeaponRuntimeState {
