@@ -7,6 +7,7 @@ import {
   findGameplayCapability,
   GameplayCapabilityRegistry,
   deriveGameplayCapabilitySupportEvidenceDimensions,
+  getMissingGameplayCapabilitySupportEvidencePrerequisites,
   isCompleteSupportedGameplayCapability,
   isRuntimeGenreExecutable,
   listGameplayProfileRuntimeStatuses,
@@ -148,6 +149,17 @@ describe('Gameplay capability registry', () => {
       runtime_consumed: true,
       qa_observed: false
     });
+    expect(defaultWeapon.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(defaultWeapon.qa).toEqual({
+      requiredProbeIds: ['weapon.default_straight_single.v1.fire.browser_qa.v1'],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(defaultWeapon)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(defaultWeapon)).toBe(false);
 
     for (const capabilityId of ['weapon.spread_shot.v1', 'weapon.rapid_fire.v1', 'weapon.replacement_rule.v1', 'weapon.death_reset.v1']) {

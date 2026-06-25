@@ -1881,7 +1881,7 @@ function buildQaCapabilityRuntimeExpectation(genre: QaGenre): QaCapabilityRuntim
     requiredProbes: [
       {
         capabilityId: 'weapon.default_straight_single.v1',
-        probeId: 'weapon.default_straight_single.fire.browser_qa.v1',
+        probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1',
         action: 'fire',
         eventType: 'player.fired'
       }

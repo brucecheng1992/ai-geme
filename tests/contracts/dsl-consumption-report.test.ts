@@ -190,14 +190,7 @@ describe('Step 33 DSL consumption report', () => {
         qa_observed: false
       },
       missingEvidenceDimensions: ['qa_observed'],
-      missingSupportEvidencePrerequisites: [
-        'amendmentOperations',
-        'capabilityOwnedQa',
-        'artifactEvidence',
-        'renderContract',
-        'requiredProbeIds',
-        'requiredProbesVerified'
-      ]
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
     });
     expect(capabilities.get('weapon.spread_shot.v1')).toMatchObject({
       classification: 'DEFERRED',

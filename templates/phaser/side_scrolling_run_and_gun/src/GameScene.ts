@@ -70,7 +70,7 @@ type CapabilityRuntimeProbe = {
 };
 
 const DEFAULT_WEAPON_CAPABILITY_ID = 'weapon.default_straight_single.v1';
-const DEFAULT_WEAPON_CAPABILITY_PROBE_ID = 'weapon.default_straight_single.fire.browser_qa.v1';
+const DEFAULT_WEAPON_CAPABILITY_PROBE_ID = 'weapon.default_straight_single.v1.fire.browser_qa.v1';
 const DEFAULT_WEAPON_RUNTIME_MODULE_ID = 'weapon.default_straight_single';
 const DEFAULT_WEAPON_PROJECTILE_SOURCE_REF = 'runtime_plan.side_scrolling.player.projectileEntityId';
 

@@ -224,14 +224,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
         qa_observed: false
       },
       missingEvidenceDimensions: ['qa_observed'],
-      missingSupportEvidencePrerequisites: [
-        'amendmentOperations',
-        'capabilityOwnedQa',
-        'artifactEvidence',
-        'renderContract',
-        'requiredProbeIds',
-        'requiredProbesVerified'
-      ]
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
     });
   });
 

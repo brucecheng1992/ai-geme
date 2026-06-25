@@ -1145,7 +1145,7 @@ describe('Phaser templates', () => {
 
     const expectedProbe = {
       capabilityId: 'weapon.default_straight_single.v1',
-      probeId: 'weapon.default_straight_single.fire.browser_qa.v1',
+      probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1',
       runtimeModuleId: 'weapon.default_straight_single',
       action: 'fire',
       eventType: 'player.fired',
@@ -1168,7 +1168,7 @@ describe('Phaser templates', () => {
       owner: 'player',
       sourceId: 'pulse_bolt',
       capabilityId: 'weapon.default_straight_single.v1',
-      probeId: 'weapon.default_straight_single.fire.browser_qa.v1'
+      probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1'
     });
   });
 

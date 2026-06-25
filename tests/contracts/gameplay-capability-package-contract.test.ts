@@ -5,6 +5,14 @@ import {
   validateGameplayCapabilityPackages,
   type GameplayCapabilityPackageContract
 } from '../../packages/game-dsl/src/gameplay-capabilities/package-contract.js';
+import {
+  DEFAULT_STRAIGHT_SINGLE_WEAPON_PACKAGE_REQUIRED_EVIDENCE_ID,
+  DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
+  createDefaultStraightSingleWeaponPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/default-straight-single-weapon-package.js';
+import {
+  DEFAULT_STRAIGHT_SINGLE_WEAPON_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/default-straight-single-weapon-runtime-module.js';
 
 describe('Gameplay capability package contract', () => {
   it('accepts a complete supported package and keeps hashes deterministic', () => {
@@ -17,6 +25,32 @@ describe('Gameplay capability package contract', () => {
     expect(first.supportEligible).toBe(true);
     expect(first.manifestHash).toMatch(/^fnv1a_[a-f0-9]{8}$/);
     expect(first.packageHash).toBe(second.packageHash);
+  });
+
+  it('accepts the default straight single weapon package prerequisite contract', () => {
+    const contract = createDefaultStraightSingleWeaponPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'weapon.default_straight_single.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([DEFAULT_STRAIGHT_SINGLE_WEAPON_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: DEFAULT_STRAIGHT_SINGLE_WEAPON_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'weapon.default_straight_single.v1',
+      severity: 'required',
+      observations: expect.arrayContaining([expect.objectContaining({ runtimeSystemId: DEFAULT_STRAIGHT_SINGLE_WEAPON_RUNTIME_SYSTEM_ID })])
+    });
   });
 
   it('does not let manifest.status supported bypass missing QA and evidence', () => {

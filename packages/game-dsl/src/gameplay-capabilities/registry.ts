@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
 import { isRuntimeGenreExecutable, RuntimeGenreRegistry, type RuntimeGenreCapability } from '../runtime-capabilities.js';
+import {
+  DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
+  createDefaultStraightSingleWeaponPackageContract
+} from './default-straight-single-weapon-package.js';
+import { validateGameplayCapabilityPackage } from './package-contract.js';
 import { hashStableJson } from './stable-json.js';
 
 export const GAMEPLAY_CAPABILITY_REGISTRY_VERSION = 'gameplay-capability-registry.v0.1';
@@ -307,6 +312,22 @@ const canonicalRuntimeLoaderEvidence: GameplayCapabilityEvidence = {
   runtimeModule: true
 };
 
+const noVerifiedQa: GameplayCapabilityQaEvidence = { requiredProbeIds: [], requiredProbesVerified: false };
+
+const defaultStraightSingleWeaponPackageReport = validateGameplayCapabilityPackage(createDefaultStraightSingleWeaponPackageContract());
+const defaultStraightSingleWeaponPackageEvidence: GameplayCapabilityEvidence = defaultStraightSingleWeaponPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const defaultStraightSingleWeaponPackageQa: GameplayCapabilityQaEvidence = defaultStraightSingleWeaponPackageReport.supportEligible
+  ? { requiredProbeIds: [DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
+
 const contractCompilerEvidence: GameplayCapabilityEvidence = {
   ...contractSeedEvidence,
   normalizer: true,
@@ -317,8 +338,6 @@ const contractRuntimeLoaderEvidence: GameplayCapabilityEvidence = {
   ...contractCompilerEvidence,
   runtimeModule: true
 };
-
-const noVerifiedQa: GameplayCapabilityQaEvidence = { requiredProbeIds: [], requiredProbesVerified: false };
 
 const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
   runtimeBacked('camera.top_down_follow.v1', 'camera', 'Top-down follow camera', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], ['top_down_camera']),
@@ -402,7 +421,8 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [phaser2dActionArcade],
     ['side_scrolling_run_and_gun.v1'],
     [],
-    canonicalRuntimeLoaderEvidence
+    defaultStraightSingleWeaponPackageEvidence,
+    defaultStraightSingleWeaponPackageQa
   ),
   planned(
     'weapon.rapid_fire.v1',
@@ -676,9 +696,10 @@ function planned(
   runtimeFamilies: string[],
   profiles: string[],
   legacyRuntimeCapabilities: string[],
-  evidence: GameplayCapabilityEvidence = falseEvidence
+  evidence: GameplayCapabilityEvidence = falseEvidence,
+  qa: GameplayCapabilityQaEvidence = noVerifiedQa
 ): GameplayCapabilityDescriptor {
-  return descriptor({ id, domain, label, runtimeFamilies, profiles, legacyRuntimeCapabilities, status: 'planned', evidence });
+  return descriptor({ id, domain, label, runtimeFamilies, profiles, legacyRuntimeCapabilities, status: 'planned', evidence, qa });
 }
 
 function descriptor(input: {
@@ -690,6 +711,7 @@ function descriptor(input: {
   legacyRuntimeCapabilities: string[];
   status: GameplayCapabilitySupportStatus;
   evidence: GameplayCapabilityEvidence;
+  qa?: GameplayCapabilityQaEvidence;
 }): GameplayCapabilityDescriptor {
   return {
     id: input.id,
@@ -701,7 +723,7 @@ function descriptor(input: {
     profiles: input.profiles,
     legacyRuntimeCapabilities: input.legacyRuntimeCapabilities,
     evidence: input.evidence,
-    qa: noVerifiedQa,
+    qa: input.qa ?? noVerifiedQa,
     blockers: input.status === 'complete_supported' ? [] : ['Step 35 package contract and capability-owned QA are not complete yet.'],
     notes: []
   };

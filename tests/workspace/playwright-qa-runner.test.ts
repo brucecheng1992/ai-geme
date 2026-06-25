@@ -122,7 +122,7 @@ describe('Playable QA gate and runner', () => {
     const expectedCapabilityRuntime = createDefaultWeaponCapabilityRuntimeExpectation();
     const probe = {
       capabilityId: 'weapon.default_straight_single.v1',
-      probeId: 'weapon.default_straight_single.fire.browser_qa.v1',
+      probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1',
       runtimeModuleId: 'weapon.default_straight_single',
       action: 'fire',
       eventType: 'player.fired',
@@ -159,7 +159,7 @@ describe('Playable QA gate and runner', () => {
       observed: [
         expect.objectContaining({
           capabilityId: 'weapon.default_straight_single.v1',
-          probeId: 'weapon.default_straight_single.fire.browser_qa.v1',
+          probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1',
           action: 'fire',
           eventType: 'player.fired',
           observedIn: ['snapshot', 'telemetry']
@@ -175,8 +175,8 @@ describe('Playable QA gate and runner', () => {
       status: 'FAILED',
       expected: expectedCapabilityRuntime,
       observed: [],
-      missingProbeIds: ['weapon.default_straight_single.fire.browser_qa.v1'],
-      mismatches: ['capabilityRuntime.probes[weapon.default_straight_single.fire.browser_qa.v1]: missing']
+      missingProbeIds: ['weapon.default_straight_single.v1.fire.browser_qa.v1'],
+      mismatches: ['capabilityRuntime.probes[weapon.default_straight_single.v1.fire.browser_qa.v1]: missing']
     });
   });
 
@@ -189,7 +189,7 @@ describe('Playable QA gate and runner', () => {
           probes: [
             {
               capabilityId: 'weapon.default_straight_single.v1',
-              probeId: 'weapon.default_straight_single.fire.browser_qa.v1',
+              probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1',
               runtimeModuleId: 'weapon.default_straight_single',
               action: 'fire',
               eventType: 'player.fired',
@@ -2199,7 +2199,7 @@ function createDefaultWeaponCapabilityRuntimeExpectation(): QaCapabilityRuntimeE
     requiredProbes: [
       {
         capabilityId: 'weapon.default_straight_single.v1',
-        probeId: 'weapon.default_straight_single.fire.browser_qa.v1',
+        probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1',
         action: 'fire',
         eventType: 'player.fired'
       }

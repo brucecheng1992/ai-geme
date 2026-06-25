@@ -253,8 +253,6 @@ rg -n "[ \t]+$" docs/plans/step37-authoritative-path-reconciliation-audit.md doc
 # PASS, no matches
 ```
 
-### Implementation Exit Assessment
-
 ### Implementation Oracle Review
 
 - review status: PASS.
@@ -305,7 +303,7 @@ Stop marker: Stage 4 implementation passed Oracle for package closure gate only.
   - fails closed with `CAPABILITY_RUNTIME_MISMATCH` when an expected probe is absent or mismatched.
 - Side-scrolling runtime now emits default weapon probe evidence when `fire()` creates a player projectile:
   - `capabilityId: weapon.default_straight_single.v1`;
-  - `probeId: weapon.default_straight_single.fire.browser_qa.v1`;
+  - `probeId: weapon.default_straight_single.v1.fire.browser_qa.v1`;
   - `action: fire`;
   - `eventType: player.fired`;
   - `sourceRef: runtime_plan.side_scrolling.player.projectileEntityId`.
@@ -492,3 +490,128 @@ Next: checkpoint commit for support evidence prerequisite gate
 ```
 
 Stop marker: Stage 4 support evidence prerequisite gate passed Oracle and is awaiting checkpoint commit. Do not enter Stage 5 and do not claim complete package closure.
+
+## Stage 4 Closure Implementation — Default Weapon Package Contract Prerequisite
+
+### Scope Lock
+
+- scope: Stage 4 implementation only.
+- baseline: Stage 4 support evidence prerequisite gate checkpoint commit `f5f1daa3` (`feat(game-dsl): expose support prerequisite blockers`).
+- implementation target: add a validated default straight single weapon package contract and align its required browser QA probe id with the package-owned probe namespace.
+- non-goals: no `requiredProbesVerified=true`, no `qa_observed=true`, no `completeSupported=true`, no complete package set, no Stage 5 exact lock, no production default cutover.
+- starting conclusion: `Stage 4 Exit gate: NOT_MET`; `weapon.default_straight_single.v1` had static browser probe evidence but no validated package contract prerequisite record.
+
+### Current Stage Review Conclusion
+
+`weapon.default_straight_single.v1` remains the nearest Stage 4 vertical slice. Before this slice, its target-profile support reported:
+
+```text
+missingEvidenceDimensions: ['qa_observed']
+missingSupportEvidencePrerequisites:
+  amendmentOperations
+  capabilityOwnedQa
+  artifactEvidence
+  renderContract
+  requiredProbeIds
+  requiredProbesVerified
+completeSupported: false
+```
+
+The minimal safe next closure requirement is not to mark QA observed. It is to make the static package contract and package-owned required probe ID real and validated, leaving same-run probe verification for the next Stage 4 slice.
+
+### Extracted Minimal Closure Requirements
+
+1. Add a deterministic `GameplayCapabilityPackageContract` for `weapon.default_straight_single.v1`.
+2. Ensure the package validates as `COMPLETE_SUPPORTED` / `supportEligible=true` at the package-contract layer.
+3. Align the browser QA probe id with the capability-owned namespace: `weapon.default_straight_single.v1.fire.browser_qa.v1`.
+4. Let registry/support/report consumers derive static prerequisites from the validated package contract:
+   - `amendmentOperations`;
+   - `capabilityOwnedQa`;
+   - `artifactEvidence`;
+   - `renderContract`;
+   - `requiredProbeIds`.
+5. Keep dynamic QA verification blocked with `missingSupportEvidencePrerequisites: ['requiredProbesVerified']`.
+6. Preserve `qa_observed=false`, `completeSupported=false`, and `completeSupportedCount=0/59`.
+
+### Implemented Scope
+
+- Added `createDefaultStraightSingleWeaponPackageContract()`.
+- Exported the default weapon package contract from `gameplay-capabilities/index.ts`.
+- `GameplayCapabilityRegistry` now validates the package contract and derives static default-weapon prerequisites from `supportEligible=true`.
+- The default weapon descriptor still stays `status: 'planned'` and `classification: 'DEFERRED'`.
+- Side-scrolling browser QA telemetry, QA runner expectations, generation pipeline expectation, and tests now use the package-owned probe id.
+- Focused tests assert the package contract is valid and support-eligible while the support summary still reports only `requiredProbesVerified` missing.
+
+### Compatibility & Cutover
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Added the default weapon package contract artifact producer and changed the default weapon browser QA probe id to the package-owned namespace. |
+| Consumer list | `validateGameplayCapabilityPackage`, `GameplayCapabilityRegistry`, `buildDeepSeekRunAndGunValidationProfileSupportSummary`, `DslConsumptionReportSchema`, side-scrolling QA telemetry, Playwright QA runner, and generation pipeline capability-runtime expectation read the new contract/probe identity. |
+| Compatibility type | `LEGACY_FORBIDDEN` for the old non-owned probe id: `weapon.default_straight_single.fire.browser_qa.v1` cannot satisfy the package-owned required probe. New producers and consumers use `weapon.default_straight_single.v1.fire.browser_qa.v1` in the same run. |
+| Authority | The package contract is the static prerequisite authority for default weapon package evidence; `GameplayCapabilityRegistry` remains the support-evidence authority; a future capability QA report must still verify the required probe. |
+| Legacy strategy | Old browser probe id evidence is not accepted as package-owned evidence. It may appear only in historical artifacts and cannot clear `requiredProbesVerified`. |
+| Failure policy | Missing or stale probe id evidence fails closed as a capability runtime mismatch, while registry support keeps `qa_observed=false`, `completeSupported=false`, and `completePackageClosure.status=blocked_incomplete_target_profile`. |
+| Evidence | RED/GREEN package-contract and support tests prove static prerequisites are derived from a validated package contract; template/QA runner/pipeline tests prove active consumers use the package-owned probe id. |
+| Rollback | Reverting this slice removes the package contract, restores the old browser probe id, and returns default weapon prerequisite blockers to the previous six-item list without entering Stage 5. |
+
+Compatibility disposition:
+
+```ts
+const STAGE_4_DEFAULT_WEAPON_PACKAGE_CONTRACT_DISPOSITION = "LEGACY_FORBIDDEN";
+```
+
+### Validation
+
+```text
+npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts
+# RED before implementation: missing package module and default weapon still listed amendmentOperations/capabilityOwnedQa/artifactEvidence/renderContract/requiredProbeIds as blockers
+# PASS, 4 files / 45 tests
+
+npx vitest run tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/generation-pipeline.service.test.ts
+# PASS, 3 files / 116 tests
+
+npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/gameplay-profile-recipe-compiler.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/generation-capability-resolution.test.ts tests/contracts/generation-capability-runtime.test.ts tests/contracts/generation-capability-gap.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/playwright-qa-runner.test.ts tests/workspace/generation-pipeline.service.test.ts
+# PASS, 12 files / 185 tests
+
+npm test
+# PASS, contracts 93 files / 1039 tests; workspace 34 files / 401 tests
+
+npm run typecheck
+# PASS
+
+npx tsx -e "import { buildDeepSeekRunAndGunValidationProfileSupportSummary } from './packages/game-dsl/src/deepseek-run-and-gun-validation-profile-v1.ts'; const support = buildDeepSeekRunAndGunValidationProfileSupportSummary(); const weapon = support.capabilities.find((capability) => capability.capabilityId === 'weapon.default_straight_single.v1'); console.log(JSON.stringify({summary:support.summary, weapon}, null, 2));"
+# PASS: requiredCapabilityCount=59, completeSupportedCount=0; weapon.default_straight_single.v1 remains qa_observed=false, completeSupported=false, and only lists requiredProbesVerified as missing prerequisite
+```
+
+### Implementation Oracle Review
+
+Oracle PASS / no P0/P1/P2/P3.
+
+Oracle confirmed:
+
+- package `supportEligible=true` is used only for static prerequisite evidence and does not verify same-run QA;
+- `requiredProbesVerified=false` continues to block `qa_observed` and `completeSupported`;
+- `completeSupportedCount` remains `0/59`;
+- old non-owned probe id is absent from active code/test/template/app surfaces;
+- `movement.crouch.v1` and `combat.airborne_fire.v1` still retain their old six prerequisite blockers;
+- `defaultStraightSingleWeaponPackageEvidence` is used only by `weapon.default_straight_single.v1`;
+- Compatibility disposition `LEGACY_FORBIDDEN` and Stage 4 Exit gate `NOT_MET` are consistent with code;
+- checkpoint commit is allowed.
+
+### Implementation Exit Assessment
+
+```text
+Stage 1: AUTHORITATIVE_AND_CONNECTED
+Stage 2: PROFILE_RESOLUTION_CLOSED
+Stage 3: CAPABILITY_REQUIREMENTS_CLOSED
+Stage 4 Audit: COMPLETE_PACKAGE_CLOSURE_NOT_MET
+Stage 4 Package Closure Gate: CHECKPOINT_COMMITTED
+Stage 4 Default Weapon Browser QA Evidence: CHECKPOINT_COMMITTED
+Stage 4 Support Evidence Prerequisite Gate: CHECKPOINT_COMMITTED
+Stage 4 Default Weapon Package Contract Prerequisite: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 Exit gate: NOT_MET
+Next: checkpoint commit for default weapon package contract prerequisite
+```
+
+Stop marker: Stage 4 default weapon package contract prerequisite passed Oracle and is awaiting checkpoint commit. Do not enter Stage 5 and do not claim complete package closure.
