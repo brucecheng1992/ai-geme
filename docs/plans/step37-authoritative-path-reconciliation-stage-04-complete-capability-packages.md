@@ -2304,3 +2304,98 @@ This log records durable process improvements discovered during the `combat.airb
 6. Automatic closure check: a closure cannot be marked closed unless claimed paths exist, claimed modifications are visible in diff or commit history, required evidence is captured, and must-pass validation succeeds. Otherwise record `INCOMPLETE` or `BLOCKED`.
 
 Repository guardrail added: `tests/contracts/step37-closure-implementation-trace.test.ts` verifies the current closure section has traceable paths, validation evidence, unresolved items, exit assessment, and state transition.
+
+## Stage 4 Audit — Movement Crouch Package-Owned QA Slice
+
+Current Stage review conclusion: `movement.crouch.v1` is the next smallest Stage 4 package-owned QA frontier, but it is not closed.
+
+- audit scope: docs-only review of `movement.crouch.v1` after the `health.damage_invulnerability.v1` checkpoint and guardrail checkpoint.
+- starting conclusion: `Stage 4 Exit gate: NOT_MET`; static support remains `completeSupportedCount=0/59`, and runtime-observed support is only `9/59`.
+- non-goals: no implementation in this audit checkpoint, no Stage 5 exact lock, no composed schema/provider run, no production default cutover, no legacy authoritative path exit, no `pickup.collectible.v1`, `spawn.enemy_wave.v1`, or Stage 4 full closure claim.
+
+### Current Evidence
+
+- `movement.crouch.v1` is required by the DeepSeek run-and-gun target profile in M2 player movement/action state, and R010 explicitly requires "Player can crouch."
+- The canonical DSL/compiler path can express and compile a crouch action-state config into `system.movement.crouch.v1` with `input: "down"`, `posture: "crouch"`, and `height_scale: 0.58`.
+- The registry currently declares `movement.crouch.v1` as `planned` with runtime-loader evidence only; support summary tests expect `schema_expressible=true`, `normalized=true`, `compiled=true`, `runtime_consumed=true`, `qa_observed=false`, and `completeSupported=false`.
+- No package-owned contract, required probe id, QA report bridge, or side-scrolling runtime evidence currently proves that pressing/holding crouch changes player posture, collision/body height, or runtime state.
+
+### Minimal Closure Requirements
+
+1. Add a `movement.crouch.v1` package contract with package-owned QA probe, runtime module identity, action metadata, observation metadata, and required assertions.
+2. Preserve the compound evidence rule: evidence must prove both action X and state/condition Y. For crouch, input/action evidence alone is insufficient; QA must also prove the player entered the crouched posture/state.
+3. Extend side-scrolling runtime behavior so the configured crouch input produces a visible and queryable crouch state, without breaking run/jump/projectile slices.
+4. Extend QA evidence reading so the required probe preserves and validates crouch state fields such as `crouching=true` and a crouch body/height signal.
+5. Add negative regression coverage proving `movement.crouch.v1` remains unverified when input is observed but crouch state evidence is absent.
+6. Bridge the package-owned required probe into the runtime support overlay so same-run evidence may advance runtime-observed support from `9/59` to `10/59`.
+7. Keep static registry `completeSupported=false`; only same-run runtime-observed overlay may advance this slice.
+
+### Compatibility & Cutover
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Planned producer change is a package contract, runtime module id, telemetry/QA probe fields, and side-scrolling crouch runtime state for `movement.crouch.v1`. |
+| Consumer list | `GameplayCapabilityRegistry`, canonical capability runtime compiler, side-scrolling Phaser runtime, `PlaywrightQaRunnerService`, `CapabilityQaReport`, target profile runtime support overlay, and Workbench artifact refs. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED` until the side-scrolling runtime and QA reader consume the crouch state evidence. |
+| Authority | The package contract and same-run QA report must be the source of truth for crouch semantics; compiler config alone is producer evidence only. |
+| Legacy strategy | Existing side-scrolling movement remains executable but is forbidden from proving crouch support without package-owned crouch state evidence. |
+| Failure policy | Missing package contract, missing required probe id, missing crouch state fields, or input-only evidence must fail closed and keep `movement.crouch.v1` unverified. |
+| Evidence | Future GREEN must include focused package/registry/compiler/runtime/QA tests, real browser QA evidence proving crouch state, full tests, typecheck, and runtime overlay `observedCompleteSupportedCount=10/59`. |
+| Rollback | Reverting the crouch package/runtime/QA slice must restore observed support to `9/59` without changing prior completed package slices or rewriting audit history. |
+
+### Audit Exit Assessment
+
+```text
+Stage 4 Movement Crouch Package-Owned QA Slice Audit: RECORDED
+Stage 4 Movement Crouch Package-Owned QA Slice Implementation: NOT_ENTERED
+Expected post-implementation overlay: observedCompleteSupportedCount=10/59
+Stage 4 Exit gate: NOT_MET
+Next: Oracle review for this audit only
+```
+
+Stop marker: Stage 4 `movement.crouch.v1` package-owned QA slice audit is recorded. Do not implement this slice, do not enter Stage 5, and do not claim complete package closure until audit Oracle/checkpoint completes.
+
+### Audit Oracle Review
+
+Oracle PASS / no P0/P1/P2 blocking findings.
+
+Oracle confirmed:
+
+- the current diff is docs-only and limited to this audit record;
+- `movement.crouch.v1` remains required by the DeepSeek run-and-gun M2/R010 target profile;
+- the current source keeps it `planned` with runtime-loader evidence only;
+- support tests still keep `qa_observed=false`, `completeSupported=false`, static `completeSupportedCount=0/59`, and runtime-observed support at `9/59`;
+- normalizer/compiler evidence only proves the crouch config can be expressed and compiled, not runtime or QA closure;
+- Compatibility & Cutover uses `NEW_CONSUMER_REQUIRED` and includes all required rows;
+- no Stage 5 exact lock, production default cutover, legacy authoritative path exit, full Stage 4 closure, implementation, or unrelated capability promotion was introduced.
+
+Validation receipts:
+
+```text
+git diff --check
+exitCode=0
+result=PASS
+
+npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/canonical-capability-runtime-compiler.test.ts tests/contracts/game-dsl-v0.2.test.ts -t "reports M2 action-state runtime loader evidence without QA completion|compiles M2 action-state canonical systems|normalizes M2 action-state capability configs"
+exitCode=0
+result=PASS: 3 files passed, 3 tests passed, 43 skipped
+
+npm test
+exitCode=0
+result=PASS: 129 files passed, 1473 tests passed
+
+npm run typecheck
+exitCode=0
+result=PASS
+```
+
+### Audit Exit Assessment After Oracle
+
+```text
+Stage 4 Movement Crouch Package-Owned QA Slice Audit: ORACLE_PASSED_AWAITING_COMMIT
+Stage 4 Movement Crouch Package-Owned QA Slice Implementation: NOT_ENTERED
+Stage 4 Exit gate: NOT_MET
+Next: checkpoint commit for this audit only
+```
+
+Stop marker: Stage 4 `movement.crouch.v1` package-owned QA slice audit passed Oracle and is awaiting checkpoint commit. Do not implement this slice, do not enter Stage 5, and do not claim complete package closure until checkpoint commit completes.
