@@ -3551,6 +3551,51 @@ result=PASS: no whitespace or patch format errors.
 python3 - <<'PY' ... compute Skill bundle digest ...
 exitCode=0
 result=PASS: current Skill bundle digest 0ec6830ff612320d013b339059e4cb3bcb31b2fe1256c02efa4488baadbeac56
+
+candidate commit
+command=git add AGENTS.md docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md packages/game-dsl/src/step37-parent-loop-driver.ts tests/contracts/step37-parent-loop-driver.test.ts && git commit -m "Harden Step37 parent loop missing checkpoint handling"
+exitCode=0
+result=STALE: candidate commit 6210d5db4b0dad71595f9841ec24b628e8906789 was reviewed by Oracle and received P2 changes_required; subsequent driver/test fixes invalidate this candidate.
+
+Oracle review
+submission_id=019f00b7-93e4-73c2-ac18-3841ef4b82f4
+agent_id=019effae-8aa2-7c22-b5ba-8c4b69f21d20
+reviewed_commit_sha=6210d5db4b0dad71595f9841ec24b628e8906789
+reviewed_skill_revision=0ec6830ff612320d013b339059e4cb3bcb31b2fe1256c02efa4488baadbeac56
+verdict=CHANGES_REQUIRED: P2 first unmet malformed checkpoint could be skipped in favor of a later valid checkpoint.
+
+npx vitest run tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-closure-implementation-trace.test.ts
+exitCode=0
+duration=0.996s
+result=PASS: 54 focused contract tests passed after fixing Oracle P2 selector skip.
+
+npx vitest run tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-closure-implementation-trace.test.ts
+exitCode=0
+duration=1.03s
+result=PASS: 54 focused contract tests passed after recording stale candidate and Oracle P2 state.
+
+npm run test:contracts
+exitCode=0
+duration=9.25s
+result=PASS: 96 contract files and 1115 tests passed.
+
+npm test
+exitCode=0
+duration=contracts 10.25s plus workspace 48.97s
+result=PASS: 96 contract files / 1115 tests and 34 workspace files / 408 tests passed.
+
+npm run typecheck
+exitCode=0
+duration=6.27s
+result=PASS: root, maker-api, and maker-workbench TypeScript checks passed.
+
+git diff --check
+exitCode=0
+result=PASS: no whitespace or patch format errors.
+
+python3 - <<'PY' ... compute Skill bundle digest ...
+exitCode=0
+result=PASS: current Skill bundle digest 0ec6830ff612320d013b339059e4cb3bcb31b2fe1256c02efa4488baadbeac56
 ```
 
-Exit assessment: `LOCAL_VALIDATION_PASSED_PENDING_CANDIDATE_COMMIT`. Candidate commit, Oracle review, receipt, post-receipt checks, and post-receipt Parent Loop Driver evaluation are still required before this atomic hardening guardrail can close.
+Exit assessment: `LOCAL_VALIDATION_PASSED_PENDING_REPLACEMENT_CANDIDATE_COMMIT`. Replacement candidate commit, Oracle re-review, receipt, post-receipt checks, and post-receipt Parent Loop Driver evaluation are still required before this atomic hardening guardrail can close.

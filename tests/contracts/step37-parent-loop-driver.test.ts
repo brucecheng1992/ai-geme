@@ -237,6 +237,39 @@ describe('Step37 parent loop driver', () => {
     });
   });
 
+  it('fails closed when the first unmet authoritative checkpoint is malformed even if a later checkpoint is valid', () => {
+    const malformedFirstCheckpoint: Step37CheckpointInventoryItem = {
+      ...pickupImplementationCheckpoint,
+      checkpoint_id: 'stage4.malformed_first_unmet',
+      next_atomic_step: '',
+      unmet_reason: ''
+    };
+    const laterValidCheckpoint: Step37CheckpointInventoryItem = {
+      ...pickupImplementationCheckpoint,
+      checkpoint_id: 'stage4.later_valid_unmet',
+      next_atomic_step: 'Later valid checkpoint must not be selected while first unmet is malformed.'
+    };
+
+    expect(
+      evaluateStep37ParentLoop({
+        atomic_step_boundary_reached: true,
+        global_exit_conditions: unmetExitConditions,
+        checkpoint_inventory: [malformedFirstCheckpoint, laterValidCheckpoint]
+      })
+    ).toEqual({
+      ok: false,
+      failure: {
+        error_code: 'NEXT_ATOMIC_CHECKPOINT_INVALID',
+        global_exit_conditions_met: false,
+        user_input_required: false,
+        parent_stage_status: 'running',
+        checkpoint_id: 'stage4.malformed_first_unmet',
+        invalid_fields: ['next_atomic_step', 'unmet_reason'],
+        message: 'NEXT_ATOMIC_CHECKPOINT_INVALID: first unmet authoritative checkpoint is missing required fields: next_atomic_step, unmet_reason'
+      }
+    });
+  });
+
   it('pauses for a verified human blocker even when no next checkpoint is available', () => {
     expect(
       decideStep37ParentLoop({

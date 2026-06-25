@@ -48,10 +48,12 @@ export type Step37NextAtomicCheckpoint = {
 };
 
 export type Step37ParentLoopDecisionFailure = {
-  error_code: 'NEXT_ATOMIC_STEP_REQUIRED' | 'STATE_RECOVERY_REQUIRED';
+  error_code: 'NEXT_ATOMIC_STEP_REQUIRED' | 'NEXT_ATOMIC_CHECKPOINT_INVALID' | 'STATE_RECOVERY_REQUIRED';
   global_exit_conditions_met: boolean;
   user_input_required: boolean;
   parent_stage_status: 'running' | 'complete';
+  checkpoint_id?: string;
+  invalid_fields?: string[];
   message: string;
 };
 
@@ -156,8 +158,8 @@ export function evaluateStep37ParentLoop(input: Step37ParentLoopInput): Step37Pa
     };
   }
 
-  const nextCheckpoint = selectNextAtomicCheckpoint(input.checkpoint_inventory);
-  if (nextCheckpoint === null) {
+  const firstUnmetCheckpoint = input.checkpoint_inventory.find((checkpoint) => checkpoint.status === 'unmet') ?? null;
+  if (firstUnmetCheckpoint === null) {
     return {
       ok: false,
       failure: {
@@ -170,6 +172,23 @@ export function evaluateStep37ParentLoop(input: Step37ParentLoopInput): Step37Pa
     };
   }
 
+  const invalidFields = invalidCheckpointFields(firstUnmetCheckpoint);
+  if (invalidFields.length > 0) {
+    return {
+      ok: false,
+      failure: {
+        error_code: 'NEXT_ATOMIC_CHECKPOINT_INVALID',
+        global_exit_conditions_met: false,
+        user_input_required: false,
+        parent_stage_status: input.parent_stage_status ?? 'running',
+        checkpoint_id: firstUnmetCheckpoint.checkpoint_id.trim() || '<missing>',
+        invalid_fields: invalidFields,
+        message: `NEXT_ATOMIC_CHECKPOINT_INVALID: first unmet authoritative checkpoint is missing required fields: ${invalidFields.join(', ')}`
+      }
+    };
+  }
+
+  const nextCheckpoint = toNextAtomicCheckpoint(firstUnmetCheckpoint);
   return {
     ok: true,
     decision: {
@@ -184,19 +203,25 @@ export function evaluateStep37ParentLoop(input: Step37ParentLoopInput): Step37Pa
 }
 
 export function selectNextAtomicCheckpoint(inventory: readonly Step37CheckpointInventoryItem[]): Step37NextAtomicCheckpoint | null {
-  const checkpoint = inventory.find(
-    (item) =>
-      item.status === 'unmet' &&
-      item.checkpoint_id.trim().length > 0 &&
-      item.parent_stage_id.trim().length > 0 &&
-      item.next_atomic_step.trim().length > 0 &&
-      item.unmet_reason.trim().length > 0 &&
-      item.source_plan_revision.trim().length > 0
-  );
-  if (!checkpoint) {
+  const checkpoint = inventory.find((item) => item.status === 'unmet') ?? null;
+  if (!checkpoint || invalidCheckpointFields(checkpoint).length > 0) {
     return null;
   }
 
+  return toNextAtomicCheckpoint(checkpoint);
+}
+
+function invalidCheckpointFields(checkpoint: Step37CheckpointInventoryItem): string[] {
+  return [
+    ...(checkpoint.checkpoint_id.trim().length === 0 ? ['checkpoint_id'] : []),
+    ...(checkpoint.parent_stage_id.trim().length === 0 ? ['parent_stage_id'] : []),
+    ...(checkpoint.next_atomic_step.trim().length === 0 ? ['next_atomic_step'] : []),
+    ...(checkpoint.unmet_reason.trim().length === 0 ? ['unmet_reason'] : []),
+    ...(checkpoint.source_plan_revision.trim().length === 0 ? ['source_plan_revision'] : [])
+  ];
+}
+
+function toNextAtomicCheckpoint(checkpoint: Step37CheckpointInventoryItem): Step37NextAtomicCheckpoint {
   return {
     checkpoint_id: checkpoint.checkpoint_id.trim(),
     parent_stage_id: checkpoint.parent_stage_id.trim(),
