@@ -6167,6 +6167,135 @@ next_action=CONTINUE_PARENT_LOOP
 next_atomic_step=RUN_PARENT_LOOP_DRIVER_TO_SELECT_NEXT_UNMET_CHECKPOINT
 ```
 
+## Stage 4 Implementation: `runtime.manifest_binding.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.runtime_manifest_binding_v1.complete_supported_package_slice
+parent_stage_id=stage4
+capability_id=runtime.manifest_binding.v1
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=not_closed
+global_exit_conditions_met=false
+user_input_required=false
+next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
+repo_pre_candidate_head=d80c6bf93b09541ecf8e10f15c027d1706240798
+skill_revision_type=sha256_bundle
+skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
+active_skill_paths=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery
+active_skill_bundle_digest=8f115bb21c7acbc1157a3be65c93820aa28ed73042d9cfec3437da59366fe40b
+reviewed_skill_bundle_digest=8f115bb21c7acbc1157a3be65c93820aa28ed73042d9cfec3437da59366fe40b
+active_skill_file_count=8
+active_skill_manifest_protocol=skill-id-relative path, file kind, raw byte length, POSIX mode, SHA-256, symlink target; stable sort by root-relative row
+freshness_status=aligned
+```
+
+`runtime.manifest_binding.v1` was selected by the Parent Loop Driver after the `rules.state_transition_graph.v1` receipt. Baseline support at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
+
+Minimum closure requirements:
+
+1. Add a package-owned runtime manifest binding contract with stable capability identity, runtime system identity, telemetry event identity, required probe id, and required QA evidence id.
+2. Prove the package validates at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `runtime.manifest_binding.v1` only when runtime evidence includes explicit runtime manifest binding state fields for profile, runtime family, template, capability lock, runtime system id/version/phase, dependency count, and loader-plan binding.
+5. Add negative regressions proving generic runtime manifest/profile events without those binding state fields keep the capability unverified and emit the required missing-probe blocker.
+6. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/runtime-manifest-binding-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/runtime-manifest-binding-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `tests/contracts/contract-freeze.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createRuntimeManifestBindingPackageContract()`.
+- Runtime module identity: `RUNTIME_MANIFEST_BINDING_RUNTIME_SYSTEM_ID=runtime.manifest_binding`.
+- Manifest binding event: `RUNTIME_MANIFEST_BINDING_EVENT_TYPE=runtime.manifest_binding.verified`.
+- Required probe: `RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID=runtime.manifest_binding.v1.verify_runtime_manifest_binding.browser_qa.v1`.
+- Required evidence id: `runtime.manifest_binding.v1.evidence.capability_qa_report.v1`.
+- Required state fields: `runtimeManifestBound`, `runtimeManifestRuntimeFamily`, `runtimeManifestProfileId`, `runtimeManifestTemplateId`, `runtimeManifestCapabilityLockBound`, `runtimeManifestCapabilityId`, `runtimeManifestSystemId`, `runtimeManifestSystemVersion`, `runtimeManifestSystemPhase`, `runtimeManifestSystemDependencyCount`, and `runtimeManifestLoaderPlanBound`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares runtime manifest binding fields and fails the required probe when generic manifest/profile events lack the explicit binding payload.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for same-run package-owned QA evidence; it does not mutate static `completeSupported`.
+- Parent Loop inventory: `buildStep37RemainingCompleteSupportedInventory()` still selects `stage4.runtime_manifest_binding_v1.complete_supported_package_slice` until this candidate is committed and receipted.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned runtime manifest binding capability contract, runtime system identity, `runtime.manifest_binding.verified` telemetry event, required probe id, required evidence id, and runtime evidence fields proving manifest/profile/capability-lock binding. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, Step37 remaining-inventory driver, telemetry/event freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves explicit runtime manifest binding fields. |
+| Authority | Package-owned QA evidence defines the capability authority: generic manifest-loaded or profile events are insufficient unless `runtime.manifest_binding.verified` evidence proves the manifest is bound to the selected profile, runtime family, template, capability id, runtime system, and loader plan. |
+| Legacy strategy | Legacy manifest/profile events remain contextual evidence only; they cannot claim runtime manifest binding closure or production default cutover. |
+| Failure policy | Missing package contract, missing `runtime.manifest_binding.verified` event, missing or mismatched binding state fields, wrong capability/probe identity, or stale evidence keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, QA reader positive/negative behavior, registry support advancement without complete support, target-profile overlay positive/negative behavior, remaining-inventory selection, and event/schema freeze coverage. |
+| Rollback | Reverting this slice removes only the runtime manifest binding package/probe/reader wiring and returns `runtime.manifest_binding.v1` to unsupported evidence without changing business runtime gameplay templates or entering Stage 5. |
+
+Focused and local validation before candidate-ready record:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 2s
+result=PASS: 8 files / 248 tests
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 9s
+result=PASS: 98 files / 1274 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 59s
+result=PASS: contracts 98 files / 1274 tests; workspace 34 files / 410 tests; Playwright QA runner 45 tests passed.
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0s
+result=PASS
+
+command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
+exitCode=0
+duration=real 0.07s
+result=PASS: active_skill_paths=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_file_count=8; skill_bundle_digest=8f115bb21c7acbc1157a3be65c93820aa28ed73042d9cfec3437da59366fe40b.
+
+command=/usr/bin/time -p npx tsx <<'TS' ... runtime.manifest_binding.v1 support summary and remaining inventory ...
+exitCode=0
+duration=real 0.57s
+result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=42; staticCompleteSupportedCount=0; committedClosedCapabilityCount=41; unsupported_unregistered=17; runtime.manifest_binding.v1 classification=DEFERRED; state=registered_without_required_probe_verification; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; completeSupported=false; remaining next_checkpoint_id=stage4.runtime_manifest_binding_v1.complete_supported_package_slice; selectionFailure=null.
+```
+
+Post-record validation requirement:
+
+- This candidate-ready record changes the final tree. Before creating the immutable candidate commit, focused closure contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, final diff range check, Skill freshness, capability support alignment, and Parent Loop inventory alignment must be re-run or explicitly recorded as fresh for the final tree.
+- Candidate commit must not write its own SHA into this candidate record.
+- Oracle request must bind the candidate commit SHA plus `reviewed_skill_revision=8f115bb21c7acbc1157a3be65c93820aa28ed73042d9cfec3437da59366fe40b`.
+- Candidate pre-review state keeps `oracle_status=not_submitted`; Oracle pending state belongs to the external review run after the request is accepted and an `agent_id` is recorded.
+
 ## Stage 4 Implementation: `rules.state_transition_graph.v1` complete-supported package slice
 
 Checkpoint identity:

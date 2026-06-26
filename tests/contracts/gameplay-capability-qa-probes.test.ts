@@ -185,6 +185,17 @@ import {
   REVIEW_ORACLE_FINAL_GATE_EVENT_TYPE,
   REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID,
   createReviewOracleFinalGatePackageContract,
+  RUNTIME_MANIFEST_BINDING_CAPABILITY_ID,
+  RUNTIME_MANIFEST_BINDING_EVENT_TYPE,
+  RUNTIME_MANIFEST_BINDING_PROFILE_ID,
+  RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID,
+  RUNTIME_MANIFEST_BINDING_RUNTIME_FAMILY,
+  RUNTIME_MANIFEST_BINDING_RUNTIME_SYSTEM_ID,
+  RUNTIME_MANIFEST_BINDING_SYSTEM_DEPENDENCY_COUNT,
+  RUNTIME_MANIFEST_BINDING_SYSTEM_PHASE,
+  RUNTIME_MANIFEST_BINDING_SYSTEM_VERSION,
+  RUNTIME_MANIFEST_BINDING_TEMPLATE_ID,
+  createRuntimeManifestBindingPackageContract,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
@@ -4292,6 +4303,121 @@ describe('Capability-owned runtime QA probes', () => {
       ])
     );
     expect(observedGraph.status).toBe('passed');
+  });
+
+  it('does not verify runtime manifest binding when manifest evidence lacks binding state fields', () => {
+    const capabilityId = RUNTIME_MANIFEST_BINDING_CAPABILITY_ID;
+    const probeId = RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID;
+    const packages = [createRuntimeManifestBindingPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const genericManifestEvent = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'load_runtime_manifest',
+              eventType: 'profile.runtime_manifest.loaded',
+              eventTypes: ['profile.runtime_manifest.loaded'],
+              sourceRef: 'runtime.manifest.generic',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const missingBindingState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_binding',
+              eventType: RUNTIME_MANIFEST_BINDING_EVENT_TYPE,
+              eventTypes: [RUNTIME_MANIFEST_BINDING_EVENT_TYPE],
+              sourceRef: 'runtime.manifest.binding_report',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedBinding = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_binding',
+              eventType: RUNTIME_MANIFEST_BINDING_EVENT_TYPE,
+              eventTypes: [RUNTIME_MANIFEST_BINDING_EVENT_TYPE],
+              runtimeManifestBound: true,
+              runtimeManifestRuntimeFamily: RUNTIME_MANIFEST_BINDING_RUNTIME_FAMILY,
+              runtimeManifestProfileId: RUNTIME_MANIFEST_BINDING_PROFILE_ID,
+              runtimeManifestTemplateId: RUNTIME_MANIFEST_BINDING_TEMPLATE_ID,
+              runtimeManifestCapabilityLockBound: true,
+              runtimeManifestCapabilityId: RUNTIME_MANIFEST_BINDING_CAPABILITY_ID,
+              runtimeManifestSystemId: RUNTIME_MANIFEST_BINDING_RUNTIME_SYSTEM_ID,
+              runtimeManifestSystemVersion: RUNTIME_MANIFEST_BINDING_SYSTEM_VERSION,
+              runtimeManifestSystemPhase: RUNTIME_MANIFEST_BINDING_SYSTEM_PHASE,
+              runtimeManifestSystemDependencyCount: RUNTIME_MANIFEST_BINDING_SYSTEM_DEPENDENCY_COUNT,
+              runtimeManifestLoaderPlanBound: true,
+              sourceRef: 'runtime.manifest.binding_report',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericManifestEvent.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericManifestEvent.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.binding`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${RUNTIME_MANIFEST_BINDING_EVENT_TYPE} not observed`)
+        })
+      ])
+    );
+    expect(missingBindingState.status).toBe('failed');
+    expect(missingBindingState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.binding`,
+          status: 'failed',
+          message: expect.stringContaining('expected runtimeManifestBound=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.binding`,
+          status: 'failed',
+          message: expect.stringContaining(`expected runtimeManifestSystemId=${RUNTIME_MANIFEST_BINDING_RUNTIME_SYSTEM_ID}`)
+        })
+      ])
+    );
+    expect(observedBinding.status).toBe('passed');
   });
 });
 

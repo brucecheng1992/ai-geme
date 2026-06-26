@@ -18,6 +18,10 @@ import {
   createReviewOracleFinalGatePackageContract
 } from './review-oracle-final-gate-package.js';
 import {
+  RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID,
+  createRuntimeManifestBindingPackageContract
+} from './runtime-manifest-binding-package.js';
+import {
   RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID,
   createRulesCheckpointRestorePackageContract
 } from './rules-checkpoint-restore-package.js';
@@ -223,6 +227,7 @@ export const GAMEPLAY_CAPABILITY_DOMAINS = [
   'provider',
   'review',
   'rules',
+  'runtime',
   'scene',
   'spawn',
   'telemetry',
@@ -530,6 +535,19 @@ const reviewOracleFinalGatePackageEvidence: GameplayCapabilityEvidence = reviewO
   : canonicalRuntimeLoaderEvidence;
 const reviewOracleFinalGatePackageQa: GameplayCapabilityQaEvidence = reviewOracleFinalGatePackageReport.supportEligible
   ? { requiredProbeIds: [REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
+const runtimeManifestBindingPackageReport = validateGameplayCapabilityPackage(createRuntimeManifestBindingPackageContract());
+const runtimeManifestBindingPackageEvidence: GameplayCapabilityEvidence = runtimeManifestBindingPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const runtimeManifestBindingPackageQa: GameplayCapabilityQaEvidence = runtimeManifestBindingPackageReport.supportEligible
+  ? { requiredProbeIds: [RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
 const rulesCheckpointRestorePackageReport = validateGameplayCapabilityPackage(createRulesCheckpointRestorePackageContract());
 const rulesCheckpointRestorePackageEvidence: GameplayCapabilityEvidence = rulesCheckpointRestorePackageReport.supportEligible
@@ -1239,6 +1257,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     reviewOracleFinalGatePackageEvidence,
     reviewOracleFinalGatePackageQa
+  ),
+  planned(
+    'runtime.manifest_binding.v1',
+    'runtime',
+    'Runtime manifest capability-lock binding',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    runtimeManifestBindingPackageEvidence,
+    runtimeManifestBindingPackageQa
   ),
   planned(
     'combat.airborne_fire.v1',

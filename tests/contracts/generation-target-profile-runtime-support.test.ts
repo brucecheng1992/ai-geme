@@ -133,6 +133,16 @@ import {
   PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_SCHEMA_VERSION,
   REVIEW_ORACLE_FINAL_GATE_EVENT_TYPE,
   REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID,
+  RUNTIME_MANIFEST_BINDING_CAPABILITY_ID,
+  RUNTIME_MANIFEST_BINDING_EVENT_TYPE,
+  RUNTIME_MANIFEST_BINDING_PROFILE_ID,
+  RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID,
+  RUNTIME_MANIFEST_BINDING_RUNTIME_FAMILY,
+  RUNTIME_MANIFEST_BINDING_RUNTIME_SYSTEM_ID,
+  RUNTIME_MANIFEST_BINDING_SYSTEM_DEPENDENCY_COUNT,
+  RUNTIME_MANIFEST_BINDING_SYSTEM_PHASE,
+  RUNTIME_MANIFEST_BINDING_SYSTEM_VERSION,
+  RUNTIME_MANIFEST_BINDING_TEMPLATE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
   WEAPON_DEATH_RESET_EVENT_TYPE,
@@ -189,6 +199,7 @@ import {
   createProfileDeepSeekRunAndGunValidationPackageContract,
   createProviderDeepSeekAuthoritativeDraftPackageContract,
   createReviewOracleFinalGatePackageContract,
+  createRuntimeManifestBindingPackageContract,
   createRulesCheckpointRestorePackageContract,
   createRulesEncounterGatePackageContract,
   createRulesRetryCountPackageContract,
@@ -242,6 +253,7 @@ const fixedPromptBindingCapabilityId = 'metadata.fixed_prompt_binding.v1';
 const profileBindingCapabilityId = 'profile.deepseek_run_and_gun_validation.v1';
 const providerDeepSeekAuthoritativeDraftCapabilityId = 'provider.deepseek_authoritative_draft.v1';
 const reviewOracleFinalGateCapabilityId = 'review.oracle_final_gate.v1';
+const runtimeManifestBindingCapabilityId = RUNTIME_MANIFEST_BINDING_CAPABILITY_ID;
 const deathResetCapabilityId = 'weapon.death_reset.v1';
 const rapidFireCapabilityId = 'weapon.rapid_fire.v1';
 const spreadShotCapabilityId = 'weapon.spread_shot.v1';
@@ -286,6 +298,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE,
       PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE,
       REVIEW_ORACLE_FINAL_GATE_EVENT_TYPE,
+      RUNTIME_MANIFEST_BINDING_EVENT_TYPE,
       WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE,
       WEAPON_DEATH_RESET_EVENT_TYPE,
       WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
@@ -328,6 +341,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       (entry) => entry.capabilityId === providerDeepSeekAuthoritativeDraftCapabilityId
     );
     const reviewOracleFinalGate = report.capabilities.find((entry) => entry.capabilityId === reviewOracleFinalGateCapabilityId);
+    const runtimeManifestBinding = report.capabilities.find((entry) => entry.capabilityId === runtimeManifestBindingCapabilityId);
     const rulesEncounterGate = report.capabilities.find((entry) => entry.capabilityId === rulesEncounterGateCapabilityId);
     const deathReset = report.capabilities.find((entry) => entry.capabilityId === deathResetCapabilityId);
     const rapidFire = report.capabilities.find((entry) => entry.capabilityId === rapidFireCapabilityId);
@@ -342,7 +356,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 37,
+      observedCompleteSupportedCount: 38,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
@@ -376,6 +390,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         rulesEncounterGateCapabilityId,
         rulesRetryCountCapabilityId,
         rulesStateTransitionGraphCapabilityId,
+        runtimeManifestBindingCapabilityId,
         spawnEnemyWaveCapabilityId,
         spawnStaticCapabilityId,
         deathResetCapabilityId,
@@ -384,7 +399,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         replacementRuleCapabilityId,
         spreadShotCapabilityId
       ],
-      blockers: ['target_profile_runtime_support_incomplete:37/59']
+      blockers: ['target_profile_runtime_support_incomplete:38/59']
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
       capabilityId: artifactLineageNoManualPatchCapabilityId,
@@ -404,6 +419,17 @@ describe('Step 37 target profile runtime support overlay', () => {
       observedCompleteSupported: true,
       requiredProbeIds: [RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID],
       verifiedRequiredProbeIds: [RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+    expect(runtimeManifestBinding).toMatchObject({
+      capabilityId: runtimeManifestBindingCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID],
       missingRequiredProbeIds: [],
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
@@ -857,11 +883,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 36,
+      observedCompleteSupportedCount: 37,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:36/59'
+        'target_profile_runtime_support_incomplete:37/59'
       ]
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
@@ -1232,11 +1258,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 36,
+      observedCompleteSupportedCount: 37,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:36/59'
+        'target_profile_runtime_support_incomplete:37/59'
       ]
     });
     expect(fixedPromptBinding).toMatchObject({
@@ -1296,11 +1322,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 36,
+      observedCompleteSupportedCount: 37,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:36/59'
+        'target_profile_runtime_support_incomplete:37/59'
       ]
     });
     expect(profileBinding).toMatchObject({
@@ -1593,7 +1619,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 36,
+      observedCompleteSupportedCount: 37,
       targetProfileCompleteSupported: false,
       observedCapabilityIds: [
         artifactLineageNoManualPatchCapabilityId,
@@ -1625,6 +1651,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         rulesEncounterGateCapabilityId,
         rulesRetryCountCapabilityId,
         rulesStateTransitionGraphCapabilityId,
+        runtimeManifestBindingCapabilityId,
         spawnEnemyWaveCapabilityId,
         spawnStaticCapabilityId,
         deathResetCapabilityId,
@@ -1635,7 +1662,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ],
       blockers: [
         `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:36/59'
+        'target_profile_runtime_support_incomplete:37/59'
       ]
     });
     expect(damageInvulnerability).toMatchObject({
@@ -1712,11 +1739,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 36,
+      observedCompleteSupportedCount: 37,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:36/59'
+        'target_profile_runtime_support_incomplete:37/59'
       ]
     });
     expect(pickup).toMatchObject({
@@ -1917,11 +1944,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 36,
+      observedCompleteSupportedCount: 37,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:36/59'
+        'target_profile_runtime_support_incomplete:37/59'
       ]
     });
     expect(spawnEnemyWave).toMatchObject({
@@ -2000,11 +2027,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 36,
+      observedCompleteSupportedCount: 37,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:36/59'
+        'target_profile_runtime_support_incomplete:37/59'
       ]
     });
     expect(flyingRightEntry).toMatchObject({
@@ -2083,11 +2110,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 36,
+      observedCompleteSupportedCount: 37,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:36/59'
+        'target_profile_runtime_support_incomplete:37/59'
       ]
     });
     expect(patrolInfantry).toMatchObject({
@@ -2168,11 +2195,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 36,
+      observedCompleteSupportedCount: 37,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:36/59'
+        'target_profile_runtime_support_incomplete:37/59'
       ]
     });
     expect(victoryDeclaration).toMatchObject({
@@ -2962,6 +2989,74 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
   });
 
+  it('keeps runtime manifest binding unverified when manifest evidence lacks binding fields', () => {
+    const genericManifestQaReport = buildSingleCapabilityQaReport({
+      capabilityId: runtimeManifestBindingCapabilityId,
+      packageContract: createRuntimeManifestBindingPackageContract(),
+      eventType: 'profile.runtime_manifest.loaded',
+      eventTypes: ['profile.runtime_manifest.loaded'],
+      probeId: RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID,
+      action: 'load_runtime_manifest',
+      sourceRef: 'runtime.manifest.generic',
+      stateFields: undefined
+    });
+    const observedBindingQaReport = buildSingleCapabilityQaReport({
+      capabilityId: runtimeManifestBindingCapabilityId,
+      packageContract: createRuntimeManifestBindingPackageContract(),
+      eventType: RUNTIME_MANIFEST_BINDING_EVENT_TYPE,
+      eventTypes: [RUNTIME_MANIFEST_BINDING_EVENT_TYPE],
+      probeId: RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID,
+      action: 'verify_binding',
+      sourceRef: 'runtime.manifest.binding_report',
+      stateFields: runtimeManifestBindingStateFields()
+    });
+    const genericManifestReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_runtime_manifest_binding_missing_state',
+      capabilityQaReport: genericManifestQaReport
+    });
+    const observedBindingReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_runtime_manifest_binding_observed_state',
+      capabilityQaReport: observedBindingQaReport
+    });
+    const genericManifestState = genericManifestReport.capabilities.find((entry) => entry.capabilityId === runtimeManifestBindingCapabilityId);
+    const observedBindingState = observedBindingReport.capabilities.find((entry) => entry.capabilityId === runtimeManifestBindingCapabilityId);
+
+    expect(genericManifestQaReport.requiredResults.find((entry) => entry.probeId === RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID}.assertion.binding`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${RUNTIME_MANIFEST_BINDING_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID}.assertion.binding`,
+          status: 'failed',
+          message: expect.stringContaining('expected runtimeManifestBound=true, observed <missing>')
+        })
+      ])
+    });
+    expect(genericManifestState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedBindingState).toMatchObject({
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+  });
+
   it('keeps weapon death reset unverified when restore evidence lacks reset state fields', () => {
     const capabilityQaReport = buildDefaultWeaponQaReport(
       [
@@ -3024,11 +3119,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 36,
+      observedCompleteSupportedCount: 37,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:36/59'
+        'target_profile_runtime_support_incomplete:37/59'
       ]
     });
     expect(deathReset).toMatchObject({
@@ -3102,11 +3197,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 36,
+      observedCompleteSupportedCount: 37,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:36/59'
+        'target_profile_runtime_support_incomplete:37/59'
       ]
     });
     expect(rapidFire).toMatchObject({
@@ -3180,11 +3275,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 36,
+      observedCompleteSupportedCount: 37,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:36/59'
+        'target_profile_runtime_support_incomplete:37/59'
       ]
     });
     expect(spreadShot).toMatchObject({
@@ -3258,11 +3353,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 36,
+      observedCompleteSupportedCount: 37,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:36/59'
+        'target_profile_runtime_support_incomplete:37/59'
       ]
     });
     expect(replacementRule).toMatchObject({
@@ -3306,6 +3401,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       `capability_qa_report_missing_required_probe:${RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${RULES_RETRY_COUNT_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${SPAWN_STATIC_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
@@ -3336,6 +3432,7 @@ function buildDefaultWeaponQaReport(
     rulesEncounterGateStateFields?: boolean;
     rulesRetryCountStateFields?: boolean;
     rulesStateTransitionGraphStateFields?: boolean;
+    runtimeManifestBindingStateFields?: boolean;
     pickupStateFields?: boolean;
     pickupWeaponSupplyStateFields?: boolean;
     providerDeepSeekAuthoritativeDraftStateFields?: boolean;
@@ -4008,6 +4105,20 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
+    ...(effectiveEventTypes.includes(RUNTIME_MANIFEST_BINDING_EVENT_TYPE)
+      ? [
+          {
+            capabilityId: runtimeManifestBindingCapabilityId,
+            probeId: RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID,
+            action: 'verify_binding',
+            eventType: RUNTIME_MANIFEST_BINDING_EVENT_TYPE,
+            eventTypes: effectiveEventTypes,
+            ...(options.runtimeManifestBindingStateFields === false ? {} : runtimeManifestBindingStateFields()),
+            status: 'observed' as const,
+            sourceRef: 'runtime.manifest.binding_report'
+          }
+        ]
+      : []),
     ...(effectiveEventTypes.includes(WEAPON_DEATH_RESET_EVENT_TYPE)
       ? [
           {
@@ -4111,7 +4222,7 @@ function buildDefaultWeaponQaReport(
 function withDefaultPackageOwnedEvents(eventTypes: readonly string[]): readonly string[] {
   const packageOwnedEvents = [
     ...(eventTypes.includes(FIXED_PROMPT_BINDING_EVENT_TYPE) || eventTypes.includes(PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE)
-      ? [PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE, REVIEW_ORACLE_FINAL_GATE_EVENT_TYPE]
+      ? [PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE, REVIEW_ORACLE_FINAL_GATE_EVENT_TYPE, RUNTIME_MANIFEST_BINDING_EVENT_TYPE]
       : []),
     ...(eventTypes.includes(RULES_CHECKPOINT_RESTORE_EVENT_TYPE)
       ? [RULES_ENCOUNTER_GATE_EVENT_TYPE, RULES_RETRY_COUNT_EVENT_TYPE, RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE]
@@ -4204,6 +4315,7 @@ function buildDefaultWeaponQaPlan() {
     createProfileDeepSeekRunAndGunValidationPackageContract(),
     createProviderDeepSeekAuthoritativeDraftPackageContract(),
     createReviewOracleFinalGatePackageContract(),
+    createRuntimeManifestBindingPackageContract(),
     createWeaponDeathResetPackageContract(),
     createWeaponRapidFirePackageContract(),
     createWeaponSpreadShotPackageContract(),
@@ -4244,6 +4356,7 @@ function buildDefaultWeaponQaPlan() {
       profileBindingCapabilityId,
       providerDeepSeekAuthoritativeDraftCapabilityId,
       reviewOracleFinalGateCapabilityId,
+      runtimeManifestBindingCapabilityId,
       deathResetCapabilityId,
       rapidFireCapabilityId,
       spreadShotCapabilityId,
@@ -4285,5 +4398,21 @@ function finalOracleGateStateFields(): Record<string, unknown> {
     finalOracleP0Count: 0,
     finalOracleP1Count: 0,
     finalOracleP2Count: 0
+  };
+}
+
+function runtimeManifestBindingStateFields(): Record<string, unknown> {
+  return {
+    runtimeManifestBound: true,
+    runtimeManifestRuntimeFamily: RUNTIME_MANIFEST_BINDING_RUNTIME_FAMILY,
+    runtimeManifestProfileId: RUNTIME_MANIFEST_BINDING_PROFILE_ID,
+    runtimeManifestTemplateId: RUNTIME_MANIFEST_BINDING_TEMPLATE_ID,
+    runtimeManifestCapabilityLockBound: true,
+    runtimeManifestCapabilityId: RUNTIME_MANIFEST_BINDING_CAPABILITY_ID,
+    runtimeManifestSystemId: RUNTIME_MANIFEST_BINDING_RUNTIME_SYSTEM_ID,
+    runtimeManifestSystemVersion: RUNTIME_MANIFEST_BINDING_SYSTEM_VERSION,
+    runtimeManifestSystemPhase: RUNTIME_MANIFEST_BINDING_SYSTEM_PHASE,
+    runtimeManifestSystemDependencyCount: RUNTIME_MANIFEST_BINDING_SYSTEM_DEPENDENCY_COUNT,
+    runtimeManifestLoaderPlanBound: true
   };
 }

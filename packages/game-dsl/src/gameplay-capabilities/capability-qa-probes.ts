@@ -178,6 +178,17 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   stateTransitionGraphTerminalStatesIncluded?: boolean;
   stateTransitionGraphNoImplicitFallback?: boolean;
   stateTransitionGraphReachabilityVerified?: boolean;
+  runtimeManifestBound?: boolean;
+  runtimeManifestRuntimeFamily?: string;
+  runtimeManifestProfileId?: string;
+  runtimeManifestTemplateId?: string;
+  runtimeManifestCapabilityLockBound?: boolean;
+  runtimeManifestCapabilityId?: string;
+  runtimeManifestSystemId?: string;
+  runtimeManifestSystemVersion?: string;
+  runtimeManifestSystemPhase?: string;
+  runtimeManifestSystemDependencyCount?: number;
+  runtimeManifestLoaderPlanBound?: boolean;
   encounterGateClosedEntrance?: boolean;
   encounterGateGateId?: string;
   encounterGateEntranceId?: string;
@@ -663,6 +674,17 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ),
     ...compareExpectedBooleanField('stateTransitionGraphNoImplicitFallback', expected, observed.stateTransitionGraphNoImplicitFallback),
     ...compareExpectedBooleanField('stateTransitionGraphReachabilityVerified', expected, observed.stateTransitionGraphReachabilityVerified),
+    ...compareExpectedBooleanField('runtimeManifestBound', expected, observed.runtimeManifestBound),
+    ...compareExpectedStringField('runtimeManifestRuntimeFamily', expected, observed.runtimeManifestRuntimeFamily),
+    ...compareExpectedStringField('runtimeManifestProfileId', expected, observed.runtimeManifestProfileId),
+    ...compareExpectedStringField('runtimeManifestTemplateId', expected, observed.runtimeManifestTemplateId),
+    ...compareExpectedBooleanField('runtimeManifestCapabilityLockBound', expected, observed.runtimeManifestCapabilityLockBound),
+    ...compareExpectedStringField('runtimeManifestCapabilityId', expected, observed.runtimeManifestCapabilityId),
+    ...compareExpectedStringField('runtimeManifestSystemId', expected, observed.runtimeManifestSystemId),
+    ...compareExpectedStringField('runtimeManifestSystemVersion', expected, observed.runtimeManifestSystemVersion),
+    ...compareExpectedStringField('runtimeManifestSystemPhase', expected, observed.runtimeManifestSystemPhase),
+    ...compareExpectedNumberField('runtimeManifestSystemDependencyCount', expected, observed.runtimeManifestSystemDependencyCount),
+    ...compareExpectedBooleanField('runtimeManifestLoaderPlanBound', expected, observed.runtimeManifestLoaderPlanBound),
     ...compareExpectedBooleanField('encounterGateClosedEntrance', expected, observed.encounterGateClosedEntrance),
     ...compareExpectedStringField('encounterGateGateId', expected, observed.encounterGateGateId),
     ...compareExpectedStringField('encounterGateEntranceId', expected, observed.encounterGateEntranceId),

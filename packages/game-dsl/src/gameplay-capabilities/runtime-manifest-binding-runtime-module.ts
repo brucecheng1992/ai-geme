@@ -1,0 +1,9 @@
+export const RUNTIME_MANIFEST_BINDING_CAPABILITY_ID = 'runtime.manifest_binding.v1';
+export const RUNTIME_MANIFEST_BINDING_RUNTIME_SYSTEM_ID = 'runtime.manifest_binding';
+export const RUNTIME_MANIFEST_BINDING_EVENT_TYPE = 'runtime.manifest_binding.verified';
+export const RUNTIME_MANIFEST_BINDING_RUNTIME_FAMILY = 'phaser_2d_action_arcade.v1';
+export const RUNTIME_MANIFEST_BINDING_PROFILE_ID = 'side_scrolling_run_and_gun.v1';
+export const RUNTIME_MANIFEST_BINDING_TEMPLATE_ID = 'side_scrolling_run_and_gun.v1';
+export const RUNTIME_MANIFEST_BINDING_SYSTEM_VERSION = 'v1';
+export const RUNTIME_MANIFEST_BINDING_SYSTEM_PHASE = 'bootstrap';
+export const RUNTIME_MANIFEST_BINDING_SYSTEM_DEPENDENCY_COUNT = 1;

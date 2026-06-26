@@ -34,6 +34,7 @@ import {
   PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID,
   PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID,
   REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID,
+  RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID,
   RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID,
   RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID,
   RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
@@ -156,6 +157,11 @@ describe('Gameplay capability registry', () => {
       domain: 'review',
       legacyRuntimeCapabilities: []
     });
+    expect(findGameplayCapability('runtime.manifest_binding.v1')).toMatchObject({
+      status: 'planned',
+      domain: 'runtime',
+      legacyRuntimeCapabilities: []
+    });
     expect(findGameplayCapability('rules.checkpoint_restore.v1')).toMatchObject({
       status: 'planned',
       domain: 'rules',
@@ -199,11 +205,15 @@ describe('Gameplay capability registry', () => {
     const reviewLikeDomain = validateGameplayCapabilityRegistry([
       { ...base, id: 'revue.oracle_final_gate.v1', domain: 'revue' } as unknown as GameplayCapabilityDescriptor
     ]);
+    const runtimeLikeDomain = validateGameplayCapabilityRegistry([
+      { ...base, id: 'runntime.manifest_binding.v1', domain: 'runntime' } as unknown as GameplayCapabilityDescriptor
+    ]);
 
     expect(badId.ok).toBe(false);
     expect(badVersion.ok).toBe(false);
     expect(badDomain.ok).toBe(false);
     expect(reviewLikeDomain.ok).toBe(false);
+    expect(runtimeLikeDomain.ok).toBe(false);
     if (!badId.ok) {
       expect(badId.issues.some((issue) => issue.code === 'CAPABILITY_SCHEMA_INVALID' && issue.path.endsWith('.id'))).toBe(true);
     }
@@ -215,6 +225,9 @@ describe('Gameplay capability registry', () => {
     }
     if (!reviewLikeDomain.ok) {
       expect(reviewLikeDomain.issues.some((issue) => issue.code === 'CAPABILITY_SCHEMA_INVALID' && issue.path.endsWith('.domain'))).toBe(true);
+    }
+    if (!runtimeLikeDomain.ok) {
+      expect(runtimeLikeDomain.issues.some((issue) => issue.code === 'CAPABILITY_SCHEMA_INVALID' && issue.path.endsWith('.domain'))).toBe(true);
     }
   });
 
@@ -858,6 +871,34 @@ describe('Gameplay capability registry', () => {
     expect(stateTransitionGraph.legacyRuntimeCapabilities).toEqual([]);
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(stateTransitionGraph)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(stateTransitionGraph)).toBe(false);
+  });
+
+  it('scopes runtime manifest binding package-owned QA without static support promotion', () => {
+    const manifestBinding = findGameplayCapability('runtime.manifest_binding.v1');
+
+    if (manifestBinding === undefined) {
+      throw new Error('Expected runtime.manifest_binding.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(manifestBinding)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(manifestBinding.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(manifestBinding.qa).toEqual({
+      requiredProbeIds: [RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(manifestBinding.legacyRuntimeCapabilities).toEqual([]);
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(manifestBinding)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(manifestBinding)).toBe(false);
   });
 
   it('scopes pickup weapon supply package-owned QA without static support promotion', () => {

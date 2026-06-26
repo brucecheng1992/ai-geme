@@ -431,6 +431,22 @@ import {
   REVIEW_ORACLE_FINAL_GATE_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/review-oracle-final-gate-runtime-module.js';
 import {
+  RUNTIME_MANIFEST_BINDING_PACKAGE_REQUIRED_EVIDENCE_ID,
+  RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID,
+  createRuntimeManifestBindingPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/runtime-manifest-binding-package.js';
+import {
+  RUNTIME_MANIFEST_BINDING_CAPABILITY_ID,
+  RUNTIME_MANIFEST_BINDING_EVENT_TYPE,
+  RUNTIME_MANIFEST_BINDING_PROFILE_ID,
+  RUNTIME_MANIFEST_BINDING_RUNTIME_FAMILY,
+  RUNTIME_MANIFEST_BINDING_RUNTIME_SYSTEM_ID,
+  RUNTIME_MANIFEST_BINDING_SYSTEM_DEPENDENCY_COUNT,
+  RUNTIME_MANIFEST_BINDING_SYSTEM_PHASE,
+  RUNTIME_MANIFEST_BINDING_SYSTEM_VERSION,
+  RUNTIME_MANIFEST_BINDING_TEMPLATE_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/runtime-manifest-binding-runtime-module.js';
+import {
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_PACKAGE_REQUIRED_EVIDENCE_ID,
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
   createArtifactLineageNoManualPatchPackageContract
@@ -1753,6 +1769,75 @@ describe('Gameplay capability package contract', () => {
       ]
     });
   });
+
+  it('accepts the runtime manifest binding package-owned QA contract', () => {
+    const contract = createRuntimeManifestBindingPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: RUNTIME_MANIFEST_BINDING_CAPABILITY_ID
+    });
+    expect(contract.runtime.systems).toEqual([
+      {
+        id: RUNTIME_MANIFEST_BINDING_RUNTIME_SYSTEM_ID,
+        version: RUNTIME_MANIFEST_BINDING_SYSTEM_VERSION,
+        phase: RUNTIME_MANIFEST_BINDING_SYSTEM_PHASE,
+        dependencies: ['runtime_plan']
+      }
+    ]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: RUNTIME_MANIFEST_BINDING_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: RUNTIME_MANIFEST_BINDING_CAPABILITY_ID,
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: RUNTIME_MANIFEST_BINDING_EVENT_TYPE,
+          parameters: {
+            profileId: RUNTIME_MANIFEST_BINDING_PROFILE_ID,
+            runtimeFamily: RUNTIME_MANIFEST_BINDING_RUNTIME_FAMILY,
+            templateId: RUNTIME_MANIFEST_BINDING_TEMPLATE_ID,
+            runtimeSystemId: RUNTIME_MANIFEST_BINDING_RUNTIME_SYSTEM_ID
+          }
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'state_probe',
+          runtimeSystemId: RUNTIME_MANIFEST_BINDING_RUNTIME_SYSTEM_ID,
+          ref: RUNTIME_MANIFEST_BINDING_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID}.assertion.binding`,
+          expected: {
+            runtimeManifestBound: true,
+            runtimeManifestRuntimeFamily: RUNTIME_MANIFEST_BINDING_RUNTIME_FAMILY,
+            runtimeManifestProfileId: RUNTIME_MANIFEST_BINDING_PROFILE_ID,
+            runtimeManifestTemplateId: RUNTIME_MANIFEST_BINDING_TEMPLATE_ID,
+            runtimeManifestCapabilityLockBound: true,
+            runtimeManifestCapabilityId: RUNTIME_MANIFEST_BINDING_CAPABILITY_ID,
+            runtimeManifestSystemId: RUNTIME_MANIFEST_BINDING_RUNTIME_SYSTEM_ID,
+            runtimeManifestSystemVersion: RUNTIME_MANIFEST_BINDING_SYSTEM_VERSION,
+            runtimeManifestSystemPhase: RUNTIME_MANIFEST_BINDING_SYSTEM_PHASE,
+            runtimeManifestSystemDependencyCount: RUNTIME_MANIFEST_BINDING_SYSTEM_DEPENDENCY_COUNT,
+            runtimeManifestLoaderPlanBound: true
+          }
+        })
+      ]
+    });
+  });
+
   it('accepts the collision platform package-owned QA contract', () => {
     const contract = createCollisionPlatformPackageContract();
     const report = validateGameplayCapabilityPackage(contract);

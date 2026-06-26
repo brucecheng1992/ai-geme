@@ -552,6 +552,11 @@ describe('Contract Freeze', () => {
     expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('review.oracle_final_gate.approved');
   });
 
+  it('allows package-owned runtime manifest binding telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'runtime.manifest_binding.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('runtime.manifest_binding.verified');
+  });
+
   it('freezes QA gate all and any_groups evaluation semantics', () => {
     const shooterGate = qaGate.genre_required_events.shooter;
     const observedWithScore = [...shooterGate.all, 'score.changed'];

@@ -20,6 +20,7 @@ export const TelemetryEventTypeSchema = z.enum([
   'pickup.weapon_supply.verified',
   'provider.deepseek_authoritative_draft.validated',
   'review.oracle_final_gate.approved',
+  'runtime.manifest_binding.verified',
   'spawn.enemy_wave.ordered',
   'enemy.flying_right_entry.verified',
   'enemy.patrol_infantry.verified',
