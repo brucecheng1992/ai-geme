@@ -80,6 +80,14 @@ import {
   ENEMY_FLYING_RIGHT_ENTRY_SEGMENT_ID,
   ENEMY_FLYING_RIGHT_ENTRY_WAVE_ID,
   createEnemyFlyingRightEntryPackageContract,
+  ENEMY_PATROL_INFANTRY_ARCHETYPE_ID,
+  ENEMY_PATROL_INFANTRY_ENEMY_ID,
+  ENEMY_PATROL_INFANTRY_EVENT_TYPE,
+  ENEMY_PATROL_INFANTRY_MOVEMENT_PATTERN_ID,
+  ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID,
+  ENEMY_PATROL_INFANTRY_ROUTE_ID,
+  ENEMY_PATROL_INFANTRY_SEGMENT_ID,
+  createEnemyPatrolInfantryPackageContract,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
@@ -1856,6 +1864,137 @@ describe('Capability-owned runtime QA probes', () => {
       ])
     );
     expect(observedRightEntryState.status).toBe('passed');
+  });
+
+  it('does not verify enemy patrol infantry when wave evidence lacks patrol state fields', () => {
+    const capabilityId = 'enemy.patrol_infantry.v1';
+    const probeId = ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID;
+    const packages = [createSpawnStaticPackageContract(), createSpawnEnemyWavePackageContract(), createEnemyPatrolInfantryPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, ['spawn.static.v1', 'spawn.enemy_wave.v1', capabilityId]),
+      packages
+    });
+    const missingPatrolState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId: 'spawn.static.v1',
+              probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
+              action: 'spawn',
+              eventType: 'spawn.static.triggered',
+              eventTypes: ['spawn.static.triggered'],
+              sourceRef: 'runtime.spawn.static',
+              status: 'observed'
+            },
+            {
+              capabilityId: 'spawn.enemy_wave.v1',
+              probeId: SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+              action: 'spawn',
+              eventType: 'spawn.enemy_wave.ordered',
+              eventTypes: ['spawn.enemy_wave.ordered'],
+              orderedWaveSequence: true,
+              gateTriggered: true,
+              waveSpawned: true,
+              sequenceIndex: 0,
+              waveId: 'jungle_entrance_patrol_wave',
+              sourceRef: 'runtime.spawn.enemy_wave',
+              status: 'observed'
+            },
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_patrol_infantry',
+              eventType: ENEMY_PATROL_INFANTRY_EVENT_TYPE,
+              eventTypes: [ENEMY_PATROL_INFANTRY_EVENT_TYPE],
+              sourceRef: 'runtime.enemy.patrol_infantry',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedPatrolState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId: 'spawn.static.v1',
+              probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
+              action: 'spawn',
+              eventType: 'spawn.static.triggered',
+              eventTypes: ['spawn.static.triggered'],
+              sourceRef: 'runtime.spawn.static',
+              status: 'observed'
+            },
+            {
+              capabilityId: 'spawn.enemy_wave.v1',
+              probeId: SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+              action: 'spawn',
+              eventType: 'spawn.enemy_wave.ordered',
+              eventTypes: ['spawn.enemy_wave.ordered'],
+              orderedWaveSequence: true,
+              gateTriggered: true,
+              waveSpawned: true,
+              sequenceIndex: 0,
+              waveId: 'jungle_entrance_patrol_wave',
+              sourceRef: 'runtime.spawn.enemy_wave',
+              status: 'observed'
+            },
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_patrol_infantry',
+              eventType: ENEMY_PATROL_INFANTRY_EVENT_TYPE,
+              eventTypes: [ENEMY_PATROL_INFANTRY_EVENT_TYPE],
+              patrolInfantrySpawned: true,
+              patrolInfantryEnemyId: ENEMY_PATROL_INFANTRY_ENEMY_ID,
+              patrolInfantryArchetypeId: ENEMY_PATROL_INFANTRY_ARCHETYPE_ID,
+              patrolInfantrySegmentId: ENEMY_PATROL_INFANTRY_SEGMENT_ID,
+              patrolInfantryGrounded: true,
+              patrolInfantryMovementPatternId: ENEMY_PATROL_INFANTRY_MOVEMENT_PATTERN_ID,
+              patrolInfantryRouteId: ENEMY_PATROL_INFANTRY_ROUTE_ID,
+              sourceRef: 'runtime.enemy.patrol_infantry',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingPatrolState.status).toBe('failed');
+    expect(missingPatrolState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingPatrolState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.patrol_infantry_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected patrolInfantrySpawned=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.patrol_infantry_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`expected patrolInfantrySegmentId=${ENEMY_PATROL_INFANTRY_SEGMENT_ID}, observed <missing>`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.patrol_infantry_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`expected patrolInfantryMovementPatternId=${ENEMY_PATROL_INFANTRY_MOVEMENT_PATTERN_ID}, observed <missing>`)
+        })
+      ])
+    );
+    expect(observedPatrolState.status).toBe('passed');
   });
 });
 

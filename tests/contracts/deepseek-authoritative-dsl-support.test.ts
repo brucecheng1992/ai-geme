@@ -484,6 +484,21 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       missingEvidenceDimensions: ['qa_observed'],
       missingSupportEvidencePrerequisites: ['requiredProbesVerified']
     });
+    expect(capabilities.get('enemy.patrol_infantry.v1')).toMatchObject({
+      registered: true,
+      classification: 'DEFERRED',
+      completeSupported: false,
+      legacyBacked: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
   });
 
   it('reports rapid-fire weapon package-backed evidence without QA completion', () => {
@@ -628,6 +643,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       'enemy.chaser_pathfinding.v1',
       'enemy.fixed_turret.v1',
       'enemy.flying_right_entry.v1',
+      'enemy.patrol_infantry.v1',
       'enemy.vertical_shooter_pattern.v1',
       'goal.destroy_target.v1',
       'goal.reach_exit.v1',

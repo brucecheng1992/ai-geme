@@ -189,6 +189,13 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   flyingRightEntryEntrySide?: string;
   flyingRightEntryMovementPatternId?: string;
   flyingRightEntryWaveId?: string;
+  patrolInfantrySpawned?: boolean;
+  patrolInfantryEnemyId?: string;
+  patrolInfantryArchetypeId?: string;
+  patrolInfantrySegmentId?: string;
+  patrolInfantryGrounded?: boolean;
+  patrolInfantryMovementPatternId?: string;
+  patrolInfantryRouteId?: string;
   status?: string;
   sourceRef?: string;
 };
@@ -503,7 +510,14 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('flyingRightEntryEnteredFromRight', expected, observed.flyingRightEntryEnteredFromRight),
     ...compareExpectedStringField('flyingRightEntryEntrySide', expected, observed.flyingRightEntryEntrySide),
     ...compareExpectedStringField('flyingRightEntryMovementPatternId', expected, observed.flyingRightEntryMovementPatternId),
-    ...compareExpectedStringField('flyingRightEntryWaveId', expected, observed.flyingRightEntryWaveId)
+    ...compareExpectedStringField('flyingRightEntryWaveId', expected, observed.flyingRightEntryWaveId),
+    ...compareExpectedBooleanField('patrolInfantrySpawned', expected, observed.patrolInfantrySpawned),
+    ...compareExpectedStringField('patrolInfantryEnemyId', expected, observed.patrolInfantryEnemyId),
+    ...compareExpectedStringField('patrolInfantryArchetypeId', expected, observed.patrolInfantryArchetypeId),
+    ...compareExpectedStringField('patrolInfantrySegmentId', expected, observed.patrolInfantrySegmentId),
+    ...compareExpectedBooleanField('patrolInfantryGrounded', expected, observed.patrolInfantryGrounded),
+    ...compareExpectedStringField('patrolInfantryMovementPatternId', expected, observed.patrolInfantryMovementPatternId),
+    ...compareExpectedStringField('patrolInfantryRouteId', expected, observed.patrolInfantryRouteId)
   ];
 }
 

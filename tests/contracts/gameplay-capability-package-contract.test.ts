@@ -161,6 +161,20 @@ import {
   ENEMY_FLYING_RIGHT_ENTRY_WAVE_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/enemy-flying-right-entry-runtime-module.js';
 import {
+  ENEMY_PATROL_INFANTRY_PACKAGE_REQUIRED_EVIDENCE_ID,
+  ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID,
+  createEnemyPatrolInfantryPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/enemy-patrol-infantry-package.js';
+import {
+  ENEMY_PATROL_INFANTRY_ARCHETYPE_ID,
+  ENEMY_PATROL_INFANTRY_ENEMY_ID,
+  ENEMY_PATROL_INFANTRY_EVENT_TYPE,
+  ENEMY_PATROL_INFANTRY_MOVEMENT_PATTERN_ID,
+  ENEMY_PATROL_INFANTRY_ROUTE_ID,
+  ENEMY_PATROL_INFANTRY_RUNTIME_SYSTEM_ID,
+  ENEMY_PATROL_INFANTRY_SEGMENT_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/enemy-patrol-infantry-runtime-module.js';
+import {
   COLLISION_PLATFORM_PACKAGE_REQUIRED_EVIDENCE_ID,
   COLLISION_PLATFORM_REQUIRED_PROBE_ID,
   createCollisionPlatformPackageContract
@@ -939,6 +953,65 @@ describe('Gameplay capability package contract', () => {
             flyingRightEntryEntrySide: ENEMY_FLYING_RIGHT_ENTRY_ENTRY_SIDE,
             flyingRightEntryMovementPatternId: ENEMY_FLYING_RIGHT_ENTRY_MOVEMENT_PATTERN_ID,
             flyingRightEntryWaveId: ENEMY_FLYING_RIGHT_ENTRY_WAVE_ID
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the enemy patrol-infantry package-owned QA contract', () => {
+    const contract = createEnemyPatrolInfantryPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'enemy.patrol_infantry.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([ENEMY_PATROL_INFANTRY_RUNTIME_SYSTEM_ID]);
+    expect(contract.dependencies).toEqual([{ capabilityId: 'spawn.enemy_wave.v1', range: '^v1' }]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: ENEMY_PATROL_INFANTRY_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'enemy.patrol_infantry.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: ENEMY_PATROL_INFANTRY_EVENT_TYPE,
+          parameters: expect.objectContaining({
+            enemyId: ENEMY_PATROL_INFANTRY_ENEMY_ID,
+            archetypeId: ENEMY_PATROL_INFANTRY_ARCHETYPE_ID,
+            segmentId: ENEMY_PATROL_INFANTRY_SEGMENT_ID,
+            movementPatternId: ENEMY_PATROL_INFANTRY_MOVEMENT_PATTERN_ID,
+            routeId: ENEMY_PATROL_INFANTRY_ROUTE_ID
+          })
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: ENEMY_PATROL_INFANTRY_RUNTIME_SYSTEM_ID,
+          ref: ENEMY_PATROL_INFANTRY_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID}.assertion.patrol_infantry_verified`,
+          expected: {
+            patrolInfantrySpawned: true,
+            patrolInfantryEnemyId: ENEMY_PATROL_INFANTRY_ENEMY_ID,
+            patrolInfantryArchetypeId: ENEMY_PATROL_INFANTRY_ARCHETYPE_ID,
+            patrolInfantrySegmentId: ENEMY_PATROL_INFANTRY_SEGMENT_ID,
+            patrolInfantryGrounded: true,
+            patrolInfantryMovementPatternId: ENEMY_PATROL_INFANTRY_MOVEMENT_PATTERN_ID,
+            patrolInfantryRouteId: ENEMY_PATROL_INFANTRY_ROUTE_ID
           }
         })
       ]

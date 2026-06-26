@@ -6167,6 +6167,167 @@ next_action=CONTINUE_PARENT_LOOP
 next_atomic_step=RUN_PARENT_LOOP_DRIVER_TO_SELECT_NEXT_UNMET_CHECKPOINT
 ```
 
+## Stage 4 Implementation: `enemy.patrol_infantry.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.enemy_patrol_infantry_v1.complete_supported_package_slice
+parent_stage_id=stage4
+capability_id=enemy.patrol_infantry.v1
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=not_closed
+global_exit_conditions_met=false
+user_input_required=false
+next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
+reviewed_skill_revision_type=sha256_bundle
+reviewed_skill_bundle_format=step37_manifest_v1_path_size_sha
+reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
+reviewed_skill_root_identity=/Users/dahufa/.agents/skills/review-gated-delivery
+reviewed_commit_sha=not_created
+oracle_submission_id=not_submitted
+oracle_agent_id=not_submitted
+```
+
+`enemy.patrol_infantry.v1` was selected by the Parent Loop Driver after the `enemy.flying_right_entry.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
+
+Minimum closure requirements:
+
+1. Add a package-owned patrol infantry contract with stable capability identity, runtime system identity, patrol verification event identity, required probe id, and required QA evidence id.
+2. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `enemy.patrol_infantry.v1` only when evidence includes real patrol infantry state fields for enemy identity, archetype, jungle entrance segment, grounded patrol state, movement pattern, and route id.
+5. Require patrol infantry state fields: `patrolInfantrySpawned=true`, `patrolInfantryEnemyId=patrol_infantry_jungle_1`, `patrolInfantryArchetypeId=patrol_infantry`, `patrolInfantrySegmentId=jungle_entrance`, `patrolInfantryGrounded=true`, `patrolInfantryMovementPatternId=ground_patrol`, and `patrolInfantryRouteId=jungle_entrance_patrol_route`.
+6. Add negative regressions proving wave/order evidence, spawn evidence, or a patrol event without those authoritative state fields keeps the capability unverified and emits the required missing-probe blocker.
+7. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/enemy-patrol-infantry-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/enemy-patrol-infantry-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`.
+- `tests/contracts/contract-freeze.test.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createEnemyPatrolInfantryPackageContract()`.
+- Runtime module identity: `ENEMY_PATROL_INFANTRY_RUNTIME_SYSTEM_ID=enemy.patrol_infantry`.
+- Patrol verification event: `ENEMY_PATROL_INFANTRY_EVENT_TYPE=enemy.patrol_infantry.verified`.
+- Required probe: `ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID=enemy.patrol_infantry.v1.patrol.browser_qa.v1`.
+- Required evidence id: `ENEMY_PATROL_INFANTRY_PACKAGE_REQUIRED_EVIDENCE_ID=enemy.patrol_infantry.v1.evidence.capability_qa_report.v1`.
+- Required state fields: `patrolInfantrySpawned`, `patrolInfantryEnemyId`, `patrolInfantryArchetypeId`, `patrolInfantrySegmentId`, `patrolInfantryGrounded`, `patrolInfantryMovementPatternId`, and `patrolInfantryRouteId`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares every patrol infantry state field and fails the required probe when any field is missing or mismatched.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for the same run; it does not mutate static `completeSupported`.
+- Telemetry schema: `TelemetryEventSchema` accepts `enemy.patrol_infantry.verified`; `contract-freeze.test.ts` verifies the event is schema-expressible without making it a QA gate requirement.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned patrol infantry capability contract, runtime system identity, patrol verification event, required probe id, required evidence id, runtime evidence fields, and telemetry schema support for `enemy.patrol_infantry.verified`. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, Step37 remaining-inventory driver, telemetry/event freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves every required patrol infantry state field. |
+| Authority | Package-owned QA evidence defines the capability authority: wave/order evidence, generic enemy spawn, or a generic patrol event are insufficient unless evidence also proves the patrol infantry identity, archetype, jungle entrance segment, grounded patrol state, movement pattern, and route id. |
+| Legacy strategy | Existing `spawn.enemy_wave.v1`, `spawn.static.v1`, or generic enemy wave evidence remains non-authoritative for this capability unless the required `enemy.patrol_infantry.v1` runtime probe evidence is present. |
+| Failure policy | Missing package contract, missing patrol verification event, missing state fields, wrong capability/probe identity, stale evidence, or unsatisfied dependency probe evidence keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, dependency-compatible package resolution, registry support advancement without complete support, QA reader positive/negative patrol state behavior, target-profile overlay positive/negative behavior, remaining-inventory selection, and event/schema freeze coverage. |
+| Rollback | Reverting this slice removes only the patrol infantry package/probe/reader/schema wiring and returns `enemy.patrol_infantry.v1` to unsupported evidence without changing business runtime gameplay templates. |
+
+Focused validation:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 2.01s
+result=PASS: 8 files / 175 tests
+```
+
+Focused set selection:
+
+- `gameplay-capability-package-contract.test.ts`: validates the new patrol infantry package contract, required evidence id, runtime system, event identity, dependency on `spawn.enemy_wave.v1`, and seven patrol state assertion fields.
+- `gameplay-capability-qa-probes.test.ts`: validates that spawn/static and enemy-wave evidence plus a patrol event without authoritative patrol state fields fails, while full state evidence passes.
+- `generation-target-profile-runtime-support.test.ts`: validates same-run overlay positive/negative behavior, canonical missing-probe identity, and preservation of static `completeSupported=false`.
+- `gameplay-capability-registry.test.ts`: validates static registry evidence and required probe wiring without static support promotion.
+- `deepseek-authoritative-dsl-support.test.ts`: validates support dimensions, registry identity, and prerequisites for the target capability.
+- `dsl-consumption-report.test.ts`: validates the consumption report reads the updated package-backed support dimensions.
+- `step37-remaining-inventory-driver.test.ts`: validates parent-loop inventory consumption after the registry count advances to 29 and selects the current patrol infantry checkpoint from committed closure history.
+- `contract-freeze.test.ts`: included because this diff changes telemetry event schema by adding `enemy.patrol_infantry.verified` and adds reader-dependent evidence fields; focused validation follows the actual schema and event-contract impact surface rather than a fixed historical set.
+
+Validation record before candidate:
+
+```text
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 9.18s
+result=PASS: 98 files / 1201 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 58.81s
+result=PASS: contracts 98 files / 1201 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.40s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.02s
+result=PASS
+
+command=/usr/bin/time -p npx tsx -e "<enemy.patrol_infantry.v1 support summary and remaining inventory>"
+exitCode=0
+duration=real 0.60s
+result=PASS: support registeredCapabilityCount=29; enemy.patrol_infantry.v1 classification=DEFERRED; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false; remaining next_checkpoint_id=stage4.enemy_patrol_infantry_v1.complete_supported_package_slice while this candidate is not yet committed.
+
+command=python3 - <<'PY' ... step37_manifest_v1_path_size_sha review-gated-delivery Skill bundle digest ... PY
+exitCode=0
+duration=<1s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_size_sha; skill_file_count=7; skill_bundle_digest=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1.
+```
+
+Count-change audit:
+
+- `registeredCapabilityCount` changes from `28` to `29` only in tests and reports that use the full active package inventory including `enemy.patrol_infantry.v1`.
+- `observedCompleteSupportedCount` changes from `24` to `25` only in the default full-observed target-profile fixture where `ENEMY_PATROL_INFANTRY_EVENT_TYPE` and all patrol infantry state fields are present.
+- Each full-inventory negative fixture that intentionally fails exactly one other required probe changes from `23/59` to `24/59` only after verifying the fixture includes the new patrol infantry package and full patrol evidence.
+- Single-capability and package-subset fixtures keep their previous counts because `enemy.patrol_infantry.v1` is not part of those expected package sets.
+- The canonical missing-probe assertion includes the concrete `ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID`; tests verify missing-probe identity, package identity, canonical order, and the final blocker count instead of relying on count-only expectations.
+
+Exit assessment before Oracle:
+
+- implementation_status: `complete`.
+- local_validation_status: `passed`.
+- candidate_status: `ready_for_commit`.
+- oracle_status: `not_submitted`.
+- unresolved_items: `Oracle review not submitted`; `Stage 4 completeSupported still not met`; `Production Default Cutover remains inactive`; `legacy authoritative path remains active`; `Step37 final closure remains open`.
+- exit_assessment: `LOCALLY_VALIDATED_AWAITING_CANDIDATE_COMMIT_AND_ORACLE`.
+- parent_loop: `running`; `global_exit_conditions_met=false`; `user_input_required=false`; this atomic step is not closed until immutable candidate review and receipt-only closure complete.
+
+Candidate creation requirement:
+
+- This closure record changes the final tree. Before creating the immutable candidate commit, focused contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, final diff range check, and Skill freshness must be confirmed against the final tree.
+- Candidate commit must not write its own SHA into this candidate record.
+- Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1`.
+- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+
 ## Stage 4 Implementation: `enemy.flying_right_entry.v1` complete-supported package slice
 
 Checkpoint identity:

@@ -29,6 +29,8 @@ export * from './enemy-fixed-turret-runtime-module.js';
 export * from './enemy-fixed-turret-package.js';
 export * from './enemy-flying-right-entry-runtime-module.js';
 export * from './enemy-flying-right-entry-package.js';
+export * from './enemy-patrol-infantry-runtime-module.js';
+export * from './enemy-patrol-infantry-package.js';
 export * from './collision-platform-runtime-module.js';
 export * from './collision-platform-package.js';
 export * from './default-straight-single-weapon-runtime-module.js';

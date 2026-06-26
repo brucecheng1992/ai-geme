@@ -50,6 +50,10 @@ import {
   createEnemyFlyingRightEntryPackageContract
 } from './enemy-flying-right-entry-package.js';
 import {
+  ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID,
+  createEnemyPatrolInfantryPackageContract
+} from './enemy-patrol-infantry-package.js';
+import {
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   createCameraSideFollowPackageContract
 } from './camera-side-follow-package.js';
@@ -580,6 +584,19 @@ const enemyFlyingRightEntryPackageEvidence: GameplayCapabilityEvidence = enemyFl
 const enemyFlyingRightEntryPackageQa: GameplayCapabilityQaEvidence = enemyFlyingRightEntryPackageReport.supportEligible
   ? { requiredProbeIds: [ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const enemyPatrolInfantryPackageReport = validateGameplayCapabilityPackage(createEnemyPatrolInfantryPackageContract());
+const enemyPatrolInfantryPackageEvidence: GameplayCapabilityEvidence = enemyPatrolInfantryPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const enemyPatrolInfantryPackageQa: GameplayCapabilityQaEvidence = enemyPatrolInfantryPackageReport.supportEligible
+  ? { requiredProbeIds: [ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const cameraSideFollowPackageReport = validateGameplayCapabilityPackage(createCameraSideFollowPackageContract());
 const cameraSideFollowPackageEvidence: GameplayCapabilityEvidence = cameraSideFollowPackageReport.supportEligible
   ? {
@@ -900,6 +917,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     enemyFlyingRightEntryPackageEvidence,
     enemyFlyingRightEntryPackageQa
+  ),
+  planned(
+    'enemy.patrol_infantry.v1',
+    'enemy',
+    'Enemy patrol infantry',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    enemyPatrolInfantryPackageEvidence,
+    enemyPatrolInfantryPackageQa
   ),
   runtimeBacked('camera.top_down_follow.v1', 'camera', 'Top-down follow camera', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], ['top_down_camera']),
   runtimeBacked('movement.eight_direction.v1', 'movement', 'Eight-direction movement', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], [
