@@ -106,6 +106,14 @@ import {
   GOAL_BOSS_UNLOCK_REQUIRED_WAVE_COUNT,
   GOAL_BOSS_UNLOCK_WAVE_ID,
   createGoalBossUnlockPackageContract,
+  HAZARD_FALLING_AREA_BOSS_PHASE_ID,
+  HAZARD_FALLING_AREA_DAMAGE,
+  HAZARD_FALLING_AREA_EVENT_TYPE,
+  HAZARD_FALLING_AREA_HAZARD_ID,
+  HAZARD_FALLING_AREA_PATTERN_ID,
+  HAZARD_FALLING_AREA_REQUIRED_PROBE_ID,
+  HAZARD_FALLING_AREA_TELEGRAPH_MS,
+  createHazardFallingAreaPackageContract,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
@@ -2331,6 +2339,93 @@ describe('Capability-owned runtime QA probes', () => {
       ])
     );
     expect(observedBossUnlock.status).toBe('passed');
+  });
+
+  it('does not verify falling hazard area when generic hazard evidence lacks from-above state fields', () => {
+    const capabilityId = 'hazard.falling_area.v1';
+    const probeId = HAZARD_FALLING_AREA_REQUIRED_PROBE_ID;
+    const packages = [createHazardFallingAreaPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const genericHazardEvidence = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'spawn',
+              eventType: 'hazard.spawned',
+              eventTypes: ['hazard.spawned', 'collision.detected'],
+              sourceRef: 'runtime.hazard.generic_spawn',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedFallingArea = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_falling_area',
+              eventType: HAZARD_FALLING_AREA_EVENT_TYPE,
+              eventTypes: [HAZARD_FALLING_AREA_EVENT_TYPE, 'hazard.spawned'],
+              fallingAreaActive: true,
+              fallingAreaHazardId: HAZARD_FALLING_AREA_HAZARD_ID,
+              fallingAreaBossPhaseId: HAZARD_FALLING_AREA_BOSS_PHASE_ID,
+              fallingAreaPatternId: HAZARD_FALLING_AREA_PATTERN_ID,
+              fallingAreaDropsFromAbove: true,
+              fallingAreaArmed: true,
+              fallingAreaDamagesPlayer: true,
+              fallingAreaDamage: HAZARD_FALLING_AREA_DAMAGE,
+              fallingAreaTelegraphMs: HAZARD_FALLING_AREA_TELEGRAPH_MS,
+              sourceRef: 'runtime.hazard.falling_area',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericHazardEvidence.status).toBe('failed');
+    expect(genericHazardEvidence.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericHazardEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.falling_area_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${HAZARD_FALLING_AREA_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.falling_area_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected fallingAreaDropsFromAbove=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.falling_area_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`expected fallingAreaBossPhaseId=${HAZARD_FALLING_AREA_BOSS_PHASE_ID}, observed <missing>`)
+        })
+      ])
+    );
+    expect(observedFallingArea.status).toBe('passed');
   });
 });
 

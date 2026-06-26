@@ -211,6 +211,20 @@ import {
   GOAL_BOSS_UNLOCK_WAVE_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/goal-boss-unlock-runtime-module.js';
 import {
+  HAZARD_FALLING_AREA_PACKAGE_REQUIRED_EVIDENCE_ID,
+  HAZARD_FALLING_AREA_REQUIRED_PROBE_ID,
+  createHazardFallingAreaPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/hazard-falling-area-package.js';
+import {
+  HAZARD_FALLING_AREA_BOSS_PHASE_ID,
+  HAZARD_FALLING_AREA_DAMAGE,
+  HAZARD_FALLING_AREA_EVENT_TYPE,
+  HAZARD_FALLING_AREA_HAZARD_ID,
+  HAZARD_FALLING_AREA_PATTERN_ID,
+  HAZARD_FALLING_AREA_RUNTIME_SYSTEM_ID,
+  HAZARD_FALLING_AREA_TELEGRAPH_MS
+} from '../../packages/game-dsl/src/gameplay-capabilities/hazard-falling-area-runtime-module.js';
+import {
   COLLISION_PLATFORM_PACKAGE_REQUIRED_EVIDENCE_ID,
   COLLISION_PLATFORM_REQUIRED_PROBE_ID,
   createCollisionPlatformPackageContract
@@ -1222,6 +1236,73 @@ describe('Gameplay capability package contract', () => {
             bossEncounterUnlocked: true,
             bossUnlockWaveId: GOAL_BOSS_UNLOCK_WAVE_ID,
             bossUnlockBossEntityId: GOAL_BOSS_UNLOCK_BOSS_ENTITY_ID
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the hazard falling area package-owned QA contract', () => {
+    const contract = createHazardFallingAreaPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === HAZARD_FALLING_AREA_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'hazard.falling_area.v1'
+    });
+    expect(contract.runtime.systems).toEqual([
+      {
+        id: HAZARD_FALLING_AREA_RUNTIME_SYSTEM_ID,
+        version: 'v1',
+        phase: 'gameplay',
+        dependencies: ['enemy.boss_phase_transition', 'collision.damage_affinity_matrix']
+      }
+    ]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: HAZARD_FALLING_AREA_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'hazard.falling_area.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: HAZARD_FALLING_AREA_EVENT_TYPE,
+          parameters: {
+            hazardId: HAZARD_FALLING_AREA_HAZARD_ID,
+            bossPhaseId: HAZARD_FALLING_AREA_BOSS_PHASE_ID,
+            patternId: HAZARD_FALLING_AREA_PATTERN_ID,
+            dropsFromAbove: true,
+            damage: HAZARD_FALLING_AREA_DAMAGE
+          }
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: HAZARD_FALLING_AREA_RUNTIME_SYSTEM_ID,
+          ref: HAZARD_FALLING_AREA_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${HAZARD_FALLING_AREA_REQUIRED_PROBE_ID}.assertion.falling_area_verified`,
+          expected: {
+            fallingAreaActive: true,
+            fallingAreaHazardId: HAZARD_FALLING_AREA_HAZARD_ID,
+            fallingAreaBossPhaseId: HAZARD_FALLING_AREA_BOSS_PHASE_ID,
+            fallingAreaPatternId: HAZARD_FALLING_AREA_PATTERN_ID,
+            fallingAreaDropsFromAbove: true,
+            fallingAreaArmed: true,
+            fallingAreaDamagesPlayer: true,
+            fallingAreaDamage: HAZARD_FALLING_AREA_DAMAGE,
+            fallingAreaTelegraphMs: HAZARD_FALLING_AREA_TELEGRAPH_MS
           }
         })
       ]

@@ -27,6 +27,7 @@ import {
   FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID,
   GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID,
+  HAZARD_FALLING_AREA_REQUIRED_PROBE_ID,
   MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
@@ -651,6 +652,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(bossUnlock)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(bossUnlock)).toBe(false);
+  });
+
+  it('scopes hazard falling area package-owned QA without static support promotion', () => {
+    const fallingArea = findGameplayCapability('hazard.falling_area.v1');
+
+    if (fallingArea === undefined) {
+      throw new Error('Expected hazard.falling_area.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(fallingArea)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(fallingArea.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(fallingArea.qa).toEqual({
+      requiredProbeIds: [HAZARD_FALLING_AREA_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(fallingArea)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(fallingArea)).toBe(false);
   });
 
   it('scopes weapon rapid fire package-owned QA without static support promotion', () => {

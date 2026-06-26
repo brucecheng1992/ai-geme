@@ -24,6 +24,7 @@ export const TelemetryEventTypeSchema = z.enum([
   'generation.fallback_policy_fail_closed.verified',
   'goal.boss_unlock.verified',
   'hazard.spawned',
+  'hazard.falling_area.verified',
   'player.damaged',
   'health.damage_invulnerability.activated',
   'health.damage_invulnerability.blocked',

@@ -214,6 +214,15 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   bossEncounterUnlocked?: boolean;
   bossUnlockWaveId?: string;
   bossUnlockBossEntityId?: string;
+  fallingAreaActive?: boolean;
+  fallingAreaHazardId?: string;
+  fallingAreaBossPhaseId?: string;
+  fallingAreaPatternId?: string;
+  fallingAreaDropsFromAbove?: boolean;
+  fallingAreaArmed?: boolean;
+  fallingAreaDamagesPlayer?: boolean;
+  fallingAreaDamage?: number;
+  fallingAreaTelegraphMs?: number;
   status?: string;
   sourceRef?: string;
 };
@@ -553,7 +562,16 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedStringField('bossUnlockReason', expected, observed.bossUnlockReason),
     ...compareExpectedBooleanField('bossEncounterUnlocked', expected, observed.bossEncounterUnlocked),
     ...compareExpectedStringField('bossUnlockWaveId', expected, observed.bossUnlockWaveId),
-    ...compareExpectedStringField('bossUnlockBossEntityId', expected, observed.bossUnlockBossEntityId)
+    ...compareExpectedStringField('bossUnlockBossEntityId', expected, observed.bossUnlockBossEntityId),
+    ...compareExpectedBooleanField('fallingAreaActive', expected, observed.fallingAreaActive),
+    ...compareExpectedStringField('fallingAreaHazardId', expected, observed.fallingAreaHazardId),
+    ...compareExpectedStringField('fallingAreaBossPhaseId', expected, observed.fallingAreaBossPhaseId),
+    ...compareExpectedStringField('fallingAreaPatternId', expected, observed.fallingAreaPatternId),
+    ...compareExpectedBooleanField('fallingAreaDropsFromAbove', expected, observed.fallingAreaDropsFromAbove),
+    ...compareExpectedBooleanField('fallingAreaArmed', expected, observed.fallingAreaArmed),
+    ...compareExpectedBooleanField('fallingAreaDamagesPlayer', expected, observed.fallingAreaDamagesPlayer),
+    ...compareExpectedNumberField('fallingAreaDamage', expected, observed.fallingAreaDamage),
+    ...compareExpectedNumberField('fallingAreaTelegraphMs', expected, observed.fallingAreaTelegraphMs)
   ];
 }
 
