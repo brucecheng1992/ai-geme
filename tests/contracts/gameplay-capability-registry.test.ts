@@ -18,6 +18,7 @@ import {
   CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID,
   CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
   COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID,
+  ENEMY_BOSS_ATTACK_PATTERN_REQUIRED_PROBE_ID,
   MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
@@ -60,6 +61,10 @@ describe('Gameplay capability registry', () => {
       legacyRuntimeCapabilities: ['platform_collision', 'terrain_collision', 'platforms_terrain_collision']
     });
     expect(findGameplayCapability('collision.damage_affinity_matrix.v1')).toMatchObject({
+      status: 'planned',
+      legacyRuntimeCapabilities: []
+    });
+    expect(findGameplayCapability('enemy.boss_attack_pattern.v1')).toMatchObject({
       status: 'planned',
       legacyRuntimeCapabilities: []
     });
@@ -367,6 +372,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(damageAffinity)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(damageAffinity)).toBe(false);
+  });
+
+  it('scopes enemy boss attack-pattern package-owned QA without static support promotion', () => {
+    const attackPattern = findGameplayCapability('enemy.boss_attack_pattern.v1');
+
+    if (attackPattern === undefined) {
+      throw new Error('Expected enemy.boss_attack_pattern.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(attackPattern)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(attackPattern.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(attackPattern.qa).toEqual({
+      requiredProbeIds: [ENEMY_BOSS_ATTACK_PATTERN_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(attackPattern)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(attackPattern)).toBe(false);
   });
 
   it('scopes weapon rapid fire package-owned QA without static support promotion', () => {

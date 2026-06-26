@@ -97,6 +97,18 @@ import {
   COLLISION_DAMAGE_AFFINITY_MATRIX_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/collision-damage-affinity-matrix-runtime-module.js';
 import {
+  ENEMY_BOSS_ATTACK_PATTERN_PACKAGE_REQUIRED_EVIDENCE_ID,
+  ENEMY_BOSS_ATTACK_PATTERN_REQUIRED_PROBE_ID,
+  createEnemyBossAttackPatternPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/enemy-boss-attack-pattern-package.js';
+import {
+  ENEMY_BOSS_ATTACK_PATTERN_CADENCE_MS,
+  ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE,
+  ENEMY_BOSS_ATTACK_PATTERN_PHASE_ID,
+  ENEMY_BOSS_ATTACK_PATTERN_PATTERN_ID,
+  ENEMY_BOSS_ATTACK_PATTERN_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/enemy-boss-attack-pattern-runtime-module.js';
+import {
   COLLISION_PLATFORM_PACKAGE_REQUIRED_EVIDENCE_ID,
   COLLISION_PLATFORM_REQUIRED_PROBE_ID,
   createCollisionPlatformPackageContract
@@ -592,6 +604,61 @@ describe('Gameplay capability package contract', () => {
             enemyProjectilesDamageEnemies: false,
             hazardsDamagePlayer: true,
             hazardsDamageEnemies: false
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the enemy boss attack-pattern package-owned QA contract', () => {
+    const contract = createEnemyBossAttackPatternPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === ENEMY_BOSS_ATTACK_PATTERN_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'enemy.boss_attack_pattern.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([ENEMY_BOSS_ATTACK_PATTERN_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: ENEMY_BOSS_ATTACK_PATTERN_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'enemy.boss_attack_pattern.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE,
+          parameters: expect.objectContaining({
+            phaseId: ENEMY_BOSS_ATTACK_PATTERN_PHASE_ID,
+            patternId: ENEMY_BOSS_ATTACK_PATTERN_PATTERN_ID,
+            cadenceMs: ENEMY_BOSS_ATTACK_PATTERN_CADENCE_MS,
+            targetsPlayer: true
+          })
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: ENEMY_BOSS_ATTACK_PATTERN_RUNTIME_SYSTEM_ID,
+          ref: ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${ENEMY_BOSS_ATTACK_PATTERN_REQUIRED_PROBE_ID}.assertion.pattern_state_verified`,
+          expected: {
+            bossAttackPatternActive: true,
+            bossAttackPhaseId: ENEMY_BOSS_ATTACK_PATTERN_PHASE_ID,
+            bossAttackPatternId: ENEMY_BOSS_ATTACK_PATTERN_PATTERN_ID,
+            bossAttackCadenceMs: ENEMY_BOSS_ATTACK_PATTERN_CADENCE_MS,
+            bossAttackTargetsPlayer: true
           }
         })
       ]

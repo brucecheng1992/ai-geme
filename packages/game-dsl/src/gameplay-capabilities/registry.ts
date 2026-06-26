@@ -30,6 +30,10 @@ import {
   createCollisionDamageAffinityMatrixPackageContract
 } from './collision-damage-affinity-matrix-package.js';
 import {
+  ENEMY_BOSS_ATTACK_PATTERN_REQUIRED_PROBE_ID,
+  createEnemyBossAttackPatternPackageContract
+} from './enemy-boss-attack-pattern-package.js';
+import {
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   createCameraSideFollowPackageContract
 } from './camera-side-follow-package.js';
@@ -495,6 +499,19 @@ const collisionDamageAffinityMatrixPackageEvidence: GameplayCapabilityEvidence =
 const collisionDamageAffinityMatrixPackageQa: GameplayCapabilityQaEvidence = collisionDamageAffinityMatrixPackageReport.supportEligible
   ? { requiredProbeIds: [COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const enemyBossAttackPatternPackageReport = validateGameplayCapabilityPackage(createEnemyBossAttackPatternPackageContract());
+const enemyBossAttackPatternPackageEvidence: GameplayCapabilityEvidence = enemyBossAttackPatternPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const enemyBossAttackPatternPackageQa: GameplayCapabilityQaEvidence = enemyBossAttackPatternPackageReport.supportEligible
+  ? { requiredProbeIds: [ENEMY_BOSS_ATTACK_PATTERN_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const cameraSideFollowPackageReport = validateGameplayCapabilityPackage(createCameraSideFollowPackageContract());
 const cameraSideFollowPackageEvidence: GameplayCapabilityEvidence = cameraSideFollowPackageReport.supportEligible
   ? {
@@ -765,6 +782,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     collisionDamageAffinityMatrixPackageEvidence,
     collisionDamageAffinityMatrixPackageQa
+  ),
+  planned(
+    'enemy.boss_attack_pattern.v1',
+    'enemy',
+    'Enemy boss attack pattern',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    enemyBossAttackPatternPackageEvidence,
+    enemyBossAttackPatternPackageQa
   ),
   runtimeBacked('camera.top_down_follow.v1', 'camera', 'Top-down follow camera', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], ['top_down_camera']),
   runtimeBacked('movement.eight_direction.v1', 'movement', 'Eight-direction movement', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], [

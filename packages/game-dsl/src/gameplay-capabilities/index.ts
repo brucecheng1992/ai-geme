@@ -19,6 +19,8 @@ export * from './camera-side-follow-runtime-module.js';
 export * from './camera-side-follow-package.js';
 export * from './collision-damage-affinity-matrix-runtime-module.js';
 export * from './collision-damage-affinity-matrix-package.js';
+export * from './enemy-boss-attack-pattern-runtime-module.js';
+export * from './enemy-boss-attack-pattern-package.js';
 export * from './collision-platform-runtime-module.js';
 export * from './collision-platform-package.js';
 export * from './default-straight-single-weapon-runtime-module.js';

@@ -46,6 +46,12 @@ import {
   COLLISION_DAMAGE_AFFINITY_MATRIX_EVENT_TYPE,
   COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID,
   createCollisionDamageAffinityMatrixPackageContract,
+  ENEMY_BOSS_ATTACK_PATTERN_CADENCE_MS,
+  ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE,
+  ENEMY_BOSS_ATTACK_PATTERN_PHASE_ID,
+  ENEMY_BOSS_ATTACK_PATTERN_PATTERN_ID,
+  ENEMY_BOSS_ATTACK_PATTERN_REQUIRED_PROBE_ID,
+  createEnemyBossAttackPatternPackageContract,
   type CapabilityQaProbeDescriptor,
   type GameplayCapabilityPackageContract
 } from '../../packages/game-dsl/src/index.js';
@@ -1299,6 +1305,93 @@ describe('Capability-owned runtime QA probes', () => {
       })
     ]));
     expect(observedAffinityState.status).toBe('passed');
+  });
+
+  it('does not verify enemy boss attack pattern when evidence lacks runtime pattern state fields', () => {
+    const capabilityId = 'enemy.boss_attack_pattern.v1';
+    const probeId = ENEMY_BOSS_ATTACK_PATTERN_REQUIRED_PROBE_ID;
+    const packageContract = createEnemyBossAttackPatternPackageContract();
+    const packages = [packageContract];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingPatternState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_boss_attack_pattern',
+              eventType: ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE,
+              eventTypes: [ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE],
+              sourceRef: 'runtime.boss.attack_pattern',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedPatternState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_boss_attack_pattern',
+              eventType: ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE,
+              eventTypes: [ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE],
+              bossAttackPatternActive: true,
+              bossAttackPhaseId: ENEMY_BOSS_ATTACK_PATTERN_PHASE_ID,
+              bossAttackPatternId: ENEMY_BOSS_ATTACK_PATTERN_PATTERN_ID,
+              bossAttackCadenceMs: ENEMY_BOSS_ATTACK_PATTERN_CADENCE_MS,
+              bossAttackTargetsPlayer: true,
+              sourceRef: 'runtime.boss.attack_pattern',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingPatternState.status).toBe('failed');
+    expect(missingPatternState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingPatternState.requiredResults[0]?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.pattern_state_verified`,
+        status: 'failed',
+        message: expect.stringContaining('expected bossAttackPatternActive=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.pattern_state_verified`,
+        status: 'failed',
+        message: expect.stringContaining(`expected bossAttackPhaseId=${ENEMY_BOSS_ATTACK_PATTERN_PHASE_ID}, observed <missing>`)
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.pattern_state_verified`,
+        status: 'failed',
+        message: expect.stringContaining(`expected bossAttackPatternId=${ENEMY_BOSS_ATTACK_PATTERN_PATTERN_ID}, observed <missing>`)
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.pattern_state_verified`,
+        status: 'failed',
+        message: expect.stringContaining('expected bossAttackTargetsPlayer=true, observed <missing>')
+      })
+    ]));
+    expect(observedPatternState.status).toBe('passed');
   });
 });
 

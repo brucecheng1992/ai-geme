@@ -158,6 +158,11 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   enemyProjectilesDamageEnemies?: boolean;
   hazardsDamagePlayer?: boolean;
   hazardsDamageEnemies?: boolean;
+  bossAttackPatternActive?: boolean;
+  bossAttackPhaseId?: string;
+  bossAttackPatternId?: string;
+  bossAttackCadenceMs?: number;
+  bossAttackTargetsPlayer?: boolean;
   status?: string;
   sourceRef?: string;
 };
@@ -441,7 +446,12 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('enemyProjectilesDamagePlayer', expected, observed.enemyProjectilesDamagePlayer),
     ...compareExpectedBooleanField('enemyProjectilesDamageEnemies', expected, observed.enemyProjectilesDamageEnemies),
     ...compareExpectedBooleanField('hazardsDamagePlayer', expected, observed.hazardsDamagePlayer),
-    ...compareExpectedBooleanField('hazardsDamageEnemies', expected, observed.hazardsDamageEnemies)
+    ...compareExpectedBooleanField('hazardsDamageEnemies', expected, observed.hazardsDamageEnemies),
+    ...compareExpectedBooleanField('bossAttackPatternActive', expected, observed.bossAttackPatternActive),
+    ...compareExpectedStringField('bossAttackPhaseId', expected, observed.bossAttackPhaseId),
+    ...compareExpectedStringField('bossAttackPatternId', expected, observed.bossAttackPatternId),
+    ...compareExpectedNumberField('bossAttackCadenceMs', expected, observed.bossAttackCadenceMs),
+    ...compareExpectedBooleanField('bossAttackTargetsPlayer', expected, observed.bossAttackTargetsPlayer)
   ];
 }
 
