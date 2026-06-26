@@ -6178,14 +6178,18 @@ capability_id=enemy.fixed_turret.v1
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
 review_required=true
-closure_status=not_closed
+closure_status=closed
 global_exit_conditions_met=false
 user_input_required=false
 next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
 reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
+reviewed_commit_sha=e82587ea7993a10fc3820aee6c3aec0fff5e7de3
+reviewed_commit_tree=4ee1a863671ab2a7bcac2dd086b187fe9b6277b2
+oracle_submission_id=019f023c-54f3-78a1-ae67-503af10a8e85
+oracle_agent_id=019effae-8aa2-7c22-b5ba-8c4b69f21d20
 ```
 
 `enemy.fixed_turret.v1` was selected by the Parent Loop Driver after the `enemy.boss_phase_transition.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
@@ -6315,6 +6319,31 @@ Candidate creation requirement:
 - `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
 - Oracle PASS is required before any receipt may update `closure_status=closed`.
 
+Oracle approval receipt:
+
+```text
+submission_id=019f023c-54f3-78a1-ae67-503af10a8e85
+submission_id_source=multi_agent_v1.send_input return field
+agent_id=019effae-8aa2-7c22-b5ba-8c4b69f21d20
+agent_id_source=existing Oracle agent id
+polling_id_type=agent_id
+reviewed_commit_sha=e82587ea7993a10fc3820aee6c3aec0fff5e7de3
+reviewed_commit_tree=4ee1a863671ab2a7bcac2dd086b187fe9b6277b2
+reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
+oracle_status=approved
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0=0; P1=0; P2=0; P3=0
+receipt_scope=docs_only_closure_metadata
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
+```
+
+Receipt boundary:
+
+- This receipt records Oracle approval for immutable candidate commit `e82587ea7993a10fc3820aee6c3aec0fff5e7de3` and Skill revision `58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1`.
+- It intentionally does not record its own receipt commit SHA to avoid self-reference churn.
+- Receipt diff is docs-only closure metadata and must not modify implementation, validator, contract semantics, Skill, AGENTS.md, tests, runtime, Stage 5, production default cutover, legacy exit, or prior closed history.
+- Stage 4 and Step37 remain running. This closes only `stage4.enemy_fixed_turret_v1.complete_supported_package_slice`.
+
 Parent Loop Driver after receipt:
 
 ```text
@@ -6325,7 +6354,11 @@ loop_status=running
 global_exit_conditions_met=false
 user_input_required=false
 next_action=CONTINUE_PARENT_LOOP
-next_atomic_step=RUN_PARENT_LOOP_DRIVER_TO_SELECT_NEXT_UNMET_CHECKPOINT
+next_checkpoint_id=stage4.enemy_flying_right_entry_v1.complete_supported_package_slice
+next_atomic_step=Stage 4 enemy.flying_right_entry.v1 complete-supported package slice implementation atomic step
+unmet_reason=Stage 4 enemy.flying_right_entry.v1 remains unsupported_unregistered; static completeSupported=false; missingEvidenceDimensions=[schema_expressible,normalized,compiled,runtime_consumed,qa_observed]; missingSupportEvidencePrerequisites=[dslSchema,normalizer,irCompiler,runtimeModule,amendmentOperations,capabilityOwnedQa,artifactEvidence,renderContract,requiredProbeIds,requiredProbesVerified].
+selection_rule=first_unmet_checkpoint_in_authoritative_inventory
+source_plan_revision=receipt-pending:enemy.fixed_turret.v1
 ```
 
 ## Stage 4 Implementation: `enemy.boss_phase_transition.v1` complete-supported package slice
