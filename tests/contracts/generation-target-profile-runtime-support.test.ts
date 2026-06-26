@@ -57,6 +57,15 @@ import {
   FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID,
   FEEDBACK_VICTORY_DECLARATION_TEXT,
   FEEDBACK_VICTORY_DECLARATION_TRIGGER,
+  UI_FAILURE_RESTART_EVENT_TYPE,
+  UI_FAILURE_RESTART_FAILURE_TEXT,
+  UI_FAILURE_RESTART_INPUT,
+  UI_FAILURE_RESTART_PROFILE_ID,
+  UI_FAILURE_RESTART_PROMPT_TEXT,
+  UI_FAILURE_RESTART_REQUIRED_PROBE_ID,
+  UI_FAILURE_RESTART_RESTART_EVENT_TYPE,
+  UI_FAILURE_RESTART_RUNTIME_FAMILY,
+  UI_FAILURE_RESTART_SCHEMA_VERSION,
   FIXED_PROMPT_BINDING_EVENT_TYPE,
   FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_ERROR_CODE,
@@ -236,6 +245,7 @@ import {
   createEnemyFlyingRightEntryPackageContract,
   createEnemyPatrolInfantryPackageContract,
   createFeedbackVictoryDeclarationPackageContract,
+  createUiFailureRestartPackageContract,
   createFixedPromptBindingPackageContract,
   createGenerationFallbackPolicyFailClosedPackageContract,
   createGoalBossUnlockPackageContract,
@@ -282,6 +292,7 @@ const enemyFixedTurretCapabilityId = 'enemy.fixed_turret.v1';
 const enemyFlyingRightEntryCapabilityId = 'enemy.flying_right_entry.v1';
 const enemyPatrolInfantryCapabilityId = 'enemy.patrol_infantry.v1';
 const feedbackVictoryDeclarationCapabilityId = 'feedback.victory_declaration.v1';
+const uiFailureRestartCapabilityId = 'ui.failure_restart.v1';
 const generationFallbackPolicyFailClosedCapabilityId = 'generation.fallback_policy_fail_closed.v1';
 const goalBossUnlockCapabilityId = 'goal.boss_unlock.v1';
 const hazardFallingAreaCapabilityId = 'hazard.falling_area.v1';
@@ -3066,6 +3077,123 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
   });
 
+  it('keeps UI failure restart unverified when generic restart evidence lacks failure-screen reset state', () => {
+    const dependencyEvidence: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: healthCapabilityId,
+        probeId: HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+        action: 'observe_health_points',
+        eventType: 'health.player_health.current',
+        eventTypes: ['health.player_health.current'],
+        sourceRef: 'runtime.health.player_health_points',
+        status: 'observed'
+      },
+      {
+        capabilityId: rulesRetryCountCapabilityId,
+        probeId: RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
+        action: 'consume_retry',
+        eventType: RULES_RETRY_COUNT_EVENT_TYPE,
+        eventTypes: [RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE, RULES_RETRY_COUNT_EVENT_TYPE],
+        retryCountConfigured: true,
+        retryCountInitial: RULES_RETRY_COUNT_INITIAL_RETRIES,
+        retryCountBefore: RULES_RETRY_COUNT_BEFORE,
+        retryCountAfter: RULES_RETRY_COUNT_AFTER,
+        retryCountRemaining: RULES_RETRY_COUNT_REMAINING,
+        retryCountConsumed: true,
+        retryCountDecremented: true,
+        retryCountExhausted: false,
+        retryCountFailureScreenShown: false,
+        sourceRef: 'runtime.rules.retry_count',
+        status: 'observed'
+      }
+    ];
+    const genericRestartQaReport = buildSingleCapabilityQaReport({
+      capabilityId: uiFailureRestartCapabilityId,
+      packageContract: createUiFailureRestartPackageContract(),
+      dependencyPackages: [createHealthPlayerHealthPointsPackageContract(), createRulesRetryCountPackageContract()],
+      additionalObserved: dependencyEvidence,
+      eventType: UI_FAILURE_RESTART_RESTART_EVENT_TYPE,
+      eventTypes: ['game.lost', 'input.received', UI_FAILURE_RESTART_RESTART_EVENT_TYPE],
+      probeId: UI_FAILURE_RESTART_REQUIRED_PROBE_ID,
+      action: 'restart_from_failure',
+      sourceRef: 'runtime.ui.generic_restart',
+      stateFields: {
+        failureRestartFailureScreenShown: true,
+        failureRestartFailureText: UI_FAILURE_RESTART_FAILURE_TEXT,
+        failureRestartPromptVisible: true,
+        failureRestartPromptText: UI_FAILURE_RESTART_PROMPT_TEXT
+      }
+    });
+    const observedFailureRestartQaReport = buildSingleCapabilityQaReport({
+      capabilityId: uiFailureRestartCapabilityId,
+      packageContract: createUiFailureRestartPackageContract(),
+      dependencyPackages: [createHealthPlayerHealthPointsPackageContract(), createRulesRetryCountPackageContract()],
+      additionalObserved: dependencyEvidence,
+      eventType: UI_FAILURE_RESTART_EVENT_TYPE,
+      eventTypes: ['game.lost', 'input.received', UI_FAILURE_RESTART_RESTART_EVENT_TYPE, UI_FAILURE_RESTART_EVENT_TYPE],
+      probeId: UI_FAILURE_RESTART_REQUIRED_PROBE_ID,
+      action: 'restart_from_failure',
+      sourceRef: 'runtime.ui.failure_restart',
+      stateFields: failureRestartStateFields()
+    });
+    const genericRestartReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_ui_failure_restart_generic_restart',
+      capabilityQaReport: genericRestartQaReport
+    });
+    const observedFailureRestartReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_ui_failure_restart_observed_state',
+      capabilityQaReport: observedFailureRestartQaReport
+    });
+    const genericRestartState = genericRestartReport.capabilities.find((entry) => entry.capabilityId === uiFailureRestartCapabilityId);
+    const observedFailureRestartState = observedFailureRestartReport.capabilities.find((entry) => entry.capabilityId === uiFailureRestartCapabilityId);
+
+    expect(genericRestartQaReport.requiredResults.find((entry) => entry.probeId === HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericRestartQaReport.requiredResults.find((entry) => entry.probeId === RULES_RETRY_COUNT_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericRestartQaReport.requiredResults.find((entry) => entry.probeId === UI_FAILURE_RESTART_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${UI_FAILURE_RESTART_REQUIRED_PROBE_ID}.assertion.failure_restart_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${UI_FAILURE_RESTART_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${UI_FAILURE_RESTART_REQUIRED_PROBE_ID}.assertion.failure_restart_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected failureRestartVerified=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${UI_FAILURE_RESTART_REQUIRED_PROBE_ID}.assertion.failure_restart_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected failureRestartStateReset=true, observed <missing>')
+        })
+      ])
+    });
+    expect(genericRestartState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [UI_FAILURE_RESTART_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedFailureRestartState).toMatchObject({
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [UI_FAILURE_RESTART_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [UI_FAILURE_RESTART_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+  });
+
   it('keeps state transition graph unverified when win lose evidence lacks explicit graph fields', () => {
     const genericGraphQaReport = buildSingleCapabilityQaReport({
       capabilityId: rulesStateTransitionGraphCapabilityId,
@@ -5451,6 +5579,28 @@ function spawnStopOnBossDefeatStateFields(): Record<string, unknown> {
     spawnStopOnBossDefeatPostDefeatSpawnAttemptBlocked: true,
     spawnStopOnBossDefeatPostDefeatSpawnCount: SPAWN_STOP_ON_BOSS_DEFEAT_POST_DEFEAT_SPAWN_COUNT,
     spawnStopOnBossDefeatNoHiddenSpawnDetected: true
+  };
+}
+
+function failureRestartStateFields(): Record<string, unknown> {
+  return {
+    failureRestartVerified: true,
+    failureRestartSchemaVersion: UI_FAILURE_RESTART_SCHEMA_VERSION,
+    failureRestartProfileId: UI_FAILURE_RESTART_PROFILE_ID,
+    failureRestartRuntimeFamily: UI_FAILURE_RESTART_RUNTIME_FAMILY,
+    failureRestartNoRetriesRemaining: true,
+    failureRestartFailureScreenShown: true,
+    failureRestartFailureText: UI_FAILURE_RESTART_FAILURE_TEXT,
+    failureRestartPromptVisible: true,
+    failureRestartPromptText: UI_FAILURE_RESTART_PROMPT_TEXT,
+    failureRestartInputReceived: true,
+    failureRestartInput: UI_FAILURE_RESTART_INPUT,
+    failureRestartGameRestarted: true,
+    failureRestartRestartEventType: UI_FAILURE_RESTART_RESTART_EVENT_TYPE,
+    failureRestartStateReset: true,
+    failureRestartPlayerHealthReset: true,
+    failureRestartRetryCountReset: true,
+    failureRestartFailureScreenCleared: true
   };
 }
 

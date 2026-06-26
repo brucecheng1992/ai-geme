@@ -6197,6 +6197,12 @@ reviewed_commit_sha=not_submitted
 reviewed_skill_revision=not_submitted
 oracle_agent_id=not_submitted
 oracle_submission_id=not_submitted
+superseded_candidate_commit_sha=d719a9c79f304750b1545a05dda6d3d3a097bd8a
+superseded_candidate_tree=5c5c1f252969868af8e837c24333ee85beea974e
+superseded_oracle_submission_id=019f0555-f46b-77a1-b867-22e72cdb2a71
+superseded_oracle_agent_id=019f0488-39ff-7e33-a790-4caca4a838a3
+superseded_oracle_result=CHANGES_REQUIRED
+superseded_oracle_p1_findings=contract-freeze missing ui.failure_restart.verified assertion; remaining-inventory fixture still selected previous spawn.stop_on_boss_defeat checkpoint; target-profile overlay coverage missing for ui.failure_restart.v1.
 ```
 
 `ui.failure_restart.v1` was selected by the Parent Loop Driver after the `spawn.stop_on_boss_defeat.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
@@ -6225,7 +6231,6 @@ Modified paths:
 - `tests/contracts/gameplay-capability-package-contract.test.ts`.
 - `tests/contracts/gameplay-capability-qa-probes.test.ts`.
 - `tests/contracts/generation-target-profile-runtime-support.test.ts`.
-- `tests/contracts/gameplay-capability-registry.test.ts`.
 - `tests/contracts/step37-remaining-inventory-driver.test.ts`.
 - `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
 
@@ -6280,27 +6285,77 @@ Focused set selection:
 - `contract-freeze.test.ts`: included because this diff adds a telemetry event identity and QA/evidence fields, so focused validation follows the schema/event impact surface.
 - `deepseek-authoritative-dsl-support.test.ts`, `dsl-consumption-report.test.ts`, `gameplay-capability-registry.test.ts`, and `step37-remaining-inventory-driver.test.ts`: validate the registry/support inventory count and identity changes caused directly by registering `ui.failure_restart.v1`.
 
-Final validation after closure-record sync:
+Superseded local validation before Oracle P1:
 
 ```text
 command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-focused-validation.test.ts
 exitCode=0
 duration=real 2.57s
-result=PASS: 11 files / 339 tests
+result=SUPERSEDED_GREEN: 11 files / 339 tests. Oracle P1 found the focused set did not contain an actual `ui.failure_restart.verified` freeze assertion, remaining-inventory still selected the previous checkpoint fixture, and target-profile overlay coverage was missing.
 
 command=/usr/bin/time -p npx vitest run tests/contracts
 exitCode=0
 duration=real 13.03s
-result=PASS: 98 files / 1304 tests
+result=SUPERSEDED_GREEN: 98 files / 1304 tests before Oracle P1 remediation.
 
 command=/usr/bin/time -p npm test
 exitCode=0
 duration=real 64.67s
-result=PASS: contracts 98 files / 1304 tests; workspace 34 files / 410 tests
+result=SUPERSEDED_GREEN: contracts 98 files / 1304 tests; workspace 34 files / 410 tests before Oracle P1 remediation.
 
 command=/usr/bin/time -p npm run typecheck
 exitCode=0
 duration=real 7.57s
+result=SUPERSEDED_GREEN before Oracle P1 remediation.
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.03s
+result=SUPERSEDED_GREEN before Oracle P1 remediation.
+
+command=/usr/bin/time -p npx tsx --eval "<ui.failure_restart.v1 support summary>"
+exitCode=0
+duration=real 0.85s
+result=SUPERSEDED_GREEN: support requiredCapabilityCount=59; registeredCapabilityCount=49; completeSupportedCount=0; ui.failure_restart.v1 classification=DEFERRED; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false.
+
+command=/usr/bin/time -p npx tsx --eval "<Step37 remaining inventory with committed closures through spawn.stop_on_boss_defeat.v1>"
+exitCode=0
+duration=real 0.57s
+result=SUPERSEDED_GREEN: requiredCapabilityCount=59; registeredCapabilityCount=49; staticCompleteSupportedCount=0; committedClosedCapabilityCount=48; next_checkpoint_id=stage4.ui_failure_restart_v1.complete_supported_package_slice; selectionFailure=null; ui.failure_restart.v1 state=registered_without_required_probe_verification.
+
+command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
+exitCode=0
+duration=real 0.08s
+result=SUPERSEDED_GREEN: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_roots=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery; skill_file_count=8; skill_bundle_digest=0c039f164ed082b6e48482661bcd4cdb457192847c57f4f04b6873cc58227172.
+```
+
+Oracle P1 remediation before new candidate:
+
+- `tests/contracts/contract-freeze.test.ts` adds the missing `ui.failure_restart.verified` schema freeze assertion and confirms it is not a legacy QA-gate required telemetry event.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts` treats `spawn.stop_on_boss_defeat.v1` as committed closed, requires `committedClosedCapabilityCount=48`, and selects `stage4.ui_failure_restart_v1.complete_supported_package_slice`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts` adds target-profile overlay positive/negative coverage: dependency probes for player health and retry count pass first; generic `game.restarted` / prompt-only evidence still fails `ui.failure_restart.v1`; full `ui.failure_restart.verified` reset-state evidence advances only same-run observed overlay with static `completeSupported=false`.
+- These P1 remediations change contract expectations and docs, so all previous local validation and Oracle review evidence for `d719a9c79f304750b1545a05dda6d3d3a097bd8a` is stale.
+- P1 remediation validation:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/contract-freeze.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-focused-validation.test.ts
+exitCode=0
+duration=real 2.48s
+result=PASS: 11 files / 341 tests; covers contract-freeze `ui.failure_restart.verified`, remaining-inventory current checkpoint selection, and target-profile failure-restart overlay positive/negative paths.
+
+command=/usr/bin/time -p npx vitest run tests/contracts
+exitCode=0
+duration=real 9.89s
+result=PASS: 98 files / 1306 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 60.21s
+result=PASS: contracts 98 files / 1306 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 7.10s
 result=PASS
 
 command=/usr/bin/time -p git diff --check
@@ -6308,25 +6363,18 @@ exitCode=0
 duration=real 0.03s
 result=PASS
 
-command=/usr/bin/time -p npx tsx --eval "<ui.failure_restart.v1 support summary>"
-exitCode=0
-duration=real 0.85s
-result=PASS: support requiredCapabilityCount=59; registeredCapabilityCount=49; completeSupportedCount=0; ui.failure_restart.v1 classification=DEFERRED; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false.
-
 command=/usr/bin/time -p npx tsx --eval "<Step37 remaining inventory with committed closures through spawn.stop_on_boss_defeat.v1>"
 exitCode=0
-duration=real 0.57s
+duration=real 0.74s
 result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=49; staticCompleteSupportedCount=0; committedClosedCapabilityCount=48; next_checkpoint_id=stage4.ui_failure_restart_v1.complete_supported_package_slice; selectionFailure=null; ui.failure_restart.v1 state=registered_without_required_probe_verification.
 
 command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
 exitCode=0
-duration=real 0.08s
+duration=real 0.07s
 result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_roots=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery; skill_file_count=8; skill_bundle_digest=0c039f164ed082b6e48482661bcd4cdb457192847c57f4f04b6873cc58227172.
 ```
 
-Candidate creation requirement:
-
-- This candidate-ready record changes the final tree. Before creating the immutable candidate commit, focused contracts, full related contracts, `npm test`, `typecheck`, `git diff --check`, final diff range check, capability/inventory alignment, Parent Loop inventory alignment, and Skill freshness must remain fresh against the updated tree.
+- This candidate-ready record changes the final tree. Before creating the next immutable candidate commit, focused contracts, full related contracts, `npm test`, `typecheck`, `git diff --check`, final diff range check, capability/inventory alignment, Parent Loop inventory alignment, and Skill freshness must remain fresh against the updated tree.
 - Candidate commit must not write its own SHA into this candidate record.
 - Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=0c039f164ed082b6e48482661bcd4cdb457192847c57f4f04b6873cc58227172`.
 - `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
