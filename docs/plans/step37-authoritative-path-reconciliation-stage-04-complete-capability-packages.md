@@ -6190,15 +6190,15 @@ global_exit_conditions_met=false
 user_input_required=false
 next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
 reviewed_skill_revision_type=sha256_bundle
-reviewed_skill_revision=2729dda333fe63d7dd24412e540ff16da39801b4e50bf570b95e2d631a16b44e
+reviewed_skill_revision=ce2d2020aa88c8a330a47570c802fccb52d0e6a981190e7c183ab3c50c2da01b
 active_skill_path=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery
 active_skill_revision_type=sha256_bundle
 active_skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
 active_skill_file_count=8
-previous_recorded_skill_digest=ce2d2020aa88c8a330a47570c802fccb52d0e6a981190e7c183ab3c50c2da01b
-current_active_skill_digest=2729dda333fe63d7dd24412e540ff16da39801b4e50bf570b95e2d631a16b44e
-freshness_status=changed
-freshness_interpretation=The previous WIP closure digest is preserved as stale historical input; current candidate and Oracle evidence must bind current_active_skill_digest.
+previous_recorded_skill_digest=2729dda333fe63d7dd24412e540ff16da39801b4e50bf570b95e2d631a16b44e
+current_active_skill_digest=ce2d2020aa88c8a330a47570c802fccb52d0e6a981190e7c183ab3c50c2da01b
+freshness_status=aligned
+freshness_interpretation=The earlier candidate record digest was rejected as stale; current candidate and Oracle evidence must bind current_active_skill_digest.
 candidate_commit_sha=pending until candidate checkpoint commit is created
 reviewed_commit_sha=pending until Oracle reviews the candidate commit
 ```
@@ -6315,7 +6315,7 @@ result=PASS: currentCheckpointId=stage4.provider_deepseek_authoritative_draft_v1
 command=node --input-type=module <<'NODE' ... step37 active Skill bundle digest ... NODE
 exitCode=0
 duration=sub-second
-result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_roots=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery; skill_file_count=8; skill_bundle_digest=2729dda333fe63d7dd24412e540ff16da39801b4e50bf570b95e2d631a16b44e.
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_roots=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery; skill_file_count=8; skill_bundle_digest=ce2d2020aa88c8a330a47570c802fccb52d0e6a981190e7c183ab3c50c2da01b.
 ```
 
 Validation isolation note:
@@ -6338,7 +6338,7 @@ Post-record validation requirement:
 
 - This closure record changes the final tree. Before creating the immutable candidate commit, focused closure contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, final diff range check, capability support / inventory alignment, Parent Loop inventory alignment, and Skill freshness must be re-run or explicitly recorded as fresh for the final tree.
 - Candidate commit must not write its own SHA into this candidate record.
-- Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=2729dda333fe63d7dd24412e540ff16da39801b4e50bf570b95e2d631a16b44e`.
+- Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=ce2d2020aa88c8a330a47570c802fccb52d0e6a981190e7c183ab3c50c2da01b`.
 - `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
 - Stage 4 remains active; Stage 5 has not been entered by this atomic step.
 
