@@ -181,6 +181,14 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   fixedTurretTargetsPlayer?: boolean;
   fixedTurretProjectilePatternId?: string;
   fixedTurretFireCadenceMs?: number;
+  flyingRightEntrySpawned?: boolean;
+  flyingRightEntryEnemyId?: string;
+  flyingRightEntryArchetypeId?: string;
+  flyingRightEntrySegmentId?: string;
+  flyingRightEntryEnteredFromRight?: boolean;
+  flyingRightEntryEntrySide?: string;
+  flyingRightEntryMovementPatternId?: string;
+  flyingRightEntryWaveId?: string;
   status?: string;
   sourceRef?: string;
 };
@@ -487,7 +495,15 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('fixedTurretStationary', expected, observed.fixedTurretStationary),
     ...compareExpectedBooleanField('fixedTurretTargetsPlayer', expected, observed.fixedTurretTargetsPlayer),
     ...compareExpectedStringField('fixedTurretProjectilePatternId', expected, observed.fixedTurretProjectilePatternId),
-    ...compareExpectedNumberField('fixedTurretFireCadenceMs', expected, observed.fixedTurretFireCadenceMs)
+    ...compareExpectedNumberField('fixedTurretFireCadenceMs', expected, observed.fixedTurretFireCadenceMs),
+    ...compareExpectedBooleanField('flyingRightEntrySpawned', expected, observed.flyingRightEntrySpawned),
+    ...compareExpectedStringField('flyingRightEntryEnemyId', expected, observed.flyingRightEntryEnemyId),
+    ...compareExpectedStringField('flyingRightEntryArchetypeId', expected, observed.flyingRightEntryArchetypeId),
+    ...compareExpectedStringField('flyingRightEntrySegmentId', expected, observed.flyingRightEntrySegmentId),
+    ...compareExpectedBooleanField('flyingRightEntryEnteredFromRight', expected, observed.flyingRightEntryEnteredFromRight),
+    ...compareExpectedStringField('flyingRightEntryEntrySide', expected, observed.flyingRightEntryEntrySide),
+    ...compareExpectedStringField('flyingRightEntryMovementPatternId', expected, observed.flyingRightEntryMovementPatternId),
+    ...compareExpectedStringField('flyingRightEntryWaveId', expected, observed.flyingRightEntryWaveId)
   ];
 }
 

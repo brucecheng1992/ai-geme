@@ -146,6 +146,21 @@ import {
   ENEMY_FIXED_TURRET_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/enemy-fixed-turret-runtime-module.js';
 import {
+  ENEMY_FLYING_RIGHT_ENTRY_PACKAGE_REQUIRED_EVIDENCE_ID,
+  ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID,
+  createEnemyFlyingRightEntryPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/enemy-flying-right-entry-package.js';
+import {
+  ENEMY_FLYING_RIGHT_ENTRY_ARCHETYPE_ID,
+  ENEMY_FLYING_RIGHT_ENTRY_ENEMY_ID,
+  ENEMY_FLYING_RIGHT_ENTRY_ENTRY_SIDE,
+  ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE,
+  ENEMY_FLYING_RIGHT_ENTRY_MOVEMENT_PATTERN_ID,
+  ENEMY_FLYING_RIGHT_ENTRY_RUNTIME_SYSTEM_ID,
+  ENEMY_FLYING_RIGHT_ENTRY_SEGMENT_ID,
+  ENEMY_FLYING_RIGHT_ENTRY_WAVE_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/enemy-flying-right-entry-runtime-module.js';
+import {
   COLLISION_PLATFORM_PACKAGE_REQUIRED_EVIDENCE_ID,
   COLLISION_PLATFORM_REQUIRED_PROBE_ID,
   createCollisionPlatformPackageContract
@@ -863,6 +878,67 @@ describe('Gameplay capability package contract', () => {
             fixedTurretTargetsPlayer: true,
             fixedTurretProjectilePatternId: ENEMY_FIXED_TURRET_PROJECTILE_PATTERN_ID,
             fixedTurretFireCadenceMs: ENEMY_FIXED_TURRET_FIRE_CADENCE_MS
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the enemy flying-right-entry package-owned QA contract', () => {
+    const contract = createEnemyFlyingRightEntryPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'enemy.flying_right_entry.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([ENEMY_FLYING_RIGHT_ENTRY_RUNTIME_SYSTEM_ID]);
+    expect(contract.dependencies).toEqual([{ capabilityId: 'spawn.enemy_wave.v1', range: '^v1' }]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: ENEMY_FLYING_RIGHT_ENTRY_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'enemy.flying_right_entry.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE,
+          parameters: expect.objectContaining({
+            enemyId: ENEMY_FLYING_RIGHT_ENTRY_ENEMY_ID,
+            archetypeId: ENEMY_FLYING_RIGHT_ENTRY_ARCHETYPE_ID,
+            segmentId: ENEMY_FLYING_RIGHT_ENTRY_SEGMENT_ID,
+            entrySide: ENEMY_FLYING_RIGHT_ENTRY_ENTRY_SIDE,
+            movementPatternId: ENEMY_FLYING_RIGHT_ENTRY_MOVEMENT_PATTERN_ID,
+            waveId: ENEMY_FLYING_RIGHT_ENTRY_WAVE_ID
+          })
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: ENEMY_FLYING_RIGHT_ENTRY_RUNTIME_SYSTEM_ID,
+          ref: ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID}.assertion.right_entry_verified`,
+          expected: {
+            flyingRightEntrySpawned: true,
+            flyingRightEntryEnemyId: ENEMY_FLYING_RIGHT_ENTRY_ENEMY_ID,
+            flyingRightEntryArchetypeId: ENEMY_FLYING_RIGHT_ENTRY_ARCHETYPE_ID,
+            flyingRightEntrySegmentId: ENEMY_FLYING_RIGHT_ENTRY_SEGMENT_ID,
+            flyingRightEntryEnteredFromRight: true,
+            flyingRightEntryEntrySide: ENEMY_FLYING_RIGHT_ENTRY_ENTRY_SIDE,
+            flyingRightEntryMovementPatternId: ENEMY_FLYING_RIGHT_ENTRY_MOVEMENT_PATTERN_ID,
+            flyingRightEntryWaveId: ENEMY_FLYING_RIGHT_ENTRY_WAVE_ID
           }
         })
       ]

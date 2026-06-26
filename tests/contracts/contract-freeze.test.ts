@@ -482,6 +482,11 @@ describe('Contract Freeze', () => {
     expect(shooterContract.required_telemetry_all).not.toContain('enemy.fired');
   });
 
+  it('allows package-owned flying enemy right-entry telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'enemy.flying_right_entry.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('enemy.flying_right_entry.verified');
+  });
+
   it('freezes QA gate all and any_groups evaluation semantics', () => {
     const shooterGate = qaGate.genre_required_events.shooter;
     const observedWithScore = [...shooterGate.all, 'score.changed'];

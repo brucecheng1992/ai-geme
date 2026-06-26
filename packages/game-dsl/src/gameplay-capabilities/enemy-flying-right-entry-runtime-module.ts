@@ -1,0 +1,9 @@
+export const ENEMY_FLYING_RIGHT_ENTRY_CAPABILITY_ID = 'enemy.flying_right_entry.v1';
+export const ENEMY_FLYING_RIGHT_ENTRY_RUNTIME_SYSTEM_ID = 'enemy.flying_right_entry';
+export const ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE = 'enemy.flying_right_entry.verified';
+export const ENEMY_FLYING_RIGHT_ENTRY_ENEMY_ID = 'flying_enemy_right_1';
+export const ENEMY_FLYING_RIGHT_ENTRY_ARCHETYPE_ID = 'flying_enemy';
+export const ENEMY_FLYING_RIGHT_ENTRY_SEGMENT_ID = 'metal_bridge';
+export const ENEMY_FLYING_RIGHT_ENTRY_ENTRY_SIDE = 'right';
+export const ENEMY_FLYING_RIGHT_ENTRY_MOVEMENT_PATTERN_ID = 'right_to_left_flight';
+export const ENEMY_FLYING_RIGHT_ENTRY_WAVE_ID = 'metal_bridge_flying_wave';

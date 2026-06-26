@@ -139,6 +139,7 @@ describe('Step37 remaining complete-supported inventory driver', () => {
       'enemy.boss_attack_pattern.v1',
       'enemy.boss_lifecycle.v1',
       'enemy.boss_phase_transition.v1',
+      'enemy.fixed_turret.v1',
       'health.damage_invulnerability.v1',
       'health.player_health_points.v1',
       'metadata.fixed_prompt_binding.v1',
@@ -166,14 +167,14 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     });
 
     expect(report.requiredCapabilityCount).toBe(59);
-    expect(report.registeredCapabilityCount).toBe(27);
+    expect(report.registeredCapabilityCount).toBe(28);
     expect(report.staticCompleteSupportedCount).toBe(0);
-    expect(report.stateCounts.unsupported_unregistered).toBe(32);
-    expect(report.committedClosedCapabilityCount).toBe(26);
+    expect(report.stateCounts.unsupported_unregistered).toBe(31);
+    expect(report.committedClosedCapabilityCount).toBe(27);
     expect(report.nextCheckpoint).not.toBeNull();
-    expect(report.nextCheckpoint?.checkpoint_id).toBe('stage4.enemy_fixed_turret_v1.complete_supported_package_slice');
+    expect(report.nextCheckpoint?.checkpoint_id).toBe('stage4.enemy_flying_right_entry_v1.complete_supported_package_slice');
     expect(report.nextCheckpoint?.next_atomic_step).toBe(
-      'Stage 4 enemy.fixed_turret.v1 complete-supported package slice implementation atomic step'
+      'Stage 4 enemy.flying_right_entry.v1 complete-supported package slice implementation atomic step'
     );
     expect(report.checkpointInventory.some((checkpoint) => closedCapabilityIds.has(checkpoint.checkpoint_id))).toBe(false);
   });

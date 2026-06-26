@@ -6167,6 +6167,160 @@ next_action=CONTINUE_PARENT_LOOP
 next_atomic_step=RUN_PARENT_LOOP_DRIVER_TO_SELECT_NEXT_UNMET_CHECKPOINT
 ```
 
+## Stage 4 Implementation: `enemy.flying_right_entry.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.enemy_flying_right_entry_v1.complete_supported_package_slice
+parent_stage_id=stage4
+capability_id=enemy.flying_right_entry.v1
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=not_closed
+global_exit_conditions_met=false
+user_input_required=false
+next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
+reviewed_skill_revision_type=sha256_bundle
+reviewed_skill_bundle_format=step37_manifest_v1_path_size_sha
+reviewed_skill_revision=e9f08637d2d0b01bdf69f15c00d51cd4284eaf2569939c8e1882bf1d447684fb
+reviewed_skill_root_identity=/Users/dahufa/.agents/skills/review-gated-delivery
+reviewed_commit_sha=not_created
+oracle_submission_id=not_submitted
+oracle_agent_id=not_submitted
+```
+
+`enemy.flying_right_entry.v1` was selected by the Parent Loop Driver after the `enemy.fixed_turret.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
+
+Minimum closure requirements:
+
+1. Add a package-owned flying enemy right-entry contract with stable capability identity, runtime system identity, right-entry verification event identity, required probe id, and required QA evidence id.
+2. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `enemy.flying_right_entry.v1` only when evidence includes real right-entry state fields for flying enemy identity, metal bridge segment, right-side entry, movement pattern, and wave id.
+5. Require right-entry state fields: `flyingRightEntrySpawned=true`, `flyingRightEntryEnemyId=flying_enemy_right_1`, `flyingRightEntryArchetypeId=flying_enemy`, `flyingRightEntrySegmentId=metal_bridge`, `flyingRightEntryEnteredFromRight=true`, `flyingRightEntryEntrySide=right`, `flyingRightEntryMovementPatternId=right_to_left_flight`, and `flyingRightEntryWaveId=metal_bridge_flying_wave`.
+6. Add negative regressions proving wave/order evidence or a generic right-entry event without those state fields keeps the capability unverified and emits the required missing-probe blocker.
+7. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/enemy-flying-right-entry-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/enemy-flying-right-entry-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`.
+- `tests/contracts/contract-freeze.test.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createEnemyFlyingRightEntryPackageContract()`.
+- Runtime module identity: `ENEMY_FLYING_RIGHT_ENTRY_RUNTIME_SYSTEM_ID=enemy.flying_right_entry`.
+- Right-entry verification event: `ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE=enemy.flying_right_entry.verified`.
+- Required probe: `ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID=enemy.flying_right_entry.v1.right_entry.browser_qa.v1`.
+- Required evidence id: `ENEMY_FLYING_RIGHT_ENTRY_PACKAGE_REQUIRED_EVIDENCE_ID=enemy.flying_right_entry.v1.evidence.capability_qa_report.v1`.
+- Required state fields: `flyingRightEntrySpawned`, `flyingRightEntryEnemyId`, `flyingRightEntryArchetypeId`, `flyingRightEntrySegmentId`, `flyingRightEntryEnteredFromRight`, `flyingRightEntryEntrySide`, `flyingRightEntryMovementPatternId`, and `flyingRightEntryWaveId`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares every right-entry state field and fails the required probe when any field is missing or mismatched.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for the same run; it does not mutate static `completeSupported`.
+- Telemetry schema: `TelemetryEventSchema` accepts `enemy.flying_right_entry.verified`; `contract-freeze.test.ts` verifies the event is schema-expressible without making it a QA gate requirement.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned flying enemy right-entry capability contract, runtime system identity, right-entry verification event, required probe id, required evidence id, runtime evidence fields, and telemetry schema support for `enemy.flying_right_entry.verified`. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, Step37 remaining-inventory driver, telemetry/event freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves every required right-entry state field. |
+| Authority | Package-owned QA evidence defines the capability authority: wave/order evidence, generic enemy spawn, or generic entry events are insufficient unless evidence also proves the flying enemy identity, right-side entry, segment, movement pattern, and wave id. |
+| Legacy strategy | Existing `spawn.enemy_wave.v1`, `spawn.static.v1`, or generic enemy wave evidence remains non-authoritative for this capability unless the required `enemy.flying_right_entry.v1` runtime probe evidence is present. |
+| Failure policy | Missing package contract, missing right-entry verification event, missing state fields, wrong capability/probe identity, stale evidence, or unsatisfied dependency probe evidence keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, dependency-compatible package resolution, registry support advancement without complete support, QA reader positive/negative right-entry state behavior, target-profile overlay positive/negative behavior, remaining-inventory selection, and event/schema freeze coverage. |
+| Rollback | Reverting this slice removes only the enemy flying-right-entry package/probe/reader/schema wiring and returns `enemy.flying_right_entry.v1` to unsupported evidence without changing business runtime gameplay templates. |
+
+Focused validation:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/step37-closure-implementation-trace.test.ts
+exitCode=0
+duration=real 2.38s
+result=PASS: 9 files / 204 tests
+```
+
+Focused set selection:
+
+- `gameplay-capability-package-contract.test.ts`: validates the new flying-right-entry package contract, required evidence id, runtime system, event identity, dependency on `spawn.enemy_wave.v1`, and eight right-entry assertion fields.
+- `gameplay-capability-qa-probes.test.ts`: validates that wave/order evidence plus a generic right-entry event without authoritative right-entry fields fails, while full state evidence passes.
+- `generation-target-profile-runtime-support.test.ts`: validates same-run overlay positive/negative behavior, canonical missing-probe identity, and preservation of static `completeSupported=false`.
+- `gameplay-capability-registry.test.ts`: validates static registry evidence and required probe wiring without static support promotion.
+- `deepseek-authoritative-dsl-support.test.ts`: validates support dimensions, registry identity, and prerequisites for the target capability.
+- `dsl-consumption-report.test.ts`: validates the consumption report reads the updated package-backed support dimensions.
+- `step37-remaining-inventory-driver.test.ts`: validates parent-loop inventory consumption after the registry count advances to 28 and selects the current flying-right-entry checkpoint from committed closure history.
+- `contract-freeze.test.ts`: included because this diff changes telemetry event schema by adding `enemy.flying_right_entry.verified` and adds reader-dependent evidence fields; focused validation follows the actual schema and event-contract impact surface rather than a fixed historical set.
+
+Validation record:
+
+```text
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 12.00s
+result=PASS: 98 files / 1196 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 63.50s
+result=PASS: contracts 1196 tests + workspace 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 7.05s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.03s
+result=PASS
+
+command=/usr/bin/time -p npx tsx -e "<enemy.flying_right_entry.v1 support summary and remaining inventory>"
+exitCode=0
+duration=real 0.73s
+result=PASS: support registeredCapabilityCount=28; enemy.flying_right_entry.v1 classification=DEFERRED; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false; remaining next_checkpoint_id=stage4.enemy_flying_right_entry_v1.complete_supported_package_slice while this candidate is not yet committed.
+
+command=python3 - <<'PY' ... step37_manifest_v1_path_size_sha review-gated-delivery Skill bundle digest ... PY
+exitCode=0
+duration=<1s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_size_sha; skill_file_count=7; skill_bundle_digest=e9f08637d2d0b01bdf69f15c00d51cd4284eaf2569939c8e1882bf1d447684fb.
+```
+
+Count-change audit:
+
+- `registeredCapabilityCount` changes from `27` to `28` only in tests and reports that use the full active package inventory including `enemy.flying_right_entry.v1`.
+- `observedCompleteSupportedCount` changes from `23` to `24` only in the default full-observed target-profile fixture where `ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE` and all right-entry state fields are present.
+- Each `22/59` negative fixture changed to `23/59` only after verifying that the fixture includes the new package and full right-entry event, and intentionally fails exactly one other package assertion.
+- Single-capability and package-subset fixtures keep their previous counts because `enemy.flying_right_entry.v1` is not part of those expected package sets.
+- The canonical missing-probe assertion includes the concrete `ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID`; the tests do not rely on count-only expectations.
+
+Exit assessment:
+
+- implementation_status: `complete`.
+- local_validation_status: `passed`.
+- candidate_status: `ready_for_commit`.
+- oracle_status: `not_submitted`.
+- unresolved_items: `candidate commit not yet created`; `Oracle review not submitted`; `receipt not created`; `Stage 4 completeSupported still not met`; `Production Default Cutover remains inactive`; `legacy authoritative path remains active`.
+- exit_assessment: `LOCAL_VALIDATION_PASSED_AWAITING_CANDIDATE_COMMIT_AND_ORACLE`.
+- parent_loop: `running`; `global_exit_conditions_met=false`; `user_input_required=false`; after receipt, Parent Loop Driver must compute a non-empty `next_atomic_step` from remaining inventory and continue.
+
 ## Stage 4 Implementation: `enemy.fixed_turret.v1` complete-supported package slice
 
 Checkpoint identity:

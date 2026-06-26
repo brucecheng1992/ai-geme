@@ -71,9 +71,20 @@ import {
   ENEMY_FIXED_TURRET_PROJECTILE_PATTERN_ID,
   ENEMY_FIXED_TURRET_REQUIRED_PROBE_ID,
   createEnemyFixedTurretPackageContract,
+  ENEMY_FLYING_RIGHT_ENTRY_ARCHETYPE_ID,
+  ENEMY_FLYING_RIGHT_ENTRY_ENEMY_ID,
+  ENEMY_FLYING_RIGHT_ENTRY_ENTRY_SIDE,
+  ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE,
+  ENEMY_FLYING_RIGHT_ENTRY_MOVEMENT_PATTERN_ID,
+  ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID,
+  ENEMY_FLYING_RIGHT_ENTRY_SEGMENT_ID,
+  ENEMY_FLYING_RIGHT_ENTRY_WAVE_ID,
+  createEnemyFlyingRightEntryPackageContract,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
+  SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
   createCombatProjectilePackageContract,
+  createSpawnEnemyWavePackageContract,
   createSpawnStaticPackageContract,
   type CapabilityQaProbeDescriptor,
   type GameplayCapabilityPackageContract
@@ -1713,6 +1724,138 @@ describe('Capability-owned runtime QA probes', () => {
       })
     ]));
     expect(observedTurretState.status).toBe('passed');
+  });
+
+  it('does not verify enemy flying right entry when wave evidence lacks right-entry state fields', () => {
+    const capabilityId = 'enemy.flying_right_entry.v1';
+    const probeId = ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID;
+    const packages = [createSpawnStaticPackageContract(), createSpawnEnemyWavePackageContract(), createEnemyFlyingRightEntryPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, ['spawn.static.v1', 'spawn.enemy_wave.v1', capabilityId]),
+      packages
+    });
+    const missingRightEntryState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId: 'spawn.static.v1',
+              probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
+              action: 'spawn',
+              eventType: 'spawn.static.triggered',
+              eventTypes: ['spawn.static.triggered'],
+              sourceRef: 'runtime.spawn.static',
+              status: 'observed'
+            },
+            {
+              capabilityId: 'spawn.enemy_wave.v1',
+              probeId: SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+              action: 'spawn',
+              eventType: 'spawn.enemy_wave.ordered',
+              eventTypes: ['spawn.enemy_wave.ordered'],
+              orderedWaveSequence: true,
+              gateTriggered: true,
+              waveSpawned: true,
+              sequenceIndex: 0,
+              waveId: ENEMY_FLYING_RIGHT_ENTRY_WAVE_ID,
+              sourceRef: 'runtime.spawn.enemy_wave',
+              status: 'observed'
+            },
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_right_entry',
+              eventType: ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE,
+              eventTypes: [ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE],
+              sourceRef: 'runtime.enemy.flying_right_entry',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedRightEntryState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId: 'spawn.static.v1',
+              probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
+              action: 'spawn',
+              eventType: 'spawn.static.triggered',
+              eventTypes: ['spawn.static.triggered'],
+              sourceRef: 'runtime.spawn.static',
+              status: 'observed'
+            },
+            {
+              capabilityId: 'spawn.enemy_wave.v1',
+              probeId: SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+              action: 'spawn',
+              eventType: 'spawn.enemy_wave.ordered',
+              eventTypes: ['spawn.enemy_wave.ordered'],
+              orderedWaveSequence: true,
+              gateTriggered: true,
+              waveSpawned: true,
+              sequenceIndex: 0,
+              waveId: ENEMY_FLYING_RIGHT_ENTRY_WAVE_ID,
+              sourceRef: 'runtime.spawn.enemy_wave',
+              status: 'observed'
+            },
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_right_entry',
+              eventType: ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE,
+              eventTypes: [ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE],
+              flyingRightEntrySpawned: true,
+              flyingRightEntryEnemyId: ENEMY_FLYING_RIGHT_ENTRY_ENEMY_ID,
+              flyingRightEntryArchetypeId: ENEMY_FLYING_RIGHT_ENTRY_ARCHETYPE_ID,
+              flyingRightEntrySegmentId: ENEMY_FLYING_RIGHT_ENTRY_SEGMENT_ID,
+              flyingRightEntryEnteredFromRight: true,
+              flyingRightEntryEntrySide: ENEMY_FLYING_RIGHT_ENTRY_ENTRY_SIDE,
+              flyingRightEntryMovementPatternId: ENEMY_FLYING_RIGHT_ENTRY_MOVEMENT_PATTERN_ID,
+              flyingRightEntryWaveId: ENEMY_FLYING_RIGHT_ENTRY_WAVE_ID,
+              sourceRef: 'runtime.enemy.flying_right_entry',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingRightEntryState.status).toBe('failed');
+    expect(missingRightEntryState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingRightEntryState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.right_entry_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected flyingRightEntrySpawned=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.right_entry_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`expected flyingRightEntryEntrySide=${ENEMY_FLYING_RIGHT_ENTRY_ENTRY_SIDE}, observed <missing>`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.right_entry_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`expected flyingRightEntryMovementPatternId=${ENEMY_FLYING_RIGHT_ENTRY_MOVEMENT_PATTERN_ID}, observed <missing>`)
+        })
+      ])
+    );
+    expect(observedRightEntryState.status).toBe('passed');
   });
 });
 

@@ -46,6 +46,10 @@ import {
   createEnemyFixedTurretPackageContract
 } from './enemy-fixed-turret-package.js';
 import {
+  ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID,
+  createEnemyFlyingRightEntryPackageContract
+} from './enemy-flying-right-entry-package.js';
+import {
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   createCameraSideFollowPackageContract
 } from './camera-side-follow-package.js';
@@ -563,6 +567,19 @@ const enemyFixedTurretPackageEvidence: GameplayCapabilityEvidence = enemyFixedTu
 const enemyFixedTurretPackageQa: GameplayCapabilityQaEvidence = enemyFixedTurretPackageReport.supportEligible
   ? { requiredProbeIds: [ENEMY_FIXED_TURRET_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const enemyFlyingRightEntryPackageReport = validateGameplayCapabilityPackage(createEnemyFlyingRightEntryPackageContract());
+const enemyFlyingRightEntryPackageEvidence: GameplayCapabilityEvidence = enemyFlyingRightEntryPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const enemyFlyingRightEntryPackageQa: GameplayCapabilityQaEvidence = enemyFlyingRightEntryPackageReport.supportEligible
+  ? { requiredProbeIds: [ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const cameraSideFollowPackageReport = validateGameplayCapabilityPackage(createCameraSideFollowPackageContract());
 const cameraSideFollowPackageEvidence: GameplayCapabilityEvidence = cameraSideFollowPackageReport.supportEligible
   ? {
@@ -873,6 +890,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     enemyFixedTurretPackageEvidence,
     enemyFixedTurretPackageQa
+  ),
+  planned(
+    'enemy.flying_right_entry.v1',
+    'enemy',
+    'Flying enemy right-side entry',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    enemyFlyingRightEntryPackageEvidence,
+    enemyFlyingRightEntryPackageQa
   ),
   runtimeBacked('camera.top_down_follow.v1', 'camera', 'Top-down follow camera', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], ['top_down_camera']),
   runtimeBacked('movement.eight_direction.v1', 'movement', 'Eight-direction movement', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], [
