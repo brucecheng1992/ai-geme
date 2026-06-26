@@ -30,6 +30,10 @@ import {
   createRuntimePlanCoveragePackageContract
 } from './runtime-plan-coverage-package.js';
 import {
+  SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID,
+  createSceneOrderedSegmentsPackageContract
+} from './scene-ordered-segments-package.js';
+import {
   RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID,
   createRulesCheckpointRestorePackageContract
 } from './rules-checkpoint-restore-package.js';
@@ -582,6 +586,19 @@ const runtimePlanCoveragePackageEvidence: GameplayCapabilityEvidence = runtimePl
   : canonicalRuntimeLoaderEvidence;
 const runtimePlanCoveragePackageQa: GameplayCapabilityQaEvidence = runtimePlanCoveragePackageReport.supportEligible
   ? { requiredProbeIds: [RUNTIME_PLAN_COVERAGE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
+const sceneOrderedSegmentsPackageReport = validateGameplayCapabilityPackage(createSceneOrderedSegmentsPackageContract());
+const sceneOrderedSegmentsPackageEvidence: GameplayCapabilityEvidence = sceneOrderedSegmentsPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const sceneOrderedSegmentsPackageQa: GameplayCapabilityQaEvidence = sceneOrderedSegmentsPackageReport.supportEligible
+  ? { requiredProbeIds: [SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
 const rulesCheckpointRestorePackageReport = validateGameplayCapabilityPackage(createRulesCheckpointRestorePackageContract());
 const rulesCheckpointRestorePackageEvidence: GameplayCapabilityEvidence = rulesCheckpointRestorePackageReport.supportEligible
@@ -1321,6 +1338,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     runtimePlanCoveragePackageEvidence,
     runtimePlanCoveragePackageQa
+  ),
+  planned(
+    'scene.ordered_segments.v1',
+    'scene',
+    'Ordered named scene segments',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    sceneOrderedSegmentsPackageEvidence,
+    sceneOrderedSegmentsPackageQa
   ),
   planned(
     'combat.airborne_fire.v1',

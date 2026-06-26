@@ -212,6 +212,18 @@ import {
   RUNTIME_PLAN_COVERAGE_RUNTIME_FAMILY,
   RUNTIME_PLAN_COVERAGE_SCHEMA_VERSION,
   createRuntimePlanCoveragePackageContract,
+  SCENE_ORDERED_SEGMENTS_CAPABILITY_ID,
+  SCENE_ORDERED_SEGMENTS_COUNT,
+  SCENE_ORDERED_SEGMENTS_EVENT_TYPE,
+  SCENE_ORDERED_SEGMENTS_FIRST_ID,
+  SCENE_ORDERED_SEGMENTS_PROFILE_ID,
+  SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID,
+  SCENE_ORDERED_SEGMENTS_RUNTIME_FAMILY,
+  SCENE_ORDERED_SEGMENTS_SCENE_ID,
+  SCENE_ORDERED_SEGMENTS_SCHEMA_VERSION,
+  SCENE_ORDERED_SEGMENTS_SECOND_ID,
+  SCENE_ORDERED_SEGMENTS_THIRD_ID,
+  createSceneOrderedSegmentsPackageContract,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
@@ -4662,6 +4674,105 @@ describe('Capability-owned runtime QA probes', () => {
     );
     expect(observedCoverage.status).toBe('passed');
   });
+
+  it('does not verify scene ordered segments when segment evidence lacks ordered state fields', () => {
+    const capabilityId = SCENE_ORDERED_SEGMENTS_CAPABILITY_ID;
+    const probeId = SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID;
+    const packages = [createSceneOrderedSegmentsPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const genericSegmentEvent = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'complete_segment',
+              eventType: 'level.segment.completed',
+              eventTypes: ['level.segment.completed'],
+              sourceRef: 'telemetry.level.segment.completed',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const missingOrderedState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_order',
+              eventType: SCENE_ORDERED_SEGMENTS_EVENT_TYPE,
+              eventTypes: [SCENE_ORDERED_SEGMENTS_EVENT_TYPE],
+              sourceRef: 'scene.ordered_segments',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedOrderedSegments = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            sceneOrderedSegmentsObserved({
+              capabilityId,
+              probeId
+            })
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericSegmentEvent.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericSegmentEvent.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.ordered_segments`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${SCENE_ORDERED_SEGMENTS_EVENT_TYPE} not observed`)
+        })
+      ])
+    );
+    expect(missingOrderedState.status).toBe('failed');
+    expect(missingOrderedState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.ordered_segments`,
+          status: 'failed',
+          message: expect.stringContaining('expected sceneOrderedSegmentsVerified=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.ordered_segments`,
+          status: 'failed',
+          message: expect.stringContaining(`expected sceneOrderedSegmentsFirstId=${SCENE_ORDERED_SEGMENTS_FIRST_ID}`)
+        })
+      ])
+    );
+    expect(observedOrderedSegments.status).toBe('passed');
+  });
 });
 
 function finalOracleGateObserved(
@@ -4735,6 +4846,33 @@ function runtimePlanCoverageObserved(
     runtimePlanCoverageNoUnclassifiedRequiredCapabilities: true,
     runtimePlanCoverageReportHashPresent: true,
     sourceRef: 'runtime.plan_coverage',
+    status: 'observed'
+  };
+}
+
+function sceneOrderedSegmentsObserved(
+  overrides: Pick<CapabilityRuntimeObservedProbeEvidence, 'capabilityId' | 'probeId'>
+): CapabilityRuntimeObservedProbeEvidence {
+  return {
+    ...overrides,
+    action: 'verify_order',
+    eventType: SCENE_ORDERED_SEGMENTS_EVENT_TYPE,
+    eventTypes: [SCENE_ORDERED_SEGMENTS_EVENT_TYPE],
+    sceneOrderedSegmentsVerified: true,
+    sceneOrderedSegmentsSchemaVersion: SCENE_ORDERED_SEGMENTS_SCHEMA_VERSION,
+    sceneOrderedSegmentsProfileId: SCENE_ORDERED_SEGMENTS_PROFILE_ID,
+    sceneOrderedSegmentsRuntimeFamily: SCENE_ORDERED_SEGMENTS_RUNTIME_FAMILY,
+    sceneOrderedSegmentsSceneId: SCENE_ORDERED_SEGMENTS_SCENE_ID,
+    sceneOrderedSegmentsCount: SCENE_ORDERED_SEGMENTS_COUNT,
+    sceneOrderedSegmentsFirstId: SCENE_ORDERED_SEGMENTS_FIRST_ID,
+    sceneOrderedSegmentsSecondId: SCENE_ORDERED_SEGMENTS_SECOND_ID,
+    sceneOrderedSegmentsThirdId: SCENE_ORDERED_SEGMENTS_THIRD_ID,
+    sceneOrderedSegmentsOrderMatched: true,
+    sceneOrderedSegmentsContinuous: true,
+    sceneOrderedSegmentsAllNamed: true,
+    sceneOrderedSegmentsSceneBindingMatched: true,
+    sceneOrderedSegmentsNoGaps: true,
+    sourceRef: 'scene.ordered_segments',
     status: 'observed'
   };
 }

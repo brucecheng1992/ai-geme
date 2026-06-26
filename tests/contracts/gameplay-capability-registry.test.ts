@@ -37,6 +37,7 @@ import {
   RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID,
   RUNTIME_MODULE_LOAD_RECEIPT_REQUIRED_PROBE_ID,
   RUNTIME_PLAN_COVERAGE_REQUIRED_PROBE_ID,
+  SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID,
   RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID,
   RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID,
   RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
@@ -967,6 +968,34 @@ describe('Gameplay capability registry', () => {
     expect(planCoverage.legacyRuntimeCapabilities).toEqual([]);
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(planCoverage)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(planCoverage)).toBe(false);
+  });
+
+  it('scopes scene ordered segments package-owned QA without static support promotion', () => {
+    const orderedSegments = findGameplayCapability('scene.ordered_segments.v1');
+
+    if (orderedSegments === undefined) {
+      throw new Error('Expected scene.ordered_segments.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(orderedSegments)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(orderedSegments.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(orderedSegments.qa).toEqual({
+      requiredProbeIds: [SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(orderedSegments.legacyRuntimeCapabilities).toEqual([]);
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(orderedSegments)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(orderedSegments)).toBe(false);
   });
 
   it('scopes pickup weapon supply package-owned QA without static support promotion', () => {

@@ -17,6 +17,8 @@ export * from './runtime-module-load-receipt-runtime-module.js';
 export * from './runtime-module-load-receipt-package.js';
 export * from './runtime-plan-coverage-runtime-module.js';
 export * from './runtime-plan-coverage-package.js';
+export * from './scene-ordered-segments-runtime-module.js';
+export * from './scene-ordered-segments-package.js';
 export * from './rules-checkpoint-restore-runtime-module.js';
 export * from './rules-checkpoint-restore-package.js';
 export * from './rules-encounter-gate-runtime-module.js';

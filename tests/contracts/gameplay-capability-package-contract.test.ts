@@ -481,6 +481,26 @@ import {
   RUNTIME_PLAN_COVERAGE_SYSTEM_VERSION
 } from '../../packages/game-dsl/src/gameplay-capabilities/runtime-plan-coverage-runtime-module.js';
 import {
+  SCENE_ORDERED_SEGMENTS_PACKAGE_REQUIRED_EVIDENCE_ID,
+  SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID,
+  createSceneOrderedSegmentsPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/scene-ordered-segments-package.js';
+import {
+  SCENE_ORDERED_SEGMENTS_CAPABILITY_ID,
+  SCENE_ORDERED_SEGMENTS_COUNT,
+  SCENE_ORDERED_SEGMENTS_EVENT_TYPE,
+  SCENE_ORDERED_SEGMENTS_FIRST_ID,
+  SCENE_ORDERED_SEGMENTS_PROFILE_ID,
+  SCENE_ORDERED_SEGMENTS_RUNTIME_FAMILY,
+  SCENE_ORDERED_SEGMENTS_RUNTIME_SYSTEM_ID,
+  SCENE_ORDERED_SEGMENTS_SCENE_ID,
+  SCENE_ORDERED_SEGMENTS_SCHEMA_VERSION,
+  SCENE_ORDERED_SEGMENTS_SECOND_ID,
+  SCENE_ORDERED_SEGMENTS_SYSTEM_PHASE,
+  SCENE_ORDERED_SEGMENTS_SYSTEM_VERSION,
+  SCENE_ORDERED_SEGMENTS_THIRD_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/scene-ordered-segments-runtime-module.js';
+import {
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_PACKAGE_REQUIRED_EVIDENCE_ID,
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
   createArtifactLineageNoManualPatchPackageContract
@@ -2005,6 +2025,84 @@ describe('Gameplay capability package contract', () => {
             runtimePlanCoverageMissingCapabilitiesReported: true,
             runtimePlanCoverageNoUnclassifiedRequiredCapabilities: true,
             runtimePlanCoverageReportHashPresent: true
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the scene ordered segments package-owned QA contract', () => {
+    const contract = createSceneOrderedSegmentsPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: SCENE_ORDERED_SEGMENTS_CAPABILITY_ID
+    });
+    expect(contract.dependencies).toEqual([]);
+    expect(contract.runtime.systems).toEqual([
+      {
+        id: SCENE_ORDERED_SEGMENTS_RUNTIME_SYSTEM_ID,
+        version: SCENE_ORDERED_SEGMENTS_SYSTEM_VERSION,
+        phase: SCENE_ORDERED_SEGMENTS_SYSTEM_PHASE,
+        dependencies: ['runtime_manifest', 'runtime_plan']
+      }
+    ]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: SCENE_ORDERED_SEGMENTS_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: SCENE_ORDERED_SEGMENTS_CAPABILITY_ID,
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: SCENE_ORDERED_SEGMENTS_EVENT_TYPE,
+          parameters: {
+            schemaVersion: SCENE_ORDERED_SEGMENTS_SCHEMA_VERSION,
+            profileId: SCENE_ORDERED_SEGMENTS_PROFILE_ID,
+            runtimeFamily: SCENE_ORDERED_SEGMENTS_RUNTIME_FAMILY,
+            sceneId: SCENE_ORDERED_SEGMENTS_SCENE_ID,
+            segmentCount: SCENE_ORDERED_SEGMENTS_COUNT,
+            segmentIds: [
+              SCENE_ORDERED_SEGMENTS_FIRST_ID,
+              SCENE_ORDERED_SEGMENTS_SECOND_ID,
+              SCENE_ORDERED_SEGMENTS_THIRD_ID
+            ]
+          }
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'state_probe',
+          runtimeSystemId: SCENE_ORDERED_SEGMENTS_RUNTIME_SYSTEM_ID,
+          ref: SCENE_ORDERED_SEGMENTS_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID}.assertion.ordered_segments`,
+          expected: {
+            sceneOrderedSegmentsVerified: true,
+            sceneOrderedSegmentsSchemaVersion: SCENE_ORDERED_SEGMENTS_SCHEMA_VERSION,
+            sceneOrderedSegmentsProfileId: SCENE_ORDERED_SEGMENTS_PROFILE_ID,
+            sceneOrderedSegmentsRuntimeFamily: SCENE_ORDERED_SEGMENTS_RUNTIME_FAMILY,
+            sceneOrderedSegmentsSceneId: SCENE_ORDERED_SEGMENTS_SCENE_ID,
+            sceneOrderedSegmentsCount: SCENE_ORDERED_SEGMENTS_COUNT,
+            sceneOrderedSegmentsFirstId: SCENE_ORDERED_SEGMENTS_FIRST_ID,
+            sceneOrderedSegmentsSecondId: SCENE_ORDERED_SEGMENTS_SECOND_ID,
+            sceneOrderedSegmentsThirdId: SCENE_ORDERED_SEGMENTS_THIRD_ID,
+            sceneOrderedSegmentsOrderMatched: true,
+            sceneOrderedSegmentsContinuous: true,
+            sceneOrderedSegmentsAllNamed: true,
+            sceneOrderedSegmentsSceneBindingMatched: true,
+            sceneOrderedSegmentsNoGaps: true
           }
         })
       ]

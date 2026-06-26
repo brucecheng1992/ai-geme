@@ -6167,6 +6167,158 @@ next_action=CONTINUE_PARENT_LOOP
 next_atomic_step=RUN_PARENT_LOOP_DRIVER_TO_SELECT_NEXT_UNMET_CHECKPOINT
 ```
 
+## Stage 4 Implementation: `scene.ordered_segments.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.scene_ordered_segments_v1.complete_supported_package_slice
+parent_stage_id=stage4
+capability_id=scene.ordered_segments.v1
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=not_closed
+global_exit_conditions_met=false
+user_input_required=false
+next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
+repo_pre_candidate_head=25632d88cdf5ec35a257c560c987ef32f6ddf767
+repo_pre_candidate_tree=6e9fd60f02928ecbf13e0966d7efcee54837662f
+skill_revision_type=sha256_bundle
+skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
+active_skill_paths=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery
+active_skill_bundle_digest=bce13a9038d8c8d957f30c6ca90788f25dce8ab9442acf9312e37c994d284df9
+active_skill_file_count=8
+active_skill_manifest_protocol=root-relative path, file kind, raw byte length, POSIX mode, SHA-256, symlink target, symlink escape flag; stable sort by root-relative path
+```
+
+`scene.ordered_segments.v1` was selected by the Parent Loop Driver after the `runtime.plan_coverage.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
+
+Minimum closure requirements:
+
+1. Add a package-owned ordered-segments contract with stable capability identity, runtime system identity, ordered-segments telemetry event identity, required probe id, and required QA evidence id.
+2. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `scene.ordered_segments.v1` only when the ordered segment event and all required state fields are present.
+5. Require the reader to verify the real ordered runtime state: exactly three named segments (`approach`, `base_assault`, `core_boss`), scene binding to `main_scene`, canonical order match, continuity, no gaps, and all segments named.
+6. Add negative regressions proving generic `level.segment.completed` telemetry, or the package-owned event without ordered state fields, keeps the capability unverified and emits the required missing-probe blocker.
+7. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/scene-ordered-segments-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/scene-ordered-segments-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `tests/contracts/contract-freeze.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createSceneOrderedSegmentsPackageContract()`.
+- Runtime module identity: `SCENE_ORDERED_SEGMENTS_RUNTIME_SYSTEM_ID=scene.ordered_segments`.
+- Ordered-segments event: `SCENE_ORDERED_SEGMENTS_EVENT_TYPE=scene.ordered_segments.verified`.
+- Required probe: `SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID=scene.ordered_segments.v1.verify_ordered_segments.browser_qa.v1`.
+- Required state fields: `sceneOrderedSegmentsVerified`, `sceneOrderedSegmentsSchemaVersion`, `sceneOrderedSegmentsProfileId`, `sceneOrderedSegmentsRuntimeFamily`, `sceneOrderedSegmentsSceneId`, `sceneOrderedSegmentsCount`, `sceneOrderedSegmentsFirstId`, `sceneOrderedSegmentsSecondId`, `sceneOrderedSegmentsThirdId`, `sceneOrderedSegmentsOrderMatched`, `sceneOrderedSegmentsContinuous`, `sceneOrderedSegmentsAllNamed`, `sceneOrderedSegmentsSceneBindingMatched`, and `sceneOrderedSegmentsNoGaps`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares those state fields and fails the required probe when the event is generic, any ordered state field is missing, or a field mismatches the package contract.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for same-run package-owned QA evidence; it does not mutate static `completeSupported`.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned scene ordered-segments capability contract, runtime system identity, telemetry event, required probe id, required evidence id, registry entry, and runtime evidence fields for ordered scene segment state. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, DeepSeek target-profile support summary, DSL consumption report support view, Step37 remaining-inventory driver, telemetry/event freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves ordered, continuous, named segment state. |
+| Authority | Package-owned QA evidence defines the capability authority: generic `level.segment.completed` telemetry is insufficient unless evidence also proves the expected three named segments, order, scene binding, continuity, and no gaps. |
+| Legacy strategy | Existing segment schema/compiler support remains producer/runtime-plan evidence only. Legacy segment completion telemetry may stay as baseline telemetry but cannot overclaim this capability. |
+| Failure policy | Missing package contract, generic segment telemetry, missing ordered segment fields, wrong segment ids/order, wrong scene binding, wrong capability/probe identity, or stale evidence keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, registry support advancement without complete support, QA reader positive/negative ordered-field behavior, target-profile overlay positive/negative behavior, remaining-inventory selection, and event/schema freeze coverage. |
+| Rollback | Reverting this slice removes only the scene ordered-segments package/probe/reader wiring and returns `scene.ordered_segments.v1` to unsupported evidence without changing business runtime gameplay templates. |
+
+Focused validation:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=1
+duration=real 1.92s
+result=RED: new package entered the default QA plan but older negative fixtures lacked scene ordered-segments success evidence; dsl-consumption-report and target-profile counts still reflected registeredCapabilityCount=44.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=1
+duration=real 1.83s
+result=RED: most focused contracts passed; remaining failures were fixture isolation expectations after default scene evidence changed observed counts.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 1.86s
+result=PASS: 8 files / 263 tests
+```
+
+Focused set selection:
+
+- `gameplay-capability-package-contract.test.ts`: validates the new scene ordered-segments package contract, required evidence id, runtime system, ordered-segments event, expected three named segments, and required probe.
+- `gameplay-capability-qa-probes.test.ts`: validates that generic `level.segment.completed` telemetry and package-owned events without ordered segment fields fail, while full ordered state evidence passes.
+- `generation-target-profile-runtime-support.test.ts`: validates same-run overlay positive/negative behavior, fixture isolation for other capability negatives, canonical missing-probe ordering, and preservation of static `completeSupported=false`.
+- `gameplay-capability-registry.test.ts`: validates static registry evidence and required probe wiring without static support promotion.
+- `deepseek-authoritative-dsl-support.test.ts`: validates support dimensions and prerequisites for the target capability.
+- `dsl-consumption-report.test.ts`: validates the consumption report reads the updated package-backed support dimensions.
+- `step37-remaining-inventory-driver.test.ts`: validates parent-loop inventory consumption after `runtime.plan_coverage.v1` receipt and registry count advances to 45.
+- `contract-freeze.test.ts`: included because this diff introduces a telemetry/runtime event identity and QA evidence fields, so the focused set follows the actual schema and event-contract impact surface.
+
+Local validation before candidate commit:
+
+```text
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 9.30s
+result=PASS: 98 files / 1289 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 59.26s
+result=PASS: contracts 98 files / 1289 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.46s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.02s
+result=PASS
+
+command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
+exitCode=0
+duration=real 0.06s
+result=PASS: active_skill_paths=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_file_count=8; skill_bundle_digest=bce13a9038d8c8d957f30c6ca90788f25dce8ab9442acf9312e37c994d284df9.
+
+command=/usr/bin/time -p npx tsx - <<'TS' ... scene.ordered_segments.v1 support summary and remaining inventory ...
+exitCode=0
+duration=real 0.55s
+result=PASS: support registeredCapabilityCount=45; scene.ordered_segments.v1 classification=DEFERRED; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false; remaining next_checkpoint_id=stage4.scene_ordered_segments_v1.complete_supported_package_slice while this candidate is not yet committed.
+```
+
+Candidate creation rules:
+
+- This record changes the final tree. Before creating the immutable candidate commit, focused contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, final diff range check, Skill freshness, capability support alignment, and Parent Loop inventory alignment must be re-run or explicitly recorded as fresh for the final tree.
+- Candidate commit must not write its own SHA into this candidate record.
+- Oracle request must bind the candidate commit SHA and `reviewed_skill_bundle_digest=bce13a9038d8c8d957f30c6ca90788f25dce8ab9442acf9312e37c994d284df9`.
+- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+
 ## Stage 4 Implementation: `runtime.manifest_binding.v1` complete-supported package slice
 
 Checkpoint identity:

@@ -158,6 +158,18 @@ import {
   RUNTIME_PLAN_COVERAGE_RUNTIME_FAMILY,
   RUNTIME_PLAN_COVERAGE_SCHEMA_VERSION,
   createRuntimePlanCoveragePackageContract,
+  SCENE_ORDERED_SEGMENTS_CAPABILITY_ID,
+  SCENE_ORDERED_SEGMENTS_COUNT,
+  SCENE_ORDERED_SEGMENTS_EVENT_TYPE,
+  SCENE_ORDERED_SEGMENTS_FIRST_ID,
+  SCENE_ORDERED_SEGMENTS_PROFILE_ID,
+  SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID,
+  SCENE_ORDERED_SEGMENTS_RUNTIME_FAMILY,
+  SCENE_ORDERED_SEGMENTS_SCENE_ID,
+  SCENE_ORDERED_SEGMENTS_SCHEMA_VERSION,
+  SCENE_ORDERED_SEGMENTS_SECOND_ID,
+  SCENE_ORDERED_SEGMENTS_THIRD_ID,
+  createSceneOrderedSegmentsPackageContract,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
   WEAPON_DEATH_RESET_EVENT_TYPE,
@@ -272,6 +284,7 @@ const reviewOracleFinalGateCapabilityId = 'review.oracle_final_gate.v1';
 const runtimeManifestBindingCapabilityId = RUNTIME_MANIFEST_BINDING_CAPABILITY_ID;
 const runtimeModuleLoadReceiptCapabilityId = RUNTIME_MODULE_LOAD_RECEIPT_CAPABILITY_ID;
 const runtimePlanCoverageCapabilityId = RUNTIME_PLAN_COVERAGE_CAPABILITY_ID;
+const sceneOrderedSegmentsCapabilityId = SCENE_ORDERED_SEGMENTS_CAPABILITY_ID;
 const deathResetCapabilityId = 'weapon.death_reset.v1';
 const rapidFireCapabilityId = 'weapon.rapid_fire.v1';
 const spreadShotCapabilityId = 'weapon.spread_shot.v1';
@@ -319,6 +332,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       RUNTIME_MANIFEST_BINDING_EVENT_TYPE,
       RUNTIME_MODULE_LOAD_RECEIPT_EVENT_TYPE,
       RUNTIME_PLAN_COVERAGE_EVENT_TYPE,
+      SCENE_ORDERED_SEGMENTS_EVENT_TYPE,
       WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE,
       WEAPON_DEATH_RESET_EVENT_TYPE,
       WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
@@ -364,6 +378,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     const runtimeManifestBinding = report.capabilities.find((entry) => entry.capabilityId === runtimeManifestBindingCapabilityId);
     const runtimeModuleLoadReceipt = report.capabilities.find((entry) => entry.capabilityId === runtimeModuleLoadReceiptCapabilityId);
     const runtimePlanCoverage = report.capabilities.find((entry) => entry.capabilityId === runtimePlanCoverageCapabilityId);
+    const sceneOrderedSegments = report.capabilities.find((entry) => entry.capabilityId === sceneOrderedSegmentsCapabilityId);
     const rulesEncounterGate = report.capabilities.find((entry) => entry.capabilityId === rulesEncounterGateCapabilityId);
     const deathReset = report.capabilities.find((entry) => entry.capabilityId === deathResetCapabilityId);
     const rapidFire = report.capabilities.find((entry) => entry.capabilityId === rapidFireCapabilityId);
@@ -378,7 +393,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 40,
+      observedCompleteSupportedCount: 41,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
@@ -415,6 +430,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         runtimeManifestBindingCapabilityId,
         runtimeModuleLoadReceiptCapabilityId,
         runtimePlanCoverageCapabilityId,
+        sceneOrderedSegmentsCapabilityId,
         spawnEnemyWaveCapabilityId,
         spawnStaticCapabilityId,
         deathResetCapabilityId,
@@ -423,7 +439,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         replacementRuleCapabilityId,
         spreadShotCapabilityId
       ],
-      blockers: ['target_profile_runtime_support_incomplete:40/59']
+      blockers: ['target_profile_runtime_support_incomplete:41/59']
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
       capabilityId: artifactLineageNoManualPatchCapabilityId,
@@ -476,6 +492,17 @@ describe('Step 37 target profile runtime support overlay', () => {
       observedCompleteSupported: true,
       requiredProbeIds: [RUNTIME_PLAN_COVERAGE_REQUIRED_PROBE_ID],
       verifiedRequiredProbeIds: [RUNTIME_PLAN_COVERAGE_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+    expect(sceneOrderedSegments).toMatchObject({
+      capabilityId: sceneOrderedSegmentsCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID],
       missingRequiredProbeIds: [],
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
@@ -929,11 +956,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 39,
+      observedCompleteSupportedCount: 40,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:39/59'
+        'target_profile_runtime_support_incomplete:40/59'
       ]
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
@@ -1304,11 +1331,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 39,
+      observedCompleteSupportedCount: 40,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:39/59'
+        'target_profile_runtime_support_incomplete:40/59'
       ]
     });
     expect(fixedPromptBinding).toMatchObject({
@@ -1368,11 +1395,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 39,
+      observedCompleteSupportedCount: 40,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:39/59'
+        'target_profile_runtime_support_incomplete:40/59'
       ]
     });
     expect(profileBinding).toMatchObject({
@@ -1578,7 +1605,7 @@ describe('Step 37 target profile runtime support overlay', () => {
   });
 
   it('keeps runtime support blocked when the required package QA assertion is missing', () => {
-    const capabilityQaReport = buildDefaultWeaponQaReport(['player.fired']);
+    const capabilityQaReport = buildDefaultWeaponQaReport(['player.fired'], { includeDefaultSceneOrderedSegments: false });
     const report = buildGenerationTargetProfileRuntimeSupportReport({
       projectId: 'proj_20260625_target_runtime_support',
       runId: 'run_20260625_target_runtime_support_missing',
@@ -1665,7 +1692,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 39,
+      observedCompleteSupportedCount: 40,
       targetProfileCompleteSupported: false,
       observedCapabilityIds: [
         artifactLineageNoManualPatchCapabilityId,
@@ -1700,6 +1727,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         runtimeManifestBindingCapabilityId,
         runtimeModuleLoadReceiptCapabilityId,
         runtimePlanCoverageCapabilityId,
+        sceneOrderedSegmentsCapabilityId,
         spawnEnemyWaveCapabilityId,
         spawnStaticCapabilityId,
         deathResetCapabilityId,
@@ -1710,7 +1738,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ],
       blockers: [
         `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:39/59'
+        'target_profile_runtime_support_incomplete:40/59'
       ]
     });
     expect(damageInvulnerability).toMatchObject({
@@ -1787,11 +1815,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 39,
+      observedCompleteSupportedCount: 40,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:39/59'
+        'target_profile_runtime_support_incomplete:40/59'
       ]
     });
     expect(pickup).toMatchObject({
@@ -1992,11 +2020,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 39,
+      observedCompleteSupportedCount: 40,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:39/59'
+        'target_profile_runtime_support_incomplete:40/59'
       ]
     });
     expect(spawnEnemyWave).toMatchObject({
@@ -2075,11 +2103,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 39,
+      observedCompleteSupportedCount: 40,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:39/59'
+        'target_profile_runtime_support_incomplete:40/59'
       ]
     });
     expect(flyingRightEntry).toMatchObject({
@@ -2158,11 +2186,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 39,
+      observedCompleteSupportedCount: 40,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:39/59'
+        'target_profile_runtime_support_incomplete:40/59'
       ]
     });
     expect(patrolInfantry).toMatchObject({
@@ -2243,11 +2271,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 39,
+      observedCompleteSupportedCount: 40,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:39/59'
+        'target_profile_runtime_support_incomplete:40/59'
       ]
     });
     expect(victoryDeclaration).toMatchObject({
@@ -3287,6 +3315,96 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
   });
 
+  it('keeps scene ordered segments unverified when telemetry lacks ordered segment state fields', () => {
+    const genericSegmentQaReport = buildSingleCapabilityQaReport({
+      capabilityId: sceneOrderedSegmentsCapabilityId,
+      packageContract: createSceneOrderedSegmentsPackageContract(),
+      eventType: 'level.segment.completed',
+      eventTypes: ['level.segment.completed'],
+      probeId: SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID,
+      action: 'complete_segment',
+      sourceRef: 'telemetry.level.segment.completed',
+      stateFields: undefined
+    });
+    const missingOrderedStateQaReport = buildSingleCapabilityQaReport({
+      capabilityId: sceneOrderedSegmentsCapabilityId,
+      packageContract: createSceneOrderedSegmentsPackageContract(),
+      eventType: SCENE_ORDERED_SEGMENTS_EVENT_TYPE,
+      eventTypes: [SCENE_ORDERED_SEGMENTS_EVENT_TYPE],
+      probeId: SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID,
+      action: 'verify_order',
+      sourceRef: 'scene.ordered_segments',
+      stateFields: undefined
+    });
+    const observedOrderedSegmentsQaReport = buildSingleCapabilityQaReport({
+      capabilityId: sceneOrderedSegmentsCapabilityId,
+      packageContract: createSceneOrderedSegmentsPackageContract(),
+      eventType: SCENE_ORDERED_SEGMENTS_EVENT_TYPE,
+      eventTypes: [SCENE_ORDERED_SEGMENTS_EVENT_TYPE],
+      probeId: SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID,
+      action: 'verify_order',
+      sourceRef: 'scene.ordered_segments',
+      stateFields: sceneOrderedSegmentsStateFields()
+    });
+    const genericSegmentReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_scene_ordered_segments_generic_event',
+      capabilityQaReport: genericSegmentQaReport
+    });
+    const observedOrderedSegmentsReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_scene_ordered_segments_observed_state',
+      capabilityQaReport: observedOrderedSegmentsQaReport
+    });
+    const genericSegmentState = genericSegmentReport.capabilities.find((entry) => entry.capabilityId === sceneOrderedSegmentsCapabilityId);
+    const observedOrderedSegmentsState = observedOrderedSegmentsReport.capabilities.find(
+      (entry) => entry.capabilityId === sceneOrderedSegmentsCapabilityId
+    );
+
+    expect(genericSegmentQaReport.requiredResults.find((entry) => entry.probeId === SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID}.assertion.ordered_segments`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${SCENE_ORDERED_SEGMENTS_EVENT_TYPE} not observed`)
+        })
+      ])
+    });
+    expect(missingOrderedStateQaReport.requiredResults.find((entry) => entry.probeId === SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID}.assertion.ordered_segments`,
+          status: 'failed',
+          message: expect.stringContaining('expected sceneOrderedSegmentsVerified=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID}.assertion.ordered_segments`,
+          status: 'failed',
+          message: expect.stringContaining(`expected sceneOrderedSegmentsFirstId=${SCENE_ORDERED_SEGMENTS_FIRST_ID}`)
+        })
+      ])
+    });
+    expect(genericSegmentState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedOrderedSegmentsState).toMatchObject({
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+  });
+
   it('keeps weapon death reset unverified when restore evidence lacks reset state fields', () => {
     const capabilityQaReport = buildDefaultWeaponQaReport(
       [
@@ -3349,11 +3467,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 39,
+      observedCompleteSupportedCount: 40,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:39/59'
+        'target_profile_runtime_support_incomplete:40/59'
       ]
     });
     expect(deathReset).toMatchObject({
@@ -3427,11 +3545,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 39,
+      observedCompleteSupportedCount: 40,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:39/59'
+        'target_profile_runtime_support_incomplete:40/59'
       ]
     });
     expect(rapidFire).toMatchObject({
@@ -3505,11 +3623,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 39,
+      observedCompleteSupportedCount: 40,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:39/59'
+        'target_profile_runtime_support_incomplete:40/59'
       ]
     });
     expect(spreadShot).toMatchObject({
@@ -3583,11 +3701,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 39,
+      observedCompleteSupportedCount: 40,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:39/59'
+        'target_profile_runtime_support_incomplete:40/59'
       ]
     });
     expect(replacementRule).toMatchObject({
@@ -3634,6 +3752,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       `capability_qa_report_missing_required_probe:${RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${RUNTIME_MODULE_LOAD_RECEIPT_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${RUNTIME_PLAN_COVERAGE_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${SPAWN_STATIC_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
@@ -3667,6 +3786,8 @@ function buildDefaultWeaponQaReport(
     runtimeManifestBindingStateFields?: boolean;
     runtimeModuleLoadReceiptStateFields?: boolean;
     runtimePlanCoverageStateFields?: boolean;
+    includeDefaultSceneOrderedSegments?: boolean;
+    sceneOrderedSegmentsStateFields?: boolean;
     pickupStateFields?: boolean;
     pickupWeaponSupplyStateFields?: boolean;
     providerDeepSeekAuthoritativeDraftStateFields?: boolean;
@@ -3679,7 +3800,7 @@ function buildDefaultWeaponQaReport(
   } = {}
 ) {
   const { plan } = buildDefaultWeaponQaPlan();
-  const effectiveEventTypes = withDefaultPackageOwnedEvents(eventTypes);
+  const effectiveEventTypes = withDefaultPackageOwnedEvents(eventTypes, options);
   const observed = [
     ...(effectiveEventTypes.includes(ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE)
       ? [
@@ -4381,6 +4502,20 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
+    ...(effectiveEventTypes.includes(SCENE_ORDERED_SEGMENTS_EVENT_TYPE)
+      ? [
+          {
+            capabilityId: sceneOrderedSegmentsCapabilityId,
+            probeId: SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID,
+            action: 'verify_order',
+            eventType: SCENE_ORDERED_SEGMENTS_EVENT_TYPE,
+            eventTypes: effectiveEventTypes,
+            ...(options.sceneOrderedSegmentsStateFields === false ? {} : sceneOrderedSegmentsStateFields()),
+            status: 'observed' as const,
+            sourceRef: 'scene.ordered_segments'
+          }
+        ]
+      : []),
     ...(effectiveEventTypes.includes(WEAPON_DEATH_RESET_EVENT_TYPE)
       ? [
           {
@@ -4481,8 +4616,12 @@ function buildDefaultWeaponQaReport(
   });
 }
 
-function withDefaultPackageOwnedEvents(eventTypes: readonly string[]): readonly string[] {
+function withDefaultPackageOwnedEvents(
+  eventTypes: readonly string[],
+  options: { includeDefaultSceneOrderedSegments?: boolean } = {}
+): readonly string[] {
   const packageOwnedEvents = [
+    ...(options.includeDefaultSceneOrderedSegments === false ? [] : [SCENE_ORDERED_SEGMENTS_EVENT_TYPE]),
     ...(eventTypes.includes(FIXED_PROMPT_BINDING_EVENT_TYPE) || eventTypes.includes(PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE)
       ? [
           PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE,
@@ -4586,6 +4725,7 @@ function buildDefaultWeaponQaPlan() {
     createRuntimeManifestBindingPackageContract(),
     createRuntimeModuleLoadReceiptPackageContract(),
     createRuntimePlanCoveragePackageContract(),
+    createSceneOrderedSegmentsPackageContract(),
     createWeaponDeathResetPackageContract(),
     createWeaponRapidFirePackageContract(),
     createWeaponSpreadShotPackageContract(),
@@ -4629,6 +4769,7 @@ function buildDefaultWeaponQaPlan() {
       runtimeManifestBindingCapabilityId,
       runtimeModuleLoadReceiptCapabilityId,
       runtimePlanCoverageCapabilityId,
+      sceneOrderedSegmentsCapabilityId,
       deathResetCapabilityId,
       rapidFireCapabilityId,
       spreadShotCapabilityId,
@@ -4719,5 +4860,24 @@ function runtimePlanCoverageStateFields(): Record<string, unknown> {
     runtimePlanCoverageMissingCapabilitiesReported: true,
     runtimePlanCoverageNoUnclassifiedRequiredCapabilities: true,
     runtimePlanCoverageReportHashPresent: true
+  };
+}
+
+function sceneOrderedSegmentsStateFields(): Record<string, unknown> {
+  return {
+    sceneOrderedSegmentsVerified: true,
+    sceneOrderedSegmentsSchemaVersion: SCENE_ORDERED_SEGMENTS_SCHEMA_VERSION,
+    sceneOrderedSegmentsProfileId: SCENE_ORDERED_SEGMENTS_PROFILE_ID,
+    sceneOrderedSegmentsRuntimeFamily: SCENE_ORDERED_SEGMENTS_RUNTIME_FAMILY,
+    sceneOrderedSegmentsSceneId: SCENE_ORDERED_SEGMENTS_SCENE_ID,
+    sceneOrderedSegmentsCount: SCENE_ORDERED_SEGMENTS_COUNT,
+    sceneOrderedSegmentsFirstId: SCENE_ORDERED_SEGMENTS_FIRST_ID,
+    sceneOrderedSegmentsSecondId: SCENE_ORDERED_SEGMENTS_SECOND_ID,
+    sceneOrderedSegmentsThirdId: SCENE_ORDERED_SEGMENTS_THIRD_ID,
+    sceneOrderedSegmentsOrderMatched: true,
+    sceneOrderedSegmentsContinuous: true,
+    sceneOrderedSegmentsAllNamed: true,
+    sceneOrderedSegmentsSceneBindingMatched: true,
+    sceneOrderedSegmentsNoGaps: true
   };
 }

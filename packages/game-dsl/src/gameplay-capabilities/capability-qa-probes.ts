@@ -212,6 +212,20 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   runtimePlanCoverageMissingCapabilitiesReported?: boolean;
   runtimePlanCoverageNoUnclassifiedRequiredCapabilities?: boolean;
   runtimePlanCoverageReportHashPresent?: boolean;
+  sceneOrderedSegmentsVerified?: boolean;
+  sceneOrderedSegmentsSchemaVersion?: string;
+  sceneOrderedSegmentsProfileId?: string;
+  sceneOrderedSegmentsRuntimeFamily?: string;
+  sceneOrderedSegmentsSceneId?: string;
+  sceneOrderedSegmentsCount?: number;
+  sceneOrderedSegmentsFirstId?: string;
+  sceneOrderedSegmentsSecondId?: string;
+  sceneOrderedSegmentsThirdId?: string;
+  sceneOrderedSegmentsOrderMatched?: boolean;
+  sceneOrderedSegmentsContinuous?: boolean;
+  sceneOrderedSegmentsAllNamed?: boolean;
+  sceneOrderedSegmentsSceneBindingMatched?: boolean;
+  sceneOrderedSegmentsNoGaps?: boolean;
   encounterGateClosedEntrance?: boolean;
   encounterGateGateId?: string;
   encounterGateEntranceId?: string;
@@ -759,6 +773,20 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
       observed.runtimePlanCoverageNoUnclassifiedRequiredCapabilities
     ),
     ...compareExpectedBooleanField('runtimePlanCoverageReportHashPresent', expected, observed.runtimePlanCoverageReportHashPresent),
+    ...compareExpectedBooleanField('sceneOrderedSegmentsVerified', expected, observed.sceneOrderedSegmentsVerified),
+    ...compareExpectedStringField('sceneOrderedSegmentsSchemaVersion', expected, observed.sceneOrderedSegmentsSchemaVersion),
+    ...compareExpectedStringField('sceneOrderedSegmentsProfileId', expected, observed.sceneOrderedSegmentsProfileId),
+    ...compareExpectedStringField('sceneOrderedSegmentsRuntimeFamily', expected, observed.sceneOrderedSegmentsRuntimeFamily),
+    ...compareExpectedStringField('sceneOrderedSegmentsSceneId', expected, observed.sceneOrderedSegmentsSceneId),
+    ...compareExpectedNumberField('sceneOrderedSegmentsCount', expected, observed.sceneOrderedSegmentsCount),
+    ...compareExpectedStringField('sceneOrderedSegmentsFirstId', expected, observed.sceneOrderedSegmentsFirstId),
+    ...compareExpectedStringField('sceneOrderedSegmentsSecondId', expected, observed.sceneOrderedSegmentsSecondId),
+    ...compareExpectedStringField('sceneOrderedSegmentsThirdId', expected, observed.sceneOrderedSegmentsThirdId),
+    ...compareExpectedBooleanField('sceneOrderedSegmentsOrderMatched', expected, observed.sceneOrderedSegmentsOrderMatched),
+    ...compareExpectedBooleanField('sceneOrderedSegmentsContinuous', expected, observed.sceneOrderedSegmentsContinuous),
+    ...compareExpectedBooleanField('sceneOrderedSegmentsAllNamed', expected, observed.sceneOrderedSegmentsAllNamed),
+    ...compareExpectedBooleanField('sceneOrderedSegmentsSceneBindingMatched', expected, observed.sceneOrderedSegmentsSceneBindingMatched),
+    ...compareExpectedBooleanField('sceneOrderedSegmentsNoGaps', expected, observed.sceneOrderedSegmentsNoGaps),
     ...compareExpectedBooleanField('encounterGateClosedEntrance', expected, observed.encounterGateClosedEntrance),
     ...compareExpectedStringField('encounterGateGateId', expected, observed.encounterGateGateId),
     ...compareExpectedStringField('encounterGateEntranceId', expected, observed.encounterGateEntranceId),

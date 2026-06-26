@@ -1,0 +1,13 @@
+export const SCENE_ORDERED_SEGMENTS_CAPABILITY_ID = 'scene.ordered_segments.v1';
+export const SCENE_ORDERED_SEGMENTS_RUNTIME_SYSTEM_ID = 'scene.ordered_segments';
+export const SCENE_ORDERED_SEGMENTS_EVENT_TYPE = 'scene.ordered_segments.verified';
+export const SCENE_ORDERED_SEGMENTS_RUNTIME_FAMILY = 'phaser_2d_action_arcade.v1';
+export const SCENE_ORDERED_SEGMENTS_PROFILE_ID = 'side_scrolling_run_and_gun.v1';
+export const SCENE_ORDERED_SEGMENTS_SCHEMA_VERSION = 'scene_ordered_segments.v0.1';
+export const SCENE_ORDERED_SEGMENTS_SYSTEM_VERSION = 'v1';
+export const SCENE_ORDERED_SEGMENTS_SYSTEM_PHASE = 'bootstrap';
+export const SCENE_ORDERED_SEGMENTS_SCENE_ID = 'main_scene';
+export const SCENE_ORDERED_SEGMENTS_COUNT = 3;
+export const SCENE_ORDERED_SEGMENTS_FIRST_ID = 'approach';
+export const SCENE_ORDERED_SEGMENTS_SECOND_ID = 'base_assault';
+export const SCENE_ORDERED_SEGMENTS_THIRD_ID = 'core_boss';
