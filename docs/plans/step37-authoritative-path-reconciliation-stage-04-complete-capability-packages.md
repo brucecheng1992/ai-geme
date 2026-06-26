@@ -6318,6 +6318,61 @@ Post-record validation requirement:
 - Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=f7824ee9c700e9982923f9691c0a490d23041e36fc05e7dc223b6565543f6d5b`.
 - `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
 
+Oracle receipt:
+
+```text
+closure_scope=atomic_step
+atomic_step_status=closed
+checkpoint_id=stage4.hazard_timed_explosion_v1.complete_supported_package_slice
+parent_stage_id=stage4
+capability_id=hazard.timed_explosion.v1
+candidate_commit=d74693649674946d2399ab307792a29c7a6dc299
+candidate_tree=e44f49bacbad596cb218f10b3cc0f26e41a32da7
+reviewed_commit_sha=d74693649674946d2399ab307792a29c7a6dc299
+reviewed_commit_tree=e44f49bacbad596cb218f10b3cc0f26e41a32da7
+reviewed_skill_revision=f7824ee9c700e9982923f9691c0a490d23041e36fc05e7dc223b6565543f6d5b
+oracle_agent_id=019f032e-d1d7-7330-8bbf-c4244072662b
+oracle_agent_id_source=multi_agent_v1.spawn_agent.agent_id
+oracle_submission_id=not_applicable_multi_agent_spawn_agent
+oracle_status=approved
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 none
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for the immutable candidate only. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, Stage 5, production default cutover, or prior closed history.
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
+```
+
+Parent Loop Driver after receipt:
+
+```text
+closure_scope=atomic_step
+atomic_step_status=closed
+parent_stage_status=running
+parent_loop_status=running
+loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=Stage 4 pickup.weapon_supply.v1 complete-supported package slice implementation atomic step
+next_checkpoint_id=stage4.pickup_weapon_supply_v1.complete_supported_package_slice
+next_checkpoint_parent_stage_id=stage4
+next_checkpoint_unmet_reason=Stage 4 pickup.weapon_supply.v1 remains unsupported_unregistered; static completeSupported=false; missingEvidenceDimensions=[schema_expressible,normalized,compiled,runtime_consumed,qa_observed]; missingSupportEvidencePrerequisites=[dslSchema,normalizer,irCompiler,runtimeModule,amendmentOperations,capabilityOwnedQa,artifactEvidence,renderContract,requiredProbeIds,requiredProbesVerified].
+selection_rule=first_unmet_checkpoint_in_authoritative_inventory
+source_plan_revision=d74693649674946d2399ab307792a29c7a6dc299:docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md
+remaining_inventory_requiredCapabilityCount=59
+remaining_inventory_registeredCapabilityCount=34
+remaining_inventory_completeSupportedCount=0
+remaining_inventory_committedClosedCapabilityCount=34
+remaining_inventory_selectionFailure=null
+```
+
+Receipt-only post-commit requirements:
+
+- Receipt commit must modify only this docs-only closure metadata.
+- `reviewed_commit_sha` must remain the candidate commit `d74693649674946d2399ab307792a29c7a6dc299`, not the receipt commit.
+- After receipt commit, re-run focused closure contract, `git diff --check`, Git ancestry/status checks, and remaining-inventory helper on committed HEAD.
+- If `global_exit_conditions_met=false` and `user_input_required=false`, Parent Loop Driver must continue to `stage4.pickup_weapon_supply_v1.complete_supported_package_slice`.
+
 ## Stage 4 Implementation: `hazard.falling_area.v1` complete-supported package slice
 
 Checkpoint identity:
