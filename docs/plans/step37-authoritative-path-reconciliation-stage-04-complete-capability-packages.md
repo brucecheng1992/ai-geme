@@ -6193,7 +6193,7 @@ active_skill_revision_type=sha256_bundle
 active_skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
 active_skill_root_identity=/Users/dahufa/.agents/skills
 active_skill_file_count=8
-active_skill_bundle_digest=079f417530d6f68c02a9f869631d78610d6a3a58c588e67e4849d92ec6ca379c
+active_skill_bundle_digest=5cd4735569473824dd190e341908f155081443b4cc7b963fcac6007301eb8f6a
 ```
 
 Current review conclusion:
@@ -6298,7 +6298,7 @@ result=PASS
 command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
 exitCode=0
 duration=real 0.06s
-result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_root_identity=/Users/dahufa/.agents/skills; skill_file_count=8; skill_bundle_digest=079f417530d6f68c02a9f869631d78610d6a3a58c588e67e4849d92ec6ca379c.
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_root_identity=/Users/dahufa/.agents/skills; skill_file_count=8; skill_bundle_digest=5cd4735569473824dd190e341908f155081443b4cc7b963fcac6007301eb8f6a.
 
 command=/usr/bin/time -p npx tsx "<ui.hud_player_health.v1 support summary and remaining inventory>"
 exitCode=0
@@ -6310,7 +6310,7 @@ Post-record validation requirement:
 
 - This closure record changes the final tree. Before creating the immutable candidate commit, focused contracts, full contracts, `npm test`, typecheck, `diff --check`, final diff range check, Skill freshness, and inventory alignment must be re-run against the final tree.
 - Candidate commit must not write its own SHA into this candidate record.
-- Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=079f417530d6f68c02a9f869631d78610d6a3a58c588e67e4849d92ec6ca379c`.
+- Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=5cd4735569473824dd190e341908f155081443b4cc7b963fcac6007301eb8f6a`.
 - `oracle_status` remains `not_submitted` until the Oracle request is accepted and an `agent_id` is recorded outside the frozen candidate.
 
 Post-record final validation:
@@ -6344,7 +6344,7 @@ result=PASS
 command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
 exitCode=0
 duration=real 0.06s
-result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_root_identity=/Users/dahufa/.agents/skills; skill_file_count=8; skill_bundle_digest=079f417530d6f68c02a9f869631d78610d6a3a58c588e67e4849d92ec6ca379c.
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_root_identity=/Users/dahufa/.agents/skills; skill_file_count=8; skill_bundle_digest=5cd4735569473824dd190e341908f155081443b4cc7b963fcac6007301eb8f6a.
 
 command=/usr/bin/time -p npx tsx "<ui.hud_player_health.v1 support summary and remaining inventory>"
 exitCode=0
