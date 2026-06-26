@@ -6178,10 +6178,10 @@ capability_id=enemy.flying_right_entry.v1
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
 review_required=true
-closure_status=not_closed
+closure_status=closed
 global_exit_conditions_met=false
 user_input_required=false
 next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
@@ -6189,9 +6189,10 @@ reviewed_skill_revision_type=sha256_bundle
 reviewed_skill_bundle_format=step37_manifest_v1_path_size_sha
 reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
 reviewed_skill_root_identity=/Users/dahufa/.agents/skills/review-gated-delivery
-reviewed_commit_sha=not_created
-oracle_submission_id=not_submitted
-oracle_agent_id=not_submitted
+reviewed_commit_sha=1545d226134a175d5c3d661ad4f372a7e74f0324
+reviewed_commit_tree=82561f38756ac6709983e7ee1325df7831c30d60
+oracle_submission_id=019f0262-529d-71e2-aa49-3742270adc77
+oracle_agent_id=019effae-8aa2-7c22-b5ba-8c4b69f21d20
 ```
 
 `enemy.flying_right_entry.v1` was selected by the Parent Loop Driver after the `enemy.fixed_turret.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
@@ -6315,11 +6316,47 @@ Exit assessment:
 
 - implementation_status: `complete`.
 - local_validation_status: `passed`.
-- candidate_status: `ready_for_commit`.
-- oracle_status: `not_submitted`.
-- unresolved_items: `candidate commit not yet created`; `Oracle review not submitted`; `receipt not created`; `Stage 4 completeSupported still not met`; `Production Default Cutover remains inactive`; `legacy authoritative path remains active`.
-- exit_assessment: `LOCAL_VALIDATION_PASSED_AWAITING_CANDIDATE_COMMIT_AND_ORACLE`.
-- parent_loop: `running`; `global_exit_conditions_met=false`; `user_input_required=false`; after receipt, Parent Loop Driver must compute a non-empty `next_atomic_step` from remaining inventory and continue.
+- candidate_status: `committed`.
+- oracle_status: `approved`.
+- unresolved_items: `Stage 4 completeSupported still not met`; `Production Default Cutover remains inactive`; `legacy authoritative path remains active`; `Step37 final closure remains open`.
+- exit_assessment: `CLOSED_ATOMIC_STEP_ONLY`.
+- parent_loop: `running`; `global_exit_conditions_met=false`; `user_input_required=false`; Parent Loop Driver selected `stage4.enemy_patrol_infantry_v1.complete_supported_package_slice` as the next atomic step.
+
+Oracle review receipt:
+
+```text
+submission_id=019f0262-529d-71e2-aa49-3742270adc77
+submission_id_source=multi_agent_v1.send_input return field
+agent_id=019effae-8aa2-7c22-b5ba-8c4b69f21d20
+agent_id_source=existing Oracle agent id
+polling_id_type=agent_id
+reviewed_commit_sha=1545d226134a175d5c3d661ad4f372a7e74f0324
+reviewed_commit_tree=82561f38756ac6709983e7ee1325df7831c30d60
+reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
+oracle_verdict=PASS_NO_P0_P1_P2_BLOCKERS
+oracle_findings=P0=0; P1=0; P2=0; P3=0
+previous_submission_id=019f025d-00dc-7dd0-982a-4da46efc5728
+previous_oracle_result=CHANGES_REQUIRED
+previous_blocking_finding=P2: Skill digest recorded as e9f08637d2d0b01bdf69f15c00d51cd4284eaf2569939c8e1882bf1d447684fb was not reproducible under step37_manifest_v1_path_size_sha; fixed by binding 58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1.
+```
+
+Receipt boundary:
+
+- This receipt records Oracle approval for immutable candidate commit `1545d226134a175d5c3d661ad4f372a7e74f0324` and Skill revision `58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1`.
+- It intentionally does not record its own receipt commit SHA to avoid self-reference churn.
+- Receipt diff is docs-only closure metadata and must not modify implementation, validator, contract semantics, Skill, AGENTS.md, tests, or runtime.
+- Stage 4 and Step37 remain running. This closes only `stage4.enemy_flying_right_entry_v1.complete_supported_package_slice`.
+
+Parent Loop Driver post-receipt projection:
+
+```text
+command=/usr/bin/time -p npx tsx - <<'TS' <remaining inventory after enemy.flying_right_entry.v1 receipt> TS
+exitCode=0
+duration=real 0.61s
+result=requiredCapabilityCount=59; staticCompleteSupportedCount=0; committedClosedCapabilityCount=28; sameRunObservedOnlyCount=28; next_checkpoint_id=stage4.enemy_patrol_infantry_v1.complete_supported_package_slice; next_atomic_step="Stage 4 enemy.patrol_infantry.v1 complete-supported package slice implementation atomic step"; selection_rule=first_unmet_checkpoint_in_authoritative_inventory; next_action=CONTINUE_PARENT_LOOP; global_exit_conditions_met=false; user_input_required=false
+```
+
+Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4.enemy_flying_right_entry_v1.complete_supported_package_slice` after candidate commit creation, local validation, Oracle PASS, and receipt-only metadata update. It does not close Stage 4, Step37, production default cutover, legacy authoritative path exit, Stage 5, or final global closure. Parent Loop Driver must continue with `stage4.enemy_patrol_infantry_v1.complete_supported_package_slice` while global exits remain false and no verified user blocker exists.
 
 ## Stage 4 Implementation: `enemy.fixed_turret.v1` complete-supported package slice
 
