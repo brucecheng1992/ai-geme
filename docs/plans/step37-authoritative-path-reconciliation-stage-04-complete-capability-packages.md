@@ -6359,20 +6359,34 @@ current_active_record=true
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
 review_required=true
-closure_status=open
+closure_status=closed
 parent_stage_status=running
 parent_loop_status=running
 global_exit_conditions_met=false
 user_input_required=false
 next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage4.validation_metamorphic_semantic_hash_v1.complete_supported_package_slice
+next_atomic_step_label=Stage 4 validation.metamorphic_semantic_hash.v1 complete-supported package slice implementation atomic step
+next_atomic_step_parent_stage_id=stage4
+next_atomic_step_selection_rule=first_unmet_checkpoint_in_authoritative_inventory
 skill_revision_type=sha256_bundle
 skill_bundle_format=step37_manifest_v1_path_size_sha
 skill_root_identity=/Users/dahufa/.agents/skills/review-gated-delivery
 skill_file_count=7
 current_active_skill_digest=1993fc085fccd9a74744ba77f5d5bb8beaebfa273b52228bbdd3d1f41671715d
+candidate_commit_sha=3f240b1522569598421974aba28644308590ab42
+candidate_commit_tree=9bd5aeef6844823109b1dce00ac361979c4b8869
+reviewed_commit_sha=3f240b1522569598421974aba28644308590ab42
+reviewed_commit_tree=9bd5aeef6844823109b1dce00ac361979c4b8869
+reviewed_skill_revision=1993fc085fccd9a74744ba77f5d5bb8beaebfa273b52228bbdd3d1f41671715d
+oracle_submission_id=019f0658-7e64-7dc3-960c-8227754dff64
+oracle_agent_id=019f0488-39ff-7e33-a790-4caca4a838a3
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 docs constant name typo corrected in receipt.
 local_validation_gate_scope=pre_candidate_final_tree_required
 ```
 
@@ -6412,7 +6426,7 @@ Evidence/probe chain:
 - Runtime module identity: `VALIDATION_FIXED_PROMPT_END_TO_END_RUNTIME_SYSTEM_ID=validation.fixed_prompt_end_to_end`.
 - Verification event: `VALIDATION_FIXED_PROMPT_END_TO_END_EVENT_TYPE=validation.fixed_prompt_end_to_end.verified`.
 - Required probe: `VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID=validation.fixed_prompt_end_to_end.v1.fixed_prompt.browser_qa.v1`.
-- Required evidence: `VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_EVIDENCE_ID=validation.fixed_prompt_end_to_end.v1.evidence.capability_qa_report.v1`.
+- Required evidence: `VALIDATION_FIXED_PROMPT_END_TO_END_PACKAGE_REQUIRED_EVIDENCE_ID=validation.fixed_prompt_end_to_end.v1.evidence.capability_qa_report.v1`.
 - Dependency capabilities: `metadata.fixed_prompt_binding.v1`, `profile.deepseek_run_and_gun_validation.v1`, and `provider.deepseek_authoritative_draft.v1`.
 - QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares the fixed-prompt composite state fields and fails the required probe when provider/profile events omit those fields.
 - Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for same-run full composite fixed-prompt evidence; it does not mutate static `completeSupported`.
@@ -6499,6 +6513,40 @@ Post-record validation requirement:
 - Oracle request must bind the candidate commit SHA and the final recomputed `reviewed_skill_revision`.
 - `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
 - Oracle PASS is required before any receipt may update `closure_status=closed`.
+
+Oracle receipt:
+
+```text
+reviewed_commit_sha=3f240b1522569598421974aba28644308590ab42
+reviewed_commit_tree=9bd5aeef6844823109b1dce00ac361979c4b8869
+reviewed_skill_revision=1993fc085fccd9a74744ba77f5d5bb8beaebfa273b52228bbdd3d1f41671715d
+oracle_submission_id=019f0658-7e64-7dc3-960c-8227754dff64
+oracle_agent_id=019f0488-39ff-7e33-a790-4caca4a838a3
+oracle_status=approved
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 docs identifier typo corrected: VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_EVIDENCE_ID -> VALIDATION_FIXED_PROMPT_END_TO_END_PACKAGE_REQUIRED_EVIDENCE_ID
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for the immutable candidate only. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, Stage 5, production default cutover, or prior closed history.
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
+```
+
+Parent Loop Driver after receipt:
+
+```text
+closure_scope=atomic_step
+atomic_step_status=closed
+parent_stage_status=running
+parent_loop_status=running
+loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage4.validation_metamorphic_semantic_hash_v1.complete_supported_package_slice
+next_atomic_step_label=Stage 4 validation.metamorphic_semantic_hash.v1 complete-supported package slice implementation atomic step
+next_atomic_step_parent_stage_id=stage4
+next_atomic_step_selection_rule=first_unmet_checkpoint_in_authoritative_inventory
+remaining_inventory_result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=56; staticCompleteSupportedCount=0; committedClosedCapabilityCount=56; unsupported_unregistered=3; nextCheckpointId=stage4.validation_metamorphic_semantic_hash_v1.complete_supported_package_slice; selectionFailure=null.
+```
 
 ## Stage 4 Implementation: `ui.win_failure_transitions.v1` complete-supported package slice
 
