@@ -4649,3 +4649,141 @@ parent_loop:
 ```
 
 Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4.remaining_complete_supported_package_inventory_driver_implementation` after candidate commit creation, full local validation, Oracle PASS, and receipt-only metadata update. It does not close Stage 4, Step37, production default cutover, legacy authoritative path exit, Stage 5, or final global closure. Parent Loop Driver must continue with `stage4.metadata_fixed_prompt_binding_v1.complete_supported_package_slice` while global exits remain false and no verified user blocker exists.
+
+## Stage 4 Implementation — Metadata Fixed Prompt Binding Package Slice
+
+- checkpoint_id: `stage4.metadata_fixed_prompt_binding_v1.complete_supported_package_slice`.
+- closure_scope: `atomic_step`.
+- implementation_status: `complete`.
+- local_validation_status: `passed`.
+- candidate_status: `ready_for_commit`.
+- oracle_status: `not_submitted`.
+- closure_status: `not_closed_candidate_pending`.
+- parent_stage_status: `running`.
+- parent_loop_status: `running`.
+- global_exit_conditions_met: `false`.
+- user_input_required: `false`.
+
+Current Stage review conclusion:
+
+`metadata.fixed_prompt_binding.v1` was selected by the remaining-inventory driver as the first unclosed incomplete capability. Before this implementation, support summary reported only `schema_expressible=true`; `normalized`, `compiled`, `runtime_consumed`, and `qa_observed` were false, with missing prerequisites including `normalizer`, `irCompiler`, `runtimeModule`, `capabilityOwnedQa`, `requiredProbeIds`, and `requiredProbesVerified`.
+
+Minimum closure requirements:
+
+1. Add a package-owned fixed prompt binding contract with stable capability identity, runtime system identity, required probe id, and required QA evidence id.
+2. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `metadata.fixed_prompt_binding.v1` only when the fixed-prompt binding event is present.
+5. Add a negative regression proving absence of the fixed-prompt binding event keeps the capability unverified and emits the required missing-probe blocker.
+6. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/fixed-prompt-binding-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/fixed-prompt-binding-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createFixedPromptBindingPackageContract()`.
+- Runtime module identity: `FIXED_PROMPT_BINDING_RUNTIME_SYSTEM_ID=metadata.fixed_prompt_binding`.
+- Required event: `FIXED_PROMPT_BINDING_EVENT_TYPE=metadata.fixed_prompt.bound`.
+- Required probe: `FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID=metadata.fixed_prompt_binding.v1.bound.browser_qa.v1`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` derives pass/fail from same-run runtime evidence, preserving missing-probe failure when the fixed-prompt event is absent.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for the same run; it does not mutate static `completeSupported`.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned fixed prompt binding capability contract, runtime system identity, event identity, required probe id, and registry evidence for `metadata.fixed_prompt_binding.v1`. |
+| Consumer list | Package validator, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, Step37 remaining-inventory driver. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence is captured and a future support-promotion gate consumes it. |
+| Authority | `DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1.fixedPrompt` is the semantic authority; package QA observes `metadata.fixed_prompt.bound` as evidence that the current run consumed the fixed prompt binding. |
+| Legacy strategy | Legacy metadata remains non-authoritative for this target-profile binding and cannot promote complete support. |
+| Failure policy | Missing package contract, missing required probe, missing fixed-prompt binding event, or wrong capability identity keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, registry support advancement without complete support, positive same-run overlay, and negative missing-event behavior. |
+| Rollback | Reverting this slice removes only the metadata package/probe wiring and returns `metadata.fixed_prompt_binding.v1` to schema-only seeded support without changing runtime gameplay templates. |
+
+Focused validation completed so far:
+
+```text
+command=npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts
+exitCode=1
+result=RED: fixed prompt binding package/runtime module did not exist; overlay could not construct createFixedPromptBindingPackageContract.
+
+command=npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts
+exitCode=0
+result=PASS: 3 files / 49 tests
+
+command=npx tsx --eval 'import { buildDeepSeekRunAndGunValidationProfileSupportSummary } from "./packages/game-dsl/src/index.ts"; ...'
+exitCode=0
+result=metadata.fixed_prompt_binding.v1 evidence={schema_expressible:true,normalized:true,compiled:true,runtime_consumed:true,qa_observed:false}; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false; completeSupportedCount=0
+```
+
+Pending validation before candidate:
+
+- The implementation tree has passed local validation:
+
+```text
+command=npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts
+exitCode=0
+result=PASS: 4 files / 55 tests
+
+command=npm run test:contracts
+exitCode=0
+result=PASS: 98 files / 1139 tests
+
+command=npm test
+exitCode=0
+result=PASS: contracts 98 files / 1139 tests; workspace 34 files / 410 tests
+
+command=npm run typecheck
+exitCode=0
+result=PASS
+
+command=git diff --check
+exitCode=0
+result=PASS
+
+command=external Skill freshness digest
+exitCode=0
+result=skill_bundle_digest=afb000865c530f9fc1afdda9323846882fb8da38dfd2402687e9e5b745a02d1e
+```
+
+- The status update above is docs-only, but it changes the final tree. Before creating the candidate commit, rerun focused contracts, related/full contracts, `npm test`, `npm run typecheck`, `git diff --check`, final diff range check, and external Skill freshness against this exact final tree.
+
+Final tree recheck:
+
+```text
+command=npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts
+exitCode=0
+result=PASS: 4 files / 55 tests
+
+command=npm run test:contracts
+exitCode=0
+result=PASS: 98 files / 1139 tests
+
+command=npm test
+exitCode=0
+result=PASS: contracts 98 files / 1139 tests; workspace 34 files / 410 tests
+
+command=npm run typecheck
+exitCode=0
+result=PASS
+
+command=git diff --check
+exitCode=0
+result=PASS
+
+command=external Skill freshness digest
+exitCode=0
+result=skill_bundle_digest=afb000865c530f9fc1afdda9323846882fb8da38dfd2402687e9e5b745a02d1e
+```
+
+Exit assessment: `LOCALLY_VALIDATED_READY_FOR_CANDIDATE`. This atomic step is not closed and no candidate commit exists yet. It does not close Stage 4 or Step37.

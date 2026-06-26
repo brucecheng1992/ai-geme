@@ -2,6 +2,10 @@ import { z } from 'zod';
 
 import { isRuntimeGenreExecutable, RuntimeGenreRegistry, type RuntimeGenreCapability } from '../runtime-capabilities.js';
 import {
+  FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
+  createFixedPromptBindingPackageContract
+} from './fixed-prompt-binding-package.js';
+import {
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   createCameraSideFollowPackageContract
 } from './camera-side-follow-package.js';
@@ -358,6 +362,19 @@ const canonicalRuntimeLoaderEvidence: GameplayCapabilityEvidence = {
 
 const noVerifiedQa: GameplayCapabilityQaEvidence = { requiredProbeIds: [], requiredProbesVerified: false };
 
+const fixedPromptBindingPackageReport = validateGameplayCapabilityPackage(createFixedPromptBindingPackageContract());
+const fixedPromptBindingPackageEvidence: GameplayCapabilityEvidence = fixedPromptBindingPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const fixedPromptBindingPackageQa: GameplayCapabilityQaEvidence = fixedPromptBindingPackageReport.supportEligible
+  ? { requiredProbeIds: [FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const cameraSideFollowPackageReport = validateGameplayCapabilityPackage(createCameraSideFollowPackageContract());
 const cameraSideFollowPackageEvidence: GameplayCapabilityEvidence = cameraSideFollowPackageReport.supportEligible
   ? {
@@ -542,9 +559,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     pickupCollectiblePackageQa
   ),
   runtimeBacked('hazard.contact_damage.v1', 'hazard', 'Contact hazard damage', [topDownActionArcade], ['dodger.v1'], ['hazards']),
-  contractSeeded('metadata.fixed_prompt_binding.v1', 'metadata', 'Fixed prompt metadata binding', [phaser2dActionArcade], [
-    'side_scrolling_run_and_gun.v1'
-  ], []),
+  contractSeeded(
+    'metadata.fixed_prompt_binding.v1',
+    'metadata',
+    'Fixed prompt metadata binding',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    fixedPromptBindingPackageEvidence,
+    fixedPromptBindingPackageQa
+  ),
   planned(
     'combat.airborne_fire.v1',
     'combat',

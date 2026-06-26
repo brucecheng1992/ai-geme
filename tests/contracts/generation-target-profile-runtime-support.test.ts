@@ -6,6 +6,8 @@ import {
   COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
+  FIXED_PROMPT_BINDING_EVENT_TYPE,
+  FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
   GenerationTargetProfileRuntimeSupportReportSchema,
   HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID,
   HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
@@ -23,6 +25,7 @@ import {
   createCombatAirborneFirePackageContract,
   createCombatProjectilePackageContract,
   createDefaultStraightSingleWeaponPackageContract,
+  createFixedPromptBindingPackageContract,
   createHealthDamageInvulnerabilityPackageContract,
   createHealthPlayerHealthPointsPackageContract,
   createMovementCrouchPackageContract,
@@ -46,6 +49,7 @@ const spawnStaticCapabilityId = 'spawn.static.v1';
 const damageInvulnerabilityCapabilityId = 'health.damage_invulnerability.v1';
 const healthCapabilityId = 'health.player_health_points.v1';
 const pickupCapabilityId = 'pickup.collectible.v1';
+const fixedPromptBindingCapabilityId = 'metadata.fixed_prompt_binding.v1';
 
 describe('Step 37 target profile runtime support overlay', () => {
   it('records runtime-observed support without mutating static completeSupported evidence', () => {
@@ -63,7 +67,8 @@ describe('Step 37 target profile runtime support overlay', () => {
       'spawn.static.triggered',
       'health.damage_invulnerability.activated',
       'health.damage_invulnerability.blocked',
-      'health.player_health.current'
+      'health.player_health.current',
+      FIXED_PROMPT_BINDING_EVENT_TYPE
     ]);
     const report = buildGenerationTargetProfileRuntimeSupportReport({
       projectId: 'proj_20260625_target_runtime_support',
@@ -79,6 +84,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     const damageInvulnerability = report.capabilities.find((entry) => entry.capabilityId === damageInvulnerabilityCapabilityId);
     const health = report.capabilities.find((entry) => entry.capabilityId === healthCapabilityId);
     const pickup = report.capabilities.find((entry) => entry.capabilityId === pickupCapabilityId);
+    const fixedPromptBinding = report.capabilities.find((entry) => entry.capabilityId === fixedPromptBindingCapabilityId);
 
     expect(GenerationTargetProfileRuntimeSupportReportSchema.parse(report)).toEqual(report);
     expect(report).toMatchObject({
@@ -87,7 +93,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 12,
+      observedCompleteSupportedCount: 13,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
@@ -97,6 +103,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         projectileCapabilityId,
         damageInvulnerabilityCapabilityId,
         healthCapabilityId,
+        fixedPromptBindingCapabilityId,
         crouchCapabilityId,
         movementCapabilityId,
         pickupCapabilityId,
@@ -104,7 +111,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         spawnStaticCapabilityId,
         defaultWeaponCapabilityId
       ],
-      blockers: ['target_profile_runtime_support_incomplete:12/59']
+      blockers: ['target_profile_runtime_support_incomplete:13/59']
     });
     expect(camera).toMatchObject({
       capabilityId: cameraCapabilityId,
@@ -238,6 +245,59 @@ describe('Step 37 target profile runtime support overlay', () => {
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
     });
+    expect(fixedPromptBinding).toMatchObject({
+      capabilityId: fixedPromptBindingCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+  });
+
+  it('keeps fixed prompt binding unverified when the fixed prompt event is absent', () => {
+    const capabilityQaReport = buildDefaultWeaponQaReport([
+      'camera.side_follow.active',
+      'collision.platform.grounded',
+      'combat.airborne_fire.fired',
+      'player.fired',
+      'projectile.spawned',
+      'movement.crouch.entered',
+      'player.jumped',
+      'pickup.collectible.collected',
+      'pickup.collectible.state_changed',
+      'spawn.enemy_wave.ordered',
+      'spawn.static.triggered',
+      'health.damage_invulnerability.activated',
+      'health.damage_invulnerability.blocked',
+      'health.player_health.current'
+    ]);
+    const report = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260625_target_runtime_support',
+      runId: 'run_20260625_fixed_prompt_missing',
+      capabilityQaReport
+    });
+    const fixedPromptBinding = report.capabilities.find((entry) => entry.capabilityId === fixedPromptBindingCapabilityId);
+
+    expect(report).toMatchObject({
+      status: 'blocked_incomplete_target_profile',
+      observedCompleteSupportedCount: 12,
+      targetProfileCompleteSupported: false,
+      blockers: [
+        `capability_qa_report_missing_required_probe:${FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID}`,
+        'target_profile_runtime_support_incomplete:12/59'
+      ]
+    });
+    expect(fixedPromptBinding).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
   });
 
   it('keeps runtime support blocked when the required package QA assertion is missing', () => {
@@ -281,7 +341,8 @@ describe('Step 37 target profile runtime support overlay', () => {
       'spawn.enemy_wave.ordered',
       'spawn.static.triggered',
       'health.damage_invulnerability.blocked',
-      'health.player_health.current'
+      'health.player_health.current',
+      FIXED_PROMPT_BINDING_EVENT_TYPE
     ]);
     const report = buildGenerationTargetProfileRuntimeSupportReport({
       projectId: 'proj_20260625_target_runtime_support',
@@ -305,7 +366,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 11,
+      observedCompleteSupportedCount: 12,
       targetProfileCompleteSupported: false,
       observedCapabilityIds: [
         cameraCapabilityId,
@@ -313,6 +374,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         airborneFireCapabilityId,
         projectileCapabilityId,
         healthCapabilityId,
+        fixedPromptBindingCapabilityId,
         crouchCapabilityId,
         movementCapabilityId,
         pickupCapabilityId,
@@ -322,7 +384,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ],
       blockers: [
         `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:11/59'
+        'target_profile_runtime_support_incomplete:12/59'
       ]
     });
     expect(damageInvulnerability).toMatchObject({
@@ -347,11 +409,12 @@ describe('Step 37 target profile runtime support overlay', () => {
         'pickup.collectible.collected',
         'pickup.collectible.state_changed',
         'spawn.enemy_wave.ordered',
-        'spawn.static.triggered',
-        'health.damage_invulnerability.activated',
-        'health.damage_invulnerability.blocked',
-        'health.player_health.current'
-      ],
+      'spawn.static.triggered',
+      'health.damage_invulnerability.activated',
+      'health.damage_invulnerability.blocked',
+      'health.player_health.current',
+      FIXED_PROMPT_BINDING_EVENT_TYPE
+    ],
       { pickupStateFields: false }
     );
     const report = buildGenerationTargetProfileRuntimeSupportReport({
@@ -376,11 +439,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 11,
+      observedCompleteSupportedCount: 12,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:11/59'
+        'target_profile_runtime_support_incomplete:12/59'
       ]
     });
     expect(pickup).toMatchObject({
@@ -405,11 +468,12 @@ describe('Step 37 target profile runtime support overlay', () => {
         'pickup.collectible.collected',
         'pickup.collectible.state_changed',
         'spawn.enemy_wave.ordered',
-        'spawn.static.triggered',
-        'health.damage_invulnerability.activated',
-        'health.damage_invulnerability.blocked',
-        'health.player_health.current'
-      ],
+      'spawn.static.triggered',
+      'health.damage_invulnerability.activated',
+      'health.damage_invulnerability.blocked',
+      'health.player_health.current',
+      FIXED_PROMPT_BINDING_EVENT_TYPE
+    ],
       { spawnEnemyWaveOrderedFields: false }
     );
     const report = buildGenerationTargetProfileRuntimeSupportReport({
@@ -431,11 +495,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 11,
+      observedCompleteSupportedCount: 12,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:11/59'
+        'target_profile_runtime_support_incomplete:12/59'
       ]
     });
     expect(spawnEnemyWave).toMatchObject({
@@ -455,6 +519,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       `capability_qa_report_missing_required_probe:${COMBAT_PROJECTILE_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${MOVEMENT_CROUCH_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
@@ -641,6 +706,19 @@ function buildDefaultWeaponQaReport(eventTypes: readonly string[], options: { pi
             sourceRef: 'qa_report.snapshot.health'
           }
         ]
+      : []),
+    ...(eventTypes.includes(FIXED_PROMPT_BINDING_EVENT_TYPE)
+      ? [
+          {
+            capabilityId: fixedPromptBindingCapabilityId,
+            probeId: FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
+            action: 'observe',
+            eventType: FIXED_PROMPT_BINDING_EVENT_TYPE,
+            eventTypes,
+            status: 'observed' as const,
+            sourceRef: 'target_profile.fixedPrompt.sha256'
+          }
+        ]
       : [])
   ];
   return evaluateCapabilityQaReport({
@@ -668,6 +746,7 @@ function buildDefaultWeaponQaPlan() {
     createCombatAirborneFirePackageContract(),
     createDefaultStraightSingleWeaponPackageContract(),
     createCombatProjectilePackageContract(),
+    createFixedPromptBindingPackageContract(),
     createMovementCrouchPackageContract(),
     createHealthDamageInvulnerabilityPackageContract(),
     createPickupCollectiblePackageContract(),
@@ -683,6 +762,7 @@ function buildDefaultWeaponQaPlan() {
       airborneFireCapabilityId,
       defaultWeaponCapabilityId,
       projectileCapabilityId,
+      fixedPromptBindingCapabilityId,
       crouchCapabilityId,
       damageInvulnerabilityCapabilityId,
       pickupCapabilityId,

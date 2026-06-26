@@ -143,26 +143,45 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
     expect(support.capabilities.every((capability) => capability.completeSupported === false)).toBe(true);
   });
 
-  it('registers M1 profile metadata contracts as seeded but incomplete support', () => {
+  it('registers fixed prompt metadata binding as package-backed but still incomplete support', () => {
     const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
     const capabilities = new Map(support.capabilities.map((capability) => [capability.capabilityId, capability]));
 
-    for (const capabilityId of ['metadata.fixed_prompt_binding.v1', 'profile.deepseek_run_and_gun_validation.v1']) {
-      expect(capabilities.get(capabilityId)).toMatchObject({
-        registered: true,
-        classification: 'CONTRACT_SEEDED',
-        completeSupported: false,
-        legacyBacked: false,
-        evidenceDimensions: {
-          schema_expressible: true,
-          normalized: false,
-          compiled: false,
-          runtime_consumed: false,
-          qa_observed: false
-        },
-        missingEvidenceDimensions: ['normalized', 'compiled', 'runtime_consumed', 'qa_observed']
-      });
-    }
+    expect(capabilities.get('metadata.fixed_prompt_binding.v1')).toMatchObject({
+      registered: true,
+      classification: 'CONTRACT_SEEDED',
+      completeSupported: false,
+      legacyBacked: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+  });
+
+  it('keeps the profile metadata contract seeded but incomplete support', () => {
+    const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
+    const capabilities = new Map(support.capabilities.map((capability) => [capability.capabilityId, capability]));
+
+    expect(capabilities.get('profile.deepseek_run_and_gun_validation.v1')).toMatchObject({
+      registered: true,
+      classification: 'CONTRACT_SEEDED',
+      completeSupported: false,
+      legacyBacked: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: false,
+        compiled: false,
+        runtime_consumed: false,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['normalized', 'compiled', 'runtime_consumed', 'qa_observed']
+    });
   });
 
   it('reports M2 action-state runtime loader evidence without QA completion', () => {

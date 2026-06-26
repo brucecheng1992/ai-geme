@@ -105,6 +105,15 @@ import {
   PICKUP_COLLECTIBLE_RUNTIME_SYSTEM_ID,
   PICKUP_COLLECTIBLE_STATE_CHANGED_EVENT_TYPE
 } from '../../packages/game-dsl/src/gameplay-capabilities/pickup-collectible-runtime-module.js';
+import {
+  FIXED_PROMPT_BINDING_PACKAGE_REQUIRED_EVIDENCE_ID,
+  FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
+  createFixedPromptBindingPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/fixed-prompt-binding-package.js';
+import {
+  FIXED_PROMPT_BINDING_EVENT_TYPE,
+  FIXED_PROMPT_BINDING_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/fixed-prompt-binding-runtime-module.js';
 
 describe('Gameplay capability package contract', () => {
   it('accepts a complete supported package and keeps hashes deterministic', () => {
@@ -481,6 +490,39 @@ describe('Gameplay capability package contract', () => {
           expected: { pickupConsumed: true, pickupStateChanged: true }
         })
       ])
+    });
+  });
+
+  it('accepts the fixed prompt binding package-owned artifact QA contract', () => {
+    const contract = createFixedPromptBindingPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'metadata.fixed_prompt_binding.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([FIXED_PROMPT_BINDING_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: FIXED_PROMPT_BINDING_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'metadata.fixed_prompt_binding.v1',
+      severity: 'required',
+      actions: [expect.objectContaining({ target: FIXED_PROMPT_BINDING_EVENT_TYPE })],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: FIXED_PROMPT_BINDING_RUNTIME_SYSTEM_ID,
+          ref: FIXED_PROMPT_BINDING_EVENT_TYPE
+        })
+      ]
     });
   });
 
