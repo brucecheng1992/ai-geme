@@ -5503,12 +5503,12 @@ Checkpoint identity:
 closure_scope: atomic_step
 atomic_step:
   id: stage4.weapon_replacement_rule_v1.complete_supported_package_slice
-  status: locally_validated
-  implementation_status: complete
+  status: closed
+  implementation_status: receipt
   local_validation_status: passed
-  candidate_status: ready_for_commit
-  oracle_status: not_submitted
-  closure_status: not_closed
+  candidate_status: committed
+  oracle_status: approved
+  closure_status: closed
 parent_stage:
   id: stage4
   status: running
@@ -5519,7 +5519,7 @@ parent_loop:
   global_exit_conditions_met: false
   user_input_required: false
   next_action: CONTINUE_PARENT_LOOP
-  next_atomic_step: stage4.weapon_replacement_rule_v1.complete_supported_package_slice
+  next_atomic_step: stage4.weapon_spread_shot_v1.complete_supported_package_slice
   next_atomic_step_scope: implementation
 ```
 
@@ -5606,9 +5606,9 @@ Current local validation status:
 ```text
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
-unresolved_items=Candidate commit, Oracle review, receipt, and Parent Loop Driver rerun remain pending.
+candidate_status=committed
+oracle_status=approved
+unresolved_items=none for this atomic step; Stage 4, Step37 global closure, production default cutover, legacy authoritative path exit, and Stage 5 remain open.
 ```
 
 Local validation completed before candidate:
@@ -5669,3 +5669,60 @@ result=CHANGES_REQUIRED
 blocking_finding=P2: external Skill revision was under-specified and not reproducible from the declared step37_manifest_v1_path_size_sha root-relative path/size/sha protocol.
 resolution=current candidate evidence now uses the reproducible root-relative ASCII manifest digest 58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1; the previous 01a4b385af0f64311b6248d342dc2e6637645dbeb02e6fe6fb212f7afc5f3b61 value is stale and must not be used for this checkpoint.
 ```
+
+Candidate post-commit checks after Oracle P2 fix:
+
+```text
+command=git rev-parse HEAD
+exitCode=0
+result=9adeab49bc86399ab234ac48def55b8da09dab8b
+
+command=git rev-parse HEAD^{tree}
+exitCode=0
+result=cb550dfcf2799d4f26546e91d846b7aeba48dd9d
+
+command=git status --short
+exitCode=0
+result=clean
+
+command=git show --check --stat --oneline HEAD
+exitCode=0
+result=PASS
+
+command=/usr/bin/time -p node "<review-gated-delivery root-relative skill bundle digest script>"
+exitCode=0
+duration=real 0.04s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_size_sha; skill_root_identity=/Users/dahufa/.agents/skills/review-gated-delivery; skill_file_count=7; skill_bundle_digest=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1.
+```
+
+Oracle approval receipt:
+
+```text
+submission_id=019f0189-d6ad-70e0-98c1-738546d56c80
+submission_id_source=multi_agent_v1.send_input return field
+agent_id=019effae-8aa2-7c22-b5ba-8c4b69f21d20
+agent_id_source=existing Oracle agent id
+polling_id_type=agent_id
+reviewed_commit_sha=9adeab49bc86399ab234ac48def55b8da09dab8b
+reviewed_commit_tree=cb550dfcf2799d4f26546e91d846b7aeba48dd9d
+reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
+oracle_verdict=PASS_NO_P0_P1_P2_BLOCKERS
+oracle_findings=P0=0; P1=0; P2=0; P3=0
+```
+
+Receipt boundary:
+
+- This receipt records Oracle approval for immutable candidate commit `9adeab49bc86399ab234ac48def55b8da09dab8b` and Skill revision `58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1`.
+- It intentionally does not record its own receipt commit SHA to avoid self-reference churn.
+- Receipt diff is docs-only closure metadata and must not modify implementation, validator, contract semantics, Skill, AGENTS.md, tests, or runtime.
+- Stage 4 and Step37 remain running. This closes only `stage4.weapon_replacement_rule_v1.complete_supported_package_slice`.
+
+Parent Loop Driver post-receipt projection:
+
+```text
+command=npx tsx --eval 'import { buildDeepSeekRunAndGunValidationProfileSupportSummary, buildStep37RemainingCompleteSupportedInventory, decideStep37ParentLoop } from "./packages/game-dsl/src/index.ts"; ...'
+exitCode=0
+result=requiredCapabilityCount=59; staticCompleteSupportedCount=0; committedClosedCapabilityCount=17; sameRunObservedOnlyCount=17; next_checkpoint_id=stage4.weapon_spread_shot_v1.complete_supported_package_slice; next_atomic_step="Stage 4 weapon.spread_shot.v1 complete-supported package slice implementation atomic step"; next_action=CONTINUE_PARENT_LOOP; global_exit_conditions_met=false; user_input_required=false
+```
+
+Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4.weapon_replacement_rule_v1.complete_supported_package_slice` after candidate commit creation, local validation, Oracle PASS, and receipt-only metadata update. It does not close Stage 4, Step37, production default cutover, legacy authoritative path exit, Stage 5, or final global closure. Parent Loop Driver must continue with `stage4.weapon_spread_shot_v1.complete_supported_package_slice` while global exits remain false and no verified user blocker exists.
