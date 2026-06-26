@@ -6601,12 +6601,13 @@ capability_id=rules.checkpoint_restore.v1
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
 review_required=true
-closure_status=incomplete
+closure_status=closed
 global_exit_conditions_met=false
 user_input_required=false
+next_action_after_receipt=CONTINUE_PARENT_LOOP
 reviewed_skill_revision_type=component_sha256_bundle
 reviewed_skill_revision=code-change-discipline:f7824ee9c700e9982923f9691c0a490d23041e36fc05e7dc223b6565543f6d5b;review-gated-delivery:58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
 active_skill_path=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery
@@ -6622,10 +6623,12 @@ review_skill_file_count=7
 review_skill_bundle_digest=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
 freshness_status=aligned
 freshness_interpretation=Historical aggregate digest 09712290a7ae6a031101f9afd6f69df2a778404613853a81bab8bcc9ef10b3f0 is retained as prior evidence only; this candidate binds current component Skill digests and cannot reuse the prior aggregate digest as current freshness evidence.
-candidate_commit_sha=not_created_yet
-candidate_commit_tree=not_created_yet
-reviewed_commit_sha=not_submitted
-reviewed_commit_tree=not_submitted
+candidate_commit_sha=40d42bd33a3badfa2f526663674fee5458925548
+candidate_commit_tree=4d35a235d5596fa04145806397e855825329b3d5
+reviewed_commit_sha=40d42bd33a3badfa2f526663674fee5458925548
+reviewed_commit_tree=4d35a235d5596fa04145806397e855825329b3d5
+oracle_agent_id=019f03ed-a0c0-7df1-b1f5-74218d357376
+oracle_submission_id=not_exposed_by_local_multi_agent_tool
 post_record_validation_status=passed
 ```
 
@@ -6721,6 +6724,42 @@ Candidate creation requirement:
 - Candidate commit must not write its own SHA into this candidate record.
 - Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=code-change-discipline:f7824ee9c700e9982923f9691c0a490d23041e36fc05e7dc223b6565543f6d5b;review-gated-delivery:58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1`.
 - `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+
+Oracle receipt:
+
+```text
+reviewed_commit_sha=40d42bd33a3badfa2f526663674fee5458925548
+reviewed_commit_tree=4d35a235d5596fa04145806397e855825329b3d5
+reviewed_skill_revision=code-change-discipline:f7824ee9c700e9982923f9691c0a490d23041e36fc05e7dc223b6565543f6d5b;review-gated-delivery:58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
+oracle_agent_id=019f03ed-a0c0-7df1-b1f5-74218d357376
+oracle_submission_id=not_exposed_by_local_multi_agent_tool
+oracle_status=approved
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 none
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for the immutable candidate only. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, Stage 5, production default cutover, or prior closed history.
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
+```
+
+Parent Loop Driver after receipt:
+
+```text
+closure_scope=atomic_step
+atomic_step_status=closed
+parent_stage_status=running
+loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_checkpoint_id=stage4.rules_encounter_gate_v1.complete_supported_package_slice
+next_atomic_step=Stage 4 rules.encounter_gate.v1 complete-supported package slice implementation atomic step
+next_checkpoint_parent_stage_id=stage4
+next_checkpoint_selection_rule=first_unmet_checkpoint_in_authoritative_inventory
+next_checkpoint_unmet_reason=Stage 4 rules.encounter_gate.v1 remains unsupported_unregistered; static completeSupported=false; missingEvidenceDimensions=[schema_expressible,normalized,compiled,runtime_consumed,qa_observed]; missingSupportEvidencePrerequisites=[dslSchema,normalizer,irCompiler,runtimeModule,amendmentOperations,capabilityOwnedQa,artifactEvidence,renderContract,requiredProbeIds,requiredProbesVerified].
+remaining_inventory_summary=requiredCapabilityCount=59; registeredCapabilityCount=38; staticCompleteSupportedCount=0; committedClosedCapabilityCount=38; unsupported_unregistered=21; selectionFailure=null
+```
+
+Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4.rules_checkpoint_restore_v1.complete_supported_package_slice` after candidate commit creation, local validation, Oracle PASS, and receipt-only metadata update. It does not close Stage 4, Step37, production default cutover, legacy authoritative path exit, Stage 5, or final global closure. Parent Loop Driver must continue with `stage4.rules_encounter_gate_v1.complete_supported_package_slice` while global exits remain false and no verified user blocker exists.
 
 ## Stage 4 Implementation: `pickup.weapon_supply.v1` complete-supported package slice
 
