@@ -6380,7 +6380,7 @@ Checkpoint identity:
 
 ```text
 checkpoint_id=stage4.review_oracle_final_gate_v1.complete_supported_package_slice
-closure_record_id=stage4.review_oracle_final_gate_v1.complete_supported_package_slice.candidate_pending_receipt
+closure_record_id=stage4.review_oracle_final_gate_v1.complete_supported_package_slice.receipt_for_61a68b8e
 record_status=active
 current_active_record=true
 supersedes_record_id=none
@@ -6389,10 +6389,10 @@ capability_id=review.oracle_final_gate.v1
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
 review_required=true
-closure_status=not_closed
+closure_status=closed
 global_exit_conditions_met=false
 user_input_required=false
 next_action_after_receipt=CONTINUE_PARENT_LOOP
@@ -6406,10 +6406,10 @@ previous_recorded_skill_digest=06fa14205c4a623e8808b1b701a45a9d1e74234ee0a52bea6
 current_active_skill_digest=27e8ffdc072b4247d6eb20dc79679ed8f24a81a77ed33b3712b56b61b3da7416
 freshness_status=aligned
 freshness_interpretation=The prior candidate recorded stale Skill digest 06fa14205c4a623e8808b1b701a45a9d1e74234ee0a52bea614e2652e6f99b61 and was rejected by Oracle P1; this corrected candidate binds the current active Skill bundle digest and cannot reuse older freshness evidence.
-candidate_commit_sha=not_created_yet
-candidate_commit_tree=not_created_yet
-reviewed_commit_sha=not_submitted
-reviewed_commit_tree=not_submitted
+candidate_commit_sha=61a68b8e3555b08a58b6f0a8a07d25d0157a6b0b
+candidate_commit_tree=519dcaf9fc0ea01371b74cdddd9c75e3a021b1e2
+reviewed_commit_sha=61a68b8e3555b08a58b6f0a8a07d25d0157a6b0b
+reviewed_commit_tree=519dcaf9fc0ea01371b74cdddd9c75e3a021b1e2
 ```
 
 `review.oracle_final_gate.v1` was selected by the Parent Loop Driver after the `provider.deepseek_authoritative_draft.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
@@ -6548,6 +6548,44 @@ Post-record validation requirement:
 - Candidate commit must not write its own SHA into this candidate record.
 - Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=27e8ffdc072b4247d6eb20dc79679ed8f24a81a77ed33b3712b56b61b3da7416`.
 - `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+
+Oracle receipt:
+
+```text
+reviewed_commit_sha=61a68b8e3555b08a58b6f0a8a07d25d0157a6b0b
+reviewed_commit_tree=519dcaf9fc0ea01371b74cdddd9c75e3a021b1e2
+reviewed_skill_revision=27e8ffdc072b4247d6eb20dc79679ed8f24a81a77ed33b3712b56b61b3da7416
+oracle_prior_agent_id=019f03bd-1183-70a2-a941-48ef8c9c9475
+oracle_prior_result=CHANGES_REQUIRED_P1_SKILL_DIGEST_MISMATCH
+oracle_submission_id=not_exposed_by_multi_agent_v1.spawn_agent
+oracle_agent_id=019f03c6-7116-7c13-9373-053dac9c618d
+oracle_agent_id_source=multi_agent_v1.spawn_agent.agent_id
+oracle_poll_id_used=oracle_agent_id
+oracle_status=approved
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for immutable candidate 61a68b8e3555b08a58b6f0a8a07d25d0157a6b0b. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, Stage 5, production default cutover, legacy authoritative path exit, or prior closed history.
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_changes_required_p1 -> skill_digest_record_fixed -> locally_revalidated -> corrected_candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
+```
+
+Parent Loop Driver after receipt:
+
+```text
+closure_scope=atomic_step
+atomic_step_status=closed
+parent_stage_status=running
+parent_loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=Stage 4 rules.checkpoint_restore.v1 complete-supported package slice implementation atomic step
+next_checkpoint_id=stage4.rules_checkpoint_restore_v1.complete_supported_package_slice
+next_checkpoint_unmet_reason=Stage 4 rules.checkpoint_restore.v1 remains unsupported_unregistered; static completeSupported=false; missingEvidenceDimensions=[schema_expressible,normalized,compiled,runtime_consumed,qa_observed]; missingSupportEvidencePrerequisites=[dslSchema,normalizer,irCompiler,runtimeModule,amendmentOperations,capabilityOwnedQa,artifactEvidence,renderContract,requiredProbeIds,requiredProbesVerified].
+next_checkpoint_selection_rule=first_unmet_checkpoint_in_authoritative_inventory
+next_checkpoint_source_plan_revision=HEAD:docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md
+remaining_inventory_summary=requiredCapabilityCount=59; registeredCapabilityCount=37; completeSupportedCount=0; committedClosedCapabilityCount=37; unsupported_unregistered=22; selectionFailure=null
+```
 
 ## Stage 4 Implementation: `pickup.weapon_supply.v1` complete-supported package slice
 
