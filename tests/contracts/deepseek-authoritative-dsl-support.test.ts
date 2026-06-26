@@ -164,7 +164,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
     });
   });
 
-  it('keeps the profile metadata contract seeded but incomplete support', () => {
+  it('registers the validation profile binding as package-backed but still incomplete support', () => {
     const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
     const capabilities = new Map(support.capabilities.map((capability) => [capability.capabilityId, capability]));
 
@@ -175,12 +175,13 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       legacyBacked: false,
       evidenceDimensions: {
         schema_expressible: true,
-        normalized: false,
-        compiled: false,
-        runtime_consumed: false,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
         qa_observed: false
       },
-      missingEvidenceDimensions: ['normalized', 'compiled', 'runtime_consumed', 'qa_observed']
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
     });
   });
 

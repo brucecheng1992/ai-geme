@@ -114,6 +114,15 @@ import {
   FIXED_PROMPT_BINDING_EVENT_TYPE,
   FIXED_PROMPT_BINDING_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/fixed-prompt-binding-runtime-module.js';
+import {
+  PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_PACKAGE_REQUIRED_EVIDENCE_ID,
+  PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID,
+  createProfileDeepSeekRunAndGunValidationPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/profile-deepseek-run-and-gun-validation-package.js';
+import {
+  PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE,
+  PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/profile-deepseek-run-and-gun-validation-runtime-module.js';
 
 describe('Gameplay capability package contract', () => {
   it('accepts a complete supported package and keeps hashes deterministic', () => {
@@ -521,6 +530,40 @@ describe('Gameplay capability package contract', () => {
           kind: 'runtime_event',
           runtimeSystemId: FIXED_PROMPT_BINDING_RUNTIME_SYSTEM_ID,
           ref: FIXED_PROMPT_BINDING_EVENT_TYPE
+        })
+      ]
+    });
+  });
+
+  it('accepts the DeepSeek run-and-gun validation profile package-owned artifact QA contract', () => {
+    const contract = createProfileDeepSeekRunAndGunValidationPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'profile.deepseek_run_and_gun_validation.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_RUNTIME_SYSTEM_ID]);
+    expect(contract.dsl.ownedPaths).toEqual(['/profile/id', '/profile/runtime_family']);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'profile.deepseek_run_and_gun_validation.v1',
+      severity: 'required',
+      actions: [expect.objectContaining({ target: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE })],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_RUNTIME_SYSTEM_ID,
+          ref: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE
         })
       ]
     });

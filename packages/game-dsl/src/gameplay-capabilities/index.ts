@@ -5,6 +5,8 @@ export * from './capability-ir.js';
 export * from './phaser-runtime-loader.js';
 export * from './fixed-prompt-binding-runtime-module.js';
 export * from './fixed-prompt-binding-package.js';
+export * from './profile-deepseek-run-and-gun-validation-runtime-module.js';
+export * from './profile-deepseek-run-and-gun-validation-package.js';
 export * from './camera-side-follow-runtime-module.js';
 export * from './camera-side-follow-package.js';
 export * from './collision-platform-runtime-module.js';

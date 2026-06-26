@@ -6,6 +6,10 @@ import {
   createFixedPromptBindingPackageContract
 } from './fixed-prompt-binding-package.js';
 import {
+  PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID,
+  createProfileDeepSeekRunAndGunValidationPackageContract
+} from './profile-deepseek-run-and-gun-validation-package.js';
+import {
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   createCameraSideFollowPackageContract
 } from './camera-side-follow-package.js';
@@ -375,6 +379,19 @@ const fixedPromptBindingPackageEvidence: GameplayCapabilityEvidence = fixedPromp
 const fixedPromptBindingPackageQa: GameplayCapabilityQaEvidence = fixedPromptBindingPackageReport.supportEligible
   ? { requiredProbeIds: [FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const profileDeepSeekRunAndGunValidationPackageReport = validateGameplayCapabilityPackage(createProfileDeepSeekRunAndGunValidationPackageContract());
+const profileDeepSeekRunAndGunValidationPackageEvidence: GameplayCapabilityEvidence = profileDeepSeekRunAndGunValidationPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const profileDeepSeekRunAndGunValidationPackageQa: GameplayCapabilityQaEvidence = profileDeepSeekRunAndGunValidationPackageReport.supportEligible
+  ? { requiredProbeIds: [PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const cameraSideFollowPackageReport = validateGameplayCapabilityPackage(createCameraSideFollowPackageContract());
 const cameraSideFollowPackageEvidence: GameplayCapabilityEvidence = cameraSideFollowPackageReport.supportEligible
   ? {
@@ -715,9 +732,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
   planned('enemy.vertical_shooter_pattern.v1', 'enemy', 'Vertical shooter enemy pattern', [phaser2dActionArcade], ['vertical_shooter.v1'], [
     'vertical_shooter_enemy_patterns'
   ]),
-  contractSeeded('profile.deepseek_run_and_gun_validation.v1', 'profile', 'DeepSeek run-and-gun validation profile binding', [phaser2dActionArcade], [
-    'side_scrolling_run_and_gun.v1'
-  ], []),
+  contractSeeded(
+    'profile.deepseek_run_and_gun_validation.v1',
+    'profile',
+    'DeepSeek run-and-gun validation profile binding',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    profileDeepSeekRunAndGunValidationPackageEvidence,
+    profileDeepSeekRunAndGunValidationPackageQa
+  ),
   planned('physics.paddle_ball.v1', 'physics', 'Paddle and ball physics', [phaser2dActionArcade], ['breakout.v1'], ['paddle_ball_physics']),
   planned('collision.brick_grid.v1', 'collision', 'Breakout brick collision grid', [phaser2dActionArcade], ['breakout.v1'], ['brick_collision_grid']),
   planned('movement.tilemap_maze_navigation.v1', 'movement', 'Tilemap maze navigation', [phaser2dActionArcade], ['maze_chase.v1'], ['tilemap_maze_navigation']),

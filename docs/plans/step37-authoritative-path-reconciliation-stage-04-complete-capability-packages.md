@@ -4837,3 +4837,135 @@ parent_loop:
 ```
 
 Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4.metadata_fixed_prompt_binding_v1.complete_supported_package_slice` after candidate commit creation, local validation, Oracle PASS, and receipt-only metadata update. It does not close Stage 4, Step37, production default cutover, legacy authoritative path exit, Stage 5, or final global closure. Parent Loop Driver must continue while global exits remain false and no verified user blocker exists.
+
+## Stage 4 Closure Implementation: profile.deepseek_run_and_gun_validation.v1 Complete-Supported Package Slice
+
+checkpoint_id: `stage4.profile_deepseek_run_and_gun_validation_v1.complete_supported_package_slice`
+
+Current status:
+
+- implementation_status: `complete`.
+- local_validation_status: `passed`.
+- candidate_status: `ready_for_commit`.
+- oracle_status: `not_submitted`.
+- closure_scope: `atomic_step`.
+- parent_stage_status: `running`.
+- parent_loop_status: `running`.
+- global_exit_conditions_met: `false`.
+- user_input_required: `false`.
+
+Current Stage review conclusion:
+
+`profile.deepseek_run_and_gun_validation.v1` was selected by the Parent Loop Driver as the next unclosed incomplete capability after the fixed prompt binding receipt. Before this implementation, support summary reported `schema_expressible=true` only; `normalized`, `compiled`, `runtime_consumed`, and `qa_observed` were false, with missing prerequisites `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
+
+Minimum closure requirements:
+
+1. Add a package-owned DeepSeek run-and-gun validation profile binding contract with stable capability identity, runtime system identity, required event identity, required probe id, and required QA evidence id.
+2. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `profile.deepseek_run_and_gun_validation.v1` only when the profile binding event is present.
+5. Add a negative regression proving absence of the profile binding event keeps the capability unverified and emits the required missing-probe blocker.
+6. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/profile-deepseek-run-and-gun-validation-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/profile-deepseek-run-and-gun-validation-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createProfileDeepSeekRunAndGunValidationPackageContract()`.
+- Runtime module identity: `PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_RUNTIME_SYSTEM_ID=profile.deepseek_run_and_gun_validation`.
+- Required event: `PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE=profile.deepseek_run_and_gun_validation.bound`.
+- Required probe: `PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID=profile.deepseek_run_and_gun_validation.v1.bound.browser_qa.v1`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` derives pass/fail from same-run runtime evidence, preserving missing-probe failure when the profile binding event is absent.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for the same run; it does not mutate static `completeSupported`.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned validation profile binding capability contract, runtime system identity, event identity, required probe id, and registry evidence for `profile.deepseek_run_and_gun_validation.v1`. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, Step37 remaining-inventory driver. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence is captured and a future support-promotion gate consumes it. |
+| Authority | Canonical DSL `profile.id` and `profile.runtime_family` are the semantic authority; package QA observes `profile.deepseek_run_and_gun_validation.bound` as evidence that the current run consumed the validation profile binding. |
+| Legacy strategy | Legacy profile metadata remains non-authoritative for this target-profile binding and cannot promote complete support. |
+| Failure policy | Missing package contract, overlapping package ownership, missing required probe, missing profile binding event, or wrong capability identity keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, registry support advancement without complete support, positive same-run overlay, negative missing-event behavior, canonical missing-probe ordering, and telemetry/event freeze coverage. |
+| Rollback | Reverting this slice removes only the profile package/probe wiring and returns `profile.deepseek_run_and_gun_validation.v1` to schema-only seeded support without changing runtime gameplay templates. |
+
+Focused validation completed so far:
+
+```text
+command=npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts
+exitCode=1
+result=RED: profile package/runtime module did not exist; profile support summary still lacked normalizer/compiler/runtime evidence.
+
+command=npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts
+exitCode=0
+result=PASS: 3 files / 51 tests
+
+command=npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+result=PASS: 5 files / 74 tests
+
+command=npx tsx --eval 'import { buildDeepSeekRunAndGunValidationProfileSupportSummary } from "./packages/game-dsl/src/index.ts"; ...'
+exitCode=0
+result=profile.deepseek_run_and_gun_validation.v1 evidence={schema_expressible:true,normalized:true,compiled:true,runtime_consumed:true,qa_observed:false}; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false; completeSupportedCount=0
+```
+
+Focused set selection:
+
+- `gameplay-capability-package-contract.test.ts`: validates the new profile package contract, required evidence id, owned paths, runtime system, and required event/probe.
+- `generation-target-profile-runtime-support.test.ts`: validates same-run overlay positive/negative behavior, canonical missing-probe order, and preservation of static `completeSupported=false`.
+- `deepseek-authoritative-dsl-support.test.ts`: validates registry support dimensions and prerequisites for the target capability.
+- `step37-remaining-inventory-driver.test.ts`: validates parent-loop inventory consumption for same-run observed-only slices.
+- `contract-freeze.test.ts`: included because this diff introduces a package-owned runtime event identity and the focused set must follow telemetry/event contract impact.
+
+Local validation completed before candidate:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 1.48s
+result=PASS: 5 files / 74 tests
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 8.40s
+result=PASS: 98 files / 1141 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 57.95s
+result=PASS: contracts 98 files / 1141 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.13s
+result=PASS: root, maker-api, and maker-workbench TypeScript checks passed
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.01s
+result=PASS
+
+command=git status --short
+exitCode=0
+result=only expected docs/package/helper/export/contract files are modified or untracked before candidate commit
+
+command=external Skill freshness digest
+exitCode=0
+result=skill_root=/Users/dahufa/.agents/skills/code-change-discipline; skill_bundle_format=single_file_v1; skill_bundle_file_count=1; skill_bundle_file_byte_length=43467; skill_bundle_file_sha256=f816d70eeb76d9a97d18472696ae9fa6ae1abc94ffa2ead9acf7a56e7150fea3; skill_bundle_digest=afb000865c530f9fc1afdda9323846882fb8da38dfd2402687e9e5b745a02d1e; skill_bundle_generation_exit_code=0
+```
+
+Final candidate precondition:
+
+- This status update is docs-only but changes the final tree. Before creating the candidate commit, rerun focused contracts, complete related contracts, `npm test`, `npm run typecheck`, `git diff --check`, final diff/untracked scope checks, and external Skill freshness against this exact final tree.
+- Oracle remains `not_submitted` until the immutable candidate commit is created and submitted.

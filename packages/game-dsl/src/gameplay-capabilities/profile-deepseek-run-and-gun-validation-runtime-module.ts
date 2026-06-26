@@ -1,0 +1,3 @@
+export const PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_CAPABILITY_ID = 'profile.deepseek_run_and_gun_validation.v1';
+export const PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_RUNTIME_SYSTEM_ID = 'profile.deepseek_run_and_gun_validation';
+export const PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE = 'profile.deepseek_run_and_gun_validation.bound';
