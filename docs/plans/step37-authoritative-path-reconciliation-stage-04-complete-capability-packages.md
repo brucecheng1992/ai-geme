@@ -6178,14 +6178,18 @@ capability_id=canonical.semantic_preservation.v1
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit_after_post_record_validation
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
 review_required=true
-closure_status=not_closed
+closure_status=closed
 global_exit_conditions_met=false
 user_input_required=false
-next_action_after_candidate=SUBMIT_ORACLE_REVIEW_FOR_IMMUTABLE_CANDIDATE
+next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
 reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
+reviewed_commit_sha=51ed1889951a8c074990ad510d78a15dd9a1bba0
+reviewed_commit_tree=59e444e9c1037b00b75687be8124d60cb79fa259
+oracle_submission_id=019f01d6-f43d-7ba3-99e3-ff0276cb3d2d
+oracle_agent_id=019effae-8aa2-7c22-b5ba-8c4b69f21d20
 ```
 
 `canonical.semantic_preservation.v1` was selected by the Parent Loop Driver after the `camera.bounds_clamp.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
@@ -6296,6 +6300,35 @@ command=node --input-type=module -e "<review-gated-delivery ASCII root-relative 
 exitCode=0
 duration=real 0.06s
 result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_size_sha; skill_root_identity=/Users/dahufa/.agents/skills/review-gated-delivery; skill_file_count=7; skill_bundle_digest=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1.
+```
+
+Oracle receipt:
+
+```text
+reviewed_commit_sha=51ed1889951a8c074990ad510d78a15dd9a1bba0
+reviewed_commit_tree=59e444e9c1037b00b75687be8124d60cb79fa259
+reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
+oracle_submission_id=019f01d6-f43d-7ba3-99e3-ff0276cb3d2d
+oracle_agent_id=019effae-8aa2-7c22-b5ba-8c4b69f21d20
+oracle_status=approved
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 none
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for the immutable candidate only. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, Stage 5, production default cutover, or prior closed history.
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
+```
+
+Parent Loop Driver after receipt:
+
+```text
+closure_scope=atomic_step
+atomic_step_status=closed
+parent_stage_status=running
+loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=RUN_PARENT_LOOP_DRIVER_TO_SELECT_NEXT_UNMET_CHECKPOINT
 ```
 
 Post-record validation requirement:
