@@ -21,6 +21,7 @@ import {
   ENEMY_BOSS_ATTACK_PATTERN_REQUIRED_PROBE_ID,
   ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID,
   ENEMY_BOSS_PHASE_TRANSITION_REQUIRED_PROBE_ID,
+  ENEMY_FIXED_TURRET_REQUIRED_PROBE_ID,
   MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
@@ -75,6 +76,10 @@ describe('Gameplay capability registry', () => {
       legacyRuntimeCapabilities: []
     });
     expect(findGameplayCapability('enemy.boss_phase_transition.v1')).toMatchObject({
+      status: 'planned',
+      legacyRuntimeCapabilities: []
+    });
+    expect(findGameplayCapability('enemy.fixed_turret.v1')).toMatchObject({
       status: 'planned',
       legacyRuntimeCapabilities: []
     });
@@ -463,6 +468,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(phaseTransition)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(phaseTransition)).toBe(false);
+  });
+
+  it('scopes enemy fixed-turret package-owned QA without static support promotion', () => {
+    const fixedTurret = findGameplayCapability('enemy.fixed_turret.v1');
+
+    if (fixedTurret === undefined) {
+      throw new Error('Expected enemy.fixed_turret.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(fixedTurret)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(fixedTurret.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(fixedTurret.qa).toEqual({
+      requiredProbeIds: [ENEMY_FIXED_TURRET_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(fixedTurret)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(fixedTurret)).toBe(false);
   });
 
   it('scopes weapon rapid fire package-owned QA without static support promotion', () => {

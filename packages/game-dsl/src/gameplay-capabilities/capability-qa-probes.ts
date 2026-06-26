@@ -174,6 +174,13 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   bossHealthThresholdRatio?: number;
   bossSpeedMultiplier?: number;
   bossSpeedMultiplierApplied?: boolean;
+  fixedTurretSpawned?: boolean;
+  fixedTurretEntityId?: string;
+  fixedTurretArchetypeId?: string;
+  fixedTurretStationary?: boolean;
+  fixedTurretTargetsPlayer?: boolean;
+  fixedTurretProjectilePatternId?: string;
+  fixedTurretFireCadenceMs?: number;
   status?: string;
   sourceRef?: string;
 };
@@ -473,7 +480,14 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedStringField('bossCurrentPhaseId', expected, observed.bossCurrentPhaseId),
     ...compareExpectedNumberField('bossHealthThresholdRatio', expected, observed.bossHealthThresholdRatio),
     ...compareExpectedNumberField('bossSpeedMultiplier', expected, observed.bossSpeedMultiplier),
-    ...compareExpectedBooleanField('bossSpeedMultiplierApplied', expected, observed.bossSpeedMultiplierApplied)
+    ...compareExpectedBooleanField('bossSpeedMultiplierApplied', expected, observed.bossSpeedMultiplierApplied),
+    ...compareExpectedBooleanField('fixedTurretSpawned', expected, observed.fixedTurretSpawned),
+    ...compareExpectedStringField('fixedTurretEntityId', expected, observed.fixedTurretEntityId),
+    ...compareExpectedStringField('fixedTurretArchetypeId', expected, observed.fixedTurretArchetypeId),
+    ...compareExpectedBooleanField('fixedTurretStationary', expected, observed.fixedTurretStationary),
+    ...compareExpectedBooleanField('fixedTurretTargetsPlayer', expected, observed.fixedTurretTargetsPlayer),
+    ...compareExpectedStringField('fixedTurretProjectilePatternId', expected, observed.fixedTurretProjectilePatternId),
+    ...compareExpectedNumberField('fixedTurretFireCadenceMs', expected, observed.fixedTurretFireCadenceMs)
   ];
 }
 

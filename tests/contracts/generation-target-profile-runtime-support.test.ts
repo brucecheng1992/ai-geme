@@ -31,6 +31,12 @@ import {
   ENEMY_BOSS_PHASE_TRANSITION_REQUIRED_PROBE_ID,
   ENEMY_BOSS_PHASE_TRANSITION_SPEED_MULTIPLIER,
   ENEMY_BOSS_PHASE_TRANSITION_TO_PHASE_ID,
+  ENEMY_FIXED_TURRET_ARCHETYPE_ID,
+  ENEMY_FIXED_TURRET_ENTITY_ID,
+  ENEMY_FIXED_TURRET_EVENT_TYPE,
+  ENEMY_FIXED_TURRET_FIRE_CADENCE_MS,
+  ENEMY_FIXED_TURRET_PROJECTILE_PATTERN_ID,
+  ENEMY_FIXED_TURRET_REQUIRED_PROBE_ID,
   FIXED_PROMPT_BINDING_EVENT_TYPE,
   FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
   GenerationTargetProfileRuntimeSupportReportSchema,
@@ -80,6 +86,7 @@ import {
   createEnemyBossAttackPatternPackageContract,
   createEnemyBossLifecyclePackageContract,
   createEnemyBossPhaseTransitionPackageContract,
+  createEnemyFixedTurretPackageContract,
   createFixedPromptBindingPackageContract,
   createHealthDamageInvulnerabilityPackageContract,
   createHealthPlayerHealthPointsPackageContract,
@@ -106,6 +113,7 @@ const collisionDamageAffinityMatrixCapabilityId = 'collision.damage_affinity_mat
 const enemyBossAttackPatternCapabilityId = 'enemy.boss_attack_pattern.v1';
 const enemyBossLifecycleCapabilityId = 'enemy.boss_lifecycle.v1';
 const enemyBossPhaseTransitionCapabilityId = 'enemy.boss_phase_transition.v1';
+const enemyFixedTurretCapabilityId = 'enemy.fixed_turret.v1';
 const cameraCapabilityId = 'camera.side_follow.v1';
 const collisionCapabilityId = 'collision.platform.v1';
 const airborneFireCapabilityId = 'combat.airborne_fire.v1';
@@ -134,6 +142,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE,
       ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
       ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE,
+      ENEMY_FIXED_TURRET_EVENT_TYPE,
       'combat.airborne_fire.fired',
       'player.fired',
       'projectile.spawned',
@@ -165,6 +174,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     const enemyBossAttackPattern = report.capabilities.find((entry) => entry.capabilityId === enemyBossAttackPatternCapabilityId);
     const enemyBossLifecycle = report.capabilities.find((entry) => entry.capabilityId === enemyBossLifecycleCapabilityId);
     const enemyBossPhaseTransition = report.capabilities.find((entry) => entry.capabilityId === enemyBossPhaseTransitionCapabilityId);
+    const enemyFixedTurret = report.capabilities.find((entry) => entry.capabilityId === enemyFixedTurretCapabilityId);
     const defaultWeapon = report.capabilities.find((entry) => entry.capabilityId === defaultWeaponCapabilityId);
     const projectile = report.capabilities.find((entry) => entry.capabilityId === projectileCapabilityId);
     const movement = report.capabilities.find((entry) => entry.capabilityId === movementCapabilityId);
@@ -187,7 +197,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 22,
+      observedCompleteSupportedCount: 23,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
@@ -199,6 +209,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         enemyBossAttackPatternCapabilityId,
         enemyBossLifecycleCapabilityId,
         enemyBossPhaseTransitionCapabilityId,
+        enemyFixedTurretCapabilityId,
         damageInvulnerabilityCapabilityId,
         healthCapabilityId,
         fixedPromptBindingCapabilityId,
@@ -214,7 +225,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         replacementRuleCapabilityId,
         spreadShotCapabilityId
       ],
-      blockers: ['target_profile_runtime_support_incomplete:22/59']
+      blockers: ['target_profile_runtime_support_incomplete:23/59']
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
       capabilityId: artifactLineageNoManualPatchCapabilityId,
@@ -359,6 +370,17 @@ describe('Step 37 target profile runtime support overlay', () => {
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
     });
+    expect(enemyFixedTurret).toMatchObject({
+      capabilityId: enemyFixedTurretCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [ENEMY_FIXED_TURRET_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [ENEMY_FIXED_TURRET_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
     expect(damageInvulnerability).toMatchObject({
       capabilityId: damageInvulnerabilityCapabilityId,
       runtimeVerified: true,
@@ -469,6 +491,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE,
         ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
         ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE,
+      ENEMY_FIXED_TURRET_EVENT_TYPE,
         'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -511,11 +534,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 21,
+      observedCompleteSupportedCount: 22,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:21/59'
+        'target_profile_runtime_support_incomplete:22/59'
       ]
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
@@ -846,6 +869,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE,
       ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
       ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE,
+      ENEMY_FIXED_TURRET_EVENT_TYPE,
       'combat.airborne_fire.fired',
       'player.fired',
       'projectile.spawned',
@@ -875,11 +899,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 21,
+      observedCompleteSupportedCount: 22,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:21/59'
+        'target_profile_runtime_support_incomplete:22/59'
       ]
     });
     expect(fixedPromptBinding).toMatchObject({
@@ -899,6 +923,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE,
       ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
       ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE,
+      ENEMY_FIXED_TURRET_EVENT_TYPE,
       'combat.airborne_fire.fired',
       'player.fired',
       'projectile.spawned',
@@ -928,11 +953,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 21,
+      observedCompleteSupportedCount: 22,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:21/59'
+        'target_profile_runtime_support_incomplete:22/59'
       ]
     });
     expect(profileBinding).toMatchObject({
@@ -979,6 +1004,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE,
       ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
       ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE,
+      ENEMY_FIXED_TURRET_EVENT_TYPE,
       'combat.airborne_fire.fired',
       'player.fired',
       'projectile.spawned',
@@ -1021,7 +1047,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 21,
+      observedCompleteSupportedCount: 22,
       targetProfileCompleteSupported: false,
       observedCapabilityIds: [
         artifactLineageNoManualPatchCapabilityId,
@@ -1032,6 +1058,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         enemyBossAttackPatternCapabilityId,
         enemyBossLifecycleCapabilityId,
         enemyBossPhaseTransitionCapabilityId,
+        enemyFixedTurretCapabilityId,
         healthCapabilityId,
         fixedPromptBindingCapabilityId,
         crouchCapabilityId,
@@ -1048,7 +1075,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ],
       blockers: [
         `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:21/59'
+        'target_profile_runtime_support_incomplete:22/59'
       ]
     });
     expect(damageInvulnerability).toMatchObject({
@@ -1069,6 +1096,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE,
         ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
         ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE,
+      ENEMY_FIXED_TURRET_EVENT_TYPE,
         'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -1114,11 +1142,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 21,
+      observedCompleteSupportedCount: 22,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:21/59'
+        'target_profile_runtime_support_incomplete:22/59'
       ]
     });
     expect(pickup).toMatchObject({
@@ -1139,6 +1167,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE,
         ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
         ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE,
+      ENEMY_FIXED_TURRET_EVENT_TYPE,
         'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -1181,11 +1210,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 21,
+      observedCompleteSupportedCount: 22,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:21/59'
+        'target_profile_runtime_support_incomplete:22/59'
       ]
     });
     expect(spawnEnemyWave).toMatchObject({
@@ -1206,6 +1235,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE,
         ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
         ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE,
+      ENEMY_FIXED_TURRET_EVENT_TYPE,
         'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -1248,11 +1278,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 21,
+      observedCompleteSupportedCount: 22,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:21/59'
+        'target_profile_runtime_support_incomplete:22/59'
       ]
     });
     expect(deathReset).toMatchObject({
@@ -1273,6 +1303,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE,
         ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
         ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE,
+      ENEMY_FIXED_TURRET_EVENT_TYPE,
         'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -1315,11 +1346,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 21,
+      observedCompleteSupportedCount: 22,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:21/59'
+        'target_profile_runtime_support_incomplete:22/59'
       ]
     });
     expect(rapidFire).toMatchObject({
@@ -1340,6 +1371,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE,
         ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
         ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE,
+      ENEMY_FIXED_TURRET_EVENT_TYPE,
         'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -1382,11 +1414,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 21,
+      observedCompleteSupportedCount: 22,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:21/59'
+        'target_profile_runtime_support_incomplete:22/59'
       ]
     });
     expect(spreadShot).toMatchObject({
@@ -1407,6 +1439,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE,
         ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
         ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE,
+      ENEMY_FIXED_TURRET_EVENT_TYPE,
         'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -1449,11 +1482,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 21,
+      observedCompleteSupportedCount: 22,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:21/59'
+        'target_profile_runtime_support_incomplete:22/59'
       ]
     });
     expect(replacementRule).toMatchObject({
@@ -1475,6 +1508,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       `capability_qa_report_missing_required_probe:${ENEMY_BOSS_ATTACK_PATTERN_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${ENEMY_BOSS_PHASE_TRANSITION_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${ENEMY_FIXED_TURRET_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID}`,
@@ -1500,6 +1534,7 @@ function buildDefaultWeaponQaReport(
     enemyBossAttackPatternStateFields?: boolean;
     enemyBossLifecycleStateFields?: boolean;
     enemyBossPhaseTransitionStateFields?: boolean;
+    enemyFixedTurretStateFields?: boolean;
     pickupStateFields?: boolean;
     spawnEnemyWaveOrderedFields?: boolean;
     weaponDeathResetStateFields?: boolean;
@@ -1594,6 +1629,30 @@ function buildDefaultWeaponQaReport(
                 }),
             status: 'observed' as const,
             sourceRef: 'runtime.boss.phase_transition'
+          }
+        ]
+      : []),
+    ...(eventTypes.includes(ENEMY_FIXED_TURRET_EVENT_TYPE)
+      ? [
+          {
+            capabilityId: enemyFixedTurretCapabilityId,
+            probeId: ENEMY_FIXED_TURRET_REQUIRED_PROBE_ID,
+            action: 'verify_fixed_turret',
+            eventType: ENEMY_FIXED_TURRET_EVENT_TYPE,
+            eventTypes,
+            ...(options.enemyFixedTurretStateFields === false
+              ? {}
+              : {
+                  fixedTurretSpawned: true,
+                  fixedTurretEntityId: ENEMY_FIXED_TURRET_ENTITY_ID,
+                  fixedTurretArchetypeId: ENEMY_FIXED_TURRET_ARCHETYPE_ID,
+                  fixedTurretStationary: true,
+                  fixedTurretTargetsPlayer: true,
+                  fixedTurretProjectilePatternId: ENEMY_FIXED_TURRET_PROJECTILE_PATTERN_ID,
+                  fixedTurretFireCadenceMs: ENEMY_FIXED_TURRET_FIRE_CADENCE_MS
+                }),
+            status: 'observed' as const,
+            sourceRef: 'runtime.enemy.fixed_turret'
           }
         ]
       : []),
@@ -1956,6 +2015,7 @@ function buildDefaultWeaponQaPlan() {
     createEnemyBossAttackPatternPackageContract(),
     createEnemyBossLifecyclePackageContract(),
     createEnemyBossPhaseTransitionPackageContract(),
+    createEnemyFixedTurretPackageContract(),
     createCameraSideFollowPackageContract(),
     createCollisionPlatformPackageContract(),
     createCombatAirborneFirePackageContract(),
@@ -1981,6 +2041,7 @@ function buildDefaultWeaponQaPlan() {
       enemyBossAttackPatternCapabilityId,
       enemyBossLifecycleCapabilityId,
       enemyBossPhaseTransitionCapabilityId,
+      enemyFixedTurretCapabilityId,
       cameraCapabilityId,
       collisionCapabilityId,
       airborneFireCapabilityId,

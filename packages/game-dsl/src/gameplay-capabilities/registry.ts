@@ -42,6 +42,10 @@ import {
   createEnemyBossPhaseTransitionPackageContract
 } from './enemy-boss-phase-transition-package.js';
 import {
+  ENEMY_FIXED_TURRET_REQUIRED_PROBE_ID,
+  createEnemyFixedTurretPackageContract
+} from './enemy-fixed-turret-package.js';
+import {
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   createCameraSideFollowPackageContract
 } from './camera-side-follow-package.js';
@@ -546,6 +550,19 @@ const enemyBossPhaseTransitionPackageEvidence: GameplayCapabilityEvidence = enem
 const enemyBossPhaseTransitionPackageQa: GameplayCapabilityQaEvidence = enemyBossPhaseTransitionPackageReport.supportEligible
   ? { requiredProbeIds: [ENEMY_BOSS_PHASE_TRANSITION_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const enemyFixedTurretPackageReport = validateGameplayCapabilityPackage(createEnemyFixedTurretPackageContract());
+const enemyFixedTurretPackageEvidence: GameplayCapabilityEvidence = enemyFixedTurretPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const enemyFixedTurretPackageQa: GameplayCapabilityQaEvidence = enemyFixedTurretPackageReport.supportEligible
+  ? { requiredProbeIds: [ENEMY_FIXED_TURRET_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const cameraSideFollowPackageReport = validateGameplayCapabilityPackage(createCameraSideFollowPackageContract());
 const cameraSideFollowPackageEvidence: GameplayCapabilityEvidence = cameraSideFollowPackageReport.supportEligible
   ? {
@@ -846,6 +863,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     enemyBossPhaseTransitionPackageEvidence,
     enemyBossPhaseTransitionPackageQa
+  ),
+  planned(
+    'enemy.fixed_turret.v1',
+    'enemy',
+    'Enemy fixed turret',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    enemyFixedTurretPackageEvidence,
+    enemyFixedTurretPackageQa
   ),
   runtimeBacked('camera.top_down_follow.v1', 'camera', 'Top-down follow camera', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], ['top_down_camera']),
   runtimeBacked('movement.eight_direction.v1', 'movement', 'Eight-direction movement', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], [

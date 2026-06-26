@@ -64,6 +64,17 @@ import {
   ENEMY_BOSS_PHASE_TRANSITION_SPEED_MULTIPLIER,
   ENEMY_BOSS_PHASE_TRANSITION_TO_PHASE_ID,
   createEnemyBossPhaseTransitionPackageContract,
+  ENEMY_FIXED_TURRET_ARCHETYPE_ID,
+  ENEMY_FIXED_TURRET_ENTITY_ID,
+  ENEMY_FIXED_TURRET_EVENT_TYPE,
+  ENEMY_FIXED_TURRET_FIRE_CADENCE_MS,
+  ENEMY_FIXED_TURRET_PROJECTILE_PATTERN_ID,
+  ENEMY_FIXED_TURRET_REQUIRED_PROBE_ID,
+  createEnemyFixedTurretPackageContract,
+  COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
+  SPAWN_STATIC_REQUIRED_PROBE_ID,
+  createCombatProjectilePackageContract,
+  createSpawnStaticPackageContract,
   type CapabilityQaProbeDescriptor,
   type GameplayCapabilityPackageContract
 } from '../../packages/game-dsl/src/index.js';
@@ -1578,6 +1589,130 @@ describe('Capability-owned runtime QA probes', () => {
       })
     ]));
     expect(observedPhaseState.status).toBe('passed');
+  });
+
+  it('does not verify enemy fixed turret when evidence lacks stationary turret state fields', () => {
+    const capabilityId = 'enemy.fixed_turret.v1';
+    const probeId = ENEMY_FIXED_TURRET_REQUIRED_PROBE_ID;
+    const packages = [createSpawnStaticPackageContract(), createCombatProjectilePackageContract(), createEnemyFixedTurretPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingTurretState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId: 'combat.projectile.v1',
+              probeId: COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
+              action: 'fire',
+              eventType: 'projectile.spawned',
+              eventTypes: ['projectile.spawned'],
+              sourceRef: 'runtime.projectile.spawn',
+              status: 'observed'
+            },
+            {
+              capabilityId: 'spawn.static.v1',
+              probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
+              action: 'reach_trigger',
+              eventType: 'spawn.static.triggered',
+              eventTypes: ['spawn.static.triggered'],
+              sourceRef: 'runtime.spawn.static',
+              status: 'observed'
+            },
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_fixed_turret',
+              eventType: ENEMY_FIXED_TURRET_EVENT_TYPE,
+              eventTypes: [ENEMY_FIXED_TURRET_EVENT_TYPE],
+              sourceRef: 'runtime.enemy.fixed_turret',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedTurretState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId: 'combat.projectile.v1',
+              probeId: COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
+              action: 'fire',
+              eventType: 'projectile.spawned',
+              eventTypes: ['projectile.spawned'],
+              sourceRef: 'runtime.projectile.spawn',
+              status: 'observed'
+            },
+            {
+              capabilityId: 'spawn.static.v1',
+              probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
+              action: 'reach_trigger',
+              eventType: 'spawn.static.triggered',
+              eventTypes: ['spawn.static.triggered'],
+              sourceRef: 'runtime.spawn.static',
+              status: 'observed'
+            },
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_fixed_turret',
+              eventType: ENEMY_FIXED_TURRET_EVENT_TYPE,
+              eventTypes: [ENEMY_FIXED_TURRET_EVENT_TYPE],
+              fixedTurretSpawned: true,
+              fixedTurretEntityId: ENEMY_FIXED_TURRET_ENTITY_ID,
+              fixedTurretArchetypeId: ENEMY_FIXED_TURRET_ARCHETYPE_ID,
+              fixedTurretStationary: true,
+              fixedTurretTargetsPlayer: true,
+              fixedTurretProjectilePatternId: ENEMY_FIXED_TURRET_PROJECTILE_PATTERN_ID,
+              fixedTurretFireCadenceMs: ENEMY_FIXED_TURRET_FIRE_CADENCE_MS,
+              sourceRef: 'runtime.enemy.fixed_turret',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingTurretState.status).toBe('failed');
+    expect(missingTurretState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingTurretState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.fixed_turret_verified`,
+        status: 'failed',
+        message: expect.stringContaining('expected fixedTurretSpawned=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.fixed_turret_verified`,
+        status: 'failed',
+        message: expect.stringContaining(`expected fixedTurretEntityId=${ENEMY_FIXED_TURRET_ENTITY_ID}, observed <missing>`)
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.fixed_turret_verified`,
+        status: 'failed',
+        message: expect.stringContaining('expected fixedTurretStationary=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.fixed_turret_verified`,
+        status: 'failed',
+        message: expect.stringContaining(`expected fixedTurretProjectilePatternId=${ENEMY_FIXED_TURRET_PROJECTILE_PATTERN_ID}, observed <missing>`)
+      })
+    ]));
+    expect(observedTurretState.status).toBe('passed');
   });
 });
 
