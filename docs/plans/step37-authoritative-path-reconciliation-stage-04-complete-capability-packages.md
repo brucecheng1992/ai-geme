@@ -6627,8 +6627,10 @@ candidate_commit_sha=40d42bd33a3badfa2f526663674fee5458925548
 candidate_commit_tree=4d35a235d5596fa04145806397e855825329b3d5
 reviewed_commit_sha=40d42bd33a3badfa2f526663674fee5458925548
 reviewed_commit_tree=4d35a235d5596fa04145806397e855825329b3d5
-oracle_agent_id=019f03ed-a0c0-7df1-b1f5-74218d357376
+oracle_agent_id=019f03ef-84d9-77c1-a6b1-ba880ed7dc9b
+oracle_agent_id_source=multi_agent_v1.spawn_agent.agent_id
 oracle_submission_id=not_exposed_by_local_multi_agent_tool
+oracle_submission_id_source=multi_agent_v1.spawn_agent returned no submission_id field
 post_record_validation_status=passed
 ```
 
@@ -6731,8 +6733,10 @@ Oracle receipt:
 reviewed_commit_sha=40d42bd33a3badfa2f526663674fee5458925548
 reviewed_commit_tree=4d35a235d5596fa04145806397e855825329b3d5
 reviewed_skill_revision=code-change-discipline:f7824ee9c700e9982923f9691c0a490d23041e36fc05e7dc223b6565543f6d5b;review-gated-delivery:58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
-oracle_agent_id=019f03ed-a0c0-7df1-b1f5-74218d357376
+oracle_agent_id=019f03ef-84d9-77c1-a6b1-ba880ed7dc9b
+oracle_agent_id_source=multi_agent_v1.spawn_agent.agent_id
 oracle_submission_id=not_exposed_by_local_multi_agent_tool
+oracle_submission_id_source=multi_agent_v1.spawn_agent returned no submission_id field
 oracle_status=approved
 oracle_result=APPROVED_FOR_RECEIPT
 oracle_findings=P0 none; P1 none; P2 none; P3 none
