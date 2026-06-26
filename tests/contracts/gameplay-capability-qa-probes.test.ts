@@ -224,6 +224,16 @@ import {
   SCENE_ORDERED_SEGMENTS_SECOND_ID,
   SCENE_ORDERED_SEGMENTS_THIRD_ID,
   createSceneOrderedSegmentsPackageContract,
+  SCENE_VISUAL_PRESENTATION_METADATA_CAPABILITY_ID,
+  SCENE_VISUAL_PRESENTATION_METADATA_COLOR_DEPTH_BITS,
+  SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE,
+  SCENE_VISUAL_PRESENTATION_METADATA_ORIGINALITY_POLICY,
+  SCENE_VISUAL_PRESENTATION_METADATA_PROFILE_ID,
+  SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID,
+  SCENE_VISUAL_PRESENTATION_METADATA_RUNTIME_FAMILY,
+  SCENE_VISUAL_PRESENTATION_METADATA_SCHEMA_VERSION,
+  SCENE_VISUAL_PRESENTATION_METADATA_STYLE_ID,
+  createSceneVisualPresentationMetadataPackageContract,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
@@ -4773,6 +4783,105 @@ describe('Capability-owned runtime QA probes', () => {
     );
     expect(observedOrderedSegments.status).toBe('passed');
   });
+
+  it('does not verify scene visual presentation metadata without authoritative 16-bit pixel style fields', () => {
+    const capabilityId = SCENE_VISUAL_PRESENTATION_METADATA_CAPABILITY_ID;
+    const probeId = SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID;
+    const packages = [createSceneVisualPresentationMetadataPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const genericVisualTheme = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'observe_visual_theme',
+              eventType: 'world.visual_theme.bound',
+              eventTypes: ['world.visual_theme.bound'],
+              sourceRef: 'template_params.params.style.visualTheme',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const missingVisualState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_visual_metadata',
+              eventType: SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE,
+              eventTypes: [SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE],
+              sourceRef: 'scene.visual_presentation_metadata',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedVisualMetadata = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            sceneVisualPresentationMetadataObserved({
+              capabilityId,
+              probeId
+            })
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericVisualTheme.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericVisualTheme.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.visual_metadata`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE} not observed`)
+        })
+      ])
+    );
+    expect(missingVisualState.status).toBe('failed');
+    expect(missingVisualState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.visual_metadata`,
+          status: 'failed',
+          message: expect.stringContaining('expected sceneVisualPresentationMetadataVerified=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.visual_metadata`,
+          status: 'failed',
+          message: expect.stringContaining(`expected sceneVisualPresentationStyleId=${SCENE_VISUAL_PRESENTATION_METADATA_STYLE_ID}`)
+        })
+      ])
+    );
+    expect(observedVisualMetadata.status).toBe('passed');
+  });
 });
 
 function finalOracleGateObserved(
@@ -4873,6 +4982,30 @@ function sceneOrderedSegmentsObserved(
     sceneOrderedSegmentsSceneBindingMatched: true,
     sceneOrderedSegmentsNoGaps: true,
     sourceRef: 'scene.ordered_segments',
+    status: 'observed'
+  };
+}
+
+function sceneVisualPresentationMetadataObserved(
+  overrides: Pick<CapabilityRuntimeObservedProbeEvidence, 'capabilityId' | 'probeId'>
+): CapabilityRuntimeObservedProbeEvidence {
+  return {
+    ...overrides,
+    action: 'verify_visual_metadata',
+    eventType: SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE,
+    eventTypes: [SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE],
+    sceneVisualPresentationMetadataVerified: true,
+    sceneVisualPresentationSchemaVersion: SCENE_VISUAL_PRESENTATION_METADATA_SCHEMA_VERSION,
+    sceneVisualPresentationProfileId: SCENE_VISUAL_PRESENTATION_METADATA_PROFILE_ID,
+    sceneVisualPresentationRuntimeFamily: SCENE_VISUAL_PRESENTATION_METADATA_RUNTIME_FAMILY,
+    sceneVisualPresentationStyleId: SCENE_VISUAL_PRESENTATION_METADATA_STYLE_ID,
+    sceneVisualPresentationStyleLabel: '16-bit pixel',
+    sceneVisualPresentationPixelArt: true,
+    sceneVisualPresentationColorDepthBits: SCENE_VISUAL_PRESENTATION_METADATA_COLOR_DEPTH_BITS,
+    sceneVisualPresentationOriginalityPolicy: SCENE_VISUAL_PRESENTATION_METADATA_ORIGINALITY_POLICY,
+    sceneVisualPresentationAssetPlanBound: true,
+    sceneVisualPresentationNoProtectedReuse: true,
+    sourceRef: 'scene.visual_presentation_metadata',
     status: 'observed'
   };
 }

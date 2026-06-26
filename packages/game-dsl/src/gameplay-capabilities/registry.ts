@@ -34,6 +34,10 @@ import {
   createSceneOrderedSegmentsPackageContract
 } from './scene-ordered-segments-package.js';
 import {
+  SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID,
+  createSceneVisualPresentationMetadataPackageContract
+} from './scene-visual-presentation-metadata-package.js';
+import {
   RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID,
   createRulesCheckpointRestorePackageContract
 } from './rules-checkpoint-restore-package.js';
@@ -599,6 +603,19 @@ const sceneOrderedSegmentsPackageEvidence: GameplayCapabilityEvidence = sceneOrd
   : canonicalRuntimeLoaderEvidence;
 const sceneOrderedSegmentsPackageQa: GameplayCapabilityQaEvidence = sceneOrderedSegmentsPackageReport.supportEligible
   ? { requiredProbeIds: [SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
+const sceneVisualPresentationMetadataPackageReport = validateGameplayCapabilityPackage(createSceneVisualPresentationMetadataPackageContract());
+const sceneVisualPresentationMetadataPackageEvidence: GameplayCapabilityEvidence = sceneVisualPresentationMetadataPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const sceneVisualPresentationMetadataPackageQa: GameplayCapabilityQaEvidence = sceneVisualPresentationMetadataPackageReport.supportEligible
+  ? { requiredProbeIds: [SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
 const rulesCheckpointRestorePackageReport = validateGameplayCapabilityPackage(createRulesCheckpointRestorePackageContract());
 const rulesCheckpointRestorePackageEvidence: GameplayCapabilityEvidence = rulesCheckpointRestorePackageReport.supportEligible
@@ -1348,6 +1365,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     sceneOrderedSegmentsPackageEvidence,
     sceneOrderedSegmentsPackageQa
+  ),
+  planned(
+    'scene.visual_presentation_metadata.v1',
+    'scene',
+    'Visual presentation metadata',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    sceneVisualPresentationMetadataPackageEvidence,
+    sceneVisualPresentationMetadataPackageQa
   ),
   planned(
     'combat.airborne_fire.v1',

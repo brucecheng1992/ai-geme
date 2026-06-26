@@ -226,6 +226,17 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   sceneOrderedSegmentsAllNamed?: boolean;
   sceneOrderedSegmentsSceneBindingMatched?: boolean;
   sceneOrderedSegmentsNoGaps?: boolean;
+  sceneVisualPresentationMetadataVerified?: boolean;
+  sceneVisualPresentationSchemaVersion?: string;
+  sceneVisualPresentationProfileId?: string;
+  sceneVisualPresentationRuntimeFamily?: string;
+  sceneVisualPresentationStyleId?: string;
+  sceneVisualPresentationStyleLabel?: string;
+  sceneVisualPresentationPixelArt?: boolean;
+  sceneVisualPresentationColorDepthBits?: number;
+  sceneVisualPresentationOriginalityPolicy?: string;
+  sceneVisualPresentationAssetPlanBound?: boolean;
+  sceneVisualPresentationNoProtectedReuse?: boolean;
   encounterGateClosedEntrance?: boolean;
   encounterGateGateId?: string;
   encounterGateEntranceId?: string;
@@ -787,6 +798,17 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('sceneOrderedSegmentsAllNamed', expected, observed.sceneOrderedSegmentsAllNamed),
     ...compareExpectedBooleanField('sceneOrderedSegmentsSceneBindingMatched', expected, observed.sceneOrderedSegmentsSceneBindingMatched),
     ...compareExpectedBooleanField('sceneOrderedSegmentsNoGaps', expected, observed.sceneOrderedSegmentsNoGaps),
+    ...compareExpectedBooleanField('sceneVisualPresentationMetadataVerified', expected, observed.sceneVisualPresentationMetadataVerified),
+    ...compareExpectedStringField('sceneVisualPresentationSchemaVersion', expected, observed.sceneVisualPresentationSchemaVersion),
+    ...compareExpectedStringField('sceneVisualPresentationProfileId', expected, observed.sceneVisualPresentationProfileId),
+    ...compareExpectedStringField('sceneVisualPresentationRuntimeFamily', expected, observed.sceneVisualPresentationRuntimeFamily),
+    ...compareExpectedStringField('sceneVisualPresentationStyleId', expected, observed.sceneVisualPresentationStyleId),
+    ...compareExpectedStringField('sceneVisualPresentationStyleLabel', expected, observed.sceneVisualPresentationStyleLabel),
+    ...compareExpectedBooleanField('sceneVisualPresentationPixelArt', expected, observed.sceneVisualPresentationPixelArt),
+    ...compareExpectedNumberField('sceneVisualPresentationColorDepthBits', expected, observed.sceneVisualPresentationColorDepthBits),
+    ...compareExpectedStringField('sceneVisualPresentationOriginalityPolicy', expected, observed.sceneVisualPresentationOriginalityPolicy),
+    ...compareExpectedBooleanField('sceneVisualPresentationAssetPlanBound', expected, observed.sceneVisualPresentationAssetPlanBound),
+    ...compareExpectedBooleanField('sceneVisualPresentationNoProtectedReuse', expected, observed.sceneVisualPresentationNoProtectedReuse),
     ...compareExpectedBooleanField('encounterGateClosedEntrance', expected, observed.encounterGateClosedEntrance),
     ...compareExpectedStringField('encounterGateGateId', expected, observed.encounterGateGateId),
     ...compareExpectedStringField('encounterGateEntranceId', expected, observed.encounterGateEntranceId),

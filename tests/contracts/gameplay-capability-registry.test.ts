@@ -38,6 +38,7 @@ import {
   RUNTIME_MODULE_LOAD_RECEIPT_REQUIRED_PROBE_ID,
   RUNTIME_PLAN_COVERAGE_REQUIRED_PROBE_ID,
   SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID,
+  SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID,
   RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID,
   RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID,
   RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
@@ -996,6 +997,34 @@ describe('Gameplay capability registry', () => {
     expect(orderedSegments.legacyRuntimeCapabilities).toEqual([]);
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(orderedSegments)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(orderedSegments)).toBe(false);
+  });
+
+  it('scopes scene visual presentation metadata package-owned QA without static support promotion', () => {
+    const visualMetadata = findGameplayCapability('scene.visual_presentation_metadata.v1');
+
+    if (visualMetadata === undefined) {
+      throw new Error('Expected scene.visual_presentation_metadata.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(visualMetadata)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(visualMetadata.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(visualMetadata.qa).toEqual({
+      requiredProbeIds: [SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(visualMetadata.legacyRuntimeCapabilities).toEqual([]);
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(visualMetadata)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(visualMetadata)).toBe(false);
   });
 
   it('scopes pickup weapon supply package-owned QA without static support promotion', () => {

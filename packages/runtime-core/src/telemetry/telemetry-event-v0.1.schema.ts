@@ -24,6 +24,7 @@ export const TelemetryEventTypeSchema = z.enum([
   'runtime.module_load_receipt.verified',
   'runtime.plan_coverage.verified',
   'scene.ordered_segments.verified',
+  'scene.visual_presentation_metadata.verified',
   'spawn.enemy_wave.ordered',
   'enemy.flying_right_entry.verified',
   'enemy.patrol_infantry.verified',

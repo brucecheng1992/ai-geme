@@ -1,0 +1,12 @@
+export const SCENE_VISUAL_PRESENTATION_METADATA_CAPABILITY_ID = 'scene.visual_presentation_metadata.v1';
+export const SCENE_VISUAL_PRESENTATION_METADATA_RUNTIME_SYSTEM_ID = 'scene.visual_presentation_metadata';
+export const SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE = 'scene.visual_presentation_metadata.verified';
+export const SCENE_VISUAL_PRESENTATION_METADATA_PROFILE_ID = 'side_scrolling_run_and_gun.v1';
+export const SCENE_VISUAL_PRESENTATION_METADATA_RUNTIME_FAMILY = 'phaser_2d_action_arcade.v1';
+export const SCENE_VISUAL_PRESENTATION_METADATA_SCHEMA_VERSION = 'scene_visual_presentation_metadata.v0.1';
+export const SCENE_VISUAL_PRESENTATION_METADATA_SYSTEM_VERSION = 'v1';
+export const SCENE_VISUAL_PRESENTATION_METADATA_SYSTEM_PHASE = 'bootstrap';
+export const SCENE_VISUAL_PRESENTATION_METADATA_STYLE_ID = 'sixteen_bit_pixel';
+export const SCENE_VISUAL_PRESENTATION_METADATA_STYLE_LABEL = '16-bit pixel';
+export const SCENE_VISUAL_PRESENTATION_METADATA_COLOR_DEPTH_BITS = 16;
+export const SCENE_VISUAL_PRESENTATION_METADATA_ORIGINALITY_POLICY = 'no_protected_reuse';

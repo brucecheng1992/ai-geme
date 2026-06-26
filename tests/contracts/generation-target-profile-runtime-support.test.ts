@@ -170,6 +170,17 @@ import {
   SCENE_ORDERED_SEGMENTS_SECOND_ID,
   SCENE_ORDERED_SEGMENTS_THIRD_ID,
   createSceneOrderedSegmentsPackageContract,
+  SCENE_VISUAL_PRESENTATION_METADATA_CAPABILITY_ID,
+  SCENE_VISUAL_PRESENTATION_METADATA_COLOR_DEPTH_BITS,
+  SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE,
+  SCENE_VISUAL_PRESENTATION_METADATA_ORIGINALITY_POLICY,
+  SCENE_VISUAL_PRESENTATION_METADATA_PROFILE_ID,
+  SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID,
+  SCENE_VISUAL_PRESENTATION_METADATA_RUNTIME_FAMILY,
+  SCENE_VISUAL_PRESENTATION_METADATA_SCHEMA_VERSION,
+  SCENE_VISUAL_PRESENTATION_METADATA_STYLE_ID,
+  SCENE_VISUAL_PRESENTATION_METADATA_STYLE_LABEL,
+  createSceneVisualPresentationMetadataPackageContract,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
   WEAPON_DEATH_RESET_EVENT_TYPE,
@@ -285,6 +296,7 @@ const runtimeManifestBindingCapabilityId = RUNTIME_MANIFEST_BINDING_CAPABILITY_I
 const runtimeModuleLoadReceiptCapabilityId = RUNTIME_MODULE_LOAD_RECEIPT_CAPABILITY_ID;
 const runtimePlanCoverageCapabilityId = RUNTIME_PLAN_COVERAGE_CAPABILITY_ID;
 const sceneOrderedSegmentsCapabilityId = SCENE_ORDERED_SEGMENTS_CAPABILITY_ID;
+const sceneVisualPresentationMetadataCapabilityId = SCENE_VISUAL_PRESENTATION_METADATA_CAPABILITY_ID;
 const deathResetCapabilityId = 'weapon.death_reset.v1';
 const rapidFireCapabilityId = 'weapon.rapid_fire.v1';
 const spreadShotCapabilityId = 'weapon.spread_shot.v1';
@@ -333,6 +345,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       RUNTIME_MODULE_LOAD_RECEIPT_EVENT_TYPE,
       RUNTIME_PLAN_COVERAGE_EVENT_TYPE,
       SCENE_ORDERED_SEGMENTS_EVENT_TYPE,
+      SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE,
       WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE,
       WEAPON_DEATH_RESET_EVENT_TYPE,
       WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
@@ -379,6 +392,9 @@ describe('Step 37 target profile runtime support overlay', () => {
     const runtimeModuleLoadReceipt = report.capabilities.find((entry) => entry.capabilityId === runtimeModuleLoadReceiptCapabilityId);
     const runtimePlanCoverage = report.capabilities.find((entry) => entry.capabilityId === runtimePlanCoverageCapabilityId);
     const sceneOrderedSegments = report.capabilities.find((entry) => entry.capabilityId === sceneOrderedSegmentsCapabilityId);
+    const sceneVisualPresentationMetadata = report.capabilities.find(
+      (entry) => entry.capabilityId === sceneVisualPresentationMetadataCapabilityId
+    );
     const rulesEncounterGate = report.capabilities.find((entry) => entry.capabilityId === rulesEncounterGateCapabilityId);
     const deathReset = report.capabilities.find((entry) => entry.capabilityId === deathResetCapabilityId);
     const rapidFire = report.capabilities.find((entry) => entry.capabilityId === rapidFireCapabilityId);
@@ -393,7 +409,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 41,
+      observedCompleteSupportedCount: 42,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
@@ -431,6 +447,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         runtimeModuleLoadReceiptCapabilityId,
         runtimePlanCoverageCapabilityId,
         sceneOrderedSegmentsCapabilityId,
+        sceneVisualPresentationMetadataCapabilityId,
         spawnEnemyWaveCapabilityId,
         spawnStaticCapabilityId,
         deathResetCapabilityId,
@@ -439,7 +456,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         replacementRuleCapabilityId,
         spreadShotCapabilityId
       ],
-      blockers: ['target_profile_runtime_support_incomplete:41/59']
+      blockers: ['target_profile_runtime_support_incomplete:42/59']
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
       capabilityId: artifactLineageNoManualPatchCapabilityId,
@@ -503,6 +520,17 @@ describe('Step 37 target profile runtime support overlay', () => {
       observedCompleteSupported: true,
       requiredProbeIds: [SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID],
       verifiedRequiredProbeIds: [SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+    expect(sceneVisualPresentationMetadata).toMatchObject({
+      capabilityId: sceneVisualPresentationMetadataCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID],
       missingRequiredProbeIds: [],
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
@@ -956,11 +984,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 40,
+      observedCompleteSupportedCount: 41,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:40/59'
+        'target_profile_runtime_support_incomplete:41/59'
       ]
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
@@ -1331,11 +1359,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 40,
+      observedCompleteSupportedCount: 41,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:40/59'
+        'target_profile_runtime_support_incomplete:41/59'
       ]
     });
     expect(fixedPromptBinding).toMatchObject({
@@ -1395,11 +1423,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 40,
+      observedCompleteSupportedCount: 41,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:40/59'
+        'target_profile_runtime_support_incomplete:41/59'
       ]
     });
     expect(profileBinding).toMatchObject({
@@ -1605,7 +1633,10 @@ describe('Step 37 target profile runtime support overlay', () => {
   });
 
   it('keeps runtime support blocked when the required package QA assertion is missing', () => {
-    const capabilityQaReport = buildDefaultWeaponQaReport(['player.fired'], { includeDefaultSceneOrderedSegments: false });
+    const capabilityQaReport = buildDefaultWeaponQaReport(['player.fired'], {
+      includeDefaultSceneOrderedSegments: false,
+      includeDefaultSceneVisualPresentationMetadata: false
+    });
     const report = buildGenerationTargetProfileRuntimeSupportReport({
       projectId: 'proj_20260625_target_runtime_support',
       runId: 'run_20260625_target_runtime_support_missing',
@@ -1692,7 +1723,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 40,
+      observedCompleteSupportedCount: 41,
       targetProfileCompleteSupported: false,
       observedCapabilityIds: [
         artifactLineageNoManualPatchCapabilityId,
@@ -1728,6 +1759,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         runtimeModuleLoadReceiptCapabilityId,
         runtimePlanCoverageCapabilityId,
         sceneOrderedSegmentsCapabilityId,
+        sceneVisualPresentationMetadataCapabilityId,
         spawnEnemyWaveCapabilityId,
         spawnStaticCapabilityId,
         deathResetCapabilityId,
@@ -1738,7 +1770,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ],
       blockers: [
         `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:40/59'
+        'target_profile_runtime_support_incomplete:41/59'
       ]
     });
     expect(damageInvulnerability).toMatchObject({
@@ -1815,11 +1847,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 40,
+      observedCompleteSupportedCount: 41,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:40/59'
+        'target_profile_runtime_support_incomplete:41/59'
       ]
     });
     expect(pickup).toMatchObject({
@@ -2020,11 +2052,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 40,
+      observedCompleteSupportedCount: 41,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:40/59'
+        'target_profile_runtime_support_incomplete:41/59'
       ]
     });
     expect(spawnEnemyWave).toMatchObject({
@@ -2103,11 +2135,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 40,
+      observedCompleteSupportedCount: 41,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:40/59'
+        'target_profile_runtime_support_incomplete:41/59'
       ]
     });
     expect(flyingRightEntry).toMatchObject({
@@ -2186,11 +2218,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 40,
+      observedCompleteSupportedCount: 41,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:40/59'
+        'target_profile_runtime_support_incomplete:41/59'
       ]
     });
     expect(patrolInfantry).toMatchObject({
@@ -2271,11 +2303,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 40,
+      observedCompleteSupportedCount: 41,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:40/59'
+        'target_profile_runtime_support_incomplete:41/59'
       ]
     });
     expect(victoryDeclaration).toMatchObject({
@@ -3405,6 +3437,107 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
   });
 
+  it('keeps scene visual presentation metadata unverified without 16-bit style and asset-plan state fields', () => {
+    const genericVisualThemeQaReport = buildSingleCapabilityQaReport({
+      capabilityId: sceneVisualPresentationMetadataCapabilityId,
+      packageContract: createSceneVisualPresentationMetadataPackageContract(),
+      eventType: 'world.visual_theme.bound',
+      eventTypes: ['world.visual_theme.bound'],
+      probeId: SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID,
+      action: 'bind_visual_theme',
+      sourceRef: 'world.visual_theme',
+      stateFields: undefined
+    });
+    const missingVisualStateQaReport = buildSingleCapabilityQaReport({
+      capabilityId: sceneVisualPresentationMetadataCapabilityId,
+      packageContract: createSceneVisualPresentationMetadataPackageContract(),
+      eventType: SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE,
+      eventTypes: [SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE],
+      probeId: SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID,
+      action: 'verify_visual_metadata',
+      sourceRef: 'scene.visual_presentation_metadata',
+      stateFields: undefined
+    });
+    const observedVisualStateQaReport = buildSingleCapabilityQaReport({
+      capabilityId: sceneVisualPresentationMetadataCapabilityId,
+      packageContract: createSceneVisualPresentationMetadataPackageContract(),
+      eventType: SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE,
+      eventTypes: [SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE],
+      probeId: SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID,
+      action: 'verify_visual_metadata',
+      sourceRef: 'scene.visual_presentation_metadata',
+      stateFields: sceneVisualPresentationMetadataStateFields()
+    });
+    const genericVisualThemeReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_scene_visual_metadata_generic_event',
+      capabilityQaReport: genericVisualThemeQaReport
+    });
+    const observedVisualStateReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_scene_visual_metadata_observed_state',
+      capabilityQaReport: observedVisualStateQaReport
+    });
+    const genericVisualThemeState = genericVisualThemeReport.capabilities.find(
+      (entry) => entry.capabilityId === sceneVisualPresentationMetadataCapabilityId
+    );
+    const observedVisualState = observedVisualStateReport.capabilities.find(
+      (entry) => entry.capabilityId === sceneVisualPresentationMetadataCapabilityId
+    );
+
+    expect(
+      genericVisualThemeQaReport.requiredResults.find((entry) => entry.probeId === SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID)
+    ).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID}.assertion.visual_metadata`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE} not observed`)
+        })
+      ])
+    });
+    expect(
+      missingVisualStateQaReport.requiredResults.find((entry) => entry.probeId === SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID)
+    ).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID}.assertion.visual_metadata`,
+          status: 'failed',
+          message: expect.stringContaining('expected sceneVisualPresentationMetadataVerified=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID}.assertion.visual_metadata`,
+          status: 'failed',
+          message: expect.stringContaining(`expected sceneVisualPresentationStyleId=${SCENE_VISUAL_PRESENTATION_METADATA_STYLE_ID}`)
+        }),
+        expect.objectContaining({
+          assertionId: `${SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID}.assertion.visual_metadata`,
+          status: 'failed',
+          message: expect.stringContaining('expected sceneVisualPresentationAssetPlanBound=true, observed <missing>')
+        })
+      ])
+    });
+    expect(genericVisualThemeState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedVisualState).toMatchObject({
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+  });
+
   it('keeps weapon death reset unverified when restore evidence lacks reset state fields', () => {
     const capabilityQaReport = buildDefaultWeaponQaReport(
       [
@@ -3467,11 +3600,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 40,
+      observedCompleteSupportedCount: 41,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:40/59'
+        'target_profile_runtime_support_incomplete:41/59'
       ]
     });
     expect(deathReset).toMatchObject({
@@ -3545,11 +3678,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 40,
+      observedCompleteSupportedCount: 41,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:40/59'
+        'target_profile_runtime_support_incomplete:41/59'
       ]
     });
     expect(rapidFire).toMatchObject({
@@ -3623,11 +3756,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 40,
+      observedCompleteSupportedCount: 41,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:40/59'
+        'target_profile_runtime_support_incomplete:41/59'
       ]
     });
     expect(spreadShot).toMatchObject({
@@ -3701,11 +3834,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 40,
+      observedCompleteSupportedCount: 41,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:40/59'
+        'target_profile_runtime_support_incomplete:41/59'
       ]
     });
     expect(replacementRule).toMatchObject({
@@ -3753,6 +3886,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       `capability_qa_report_missing_required_probe:${RUNTIME_MODULE_LOAD_RECEIPT_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${RUNTIME_PLAN_COVERAGE_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${SPAWN_STATIC_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
@@ -3787,7 +3921,9 @@ function buildDefaultWeaponQaReport(
     runtimeModuleLoadReceiptStateFields?: boolean;
     runtimePlanCoverageStateFields?: boolean;
     includeDefaultSceneOrderedSegments?: boolean;
+    includeDefaultSceneVisualPresentationMetadata?: boolean;
     sceneOrderedSegmentsStateFields?: boolean;
+    sceneVisualPresentationMetadataStateFields?: boolean;
     pickupStateFields?: boolean;
     pickupWeaponSupplyStateFields?: boolean;
     providerDeepSeekAuthoritativeDraftStateFields?: boolean;
@@ -4516,6 +4652,20 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
+    ...(effectiveEventTypes.includes(SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE)
+      ? [
+          {
+            capabilityId: sceneVisualPresentationMetadataCapabilityId,
+            probeId: SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID,
+            action: 'verify_visual_metadata',
+            eventType: SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE,
+            eventTypes: effectiveEventTypes,
+            ...(options.sceneVisualPresentationMetadataStateFields === false ? {} : sceneVisualPresentationMetadataStateFields()),
+            status: 'observed' as const,
+            sourceRef: 'scene.visual_presentation_metadata'
+          }
+        ]
+      : []),
     ...(effectiveEventTypes.includes(WEAPON_DEATH_RESET_EVENT_TYPE)
       ? [
           {
@@ -4618,10 +4768,11 @@ function buildDefaultWeaponQaReport(
 
 function withDefaultPackageOwnedEvents(
   eventTypes: readonly string[],
-  options: { includeDefaultSceneOrderedSegments?: boolean } = {}
+  options: { includeDefaultSceneOrderedSegments?: boolean; includeDefaultSceneVisualPresentationMetadata?: boolean } = {}
 ): readonly string[] {
   const packageOwnedEvents = [
     ...(options.includeDefaultSceneOrderedSegments === false ? [] : [SCENE_ORDERED_SEGMENTS_EVENT_TYPE]),
+    ...(options.includeDefaultSceneVisualPresentationMetadata === false ? [] : [SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE]),
     ...(eventTypes.includes(FIXED_PROMPT_BINDING_EVENT_TYPE) || eventTypes.includes(PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE)
       ? [
           PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE,
@@ -4726,6 +4877,7 @@ function buildDefaultWeaponQaPlan() {
     createRuntimeModuleLoadReceiptPackageContract(),
     createRuntimePlanCoveragePackageContract(),
     createSceneOrderedSegmentsPackageContract(),
+    createSceneVisualPresentationMetadataPackageContract(),
     createWeaponDeathResetPackageContract(),
     createWeaponRapidFirePackageContract(),
     createWeaponSpreadShotPackageContract(),
@@ -4770,6 +4922,7 @@ function buildDefaultWeaponQaPlan() {
       runtimeModuleLoadReceiptCapabilityId,
       runtimePlanCoverageCapabilityId,
       sceneOrderedSegmentsCapabilityId,
+      sceneVisualPresentationMetadataCapabilityId,
       deathResetCapabilityId,
       rapidFireCapabilityId,
       spreadShotCapabilityId,
@@ -4879,5 +5032,21 @@ function sceneOrderedSegmentsStateFields(): Record<string, unknown> {
     sceneOrderedSegmentsAllNamed: true,
     sceneOrderedSegmentsSceneBindingMatched: true,
     sceneOrderedSegmentsNoGaps: true
+  };
+}
+
+function sceneVisualPresentationMetadataStateFields(): Record<string, unknown> {
+  return {
+    sceneVisualPresentationMetadataVerified: true,
+    sceneVisualPresentationSchemaVersion: SCENE_VISUAL_PRESENTATION_METADATA_SCHEMA_VERSION,
+    sceneVisualPresentationProfileId: SCENE_VISUAL_PRESENTATION_METADATA_PROFILE_ID,
+    sceneVisualPresentationRuntimeFamily: SCENE_VISUAL_PRESENTATION_METADATA_RUNTIME_FAMILY,
+    sceneVisualPresentationStyleId: SCENE_VISUAL_PRESENTATION_METADATA_STYLE_ID,
+    sceneVisualPresentationStyleLabel: SCENE_VISUAL_PRESENTATION_METADATA_STYLE_LABEL,
+    sceneVisualPresentationPixelArt: true,
+    sceneVisualPresentationColorDepthBits: SCENE_VISUAL_PRESENTATION_METADATA_COLOR_DEPTH_BITS,
+    sceneVisualPresentationOriginalityPolicy: SCENE_VISUAL_PRESENTATION_METADATA_ORIGINALITY_POLICY,
+    sceneVisualPresentationAssetPlanBound: true,
+    sceneVisualPresentationNoProtectedReuse: true
   };
 }

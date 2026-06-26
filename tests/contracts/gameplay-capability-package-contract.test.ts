@@ -501,6 +501,25 @@ import {
   SCENE_ORDERED_SEGMENTS_THIRD_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/scene-ordered-segments-runtime-module.js';
 import {
+  SCENE_VISUAL_PRESENTATION_METADATA_PACKAGE_REQUIRED_EVIDENCE_ID,
+  SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID,
+  createSceneVisualPresentationMetadataPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/scene-visual-presentation-metadata-package.js';
+import {
+  SCENE_VISUAL_PRESENTATION_METADATA_CAPABILITY_ID,
+  SCENE_VISUAL_PRESENTATION_METADATA_COLOR_DEPTH_BITS,
+  SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE,
+  SCENE_VISUAL_PRESENTATION_METADATA_ORIGINALITY_POLICY,
+  SCENE_VISUAL_PRESENTATION_METADATA_PROFILE_ID,
+  SCENE_VISUAL_PRESENTATION_METADATA_RUNTIME_FAMILY,
+  SCENE_VISUAL_PRESENTATION_METADATA_RUNTIME_SYSTEM_ID,
+  SCENE_VISUAL_PRESENTATION_METADATA_SCHEMA_VERSION,
+  SCENE_VISUAL_PRESENTATION_METADATA_STYLE_ID,
+  SCENE_VISUAL_PRESENTATION_METADATA_STYLE_LABEL,
+  SCENE_VISUAL_PRESENTATION_METADATA_SYSTEM_PHASE,
+  SCENE_VISUAL_PRESENTATION_METADATA_SYSTEM_VERSION
+} from '../../packages/game-dsl/src/gameplay-capabilities/scene-visual-presentation-metadata-runtime-module.js';
+import {
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_PACKAGE_REQUIRED_EVIDENCE_ID,
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
   createArtifactLineageNoManualPatchPackageContract
@@ -2103,6 +2122,78 @@ describe('Gameplay capability package contract', () => {
             sceneOrderedSegmentsAllNamed: true,
             sceneOrderedSegmentsSceneBindingMatched: true,
             sceneOrderedSegmentsNoGaps: true
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the scene visual presentation metadata package-owned QA contract', () => {
+    const contract = createSceneVisualPresentationMetadataPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: SCENE_VISUAL_PRESENTATION_METADATA_CAPABILITY_ID
+    });
+    expect(contract.dependencies).toEqual([]);
+    expect(contract.runtime.systems).toEqual([
+      {
+        id: SCENE_VISUAL_PRESENTATION_METADATA_RUNTIME_SYSTEM_ID,
+        version: SCENE_VISUAL_PRESENTATION_METADATA_SYSTEM_VERSION,
+        phase: SCENE_VISUAL_PRESENTATION_METADATA_SYSTEM_PHASE,
+        dependencies: ['asset_plan', 'template_params']
+      }
+    ]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: SCENE_VISUAL_PRESENTATION_METADATA_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: SCENE_VISUAL_PRESENTATION_METADATA_CAPABILITY_ID,
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE,
+          parameters: {
+            schemaVersion: SCENE_VISUAL_PRESENTATION_METADATA_SCHEMA_VERSION,
+            profileId: SCENE_VISUAL_PRESENTATION_METADATA_PROFILE_ID,
+            runtimeFamily: SCENE_VISUAL_PRESENTATION_METADATA_RUNTIME_FAMILY,
+            styleId: SCENE_VISUAL_PRESENTATION_METADATA_STYLE_ID,
+            styleLabel: SCENE_VISUAL_PRESENTATION_METADATA_STYLE_LABEL,
+            colorDepthBits: SCENE_VISUAL_PRESENTATION_METADATA_COLOR_DEPTH_BITS,
+            originalityPolicy: SCENE_VISUAL_PRESENTATION_METADATA_ORIGINALITY_POLICY
+          }
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'state_probe',
+          runtimeSystemId: SCENE_VISUAL_PRESENTATION_METADATA_RUNTIME_SYSTEM_ID,
+          ref: SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID}.assertion.visual_metadata`,
+          expected: {
+            sceneVisualPresentationMetadataVerified: true,
+            sceneVisualPresentationSchemaVersion: SCENE_VISUAL_PRESENTATION_METADATA_SCHEMA_VERSION,
+            sceneVisualPresentationProfileId: SCENE_VISUAL_PRESENTATION_METADATA_PROFILE_ID,
+            sceneVisualPresentationRuntimeFamily: SCENE_VISUAL_PRESENTATION_METADATA_RUNTIME_FAMILY,
+            sceneVisualPresentationStyleId: SCENE_VISUAL_PRESENTATION_METADATA_STYLE_ID,
+            sceneVisualPresentationStyleLabel: SCENE_VISUAL_PRESENTATION_METADATA_STYLE_LABEL,
+            sceneVisualPresentationPixelArt: true,
+            sceneVisualPresentationColorDepthBits: SCENE_VISUAL_PRESENTATION_METADATA_COLOR_DEPTH_BITS,
+            sceneVisualPresentationOriginalityPolicy: SCENE_VISUAL_PRESENTATION_METADATA_ORIGINALITY_POLICY,
+            sceneVisualPresentationAssetPlanBound: true,
+            sceneVisualPresentationNoProtectedReuse: true
           }
         })
       ]

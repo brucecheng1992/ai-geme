@@ -166,7 +166,7 @@ describe('Step 33 DSL consumption report', () => {
 
     expect(report.targetProfileSupport).toMatchObject({
       requiredCapabilityCount: 59,
-      registeredCapabilityCount: 45,
+      registeredCapabilityCount: 46,
       completeSupportedCount: 0,
       completePackageClosure: {
         status: 'blocked_incomplete_target_profile',
@@ -479,6 +479,19 @@ describe('Step 33 DSL consumption report', () => {
       missingSupportEvidencePrerequisites: ['requiredProbesVerified']
     });
     expect(capabilities.get('review.oracle_final_gate.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('scene.visual_presentation_metadata.v1')).toMatchObject({
       classification: 'DEFERRED',
       completeSupported: false,
       evidenceDimensions: {

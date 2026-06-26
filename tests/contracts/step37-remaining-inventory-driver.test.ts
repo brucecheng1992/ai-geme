@@ -164,6 +164,7 @@ describe('Step37 remaining complete-supported inventory driver', () => {
       'runtime.manifest_binding.v1',
       'runtime.module_load_receipt.v1',
       'runtime.plan_coverage.v1',
+      'scene.ordered_segments.v1',
       'spawn.enemy_wave.v1',
       'spawn.static.v1',
       'weapon.death_reset.v1',
@@ -184,18 +185,18 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     });
 
     expect(report.requiredCapabilityCount).toBe(59);
-    expect(report.registeredCapabilityCount).toBe(45);
+    expect(report.registeredCapabilityCount).toBe(46);
     expect(report.staticCompleteSupportedCount).toBe(0);
-    expect(report.stateCounts.unsupported_unregistered).toBe(14);
-    expect(report.committedClosedCapabilityCount).toBe(44);
+    expect(report.stateCounts.unsupported_unregistered).toBe(13);
+    expect(report.committedClosedCapabilityCount).toBe(45);
     expect(report.capabilities.find((item) => item.capabilityId === 'runtime.module_load_receipt.v1')).toMatchObject({
       closedInCommittedHistory: true,
       closedByCheckpointIds: ['closed.runtime.module_load_receipt.v1']
     });
     expect(report.nextCheckpoint).not.toBeNull();
-    expect(report.nextCheckpoint?.checkpoint_id).toBe('stage4.scene_ordered_segments_v1.complete_supported_package_slice');
+    expect(report.nextCheckpoint?.checkpoint_id).toBe('stage4.scene_visual_presentation_metadata_v1.complete_supported_package_slice');
     expect(report.nextCheckpoint?.next_atomic_step).toBe(
-      'Stage 4 scene.ordered_segments.v1 complete-supported package slice implementation atomic step'
+      'Stage 4 scene.visual_presentation_metadata.v1 complete-supported package slice implementation atomic step'
     );
     expect(report.checkpointInventory.map((checkpoint) => checkpoint.checkpoint_id)).not.toContain(
       'stage4.runtime_module_load_receipt_v1.complete_supported_package_slice'

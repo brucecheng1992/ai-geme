@@ -694,6 +694,21 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       missingEvidenceDimensions: ['qa_observed'],
       missingSupportEvidencePrerequisites: ['requiredProbesVerified']
     });
+    expect(capabilities.get('scene.visual_presentation_metadata.v1')).toMatchObject({
+      registered: true,
+      classification: 'DEFERRED',
+      completeSupported: false,
+      legacyBacked: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
     expect(capabilities.get('pickup.weapon_supply.v1')).toMatchObject({
       registered: true,
       classification: 'DEFERRED',
@@ -918,6 +933,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       'runtime.plan_coverage.v1',
       'scene.ordered_segments.v1',
       'scene.parallax_background.v1',
+      'scene.visual_presentation_metadata.v1',
       'spawn.enemy_wave.v1',
       'spawn.static.v1',
       'telemetry.gameplay_events.v1',
