@@ -6178,14 +6178,18 @@ capability_id=artifact.no_hidden_script.v1
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
 review_required=true
-closure_status=not_closed
+closure_status=closed
 global_exit_conditions_met=false
 user_input_required=false
-next_action_before_receipt=CREATE_CANDIDATE_COMMIT_THEN_ORACLE_REVIEW
+next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
 reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
+reviewed_commit_sha=6b107969dc936dc07d2a0038003ff9202bdc55a8
+reviewed_commit_tree=716053dcb128d47dc91fd2b896622d02a083ec2b
+oracle_submission_id=019f01bb-fe1f-7081-b11d-3ce287192951
+oracle_agent_id=019effae-8aa2-7c22-b5ba-8c4b69f21d20
 ```
 
 `artifact.no_hidden_script.v1` was selected by the Parent Loop Driver after the `artifact.lineage_no_manual_patch.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
@@ -6304,3 +6308,32 @@ Post-record validation requirement:
 - Candidate commit must not write its own SHA into this candidate record.
 - Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1`.
 - `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+
+Oracle receipt:
+
+```text
+reviewed_commit_sha=6b107969dc936dc07d2a0038003ff9202bdc55a8
+reviewed_commit_tree=716053dcb128d47dc91fd2b896622d02a083ec2b
+reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
+oracle_submission_id=019f01bb-fe1f-7081-b11d-3ce287192951
+oracle_agent_id=019effae-8aa2-7c22-b5ba-8c4b69f21d20
+oracle_status=approved
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 none
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for the immutable candidate only. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, Stage 5, production default cutover, or prior closed history.
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
+```
+
+Parent Loop Driver after receipt:
+
+```text
+closure_scope=atomic_step
+atomic_step_status=closed
+parent_stage_status=running
+loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=RUN_PARENT_LOOP_DRIVER_TO_SELECT_NEXT_UNMET_CHECKPOINT
+```
