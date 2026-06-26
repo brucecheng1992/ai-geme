@@ -6178,13 +6178,13 @@ capability_id=scene.visual_presentation_metadata.v1
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
 review_required=true
-closure_status=candidate_ready
+closure_status=closed
 global_exit_conditions_met=false
 user_input_required=false
-next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
+next_action_after_receipt=CONTINUE_PARENT_LOOP
 candidate_skill_revision_type=sha256_bundle
 candidate_skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
 candidate_skill_revision=97ddde4b80b3e2afcb5ffd93b45dc76b30065c644edec6bcea2df59cedd4eb70
@@ -6195,6 +6195,29 @@ superseded_candidate_commit_sha=57c674cf9284b6d78d952384e030b8f76b8a67e0
 superseded_candidate_oracle_status=changes_required
 superseded_candidate_oracle_p1=sceneVisualPresentationTemplateParamsBound missing from required QA state contract
 p1_remediation_status=landed_and_locally_validated
+candidate_commit_sha=e57c45bed91945eec941ea1697ed0899208653a8
+reviewed_commit_sha=e57c45bed91945eec941ea1697ed0899208653a8
+reviewed_commit_tree=032ab4ac03c0689e254334211eec316b8c70a056
+oracle_agent_id=019f0488-39ff-7e33-a790-4caca4a838a3
+oracle_submission_id=019f04f6-4297-7691-a082-4cca8e2c5e9c
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_p0_findings=0
+oracle_p1_findings=0
+oracle_p2_findings=0
+oracle_p3_findings=0
+reviewed_skill_revision=97ddde4b80b3e2afcb5ffd93b45dc76b30065c644edec6bcea2df59cedd4eb70
+reviewed_skill_bundle_digest=97ddde4b80b3e2afcb5ffd93b45dc76b30065c644edec6bcea2df59cedd4eb70
+parent_stage_status=running
+parent_loop_status=running
+parent_loop_global_exit_conditions_met=false
+parent_loop_user_input_required=false
+parent_loop_next_action=CONTINUE_PARENT_LOOP
+parent_loop_next_atomic_step=stage4.spawn_explicit_declarations_v1.complete_supported_package_slice
+parent_loop_next_atomic_step_scope=implementation
+parent_loop_next_atomic_step_entry_conditions=Stage 4 remains active; no verified user blocker; current atom closed by Oracle-approved receipt; next checkpoint remains unmet and entry conditions are satisfied.
+parent_loop_inventory_source_plan_revision=docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md@e57c45bed91945eec941ea1697ed0899208653a8
+parent_loop_selection_rule=first_unmet_checkpoint_in_authoritative_inventory
+parent_loop_next_unmet_reason=Stage 4 spawn.explicit_declarations.v1 remains unsupported_unregistered; static completeSupported=false; missingEvidenceDimensions=[schema_expressible,normalized,compiled,runtime_consumed,qa_observed]; missingSupportEvidencePrerequisites=[dslSchema,normalizer,irCompiler,runtimeModule,amendmentOperations,capabilityOwnedQa,artifactEvidence,renderContract,requiredProbeIds,requiredProbesVerified].
 ```
 
 `scene.visual_presentation_metadata.v1` was selected by the Parent Loop Driver after the `scene.ordered_segments.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
@@ -6414,7 +6437,8 @@ duration=real 0.56s
 result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=46; staticCompleteSupportedCount=0; committedClosedCapabilityCount=45; unsupported_unregistered=13; next_checkpoint_id=stage4.scene_visual_presentation_metadata_v1.complete_supported_package_slice; selectionFailure=null; scene.visual_presentation_metadata.v1 classification=DEFERRED; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false.
 ```
 - Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=97ddde4b80b3e2afcb5ffd93b45dc76b30065c644edec6bcea2df59cedd4eb70`.
-- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+- Oracle accepted the review request through `submission_id=019f04f6-4297-7691-a082-4cca8e2c5e9c`, polled through `agent_id=019f0488-39ff-7e33-a790-4caca4a838a3`, and returned `APPROVED_FOR_RECEIPT` for `reviewed_commit_sha=e57c45bed91945eec941ea1697ed0899208653a8` with reviewed Skill digest `97ddde4b80b3e2afcb5ffd93b45dc76b30065c644edec6bcea2df59cedd4eb70`.
+- Receipt-only closure is scoped to this atomic step. Stage 4 remains running, Step37 remains running, global exit conditions remain unmet, and the Parent Loop Driver selected `stage4.spawn_explicit_declarations_v1.complete_supported_package_slice` as the next atomic implementation step.
 
 ## Stage 4 Implementation: `scene.ordered_segments.v1` complete-supported package slice
 
