@@ -189,6 +189,18 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   runtimeManifestSystemPhase?: string;
   runtimeManifestSystemDependencyCount?: number;
   runtimeManifestLoaderPlanBound?: boolean;
+  runtimeModuleLoadReceiptLoaded?: boolean;
+  runtimeModuleLoadReceiptKind?: string;
+  runtimeModuleLoadReceiptSchemaVersion?: string;
+  runtimeModuleLoadReceiptHashPresent?: boolean;
+  runtimeModuleLoadReceiptLoadOrderCount?: number;
+  runtimeModuleLoadReceiptLifecycleEventCount?: number;
+  runtimeModuleLoadReceiptIssuesCount?: number;
+  runtimeModuleLoadReceiptCapabilityLockHashMatched?: boolean;
+  runtimeModuleLoadReceiptRuntimeManifestHashMatched?: boolean;
+  runtimeModuleLoadReceiptRuntimePlanHashMatched?: boolean;
+  runtimeModuleLoadReceiptLoaderPlanHashMatched?: boolean;
+  runtimeModuleLoadReceiptLifecycleComplete?: boolean;
   encounterGateClosedEntrance?: boolean;
   encounterGateGateId?: string;
   encounterGateEntranceId?: string;
@@ -685,6 +697,38 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedStringField('runtimeManifestSystemPhase', expected, observed.runtimeManifestSystemPhase),
     ...compareExpectedNumberField('runtimeManifestSystemDependencyCount', expected, observed.runtimeManifestSystemDependencyCount),
     ...compareExpectedBooleanField('runtimeManifestLoaderPlanBound', expected, observed.runtimeManifestLoaderPlanBound),
+    ...compareExpectedBooleanField('runtimeModuleLoadReceiptLoaded', expected, observed.runtimeModuleLoadReceiptLoaded),
+    ...compareExpectedStringField('runtimeModuleLoadReceiptKind', expected, observed.runtimeModuleLoadReceiptKind),
+    ...compareExpectedStringField('runtimeModuleLoadReceiptSchemaVersion', expected, observed.runtimeModuleLoadReceiptSchemaVersion),
+    ...compareExpectedBooleanField('runtimeModuleLoadReceiptHashPresent', expected, observed.runtimeModuleLoadReceiptHashPresent),
+    ...compareExpectedNumberField('runtimeModuleLoadReceiptLoadOrderCount', expected, observed.runtimeModuleLoadReceiptLoadOrderCount),
+    ...compareExpectedNumberField(
+      'runtimeModuleLoadReceiptLifecycleEventCount',
+      expected,
+      observed.runtimeModuleLoadReceiptLifecycleEventCount
+    ),
+    ...compareExpectedNumberField('runtimeModuleLoadReceiptIssuesCount', expected, observed.runtimeModuleLoadReceiptIssuesCount),
+    ...compareExpectedBooleanField(
+      'runtimeModuleLoadReceiptCapabilityLockHashMatched',
+      expected,
+      observed.runtimeModuleLoadReceiptCapabilityLockHashMatched
+    ),
+    ...compareExpectedBooleanField(
+      'runtimeModuleLoadReceiptRuntimeManifestHashMatched',
+      expected,
+      observed.runtimeModuleLoadReceiptRuntimeManifestHashMatched
+    ),
+    ...compareExpectedBooleanField(
+      'runtimeModuleLoadReceiptRuntimePlanHashMatched',
+      expected,
+      observed.runtimeModuleLoadReceiptRuntimePlanHashMatched
+    ),
+    ...compareExpectedBooleanField(
+      'runtimeModuleLoadReceiptLoaderPlanHashMatched',
+      expected,
+      observed.runtimeModuleLoadReceiptLoaderPlanHashMatched
+    ),
+    ...compareExpectedBooleanField('runtimeModuleLoadReceiptLifecycleComplete', expected, observed.runtimeModuleLoadReceiptLifecycleComplete),
     ...compareExpectedBooleanField('encounterGateClosedEntrance', expected, observed.encounterGateClosedEntrance),
     ...compareExpectedStringField('encounterGateGateId', expected, observed.encounterGateGateId),
     ...compareExpectedStringField('encounterGateEntranceId', expected, observed.encounterGateEntranceId),

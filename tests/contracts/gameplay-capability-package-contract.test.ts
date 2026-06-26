@@ -447,6 +447,24 @@ import {
   RUNTIME_MANIFEST_BINDING_TEMPLATE_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/runtime-manifest-binding-runtime-module.js';
 import {
+  RUNTIME_MODULE_LOAD_RECEIPT_PACKAGE_REQUIRED_EVIDENCE_ID,
+  RUNTIME_MODULE_LOAD_RECEIPT_REQUIRED_PROBE_ID,
+  createRuntimeModuleLoadReceiptPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/runtime-module-load-receipt-package.js';
+import {
+  RUNTIME_MODULE_LOAD_RECEIPT_CAPABILITY_ID,
+  RUNTIME_MODULE_LOAD_RECEIPT_EVENT_TYPE,
+  RUNTIME_MODULE_LOAD_RECEIPT_KIND,
+  RUNTIME_MODULE_LOAD_RECEIPT_MIN_LIFECYCLE_EVENT_COUNT,
+  RUNTIME_MODULE_LOAD_RECEIPT_MIN_LOAD_ORDER_COUNT,
+  RUNTIME_MODULE_LOAD_RECEIPT_PROFILE_ID,
+  RUNTIME_MODULE_LOAD_RECEIPT_RUNTIME_FAMILY,
+  RUNTIME_MODULE_LOAD_RECEIPT_RUNTIME_SYSTEM_ID,
+  RUNTIME_MODULE_LOAD_RECEIPT_SCHEMA_VERSION,
+  RUNTIME_MODULE_LOAD_RECEIPT_SYSTEM_PHASE,
+  RUNTIME_MODULE_LOAD_RECEIPT_SYSTEM_VERSION
+} from '../../packages/game-dsl/src/gameplay-capabilities/runtime-module-load-receipt-runtime-module.js';
+import {
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_PACKAGE_REQUIRED_EVIDENCE_ID,
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
   createArtifactLineageNoManualPatchPackageContract
@@ -1832,6 +1850,76 @@ describe('Gameplay capability package contract', () => {
             runtimeManifestSystemPhase: RUNTIME_MANIFEST_BINDING_SYSTEM_PHASE,
             runtimeManifestSystemDependencyCount: RUNTIME_MANIFEST_BINDING_SYSTEM_DEPENDENCY_COUNT,
             runtimeManifestLoaderPlanBound: true
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the runtime module load receipt package-owned QA contract', () => {
+    const contract = createRuntimeModuleLoadReceiptPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === RUNTIME_MODULE_LOAD_RECEIPT_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: RUNTIME_MODULE_LOAD_RECEIPT_CAPABILITY_ID
+    });
+    expect(contract.dependencies).toEqual([{ capabilityId: RUNTIME_MANIFEST_BINDING_CAPABILITY_ID, range: '^v1' }]);
+    expect(contract.runtime.systems).toEqual([
+      {
+        id: RUNTIME_MODULE_LOAD_RECEIPT_RUNTIME_SYSTEM_ID,
+        version: RUNTIME_MODULE_LOAD_RECEIPT_SYSTEM_VERSION,
+        phase: RUNTIME_MODULE_LOAD_RECEIPT_SYSTEM_PHASE,
+        dependencies: ['runtime.manifest_binding']
+      }
+    ]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: RUNTIME_MODULE_LOAD_RECEIPT_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: RUNTIME_MODULE_LOAD_RECEIPT_CAPABILITY_ID,
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: RUNTIME_MODULE_LOAD_RECEIPT_EVENT_TYPE,
+          parameters: {
+            artifactKind: RUNTIME_MODULE_LOAD_RECEIPT_KIND,
+            schemaVersion: RUNTIME_MODULE_LOAD_RECEIPT_SCHEMA_VERSION,
+            profileId: RUNTIME_MODULE_LOAD_RECEIPT_PROFILE_ID,
+            runtimeFamily: RUNTIME_MODULE_LOAD_RECEIPT_RUNTIME_FAMILY
+          }
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'state_probe',
+          runtimeSystemId: RUNTIME_MODULE_LOAD_RECEIPT_RUNTIME_SYSTEM_ID,
+          ref: RUNTIME_MODULE_LOAD_RECEIPT_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${RUNTIME_MODULE_LOAD_RECEIPT_REQUIRED_PROBE_ID}.assertion.receipt`,
+          expected: {
+            runtimeModuleLoadReceiptLoaded: true,
+            runtimeModuleLoadReceiptKind: RUNTIME_MODULE_LOAD_RECEIPT_KIND,
+            runtimeModuleLoadReceiptSchemaVersion: RUNTIME_MODULE_LOAD_RECEIPT_SCHEMA_VERSION,
+            runtimeModuleLoadReceiptHashPresent: true,
+            runtimeModuleLoadReceiptLoadOrderCount: RUNTIME_MODULE_LOAD_RECEIPT_MIN_LOAD_ORDER_COUNT,
+            runtimeModuleLoadReceiptLifecycleEventCount: RUNTIME_MODULE_LOAD_RECEIPT_MIN_LIFECYCLE_EVENT_COUNT,
+            runtimeModuleLoadReceiptIssuesCount: 0,
+            runtimeModuleLoadReceiptCapabilityLockHashMatched: true,
+            runtimeModuleLoadReceiptRuntimeManifestHashMatched: true,
+            runtimeModuleLoadReceiptRuntimePlanHashMatched: true,
+            runtimeModuleLoadReceiptLoaderPlanHashMatched: true,
+            runtimeModuleLoadReceiptLifecycleComplete: true
           }
         })
       ]

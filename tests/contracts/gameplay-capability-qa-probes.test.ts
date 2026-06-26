@@ -196,6 +196,14 @@ import {
   RUNTIME_MANIFEST_BINDING_SYSTEM_VERSION,
   RUNTIME_MANIFEST_BINDING_TEMPLATE_ID,
   createRuntimeManifestBindingPackageContract,
+  RUNTIME_MODULE_LOAD_RECEIPT_CAPABILITY_ID,
+  RUNTIME_MODULE_LOAD_RECEIPT_EVENT_TYPE,
+  RUNTIME_MODULE_LOAD_RECEIPT_KIND,
+  RUNTIME_MODULE_LOAD_RECEIPT_MIN_LIFECYCLE_EVENT_COUNT,
+  RUNTIME_MODULE_LOAD_RECEIPT_MIN_LOAD_ORDER_COUNT,
+  RUNTIME_MODULE_LOAD_RECEIPT_REQUIRED_PROBE_ID,
+  RUNTIME_MODULE_LOAD_RECEIPT_SCHEMA_VERSION,
+  createRuntimeModuleLoadReceiptPackageContract,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
@@ -4419,6 +4427,134 @@ describe('Capability-owned runtime QA probes', () => {
     );
     expect(observedBinding.status).toBe('passed');
   });
+
+  it('does not verify runtime module load receipt when receipt evidence lacks integrity state fields', () => {
+    const capabilityId = RUNTIME_MODULE_LOAD_RECEIPT_CAPABILITY_ID;
+    const probeId = RUNTIME_MODULE_LOAD_RECEIPT_REQUIRED_PROBE_ID;
+    const packages = [createRuntimeManifestBindingPackageContract(), createRuntimeModuleLoadReceiptPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId, RUNTIME_MANIFEST_BINDING_CAPABILITY_ID]),
+      packages
+    });
+    const manifestBindingObserved: CapabilityRuntimeObservedProbeEvidence = {
+      capabilityId: RUNTIME_MANIFEST_BINDING_CAPABILITY_ID,
+      probeId: RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID,
+      action: 'load_runtime_manifest',
+      eventType: RUNTIME_MANIFEST_BINDING_EVENT_TYPE,
+      eventTypes: [RUNTIME_MANIFEST_BINDING_EVENT_TYPE],
+      sourceRef: 'runtime.manifest_binding',
+      status: 'observed',
+      runtimeManifestBound: true,
+      runtimeManifestRuntimeFamily: RUNTIME_MANIFEST_BINDING_RUNTIME_FAMILY,
+      runtimeManifestProfileId: RUNTIME_MANIFEST_BINDING_PROFILE_ID,
+      runtimeManifestTemplateId: RUNTIME_MANIFEST_BINDING_TEMPLATE_ID,
+      runtimeManifestCapabilityLockBound: true,
+      runtimeManifestCapabilityId: RUNTIME_MANIFEST_BINDING_CAPABILITY_ID,
+      runtimeManifestSystemId: RUNTIME_MANIFEST_BINDING_RUNTIME_SYSTEM_ID,
+      runtimeManifestSystemVersion: RUNTIME_MANIFEST_BINDING_SYSTEM_VERSION,
+      runtimeManifestSystemPhase: RUNTIME_MANIFEST_BINDING_SYSTEM_PHASE,
+      runtimeManifestSystemDependencyCount: RUNTIME_MANIFEST_BINDING_SYSTEM_DEPENDENCY_COUNT,
+      runtimeManifestLoaderPlanBound: true
+    };
+    const genericReceiptRef = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            manifestBindingObserved,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_receipt',
+              eventType: 'runtime.module_load_receipt.artifact_ref',
+              eventTypes: ['runtime.module_load_receipt.artifact_ref'],
+              sourceRef: 'runtime.module_load_receipt',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const missingReceiptState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            manifestBindingObserved,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_receipt',
+              eventType: RUNTIME_MODULE_LOAD_RECEIPT_EVENT_TYPE,
+              eventTypes: [RUNTIME_MODULE_LOAD_RECEIPT_EVENT_TYPE],
+              sourceRef: 'runtime.module_load_receipt',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedReceipt = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            manifestBindingObserved,
+            runtimeModuleLoadReceiptObserved({
+              capabilityId,
+              probeId
+            })
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericReceiptRef.status).toBe('failed');
+    expect(genericReceiptRef.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericReceiptRef.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.receipt`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${RUNTIME_MODULE_LOAD_RECEIPT_EVENT_TYPE} not observed`)
+        })
+      ])
+    );
+    expect(missingReceiptState.status).toBe('failed');
+    expect(missingReceiptState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.receipt`,
+          status: 'failed',
+          message: expect.stringContaining('expected runtimeModuleLoadReceiptLoaded=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.receipt`,
+          status: 'failed',
+          message: expect.stringContaining(`expected runtimeModuleLoadReceiptKind=${RUNTIME_MODULE_LOAD_RECEIPT_KIND}`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.receipt`,
+          status: 'failed',
+          message: expect.stringContaining('expected runtimeModuleLoadReceiptLifecycleComplete=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedReceipt.status).toBe('passed');
+  });
 });
 
 function finalOracleGateObserved(
@@ -4444,6 +4580,31 @@ function finalOracleGateObserved(
     status: 'observed',
     sourceRef: 'oracle.final_gate.approval',
     ...overrides
+  };
+}
+
+function runtimeModuleLoadReceiptObserved(
+  overrides: Pick<CapabilityRuntimeObservedProbeEvidence, 'capabilityId' | 'probeId'>
+): CapabilityRuntimeObservedProbeEvidence {
+  return {
+    ...overrides,
+    action: 'verify_receipt',
+    eventType: RUNTIME_MODULE_LOAD_RECEIPT_EVENT_TYPE,
+    eventTypes: [RUNTIME_MODULE_LOAD_RECEIPT_EVENT_TYPE],
+    runtimeModuleLoadReceiptLoaded: true,
+    runtimeModuleLoadReceiptKind: RUNTIME_MODULE_LOAD_RECEIPT_KIND,
+    runtimeModuleLoadReceiptSchemaVersion: RUNTIME_MODULE_LOAD_RECEIPT_SCHEMA_VERSION,
+    runtimeModuleLoadReceiptHashPresent: true,
+    runtimeModuleLoadReceiptLoadOrderCount: RUNTIME_MODULE_LOAD_RECEIPT_MIN_LOAD_ORDER_COUNT,
+    runtimeModuleLoadReceiptLifecycleEventCount: RUNTIME_MODULE_LOAD_RECEIPT_MIN_LIFECYCLE_EVENT_COUNT,
+    runtimeModuleLoadReceiptIssuesCount: 0,
+    runtimeModuleLoadReceiptCapabilityLockHashMatched: true,
+    runtimeModuleLoadReceiptRuntimeManifestHashMatched: true,
+    runtimeModuleLoadReceiptRuntimePlanHashMatched: true,
+    runtimeModuleLoadReceiptLoaderPlanHashMatched: true,
+    runtimeModuleLoadReceiptLifecycleComplete: true,
+    sourceRef: 'runtime.module_load_receipt',
+    status: 'observed'
   };
 }
 

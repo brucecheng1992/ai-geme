@@ -6341,6 +6341,144 @@ source_plan_revision=post-receipt-candidate:85d533e914b1d5198879618cd8f2adbad17d
 remaining_inventory_result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=42; staticCompleteSupportedCount=0; committedClosedCapabilityCount=42; unsupported_unregistered=17; next_checkpoint_id=stage4.runtime_module_load_receipt_v1.complete_supported_package_slice; selectionFailure=null.
 ```
 
+## Stage 4 Implementation: `runtime.module_load_receipt.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.runtime_module_load_receipt_v1.complete_supported_package_slice
+closure_record_id=stage4.runtime_module_load_receipt_v1.complete_supported_package_slice.candidate_record
+record_status=active
+current_active_record=true
+parent_stage_id=stage4
+capability_id=runtime.module_load_receipt.v1
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+post_record_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=open
+global_exit_conditions_met=false
+user_input_required=false
+next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
+skill_revision_type=sha256_bundle
+skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
+active_skill_paths=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery
+active_skill_bundle_digest=7ee65d1011bfd4f3f4e43bb571a879ba8468b02c04b5d00cc11f3af137df266e
+active_skill_file_count=8
+active_skill_manifest_protocol=skill-id-relative path, file kind, raw byte length, executable bit, SHA-256, symlink target; stable sort by root-relative row
+freshness_status=aligned
+repo_pre_candidate_head=9dfd037cc49845e09110eb2e12af70b2306d99bb
+candidate_commit_sha=not_created
+reviewed_commit_sha=not_submitted
+oracle_agent_id=not_submitted
+oracle_submission_id=not_submitted
+```
+
+`runtime.module_load_receipt.v1` was selected by the Parent Loop Driver after the `runtime.manifest_binding.v1` receipt. Baseline support at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
+
+Minimum closure requirements:
+
+1. Add a package-owned runtime module load receipt contract with stable capability identity, runtime system identity, telemetry event identity, required probe id, required QA evidence id, and explicit dependency on `runtime.manifest_binding.v1`.
+2. Prove the package validates at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `runtime.module_load_receipt.v1` only when runtime evidence includes explicit receipt integrity fields for artifact kind, schema version, receipt hash, load order, lifecycle coverage, zero issues, capability lock hash, runtime manifest hash, runtime plan hash, loader plan hash, and lifecycle completion.
+5. Add negative regressions proving a generic receipt/artifact-ref event or the correct event without integrity state fields keeps the capability unverified and emits the required missing-probe blocker.
+6. Keep dependency failure and semantic failure separated: manifest-binding dependency evidence must be present before a negative assertion can attribute failure to `runtime.module_load_receipt.v1` itself.
+7. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/runtime-module-load-receipt-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/runtime-module-load-receipt-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `tests/contracts/contract-freeze.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createRuntimeModuleLoadReceiptPackageContract()`.
+- Runtime module identity: `RUNTIME_MODULE_LOAD_RECEIPT_RUNTIME_SYSTEM_ID=runtime.module_load_receipt`.
+- Runtime event: `RUNTIME_MODULE_LOAD_RECEIPT_EVENT_TYPE=runtime.module_load_receipt.verified`.
+- Required probe: `RUNTIME_MODULE_LOAD_RECEIPT_REQUIRED_PROBE_ID=runtime.module_load_receipt.v1.verify_module_load_receipt.browser_qa.v1`.
+- Required evidence id: `runtime.module_load_receipt.v1.evidence.capability_qa_report.v1`.
+- Required dependency: `runtime.manifest_binding.v1` with capability-version range `^v1`.
+- Required state fields: `runtimeModuleLoadReceiptLoaded`, `runtimeModuleLoadReceiptKind`, `runtimeModuleLoadReceiptSchemaVersion`, `runtimeModuleLoadReceiptHashPresent`, `runtimeModuleLoadReceiptLoadOrderCount`, `runtimeModuleLoadReceiptLifecycleEventCount`, `runtimeModuleLoadReceiptIssuesCount`, `runtimeModuleLoadReceiptCapabilityLockHashMatched`, `runtimeModuleLoadReceiptRuntimeManifestHashMatched`, `runtimeModuleLoadReceiptRuntimePlanHashMatched`, `runtimeModuleLoadReceiptLoaderPlanHashMatched`, and `runtimeModuleLoadReceiptLifecycleComplete`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares runtime module load receipt fields and fails the required probe when generic receipt refs or missing integrity fields cannot prove the full receipt semantics.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for same-run package-owned QA evidence; it does not mutate static `completeSupported`.
+- Parent Loop inventory: `buildStep37RemainingCompleteSupportedInventory()` still selects `stage4.runtime_module_load_receipt_v1.complete_supported_package_slice` until this candidate is committed and receipted.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned runtime module load receipt capability contract, runtime system identity, `runtime.module_load_receipt.verified` telemetry event, required probe id, required evidence id, and runtime evidence fields proving receipt integrity and manifest/plan bindings. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, Step37 remaining-inventory driver, telemetry/event freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves the explicit runtime module load receipt integrity fields. |
+| Authority | Package-owned QA evidence defines the capability authority: a generic receipt/artifact-ref event is insufficient unless `runtime.module_load_receipt.verified` evidence proves loaded status, receipt hash presence, load order, lifecycle coverage, zero issues, and current manifest/plan/hash bindings. |
+| Legacy strategy | Legacy manifest/profile or artifact-ref events remain contextual evidence only; they cannot claim runtime module load receipt closure, exact-lock readiness, or production default cutover. |
+| Failure policy | Missing package contract, unresolved `runtime.manifest_binding.v1` dependency, missing `runtime.module_load_receipt.verified` event, missing or mismatched receipt integrity fields, wrong capability/probe identity, or stale evidence keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, dependency resolver wiring, QA reader positive/negative behavior, registry support advancement without complete support, target-profile overlay positive/negative behavior, remaining-inventory selection, and event/schema freeze coverage. |
+| Rollback | Reverting this slice removes only the runtime module load receipt package/probe/reader wiring and returns `runtime.module_load_receipt.v1` to unsupported evidence without changing business runtime gameplay templates or entering Stage 5. |
+
+Focused and local validation before candidate-ready record:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 1.88s
+result=PASS: 8 files / 253 tests
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 9.23s
+result=PASS: 98 files / 1279 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 59.08s
+result=PASS: contracts 98 files / 1279 tests; workspace 34 files / 410 tests; Playwright QA runner 45 tests passed.
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.51s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.02s
+result=PASS
+
+command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
+exitCode=0
+duration=real 0.07s
+result=PASS: active_skill_paths=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_file_count=8; skill_bundle_digest=7ee65d1011bfd4f3f4e43bb571a879ba8468b02c04b5d00cc11f3af137df266e.
+
+command=/usr/bin/time -p npx tsx -e "<runtime.module_load_receipt.v1 support summary and remaining inventory>"
+exitCode=0
+duration=real 0.50s
+result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=43; staticCompleteSupportedCount=0; sameRunObservedOnlyCount=42; committedClosedCapabilityCount=42; unsupported_unregistered=16; runtime.module_load_receipt.v1 classification=DEFERRED; state=registered_without_required_probe_verification; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; completeSupported=false; remaining next_checkpoint_id=stage4.runtime_module_load_receipt_v1.complete_supported_package_slice; selectionFailure=null.
+```
+
+Post-record validation requirement:
+
+- This candidate record changes the final tree. Before creating the immutable candidate commit, focused closure contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, final diff range check, Skill freshness, capability support alignment, and Parent Loop inventory alignment must be re-run or explicitly recorded as fresh for the final tree.
+- Candidate commit must not write its own SHA into this candidate record.
+- Oracle request must bind the candidate commit SHA plus `reviewed_skill_revision=7ee65d1011bfd4f3f4e43bb571a879ba8468b02c04b5d00cc11f3af137df266e`.
+- Candidate pre-review state keeps `oracle_status=not_submitted`; Oracle pending state belongs to the external review run after the request is accepted and an `agent_id` is recorded.
+
 ## Stage 4 Implementation: `rules.state_transition_graph.v1` complete-supported package slice
 
 Checkpoint identity:

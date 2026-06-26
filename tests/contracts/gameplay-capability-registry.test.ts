@@ -35,6 +35,7 @@ import {
   PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID,
   REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID,
   RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID,
+  RUNTIME_MODULE_LOAD_RECEIPT_REQUIRED_PROBE_ID,
   RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID,
   RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID,
   RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
@@ -158,6 +159,11 @@ describe('Gameplay capability registry', () => {
       legacyRuntimeCapabilities: []
     });
     expect(findGameplayCapability('runtime.manifest_binding.v1')).toMatchObject({
+      status: 'planned',
+      domain: 'runtime',
+      legacyRuntimeCapabilities: []
+    });
+    expect(findGameplayCapability('runtime.module_load_receipt.v1')).toMatchObject({
       status: 'planned',
       domain: 'runtime',
       legacyRuntimeCapabilities: []
@@ -899,6 +905,34 @@ describe('Gameplay capability registry', () => {
     expect(manifestBinding.legacyRuntimeCapabilities).toEqual([]);
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(manifestBinding)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(manifestBinding)).toBe(false);
+  });
+
+  it('scopes runtime module load receipt package-owned QA without static support promotion', () => {
+    const moduleLoadReceipt = findGameplayCapability('runtime.module_load_receipt.v1');
+
+    if (moduleLoadReceipt === undefined) {
+      throw new Error('Expected runtime.module_load_receipt.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(moduleLoadReceipt)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(moduleLoadReceipt.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(moduleLoadReceipt.qa).toEqual({
+      requiredProbeIds: [RUNTIME_MODULE_LOAD_RECEIPT_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(moduleLoadReceipt.legacyRuntimeCapabilities).toEqual([]);
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(moduleLoadReceipt)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(moduleLoadReceipt)).toBe(false);
   });
 
   it('scopes pickup weapon supply package-owned QA without static support promotion', () => {

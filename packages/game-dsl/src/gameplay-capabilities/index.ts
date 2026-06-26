@@ -13,6 +13,8 @@ export * from './review-oracle-final-gate-runtime-module.js';
 export * from './review-oracle-final-gate-package.js';
 export * from './runtime-manifest-binding-runtime-module.js';
 export * from './runtime-manifest-binding-package.js';
+export * from './runtime-module-load-receipt-runtime-module.js';
+export * from './runtime-module-load-receipt-package.js';
 export * from './rules-checkpoint-restore-runtime-module.js';
 export * from './rules-checkpoint-restore-package.js';
 export * from './rules-encounter-gate-runtime-module.js';

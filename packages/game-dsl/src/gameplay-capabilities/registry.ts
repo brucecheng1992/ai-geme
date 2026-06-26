@@ -22,6 +22,10 @@ import {
   createRuntimeManifestBindingPackageContract
 } from './runtime-manifest-binding-package.js';
 import {
+  RUNTIME_MODULE_LOAD_RECEIPT_REQUIRED_PROBE_ID,
+  createRuntimeModuleLoadReceiptPackageContract
+} from './runtime-module-load-receipt-package.js';
+import {
   RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID,
   createRulesCheckpointRestorePackageContract
 } from './rules-checkpoint-restore-package.js';
@@ -548,6 +552,19 @@ const runtimeManifestBindingPackageEvidence: GameplayCapabilityEvidence = runtim
   : canonicalRuntimeLoaderEvidence;
 const runtimeManifestBindingPackageQa: GameplayCapabilityQaEvidence = runtimeManifestBindingPackageReport.supportEligible
   ? { requiredProbeIds: [RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
+const runtimeModuleLoadReceiptPackageReport = validateGameplayCapabilityPackage(createRuntimeModuleLoadReceiptPackageContract());
+const runtimeModuleLoadReceiptPackageEvidence: GameplayCapabilityEvidence = runtimeModuleLoadReceiptPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const runtimeModuleLoadReceiptPackageQa: GameplayCapabilityQaEvidence = runtimeModuleLoadReceiptPackageReport.supportEligible
+  ? { requiredProbeIds: [RUNTIME_MODULE_LOAD_RECEIPT_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
 const rulesCheckpointRestorePackageReport = validateGameplayCapabilityPackage(createRulesCheckpointRestorePackageContract());
 const rulesCheckpointRestorePackageEvidence: GameplayCapabilityEvidence = rulesCheckpointRestorePackageReport.supportEligible
@@ -1267,6 +1284,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     runtimeManifestBindingPackageEvidence,
     runtimeManifestBindingPackageQa
+  ),
+  planned(
+    'runtime.module_load_receipt.v1',
+    'runtime',
+    'Runtime module load receipt',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    runtimeModuleLoadReceiptPackageEvidence,
+    runtimeModuleLoadReceiptPackageQa
   ),
   planned(
     'combat.airborne_fire.v1',
