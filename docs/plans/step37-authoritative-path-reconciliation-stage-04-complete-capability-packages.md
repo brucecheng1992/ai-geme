@@ -6182,14 +6182,23 @@ closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
 candidate_status=ready_for_commit
-oracle_status=not_submitted
+oracle_status=approved
+oracle_submission_id=019f05f9-c55c-7263-95c1-208885546cc0
+oracle_agent_id=019f058a-4f55-7da1-acfe-22d429657c2c
+oracle_result=APPROVED_FOR_RECEIPT
 review_required=true
-closure_status=open
+closure_status=closed
 parent_stage_status=running
 parent_loop_status=running
 global_exit_conditions_met=false
 user_input_required=false
 next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage4.ui_win_failure_transitions_v1.complete_supported_package_slice
+next_atomic_step_label=Stage 4 ui.win_failure_transitions.v1 complete-supported package slice implementation atomic step
+next_atomic_step_parent_stage_id=stage4
+next_atomic_step_selection_rule=first_unmet_checkpoint_in_authoritative_inventory
+next_atomic_step_source_plan_revision=cba4bef55035226f99fdb040a37bd24ef6ed6ba2:docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md
+next_atomic_step_unmet_reason=Stage 4 ui.win_failure_transitions.v1 remains unsupported_unregistered; static completeSupported=false; missingEvidenceDimensions=[schema_expressible,normalized,compiled,runtime_consumed,qa_observed]; missingSupportEvidencePrerequisites=[dslSchema,normalizer,irCompiler,runtimeModule,amendmentOperations,capabilityOwnedQa,artifactEvidence,renderContract,requiredProbeIds,requiredProbesVerified].
 active_skill_revision_type=sha256_bundle
 active_skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
 active_skill_root_identity=/Users/dahufa/.agents/skills
@@ -6198,7 +6207,11 @@ active_skill_manifest_columns=relativePath,fileType,byteLength,mode,sha256,symli
 active_skill_manifest_order=ascii_root_relative_path
 active_skill_manifest_sha_input_bytes=1096
 active_skill_bundle_digest=cfa7dcd5b5a97ae5027526712ee848e91ab7043912a15cc69ff3efc6822d3b28
-reviewed_skill_bundle_digest=pending_oracle_review
+candidate_commit_sha=cba4bef55035226f99fdb040a37bd24ef6ed6ba2
+candidate_commit_tree=c92b6157a6dac989e51ca93297a55cfc3398c9d3
+reviewed_commit_sha=cba4bef55035226f99fdb040a37bd24ef6ed6ba2
+reviewed_commit_tree=c92b6157a6dac989e51ca93297a55cfc3398c9d3
+reviewed_skill_bundle_digest=cfa7dcd5b5a97ae5027526712ee848e91ab7043912a15cc69ff3efc6822d3b28
 repo_base_commit=16b5f6afa1168059bbf09accb72e06ee11de6a3e
 repo_base_tree=23e2cc255072d2e818bb91a2454c6ecaa76dee6d
 superseded_candidate_commit_sha=d3410fcd206de7db7f661394c4ef6b357f0626de
@@ -6365,6 +6378,41 @@ exitCode=0
 duration=real 0.66s
 result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=53; staticCompleteSupportedCount=0; committedClosedCapabilityCount=52; unsupported_unregistered=6; currentCheckpointId=stage4.ui_hud_retries_v1.complete_supported_package_slice; ui.hud_retries.v1 classification=DEFERRED; state=registered_without_required_probe_verification; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; completeSupported=false; missingSupportEvidencePrerequisites=[requiredProbesVerified]; selectionFailure=null.
 ```
+
+Oracle re-review receipt:
+
+```text
+oracle_submission_id=019f05f9-c55c-7263-95c1-208885546cc0
+oracle_agent_id=019f058a-4f55-7da1-acfe-22d429657c2c
+oracle_result=APPROVED_FOR_RECEIPT
+reviewed_commit_sha=cba4bef55035226f99fdb040a37bd24ef6ed6ba2
+reviewed_commit_tree=c92b6157a6dac989e51ca93297a55cfc3398c9d3
+reviewed_skill_bundle_digest=cfa7dcd5b5a97ae5027526712ee848e91ab7043912a15cc69ff3efc6822d3b28
+oracle_p0=none
+oracle_p1=none
+oracle_p2=none
+oracle_p3=none
+result=APPROVED_FOR_RECEIPT: Oracle recomputed the declared 8-file, 7-column Skill manifest protocol and matched the candidate record digest.
+```
+
+Parent Loop Driver handoff:
+
+```text
+closure_scope=atomic_step
+atomic_step_status=closed
+parent_stage_status=running
+parent_loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage4.ui_win_failure_transitions_v1.complete_supported_package_slice
+next_atomic_step_label=Stage 4 ui.win_failure_transitions.v1 complete-supported package slice implementation atomic step
+remaining_inventory_command=/usr/bin/time -p npx tsx "<ui.hud_retries.v1 closed support summary and remaining inventory>"
+remaining_inventory_exit_code=0
+remaining_inventory_result=PASS: committedClosedCapabilityCount=53; unsupported_unregistered=6; nextCheckpointId=stage4.ui_win_failure_transitions_v1.complete_supported_package_slice; selectionFailure=null.
+```
+
+Exit assessment after receipt: `CLOSED_ATOMIC_STEP_ONLY`. The current atomic implementation is locally validated, committed as candidate `cba4bef55035226f99fdb040a37bd24ef6ed6ba2`, approved by Oracle for receipt, and closed only for `stage4.ui_hud_retries_v1.complete_supported_package_slice`. Stage 4 remains active and Step37 global exits remain unmet; the Parent Loop must continue with `stage4.ui_win_failure_transitions_v1.complete_supported_package_slice` unless a verified blocker appears.
 
 ## Stage 4 Implementation: `ui.hud_player_health.v1` complete-supported package slice
 
