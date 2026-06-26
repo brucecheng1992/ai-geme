@@ -93,6 +93,8 @@ export * from './spawn-stop-on-boss-defeat-runtime-module.js';
 export * from './spawn-stop-on-boss-defeat-package.js';
 export * from './ui-failure-restart-runtime-module.js';
 export * from './ui-failure-restart-package.js';
+export * from './ui-hud-current-weapon-runtime-module.js';
+export * from './ui-hud-current-weapon-package.js';
 export * from './ui-hud-boss-health-runtime-module.js';
 export * from './ui-hud-boss-health-package.js';
 export * from './health-damage-invulnerability-runtime-module.js';

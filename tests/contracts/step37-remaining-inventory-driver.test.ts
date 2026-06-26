@@ -170,6 +170,7 @@ describe('Step37 remaining complete-supported inventory driver', () => {
       'spawn.explicit_declarations.v1',
       'spawn.static.v1',
       'spawn.stop_on_boss_defeat.v1',
+      'ui.hud_boss_health.v1',
       'ui.failure_restart.v1',
       'weapon.death_reset.v1',
       'weapon.default_straight_single.v1',
@@ -189,18 +190,18 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     });
 
     expect(report.requiredCapabilityCount).toBe(59);
-    expect(report.registeredCapabilityCount).toBe(50);
+    expect(report.registeredCapabilityCount).toBe(51);
     expect(report.staticCompleteSupportedCount).toBe(0);
-    expect(report.stateCounts.unsupported_unregistered).toBe(9);
-    expect(report.committedClosedCapabilityCount).toBe(49);
+    expect(report.stateCounts.unsupported_unregistered).toBe(8);
+    expect(report.committedClosedCapabilityCount).toBe(50);
     expect(report.capabilities.find((item) => item.capabilityId === 'runtime.module_load_receipt.v1')).toMatchObject({
       closedInCommittedHistory: true,
       closedByCheckpointIds: ['closed.runtime.module_load_receipt.v1']
     });
     expect(report.nextCheckpoint).not.toBeNull();
-    expect(report.nextCheckpoint?.checkpoint_id).toBe('stage4.ui_hud_boss_health_v1.complete_supported_package_slice');
+    expect(report.nextCheckpoint?.checkpoint_id).toBe('stage4.ui_hud_current_weapon_v1.complete_supported_package_slice');
     expect(report.nextCheckpoint?.next_atomic_step).toBe(
-      'Stage 4 ui.hud_boss_health.v1 complete-supported package slice implementation atomic step'
+      'Stage 4 ui.hud_current_weapon.v1 complete-supported package slice implementation atomic step'
     );
     expect(report.checkpointInventory.map((checkpoint) => checkpoint.checkpoint_id)).not.toContain(
       'stage4.runtime_module_load_receipt_v1.complete_supported_package_slice'

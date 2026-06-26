@@ -54,6 +54,10 @@ import {
   createUiFailureRestartPackageContract
 } from './ui-failure-restart-package.js';
 import {
+  UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID,
+  createUiHudCurrentWeaponPackageContract
+} from './ui-hud-current-weapon-package.js';
+import {
   UI_HUD_BOSS_HEALTH_REQUIRED_PROBE_ID,
   createUiHudBossHealthPackageContract
 } from './ui-hud-boss-health-package.js';
@@ -684,6 +688,19 @@ const uiFailureRestartPackageEvidence: GameplayCapabilityEvidence = uiFailureRes
   : canonicalRuntimeLoaderEvidence;
 const uiFailureRestartPackageQa: GameplayCapabilityQaEvidence = uiFailureRestartPackageReport.supportEligible
   ? { requiredProbeIds: [UI_FAILURE_RESTART_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
+const uiHudCurrentWeaponPackageReport = validateGameplayCapabilityPackage(createUiHudCurrentWeaponPackageContract());
+const uiHudCurrentWeaponPackageEvidence: GameplayCapabilityEvidence = uiHudCurrentWeaponPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const uiHudCurrentWeaponPackageQa: GameplayCapabilityQaEvidence = uiHudCurrentWeaponPackageReport.supportEligible
+  ? { requiredProbeIds: [UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
 const uiHudBossHealthPackageReport = validateGameplayCapabilityPackage(createUiHudBossHealthPackageContract());
 const uiHudBossHealthPackageEvidence: GameplayCapabilityEvidence = uiHudBossHealthPackageReport.supportEligible
@@ -1600,6 +1617,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     uiFailureRestartPackageEvidence,
     uiFailureRestartPackageQa
+  ),
+  planned(
+    'ui.hud_current_weapon.v1',
+    'ui',
+    'Current weapon HUD',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    uiHudCurrentWeaponPackageEvidence,
+    uiHudCurrentWeaponPackageQa
   ),
   planned(
     'ui.hud_boss_health.v1',

@@ -185,6 +185,18 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   failureRestartPlayerHealthReset?: boolean;
   failureRestartRetryCountReset?: boolean;
   failureRestartFailureScreenCleared?: boolean;
+  hudCurrentWeaponVisible?: boolean;
+  hudCurrentWeaponSchemaVersion?: string;
+  hudCurrentWeaponProfileId?: string;
+  hudCurrentWeaponRuntimeFamily?: string;
+  hudCurrentWeaponWeaponId?: string;
+  hudCurrentWeaponExpectedWeaponId?: string;
+  hudCurrentWeaponSlot?: string;
+  hudCurrentWeaponLabelVisible?: boolean;
+  hudCurrentWeaponLabelText?: string;
+  hudCurrentWeaponIconVisible?: boolean;
+  hudCurrentWeaponBoundToWeaponState?: boolean;
+  hudCurrentWeaponMatchesCurrentWeapon?: boolean;
   hudBossHealthVisible?: boolean;
   hudBossHealthSchemaVersion?: string;
   hudBossHealthProfileId?: string;
@@ -780,6 +792,18 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('failureRestartPlayerHealthReset', expected, observed.failureRestartPlayerHealthReset),
     ...compareExpectedBooleanField('failureRestartRetryCountReset', expected, observed.failureRestartRetryCountReset),
     ...compareExpectedBooleanField('failureRestartFailureScreenCleared', expected, observed.failureRestartFailureScreenCleared),
+    ...compareExpectedBooleanField('hudCurrentWeaponVisible', expected, observed.hudCurrentWeaponVisible),
+    ...compareExpectedStringField('hudCurrentWeaponSchemaVersion', expected, observed.hudCurrentWeaponSchemaVersion),
+    ...compareExpectedStringField('hudCurrentWeaponProfileId', expected, observed.hudCurrentWeaponProfileId),
+    ...compareExpectedStringField('hudCurrentWeaponRuntimeFamily', expected, observed.hudCurrentWeaponRuntimeFamily),
+    ...compareExpectedStringField('hudCurrentWeaponWeaponId', expected, observed.hudCurrentWeaponWeaponId),
+    ...compareExpectedStringField('hudCurrentWeaponExpectedWeaponId', expected, observed.hudCurrentWeaponExpectedWeaponId),
+    ...compareExpectedStringField('hudCurrentWeaponSlot', expected, observed.hudCurrentWeaponSlot),
+    ...compareExpectedBooleanField('hudCurrentWeaponLabelVisible', expected, observed.hudCurrentWeaponLabelVisible),
+    ...compareExpectedStringField('hudCurrentWeaponLabelText', expected, observed.hudCurrentWeaponLabelText),
+    ...compareExpectedBooleanField('hudCurrentWeaponIconVisible', expected, observed.hudCurrentWeaponIconVisible),
+    ...compareExpectedBooleanField('hudCurrentWeaponBoundToWeaponState', expected, observed.hudCurrentWeaponBoundToWeaponState),
+    ...compareExpectedBooleanField('hudCurrentWeaponMatchesCurrentWeapon', expected, observed.hudCurrentWeaponMatchesCurrentWeapon),
     ...compareExpectedBooleanField('hudBossHealthVisible', expected, observed.hudBossHealthVisible),
     ...compareExpectedStringField('hudBossHealthSchemaVersion', expected, observed.hudBossHealthSchemaVersion),
     ...compareExpectedStringField('hudBossHealthProfileId', expected, observed.hudBossHealthProfileId),

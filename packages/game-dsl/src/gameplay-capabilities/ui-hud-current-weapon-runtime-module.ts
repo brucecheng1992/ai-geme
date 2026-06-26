@@ -1,0 +1,9 @@
+export const UI_HUD_CURRENT_WEAPON_CAPABILITY_ID = 'ui.hud_current_weapon.v1';
+export const UI_HUD_CURRENT_WEAPON_RUNTIME_SYSTEM_ID = 'ui.hud_current_weapon';
+export const UI_HUD_CURRENT_WEAPON_EVENT_TYPE = 'ui.hud_current_weapon.verified';
+export const UI_HUD_CURRENT_WEAPON_PROFILE_ID = 'DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1';
+export const UI_HUD_CURRENT_WEAPON_RUNTIME_FAMILY = 'phaser_2d_action_arcade.v1';
+export const UI_HUD_CURRENT_WEAPON_SCHEMA_VERSION = 'ui_hud_current_weapon.v0.1';
+export const UI_HUD_CURRENT_WEAPON_LABEL_TEXT = 'WEAPON';
+export const UI_HUD_CURRENT_WEAPON_SLOT = 'primary';
+export const UI_HUD_CURRENT_WEAPON_WEAPON_ID = 'weapon.default_straight_single.v1';

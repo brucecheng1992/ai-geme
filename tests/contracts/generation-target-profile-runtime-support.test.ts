@@ -74,6 +74,14 @@ import {
   UI_HUD_BOSS_HEALTH_REQUIRED_PROBE_ID,
   UI_HUD_BOSS_HEALTH_RUNTIME_FAMILY,
   UI_HUD_BOSS_HEALTH_SCHEMA_VERSION,
+  UI_HUD_CURRENT_WEAPON_EVENT_TYPE,
+  UI_HUD_CURRENT_WEAPON_LABEL_TEXT,
+  UI_HUD_CURRENT_WEAPON_PROFILE_ID,
+  UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID,
+  UI_HUD_CURRENT_WEAPON_RUNTIME_FAMILY,
+  UI_HUD_CURRENT_WEAPON_SCHEMA_VERSION,
+  UI_HUD_CURRENT_WEAPON_SLOT,
+  UI_HUD_CURRENT_WEAPON_WEAPON_ID,
   FIXED_PROMPT_BINDING_EVENT_TYPE,
   FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_ERROR_CODE,
@@ -175,6 +183,7 @@ import {
   RUNTIME_PLAN_COVERAGE_RUNTIME_FAMILY,
   RUNTIME_PLAN_COVERAGE_SCHEMA_VERSION,
   createRuntimePlanCoveragePackageContract,
+  createUiHudCurrentWeaponPackageContract,
   SCENE_ORDERED_SEGMENTS_CAPABILITY_ID,
   SCENE_ORDERED_SEGMENTS_COUNT,
   SCENE_ORDERED_SEGMENTS_EVENT_TYPE,
@@ -302,6 +311,7 @@ const enemyFlyingRightEntryCapabilityId = 'enemy.flying_right_entry.v1';
 const enemyPatrolInfantryCapabilityId = 'enemy.patrol_infantry.v1';
 const feedbackVictoryDeclarationCapabilityId = 'feedback.victory_declaration.v1';
 const uiFailureRestartCapabilityId = 'ui.failure_restart.v1';
+const uiHudCurrentWeaponCapabilityId = 'ui.hud_current_weapon.v1';
 const uiHudBossHealthCapabilityId = 'ui.hud_boss_health.v1';
 const generationFallbackPolicyFailClosedCapabilityId = 'generation.fallback_policy_fail_closed.v1';
 const goalBossUnlockCapabilityId = 'goal.boss_unlock.v1';
@@ -3305,6 +3315,100 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
   });
 
+  it('keeps current weapon HUD unverified when weapon events exist but HUD binding fields are missing', () => {
+    const dependencyEvidence: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: defaultWeaponCapabilityId,
+        probeId: DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
+        action: 'shoot_projectile',
+        eventType: 'player.fired',
+        eventTypes: ['player.fired', 'projectile.spawned'],
+        projectileEntityId: 'projectile_default_001',
+        sourceRef: 'runtime.weapon.default_straight_single',
+        status: 'observed'
+      }
+    ];
+    const weaponOnlyQaReport = buildSingleCapabilityQaReport({
+      capabilityId: uiHudCurrentWeaponCapabilityId,
+      packageContract: createUiHudCurrentWeaponPackageContract(),
+      dependencyPackages: [createDefaultStraightSingleWeaponPackageContract()],
+      additionalObserved: dependencyEvidence,
+      eventType: 'player.fired',
+      eventTypes: ['player.fired', 'projectile.spawned'],
+      probeId: UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID,
+      action: 'show_current_weapon_hud',
+      sourceRef: 'runtime.weapon.default_straight_single',
+      stateFields: {
+        currentWeaponId: UI_HUD_CURRENT_WEAPON_WEAPON_ID
+      }
+    });
+    const observedHudQaReport = buildSingleCapabilityQaReport({
+      capabilityId: uiHudCurrentWeaponCapabilityId,
+      packageContract: createUiHudCurrentWeaponPackageContract(),
+      dependencyPackages: [createDefaultStraightSingleWeaponPackageContract()],
+      additionalObserved: dependencyEvidence,
+      eventType: UI_HUD_CURRENT_WEAPON_EVENT_TYPE,
+      eventTypes: ['player.fired', 'projectile.spawned', UI_HUD_CURRENT_WEAPON_EVENT_TYPE],
+      probeId: UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID,
+      action: 'show_current_weapon_hud',
+      sourceRef: 'runtime.ui.hud_current_weapon',
+      stateFields: hudCurrentWeaponStateFields()
+    });
+    const weaponOnlyReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_ui_hud_current_weapon_weapon_only',
+      capabilityQaReport: weaponOnlyQaReport
+    });
+    const observedHudReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_ui_hud_current_weapon_observed_state',
+      capabilityQaReport: observedHudQaReport
+    });
+    const weaponOnlyState = weaponOnlyReport.capabilities.find((entry) => entry.capabilityId === uiHudCurrentWeaponCapabilityId);
+    const observedHudState = observedHudReport.capabilities.find((entry) => entry.capabilityId === uiHudCurrentWeaponCapabilityId);
+
+    expect(weaponOnlyQaReport.requiredResults.find((entry) => entry.probeId === DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(weaponOnlyQaReport.requiredResults.find((entry) => entry.probeId === UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID}.assertion.current_weapon_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${UI_HUD_CURRENT_WEAPON_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID}.assertion.current_weapon_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected hudCurrentWeaponVisible=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID}.assertion.current_weapon_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected hudCurrentWeaponBoundToWeaponState=true, observed <missing>')
+        })
+      ])
+    });
+    expect(weaponOnlyState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedHudState).toMatchObject({
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+  });
+
   it('keeps state transition graph unverified when win lose evidence lacks explicit graph fields', () => {
     const genericGraphQaReport = buildSingleCapabilityQaReport({
       capabilityId: rulesStateTransitionGraphCapabilityId,
@@ -5731,6 +5835,23 @@ function hudBossHealthStateFields(): Record<string, unknown> {
     hudBossHealthBarValueMatchesBoss: true,
     hudBossHealthBoundToBossLifecycle: true,
     hudBossHealthUpdatesOnDamage: true
+  };
+}
+
+function hudCurrentWeaponStateFields(): Record<string, unknown> {
+  return {
+    hudCurrentWeaponVisible: true,
+    hudCurrentWeaponSchemaVersion: UI_HUD_CURRENT_WEAPON_SCHEMA_VERSION,
+    hudCurrentWeaponProfileId: UI_HUD_CURRENT_WEAPON_PROFILE_ID,
+    hudCurrentWeaponRuntimeFamily: UI_HUD_CURRENT_WEAPON_RUNTIME_FAMILY,
+    hudCurrentWeaponWeaponId: UI_HUD_CURRENT_WEAPON_WEAPON_ID,
+    hudCurrentWeaponExpectedWeaponId: UI_HUD_CURRENT_WEAPON_WEAPON_ID,
+    hudCurrentWeaponSlot: UI_HUD_CURRENT_WEAPON_SLOT,
+    hudCurrentWeaponLabelVisible: true,
+    hudCurrentWeaponLabelText: UI_HUD_CURRENT_WEAPON_LABEL_TEXT,
+    hudCurrentWeaponIconVisible: true,
+    hudCurrentWeaponBoundToWeaponState: true,
+    hudCurrentWeaponMatchesCurrentWeapon: true
   };
 }
 

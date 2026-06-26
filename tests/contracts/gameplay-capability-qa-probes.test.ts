@@ -114,6 +114,15 @@ import {
   UI_HUD_BOSS_HEALTH_RUNTIME_FAMILY,
   UI_HUD_BOSS_HEALTH_SCHEMA_VERSION,
   createUiHudBossHealthPackageContract,
+  UI_HUD_CURRENT_WEAPON_EVENT_TYPE,
+  UI_HUD_CURRENT_WEAPON_LABEL_TEXT,
+  UI_HUD_CURRENT_WEAPON_PROFILE_ID,
+  UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID,
+  UI_HUD_CURRENT_WEAPON_RUNTIME_FAMILY,
+  UI_HUD_CURRENT_WEAPON_SCHEMA_VERSION,
+  UI_HUD_CURRENT_WEAPON_SLOT,
+  UI_HUD_CURRENT_WEAPON_WEAPON_ID,
+  createUiHudCurrentWeaponPackageContract,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_ERROR_CODE,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_POLICY,
@@ -4868,6 +4877,112 @@ describe('Capability-owned runtime QA probes', () => {
           assertionId: `${probeId}.assertion.boss_health_hud_verified`,
           status: 'failed',
           message: expect.stringContaining('expected hudBossHealthBoundToBossLifecycle=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedHud.status).toBe('passed');
+  });
+
+  it('does not verify UI current weapon HUD from weapon events without HUD binding fields', () => {
+    const capabilityId = 'ui.hud_current_weapon.v1';
+    const probeId = UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID;
+    const packages = [createDefaultStraightSingleWeaponPackageContract(), createUiHudCurrentWeaponPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const defaultWeaponEvidence: CapabilityRuntimeObservedProbeEvidence = {
+      capabilityId: 'weapon.default_straight_single.v1',
+      probeId: DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
+      action: 'shoot_projectile',
+      eventType: 'player.fired',
+      eventTypes: ['player.fired', 'projectile.spawned'],
+      projectileEntityId: 'projectile_default_001',
+      sourceRef: 'runtime.weapon.default_straight_single',
+      status: 'observed'
+    };
+    const weaponEventOnly = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            defaultWeaponEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'show_current_weapon_hud',
+              eventType: 'player.fired',
+              eventTypes: ['player.fired', 'projectile.spawned'],
+              currentWeaponId: UI_HUD_CURRENT_WEAPON_WEAPON_ID,
+              sourceRef: 'runtime.weapon.default_straight_single',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedHud = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            defaultWeaponEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'show_current_weapon_hud',
+              eventType: UI_HUD_CURRENT_WEAPON_EVENT_TYPE,
+              eventTypes: ['player.fired', 'projectile.spawned', UI_HUD_CURRENT_WEAPON_EVENT_TYPE],
+              hudCurrentWeaponVisible: true,
+              hudCurrentWeaponSchemaVersion: UI_HUD_CURRENT_WEAPON_SCHEMA_VERSION,
+              hudCurrentWeaponProfileId: UI_HUD_CURRENT_WEAPON_PROFILE_ID,
+              hudCurrentWeaponRuntimeFamily: UI_HUD_CURRENT_WEAPON_RUNTIME_FAMILY,
+              hudCurrentWeaponWeaponId: UI_HUD_CURRENT_WEAPON_WEAPON_ID,
+              hudCurrentWeaponExpectedWeaponId: UI_HUD_CURRENT_WEAPON_WEAPON_ID,
+              hudCurrentWeaponSlot: UI_HUD_CURRENT_WEAPON_SLOT,
+              hudCurrentWeaponLabelVisible: true,
+              hudCurrentWeaponLabelText: UI_HUD_CURRENT_WEAPON_LABEL_TEXT,
+              hudCurrentWeaponIconVisible: true,
+              hudCurrentWeaponBoundToWeaponState: true,
+              hudCurrentWeaponMatchesCurrentWeapon: true,
+              sourceRef: 'runtime.ui.hud_current_weapon',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(weaponEventOnly.status).toBe('failed');
+    expect(weaponEventOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(weaponEventOnly.requiredResults.find((entry) => entry.probeId === DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(weaponEventOnly.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.current_weapon_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${UI_HUD_CURRENT_WEAPON_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.current_weapon_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected hudCurrentWeaponVisible=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.current_weapon_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected hudCurrentWeaponBoundToWeaponState=true, observed <missing>')
         })
       ])
     );

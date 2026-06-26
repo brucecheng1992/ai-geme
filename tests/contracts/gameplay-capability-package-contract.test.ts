@@ -197,6 +197,11 @@ import {
   createUiHudBossHealthPackageContract
 } from '../../packages/game-dsl/src/gameplay-capabilities/ui-hud-boss-health-package.js';
 import {
+  UI_HUD_CURRENT_WEAPON_PACKAGE_REQUIRED_EVIDENCE_ID,
+  UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID,
+  createUiHudCurrentWeaponPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/ui-hud-current-weapon-package.js';
+import {
   UI_FAILURE_RESTART_EVENT_TYPE,
   UI_FAILURE_RESTART_FAILURE_TEXT,
   UI_FAILURE_RESTART_INPUT,
@@ -217,6 +222,16 @@ import {
   UI_HUD_BOSS_HEALTH_RUNTIME_SYSTEM_ID,
   UI_HUD_BOSS_HEALTH_SCHEMA_VERSION
 } from '../../packages/game-dsl/src/gameplay-capabilities/ui-hud-boss-health-runtime-module.js';
+import {
+  UI_HUD_CURRENT_WEAPON_EVENT_TYPE,
+  UI_HUD_CURRENT_WEAPON_LABEL_TEXT,
+  UI_HUD_CURRENT_WEAPON_PROFILE_ID,
+  UI_HUD_CURRENT_WEAPON_RUNTIME_FAMILY,
+  UI_HUD_CURRENT_WEAPON_RUNTIME_SYSTEM_ID,
+  UI_HUD_CURRENT_WEAPON_SCHEMA_VERSION,
+  UI_HUD_CURRENT_WEAPON_SLOT,
+  UI_HUD_CURRENT_WEAPON_WEAPON_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/ui-hud-current-weapon-runtime-module.js';
 import {
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_PACKAGE_REQUIRED_EVIDENCE_ID,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID,
@@ -1497,6 +1512,67 @@ describe('Gameplay capability package contract', () => {
             hudBossHealthBarValueMatchesBoss: true,
             hudBossHealthBoundToBossLifecycle: true,
             hudBossHealthUpdatesOnDamage: true
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the UI current-weapon HUD package-owned QA contract with weapon-bound HUD state evidence', () => {
+    const contract = createUiHudCurrentWeaponPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'ui.hud_current_weapon.v1'
+    });
+    expect(contract.dependencies).toEqual([{ capabilityId: 'weapon.default_straight_single.v1', range: '^v1' }]);
+    expect(contract.runtime.systems).toEqual([
+      expect.objectContaining({
+        id: UI_HUD_CURRENT_WEAPON_RUNTIME_SYSTEM_ID,
+        phase: 'feedback',
+        dependencies: ['weapon.default_straight_single']
+      })
+    ]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: UI_HUD_CURRENT_WEAPON_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'ui.hud_current_weapon.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: UI_HUD_CURRENT_WEAPON_EVENT_TYPE,
+          parameters: expect.objectContaining({
+            weaponId: UI_HUD_CURRENT_WEAPON_WEAPON_ID,
+            slot: UI_HUD_CURRENT_WEAPON_SLOT,
+            labelText: UI_HUD_CURRENT_WEAPON_LABEL_TEXT
+          })
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID}.assertion.current_weapon_hud_verified`,
+          expected: {
+            hudCurrentWeaponVisible: true,
+            hudCurrentWeaponSchemaVersion: UI_HUD_CURRENT_WEAPON_SCHEMA_VERSION,
+            hudCurrentWeaponProfileId: UI_HUD_CURRENT_WEAPON_PROFILE_ID,
+            hudCurrentWeaponRuntimeFamily: UI_HUD_CURRENT_WEAPON_RUNTIME_FAMILY,
+            hudCurrentWeaponWeaponId: UI_HUD_CURRENT_WEAPON_WEAPON_ID,
+            hudCurrentWeaponExpectedWeaponId: UI_HUD_CURRENT_WEAPON_WEAPON_ID,
+            hudCurrentWeaponSlot: UI_HUD_CURRENT_WEAPON_SLOT,
+            hudCurrentWeaponLabelVisible: true,
+            hudCurrentWeaponLabelText: UI_HUD_CURRENT_WEAPON_LABEL_TEXT,
+            hudCurrentWeaponIconVisible: true,
+            hudCurrentWeaponBoundToWeaponState: true,
+            hudCurrentWeaponMatchesCurrentWeapon: true
           }
         })
       ]

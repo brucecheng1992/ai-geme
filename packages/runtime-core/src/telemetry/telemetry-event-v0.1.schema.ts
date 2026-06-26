@@ -30,6 +30,7 @@ export const TelemetryEventTypeSchema = z.enum([
   'spawn.stop_on_boss_defeat.verified',
   'ui.failure_restart.verified',
   'ui.hud_boss_health.verified',
+  'ui.hud_current_weapon.verified',
   'enemy.flying_right_entry.verified',
   'enemy.patrol_infantry.verified',
   'feedback.victory_declaration.verified',
