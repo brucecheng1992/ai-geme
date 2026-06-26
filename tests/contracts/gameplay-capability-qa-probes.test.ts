@@ -19,6 +19,12 @@ import {
   WEAPON_RAPID_FIRE_COOLDOWN_MS,
   WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID,
   createWeaponRapidFirePackageContract,
+  WEAPON_REPLACEMENT_RULE_EVENT_TYPE,
+  WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE,
+  WEAPON_REPLACEMENT_RULE_PREVIOUS_WEAPON_ID,
+  WEAPON_REPLACEMENT_RULE_REPLACEMENT_WEAPON_ID,
+  WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID,
+  createWeaponReplacementRulePackageContract,
   type CapabilityQaProbeDescriptor,
   type GameplayCapabilityPackageContract
 } from '../../packages/game-dsl/src/index.js';
@@ -724,6 +730,77 @@ describe('Capability-owned runtime QA probes', () => {
       })
     ]));
     expect(observedRateState.status).toBe('passed');
+  });
+
+  it('does not verify weapon replacement rule when pickup evidence lacks replacement state fields', () => {
+    const capabilityId = 'weapon.replacement_rule.v1';
+    const probeId = WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID;
+    const replacementPackage = createWeaponReplacementRulePackageContract();
+    const packages = [{ ...replacementPackage, dependencies: [] }];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingReplacementState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'collect_weapon_pickup',
+              eventType: WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE,
+              eventTypes: [WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE, WEAPON_REPLACEMENT_RULE_EVENT_TYPE],
+              pickupCollected: true,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedReplacementState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'collect_weapon_pickup',
+              eventType: WEAPON_REPLACEMENT_RULE_EVENT_TYPE,
+              eventTypes: [WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE, WEAPON_REPLACEMENT_RULE_EVENT_TYPE],
+              pickupCollected: true,
+              weaponReplaced: true,
+              previousWeaponId: WEAPON_REPLACEMENT_RULE_PREVIOUS_WEAPON_ID,
+              currentWeaponId: WEAPON_REPLACEMENT_RULE_REPLACEMENT_WEAPON_ID,
+              replacementWeaponId: WEAPON_REPLACEMENT_RULE_REPLACEMENT_WEAPON_ID,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingReplacementState.status).toBe('failed');
+    expect(missingReplacementState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingReplacementState.requiredResults[0]?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.replaced_weapon`,
+        status: 'failed',
+        message: expect.stringContaining('expected weaponReplaced=true, observed <missing>')
+      })
+    ]));
+    expect(observedReplacementState.status).toBe('passed');
   });
 });
 

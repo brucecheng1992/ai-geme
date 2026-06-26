@@ -30,6 +30,10 @@ import {
   createWeaponRapidFirePackageContract
 } from './weapon-rapid-fire-package.js';
 import {
+  WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID,
+  createWeaponReplacementRulePackageContract
+} from './weapon-replacement-rule-package.js';
+import {
   COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID,
   createCombatAirborneFirePackageContract
 } from './combat-airborne-fire-package.js';
@@ -465,6 +469,19 @@ const weaponRapidFirePackageEvidence: GameplayCapabilityEvidence = weaponRapidFi
 const weaponRapidFirePackageQa: GameplayCapabilityQaEvidence = weaponRapidFirePackageReport.supportEligible
   ? { requiredProbeIds: [WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const weaponReplacementRulePackageReport = validateGameplayCapabilityPackage(createWeaponReplacementRulePackageContract());
+const weaponReplacementRulePackageEvidence: GameplayCapabilityEvidence = weaponReplacementRulePackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const weaponReplacementRulePackageQa: GameplayCapabilityQaEvidence = weaponReplacementRulePackageReport.supportEligible
+  ? { requiredProbeIds: [WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const combatAirborneFirePackageReport = validateGameplayCapabilityPackage(createCombatAirborneFirePackageContract());
 const combatAirborneFirePackageEvidence: GameplayCapabilityEvidence = combatAirborneFirePackageReport.supportEligible
   ? {
@@ -758,7 +775,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     weaponRapidFirePackageEvidence,
     weaponRapidFirePackageQa
   ),
-  planned('weapon.replacement_rule.v1', 'weapon', 'Weapon pickup replacement rule', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),
+  planned(
+    'weapon.replacement_rule.v1',
+    'weapon',
+    'Weapon pickup replacement rule',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    weaponReplacementRulePackageEvidence,
+    weaponReplacementRulePackageQa
+  ),
   planned(
     'weapon.spread_shot.v1',
     'weapon',

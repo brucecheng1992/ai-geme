@@ -38,6 +38,18 @@ import {
   WEAPON_RAPID_FIRE_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/weapon-rapid-fire-runtime-module.js';
 import {
+  WEAPON_REPLACEMENT_RULE_PACKAGE_REQUIRED_EVIDENCE_ID,
+  WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID,
+  createWeaponReplacementRulePackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/weapon-replacement-rule-package.js';
+import {
+  WEAPON_REPLACEMENT_RULE_EVENT_TYPE,
+  WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE,
+  WEAPON_REPLACEMENT_RULE_PREVIOUS_WEAPON_ID,
+  WEAPON_REPLACEMENT_RULE_REPLACEMENT_WEAPON_ID,
+  WEAPON_REPLACEMENT_RULE_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/weapon-replacement-rule-runtime-module.js';
+import {
   CAMERA_SIDE_FOLLOW_PACKAGE_REQUIRED_EVIDENCE_ID,
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   createCameraSideFollowPackageContract
@@ -270,6 +282,52 @@ describe('Gameplay capability package contract', () => {
           kind: 'state_probe',
           runtimeSystemId: WEAPON_RAPID_FIRE_RUNTIME_SYSTEM_ID,
           ref: WEAPON_RAPID_FIRE_BURST_EVENT_TYPE
+        })
+      ]
+    });
+  });
+
+  it('accepts the weapon replacement rule package-owned QA contract', () => {
+    const contract = createWeaponReplacementRulePackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'weapon.replacement_rule.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([WEAPON_REPLACEMENT_RULE_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: WEAPON_REPLACEMENT_RULE_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'weapon.replacement_rule.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE,
+          parameters: expect.objectContaining({
+            previousWeaponId: WEAPON_REPLACEMENT_RULE_PREVIOUS_WEAPON_ID,
+            replacementWeaponId: WEAPON_REPLACEMENT_RULE_REPLACEMENT_WEAPON_ID
+          })
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: WEAPON_REPLACEMENT_RULE_RUNTIME_SYSTEM_ID,
+          ref: WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE
+        }),
+        expect.objectContaining({
+          kind: 'state_probe',
+          runtimeSystemId: WEAPON_REPLACEMENT_RULE_RUNTIME_SYSTEM_ID,
+          ref: WEAPON_REPLACEMENT_RULE_EVENT_TYPE
         })
       ]
     });

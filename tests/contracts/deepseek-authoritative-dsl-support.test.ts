@@ -371,26 +371,25 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
     });
   });
 
-  it('keeps remaining M3 weapon lifecycle capabilities deferred without support evidence', () => {
+  it('registers weapon replacement rule as package-backed but still incomplete support', () => {
     const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
     const capabilities = new Map(support.capabilities.map((capability) => [capability.capabilityId, capability]));
 
-    for (const capabilityId of ['weapon.replacement_rule.v1']) {
-      expect(capabilities.get(capabilityId)).toMatchObject({
-        registered: true,
-        classification: 'DEFERRED',
-        completeSupported: false,
-        legacyBacked: false,
-        evidenceDimensions: {
-          schema_expressible: false,
-          normalized: false,
-          compiled: false,
-          runtime_consumed: false,
-          qa_observed: false
-        },
-        missingEvidenceDimensions: ['schema_expressible', 'normalized', 'compiled', 'runtime_consumed', 'qa_observed']
-      });
-    }
+    expect(capabilities.get('weapon.replacement_rule.v1')).toMatchObject({
+      registered: true,
+      classification: 'DEFERRED',
+      completeSupported: false,
+      legacyBacked: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
   });
 
   it('shows missing support dimensions in the DSL consumption report', () => {
