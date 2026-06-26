@@ -31,6 +31,9 @@ import {
   WEAPON_REPLACEMENT_RULE_REPLACEMENT_WEAPON_ID,
   WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID,
   createWeaponReplacementRulePackageContract,
+  ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
+  ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
+  createArtifactLineageNoManualPatchPackageContract,
   type CapabilityQaProbeDescriptor,
   type GameplayCapabilityPackageContract
 } from '../../packages/game-dsl/src/index.js';
@@ -876,6 +879,86 @@ describe('Capability-owned runtime QA probes', () => {
       })
     ]));
     expect(observedReplacementState.status).toBe('passed');
+  });
+
+  it('does not verify artifact lineage no-manual-patch when lineage evidence lacks no-manual-patch state fields', () => {
+    const capabilityId = 'artifact.lineage_no_manual_patch.v1';
+    const probeId = ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID;
+    const lineagePackage = createArtifactLineageNoManualPatchPackageContract();
+    const packages = [lineagePackage];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingNoManualPatchState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_lineage',
+              eventType: ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
+              eventTypes: [ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE],
+              sourceRef: 'artifact.lineage.hash',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedNoManualPatchState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_lineage',
+              eventType: ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
+              eventTypes: [ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE],
+              pipelineProduced: true,
+              manualPatchDetected: false,
+              lineageVerified: true,
+              sourceRef: 'artifact.lineage.hash',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingNoManualPatchState.status).toBe('failed');
+    expect(missingNoManualPatchState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingNoManualPatchState.requiredResults[0]?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.no_manual_patch`,
+        status: 'failed',
+        message: expect.stringContaining('expected pipelineProduced=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.no_manual_patch`,
+        status: 'failed',
+        message: expect.stringContaining('expected manualPatchDetected=false, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.no_manual_patch`,
+        status: 'failed',
+        message: expect.stringContaining('expected lineageVerified=true, observed <missing>')
+      })
+    ]));
+    expect(observedNoManualPatchState.status).toBe('passed');
   });
 });
 

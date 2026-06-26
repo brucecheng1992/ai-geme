@@ -330,6 +330,27 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
     });
   });
 
+  it('registers artifact lineage no-manual-patch as package-backed but still incomplete support', () => {
+    const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
+    const capabilities = new Map(support.capabilities.map((capability) => [capability.capabilityId, capability]));
+
+    expect(capabilities.get('artifact.lineage_no_manual_patch.v1')).toMatchObject({
+      registered: true,
+      classification: 'DEFERRED',
+      completeSupported: false,
+      legacyBacked: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+  });
+
   it('reports rapid-fire weapon package-backed evidence without QA completion', () => {
     const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
     const capabilities = new Map(support.capabilities.map((capability) => [capability.capabilityId, capability]));
@@ -453,6 +474,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
 
   it('does not delete or rename existing registry and runtime capability IDs', () => {
     expect(GameplayCapabilityRegistry.entries.map((entry) => entry.id)).toEqual([
+      'artifact.lineage_no_manual_patch.v1',
       'asset.sprite_binding.v1',
       'camera.side_follow.v1',
       'camera.top_down_follow.v1',

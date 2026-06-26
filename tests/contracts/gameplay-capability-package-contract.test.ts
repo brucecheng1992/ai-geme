@@ -171,6 +171,15 @@ import {
   PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE,
   PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/profile-deepseek-run-and-gun-validation-runtime-module.js';
+import {
+  ARTIFACT_LINEAGE_NO_MANUAL_PATCH_PACKAGE_REQUIRED_EVIDENCE_ID,
+  ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
+  createArtifactLineageNoManualPatchPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/artifact-lineage-no-manual-patch-package.js';
+import {
+  ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
+  ARTIFACT_LINEAGE_NO_MANUAL_PATCH_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/artifact-lineage-no-manual-patch-runtime-module.js';
 
 describe('Gameplay capability package contract', () => {
   it('accepts a complete supported package and keeps hashes deterministic', () => {
@@ -788,6 +797,57 @@ describe('Gameplay capability package contract', () => {
           kind: 'runtime_event',
           runtimeSystemId: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_RUNTIME_SYSTEM_ID,
           ref: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE
+        })
+      ]
+    });
+  });
+
+  it('accepts the artifact lineage no-manual-patch package-owned artifact QA contract', () => {
+    const contract = createArtifactLineageNoManualPatchPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'artifact.lineage_no_manual_patch.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([ARTIFACT_LINEAGE_NO_MANUAL_PATCH_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: ARTIFACT_LINEAGE_NO_MANUAL_PATCH_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'artifact.lineage_no_manual_patch.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
+          parameters: expect.objectContaining({
+            source: 'pipeline_artifact_lineage',
+            manualPatchPolicy: 'forbidden'
+          })
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: ARTIFACT_LINEAGE_NO_MANUAL_PATCH_RUNTIME_SYSTEM_ID,
+          ref: ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID}.assertion.no_manual_patch`,
+          expected: {
+            pipelineProduced: true,
+            manualPatchDetected: false,
+            lineageVerified: true
+          }
         })
       ]
     });

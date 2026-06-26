@@ -5950,3 +5950,185 @@ result=requiredCapabilityCount=59; staticCompleteSupportedCount=0; committedClos
 ```
 
 Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4.weapon_spread_shot_v1.complete_supported_package_slice` after candidate commit creation, local validation, Oracle PASS, and receipt-only metadata update. It does not close Stage 4, Step37, production default cutover, legacy authoritative path exit, Stage 5, or final global closure. Parent Loop Driver must continue with `stage4.artifact_lineage_no_manual_patch_v1.complete_supported_package_slice` while global exits remain false and no verified user blocker exists.
+
+## Stage 4 Implementation: `artifact.lineage_no_manual_patch.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.artifact_lineage_no_manual_patch_v1.complete_supported_package_slice
+parent_stage_id=stage4
+capability_id=artifact.lineage_no_manual_patch.v1
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=not_closed
+global_exit_conditions_met=false
+user_input_required=false
+next_action_before_receipt=CREATE_CANDIDATE_COMMIT_THEN_ORACLE_REVIEW
+```
+
+`artifact.lineage_no_manual_patch.v1` was selected by the Parent Loop Driver after the `weapon.spread_shot.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
+
+Minimum closure requirements:
+
+1. Add a package-owned artifact lineage contract with stable capability identity, runtime system identity, no-manual-patch event identity, required probe id, and required QA evidence id.
+2. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `artifact.lineage_no_manual_patch.v1` only when the lineage event and no-manual-patch state fields are present.
+5. Require no-manual-patch state fields: `pipelineProduced=true`, `manualPatchDetected=false`, and `lineageVerified=true`.
+6. Add a negative regression proving lineage/event evidence without those state fields keeps the capability unverified and emits the required missing-probe blocker.
+7. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/artifact-lineage-no-manual-patch-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/artifact-lineage-no-manual-patch-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createArtifactLineageNoManualPatchPackageContract()`.
+- Runtime module identity: `ARTIFACT_LINEAGE_NO_MANUAL_PATCH_RUNTIME_SYSTEM_ID=artifact.lineage_no_manual_patch`.
+- Lineage event: `ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE=artifact.lineage_no_manual_patch.verified`.
+- Required probe: `ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID=artifact.lineage_no_manual_patch.v1.no_manual_patch.browser_qa.v1`.
+- Required state fields: `pipelineProduced`, `manualPatchDetected`, and `lineageVerified`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares the no-manual-patch state fields and fails the required probe when any field is missing or mismatched.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for the same run; it does not mutate static `completeSupported`.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned artifact lineage no-manual-patch capability contract, runtime system identity, lineage verification event, required probe id, required evidence id, and runtime evidence fields for no-manual-patch state. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, Step37 remaining-inventory driver, telemetry/event freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves the lineage state and no-manual-patch state fields. |
+| Authority | Package-owned QA evidence defines the capability authority: an artifact lineage event is insufficient unless evidence also proves `pipelineProduced=true`, `manualPatchDetected=false`, and `lineageVerified=true`. |
+| Legacy strategy | Artifact id, lineage hash, generated output presence, or natural-language no-manual-patch claims cannot overclaim this capability. Legacy/manual artifact paths remain non-authoritative for this capability. |
+| Failure policy | Missing package contract, missing lineage event, missing no-manual-patch state fields, wrong capability/probe identity, or stale evidence keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, registry support advancement without complete support, QA reader positive/negative no-manual-patch field behavior, target-profile overlay positive/negative behavior, canonical missing-probe ordering, remaining-inventory selection, and event/schema freeze coverage. |
+| Rollback | Reverting this slice removes only the artifact lineage package/probe/reader wiring and returns `artifact.lineage_no_manual_patch.v1` to unsupported evidence without changing business runtime gameplay templates. |
+
+Focused validation:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=1
+duration=real 1.72s
+result=RED: artifact lineage package/runtime module did not exist; index export and same-run overlay package plan could not resolve createArtifactLineageNoManualPatchPackageContract(); registry support still had no compiler/runtime/package QA evidence.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 1.73s
+result=PASS: 8 files / 137 tests
+```
+
+Focused set selection:
+
+- `gameplay-capability-package-contract.test.ts`: validates the new artifact lineage package contract, required evidence id, runtime system, lineage event, no-manual-patch assertion fields, and required probe.
+- `gameplay-capability-qa-probes.test.ts`: validates that lineage event evidence without no-manual-patch state fields fails and that full no-manual-patch state evidence passes.
+- `generation-target-profile-runtime-support.test.ts`: validates same-run overlay positive/negative behavior, canonical missing-probe order, and preservation of static `completeSupported=false`.
+- `deepseek-authoritative-dsl-support.test.ts`: validates support dimensions and prerequisites for the target capability.
+- `dsl-consumption-report.test.ts`: validates the consumption report reads the updated package-backed support dimensions.
+- `gameplay-capability-registry.test.ts`: validates static registry evidence and required probe wiring without static support promotion.
+- `step37-remaining-inventory-driver.test.ts`: validates parent-loop inventory consumption and selection for the new first unmet artifact checkpoint.
+- `contract-freeze.test.ts`: included because this diff introduces a telemetry/runtime event identity and QA evidence fields, so the focused set follows the actual schema and event-contract impact surface.
+
+Local validation before closure-record sync:
+
+```text
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 8.67s
+result=PASS: 98 files / 1163 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 58.15s
+result=PASS: contracts 98 files / 1163 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.31s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.02s
+result=PASS
+
+command=git write-tree
+exitCode=0
+result=INDEX_ONLY_PRE_STAGE_SNAPSHOT: 51af75cadddc57e6c81ca9d8195aca2c056594b1. This value is not the candidate tree because the new package/runtime module files were still untracked at this point; the candidate tree identity must be taken after staging the final allowed diff.
+
+command=npx tsx -e "<artifact.lineage_no_manual_patch.v1 support summary and remaining inventory>"
+exitCode=0
+duration=real 0.54s
+result=PASS: support registeredCapabilityCount=19; artifact.lineage_no_manual_patch.v1 classification=DEFERRED; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false; remaining next_checkpoint_id=stage4.artifact_lineage_no_manual_patch_v1.complete_supported_package_slice while this candidate is not yet committed.
+
+command=node -e "<review-gated-delivery root-relative skill bundle digest script>"
+exitCode=0
+duration=real 0.00s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_size_sha; skill_root_identity=/Users/dahufa/.agents/skills/review-gated-delivery; skill_file_count=7; skill_bundle_digest=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1.
+
+command=git status --short
+exitCode=0
+result=PASS: expected artifact lineage package slice, adjacent capability QA/registry exports, focused contracts, docs record, and two new package/runtime files are present; no unrelated business runtime product files were modified.
+
+command=git diff --stat
+exitCode=0
+result=PASS: diff is limited to artifact lineage package slice, adjacent capability QA/registry exports, focused contracts, and the current closure record.
+```
+
+Post-record final-tree validation:
+
+- The closure record changed the final tree, so prior green results were treated as stale until the following commands were re-run against the current artifact lineage package slice tree.
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/step37-parent-loop-driver.test.ts
+exitCode=0
+duration=real 2.03s
+result=PASS: 10 files / 191 tests. `contract-freeze` remains in the focused set because this diff changes telemetry/runtime event identity and capability runtime evidence fields.
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 8.66s
+result=PASS: 98 files / 1163 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 58.56s
+result=PASS: contracts 98 files / 1163 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.88s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.03s
+result=PASS
+
+command=git status --short
+exitCode=0
+result=PASS: final candidate diff contains the documented artifact lineage package/runtime module, adjacent capability QA/registry exports, focused contracts, Step37 remaining-inventory contract, and this closure record; no business runtime product files are modified.
+```
+
+- The current focused set was derived from the actual diff impact surface, not a fixed historical set. Because this package slice introduces the telemetry event identity `artifact.lineage_no_manual_patch.verified` and runtime evidence fields `pipelineProduced`, `manualPatchDetected`, and `lineageVerified`, `tests/contracts/contract-freeze.test.ts` is a required focused guard for this candidate.
+- Candidate commit must not write its own SHA into this candidate record.
+- Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1`.
+- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.

@@ -166,7 +166,7 @@ describe('Step 33 DSL consumption report', () => {
 
     expect(report.targetProfileSupport).toMatchObject({
       requiredCapabilityCount: 59,
-      registeredCapabilityCount: 18,
+      registeredCapabilityCount: 19,
       completeSupportedCount: 0,
       completePackageClosure: {
         status: 'blocked_incomplete_target_profile',
@@ -180,6 +180,19 @@ describe('Step 33 DSL consumption report', () => {
       }
     });
     expect(capabilities.get('weapon.default_straight_single.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('artifact.lineage_no_manual_patch.v1')).toMatchObject({
       classification: 'DEFERRED',
       completeSupported: false,
       evidenceDimensions: {

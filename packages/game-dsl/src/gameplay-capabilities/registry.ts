@@ -10,6 +10,10 @@ import {
   createProfileDeepSeekRunAndGunValidationPackageContract
 } from './profile-deepseek-run-and-gun-validation-package.js';
 import {
+  ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
+  createArtifactLineageNoManualPatchPackageContract
+} from './artifact-lineage-no-manual-patch-package.js';
+import {
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   createCameraSideFollowPackageContract
 } from './camera-side-follow-package.js';
@@ -110,6 +114,7 @@ export const GAMEPLAY_CAPABILITY_DERIVED_SUPPORT_CLASSIFICATIONS = [
   'CONTRACT_SEEDED'
 ] as const;
 export const GAMEPLAY_CAPABILITY_DOMAINS = [
+  'artifact',
   'asset',
   'audio',
   'camera',
@@ -408,6 +413,19 @@ const profileDeepSeekRunAndGunValidationPackageEvidence: GameplayCapabilityEvide
 const profileDeepSeekRunAndGunValidationPackageQa: GameplayCapabilityQaEvidence = profileDeepSeekRunAndGunValidationPackageReport.supportEligible
   ? { requiredProbeIds: [PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const artifactLineageNoManualPatchPackageReport = validateGameplayCapabilityPackage(createArtifactLineageNoManualPatchPackageContract());
+const artifactLineageNoManualPatchPackageEvidence: GameplayCapabilityEvidence = artifactLineageNoManualPatchPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const artifactLineageNoManualPatchPackageQa: GameplayCapabilityQaEvidence = artifactLineageNoManualPatchPackageReport.supportEligible
+  ? { requiredProbeIds: [ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const cameraSideFollowPackageReport = validateGameplayCapabilityPackage(createCameraSideFollowPackageContract());
 const cameraSideFollowPackageEvidence: GameplayCapabilityEvidence = cameraSideFollowPackageReport.supportEligible
   ? {
@@ -629,6 +647,16 @@ const contractRuntimeLoaderEvidence: GameplayCapabilityEvidence = {
 };
 
 const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
+  planned(
+    'artifact.lineage_no_manual_patch.v1',
+    'artifact',
+    'Artifact lineage without manual patch',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    artifactLineageNoManualPatchPackageEvidence,
+    artifactLineageNoManualPatchPackageQa
+  ),
   runtimeBacked('camera.top_down_follow.v1', 'camera', 'Top-down follow camera', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], ['top_down_camera']),
   runtimeBacked('movement.eight_direction.v1', 'movement', 'Eight-direction movement', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], [
     'eight_direction_movement'

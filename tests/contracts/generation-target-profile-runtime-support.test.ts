@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
+  ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   COLLISION_PLATFORM_REQUIRED_PROBE_ID,
   COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID,
@@ -42,6 +44,7 @@ import {
   buildCapabilityQaProbeResultsFromRuntimeEvidence,
   buildCapabilityRuntimeQaPlan,
   buildGenerationTargetProfileRuntimeSupportReport,
+  createArtifactLineageNoManualPatchPackageContract,
   createCameraSideFollowPackageContract,
   createCollisionPlatformPackageContract,
   createCombatAirborneFirePackageContract,
@@ -64,6 +67,7 @@ import {
   resolveGameplayCapabilityGraph
 } from '../../packages/game-dsl/src/index.js';
 
+const artifactLineageNoManualPatchCapabilityId = 'artifact.lineage_no_manual_patch.v1';
 const cameraCapabilityId = 'camera.side_follow.v1';
 const collisionCapabilityId = 'collision.platform.v1';
 const airborneFireCapabilityId = 'combat.airborne_fire.v1';
@@ -86,6 +90,7 @@ const replacementRuleCapabilityId = 'weapon.replacement_rule.v1';
 describe('Step 37 target profile runtime support overlay', () => {
   it('records runtime-observed support without mutating static completeSupported evidence', () => {
     const capabilityQaReport = buildDefaultWeaponQaReport([
+      ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
       'camera.side_follow.active',
       'collision.platform.grounded',
       'combat.airborne_fire.fired',
@@ -129,6 +134,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     const rapidFire = report.capabilities.find((entry) => entry.capabilityId === rapidFireCapabilityId);
     const spreadShot = report.capabilities.find((entry) => entry.capabilityId === spreadShotCapabilityId);
     const replacementRule = report.capabilities.find((entry) => entry.capabilityId === replacementRuleCapabilityId);
+    const artifactLineageNoManualPatch = report.capabilities.find((entry) => entry.capabilityId === artifactLineageNoManualPatchCapabilityId);
 
     expect(GenerationTargetProfileRuntimeSupportReportSchema.parse(report)).toEqual(report);
     expect(report).toMatchObject({
@@ -137,10 +143,11 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 18,
+      observedCompleteSupportedCount: 19,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
+        artifactLineageNoManualPatchCapabilityId,
         cameraCapabilityId,
         collisionCapabilityId,
         airborneFireCapabilityId,
@@ -160,7 +167,18 @@ describe('Step 37 target profile runtime support overlay', () => {
         replacementRuleCapabilityId,
         spreadShotCapabilityId
       ],
-      blockers: ['target_profile_runtime_support_incomplete:18/59']
+      blockers: ['target_profile_runtime_support_incomplete:19/59']
+    });
+    expect(artifactLineageNoManualPatch).toMatchObject({
+      capabilityId: artifactLineageNoManualPatchCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
     });
     expect(camera).toMatchObject({
       capabilityId: cameraCapabilityId,
@@ -362,8 +380,73 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
   });
 
+  it('keeps artifact lineage unverified when lineage evidence lacks no-manual-patch state proof', () => {
+    const capabilityQaReport = buildDefaultWeaponQaReport(
+      [
+        ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
+        'camera.side_follow.active',
+        'collision.platform.grounded',
+        'combat.airborne_fire.fired',
+        'player.fired',
+        'projectile.spawned',
+        'movement.crouch.entered',
+        'player.jumped',
+        'pickup.collectible.collected',
+        'pickup.collectible.state_changed',
+        'spawn.enemy_wave.ordered',
+        'spawn.static.triggered',
+        'health.damage_invulnerability.activated',
+        'health.damage_invulnerability.blocked',
+        'health.player_health.current',
+        FIXED_PROMPT_BINDING_EVENT_TYPE,
+        PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE,
+        WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE,
+        WEAPON_DEATH_RESET_EVENT_TYPE,
+        WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
+        WEAPON_SPREAD_SHOT_EVENT_TYPE,
+        WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE,
+        WEAPON_REPLACEMENT_RULE_EVENT_TYPE
+      ],
+      { artifactLineageNoManualPatchStateFields: false }
+    );
+    const report = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260625_target_runtime_support',
+      runId: 'run_20260625_artifact_lineage_missing_state',
+      capabilityQaReport
+    });
+    const artifactLineageNoManualPatch = report.capabilities.find((entry) => entry.capabilityId === artifactLineageNoManualPatchCapabilityId);
+
+    expect(capabilityQaReport.requiredResults.find((entry) => entry.probeId === ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID}.assertion.no_manual_patch`,
+          status: 'failed',
+          message: expect.stringContaining('expected pipelineProduced=true, observed <missing>')
+        })
+      ])
+    });
+    expect(report).toMatchObject({
+      status: 'blocked_incomplete_target_profile',
+      observedCompleteSupportedCount: 18,
+      targetProfileCompleteSupported: false,
+      blockers: [
+        `capability_qa_report_missing_required_probe:${ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID}`,
+        'target_profile_runtime_support_incomplete:18/59'
+      ]
+    });
+    expect(artifactLineageNoManualPatch).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+  });
+
   it('keeps fixed prompt binding unverified when the fixed prompt event is absent', () => {
     const capabilityQaReport = buildDefaultWeaponQaReport([
+      ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
       'camera.side_follow.active',
       'collision.platform.grounded',
       'combat.airborne_fire.fired',
@@ -395,11 +478,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 17,
+      observedCompleteSupportedCount: 18,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:17/59'
+        'target_profile_runtime_support_incomplete:18/59'
       ]
     });
     expect(fixedPromptBinding).toMatchObject({
@@ -413,6 +496,7 @@ describe('Step 37 target profile runtime support overlay', () => {
 
   it('keeps profile binding unverified when the DeepSeek validation profile event is absent', () => {
     const capabilityQaReport = buildDefaultWeaponQaReport([
+      ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
       'camera.side_follow.active',
       'collision.platform.grounded',
       'combat.airborne_fire.fired',
@@ -444,11 +528,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 17,
+      observedCompleteSupportedCount: 18,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:17/59'
+        'target_profile_runtime_support_incomplete:18/59'
       ]
     });
     expect(profileBinding).toMatchObject({
@@ -489,6 +573,7 @@ describe('Step 37 target profile runtime support overlay', () => {
 
   it('does not verify damage invulnerability when blocked evidence lacks window activation', () => {
     const capabilityQaReport = buildDefaultWeaponQaReport([
+      ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
       'camera.side_follow.active',
       'collision.platform.grounded',
       'combat.airborne_fire.fired',
@@ -533,9 +618,10 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 17,
+      observedCompleteSupportedCount: 18,
       targetProfileCompleteSupported: false,
       observedCapabilityIds: [
+        artifactLineageNoManualPatchCapabilityId,
         cameraCapabilityId,
         collisionCapabilityId,
         airborneFireCapabilityId,
@@ -556,7 +642,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ],
       blockers: [
         `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:17/59'
+        'target_profile_runtime_support_incomplete:18/59'
       ]
     });
     expect(damageInvulnerability).toMatchObject({
@@ -571,6 +657,7 @@ describe('Step 37 target profile runtime support overlay', () => {
   it('keeps pickup collectible unverified when collection events lack state evidence', () => {
     const capabilityQaReport = buildDefaultWeaponQaReport(
       [
+        ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
         'camera.side_follow.active',
         'collision.platform.grounded',
         'combat.airborne_fire.fired',
@@ -618,11 +705,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 17,
+      observedCompleteSupportedCount: 18,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:17/59'
+        'target_profile_runtime_support_incomplete:18/59'
       ]
     });
     expect(pickup).toMatchObject({
@@ -637,6 +724,7 @@ describe('Step 37 target profile runtime support overlay', () => {
   it('keeps spawn enemy wave unverified when ordered wave evidence lacks gate and order proof', () => {
     const capabilityQaReport = buildDefaultWeaponQaReport(
       [
+        ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
         'camera.side_follow.active',
         'collision.platform.grounded',
         'combat.airborne_fire.fired',
@@ -681,11 +769,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 17,
+      observedCompleteSupportedCount: 18,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:17/59'
+        'target_profile_runtime_support_incomplete:18/59'
       ]
     });
     expect(spawnEnemyWave).toMatchObject({
@@ -700,6 +788,7 @@ describe('Step 37 target profile runtime support overlay', () => {
   it('keeps weapon death reset unverified when restore evidence lacks reset state fields', () => {
     const capabilityQaReport = buildDefaultWeaponQaReport(
       [
+        ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
         'camera.side_follow.active',
         'collision.platform.grounded',
         'combat.airborne_fire.fired',
@@ -744,11 +833,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 17,
+      observedCompleteSupportedCount: 18,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:17/59'
+        'target_profile_runtime_support_incomplete:18/59'
       ]
     });
     expect(deathReset).toMatchObject({
@@ -763,6 +852,7 @@ describe('Step 37 target profile runtime support overlay', () => {
   it('keeps weapon rapid fire unverified when burst evidence lacks rate fields', () => {
     const capabilityQaReport = buildDefaultWeaponQaReport(
       [
+        ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
         'camera.side_follow.active',
         'collision.platform.grounded',
         'combat.airborne_fire.fired',
@@ -807,11 +897,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 17,
+      observedCompleteSupportedCount: 18,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:17/59'
+        'target_profile_runtime_support_incomplete:18/59'
       ]
     });
     expect(rapidFire).toMatchObject({
@@ -826,6 +916,7 @@ describe('Step 37 target profile runtime support overlay', () => {
   it('keeps weapon spread shot unverified when fire evidence lacks spread state fields', () => {
     const capabilityQaReport = buildDefaultWeaponQaReport(
       [
+        ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
         'camera.side_follow.active',
         'collision.platform.grounded',
         'combat.airborne_fire.fired',
@@ -870,11 +961,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 17,
+      observedCompleteSupportedCount: 18,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:17/59'
+        'target_profile_runtime_support_incomplete:18/59'
       ]
     });
     expect(spreadShot).toMatchObject({
@@ -889,6 +980,7 @@ describe('Step 37 target profile runtime support overlay', () => {
   it('keeps weapon replacement rule unverified when pickup evidence lacks replacement state fields', () => {
     const capabilityQaReport = buildDefaultWeaponQaReport(
       [
+        ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
         'camera.side_follow.active',
         'collision.platform.grounded',
         'combat.airborne_fire.fired',
@@ -933,11 +1025,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 17,
+      observedCompleteSupportedCount: 18,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:17/59'
+        'target_profile_runtime_support_incomplete:18/59'
       ]
     });
     expect(replacementRule).toMatchObject({
@@ -951,6 +1043,7 @@ describe('Step 37 target profile runtime support overlay', () => {
 
   it('keeps missing required probe blockers in canonical QA plan order', () => {
     expect(expectedMissingRequiredProbeBlockers()).toEqual([
+      `capability_qa_report_missing_required_probe:${ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${COLLISION_PLATFORM_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID}`,
@@ -976,6 +1069,7 @@ describe('Step 37 target profile runtime support overlay', () => {
 function buildDefaultWeaponQaReport(
   eventTypes: readonly string[],
   options: {
+    artifactLineageNoManualPatchStateFields?: boolean;
     pickupStateFields?: boolean;
     spawnEnemyWaveOrderedFields?: boolean;
     weaponDeathResetStateFields?: boolean;
@@ -986,6 +1080,26 @@ function buildDefaultWeaponQaReport(
 ) {
   const { plan } = buildDefaultWeaponQaPlan();
   const observed = [
+    ...(eventTypes.includes(ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE)
+      ? [
+          {
+            capabilityId: artifactLineageNoManualPatchCapabilityId,
+            probeId: ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
+            action: 'verify_lineage',
+            eventType: ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
+            eventTypes,
+            ...(options.artifactLineageNoManualPatchStateFields === false
+              ? {}
+              : {
+                  pipelineProduced: true,
+                  manualPatchDetected: false,
+                  lineageVerified: true
+                }),
+            status: 'observed' as const,
+            sourceRef: 'artifact.lineage.no_manual_patch'
+          }
+        ]
+      : []),
     ...(eventTypes.includes('camera.side_follow.active')
       ? [
           {
@@ -1292,6 +1406,7 @@ function expectedMissingRequiredProbeBlockers(): string[] {
 
 function buildDefaultWeaponQaPlan() {
   const packages = [
+    createArtifactLineageNoManualPatchPackageContract(),
     createCameraSideFollowPackageContract(),
     createCollisionPlatformPackageContract(),
     createCombatAirborneFirePackageContract(),
@@ -1313,6 +1428,7 @@ function buildDefaultWeaponQaPlan() {
   ];
   const lockReport = resolveGameplayCapabilityGraph({
     requestedCapabilities: [
+      artifactLineageNoManualPatchCapabilityId,
       cameraCapabilityId,
       collisionCapabilityId,
       airborneFireCapabilityId,

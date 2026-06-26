@@ -13,6 +13,7 @@ import {
   listGameplayProfileRuntimeStatuses,
   RuntimeGenreRegistry,
   validateGameplayCapabilityRegistry,
+  ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
   MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
@@ -30,6 +31,10 @@ describe('Gameplay capability registry', () => {
 
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toEqual([...ids].sort());
+    expect(findGameplayCapability('artifact.lineage_no_manual_patch.v1')).toMatchObject({
+      status: 'planned',
+      legacyRuntimeCapabilities: []
+    });
     expect(findGameplayCapability('camera.side_follow.v1')).toMatchObject({
       status: 'planned',
       legacyRuntimeCapabilities: ['side_view_camera']
@@ -207,6 +212,33 @@ describe('Gameplay capability registry', () => {
     expect(isCompleteSupportedGameplayCapability(defaultWeapon)).toBe(false);
 
     expect(findGameplayCapability('weapon.spread_shot.v1')).toBeDefined();
+  });
+
+  it('scopes artifact lineage no-manual-patch package-owned QA without static support promotion', () => {
+    const noManualPatch = findGameplayCapability('artifact.lineage_no_manual_patch.v1');
+
+    if (noManualPatch === undefined) {
+      throw new Error('Expected artifact.lineage_no_manual_patch.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(noManualPatch)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(noManualPatch.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(noManualPatch.qa).toEqual({
+      requiredProbeIds: [ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(noManualPatch)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(noManualPatch)).toBe(false);
   });
 
   it('scopes weapon rapid fire package-owned QA without static support promotion', () => {
