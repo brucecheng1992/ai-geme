@@ -84,12 +84,18 @@ export type CapabilityQaPlanProbe = {
   assertions: CapabilityQaAssertionDescriptor[];
 };
 
+export type CapabilityQaDependency = {
+  capabilityId: string;
+  dependencyCapabilityIds: string[];
+};
+
 export type CapabilityRuntimeQaPlan = {
   artifactKind: typeof CAPABILITY_RUNTIME_QA_PLAN_KIND;
   schemaVersion: typeof CAPABILITY_RUNTIME_QA_PLAN_SCHEMA_VERSION;
   profileId: string;
   status: 'ready' | 'blocked';
   capabilityLockHash?: string;
+  capabilityDependencies: CapabilityQaDependency[];
   requiredProbes: CapabilityQaPlanProbe[];
   optionalProbes: CapabilityQaPlanProbe[];
   profileScenarioProbes: CapabilityQaPlanProbe[];
@@ -101,6 +107,7 @@ export type CapabilityRuntimeQaPlan = {
 
 export type CapabilityQaProbeResult = {
   probeId: string;
+  capabilityId?: string;
   status: 'passed' | 'failed' | 'skipped';
   planHash?: string;
   assertionResults?: CapabilityQaAssertionResult[];
@@ -463,6 +470,7 @@ export type CapabilityQaReport = {
   planStatus: CapabilityRuntimeQaPlan['status'];
   planHash: string;
   planDiagnostics: CapabilityQaDiagnostic[];
+  capabilityDependencies: CapabilityQaDependency[];
   requiredResults: CapabilityQaProbeResult[];
   optionalResults: CapabilityQaProbeResult[];
   missingRequiredProbeIds: string[];
@@ -553,6 +561,7 @@ export function buildCapabilityRuntimeQaPlan(input: {
     profileId: input.profileId,
     status: diagnostics.length === 0 ? 'ready' : 'blocked',
     ...(lock.success ? { capabilityLockHash: lock.data.lockHash } : {}),
+    capabilityDependencies: buildCapabilityDependencies(lockedPackages),
     requiredProbes: requiredProbes.sort(comparePlanProbes),
     optionalProbes: optionalProbes.sort(comparePlanProbes),
     profileScenarioProbes,
@@ -577,8 +586,8 @@ export function evaluateCapabilityQaReport(input: {
       bindProbeResultToPlan(result, input.plan.planHash, planProbesById.get(result.probeId), input.requirePlanScopedResults === true)
     ])
   );
-  const requiredResults = requiredPlanProbes.map((probe) => results.get(probe.id) ?? { probeId: probe.id, status: 'skipped' as const });
-  const optionalResults = optionalPlanProbes.map((probe) => results.get(probe.id) ?? { probeId: probe.id, status: 'skipped' as const });
+  const requiredResults = requiredPlanProbes.map((probe) => results.get(probe.id) ?? skippedProbeResult(probe));
+  const optionalResults = optionalPlanProbes.map((probe) => results.get(probe.id) ?? skippedProbeResult(probe));
   const requiredAssertionIds = buildPlanAssertionMap(requiredPlanProbes);
   const optionalAssertionIds = buildPlanAssertionMap(optionalPlanProbes);
   const missingRequiredProbeIds = requiredResults
@@ -597,6 +606,7 @@ export function evaluateCapabilityQaReport(input: {
     planStatus: input.plan.status,
     planHash: input.plan.planHash,
     planDiagnostics: input.plan.diagnostics,
+    capabilityDependencies: input.plan.capabilityDependencies,
     requiredResults: requiredResults.sort(compareProbeResults),
     optionalResults: optionalResults.sort(compareProbeResults),
     missingRequiredProbeIds,
@@ -667,6 +677,7 @@ function buildProbeResultFromRuntimeEvidence(
   return [
     {
       probeId: probe.id,
+      ...(probe.capabilityId === undefined ? {} : { capabilityId: probe.capabilityId }),
       status: assertionResults.every((assertion) => assertion.status === 'passed') ? 'passed' : 'failed',
       planHash,
       assertionResults,
@@ -681,18 +692,20 @@ function bindProbeResultToPlan(
   probe: CapabilityQaPlanProbe | undefined,
   requirePlanScopedResult: boolean
 ): CapabilityQaProbeResult {
+  const planBoundResult =
+    probe?.capabilityId === undefined || result.capabilityId === probe.capabilityId ? result : { ...result, capabilityId: probe.capabilityId };
   if (result.planHash === planHash) {
-    return result;
+    return planBoundResult;
   }
   if (result.planHash === undefined && !requirePlanScopedResult) {
-    return result;
+    return planBoundResult;
   }
   const planFailureKind = result.planHash === undefined ? 'PLAN_SCOPE_REQUIRED' : 'PLAN_MISMATCH';
   return {
-    ...result,
+    ...planBoundResult,
     status: 'failed',
     assertionResults: [
-      ...(result.assertionResults ?? []),
+      ...(planBoundResult.assertionResults ?? []),
       {
         assertionId: `${result.probeId}.plan_hash`,
         status: 'failed',
@@ -1326,6 +1339,23 @@ function qaPlanProbeFromProfileScenario(probe: ProfileQaScenarioProbe): Capabili
     observations: stableObservations(probe.observations),
     assertions: stableAssertions(probe.assertions)
   };
+}
+
+function skippedProbeResult(probe: CapabilityQaPlanProbe): CapabilityQaProbeResult {
+  return {
+    probeId: probe.id,
+    ...(probe.capabilityId === undefined ? {} : { capabilityId: probe.capabilityId }),
+    status: 'skipped'
+  };
+}
+
+function buildCapabilityDependencies(lockedPackages: readonly LockedQaPackage[]): CapabilityQaDependency[] {
+  return lockedPackages
+    .map((entry) => ({
+      capabilityId: entry.contract.manifest.id,
+      dependencyCapabilityIds: entry.contract.dependencies.map((dependency) => dependency.capabilityId).sort()
+    }))
+    .sort((left, right) => left.capabilityId.localeCompare(right.capabilityId));
 }
 
 function parseProfileScenarioProbes(scenarios: readonly ProfileQaScenarioProbe[], diagnostics: CapabilityQaDiagnostic[]): ProfileQaScenarioProbe[] {

@@ -38,6 +38,9 @@ export const GenerationTargetProfileRuntimeSupportCapabilitySchema = z.strictObj
   requiredProbeIds: z.array(z.string().min(1)),
   verifiedRequiredProbeIds: z.array(z.string().min(1)),
   missingRequiredProbeIds: z.array(z.string().min(1)),
+  dependencyRequiredProbeIds: z.array(z.string().min(1)),
+  verifiedDependencyRequiredProbeIds: z.array(z.string().min(1)),
+  missingDependencyRequiredProbeIds: z.array(z.string().min(1)),
   runtimeVerified: z.boolean(),
   observedCompleteSupported: z.boolean(),
   legacyBacked: z.boolean()
@@ -66,6 +69,12 @@ export const GenerationTargetProfileRuntimeSupportReportSchema = z.strictObject(
 export type GenerationTargetProfileRuntimeSupportCapability = z.infer<typeof GenerationTargetProfileRuntimeSupportCapabilitySchema>;
 export type GenerationTargetProfileRuntimeSupportReport = z.infer<typeof GenerationTargetProfileRuntimeSupportReportSchema>;
 
+type RuntimeSupportQaContext = {
+  passedRequiredProbeIds: ReadonlySet<string>;
+  requiredProbeIdsByCapabilityId: ReadonlyMap<string, readonly string[]>;
+  dependencyCapabilityIdsByCapabilityId: ReadonlyMap<string, readonly string[]>;
+};
+
 /**
  * Builds a same-run runtime-observed overlay for the frozen DeepSeek target profile.
  * This report never mutates the static registry support evidence; it only records
@@ -80,9 +89,9 @@ export function buildGenerationTargetProfileRuntimeSupportReport(input: {
 }): GenerationTargetProfileRuntimeSupportReport {
   const registry = input.registry ?? DEFAULT_GAMEPLAY_CAPABILITY_REGISTRY;
   const supportSummary = input.supportSummary ?? buildDeepSeekRunAndGunValidationProfileSupportSummary(registry);
-  const passedRequiredProbeIds = buildPassedRequiredProbeIds(input.capabilityQaReport);
+  const qaContext = buildRuntimeSupportQaContext(input.capabilityQaReport);
   const capabilities = supportSummary.capabilities
-    .map((support) => buildRuntimeSupportCapability(support, registry, passedRequiredProbeIds))
+    .map((support) => buildRuntimeSupportCapability(support, registry, qaContext))
     .sort((left, right) => left.capabilityId.localeCompare(right.capabilityId));
   const requiredCapabilityCount = supportSummary.summary.requiredCapabilityCount;
   const observedCompleteSupportedCount = capabilities.filter((capability) => capability.observedCompleteSupported).length;
@@ -112,13 +121,17 @@ export function buildGenerationTargetProfileRuntimeSupportReport(input: {
 function buildRuntimeSupportCapability(
   support: DeepSeekRunAndGunProfileCapabilitySupport,
   registry: GameplayCapabilityRegistry,
-  passedRequiredProbeIds: ReadonlySet<string>
+  qaContext: RuntimeSupportQaContext
 ): GenerationTargetProfileRuntimeSupportCapability {
   const descriptor = findGameplayCapability(support.capabilityId, registry);
   const requiredProbeIds = [...(descriptor?.qa.requiredProbeIds ?? [])].sort();
-  const verifiedRequiredProbeIds = requiredProbeIds.filter((probeId) => passedRequiredProbeIds.has(probeId));
-  const missingRequiredProbeIds = requiredProbeIds.filter((probeId) => !passedRequiredProbeIds.has(probeId));
-  const runtimeVerified = requiredProbeIds.length > 0 && missingRequiredProbeIds.length === 0;
+  const verifiedRequiredProbeIds = requiredProbeIds.filter((probeId) => qaContext.passedRequiredProbeIds.has(probeId));
+  const missingRequiredProbeIds = requiredProbeIds.filter((probeId) => !qaContext.passedRequiredProbeIds.has(probeId));
+  const dependencyRequiredProbeIds = collectDependencyRequiredProbeIds(support.capabilityId, qaContext);
+  const verifiedDependencyRequiredProbeIds = dependencyRequiredProbeIds.filter((probeId) => qaContext.passedRequiredProbeIds.has(probeId));
+  const missingDependencyRequiredProbeIds = dependencyRequiredProbeIds.filter((probeId) => !qaContext.passedRequiredProbeIds.has(probeId));
+  const runtimeVerified =
+    requiredProbeIds.length > 0 && missingRequiredProbeIds.length === 0 && missingDependencyRequiredProbeIds.length === 0;
   const observedEvidenceDimensions: GameplayCapabilitySupportEvidenceDimensions = {
     ...support.evidenceDimensions,
     qa_observed: support.evidenceDimensions.qa_observed || runtimeVerified
@@ -136,9 +149,20 @@ function buildRuntimeSupportCapability(
     requiredProbeIds,
     verifiedRequiredProbeIds,
     missingRequiredProbeIds,
+    dependencyRequiredProbeIds,
+    verifiedDependencyRequiredProbeIds,
+    missingDependencyRequiredProbeIds,
     runtimeVerified,
     observedCompleteSupported: isCompleteSupportedEvidenceDimensions(observedEvidenceDimensions),
     legacyBacked: support.legacyBacked
+  };
+}
+
+function buildRuntimeSupportQaContext(report: CapabilityQaReport | undefined): RuntimeSupportQaContext {
+  return {
+    passedRequiredProbeIds: buildPassedRequiredProbeIds(report),
+    requiredProbeIdsByCapabilityId: buildRequiredProbeIdsByCapabilityId(report),
+    dependencyCapabilityIdsByCapabilityId: buildDependencyCapabilityIdsByCapabilityId(report)
   };
 }
 
@@ -153,6 +177,46 @@ function buildPassedRequiredProbeIds(report: CapabilityQaReport | undefined): Re
       .filter((result) => !missingRequiredProbeIds.has(result.probeId) && requiredProbeResultPassed(result))
       .map((result) => result.probeId)
   );
+}
+
+function buildRequiredProbeIdsByCapabilityId(report: CapabilityQaReport | undefined): ReadonlyMap<string, readonly string[]> {
+  const byCapability = new Map<string, string[]>();
+  for (const result of report?.requiredResults ?? []) {
+    if (result.capabilityId === undefined) {
+      continue;
+    }
+    byCapability.set(result.capabilityId, [...(byCapability.get(result.capabilityId) ?? []), result.probeId]);
+  }
+  return new Map([...byCapability.entries()].map(([capabilityId, probeIds]) => [capabilityId, uniqueSorted(probeIds)]));
+}
+
+function buildDependencyCapabilityIdsByCapabilityId(report: CapabilityQaReport | undefined): ReadonlyMap<string, readonly string[]> {
+  return new Map(
+    (report?.capabilityDependencies ?? []).map((entry) => [entry.capabilityId, uniqueSorted(entry.dependencyCapabilityIds)])
+  );
+}
+
+function collectDependencyRequiredProbeIds(capabilityId: string, context: RuntimeSupportQaContext): string[] {
+  const collected: string[] = [];
+  const visited = new Set<string>();
+
+  function visit(currentCapabilityId: string): void {
+    for (const dependencyCapabilityId of context.dependencyCapabilityIdsByCapabilityId.get(currentCapabilityId) ?? []) {
+      if (visited.has(dependencyCapabilityId)) {
+        continue;
+      }
+      visited.add(dependencyCapabilityId);
+      collected.push(...(context.requiredProbeIdsByCapabilityId.get(dependencyCapabilityId) ?? []));
+      visit(dependencyCapabilityId);
+    }
+  }
+
+  visit(capabilityId);
+  return uniqueSorted(collected);
+}
+
+function uniqueSorted(values: readonly string[]): string[] {
+  return [...new Set(values)].sort();
 }
 
 function requiredProbeResultPassed(result: CapabilityQaProbeResult): boolean {

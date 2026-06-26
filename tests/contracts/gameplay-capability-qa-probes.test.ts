@@ -355,6 +355,37 @@ describe('Capability-owned runtime QA probes', () => {
     expect(first.step34AmendmentVerificationRefs).toEqual(['amendment_verification_report.json']);
   });
 
+  it('preserves plan dependency metadata and probe capability identity for downstream runtime overlays', () => {
+    const camera = createPackage('camera.side_follow.v1');
+    const movement = createPackage('movement.run_jump.v1', {
+      dependencies: [{ capabilityId: 'camera.side_follow.v1', range: '^v1' }]
+    });
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock([movement, camera], ['movement.run_jump.v1']),
+      packages: [movement, camera]
+    });
+    const report = evaluateCapabilityQaReport({
+      plan,
+      probeResults: plan.requiredProbes.map((probe) => ({
+        probeId: probe.id,
+        status: 'passed' as const,
+        assertionResults: passedAssertionsFor(plan, probe.id)
+      }))
+    });
+
+    expect(plan.status).toBe('ready');
+    expect(plan.capabilityDependencies).toEqual([
+      { capabilityId: 'camera.side_follow.v1', dependencyCapabilityIds: [] },
+      { capabilityId: 'movement.run_jump.v1', dependencyCapabilityIds: ['camera.side_follow.v1'] }
+    ]);
+    expect(report.capabilityDependencies).toEqual(plan.capabilityDependencies);
+    expect(report.requiredResults.map((result) => ({ probeId: result.probeId, capabilityId: result.capabilityId }))).toEqual([
+      { probeId: 'camera.side_follow.v1.qa.required', capabilityId: 'camera.side_follow.v1' },
+      { probeId: 'movement.run_jump.v1.qa.required', capabilityId: 'movement.run_jump.v1' }
+    ]);
+  });
+
   it('detects duplicate conflicting QA actions across composed probes', () => {
     const sharedAction = 'shared.qa.action';
     const movement = createPackage('movement.run_jump.v1', {
@@ -5829,6 +5860,7 @@ function createPackage(
   id: string,
   input: {
     probes?: GameplayCapabilityPackageContract['qa']['probes'];
+    dependencies?: GameplayCapabilityPackageContract['dependencies'];
   } = {}
 ): GameplayCapabilityPackageContract {
   const ownedPath = `/entities/components/${id}`;
@@ -5873,7 +5905,7 @@ function createPackage(
       sceneBindings: [],
       fallbackPolicy: 'not_applicable'
     },
-    dependencies: [],
+    dependencies: input.dependencies ?? [],
     optionalDependencies: [],
     conflictsWith: [],
     provides: [{ id: `${id}.service`, version: 'v1' }],

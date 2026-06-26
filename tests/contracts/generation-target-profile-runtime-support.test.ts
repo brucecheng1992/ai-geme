@@ -1434,11 +1434,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 43,
+      observedCompleteSupportedCount: 42,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:43/59'
+        'target_profile_runtime_support_incomplete:42/59'
       ]
     });
     expect(fixedPromptBinding).toMatchObject({
@@ -1448,6 +1448,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       missingRequiredProbeIds: [FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID],
       observedEvidenceDimensions: { qa_observed: false }
     });
+    expectDependencyBlockedCapability(report, providerDeepSeekAuthoritativeDraftCapabilityId, FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID);
   });
 
   it('keeps profile binding unverified when the DeepSeek validation profile event is absent', () => {
@@ -1498,11 +1499,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 43,
+      observedCompleteSupportedCount: 42,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:43/59'
+        'target_profile_runtime_support_incomplete:42/59'
       ]
     });
     expect(profileBinding).toMatchObject({
@@ -1512,6 +1513,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       missingRequiredProbeIds: [PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID],
       observedEvidenceDimensions: { qa_observed: false }
     });
+    expectDependencyBlockedCapability(report, providerDeepSeekAuthoritativeDraftCapabilityId, PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID);
   });
 
   it('keeps DeepSeek provider draft unverified when generic model output lacks authoritative draft state proof', () => {
@@ -1926,11 +1928,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 43,
+      observedCompleteSupportedCount: 41,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:43/59'
+        'target_profile_runtime_support_incomplete:41/59'
       ]
     });
     expect(pickup).toMatchObject({
@@ -1940,6 +1942,8 @@ describe('Step 37 target profile runtime support overlay', () => {
       missingRequiredProbeIds: [PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID],
       observedEvidenceDimensions: { qa_observed: false }
     });
+    expectDependencyBlockedCapability(report, pickupWeaponSupplyCapabilityId, PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID);
+    expectDependencyBlockedCapability(report, replacementRuleCapabilityId, PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID);
   });
 
   it('keeps weapon supply unverified when generic pickup evidence lacks supply grant state proof', () => {
@@ -2131,11 +2135,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 43,
+      observedCompleteSupportedCount: 37,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:43/59'
+        'target_profile_runtime_support_incomplete:37/59'
       ]
     });
     expect(spawnEnemyWave).toMatchObject({
@@ -2145,6 +2149,12 @@ describe('Step 37 target profile runtime support overlay', () => {
       missingRequiredProbeIds: [SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID],
       observedEvidenceDimensions: { qa_observed: false }
     });
+    expectDependencyBlockedCapability(report, enemyFlyingRightEntryCapabilityId, SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID);
+    expectDependencyBlockedCapability(report, enemyPatrolInfantryCapabilityId, SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID);
+    expectDependencyBlockedCapability(report, goalBossUnlockCapabilityId, SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID);
+    expectDependencyBlockedCapability(report, rulesEncounterGateCapabilityId, SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID);
+    expectDependencyBlockedCapability(report, spawnExplicitDeclarationsCapabilityId, SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID);
+    expectDependencyBlockedCapability(report, spawnStopOnBossDefeatCapabilityId, SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID);
   });
 
   it('keeps flying right entry unverified when wave evidence lacks right-entry state proof', () => {
@@ -3409,6 +3419,40 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
   });
 
+  it('keeps current weapon HUD unverified when its default weapon dependency probe is missing', () => {
+    const missingDependencyQaReport = buildSingleCapabilityQaReport({
+      capabilityId: uiHudCurrentWeaponCapabilityId,
+      packageContract: createUiHudCurrentWeaponPackageContract(),
+      dependencyPackages: [createDefaultStraightSingleWeaponPackageContract()],
+      eventType: UI_HUD_CURRENT_WEAPON_EVENT_TYPE,
+      eventTypes: ['player.fired', 'projectile.spawned', UI_HUD_CURRENT_WEAPON_EVENT_TYPE],
+      probeId: UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID,
+      action: 'show_current_weapon_hud',
+      sourceRef: 'runtime.ui.hud_current_weapon',
+      stateFields: hudCurrentWeaponStateFields()
+    });
+    const report = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_ui_hud_current_weapon_missing_dependency',
+      capabilityQaReport: missingDependencyQaReport
+    });
+    const currentWeaponState = report.capabilities.find((entry) => entry.capabilityId === uiHudCurrentWeaponCapabilityId);
+
+    expect(missingDependencyQaReport.requiredResults.find((entry) => entry.probeId === UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(missingDependencyQaReport.missingRequiredProbeIds).toEqual([DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID]);
+    expect(currentWeaponState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      dependencyRequiredProbeIds: [DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID],
+      missingDependencyRequiredProbeIds: [DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+  });
+
   it('keeps state transition graph unverified when win lose evidence lacks explicit graph fields', () => {
     const genericGraphQaReport = buildSingleCapabilityQaReport({
       capabilityId: rulesStateTransitionGraphCapabilityId,
@@ -4415,11 +4459,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 43,
+      observedCompleteSupportedCount: 42,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:43/59'
+        'target_profile_runtime_support_incomplete:42/59'
       ]
     });
     expect(rapidFire).toMatchObject({
@@ -4429,6 +4473,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       missingRequiredProbeIds: [WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID],
       observedEvidenceDimensions: { qa_observed: false }
     });
+    expectDependencyBlockedCapability(report, replacementRuleCapabilityId, WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID);
   });
 
   it('keeps weapon spread shot unverified when fire evidence lacks spread state fields', () => {
@@ -5616,6 +5661,20 @@ function buildSingleCapabilityQaReport(input: {
         mismatches: []
       }
     })
+  });
+}
+
+function expectDependencyBlockedCapability(
+  report: ReturnType<typeof buildGenerationTargetProfileRuntimeSupportReport>,
+  capabilityId: string,
+  missingDependencyProbeId: string
+) {
+  expect(report.capabilities.find((entry) => entry.capabilityId === capabilityId)).toMatchObject({
+    runtimeVerified: false,
+    observedCompleteSupported: false,
+    missingRequiredProbeIds: [],
+    missingDependencyRequiredProbeIds: [missingDependencyProbeId],
+    observedEvidenceDimensions: { qa_observed: false }
   });
 }
 

@@ -6181,8 +6181,8 @@ parent_stage_status=running
 parent_loop_status=running
 global_exit_conditions_met=false
 user_input_required=false
-next_action=CONTINUE_PARENT_LOOP
-next_atomic_step=pending_parent_loop_driver_after_receipt
+next_action=CONTINUE_CURRENT_ATOM
+next_atomic_step=stage4.ui_hud_current_weapon_v1.complete_supported_package_slice
 
 Current Stage review conclusion:
 
@@ -6197,7 +6197,8 @@ Minimum closure requirements:
 5. Prove same-run runtime overlay observes `ui.hud_current_weapon.v1` only when default weapon dependency evidence has passed and the current probe proves visible HUD state bound to the current weapon.
 6. Require HUD state fields: `hudCurrentWeaponVisible`, `hudCurrentWeaponWeaponId`, `hudCurrentWeaponExpectedWeaponId`, `hudCurrentWeaponSlot`, `hudCurrentWeaponLabelVisible`, `hudCurrentWeaponIconVisible`, `hudCurrentWeaponBoundToWeaponState`, and `hudCurrentWeaponMatchesCurrentWeapon`.
 7. Add a negative regression proving weapon events, projectile events, or `currentWeaponId` alone do not satisfy the HUD current-weapon capability without the HUD state fields.
-8. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+8. Add a negative regression proving current-weapon HUD evidence cannot advance the overlay when the required default-weapon dependency probe is missing.
+9. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
 
 Modified paths:
 
@@ -6226,7 +6227,8 @@ Evidence/probe chain:
 - Dependency: `weapon.default_straight_single.v1` with capability-version range `^v1`.
 - Required state fields: `hudCurrentWeaponVisible`, `hudCurrentWeaponSchemaVersion`, `hudCurrentWeaponProfileId`, `hudCurrentWeaponRuntimeFamily`, `hudCurrentWeaponWeaponId`, `hudCurrentWeaponExpectedWeaponId`, `hudCurrentWeaponSlot`, `hudCurrentWeaponLabelVisible`, `hudCurrentWeaponLabelText`, `hudCurrentWeaponIconVisible`, `hudCurrentWeaponBoundToWeaponState`, and `hudCurrentWeaponMatchesCurrentWeapon`.
 - QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares the current-weapon HUD state fields and fails the required probe when weapon events exist but HUD state/binding fields are missing.
-- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for the same run; it does not mutate static `completeSupported`.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for the same run after the capability's own required probes and required dependency probes pass; it does not mutate static `completeSupported`.
+- Dependency gate: `CapabilityQaReport` now preserves plan-derived `capabilityDependencies`, and `CapabilityQaProbeResult.capabilityId` is derived from the QA plan so dependency probe ownership is not trusted from runtime payload self-reporting.
 
 Compatibility & Cutover:
 
@@ -6237,7 +6239,7 @@ Compatibility & Cutover:
 | Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves visible current-weapon HUD state and current weapon binding. |
 | Authority | Package-owned QA evidence defines the capability authority: `player.fired`, `projectile.spawned`, or a generic `currentWeaponId` field is insufficient unless `ui.hud_current_weapon.verified` proves the current-weapon HUD fields. |
 | Legacy strategy | Existing weapon events remain dependency evidence only. They cannot overclaim HUD current-weapon support without the current-weapon HUD required probe and state fields. |
-| Failure policy | Missing package contract, missing `ui.hud_current_weapon.verified` event, missing HUD fields, missing weapon-state binding, wrong capability/probe identity, or stale evidence keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Failure policy | Missing package contract, missing `ui.hud_current_weapon.verified` event, missing HUD fields, missing weapon-state binding, missing default-weapon dependency probe, wrong capability/probe identity, or stale evidence keeps `qa_observed=false` and fails closed as missing required probe evidence. |
 | Evidence | Focused contracts prove package validation, registry support advancement without complete support, QA reader positive/negative HUD-current-weapon field behavior, target-profile overlay positive/negative behavior, remaining-inventory selection, and event/schema freeze coverage. |
 | Rollback | Reverting this slice removes only the current-weapon HUD package/probe/reader wiring and returns `ui.hud_current_weapon.v1` to unsupported evidence without changing business runtime gameplay templates or entering Stage 5. |
 
@@ -6306,7 +6308,116 @@ Candidate readiness:
 - `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
 - The local validation facts above predate this status-field sync. The final tree must be revalidated before creating the immutable candidate commit.
 
-Exit assessment: `LOCALLY_VALIDATED_AWAITING_FINAL_TREE_REVALIDATION_AND_CANDIDATE`. This atom has landed focused RED/GREEN implementation evidence plus full local gate evidence, but this status sync changed the docs tree. Candidate commit, Oracle review, receipt commit, and Parent Loop Driver continuation are still required.
+Oracle review round 1:
+
+```text
+reviewed_commit_sha=3248ca4ab07ca1714ad1d57cc4cee0306d79fd8d
+reviewed_commit_tree=e27618751cbd8a488219f01600f3645e617b6805
+reviewed_skill_revision=968329aee2513d0486dc24a92051e6695dd929baec9d7c9a3db80ab8f6f51131
+oracle_agent_id=019f058a-4f55-7da1-acfe-22d429657c2c
+oracle_status=changes_required
+oracle_result=CHANGES_REQUIRED
+p0=none
+p1=same-run overlay could mark ui.hud_current_weapon.v1 observed when its required weapon.default_straight_single.v1 dependency evidence was missing
+p2=none
+p3=closure record had local_validation_status=passed while also saying final tree still needed revalidation before candidate
+candidate_status=superseded_by_current_rework
+```
+
+Oracle P1 rework:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/generation-target-profile-runtime-support.test.ts
+exitCode=1
+duration=real 1.74s
+result=RED: current-weapon HUD required probe passed while DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID was missing; target-profile overlay still marked ui.hud_current_weapon.v1 runtimeVerified=true.
+
+change=Capability QA reports now preserve plan-derived capabilityDependencies and probe-result capabilityId; target-profile overlay computes dependencyRequiredProbeIds from that metadata and requires dependency probes before setting runtimeVerified=true.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/generation-target-profile-runtime-support.test.ts
+exitCode=0
+duration=real 1.64s
+result=PASS: 1 file / 42 tests.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts
+exitCode=0
+duration=real 1.71s
+result=PASS: 2 files / 105 tests.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-focused-validation.test.ts
+exitCode=0
+duration=real 2.11s
+result=PASS: 10 files / 302 tests.
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 9.51s
+result=PASS: 98 files / 1316 tests.
+```
+
+Post-P1 final validation and candidate readiness:
+
+```text
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+reviewed_skill_revision_type=sha256_bundle
+reviewed_skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
+reviewed_skill_root_identity=/Users/dahufa/.agents/skills
+reviewed_skill_file_count=8
+reviewed_skill_revision=0ee367b211376b90d99f05f6825beb79171e1bc7e61bfdb71c043ef749ffca5f
+reviewed_skill_bundle_digest=0ee367b211376b90d99f05f6825beb79171e1bc7e61bfdb71c043ef749ffca5f
+previous_candidate_commit_sha=3248ca4ab07ca1714ad1d57cc4cee0306d79fd8d
+previous_candidate_status=superseded_by_oracle_p1_rework
+previous_recorded_skill_digest=968329aee2513d0486dc24a92051e6695dd929baec9d7c9a3db80ab8f6f51131
+current_active_skill_digest=0ee367b211376b90d99f05f6825beb79171e1bc7e61bfdb71c043ef749ffca5f
+freshness_status=changed
+freshness_interpretation=The previous candidate digest remains historical evidence for 3248ca4ab07ca1714ad1d57cc4cee0306d79fd8d. The current candidate request must bind the freshly recomputed active Skill bundle digest and must not reuse the superseded digest.
+unresolved_items=new candidate not created; Oracle re-review not submitted; receipt not created; Parent Loop Driver not run after receipt
+```
+
+Post-P1 final validation commands:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-focused-validation.test.ts
+exitCode=0
+duration=real 2.18s
+result=PASS: 10 files / 302 tests.
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 9.32s
+result=PASS: 98 files / 1316 tests.
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 59.45s
+result=PASS: contracts 98 files / 1316 tests; workspace 34 files / 410 tests, including Playwright QA runner.
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.71s
+result=PASS.
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.03s
+result=PASS.
+
+command=/usr/bin/time -p node --input-type=module "<Step37 external Skill bundle digest script: step37_manifest_v1_path_type_size_mode_sha_symlink>"
+exitCode=0
+duration=real 0.05s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_root_identity=/Users/dahufa/.agents/skills; skill_file_count=8; skill_bundle_digest=0ee367b211376b90d99f05f6825beb79171e1bc7e61bfdb71c043ef749ffca5f; manifest_sha_input_bytes=1033.
+
+command=/usr/bin/time -p npx tsx --eval "<ui.hud_current_weapon.v1 support summary and remaining inventory>"
+exitCode=0
+duration=real 0.55s
+result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=51; staticCompleteSupportedCount=0; committedClosedCapabilityCount=50; sameRunObservedOnlyCount=50; unsupported_unregistered=8; currentCheckpointId=stage4.ui_hud_current_weapon_v1.complete_supported_package_slice; nextAtomicStep="Stage 4 ui.hud_current_weapon.v1 complete-supported package slice implementation atomic step"; selectionFailure=null; ui.hud_current_weapon.v1 state=registered_without_required_probe_verification; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false.
+```
+
+Exit assessment: `LOCALLY_VALIDATED_AWAITING_CANDIDATE_COMMIT`. The superseded candidate `3248ca4ab07ca1714ad1d57cc4cee0306d79fd8d` cannot receive a receipt. The next action inside this atom is to create a new immutable candidate commit, submit that candidate plus `reviewed_skill_revision=0ee367b211376b90d99f05f6825beb79171e1bc7e61bfdb71c043ef749ffca5f` for Oracle re-review, and only then write a receipt if Oracle approves.
 
 ## Stage 4 Implementation: `ui.hud_boss_health.v1` complete-supported package slice
 
