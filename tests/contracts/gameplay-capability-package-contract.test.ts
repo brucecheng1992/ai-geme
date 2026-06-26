@@ -38,6 +38,18 @@ import {
   WEAPON_RAPID_FIRE_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/weapon-rapid-fire-runtime-module.js';
 import {
+  WEAPON_SPREAD_SHOT_PACKAGE_REQUIRED_EVIDENCE_ID,
+  WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID,
+  createWeaponSpreadShotPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/weapon-spread-shot-package.js';
+import {
+  WEAPON_SPREAD_SHOT_EVENT_TYPE,
+  WEAPON_SPREAD_SHOT_PROJECTILE_COUNT,
+  WEAPON_SPREAD_SHOT_RUNTIME_SYSTEM_ID,
+  WEAPON_SPREAD_SHOT_SPREAD_ARC_DEGREES,
+  WEAPON_SPREAD_SHOT_SPREAD_ANGLES_DEGREES
+} from '../../packages/game-dsl/src/gameplay-capabilities/weapon-spread-shot-runtime-module.js';
+import {
   WEAPON_REPLACEMENT_RULE_PACKAGE_REQUIRED_EVIDENCE_ID,
   WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID,
   createWeaponReplacementRulePackageContract
@@ -282,6 +294,48 @@ describe('Gameplay capability package contract', () => {
           kind: 'state_probe',
           runtimeSystemId: WEAPON_RAPID_FIRE_RUNTIME_SYSTEM_ID,
           ref: WEAPON_RAPID_FIRE_BURST_EVENT_TYPE
+        })
+      ]
+    });
+  });
+
+  it('accepts the weapon spread shot package-owned QA contract', () => {
+    const contract = createWeaponSpreadShotPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'weapon.spread_shot.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([WEAPON_SPREAD_SHOT_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: WEAPON_SPREAD_SHOT_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'weapon.spread_shot.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: WEAPON_SPREAD_SHOT_EVENT_TYPE,
+          parameters: expect.objectContaining({
+            projectileCount: WEAPON_SPREAD_SHOT_PROJECTILE_COUNT,
+            spreadArcDeg: WEAPON_SPREAD_SHOT_SPREAD_ARC_DEGREES,
+            spreadAnglesDeg: WEAPON_SPREAD_SHOT_SPREAD_ANGLES_DEGREES
+          })
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'state_probe',
+          runtimeSystemId: WEAPON_SPREAD_SHOT_RUNTIME_SYSTEM_ID,
+          ref: WEAPON_SPREAD_SHOT_EVENT_TYPE
         })
       ]
     });

@@ -30,6 +30,10 @@ import {
   createWeaponRapidFirePackageContract
 } from './weapon-rapid-fire-package.js';
 import {
+  WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID,
+  createWeaponSpreadShotPackageContract
+} from './weapon-spread-shot-package.js';
+import {
   WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID,
   createWeaponReplacementRulePackageContract
 } from './weapon-replacement-rule-package.js';
@@ -469,6 +473,19 @@ const weaponRapidFirePackageEvidence: GameplayCapabilityEvidence = weaponRapidFi
 const weaponRapidFirePackageQa: GameplayCapabilityQaEvidence = weaponRapidFirePackageReport.supportEligible
   ? { requiredProbeIds: [WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const weaponSpreadShotPackageReport = validateGameplayCapabilityPackage(createWeaponSpreadShotPackageContract());
+const weaponSpreadShotPackageEvidence: GameplayCapabilityEvidence = weaponSpreadShotPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const weaponSpreadShotPackageQa: GameplayCapabilityQaEvidence = weaponSpreadShotPackageReport.supportEligible
+  ? { requiredProbeIds: [WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const weaponReplacementRulePackageReport = validateGameplayCapabilityPackage(createWeaponReplacementRulePackageContract());
 const weaponReplacementRulePackageEvidence: GameplayCapabilityEvidence = weaponReplacementRulePackageReport.supportEligible
   ? {
@@ -792,7 +809,8 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [phaser2dActionArcade],
     ['side_scrolling_run_and_gun.v1'],
     [],
-    canonicalNormalizationEvidence
+    weaponSpreadShotPackageEvidence,
+    weaponSpreadShotPackageQa
   ),
   contractSeeded('goal.destroy_target.v1', 'goal', 'Destroy target goal', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),
   contractSeeded('scene.parallax_background.v1', 'scene', 'Parallax background scene layers', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),

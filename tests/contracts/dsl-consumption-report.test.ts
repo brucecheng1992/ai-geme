@@ -198,11 +198,12 @@ describe('Step 33 DSL consumption report', () => {
       evidenceDimensions: {
         schema_expressible: true,
         normalized: true,
-        compiled: false,
-        runtime_consumed: false,
+        compiled: true,
+        runtime_consumed: true,
         qa_observed: false
       },
-      missingEvidenceDimensions: ['compiled', 'runtime_consumed', 'qa_observed']
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
     });
     expect(capabilities.get('weapon.rapid_fire.v1')).toMatchObject({
       classification: 'DEFERRED',

@@ -19,6 +19,12 @@ import {
   WEAPON_RAPID_FIRE_COOLDOWN_MS,
   WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID,
   createWeaponRapidFirePackageContract,
+  WEAPON_SPREAD_SHOT_EVENT_TYPE,
+  WEAPON_SPREAD_SHOT_PROJECTILE_COUNT,
+  WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID,
+  WEAPON_SPREAD_SHOT_SPREAD_ARC_DEGREES,
+  WEAPON_SPREAD_SHOT_SPREAD_ANGLES_DEGREES,
+  createWeaponSpreadShotPackageContract,
   WEAPON_REPLACEMENT_RULE_EVENT_TYPE,
   WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE,
   WEAPON_REPLACEMENT_RULE_PREVIOUS_WEAPON_ID,
@@ -730,6 +736,75 @@ describe('Capability-owned runtime QA probes', () => {
       })
     ]));
     expect(observedRateState.status).toBe('passed');
+  });
+
+  it('does not verify weapon spread shot when fire evidence lacks spread state fields', () => {
+    const capabilityId = 'weapon.spread_shot.v1';
+    const probeId = WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID;
+    const spreadShotPackage = createWeaponSpreadShotPackageContract();
+    const packages = [{ ...spreadShotPackage, dependencies: [] }];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingSpreadState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'fire_spread',
+              eventType: WEAPON_SPREAD_SHOT_EVENT_TYPE,
+              eventTypes: [WEAPON_SPREAD_SHOT_EVENT_TYPE],
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedSpreadState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'fire_spread',
+              eventType: WEAPON_SPREAD_SHOT_EVENT_TYPE,
+              eventTypes: [WEAPON_SPREAD_SHOT_EVENT_TYPE],
+              spreadShot: true,
+              projectileCount: WEAPON_SPREAD_SHOT_PROJECTILE_COUNT,
+              spreadArcDeg: WEAPON_SPREAD_SHOT_SPREAD_ARC_DEGREES,
+              spreadAnglesDeg: WEAPON_SPREAD_SHOT_SPREAD_ANGLES_DEGREES,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingSpreadState.status).toBe('failed');
+    expect(missingSpreadState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingSpreadState.requiredResults[0]?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.spread_projectiles`,
+        status: 'failed',
+        message: expect.stringContaining('expected spreadShot=true, observed <missing>')
+      })
+    ]));
+    expect(observedSpreadState.status).toBe('passed');
   });
 
   it('does not verify weapon replacement rule when pickup evidence lacks replacement state fields', () => {

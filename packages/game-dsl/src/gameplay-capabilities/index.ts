@@ -17,6 +17,8 @@ export * from './weapon-death-reset-runtime-module.js';
 export * from './weapon-death-reset-package.js';
 export * from './weapon-rapid-fire-runtime-module.js';
 export * from './weapon-rapid-fire-package.js';
+export * from './weapon-spread-shot-runtime-module.js';
+export * from './weapon-spread-shot-package.js';
 export * from './weapon-replacement-rule-runtime-module.js';
 export * from './weapon-replacement-rule-package.js';
 export * from './combat-airborne-fire-runtime-module.js';

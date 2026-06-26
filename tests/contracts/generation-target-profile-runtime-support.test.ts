@@ -29,6 +29,11 @@ import {
   WEAPON_RAPID_FIRE_BURST_WINDOW_MS,
   WEAPON_RAPID_FIRE_COOLDOWN_MS,
   WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID,
+  WEAPON_SPREAD_SHOT_EVENT_TYPE,
+  WEAPON_SPREAD_SHOT_PROJECTILE_COUNT,
+  WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID,
+  WEAPON_SPREAD_SHOT_SPREAD_ARC_DEGREES,
+  WEAPON_SPREAD_SHOT_SPREAD_ANGLES_DEGREES,
   WEAPON_REPLACEMENT_RULE_EVENT_TYPE,
   WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE,
   WEAPON_REPLACEMENT_RULE_PREVIOUS_WEAPON_ID,
@@ -53,6 +58,7 @@ import {
   createSpawnStaticPackageContract,
   createWeaponDeathResetPackageContract,
   createWeaponRapidFirePackageContract,
+  createWeaponSpreadShotPackageContract,
   createWeaponReplacementRulePackageContract,
   evaluateCapabilityQaReport,
   resolveGameplayCapabilityGraph
@@ -74,6 +80,7 @@ const fixedPromptBindingCapabilityId = 'metadata.fixed_prompt_binding.v1';
 const profileBindingCapabilityId = 'profile.deepseek_run_and_gun_validation.v1';
 const deathResetCapabilityId = 'weapon.death_reset.v1';
 const rapidFireCapabilityId = 'weapon.rapid_fire.v1';
+const spreadShotCapabilityId = 'weapon.spread_shot.v1';
 const replacementRuleCapabilityId = 'weapon.replacement_rule.v1';
 
 describe('Step 37 target profile runtime support overlay', () => {
@@ -98,6 +105,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE,
       WEAPON_DEATH_RESET_EVENT_TYPE,
       WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
+      WEAPON_SPREAD_SHOT_EVENT_TYPE,
       WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE,
       WEAPON_REPLACEMENT_RULE_EVENT_TYPE
     ]);
@@ -119,6 +127,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     const profileBinding = report.capabilities.find((entry) => entry.capabilityId === profileBindingCapabilityId);
     const deathReset = report.capabilities.find((entry) => entry.capabilityId === deathResetCapabilityId);
     const rapidFire = report.capabilities.find((entry) => entry.capabilityId === rapidFireCapabilityId);
+    const spreadShot = report.capabilities.find((entry) => entry.capabilityId === spreadShotCapabilityId);
     const replacementRule = report.capabilities.find((entry) => entry.capabilityId === replacementRuleCapabilityId);
 
     expect(GenerationTargetProfileRuntimeSupportReportSchema.parse(report)).toEqual(report);
@@ -128,7 +137,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 17,
+      observedCompleteSupportedCount: 18,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
@@ -148,9 +157,10 @@ describe('Step 37 target profile runtime support overlay', () => {
         deathResetCapabilityId,
         defaultWeaponCapabilityId,
         rapidFireCapabilityId,
-        replacementRuleCapabilityId
+        replacementRuleCapabilityId,
+        spreadShotCapabilityId
       ],
-      blockers: ['target_profile_runtime_support_incomplete:17/59']
+      blockers: ['target_profile_runtime_support_incomplete:18/59']
     });
     expect(camera).toMatchObject({
       capabilityId: cameraCapabilityId,
@@ -328,6 +338,17 @@ describe('Step 37 target profile runtime support overlay', () => {
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
     });
+    expect(spreadShot).toMatchObject({
+      capabilityId: spreadShotCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
     expect(replacementRule).toMatchObject({
       capabilityId: replacementRuleCapabilityId,
       runtimeVerified: true,
@@ -361,6 +382,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE,
       WEAPON_DEATH_RESET_EVENT_TYPE,
       WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
+      WEAPON_SPREAD_SHOT_EVENT_TYPE,
       WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE,
       WEAPON_REPLACEMENT_RULE_EVENT_TYPE
     ]);
@@ -373,11 +395,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 16,
+      observedCompleteSupportedCount: 17,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:16/59'
+        'target_profile_runtime_support_incomplete:17/59'
       ]
     });
     expect(fixedPromptBinding).toMatchObject({
@@ -409,6 +431,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE,
       WEAPON_DEATH_RESET_EVENT_TYPE,
       WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
+      WEAPON_SPREAD_SHOT_EVENT_TYPE,
       WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE,
       WEAPON_REPLACEMENT_RULE_EVENT_TYPE
     ]);
@@ -421,11 +444,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 16,
+      observedCompleteSupportedCount: 17,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:16/59'
+        'target_profile_runtime_support_incomplete:17/59'
       ]
     });
     expect(profileBinding).toMatchObject({
@@ -484,6 +507,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE,
       WEAPON_DEATH_RESET_EVENT_TYPE,
       WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
+      WEAPON_SPREAD_SHOT_EVENT_TYPE,
       WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE,
       WEAPON_REPLACEMENT_RULE_EVENT_TYPE
     ]);
@@ -509,7 +533,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 16,
+      observedCompleteSupportedCount: 17,
       targetProfileCompleteSupported: false,
       observedCapabilityIds: [
         cameraCapabilityId,
@@ -527,11 +551,12 @@ describe('Step 37 target profile runtime support overlay', () => {
         deathResetCapabilityId,
         defaultWeaponCapabilityId,
         rapidFireCapabilityId,
-        replacementRuleCapabilityId
+        replacementRuleCapabilityId,
+        spreadShotCapabilityId
       ],
       blockers: [
         `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:16/59'
+        'target_profile_runtime_support_incomplete:17/59'
       ]
     });
     expect(damageInvulnerability).toMatchObject({
@@ -565,6 +590,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE,
       WEAPON_DEATH_RESET_EVENT_TYPE,
       WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
+      WEAPON_SPREAD_SHOT_EVENT_TYPE,
       WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE,
       WEAPON_REPLACEMENT_RULE_EVENT_TYPE
     ],
@@ -592,11 +618,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 16,
+      observedCompleteSupportedCount: 17,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:16/59'
+        'target_profile_runtime_support_incomplete:17/59'
       ]
     });
     expect(pickup).toMatchObject({
@@ -630,6 +656,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE,
       WEAPON_DEATH_RESET_EVENT_TYPE,
       WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
+      WEAPON_SPREAD_SHOT_EVENT_TYPE,
       WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE,
       WEAPON_REPLACEMENT_RULE_EVENT_TYPE
     ],
@@ -654,11 +681,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 16,
+      observedCompleteSupportedCount: 17,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:16/59'
+        'target_profile_runtime_support_incomplete:17/59'
       ]
     });
     expect(spawnEnemyWave).toMatchObject({
@@ -692,6 +719,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE,
       WEAPON_DEATH_RESET_EVENT_TYPE,
       WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
+      WEAPON_SPREAD_SHOT_EVENT_TYPE,
       WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE,
       WEAPON_REPLACEMENT_RULE_EVENT_TYPE
       ],
@@ -716,11 +744,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 16,
+      observedCompleteSupportedCount: 17,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:16/59'
+        'target_profile_runtime_support_incomplete:17/59'
       ]
     });
     expect(deathReset).toMatchObject({
@@ -754,6 +782,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE,
         WEAPON_DEATH_RESET_EVENT_TYPE,
         WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
+        WEAPON_SPREAD_SHOT_EVENT_TYPE,
         WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE,
         WEAPON_REPLACEMENT_RULE_EVENT_TYPE
       ],
@@ -778,11 +807,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 16,
+      observedCompleteSupportedCount: 17,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:16/59'
+        'target_profile_runtime_support_incomplete:17/59'
       ]
     });
     expect(rapidFire).toMatchObject({
@@ -790,6 +819,69 @@ describe('Step 37 target profile runtime support overlay', () => {
       observedCompleteSupported: false,
       verifiedRequiredProbeIds: [],
       missingRequiredProbeIds: [WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+  });
+
+  it('keeps weapon spread shot unverified when fire evidence lacks spread state fields', () => {
+    const capabilityQaReport = buildDefaultWeaponQaReport(
+      [
+        'camera.side_follow.active',
+        'collision.platform.grounded',
+        'combat.airborne_fire.fired',
+        'player.fired',
+        'projectile.spawned',
+        'movement.crouch.entered',
+        'player.jumped',
+        'pickup.collectible.collected',
+        'pickup.collectible.state_changed',
+        'spawn.enemy_wave.ordered',
+        'spawn.static.triggered',
+        'health.damage_invulnerability.activated',
+        'health.damage_invulnerability.blocked',
+        'health.player_health.current',
+        FIXED_PROMPT_BINDING_EVENT_TYPE,
+        PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE,
+        WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE,
+        WEAPON_DEATH_RESET_EVENT_TYPE,
+        WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
+        WEAPON_SPREAD_SHOT_EVENT_TYPE,
+        WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE,
+        WEAPON_REPLACEMENT_RULE_EVENT_TYPE
+      ],
+      { weaponSpreadShotStateFields: false }
+    );
+    const report = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260625_target_runtime_support',
+      runId: 'run_20260625_weapon_spread_shot_missing_state',
+      capabilityQaReport
+    });
+    const spreadShot = report.capabilities.find((entry) => entry.capabilityId === spreadShotCapabilityId);
+
+    expect(capabilityQaReport.requiredResults.find((entry) => entry.probeId === WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: 'weapon.spread_shot.v1.fire.browser_qa.v1.assertion.spread_projectiles',
+          status: 'failed',
+          message: expect.stringContaining('expected spreadShot=true, observed <missing>')
+        })
+      ])
+    });
+    expect(report).toMatchObject({
+      status: 'blocked_incomplete_target_profile',
+      observedCompleteSupportedCount: 17,
+      targetProfileCompleteSupported: false,
+      blockers: [
+        `capability_qa_report_missing_required_probe:${WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID}`,
+        'target_profile_runtime_support_incomplete:17/59'
+      ]
+    });
+    expect(spreadShot).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID],
       observedEvidenceDimensions: { qa_observed: false }
     });
   });
@@ -816,6 +908,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE,
         WEAPON_DEATH_RESET_EVENT_TYPE,
         WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
+        WEAPON_SPREAD_SHOT_EVENT_TYPE,
         WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE,
         WEAPON_REPLACEMENT_RULE_EVENT_TYPE
       ],
@@ -840,11 +933,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 16,
+      observedCompleteSupportedCount: 17,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:16/59'
+        'target_profile_runtime_support_incomplete:17/59'
       ]
     });
     expect(replacementRule).toMatchObject({
@@ -874,7 +967,8 @@ describe('Step 37 target profile runtime support overlay', () => {
       `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID}`,
-      `capability_qa_report_missing_required_probe:${WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID}`
+      `capability_qa_report_missing_required_probe:${WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID}`
     ]);
   });
 });
@@ -886,6 +980,7 @@ function buildDefaultWeaponQaReport(
     spawnEnemyWaveOrderedFields?: boolean;
     weaponDeathResetStateFields?: boolean;
     weaponRapidFireStateFields?: boolean;
+    weaponSpreadShotStateFields?: boolean;
     weaponReplacementStateFields?: boolean;
   } = {}
 ) {
@@ -1133,6 +1228,27 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
+    ...(eventTypes.includes(WEAPON_SPREAD_SHOT_EVENT_TYPE)
+      ? [
+          {
+            capabilityId: spreadShotCapabilityId,
+            probeId: WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID,
+            action: 'fire_spread',
+            eventType: WEAPON_SPREAD_SHOT_EVENT_TYPE,
+            eventTypes,
+            ...(options.weaponSpreadShotStateFields === false
+              ? {}
+              : {
+                  spreadShot: true,
+                  projectileCount: WEAPON_SPREAD_SHOT_PROJECTILE_COUNT,
+                  spreadArcDeg: WEAPON_SPREAD_SHOT_SPREAD_ARC_DEGREES,
+                  spreadAnglesDeg: WEAPON_SPREAD_SHOT_SPREAD_ANGLES_DEGREES
+                }),
+            status: 'observed' as const,
+            sourceRef: 'qa_report.capability_runtime.weapon.spread_shot'
+          }
+        ]
+      : []),
     ...(eventTypes.includes(WEAPON_REPLACEMENT_RULE_EVENT_TYPE)
       ? [
           {
@@ -1185,6 +1301,7 @@ function buildDefaultWeaponQaPlan() {
     createProfileDeepSeekRunAndGunValidationPackageContract(),
     createWeaponDeathResetPackageContract(),
     createWeaponRapidFirePackageContract(),
+    createWeaponSpreadShotPackageContract(),
     createWeaponReplacementRulePackageContract(),
     createMovementCrouchPackageContract(),
     createHealthDamageInvulnerabilityPackageContract(),
@@ -1205,6 +1322,7 @@ function buildDefaultWeaponQaPlan() {
       profileBindingCapabilityId,
       deathResetCapabilityId,
       rapidFireCapabilityId,
+      spreadShotCapabilityId,
       replacementRuleCapabilityId,
       crouchCapabilityId,
       damageInvulnerabilityCapabilityId,

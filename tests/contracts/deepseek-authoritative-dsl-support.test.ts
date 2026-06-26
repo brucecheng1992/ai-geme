@@ -309,7 +309,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
     });
   });
 
-  it('reports spread-shot weapon normalization evidence without compiler or runtime support', () => {
+  it('reports spread-shot weapon package-backed evidence without QA completion', () => {
     const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
     const capabilities = new Map(support.capabilities.map((capability) => [capability.capabilityId, capability]));
 
@@ -321,11 +321,12 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       evidenceDimensions: {
         schema_expressible: true,
         normalized: true,
-        compiled: false,
-        runtime_consumed: false,
+        compiled: true,
+        runtime_consumed: true,
         qa_observed: false
       },
-      missingEvidenceDimensions: ['compiled', 'runtime_consumed', 'qa_observed']
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
     });
   });
 

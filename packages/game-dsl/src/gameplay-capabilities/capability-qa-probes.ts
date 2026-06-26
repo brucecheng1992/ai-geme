@@ -134,6 +134,10 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   cooldownMs?: number;
   burstShotCount?: number;
   burstWindowMs?: number;
+  spreadShot?: boolean;
+  projectileCount?: number;
+  spreadArcDeg?: number;
+  spreadAnglesDeg?: readonly number[];
   weaponReplaced?: boolean;
   replacementWeaponId?: string;
   status?: string;
@@ -396,6 +400,10 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedNumberField('cooldownMs', expected, observed.cooldownMs),
     ...compareExpectedNumberField('burstShotCount', expected, observed.burstShotCount),
     ...compareExpectedNumberField('burstWindowMs', expected, observed.burstWindowMs),
+    ...compareExpectedBooleanField('spreadShot', expected, observed.spreadShot),
+    ...compareExpectedNumberField('projectileCount', expected, observed.projectileCount),
+    ...compareExpectedNumberField('spreadArcDeg', expected, observed.spreadArcDeg),
+    ...compareExpectedNumberArrayField('spreadAnglesDeg', expected, observed.spreadAnglesDeg),
     ...compareExpectedBooleanField('weaponReplaced', expected, observed.weaponReplaced),
     ...compareExpectedStringField('replacementWeaponId', expected, observed.replacementWeaponId)
   ];
@@ -415,6 +423,22 @@ function compareExpectedNumberField(field: string, expected: Readonly<Record<str
     return [];
   }
   return observed === expectedValue ? [] : [`expected ${field}=${expectedValue}, observed ${observed === undefined ? '<missing>' : String(observed)}`];
+}
+
+function compareExpectedNumberArrayField(
+  field: string,
+  expected: Readonly<Record<string, unknown>>,
+  observed: readonly number[] | undefined
+): string[] {
+  const expectedValue = expected[field];
+  if (!Array.isArray(expectedValue) || !expectedValue.every((item) => typeof item === 'number')) {
+    return [];
+  }
+  if (observed === undefined) {
+    return [`expected ${field}=[${expectedValue.join(',')}], observed <missing>`];
+  }
+  const matches = observed.length === expectedValue.length && observed.every((item, index) => item === expectedValue[index]);
+  return matches ? [] : [`expected ${field}=[${expectedValue.join(',')}], observed [${observed.join(',')}]`];
 }
 
 function compareExpectedStringField(field: string, expected: Readonly<Record<string, unknown>>, observed: string | undefined): string[] {

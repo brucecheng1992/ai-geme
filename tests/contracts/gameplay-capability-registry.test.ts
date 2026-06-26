@@ -18,6 +18,7 @@ import {
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   WEAPON_DEATH_RESET_REQUIRED_PROBE_ID,
   WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID,
+  WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID,
   WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID,
   type GameplayCapabilityDescriptor,
   type RuntimeGenreCapability
@@ -205,16 +206,7 @@ describe('Gameplay capability registry', () => {
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(defaultWeapon)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(defaultWeapon)).toBe(false);
 
-    for (const capabilityId of ['weapon.spread_shot.v1']) {
-      const capability = findGameplayCapability(capabilityId);
-      if (capability === undefined) {
-        throw new Error(`Expected ${capabilityId} in registry.`);
-      }
-      expect(deriveGameplayCapabilitySupportEvidenceDimensions(capability)).toMatchObject({
-        runtime_consumed: false,
-        qa_observed: false
-      });
-    }
+    expect(findGameplayCapability('weapon.spread_shot.v1')).toBeDefined();
   });
 
   it('scopes weapon rapid fire package-owned QA without static support promotion', () => {
@@ -242,6 +234,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(rapidFire)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(rapidFire)).toBe(false);
+  });
+
+  it('scopes weapon spread shot package-owned QA without static support promotion', () => {
+    const spreadShot = findGameplayCapability('weapon.spread_shot.v1');
+
+    if (spreadShot === undefined) {
+      throw new Error('Expected weapon.spread_shot.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(spreadShot)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(spreadShot.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(spreadShot.qa).toEqual({
+      requiredProbeIds: [WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(spreadShot)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(spreadShot)).toBe(false);
   });
 
   it('scopes weapon replacement rule package-owned QA without static support promotion', () => {
@@ -513,13 +532,7 @@ describe('Gameplay capability registry', () => {
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(pickup)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(pickup)).toBe(false);
 
-    for (const capabilityId of ['weapon.spread_shot.v1']) {
-      const weapon = findGameplayCapability(capabilityId);
-      if (weapon === undefined) {
-        throw new Error(`Expected ${capabilityId} in registry.`);
-      }
-      expect(isCompleteSupportedGameplayCapability(weapon)).toBe(false);
-    }
+    expect(isCompleteSupportedGameplayCapability(findGameplayCapability('weapon.spread_shot.v1')!)).toBe(false);
   });
 
   it('derives profile runtime status from RuntimeGenreRegistry instead of a second supported list', () => {

@@ -5726,3 +5726,170 @@ result=requiredCapabilityCount=59; staticCompleteSupportedCount=0; committedClos
 ```
 
 Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4.weapon_replacement_rule_v1.complete_supported_package_slice` after candidate commit creation, local validation, Oracle PASS, and receipt-only metadata update. It does not close Stage 4, Step37, production default cutover, legacy authoritative path exit, Stage 5, or final global closure. Parent Loop Driver must continue with `stage4.weapon_spread_shot_v1.complete_supported_package_slice` while global exits remain false and no verified user blocker exists.
+
+## Stage 4 Closure Implementation: weapon.spread_shot.v1 Complete-Supported Package Slice
+
+Checkpoint identity:
+
+```yaml
+closure_scope: atomic_step
+atomic_step:
+  id: stage4.weapon_spread_shot_v1.complete_supported_package_slice
+  status: locally_validated
+  implementation_status: complete
+  local_validation_status: passed
+  candidate_status: ready_for_commit
+  oracle_status: not_submitted
+  closure_status: not_closed
+parent_stage:
+  id: stage4
+  status: running
+  exit_conditions_met: false
+parent_loop:
+  id: step37
+  status: running
+  global_exit_conditions_met: false
+  user_input_required: false
+  next_action: CONTINUE_PARENT_LOOP
+  next_atomic_step: stage4.weapon_spread_shot_v1.complete_supported_package_slice
+  next_atomic_step_scope: implementation
+```
+
+Current Stage review conclusion:
+
+`weapon.spread_shot.v1` was selected by the Parent Loop Driver after the `weapon.replacement_rule.v1` receipt. Baseline support summary at entry reported `schema_expressible=true`, `normalized=true`, `compiled=false`, `runtime_consumed=false`, and `qa_observed=false`, with missing prerequisites `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
+
+Minimum closure requirements:
+
+1. Add a package-owned spread-shot weapon contract with stable capability identity, runtime system identity, spread-fire event identity, required probe id, and required QA evidence id.
+2. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `compiled=true` and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `weapon.spread_shot.v1` only when the fire event and spread state fields are present.
+5. Require spread behavior fields: `spreadShot=true`, `projectileCount=3`, `spreadArcDeg=30`, and `spreadAnglesDeg=[-15,0,15]`.
+6. Add a negative regression proving fire event evidence without spread state fields keeps the capability unverified and emits the required missing-probe blocker.
+7. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/weapon-spread-shot-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/weapon-spread-shot-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createWeaponSpreadShotPackageContract()`.
+- Runtime module identity: `WEAPON_SPREAD_SHOT_RUNTIME_SYSTEM_ID=weapon.spread_shot`.
+- Spread event: `WEAPON_SPREAD_SHOT_EVENT_TYPE=weapon.spread_shot.fired`.
+- Required probe: `WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID=weapon.spread_shot.v1.fire.browser_qa.v1`.
+- Required state fields: `spreadShot`, `projectileCount`, `spreadArcDeg`, and `spreadAnglesDeg`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares the spread state fields and fails the required probe when any field is missing or mismatched.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for the same run; it does not mutate static `completeSupported`.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned spread-shot weapon capability contract, runtime system identity, spread-fire event, required probe id, required evidence id, and runtime evidence fields for spread projectile state. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, Step37 remaining-inventory driver, telemetry/event freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves the spread projectile state. |
+| Authority | Canonical DSL `capability_configs.spread_shot_weapon` and package-owned QA evidence define the semantic authority for spread-shot behavior. |
+| Legacy strategy | Pickup collection, default weapon, rapid-fire, replacement-rule, or death-reset evidence cannot overclaim spread-shot. Legacy weapon behavior remains non-authoritative for this capability. |
+| Failure policy | Missing package contract, missing spread-fire event, missing spread state fields, or wrong capability/probe identity keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, registry support advancement without complete support, QA reader positive/negative spread-field behavior, target-profile overlay positive/negative behavior, canonical missing-probe ordering, and event/schema freeze coverage. |
+| Rollback | Reverting this slice removes only the spread-shot package/probe/reader wiring and returns `weapon.spread_shot.v1` to normalization-only deferred evidence without changing business runtime gameplay templates. |
+
+Focused validation completed so far:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=1
+duration=real 1.71s
+result=RED: spread-shot package/runtime module did not exist; index export and same-run overlay package plan could not resolve createWeaponSpreadShotPackageContract(); registry support still had no compiler/runtime/package QA evidence.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 1.76s
+result=PASS: 8 files / 132 tests
+
+command=/usr/bin/time -p npx tsx -e "<weapon.spread_shot.v1 support summary>"
+exitCode=0
+duration=real 0.46s
+result=PASS: classification=DEFERRED; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false.
+```
+
+Focused set selection:
+
+- `gameplay-capability-package-contract.test.ts`: validates the new spread-shot package contract, required evidence id, runtime system, spread event, projectile count, spread arc, spread angles, and required probe.
+- `gameplay-capability-qa-probes.test.ts`: validates that spread fire event evidence without spread state fields fails and that full spread state evidence passes.
+- `generation-target-profile-runtime-support.test.ts`: validates same-run overlay positive/negative behavior, canonical missing-probe order, and preservation of static `completeSupported=false`.
+- `deepseek-authoritative-dsl-support.test.ts`: validates support dimensions and prerequisites for the target capability.
+- `dsl-consumption-report.test.ts`: validates the consumption report reads the updated package-backed support dimensions.
+- `gameplay-capability-registry.test.ts`: validates static registry evidence and required probe wiring without static support promotion.
+- `step37-remaining-inventory-driver.test.ts`: validates parent-loop inventory consumption for same-run observed-only slices.
+- `contract-freeze.test.ts`: included because this diff introduces a telemetry/runtime event identity and QA evidence fields, so the focused set follows the actual schema and event-contract impact surface.
+
+Current local validation status:
+
+```text
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+unresolved_items=Candidate commit, Oracle review, receipt, and Parent Loop Driver rerun remain pending.
+```
+
+Local validation completed before candidate:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/step37-closure-implementation-trace.test.ts
+exitCode=0
+duration=real 1.93s
+result=PASS: 9 files / 166 tests
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 8.69s
+result=PASS: 98 files / 1158 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 59.18s
+result=PASS: contracts 98 files / 1158 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 7.03s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.01s
+result=PASS
+
+command=/usr/bin/time -p npx tsx -e "<weapon.spread_shot.v1 support summary>"
+exitCode=0
+duration=real 0.57s
+result=PASS: classification=DEFERRED; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false.
+
+command=/usr/bin/time -p node "<review-gated-delivery root-relative skill bundle digest script>"
+exitCode=0
+duration=real 0.06s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_size_sha; skill_root_identity=/Users/dahufa/.agents/skills/review-gated-delivery; skill_file_count=7; skill_bundle_digest=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1.
+
+command=git status --short
+exitCode=0
+result=PASS: expected spread-shot implementation, tests, docs, and two new package/runtime files are present; no unrelated runtime product files outside this atomic step were modified.
+
+command=git diff --stat
+exitCode=0
+result=PASS: diff is limited to the spread-shot package slice, adjacent capability QA/registry exports, focused contracts, and the current closure record.
+```
