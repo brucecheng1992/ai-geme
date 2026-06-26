@@ -6178,23 +6178,42 @@ capability_id=spawn.stop_on_boss_defeat.v1
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
 review_required=true
-closure_status=open
+closure_status=closed
 global_exit_conditions_met=false
 user_input_required=false
-next_action_after_candidate=SUBMIT_ORACLE_REVIEW
+next_action_after_receipt=CONTINUE_PARENT_LOOP
 active_skill_revision_type=sha256_bundle
 active_skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
 active_skill_file_count=8
 active_skill_bundle_digest=5cd4735569473824dd190e341908f155081443b4cc7b963fcac6007301eb8f6a
 active_skill_freshness_command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
 active_skill_freshness_exit_code=0
-repo_tree_identity=pending_candidate_tree_after_docs_sync
-candidate_commit_sha=not_created
-oracle_agent_id=not_submitted
-oracle_submission_id=not_submitted
+candidate_commit_sha=cfd77750d0d2e3bdf636c8d2b411ba260839d7ad
+reviewed_commit_sha=cfd77750d0d2e3bdf636c8d2b411ba260839d7ad
+reviewed_commit_tree=3d3296e261adf3644cf3d18ecb207f4b6960f329
+reviewed_skill_revision=5cd4735569473824dd190e341908f155081443b4cc7b963fcac6007301eb8f6a
+reviewed_skill_bundle_digest=5cd4735569473824dd190e341908f155081443b4cc7b963fcac6007301eb8f6a
+oracle_agent_id=019f0488-39ff-7e33-a790-4caca4a838a3
+oracle_submission_id=019f053e-ebc8-79f0-864e-290c952c73a3
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_p0_findings=0
+oracle_p1_findings=0
+oracle_p2_findings=0
+oracle_p3_findings=0
+parent_stage_status=running
+parent_loop_status=running
+parent_loop_global_exit_conditions_met=false
+parent_loop_user_input_required=false
+parent_loop_next_action=CONTINUE_PARENT_LOOP
+parent_loop_next_atomic_step=stage4.ui_failure_restart_v1.complete_supported_package_slice
+parent_loop_next_atomic_step_scope=implementation
+parent_loop_next_atomic_step_entry_conditions=Stage 4 remains active; no verified user blocker; current atom closed by Oracle-approved receipt; next checkpoint remains unmet and entry conditions are satisfied.
+parent_loop_inventory_source_plan_revision=docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md@cfd77750d0d2e3bdf636c8d2b411ba260839d7ad
+parent_loop_selection_rule=first_unmet_checkpoint_in_authoritative_inventory
+parent_loop_next_unmet_reason=Stage 4 ui.failure_restart.v1 remains unsupported_unregistered; static completeSupported=false; missingEvidenceDimensions=[schema_expressible,normalized,compiled,runtime_consumed,qa_observed]; missingSupportEvidencePrerequisites=[dslSchema,normalizer,irCompiler,runtimeModule,amendmentOperations,capabilityOwnedQa,artifactEvidence,renderContract,requiredProbeIds,requiredProbesVerified].
 ```
 
 `spawn.stop_on_boss_defeat.v1` was selected by the Parent Loop Driver after the `spawn.explicit_declarations.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
@@ -6319,9 +6338,57 @@ superseded_oracle_submission_id=019f0537-eec8-7601-976e-226db633abc1
 superseded_oracle_agent_id=019f0488-39ff-7e33-a790-4caca4a838a3
 superseded_oracle_status=changes_required
 superseded_oracle_p1=package contract omitted runtime.manifest_binding.v1 while QA/dependency semantics required it
-p1_remediation_status=landed_pending_revalidation
+p1_remediation_status=landed_revalidated_and_oracle_approved
 p1_remediation_paths=packages/game-dsl/src/gameplay-capabilities/spawn-stop-on-boss-defeat-package.ts; tests/contracts/gameplay-capability-package-contract.test.ts
 p1_remediation_summary=added runtime.manifest_binding.v1 to package dependencies, runtime_manifest to runtime system dependencies, and package-contract assertions proving both.
+```
+
+P1 remediation validation and approval:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/step37-focused-validation.test.ts
+exitCode=0
+duration=real 1.92s
+result=PASS: 8 files / 261 tests
+
+command=/usr/bin/time -p npx vitest run tests/contracts
+exitCode=0
+duration=real 9.36s
+result=PASS: 98 files / 1302 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 59.46s
+result=PASS: contracts 1302 tests; workspace 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 7.03s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.03s
+result=PASS
+
+command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
+exitCode=0
+duration=real 0.07s
+result=PASS: skill_file_count=8; computed_skill_bundle_digest=5cd4735569473824dd190e341908f155081443b4cc7b963fcac6007301eb8f6a
+
+command=/usr/bin/time -p npx tsx --eval "<spawn.stop_on_boss_defeat.v1 support summary and remaining inventory>"
+exitCode=0
+duration=real 0.73s
+result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=48; staticCompleteSupportedCount=0; committedClosedCapabilityCount=47; unsupported_unregistered=11; next_checkpoint_id=stage4.spawn_stop_on_boss_defeat_v1.complete_supported_package_slice; selectionFailure=null; completeSupported=false
+
+oracle_submission_id=019f053e-ebc8-79f0-864e-290c952c73a3
+submission_id_source=multi_agent_v1.send_input return field
+oracle_agent_id=019f0488-39ff-7e33-a790-4caca4a838a3
+agent_id_source=existing Oracle agent id
+polling_id_type=agent_id
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 none
+receipt_scope=docs_only_closure_metadata
 ```
 
 ## Stage 4 Implementation: `spawn.explicit_declarations.v1` complete-supported package slice
