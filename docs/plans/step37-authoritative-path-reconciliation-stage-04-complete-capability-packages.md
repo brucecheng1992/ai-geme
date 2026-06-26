@@ -6178,23 +6178,25 @@ capability_id=generation.fallback_policy_fail_closed.v1
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
-review_required=true
-closure_status=not_closed
-atomic_step_status=running
+candidate_status=committed
+oracle_status=approved
+review_required=false
+closure_status=closed
+atomic_step_status=closed
 parent_stage_status=running
 parent_loop_status=running
 global_exit_conditions_met=false
 user_input_required=false
-next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
+next_action_after_receipt=CONTINUE_PARENT_LOOP
+next_atomic_step=stage4.goal_boss_unlock_v1.complete_supported_package_slice
 reviewed_skill_revision_type=sha256_bundle
 reviewed_skill_bundle_format=step37_manifest_v1_path_size_sha
 reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
 reviewed_skill_root_identity=/Users/dahufa/.agents/skills/review-gated-delivery
-reviewed_commit_sha=not_created
-oracle_submission_id=not_submitted
-oracle_agent_id=not_submitted
+reviewed_commit_sha=98e174048972cdc056bd263ef3e833c9ffea45f3
+reviewed_commit_tree=99c81ac4d0877cf8fc6dc190a5f064e5e57aff5a
+oracle_submission_id=019f02a6-38c9-7ad2-aef0-92ac057f2e47
+oracle_agent_id=019effae-8aa2-7c22-b5ba-8c4b69f21d20
 ```
 
 `generation.fallback_policy_fail_closed.v1` was selected by the Parent Loop Driver after the `feedback.victory_declaration.v1` receipt. Baseline support summary at entry commit `a214aec8d172fe453faf63a50bfb8445fc291442` reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
@@ -6340,6 +6342,57 @@ Candidate creation requirement:
 - Candidate commit must not write its own SHA into this candidate record.
 - Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1`.
 - `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+
+Oracle approval receipt:
+
+```text
+previous_oracle_submission_id=019f029f-629e-7b13-b7de-7d6025e2e14a
+previous_oracle_result=CHANGES_REQUIRED: stale prefixed Skill digest and accidental historical receipt rewrite
+oracle_submission_id=019f02a6-38c9-7ad2-aef0-92ac057f2e47
+submission_id_source=multi_agent_v1.send_input return field
+oracle_agent_id=019effae-8aa2-7c22-b5ba-8c4b69f21d20
+agent_id_source=existing Oracle agent id
+polling_id_type=agent_id
+reviewed_commit_sha=98e174048972cdc056bd263ef3e833c9ffea45f3
+reviewed_commit_tree=99c81ac4d0877cf8fc6dc190a5f064e5e57aff5a
+reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
+oracle_status=approved
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 none
+receipt_scope=docs_only_closure_metadata
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
+```
+
+Receipt boundary:
+
+- This receipt records Oracle approval for immutable candidate commit `98e174048972cdc056bd263ef3e833c9ffea45f3` and Skill revision `58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1`.
+- It intentionally does not record its own receipt commit SHA to avoid self-reference churn.
+- Receipt diff is docs-only closure metadata and must not modify implementation, validator, contract semantics, Skill, AGENTS.md, tests, or runtime.
+- Stage 4 and Step37 remain running. This closes only `stage4.generation_fallback_policy_fail_closed_v1.complete_supported_package_slice`.
+
+Parent Loop Driver after receipt:
+
+```text
+closure_scope=atomic_step
+atomic_step_status=closed
+parent_stage_status=running
+parent_loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage4.goal_boss_unlock_v1.complete_supported_package_slice
+next_atomic_step_scope=implementation
+next_atomic_step_entry_conditions=Parent Loop Driver selected the first unclosed unmet checkpoint after generation.fallback_policy_fail_closed.v1 entered committed closure history.
+remaining_inventory_helper=buildStep37RemainingCompleteSupportedInventory
+requiredCapabilityCount=59
+registeredCapabilityCount=31
+staticCompleteSupportedCount=0
+committedClosedCapabilityCount=31
+sameRunObservedOnlyCount=31
+selection_rule=first_unmet_checkpoint_in_authoritative_inventory
+unmet_reason=Stage 4 goal.boss_unlock.v1 remains unsupported_unregistered; static completeSupported=false; missingEvidenceDimensions=[schema_expressible,normalized,compiled,runtime_consumed,qa_observed]; missingSupportEvidencePrerequisites=[dslSchema,normalizer,irCompiler,runtimeModule,amendmentOperations,capabilityOwnedQa,artifactEvidence,renderContract,requiredProbeIds,requiredProbesVerified].
+source_plan_revision=98e174048972cdc056bd263ef3e833c9ffea45f3:docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md
+```
 
 ## Stage 4 Implementation: `feedback.victory_declaration.v1` complete-supported package slice
 
