@@ -26,6 +26,10 @@ import {
   createCanonicalSemanticPreservationPackageContract
 } from './canonical-semantic-preservation-package.js';
 import {
+  COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID,
+  createCollisionDamageAffinityMatrixPackageContract
+} from './collision-damage-affinity-matrix-package.js';
+import {
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   createCameraSideFollowPackageContract
 } from './camera-side-follow-package.js';
@@ -478,6 +482,19 @@ const canonicalSemanticPreservationPackageEvidence: GameplayCapabilityEvidence =
 const canonicalSemanticPreservationPackageQa: GameplayCapabilityQaEvidence = canonicalSemanticPreservationPackageReport.supportEligible
   ? { requiredProbeIds: [CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const collisionDamageAffinityMatrixPackageReport = validateGameplayCapabilityPackage(createCollisionDamageAffinityMatrixPackageContract());
+const collisionDamageAffinityMatrixPackageEvidence: GameplayCapabilityEvidence = collisionDamageAffinityMatrixPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const collisionDamageAffinityMatrixPackageQa: GameplayCapabilityQaEvidence = collisionDamageAffinityMatrixPackageReport.supportEligible
+  ? { requiredProbeIds: [COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const cameraSideFollowPackageReport = validateGameplayCapabilityPackage(createCameraSideFollowPackageContract());
 const cameraSideFollowPackageEvidence: GameplayCapabilityEvidence = cameraSideFollowPackageReport.supportEligible
   ? {
@@ -738,6 +755,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     canonicalSemanticPreservationPackageEvidence,
     canonicalSemanticPreservationPackageQa
+  ),
+  planned(
+    'collision.damage_affinity_matrix.v1',
+    'collision',
+    'Collision damage affinity matrix',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    collisionDamageAffinityMatrixPackageEvidence,
+    collisionDamageAffinityMatrixPackageQa
   ),
   runtimeBacked('camera.top_down_follow.v1', 'camera', 'Top-down follow camera', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], ['top_down_camera']),
   runtimeBacked('movement.eight_direction.v1', 'movement', 'Eight-direction movement', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], [

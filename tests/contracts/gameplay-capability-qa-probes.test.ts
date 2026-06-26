@@ -43,6 +43,9 @@ import {
   CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE,
   CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
   createCanonicalSemanticPreservationPackageContract,
+  COLLISION_DAMAGE_AFFINITY_MATRIX_EVENT_TYPE,
+  COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID,
+  createCollisionDamageAffinityMatrixPackageContract,
   type CapabilityQaProbeDescriptor,
   type GameplayCapabilityPackageContract
 } from '../../packages/game-dsl/src/index.js';
@@ -1208,6 +1211,94 @@ describe('Capability-owned runtime QA probes', () => {
       })
     ]));
     expect(observedSemanticState.status).toBe('passed');
+  });
+
+  it('does not verify collision damage affinity when evidence lacks matrix state fields', () => {
+    const capabilityId = 'collision.damage_affinity_matrix.v1';
+    const probeId = COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID;
+    const packageContract = createCollisionDamageAffinityMatrixPackageContract();
+    const packages = [packageContract];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingAffinityState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_damage_affinity_matrix',
+              eventType: COLLISION_DAMAGE_AFFINITY_MATRIX_EVENT_TYPE,
+              eventTypes: [COLLISION_DAMAGE_AFFINITY_MATRIX_EVENT_TYPE],
+              sourceRef: 'runtime.damage_affinity.matrix',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedAffinityState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_damage_affinity_matrix',
+              eventType: COLLISION_DAMAGE_AFFINITY_MATRIX_EVENT_TYPE,
+              eventTypes: [COLLISION_DAMAGE_AFFINITY_MATRIX_EVENT_TYPE],
+              playerProjectilesDamageEnemies: true,
+              playerProjectilesDamagePlayer: false,
+              enemyProjectilesDamagePlayer: true,
+              enemyProjectilesDamageEnemies: false,
+              hazardsDamagePlayer: true,
+              hazardsDamageEnemies: false,
+              sourceRef: 'runtime.damage_affinity.matrix',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingAffinityState.status).toBe('failed');
+    expect(missingAffinityState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingAffinityState.requiredResults[0]?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.affinity_matrix_enforced`,
+        status: 'failed',
+        message: expect.stringContaining('expected playerProjectilesDamageEnemies=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.affinity_matrix_enforced`,
+        status: 'failed',
+        message: expect.stringContaining('expected playerProjectilesDamagePlayer=false, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.affinity_matrix_enforced`,
+        status: 'failed',
+        message: expect.stringContaining('expected enemyProjectilesDamagePlayer=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.affinity_matrix_enforced`,
+        status: 'failed',
+        message: expect.stringContaining('expected hazardsDamageEnemies=false, observed <missing>')
+      })
+    ]));
+    expect(observedAffinityState.status).toBe('passed');
   });
 });
 

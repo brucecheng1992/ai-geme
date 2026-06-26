@@ -17,6 +17,7 @@ import {
   ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID,
   CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID,
   CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
+  COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID,
   MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
@@ -57,6 +58,10 @@ describe('Gameplay capability registry', () => {
     expect(findGameplayCapability('collision.platform.v1')).toMatchObject({
       status: 'planned',
       legacyRuntimeCapabilities: ['platform_collision', 'terrain_collision', 'platforms_terrain_collision']
+    });
+    expect(findGameplayCapability('collision.damage_affinity_matrix.v1')).toMatchObject({
+      status: 'planned',
+      legacyRuntimeCapabilities: []
     });
     expect(findGameplayCapability('movement.run_jump.v1')).toMatchObject({
       status: 'planned',
@@ -335,6 +340,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(semanticPreservation)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(semanticPreservation)).toBe(false);
+  });
+
+  it('scopes collision damage-affinity-matrix package-owned QA without static support promotion', () => {
+    const damageAffinity = findGameplayCapability('collision.damage_affinity_matrix.v1');
+
+    if (damageAffinity === undefined) {
+      throw new Error('Expected collision.damage_affinity_matrix.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(damageAffinity)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(damageAffinity.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(damageAffinity.qa).toEqual({
+      requiredProbeIds: [COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(damageAffinity)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(damageAffinity)).toBe(false);
   });
 
   it('scopes weapon rapid fire package-owned QA without static support promotion', () => {

@@ -166,7 +166,7 @@ describe('Step 33 DSL consumption report', () => {
 
     expect(report.targetProfileSupport).toMatchObject({
       requiredCapabilityCount: 59,
-      registeredCapabilityCount: 22,
+      registeredCapabilityCount: 23,
       completeSupportedCount: 0,
       completePackageClosure: {
         status: 'blocked_incomplete_target_profile',
@@ -232,6 +232,19 @@ describe('Step 33 DSL consumption report', () => {
       missingSupportEvidencePrerequisites: ['requiredProbesVerified']
     });
     expect(capabilities.get('canonical.semantic_preservation.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('collision.damage_affinity_matrix.v1')).toMatchObject({
       classification: 'DEFERRED',
       completeSupported: false,
       evidenceDimensions: {

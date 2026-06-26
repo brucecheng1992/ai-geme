@@ -88,6 +88,15 @@ import {
   CANONICAL_SEMANTIC_PRESERVATION_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/canonical-semantic-preservation-runtime-module.js';
 import {
+  COLLISION_DAMAGE_AFFINITY_MATRIX_PACKAGE_REQUIRED_EVIDENCE_ID,
+  COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID,
+  createCollisionDamageAffinityMatrixPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/collision-damage-affinity-matrix-package.js';
+import {
+  COLLISION_DAMAGE_AFFINITY_MATRIX_EVENT_TYPE,
+  COLLISION_DAMAGE_AFFINITY_MATRIX_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/collision-damage-affinity-matrix-runtime-module.js';
+import {
   COLLISION_PLATFORM_PACKAGE_REQUIRED_EVIDENCE_ID,
   COLLISION_PLATFORM_REQUIRED_PROBE_ID,
   createCollisionPlatformPackageContract
@@ -537,6 +546,52 @@ describe('Gameplay capability package contract', () => {
             canonicalHashMatched: true,
             semanticIntentPreserved: true,
             droppedCanonicalNodes: false
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the collision damage-affinity-matrix package-owned QA contract', () => {
+    const contract = createCollisionDamageAffinityMatrixPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'collision.damage_affinity_matrix.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([COLLISION_DAMAGE_AFFINITY_MATRIX_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: COLLISION_DAMAGE_AFFINITY_MATRIX_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'collision.damage_affinity_matrix.v1',
+      severity: 'required',
+      actions: [expect.objectContaining({ target: COLLISION_DAMAGE_AFFINITY_MATRIX_EVENT_TYPE })],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: COLLISION_DAMAGE_AFFINITY_MATRIX_RUNTIME_SYSTEM_ID,
+          ref: COLLISION_DAMAGE_AFFINITY_MATRIX_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID}.assertion.affinity_matrix_enforced`,
+          expected: {
+            playerProjectilesDamageEnemies: true,
+            playerProjectilesDamagePlayer: false,
+            enemyProjectilesDamagePlayer: true,
+            enemyProjectilesDamageEnemies: false,
+            hazardsDamagePlayer: true,
+            hazardsDamageEnemies: false
           }
         })
       ]

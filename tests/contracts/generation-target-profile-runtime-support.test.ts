@@ -10,6 +10,8 @@ import {
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE,
   CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
+  COLLISION_DAMAGE_AFFINITY_MATRIX_EVENT_TYPE,
+  COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID,
   COLLISION_PLATFORM_REQUIRED_PROBE_ID,
   COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
@@ -55,6 +57,7 @@ import {
   createCameraBoundsClampPackageContract,
   createCameraSideFollowPackageContract,
   createCanonicalSemanticPreservationPackageContract,
+  createCollisionDamageAffinityMatrixPackageContract,
   createCollisionPlatformPackageContract,
   createCombatAirborneFirePackageContract,
   createCombatProjectilePackageContract,
@@ -81,6 +84,7 @@ const artifactLineageNoManualPatchCapabilityId = 'artifact.lineage_no_manual_pat
 const artifactNoHiddenScriptCapabilityId = 'artifact.no_hidden_script.v1';
 const cameraBoundsClampCapabilityId = 'camera.bounds_clamp.v1';
 const canonicalSemanticPreservationCapabilityId = 'canonical.semantic_preservation.v1';
+const collisionDamageAffinityMatrixCapabilityId = 'collision.damage_affinity_matrix.v1';
 const cameraCapabilityId = 'camera.side_follow.v1';
 const collisionCapabilityId = 'collision.platform.v1';
 const airborneFireCapabilityId = 'combat.airborne_fire.v1';
@@ -682,6 +686,86 @@ describe('Step 37 target profile runtime support overlay', () => {
       observedCompleteSupported: true,
       requiredProbeIds: [CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID],
       verifiedRequiredProbeIds: [CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+  });
+
+  it('observes collision damage affinity only when evidence includes matrix state proof', () => {
+    const missingStateQaReport = buildSingleCapabilityQaReport({
+      capabilityId: collisionDamageAffinityMatrixCapabilityId,
+      packageContract: createCollisionDamageAffinityMatrixPackageContract(),
+      eventType: COLLISION_DAMAGE_AFFINITY_MATRIX_EVENT_TYPE,
+      probeId: COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID,
+      action: 'verify_damage_affinity_matrix',
+      sourceRef: 'runtime.damage_affinity.matrix',
+      stateFields: undefined
+    });
+    const observedStateQaReport = buildSingleCapabilityQaReport({
+      capabilityId: collisionDamageAffinityMatrixCapabilityId,
+      packageContract: createCollisionDamageAffinityMatrixPackageContract(),
+      eventType: COLLISION_DAMAGE_AFFINITY_MATRIX_EVENT_TYPE,
+      probeId: COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID,
+      action: 'verify_damage_affinity_matrix',
+      sourceRef: 'runtime.damage_affinity.matrix',
+      stateFields: {
+        playerProjectilesDamageEnemies: true,
+        playerProjectilesDamagePlayer: false,
+        enemyProjectilesDamagePlayer: true,
+        enemyProjectilesDamageEnemies: false,
+        hazardsDamagePlayer: true,
+        hazardsDamageEnemies: false
+      }
+    });
+    const missingStateReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_damage_affinity_missing_state',
+      capabilityQaReport: missingStateQaReport
+    });
+    const observedStateReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_damage_affinity_observed_state',
+      capabilityQaReport: observedStateQaReport
+    });
+    const missingState = missingStateReport.capabilities.find((entry) => entry.capabilityId === collisionDamageAffinityMatrixCapabilityId);
+    const observedState = observedStateReport.capabilities.find((entry) => entry.capabilityId === collisionDamageAffinityMatrixCapabilityId);
+
+    expect(missingStateQaReport.requiredResults.find((entry) => entry.probeId === COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID}.assertion.affinity_matrix_enforced`,
+          status: 'failed',
+          message: expect.stringContaining('expected playerProjectilesDamageEnemies=true, observed <missing>')
+        })
+      ])
+    });
+    expect(missingStateReport).toMatchObject({
+      observedCompleteSupportedCount: 0,
+      blockers: [
+        `capability_qa_report_missing_required_probe:${COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID}`,
+        'target_profile_runtime_support_incomplete:0/59'
+      ]
+    });
+    expect(missingState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedStateReport).toMatchObject({
+      observedCompleteSupportedCount: 1,
+      observedCapabilityIds: [collisionDamageAffinityMatrixCapabilityId],
+      blockers: ['target_profile_runtime_support_incomplete:1/59']
+    });
+    expect(observedState).toMatchObject({
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID],
       missingRequiredProbeIds: [],
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }

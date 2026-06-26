@@ -152,6 +152,12 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   canonicalHashMatched?: boolean;
   semanticIntentPreserved?: boolean;
   droppedCanonicalNodes?: boolean;
+  playerProjectilesDamageEnemies?: boolean;
+  playerProjectilesDamagePlayer?: boolean;
+  enemyProjectilesDamagePlayer?: boolean;
+  enemyProjectilesDamageEnemies?: boolean;
+  hazardsDamagePlayer?: boolean;
+  hazardsDamageEnemies?: boolean;
   status?: string;
   sourceRef?: string;
 };
@@ -429,7 +435,13 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('rightBoundaryClamped', expected, observed.rightBoundaryClamped),
     ...compareExpectedBooleanField('canonicalHashMatched', expected, observed.canonicalHashMatched),
     ...compareExpectedBooleanField('semanticIntentPreserved', expected, observed.semanticIntentPreserved),
-    ...compareExpectedBooleanField('droppedCanonicalNodes', expected, observed.droppedCanonicalNodes)
+    ...compareExpectedBooleanField('droppedCanonicalNodes', expected, observed.droppedCanonicalNodes),
+    ...compareExpectedBooleanField('playerProjectilesDamageEnemies', expected, observed.playerProjectilesDamageEnemies),
+    ...compareExpectedBooleanField('playerProjectilesDamagePlayer', expected, observed.playerProjectilesDamagePlayer),
+    ...compareExpectedBooleanField('enemyProjectilesDamagePlayer', expected, observed.enemyProjectilesDamagePlayer),
+    ...compareExpectedBooleanField('enemyProjectilesDamageEnemies', expected, observed.enemyProjectilesDamageEnemies),
+    ...compareExpectedBooleanField('hazardsDamagePlayer', expected, observed.hazardsDamagePlayer),
+    ...compareExpectedBooleanField('hazardsDamageEnemies', expected, observed.hazardsDamageEnemies)
   ];
 }
 
