@@ -6178,10 +6178,10 @@ capability_id=spawn.explicit_declarations.v1
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
 review_required=true
-closure_status=open
+closure_status=closed
 global_exit_conditions_met=false
 user_input_required=false
 next_action_after_receipt=CONTINUE_PARENT_LOOP
@@ -6200,6 +6200,29 @@ superseded_candidate_oracle_status=changes_required
 superseded_candidate_oracle_p1=spawn.explicit_declarations.verified missing from telemetry event schema and contract-freeze
 superseded_candidate_oracle_p3=modified_paths listed tests/contracts/gameplay-capability-registry.test.ts but the candidate diff did not modify that file
 p1_remediation_status=landed_and_locally_validated
+candidate_commit_sha=d4aba04f664be626f6502ae1efa9b7f2527edb0b
+reviewed_commit_sha=d4aba04f664be626f6502ae1efa9b7f2527edb0b
+reviewed_commit_tree=1aea6ffbf723014e5113e1677a8016737fab0ef5
+oracle_agent_id=019f0488-39ff-7e33-a790-4caca4a838a3
+oracle_submission_id=019f051e-d073-7e01-993d-8b66ecbb5acb
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_p0_findings=0
+oracle_p1_findings=0
+oracle_p2_findings=0
+oracle_p3_findings=0
+reviewed_skill_revision=d82dbb66383aa2d336666d360cafc1933e4ce317350ba97a73e44e91360d285d
+reviewed_skill_bundle_digest=d82dbb66383aa2d336666d360cafc1933e4ce317350ba97a73e44e91360d285d
+parent_stage_status=running
+parent_loop_status=running
+parent_loop_global_exit_conditions_met=false
+parent_loop_user_input_required=false
+parent_loop_next_action=CONTINUE_PARENT_LOOP
+parent_loop_next_atomic_step=stage4.spawn_stop_on_boss_defeat_v1.complete_supported_package_slice
+parent_loop_next_atomic_step_scope=implementation
+parent_loop_next_atomic_step_entry_conditions=Stage 4 remains active; no verified user blocker; current atom closed by Oracle-approved receipt; next checkpoint remains unmet and entry conditions are satisfied.
+parent_loop_inventory_source_plan_revision=docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md@d4aba04f664be626f6502ae1efa9b7f2527edb0b
+parent_loop_selection_rule=first_unmet_checkpoint_in_authoritative_inventory
+parent_loop_next_unmet_reason=Stage 4 spawn.stop_on_boss_defeat.v1 remains unsupported_unregistered; static completeSupported=false; missingEvidenceDimensions=[schema_expressible,normalized,compiled,runtime_consumed,qa_observed]; missingSupportEvidencePrerequisites=[dslSchema,normalizer,irCompiler,runtimeModule,amendmentOperations,capabilityOwnedQa,artifactEvidence,renderContract,requiredProbeIds,requiredProbesVerified].
 ```
 
 `spawn.explicit_declarations.v1` was selected by the Parent Loop Driver after the `scene.visual_presentation_metadata.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
