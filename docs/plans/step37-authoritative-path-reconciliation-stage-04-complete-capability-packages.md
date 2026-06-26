@@ -6183,17 +6183,22 @@ implementation_status=complete
 local_validation_status=passed
 candidate_status=ready_for_commit
 oracle_status=not_submitted
-oracle_submission_id=
-oracle_agent_id=
-oracle_result=
+oracle_submission_id=019f0619-574a-7780-adc5-32c7489d8e88
+oracle_agent_id=019f0488-39ff-7e33-a790-4caca4a838a3
+oracle_result=APPROVED_FOR_RECEIPT
 review_required=true
-closure_status=open
+closure_status=closed
 parent_stage_status=running
 parent_loop_status=running
 global_exit_conditions_met=false
 user_input_required=false
 next_action=CONTINUE_PARENT_LOOP
-next_atomic_step=pending_parent_loop_recalculation_after_receipt
+next_atomic_step=stage4.validation_fail_closed_unknown_nodes_v1.complete_supported_package_slice
+next_atomic_step_label=Stage 4 validation.fail_closed_unknown_nodes.v1 complete-supported package slice implementation atomic step
+next_atomic_step_parent_stage_id=stage4
+next_atomic_step_selection_rule=first_unmet_checkpoint_in_authoritative_inventory
+next_atomic_step_source_plan_revision=39c39312a23e14ea80918080a2bf195da625ea3e:docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md
+next_atomic_step_unmet_reason=Stage 4 validation.fail_closed_unknown_nodes.v1 remains unsupported_unregistered; static completeSupported=false; missingEvidenceDimensions=[schema_expressible,normalized,compiled,runtime_consumed,qa_observed]; missingSupportEvidencePrerequisites=[dslSchema,normalizer,irCompiler,runtimeModule,amendmentOperations,capabilityOwnedQa,artifactEvidence,renderContract,requiredProbeIds,requiredProbesVerified].
 active_skill_revision_type=sha256_bundle
 active_skill_bundle_format=step37_manifest_v1_path_type_size_sha_symlink
 active_skill_protocol_source=tests/contracts/step37-closure-implementation-trace.test.ts::digestSkillBundleManifest
@@ -6206,11 +6211,11 @@ active_skill_bundle_digest=a5894b071c4513d7b1a7ee0058aeace9830bb3604f327ee75c6b9
 historical_session_skill_digest_clue=06fa14205c4a623e8808b1b701a45a9d1e74234ee0a52bea614e2652e6f99b61
 previous_wrong_request_skill_digest=27e8ffdc072b4247d6eb20dc79679ed8f24a81a77ed33b3712b56b61b3da7416
 freshness_interpretation=Historical session digests are clues only. This candidate record binds the current HEAD Skill digest reproduced from the executable contract helper manifest protocol; 06fa and 27e8 are not current evidence for this checkpoint.
-candidate_commit_sha=
-candidate_commit_tree=
-reviewed_commit_sha=
-reviewed_commit_tree=
-reviewed_skill_bundle_digest=
+candidate_commit_sha=39c39312a23e14ea80918080a2bf195da625ea3e
+candidate_commit_tree=1d727c5c02118c247269b65dbd2fee5fa91b67f1
+reviewed_commit_sha=39c39312a23e14ea80918080a2bf195da625ea3e
+reviewed_commit_tree=1d727c5c02118c247269b65dbd2fee5fa91b67f1
+reviewed_skill_bundle_digest=a5894b071c4513d7b1a7ee0058aeace9830bb3604f327ee75c6b9248f7247189
 repo_base_commit=5b25d92640a335f6e3154048e8cf8b9e2f8a7d85
 repo_base_tree=0d08c6d42bb6a7c20f7469bf5b06fd694730d629
 post_record_validation_status=passed
@@ -6391,7 +6396,40 @@ duration=sub-second
 result=PASS: diff scope contains only ui.win_failure_transitions package/registry/QA reader/telemetry schema/target-profile expectations/remaining-inventory expectation and this closure record.
 ```
 
-Exit assessment before candidate: `LOCALLY_VALIDATED_READY_FOR_CANDIDATE`. The implementation is landed in the working tree and post-record validation passed against the final tree. The atomic step is not closed: candidate commit, Oracle review, receipt, post-receipt checks, and Parent Loop Driver handoff are still required.
+Oracle review receipt:
+
+```text
+oracle_submission_id=019f0619-574a-7780-adc5-32c7489d8e88
+oracle_agent_id=019f0488-39ff-7e33-a790-4caca4a838a3
+oracle_result=APPROVED_FOR_RECEIPT
+reviewed_commit_sha=39c39312a23e14ea80918080a2bf195da625ea3e
+reviewed_commit_tree=1d727c5c02118c247269b65dbd2fee5fa91b67f1
+reviewed_skill_bundle_digest=a5894b071c4513d7b1a7ee0058aeace9830bb3604f327ee75c6b9248f7247189
+oracle_p0=none
+oracle_p1=none
+oracle_p2=none
+oracle_p3=none
+result=APPROVED_FOR_RECEIPT: Oracle reviewed immutable candidate 39c39312a23e14ea80918080a2bf195da625ea3e and matched the current reproducible Skill bundle digest a5894b071c4513d7b1a7ee0058aeace9830bb3604f327ee75c6b9248f7247189.
+```
+
+Parent Loop Driver handoff:
+
+```text
+closure_scope=atomic_step
+atomic_step_status=closed
+parent_stage_status=running
+parent_loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage4.validation_fail_closed_unknown_nodes_v1.complete_supported_package_slice
+next_atomic_step_label=Stage 4 validation.fail_closed_unknown_nodes.v1 complete-supported package slice implementation atomic step
+remaining_inventory_command=/usr/bin/time -p npx tsx "<ui.win_failure_transitions.v1 closed support summary and remaining inventory>"
+remaining_inventory_exit_code=0
+remaining_inventory_result=PASS: committedClosedCapabilityCount=54; unsupported_unregistered=5; nextCheckpointId=stage4.validation_fail_closed_unknown_nodes_v1.complete_supported_package_slice; selectionFailure=null.
+```
+
+Exit assessment after receipt: `CLOSED_ATOMIC_STEP_ONLY`. The current atomic implementation is locally validated, committed as candidate `39c39312a23e14ea80918080a2bf195da625ea3e`, approved by Oracle for receipt, and closed only for `stage4.ui_win_failure_transitions_v1.complete_supported_package_slice`. Stage 4 remains active and Step37 global exits remain unmet; the Parent Loop must continue with `stage4.validation_fail_closed_unknown_nodes_v1.complete_supported_package_slice` unless a verified blocker appears.
 
 ## Stage 4 Implementation: `ui.hud_retries.v1` complete-supported package slice
 
