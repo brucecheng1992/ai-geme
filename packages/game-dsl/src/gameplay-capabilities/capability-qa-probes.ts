@@ -223,6 +223,18 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   spawnExplicitDeclarationsEnemyWaveDeclared?: boolean;
   spawnExplicitDeclarationsNoImplicitFallback?: boolean;
   spawnExplicitDeclarationsHiddenSpawnDetected?: boolean;
+  spawnStopOnBossDefeatVerified?: boolean;
+  spawnStopOnBossDefeatSchemaVersion?: string;
+  spawnStopOnBossDefeatProfileId?: string;
+  spawnStopOnBossDefeatRuntimeFamily?: string;
+  spawnStopOnBossDefeatBossDefeated?: boolean;
+  spawnStopOnBossDefeatBossEntityId?: string;
+  spawnStopOnBossDefeatStopReason?: string;
+  spawnStopOnBossDefeatSpawnPipelineStopped?: boolean;
+  spawnStopOnBossDefeatPendingWavesCancelled?: boolean;
+  spawnStopOnBossDefeatPostDefeatSpawnAttemptBlocked?: boolean;
+  spawnStopOnBossDefeatPostDefeatSpawnCount?: number;
+  spawnStopOnBossDefeatNoHiddenSpawnDetected?: boolean;
   sceneOrderedSegmentsVerified?: boolean;
   sceneOrderedSegmentsSchemaVersion?: string;
   sceneOrderedSegmentsProfileId?: string;
@@ -834,6 +846,38 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
       'spawnExplicitDeclarationsHiddenSpawnDetected',
       expected,
       observed.spawnExplicitDeclarationsHiddenSpawnDetected
+    ),
+    ...compareExpectedBooleanField('spawnStopOnBossDefeatVerified', expected, observed.spawnStopOnBossDefeatVerified),
+    ...compareExpectedStringField('spawnStopOnBossDefeatSchemaVersion', expected, observed.spawnStopOnBossDefeatSchemaVersion),
+    ...compareExpectedStringField('spawnStopOnBossDefeatProfileId', expected, observed.spawnStopOnBossDefeatProfileId),
+    ...compareExpectedStringField('spawnStopOnBossDefeatRuntimeFamily', expected, observed.spawnStopOnBossDefeatRuntimeFamily),
+    ...compareExpectedBooleanField('spawnStopOnBossDefeatBossDefeated', expected, observed.spawnStopOnBossDefeatBossDefeated),
+    ...compareExpectedStringField('spawnStopOnBossDefeatBossEntityId', expected, observed.spawnStopOnBossDefeatBossEntityId),
+    ...compareExpectedStringField('spawnStopOnBossDefeatStopReason', expected, observed.spawnStopOnBossDefeatStopReason),
+    ...compareExpectedBooleanField(
+      'spawnStopOnBossDefeatSpawnPipelineStopped',
+      expected,
+      observed.spawnStopOnBossDefeatSpawnPipelineStopped
+    ),
+    ...compareExpectedBooleanField(
+      'spawnStopOnBossDefeatPendingWavesCancelled',
+      expected,
+      observed.spawnStopOnBossDefeatPendingWavesCancelled
+    ),
+    ...compareExpectedBooleanField(
+      'spawnStopOnBossDefeatPostDefeatSpawnAttemptBlocked',
+      expected,
+      observed.spawnStopOnBossDefeatPostDefeatSpawnAttemptBlocked
+    ),
+    ...compareExpectedNumberField(
+      'spawnStopOnBossDefeatPostDefeatSpawnCount',
+      expected,
+      observed.spawnStopOnBossDefeatPostDefeatSpawnCount
+    ),
+    ...compareExpectedBooleanField(
+      'spawnStopOnBossDefeatNoHiddenSpawnDetected',
+      expected,
+      observed.spawnStopOnBossDefeatNoHiddenSpawnDetected
     ),
     ...compareExpectedBooleanField('sceneOrderedSegmentsVerified', expected, observed.sceneOrderedSegmentsVerified),
     ...compareExpectedStringField('sceneOrderedSegmentsSchemaVersion', expected, observed.sceneOrderedSegmentsSchemaVersion),

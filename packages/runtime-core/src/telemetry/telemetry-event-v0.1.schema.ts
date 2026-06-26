@@ -27,6 +27,7 @@ export const TelemetryEventTypeSchema = z.enum([
   'scene.visual_presentation_metadata.verified',
   'spawn.enemy_wave.ordered',
   'spawn.explicit_declarations.verified',
+  'spawn.stop_on_boss_defeat.verified',
   'enemy.flying_right_entry.verified',
   'enemy.patrol_infantry.verified',
   'feedback.victory_declaration.verified',

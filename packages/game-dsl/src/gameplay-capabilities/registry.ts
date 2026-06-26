@@ -174,6 +174,10 @@ import {
   createSpawnExplicitDeclarationsPackageContract
 } from './spawn-explicit-declarations-package.js';
 import {
+  SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID,
+  createSpawnStopOnBossDefeatPackageContract
+} from './spawn-stop-on-boss-defeat-package.js';
+import {
   HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
   createHealthPlayerHealthPointsPackageContract
 } from './health-player-health-points-package.js';
@@ -1063,6 +1067,19 @@ const spawnExplicitDeclarationsPackageEvidence: GameplayCapabilityEvidence = spa
 const spawnExplicitDeclarationsPackageQa: GameplayCapabilityQaEvidence = spawnExplicitDeclarationsPackageReport.supportEligible
   ? { requiredProbeIds: [SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const spawnStopOnBossDefeatPackageReport = validateGameplayCapabilityPackage(createSpawnStopOnBossDefeatPackageContract());
+const spawnStopOnBossDefeatPackageEvidence: GameplayCapabilityEvidence = spawnStopOnBossDefeatPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const spawnStopOnBossDefeatPackageQa: GameplayCapabilityQaEvidence = spawnStopOnBossDefeatPackageReport.supportEligible
+  ? { requiredProbeIds: [SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const healthPlayerHealthPointsPackageReport = validateGameplayCapabilityPackage(createHealthPlayerHealthPointsPackageContract());
 const healthPlayerHealthPointsPackageEvidence: GameplayCapabilityEvidence = healthPlayerHealthPointsPackageReport.supportEligible
   ? {
@@ -1432,6 +1449,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     spawnExplicitDeclarationsPackageEvidence,
     spawnExplicitDeclarationsPackageQa
+  ),
+  planned(
+    'spawn.stop_on_boss_defeat.v1',
+    'spawn',
+    'Stop enemy spawning after boss defeat',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    spawnStopOnBossDefeatPackageEvidence,
+    spawnStopOnBossDefeatPackageQa
   ),
   planned(
     'camera.side_follow.v1',

@@ -584,6 +584,11 @@ describe('Contract Freeze', () => {
     expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('spawn.explicit_declarations.verified');
   });
 
+  it('allows package-owned spawn stop-on-boss-defeat telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'spawn.stop_on_boss_defeat.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('spawn.stop_on_boss_defeat.verified');
+  });
+
   it('freezes QA gate all and any_groups evaluation semantics', () => {
     const shooterGate = qaGate.genre_required_events.shooter;
     const observedWithScore = [...shooterGate.all, 'score.changed'];

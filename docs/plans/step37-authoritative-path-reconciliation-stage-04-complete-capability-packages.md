@@ -6167,6 +6167,149 @@ next_action=CONTINUE_PARENT_LOOP
 next_atomic_step=RUN_PARENT_LOOP_DRIVER_TO_SELECT_NEXT_UNMET_CHECKPOINT
 ```
 
+## Stage 4 Implementation: `spawn.stop_on_boss_defeat.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.spawn_stop_on_boss_defeat_v1.complete_supported_package_slice
+parent_stage_id=stage4
+capability_id=spawn.stop_on_boss_defeat.v1
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=open
+global_exit_conditions_met=false
+user_input_required=false
+next_action_after_candidate=SUBMIT_ORACLE_REVIEW
+active_skill_revision_type=sha256_bundle
+active_skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
+active_skill_file_count=8
+active_skill_bundle_digest=5cd4735569473824dd190e341908f155081443b4cc7b963fcac6007301eb8f6a
+active_skill_freshness_command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
+active_skill_freshness_exit_code=0
+repo_tree_identity=pending_candidate_tree_after_docs_sync
+candidate_commit_sha=not_created
+oracle_agent_id=not_submitted
+oracle_submission_id=not_submitted
+```
+
+`spawn.stop_on_boss_defeat.v1` was selected by the Parent Loop Driver after the `spawn.explicit_declarations.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
+
+Minimum closure requirements:
+
+1. Add a package-owned stop-on-boss-defeat contract with stable capability identity, runtime system identity, verification event identity, required probe id, and required QA evidence id.
+2. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `spawn.stop_on_boss_defeat.v1` only when dependency probes for runtime manifest binding, static spawn, ordered enemy wave, explicit spawn declarations, and boss lifecycle have passed in the same QA plan.
+5. Require stop-state fields: `spawnStopOnBossDefeatVerified`, `spawnStopOnBossDefeatSchemaVersion`, `spawnStopOnBossDefeatProfileId`, `spawnStopOnBossDefeatRuntimeFamily`, `spawnStopOnBossDefeatBossDefeated`, `spawnStopOnBossDefeatBossEntityId`, `spawnStopOnBossDefeatStopReason`, `spawnStopOnBossDefeatSpawnPipelineStopped`, `spawnStopOnBossDefeatPendingWavesCancelled`, `spawnStopOnBossDefeatPostDefeatSpawnAttemptBlocked`, `spawnStopOnBossDefeatPostDefeatSpawnCount=0`, and `spawnStopOnBossDefeatNoHiddenSpawnDetected=true`.
+6. Add negative regressions proving boss-defeated evidence, generic spawn/wave evidence, missing shutdown fields, wrong capability/probe identity, or stale/unscoped evidence keep the capability unverified and emit the required missing-probe blocker.
+7. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/spawn-stop-on-boss-defeat-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/spawn-stop-on-boss-defeat-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`.
+- `tests/contracts/contract-freeze.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createSpawnStopOnBossDefeatPackageContract()`.
+- Runtime module identity: `SPAWN_STOP_ON_BOSS_DEFEAT_RUNTIME_SYSTEM_ID=spawn.stop_on_boss_defeat`.
+- Verification event: `SPAWN_STOP_ON_BOSS_DEFEAT_EVENT_TYPE=spawn.stop_on_boss_defeat.verified`.
+- Required probe: `SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID=spawn.stop_on_boss_defeat.v1.stop_after_boss_defeat.browser_qa.v1`.
+- Required dependencies: `runtime.manifest_binding.v1`, `spawn.static.v1`, `spawn.enemy_wave.v1`, `spawn.explicit_declarations.v1`, and `enemy.boss_lifecycle.v1`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares the stop-state fields and fails the required probe when any field is missing or mismatched.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for same-run package-owned stop-state evidence; it does not mutate static `completeSupported`.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned stop-on-boss-defeat capability contract, runtime system identity, verification event, required probe id, required evidence id, and runtime evidence fields proving boss-defeat-triggered spawn shutdown. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, DSL consumption report support view, Step37 remaining-inventory driver, telemetry/event freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves the runtime shut down spawning after boss defeat. |
+| Authority | Package-owned QA evidence defines the capability authority. Boss lifecycle evidence, generic spawn events, ordered wave evidence, or explicit declaration evidence are dependencies only; none can satisfy the stop-on-boss-defeat probe without the shutdown state fields. |
+| Legacy strategy | Existing boss defeat, wave, or spawn events remain non-authoritative for this capability. They can support dependencies, but cannot replace the stop-state probe. |
+| Failure policy | Missing package contract, missing stop event, missing state fields, generic boss/spawn evidence, wrong capability/probe identity, or stale evidence keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, registry support advancement without complete support, QA reader positive/negative stop-state behavior, target-profile overlay positive/negative behavior, remaining-inventory selection, and event/schema freeze coverage. |
+| Rollback | Reverting this slice removes only the stop-on-boss-defeat package/probe/reader wiring and returns `spawn.stop_on_boss_defeat.v1` to unsupported evidence without changing product runtime gameplay templates. |
+
+Validation before candidate commit:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=1
+duration=real 1.82s
+result=RED: target-profile expectations had not yet accounted for the new package-owned stop-on-boss-defeat probe identity and observed overlay count.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 1.72s
+result=PASS: 4 files / 194 tests.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/gameplay-capability-registry.test.ts
+exitCode=1
+duration=real 1.74s
+result=RED: registry/support/inventory assertions still expected registeredCapabilityCount=47 and the pre-current next checkpoint.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/gameplay-capability-registry.test.ts
+exitCode=0
+duration=real 1.49s
+result=PASS: 4 files / 82 tests.
+
+command=/usr/bin/time -p npx vitest run tests/contracts
+exitCode=0
+duration=real 9.36s
+result=PASS: 98 files / 1302 tests.
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 59.36s
+result=PASS: contracts 1302 tests; workspace 410 tests.
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.49s
+result=PASS: root, maker-api, and maker-workbench typecheck.
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.03s
+result=PASS.
+
+command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
+exitCode=0
+duration=real 0.06s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_file_count=8; computed_skill_bundle_digest=5cd4735569473824dd190e341908f155081443b4cc7b963fcac6007301eb8f6a.
+
+command=/usr/bin/time -p npx tsx --eval 'import { buildDeepSeekRunAndGunValidationProfileSupportSummary, buildStep37RemainingCompleteSupportedInventory } from "./packages/game-dsl/src/index.ts"; ...'
+exitCode=0
+duration=real 0.64s
+result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=48; staticCompleteSupportedCount=0; committedClosedCapabilityCount=47; unsupported_unregistered=11; next_checkpoint_id=stage4.spawn_stop_on_boss_defeat_v1.complete_supported_package_slice; selectionFailure=null; spawn.stop_on_boss_defeat.v1 classification=DEFERRED; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false.
+```
+
+Post-record validation requirement:
+
+- This candidate record changed the final tree, so focused closure/driver contracts, full contracts, `npm test`, `npm run typecheck`, `git diff --check`, final diff range check, capability support / inventory alignment, Parent Loop inventory alignment, and Skill freshness must be re-run against the updated tree before candidate commit.
+- Candidate commit must not write its own SHA into this candidate record.
+- Oracle request must bind the future candidate commit SHA and `reviewed_skill_revision=5cd4735569473824dd190e341908f155081443b4cc7b963fcac6007301eb8f6a`.
+- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+
 ## Stage 4 Implementation: `spawn.explicit_declarations.v1` complete-supported package slice
 
 Checkpoint identity:

@@ -89,6 +89,8 @@ export * from './spawn-enemy-wave-runtime-module.js';
 export * from './spawn-enemy-wave-package.js';
 export * from './spawn-explicit-declarations-runtime-module.js';
 export * from './spawn-explicit-declarations-package.js';
+export * from './spawn-stop-on-boss-defeat-runtime-module.js';
+export * from './spawn-stop-on-boss-defeat-package.js';
 export * from './health-damage-invulnerability-runtime-module.js';
 export * from './health-damage-invulnerability-package.js';
 export * from './health-player-health-points-runtime-module.js';

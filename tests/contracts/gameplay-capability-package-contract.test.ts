@@ -364,6 +364,18 @@ import {
   SPAWN_EXPLICIT_DECLARATIONS_SCHEMA_VERSION
 } from '../../packages/game-dsl/src/gameplay-capabilities/spawn-explicit-declarations-runtime-module.js';
 import {
+  SPAWN_STOP_ON_BOSS_DEFEAT_PACKAGE_REQUIRED_EVIDENCE_ID,
+  SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID,
+  createSpawnStopOnBossDefeatPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/spawn-stop-on-boss-defeat-package.js';
+import {
+  SPAWN_STOP_ON_BOSS_DEFEAT_EVENT_TYPE,
+  SPAWN_STOP_ON_BOSS_DEFEAT_POST_DEFEAT_SPAWN_COUNT,
+  SPAWN_STOP_ON_BOSS_DEFEAT_RUNTIME_SYSTEM_ID,
+  SPAWN_STOP_ON_BOSS_DEFEAT_SCHEMA_VERSION,
+  SPAWN_STOP_ON_BOSS_DEFEAT_STOP_REASON
+} from '../../packages/game-dsl/src/gameplay-capabilities/spawn-stop-on-boss-defeat-runtime-module.js';
+import {
   HEALTH_PLAYER_HEALTH_POINTS_PACKAGE_REQUIRED_EVIDENCE_ID,
   HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
   createHealthPlayerHealthPointsPackageContract
@@ -2455,6 +2467,60 @@ describe('Gameplay capability package contract', () => {
             spawnExplicitDeclarationsEnemyWaveDeclared: true,
             spawnExplicitDeclarationsNoImplicitFallback: true,
             spawnExplicitDeclarationsHiddenSpawnDetected: false
+          })
+        })
+      ]
+    });
+  });
+
+  it('accepts the spawn stop-on-boss-defeat package-owned QA contract with shutdown state evidence', () => {
+    const contract = createSpawnStopOnBossDefeatPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'spawn.stop_on_boss_defeat.v1'
+    });
+    expect(contract.dependencies.map((dependency) => dependency.capabilityId)).toEqual([
+      'spawn.static.v1',
+      'spawn.enemy_wave.v1',
+      'spawn.explicit_declarations.v1',
+      'enemy.boss_lifecycle.v1'
+    ]);
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([SPAWN_STOP_ON_BOSS_DEFEAT_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: SPAWN_STOP_ON_BOSS_DEFEAT_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'spawn.stop_on_boss_defeat.v1',
+      severity: 'required',
+      observations: [
+        expect.objectContaining({
+          kind: 'state_probe',
+          runtimeSystemId: SPAWN_STOP_ON_BOSS_DEFEAT_RUNTIME_SYSTEM_ID,
+          ref: SPAWN_STOP_ON_BOSS_DEFEAT_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID}.assertion.stop_after_boss_defeat`,
+          expected: expect.objectContaining({
+            spawnStopOnBossDefeatVerified: true,
+            spawnStopOnBossDefeatSchemaVersion: SPAWN_STOP_ON_BOSS_DEFEAT_SCHEMA_VERSION,
+            spawnStopOnBossDefeatBossDefeated: true,
+            spawnStopOnBossDefeatStopReason: SPAWN_STOP_ON_BOSS_DEFEAT_STOP_REASON,
+            spawnStopOnBossDefeatSpawnPipelineStopped: true,
+            spawnStopOnBossDefeatPendingWavesCancelled: true,
+            spawnStopOnBossDefeatPostDefeatSpawnAttemptBlocked: true,
+            spawnStopOnBossDefeatPostDefeatSpawnCount: SPAWN_STOP_ON_BOSS_DEFEAT_POST_DEFEAT_SPAWN_COUNT,
+            spawnStopOnBossDefeatNoHiddenSpawnDetected: true
           })
         })
       ]

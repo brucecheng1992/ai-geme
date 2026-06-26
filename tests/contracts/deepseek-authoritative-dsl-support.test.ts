@@ -937,6 +937,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       'spawn.enemy_wave.v1',
       'spawn.explicit_declarations.v1',
       'spawn.static.v1',
+      'spawn.stop_on_boss_defeat.v1',
       'telemetry.gameplay_events.v1',
       'weapon.cooldown.v1',
       'weapon.death_reset.v1',

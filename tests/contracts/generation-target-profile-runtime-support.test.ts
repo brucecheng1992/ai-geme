@@ -188,6 +188,13 @@ import {
   SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_PROBE_ID,
   SPAWN_EXPLICIT_DECLARATIONS_RUNTIME_FAMILY,
   SPAWN_EXPLICIT_DECLARATIONS_SCHEMA_VERSION,
+  SPAWN_STOP_ON_BOSS_DEFEAT_EVENT_TYPE,
+  SPAWN_STOP_ON_BOSS_DEFEAT_POST_DEFEAT_SPAWN_COUNT,
+  SPAWN_STOP_ON_BOSS_DEFEAT_PROFILE_ID,
+  SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID,
+  SPAWN_STOP_ON_BOSS_DEFEAT_RUNTIME_FAMILY,
+  SPAWN_STOP_ON_BOSS_DEFEAT_SCHEMA_VERSION,
+  SPAWN_STOP_ON_BOSS_DEFEAT_STOP_REASON,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
   WEAPON_DEATH_RESET_EVENT_TYPE,
   WEAPON_DEATH_RESET_INITIAL_WEAPON_ID,
@@ -251,6 +258,7 @@ import {
   createRulesStateTransitionGraphPackageContract,
   createSpawnEnemyWavePackageContract,
   createSpawnExplicitDeclarationsPackageContract,
+  createSpawnStopOnBossDefeatPackageContract,
   createSpawnStaticPackageContract,
   createWeaponDeathResetPackageContract,
   createWeaponRapidFirePackageContract,
@@ -291,6 +299,7 @@ const crouchCapabilityId = 'movement.crouch.v1';
 const movementCapabilityId = 'movement.run_jump.v1';
 const spawnEnemyWaveCapabilityId = 'spawn.enemy_wave.v1';
 const spawnExplicitDeclarationsCapabilityId = 'spawn.explicit_declarations.v1';
+const spawnStopOnBossDefeatCapabilityId = 'spawn.stop_on_boss_defeat.v1';
 const spawnStaticCapabilityId = 'spawn.static.v1';
 const damageInvulnerabilityCapabilityId = 'health.damage_invulnerability.v1';
 const healthCapabilityId = 'health.player_health_points.v1';
@@ -354,6 +363,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       RUNTIME_PLAN_COVERAGE_EVENT_TYPE,
       SCENE_ORDERED_SEGMENTS_EVENT_TYPE,
       SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE,
+      SPAWN_STOP_ON_BOSS_DEFEAT_EVENT_TYPE,
       WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE,
       WEAPON_DEATH_RESET_EVENT_TYPE,
       WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
@@ -400,6 +410,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     const runtimeModuleLoadReceipt = report.capabilities.find((entry) => entry.capabilityId === runtimeModuleLoadReceiptCapabilityId);
     const runtimePlanCoverage = report.capabilities.find((entry) => entry.capabilityId === runtimePlanCoverageCapabilityId);
     const spawnExplicitDeclarations = report.capabilities.find((entry) => entry.capabilityId === spawnExplicitDeclarationsCapabilityId);
+    const spawnStopOnBossDefeat = report.capabilities.find((entry) => entry.capabilityId === spawnStopOnBossDefeatCapabilityId);
     const sceneOrderedSegments = report.capabilities.find((entry) => entry.capabilityId === sceneOrderedSegmentsCapabilityId);
     const sceneVisualPresentationMetadata = report.capabilities.find(
       (entry) => entry.capabilityId === sceneVisualPresentationMetadataCapabilityId
@@ -418,7 +429,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 43,
+      observedCompleteSupportedCount: 44,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
@@ -460,13 +471,14 @@ describe('Step 37 target profile runtime support overlay', () => {
         spawnEnemyWaveCapabilityId,
         spawnExplicitDeclarationsCapabilityId,
         spawnStaticCapabilityId,
+        spawnStopOnBossDefeatCapabilityId,
         deathResetCapabilityId,
         defaultWeaponCapabilityId,
         rapidFireCapabilityId,
         replacementRuleCapabilityId,
         spreadShotCapabilityId
       ],
-      blockers: ['target_profile_runtime_support_incomplete:43/59']
+      blockers: ['target_profile_runtime_support_incomplete:44/59']
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
       capabilityId: artifactLineageNoManualPatchCapabilityId,
@@ -706,6 +718,17 @@ describe('Step 37 target profile runtime support overlay', () => {
       observedCompleteSupported: true,
       requiredProbeIds: [SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_PROBE_ID],
       verifiedRequiredProbeIds: [SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+    expect(spawnStopOnBossDefeat).toMatchObject({
+      capabilityId: spawnStopOnBossDefeatCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID],
       missingRequiredProbeIds: [],
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
@@ -1005,11 +1028,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 42,
+      observedCompleteSupportedCount: 43,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:42/59'
+        'target_profile_runtime_support_incomplete:43/59'
       ]
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
@@ -1380,11 +1403,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 42,
+      observedCompleteSupportedCount: 43,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:42/59'
+        'target_profile_runtime_support_incomplete:43/59'
       ]
     });
     expect(fixedPromptBinding).toMatchObject({
@@ -1444,11 +1467,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 42,
+      observedCompleteSupportedCount: 43,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:42/59'
+        'target_profile_runtime_support_incomplete:43/59'
       ]
     });
     expect(profileBinding).toMatchObject({
@@ -1657,7 +1680,8 @@ describe('Step 37 target profile runtime support overlay', () => {
     const capabilityQaReport = buildDefaultWeaponQaReport(['player.fired'], {
       includeDefaultSceneOrderedSegments: false,
       includeDefaultSceneVisualPresentationMetadata: false,
-      includeDefaultSpawnExplicitDeclarations: false
+      includeDefaultSpawnExplicitDeclarations: false,
+      includeDefaultSpawnStopOnBossDefeat: false
     });
     const report = buildGenerationTargetProfileRuntimeSupportReport({
       projectId: 'proj_20260625_target_runtime_support',
@@ -1745,7 +1769,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 42,
+      observedCompleteSupportedCount: 43,
       targetProfileCompleteSupported: false,
       observedCapabilityIds: [
         artifactLineageNoManualPatchCapabilityId,
@@ -1785,6 +1809,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         spawnEnemyWaveCapabilityId,
         spawnExplicitDeclarationsCapabilityId,
         spawnStaticCapabilityId,
+        spawnStopOnBossDefeatCapabilityId,
         deathResetCapabilityId,
         defaultWeaponCapabilityId,
         rapidFireCapabilityId,
@@ -1793,7 +1818,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ],
       blockers: [
         `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:42/59'
+        'target_profile_runtime_support_incomplete:43/59'
       ]
     });
     expect(damageInvulnerability).toMatchObject({
@@ -1870,11 +1895,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 42,
+      observedCompleteSupportedCount: 43,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:42/59'
+        'target_profile_runtime_support_incomplete:43/59'
       ]
     });
     expect(pickup).toMatchObject({
@@ -2075,11 +2100,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 42,
+      observedCompleteSupportedCount: 43,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:42/59'
+        'target_profile_runtime_support_incomplete:43/59'
       ]
     });
     expect(spawnEnemyWave).toMatchObject({
@@ -2158,11 +2183,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 42,
+      observedCompleteSupportedCount: 43,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:42/59'
+        'target_profile_runtime_support_incomplete:43/59'
       ]
     });
     expect(flyingRightEntry).toMatchObject({
@@ -2241,11 +2266,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 42,
+      observedCompleteSupportedCount: 43,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:42/59'
+        'target_profile_runtime_support_incomplete:43/59'
       ]
     });
     expect(patrolInfantry).toMatchObject({
@@ -2326,11 +2351,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 42,
+      observedCompleteSupportedCount: 43,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:42/59'
+        'target_profile_runtime_support_incomplete:43/59'
       ]
     });
     expect(victoryDeclaration).toMatchObject({
@@ -3328,6 +3353,188 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
   });
 
+  it('keeps stop-on-boss-defeat unverified when evidence only proves boss defeat or generic spawn events', () => {
+    const dependencyEvidence: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: runtimeManifestBindingCapabilityId,
+        probeId: RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID,
+        action: 'load_runtime_manifest',
+        eventType: RUNTIME_MANIFEST_BINDING_EVENT_TYPE,
+        eventTypes: [RUNTIME_MANIFEST_BINDING_EVENT_TYPE],
+        ...runtimeManifestBindingStateFields(),
+        status: 'observed',
+        sourceRef: 'runtime.manifest_binding'
+      },
+      {
+        capabilityId: spawnStaticCapabilityId,
+        probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
+        action: 'spawn',
+        eventType: 'spawn.static.triggered',
+        eventTypes: ['spawn.static.triggered'],
+        status: 'observed',
+        sourceRef: 'runtime.spawn.static'
+      },
+      {
+        capabilityId: spawnEnemyWaveCapabilityId,
+        probeId: SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+        action: 'spawn',
+        eventType: 'spawn.enemy_wave.ordered',
+        eventTypes: ['spawn.enemy_wave.ordered'],
+        orderedWaveSequence: true,
+        gateTriggered: true,
+        waveSpawned: true,
+        sequenceIndex: 0,
+        waveId: 'wave_approach',
+        status: 'observed',
+        sourceRef: 'runtime.spawn.enemy_wave'
+      },
+      {
+        capabilityId: spawnExplicitDeclarationsCapabilityId,
+        probeId: SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_PROBE_ID,
+        action: 'verify_explicit_declarations',
+        eventType: SPAWN_EXPLICIT_DECLARATIONS_EVENT_TYPE,
+        eventTypes: [SPAWN_EXPLICIT_DECLARATIONS_EVENT_TYPE],
+        ...spawnExplicitDeclarationsStateFields(),
+        status: 'observed',
+        sourceRef: 'runtime.spawn_explicit_declarations'
+      },
+      {
+        capabilityId: enemyBossLifecycleCapabilityId,
+        probeId: ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID,
+        action: 'verify_boss_lifecycle',
+        eventType: ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
+        eventTypes: [ENEMY_BOSS_LIFECYCLE_EVENT_TYPE],
+        bossLifecycleStarted: true,
+        bossEntityId: ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID,
+        bossMaxHealth: ENEMY_BOSS_LIFECYCLE_MAX_HEALTH,
+        bossHealthInitialized: true,
+        bossDefeated: true,
+        status: 'observed',
+        sourceRef: 'runtime.enemy.boss_lifecycle'
+      }
+    ];
+    const genericBossDefeatQaReport = buildSingleCapabilityQaReport({
+      capabilityId: spawnStopOnBossDefeatCapabilityId,
+      packageContract: createSpawnStopOnBossDefeatPackageContract(),
+      dependencyPackages: [
+        createRuntimeManifestBindingPackageContract(),
+        createSpawnStaticPackageContract(),
+        createSpawnEnemyWavePackageContract(),
+        createSpawnExplicitDeclarationsPackageContract(),
+        createEnemyBossLifecyclePackageContract()
+      ],
+      additionalObserved: dependencyEvidence,
+      eventType: ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
+      eventTypes: [ENEMY_BOSS_LIFECYCLE_EVENT_TYPE, 'spawn.enemy_wave.ordered'],
+      probeId: SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID,
+      action: 'verify_boss_lifecycle',
+      sourceRef: 'runtime.enemy.boss_lifecycle.generic_defeat',
+      stateFields: { bossDefeated: true }
+    });
+    const missingShutdownState = spawnStopOnBossDefeatStateFields();
+    delete missingShutdownState.spawnStopOnBossDefeatPostDefeatSpawnAttemptBlocked;
+    const missingShutdownQaReport = buildSingleCapabilityQaReport({
+      capabilityId: spawnStopOnBossDefeatCapabilityId,
+      packageContract: createSpawnStopOnBossDefeatPackageContract(),
+      dependencyPackages: [
+        createRuntimeManifestBindingPackageContract(),
+        createSpawnStaticPackageContract(),
+        createSpawnEnemyWavePackageContract(),
+        createSpawnExplicitDeclarationsPackageContract(),
+        createEnemyBossLifecyclePackageContract()
+      ],
+      additionalObserved: dependencyEvidence,
+      eventType: SPAWN_STOP_ON_BOSS_DEFEAT_EVENT_TYPE,
+      eventTypes: [SPAWN_STOP_ON_BOSS_DEFEAT_EVENT_TYPE],
+      probeId: SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID,
+      action: 'verify_stop_condition',
+      sourceRef: 'runtime.spawn.stop_on_boss_defeat',
+      stateFields: missingShutdownState
+    });
+    const observedStopQaReport = buildSingleCapabilityQaReport({
+      capabilityId: spawnStopOnBossDefeatCapabilityId,
+      packageContract: createSpawnStopOnBossDefeatPackageContract(),
+      dependencyPackages: [
+        createRuntimeManifestBindingPackageContract(),
+        createSpawnStaticPackageContract(),
+        createSpawnEnemyWavePackageContract(),
+        createSpawnExplicitDeclarationsPackageContract(),
+        createEnemyBossLifecyclePackageContract()
+      ],
+      additionalObserved: dependencyEvidence,
+      eventType: SPAWN_STOP_ON_BOSS_DEFEAT_EVENT_TYPE,
+      eventTypes: [SPAWN_STOP_ON_BOSS_DEFEAT_EVENT_TYPE],
+      probeId: SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID,
+      action: 'verify_stop_condition',
+      sourceRef: 'runtime.spawn.stop_on_boss_defeat',
+      stateFields: spawnStopOnBossDefeatStateFields()
+    });
+    const genericBossDefeatReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_spawn_stop_on_boss_defeat_generic_defeat',
+      capabilityQaReport: genericBossDefeatQaReport
+    });
+    const observedStopReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_spawn_stop_on_boss_defeat_observed_state',
+      capabilityQaReport: observedStopQaReport
+    });
+    const genericBossDefeatState = genericBossDefeatReport.capabilities.find((entry) => entry.capabilityId === spawnStopOnBossDefeatCapabilityId);
+    const observedStopState = observedStopReport.capabilities.find((entry) => entry.capabilityId === spawnStopOnBossDefeatCapabilityId);
+
+    for (const dependencyProbeId of [
+      RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID,
+      SPAWN_STATIC_REQUIRED_PROBE_ID,
+      SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+      SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_PROBE_ID,
+      ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID
+    ]) {
+      expect(genericBossDefeatQaReport.requiredResults.find((entry) => entry.probeId === dependencyProbeId)).toMatchObject({ status: 'passed' });
+    }
+    expect(genericBossDefeatQaReport.requiredResults.find((entry) => entry.probeId === SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID}.assertion.stop_after_boss_defeat`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${SPAWN_STOP_ON_BOSS_DEFEAT_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID}.assertion.stop_after_boss_defeat`,
+          status: 'failed',
+          message: expect.stringContaining('expected spawnStopOnBossDefeatSpawnPipelineStopped=true, observed <missing>')
+        })
+      ])
+    });
+    expect(missingShutdownQaReport.requiredResults.find((entry) => entry.probeId === SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID}.assertion.stop_after_boss_defeat`,
+          status: 'failed',
+          message: expect.stringContaining('expected spawnStopOnBossDefeatPostDefeatSpawnAttemptBlocked=true, observed <missing>')
+        })
+      ])
+    });
+    expect(genericBossDefeatState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedStopState).toMatchObject({
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+  });
+
   it('keeps runtime module load receipt unverified when receipt evidence lacks integrity fields', () => {
     const genericReceiptQaReport = buildSingleCapabilityQaReport({
       capabilityId: runtimeModuleLoadReceiptCapabilityId,
@@ -3787,11 +3994,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 42,
+      observedCompleteSupportedCount: 43,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:42/59'
+        'target_profile_runtime_support_incomplete:43/59'
       ]
     });
     expect(deathReset).toMatchObject({
@@ -3865,11 +4072,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 42,
+      observedCompleteSupportedCount: 43,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:42/59'
+        'target_profile_runtime_support_incomplete:43/59'
       ]
     });
     expect(rapidFire).toMatchObject({
@@ -3943,11 +4150,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 42,
+      observedCompleteSupportedCount: 43,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:42/59'
+        'target_profile_runtime_support_incomplete:43/59'
       ]
     });
     expect(spreadShot).toMatchObject({
@@ -4021,11 +4228,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 42,
+      observedCompleteSupportedCount: 43,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:42/59'
+        'target_profile_runtime_support_incomplete:43/59'
       ]
     });
     expect(replacementRule).toMatchObject({
@@ -4077,6 +4284,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${SPAWN_STATIC_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID}`,
@@ -4111,8 +4319,10 @@ function buildDefaultWeaponQaReport(
     includeDefaultSceneOrderedSegments?: boolean;
     includeDefaultSceneVisualPresentationMetadata?: boolean;
     includeDefaultSpawnExplicitDeclarations?: boolean;
+    includeDefaultSpawnStopOnBossDefeat?: boolean;
     sceneOrderedSegmentsStateFields?: boolean;
     sceneVisualPresentationMetadataStateFields?: boolean;
+    spawnStopOnBossDefeatStateFields?: boolean;
     pickupStateFields?: boolean;
     pickupWeaponSupplyStateFields?: boolean;
     providerDeepSeekAuthoritativeDraftStateFields?: boolean;
@@ -4720,6 +4930,20 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
+    ...(effectiveEventTypes.includes(SPAWN_STOP_ON_BOSS_DEFEAT_EVENT_TYPE)
+      ? [
+          {
+            capabilityId: spawnStopOnBossDefeatCapabilityId,
+            probeId: SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID,
+            action: 'verify_stop_condition',
+            eventType: SPAWN_STOP_ON_BOSS_DEFEAT_EVENT_TYPE,
+            eventTypes: effectiveEventTypes,
+            ...(options.spawnStopOnBossDefeatStateFields === false ? {} : spawnStopOnBossDefeatStateFields()),
+            status: 'observed' as const,
+            sourceRef: 'runtime.spawn.stop_on_boss_defeat'
+          }
+        ]
+      : []),
     ...(effectiveEventTypes.includes('health.player_health.current')
       ? [
           {
@@ -4975,12 +5199,14 @@ function withDefaultPackageOwnedEvents(
     includeDefaultSceneOrderedSegments?: boolean;
     includeDefaultSceneVisualPresentationMetadata?: boolean;
     includeDefaultSpawnExplicitDeclarations?: boolean;
+    includeDefaultSpawnStopOnBossDefeat?: boolean;
   } = {}
 ): readonly string[] {
   const packageOwnedEvents = [
     ...(options.includeDefaultSceneOrderedSegments === false ? [] : [SCENE_ORDERED_SEGMENTS_EVENT_TYPE]),
     ...(options.includeDefaultSceneVisualPresentationMetadata === false ? [] : [SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE]),
     ...(options.includeDefaultSpawnExplicitDeclarations === false ? [] : [SPAWN_EXPLICIT_DECLARATIONS_EVENT_TYPE]),
+    ...(options.includeDefaultSpawnStopOnBossDefeat === false ? [] : [SPAWN_STOP_ON_BOSS_DEFEAT_EVENT_TYPE]),
     ...(eventTypes.includes(FIXED_PROMPT_BINDING_EVENT_TYPE) || eventTypes.includes(PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE)
       ? [
           PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE,
@@ -5087,6 +5313,7 @@ function buildDefaultWeaponQaPlan() {
     createSceneOrderedSegmentsPackageContract(),
     createSceneVisualPresentationMetadataPackageContract(),
     createSpawnExplicitDeclarationsPackageContract(),
+    createSpawnStopOnBossDefeatPackageContract(),
     createWeaponDeathResetPackageContract(),
     createWeaponRapidFirePackageContract(),
     createWeaponSpreadShotPackageContract(),
@@ -5133,6 +5360,7 @@ function buildDefaultWeaponQaPlan() {
       sceneOrderedSegmentsCapabilityId,
       sceneVisualPresentationMetadataCapabilityId,
       spawnExplicitDeclarationsCapabilityId,
+      spawnStopOnBossDefeatCapabilityId,
       deathResetCapabilityId,
       rapidFireCapabilityId,
       spreadShotCapabilityId,
@@ -5206,6 +5434,23 @@ function spawnExplicitDeclarationsStateFields(): Record<string, unknown> {
     spawnExplicitDeclarationsEnemyWaveDeclared: true,
     spawnExplicitDeclarationsNoImplicitFallback: true,
     spawnExplicitDeclarationsHiddenSpawnDetected: false
+  };
+}
+
+function spawnStopOnBossDefeatStateFields(): Record<string, unknown> {
+  return {
+    spawnStopOnBossDefeatVerified: true,
+    spawnStopOnBossDefeatSchemaVersion: SPAWN_STOP_ON_BOSS_DEFEAT_SCHEMA_VERSION,
+    spawnStopOnBossDefeatProfileId: SPAWN_STOP_ON_BOSS_DEFEAT_PROFILE_ID,
+    spawnStopOnBossDefeatRuntimeFamily: SPAWN_STOP_ON_BOSS_DEFEAT_RUNTIME_FAMILY,
+    spawnStopOnBossDefeatBossDefeated: true,
+    spawnStopOnBossDefeatBossEntityId: ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID,
+    spawnStopOnBossDefeatStopReason: SPAWN_STOP_ON_BOSS_DEFEAT_STOP_REASON,
+    spawnStopOnBossDefeatSpawnPipelineStopped: true,
+    spawnStopOnBossDefeatPendingWavesCancelled: true,
+    spawnStopOnBossDefeatPostDefeatSpawnAttemptBlocked: true,
+    spawnStopOnBossDefeatPostDefeatSpawnCount: SPAWN_STOP_ON_BOSS_DEFEAT_POST_DEFEAT_SPAWN_COUNT,
+    spawnStopOnBossDefeatNoHiddenSpawnDetected: true
   };
 }
 
