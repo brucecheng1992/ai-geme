@@ -6052,7 +6052,7 @@ Focused set selection:
 - `step37-remaining-inventory-driver.test.ts`: validates parent-loop inventory consumption and selection for the new first unmet artifact checkpoint.
 - `contract-freeze.test.ts`: included because this diff introduces a telemetry/runtime event identity and QA evidence fields, so the focused set follows the actual schema and event-contract impact surface.
 
-Local validation before closure-record sync:
+Final validation after closure-record sync:
 
 ```text
 command=/usr/bin/time -p npm run test:contracts
@@ -6173,6 +6173,10 @@ Checkpoint identity:
 
 ```text
 checkpoint_id=stage4.provider_deepseek_authoritative_draft_v1.complete_supported_package_slice
+closure_record_id=stage4.provider_deepseek_authoritative_draft_v1.complete_supported_package_slice.active.working_tree
+record_status=active
+current_active_record=true
+supersedes_record_id=none
 parent_stage_id=stage4
 capability_id=provider.deepseek_authoritative_draft.v1
 closure_scope=atomic_step
@@ -6186,7 +6190,15 @@ global_exit_conditions_met=false
 user_input_required=false
 next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
 reviewed_skill_revision_type=sha256_bundle
-reviewed_skill_revision=ce2d2020aa88c8a330a47570c802fccb52d0e6a981190e7c183ab3c50c2da01b
+reviewed_skill_revision=2729dda333fe63d7dd24412e540ff16da39801b4e50bf570b95e2d631a16b44e
+active_skill_path=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery
+active_skill_revision_type=sha256_bundle
+active_skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
+active_skill_file_count=8
+previous_recorded_skill_digest=ce2d2020aa88c8a330a47570c802fccb52d0e6a981190e7c183ab3c50c2da01b
+current_active_skill_digest=2729dda333fe63d7dd24412e540ff16da39801b4e50bf570b95e2d631a16b44e
+freshness_status=changed
+freshness_interpretation=The previous WIP closure digest is preserved as stale historical input; current candidate and Oracle evidence must bind current_active_skill_digest.
 candidate_commit_sha=pending until candidate checkpoint commit is created
 reviewed_commit_sha=pending until Oracle reviews the candidate commit
 ```
@@ -6257,7 +6269,7 @@ result=RED: provider telemetry schema freeze did not yet include `provider.deeps
 
 command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
 exitCode=0
-duration=real 9.93s
+duration=real 3.13s
 result=PASS: 8 files / 217 tests
 ```
 
@@ -6277,17 +6289,17 @@ Local validation before closure-record sync:
 ```text
 command=/usr/bin/time -p npm run test:contracts
 exitCode=0
-duration=real 23.34s
+duration=real 21.03s
 result=PASS: 98 files / 1243 tests
 
 command=/usr/bin/time -p npm test
 exitCode=0
-duration=real 85.44s
+duration=real 70.52s
 result=PASS: contracts 98 files / 1243 tests; workspace 34 files / 410 tests
 
 command=/usr/bin/time -p npm run typecheck
 exitCode=0
-duration=real 9.58s
+duration=real 10.06s
 result=PASS
 
 command=/usr/bin/time -p git diff --check
@@ -6295,22 +6307,38 @@ exitCode=0
 duration=real 0.02s
 result=PASS
 
-command=/usr/bin/time -p npx tsx -e "<provider.deepseek_authoritative_draft.v1 support summary and remaining inventory>"
+command=/usr/bin/time -p npx tsx <<'TS' ... provider.deepseek_authoritative_draft.v1 support summary and remaining inventory ... TS
 exitCode=0
-duration=real 0.86s
-result=PASS: currentCheckpointId=stage4.provider_deepseek_authoritative_draft_v1.complete_supported_package_slice; committedClosedCapabilityCount=35; registeredCapabilityCount=36; completeSupportedCount=0; provider.deepseek_authoritative_draft.v1 classification=DEFERRED; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; next_checkpoint_id=stage4.provider_deepseek_authoritative_draft_v1.complete_supported_package_slice; selectionFailure=null.
+duration=real 0.67s
+result=PASS: currentCheckpointId=stage4.provider_deepseek_authoritative_draft_v1.complete_supported_package_slice; committedClosedCapabilityCount=35; requiredCapabilityCount=59; registeredCapabilityCount=36; completeSupportedCount=0; provider.deepseek_authoritative_draft.v1 classification=DEFERRED; state=registered_without_required_probe_verification; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; next_checkpoint_id=stage4.provider_deepseek_authoritative_draft_v1.complete_supported_package_slice; selectionFailure=null.
 
-command=/usr/bin/time -p node --input-type=module <<'NODE' ... step37 active Skill bundle digest ... NODE
+command=node --input-type=module <<'NODE' ... step37 active Skill bundle digest ... NODE
 exitCode=0
-duration=real 0.08s
-result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_roots=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery; skill_file_count=8; skill_bundle_digest=ce2d2020aa88c8a330a47570c802fccb52d0e6a981190e7c183ab3c50c2da01b.
+duration=sub-second
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_roots=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery; skill_file_count=8; skill_bundle_digest=2729dda333fe63d7dd24412e540ff16da39801b4e50bf570b95e2d631a16b44e.
+```
+
+Validation isolation note:
+
+```text
+full_contracts_initial_failure_command=/usr/bin/time -p npm run test:contracts
+full_contracts_initial_exitCode=1
+full_contracts_initial_result=RED: contract-freeze exposed missing provider event schema coverage, and art-asset runtime metadata export usage-error case hit the 10s suite timeout in the same full-contracts run.
+isolated_contract_freeze_command=/usr/bin/time -p npx vitest run tests/contracts/contract-freeze.test.ts
+isolated_contract_freeze_exitCode=0
+isolated_contract_freeze_duration=real 5.62s
+isolated_usage_error_suite_command=/usr/bin/time -p npx vitest run tests/contracts/art-asset-metadata-runtime-export-cli.test.ts
+isolated_usage_error_suite_exitCode=0
+isolated_usage_error_suite_duration=real 16.46s
+isolated_usage_error_case_duration=4270ms
+interpretation=The timeout was treated as suite-only/order-dependent/residual-state suspicion; no timeout, assertion, resolver, runtime, or must-pass semantic weakening was applied. Full contracts were required to and did later pass on the current tree.
 ```
 
 Post-record validation requirement:
 
 - This closure record changes the final tree. Before creating the immutable candidate commit, focused closure contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, final diff range check, capability support / inventory alignment, Parent Loop inventory alignment, and Skill freshness must be re-run or explicitly recorded as fresh for the final tree.
 - Candidate commit must not write its own SHA into this candidate record.
-- Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=ce2d2020aa88c8a330a47570c802fccb52d0e6a981190e7c183ab3c50c2da01b`.
+- Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=2729dda333fe63d7dd24412e540ff16da39801b4e50bf570b95e2d631a16b44e`.
 - `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
 - Stage 4 remains active; Stage 5 has not been entered by this atomic step.
 
