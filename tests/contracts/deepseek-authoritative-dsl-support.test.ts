@@ -364,6 +364,21 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       missingEvidenceDimensions: ['qa_observed'],
       missingSupportEvidencePrerequisites: ['requiredProbesVerified']
     });
+    expect(capabilities.get('camera.bounds_clamp.v1')).toMatchObject({
+      registered: true,
+      classification: 'DEFERRED',
+      completeSupported: false,
+      legacyBacked: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
   });
 
   it('reports rapid-fire weapon package-backed evidence without QA completion', () => {
@@ -492,6 +507,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       'artifact.lineage_no_manual_patch.v1',
       'artifact.no_hidden_script.v1',
       'asset.sprite_binding.v1',
+      'camera.bounds_clamp.v1',
       'camera.side_follow.v1',
       'camera.top_down_follow.v1',
       'camera.vertical_scroll.v1',

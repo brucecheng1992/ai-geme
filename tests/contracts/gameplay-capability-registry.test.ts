@@ -15,6 +15,7 @@ import {
   validateGameplayCapabilityRegistry,
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
   ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID,
+  CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID,
   MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
@@ -37,6 +38,10 @@ describe('Gameplay capability registry', () => {
       legacyRuntimeCapabilities: []
     });
     expect(findGameplayCapability('artifact.no_hidden_script.v1')).toMatchObject({
+      status: 'planned',
+      legacyRuntimeCapabilities: []
+    });
+    expect(findGameplayCapability('camera.bounds_clamp.v1')).toMatchObject({
       status: 'planned',
       legacyRuntimeCapabilities: []
     });
@@ -271,6 +276,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(noHiddenScript)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(noHiddenScript)).toBe(false);
+  });
+
+  it('scopes camera bounds-clamp package-owned QA without static support promotion', () => {
+    const boundsClamp = findGameplayCapability('camera.bounds_clamp.v1');
+
+    if (boundsClamp === undefined) {
+      throw new Error('Expected camera.bounds_clamp.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(boundsClamp)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(boundsClamp.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(boundsClamp.qa).toEqual({
+      requiredProbeIds: [CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(boundsClamp)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(boundsClamp)).toBe(false);
   });
 
   it('scopes weapon rapid fire package-owned QA without static support promotion', () => {

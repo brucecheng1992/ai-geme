@@ -6167,6 +6167,144 @@ next_action=CONTINUE_PARENT_LOOP
 next_atomic_step=RUN_PARENT_LOOP_DRIVER_TO_SELECT_NEXT_UNMET_CHECKPOINT
 ```
 
+## Stage 4 Implementation: `camera.bounds_clamp.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.camera_bounds_clamp_v1.complete_supported_package_slice
+parent_stage_id=stage4
+capability_id=camera.bounds_clamp.v1
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=not_closed
+global_exit_conditions_met=false
+user_input_required=false
+next_action_before_receipt=CREATE_CANDIDATE_COMMIT_THEN_ORACLE_REVIEW
+reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
+```
+
+`camera.bounds_clamp.v1` was selected by the Parent Loop Driver after the `artifact.no_hidden_script.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
+
+Minimum closure requirements:
+
+1. Add a package-owned camera bounds-clamp contract with stable capability identity, runtime system identity, world-bounds verification event identity, required probe id, and required QA evidence id.
+2. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `camera.bounds_clamp.v1` only when camera evidence includes world-boundary state fields.
+5. Require camera boundary state fields: `cameraWithinWorldBounds=true`, `leftBoundaryClamped=true`, and `rightBoundaryClamped=true`.
+6. Add a negative regression proving camera scroll/bounds event evidence without those state fields keeps the capability unverified and emits the required missing-probe blocker.
+7. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/camera-bounds-clamp-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/camera-bounds-clamp-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createCameraBoundsClampPackageContract()`.
+- Runtime module identity: `CAMERA_BOUNDS_CLAMP_RUNTIME_SYSTEM_ID=camera.bounds_clamp`.
+- Bounds verification event: `CAMERA_BOUNDS_CLAMP_EVENT_TYPE=camera.bounds_clamp.verified`.
+- Required probe: `CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID=camera.bounds_clamp.v1.bounds.browser_qa.v1`.
+- Required state fields: `cameraWithinWorldBounds`, `leftBoundaryClamped`, and `rightBoundaryClamped`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares the camera boundary state fields and fails the required probe when any field is missing or mismatched.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for the same run; it does not mutate static `completeSupported`.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned camera bounds-clamp capability contract, runtime system identity, bounds verification event, required probe id, required evidence id, and runtime evidence fields for world-boundary clamp state. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, Step37 remaining-inventory driver, telemetry/event freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves world-boundary clamp state fields. |
+| Authority | Package-owned QA evidence defines the capability authority: `camera.side_follow.active` or a generic camera event is insufficient unless evidence also proves `cameraWithinWorldBounds=true`, `leftBoundaryClamped=true`, and `rightBoundaryClamped=true`. |
+| Legacy strategy | Existing side-follow camera runtime behavior remains non-authoritative for this capability unless the required bounds-clamp probe evidence is present. |
+| Failure policy | Missing package contract, missing bounds event, missing boundary state fields, wrong capability/probe identity, or stale evidence keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, registry support advancement without complete support, QA reader positive/negative boundary field behavior, target-profile overlay positive/negative behavior, remaining-inventory selection, and event/schema freeze coverage. |
+| Rollback | Reverting this slice removes only the camera bounds-clamp package/probe/reader wiring and returns `camera.bounds_clamp.v1` to unsupported evidence without changing business runtime gameplay templates. |
+
+Focused validation:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=1
+duration=real 1.77s
+result=RED: camera bounds-clamp package/runtime module did not exist; registry support remained registeredCapabilityCount=20; QA reader did not yet expose createCameraBoundsClampPackageContract().
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 1.79s
+result=PASS: 8 files / 145 tests
+```
+
+Focused set selection:
+
+- `gameplay-capability-package-contract.test.ts`: validates the new camera bounds-clamp package contract, required evidence id, runtime system, bounds event, boundary assertion fields, and required probe.
+- `gameplay-capability-qa-probes.test.ts`: validates that camera/bounds event evidence without boundary state fields fails and that full boundary state evidence passes.
+- `generation-target-profile-runtime-support.test.ts`: validates same-run overlay positive/negative behavior and preservation of static `completeSupported=false`.
+- `gameplay-capability-registry.test.ts`: validates static registry evidence and required probe wiring without static support promotion.
+- `deepseek-authoritative-dsl-support.test.ts`: validates support dimensions and prerequisites for the target capability.
+- `dsl-consumption-report.test.ts`: validates the consumption report reads the updated package-backed support dimensions.
+- `step37-remaining-inventory-driver.test.ts`: validates parent-loop inventory consumption after the registry count advances to 21.
+- `contract-freeze.test.ts`: included because this diff introduces a telemetry/runtime event identity and QA evidence fields, so the focused set follows the actual schema and event-contract impact surface.
+
+Local validation before closure-record sync:
+
+```text
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 8.95s
+result=PASS: 98 files / 1171 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 58.81s
+result=PASS: contracts 98 files / 1171 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.82s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.02s
+result=PASS
+
+command=npx tsx -e "<camera.bounds_clamp.v1 support summary and remaining inventory>"
+exitCode=0
+duration=real 0.56s
+result=PASS: support registeredCapabilityCount=21; camera.bounds_clamp.v1 classification=DEFERRED; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false; remaining next_checkpoint_id=stage4.camera_bounds_clamp_v1.complete_supported_package_slice while this candidate is not yet committed.
+
+command=node -e "<review-gated-delivery root-relative skill bundle digest script>"
+exitCode=0
+duration=real 0.00s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_size_sha; skill_root_identity=/Users/dahufa/.agents/skills/review-gated-delivery; skill_file_count=7; skill_bundle_digest=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1.
+```
+
+Post-record validation requirement:
+
+- This closure record changes the final tree. Before creating the immutable candidate commit, focused closure contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, final diff range check, and Skill freshness must be re-run or explicitly recorded as fresh for the final tree.
+- Candidate commit must not write its own SHA into this candidate record.
+- Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1`.
+- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+
 ## Stage 4 Implementation: `artifact.no_hidden_script.v1` complete-supported package slice
 
 Checkpoint identity:

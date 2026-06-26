@@ -18,6 +18,10 @@ import {
   createArtifactNoHiddenScriptPackageContract
 } from './artifact-no-hidden-script-package.js';
 import {
+  CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID,
+  createCameraBoundsClampPackageContract
+} from './camera-bounds-clamp-package.js';
+import {
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   createCameraSideFollowPackageContract
 } from './camera-side-follow-package.js';
@@ -443,6 +447,19 @@ const artifactNoHiddenScriptPackageEvidence: GameplayCapabilityEvidence = artifa
 const artifactNoHiddenScriptPackageQa: GameplayCapabilityQaEvidence = artifactNoHiddenScriptPackageReport.supportEligible
   ? { requiredProbeIds: [ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const cameraBoundsClampPackageReport = validateGameplayCapabilityPackage(createCameraBoundsClampPackageContract());
+const cameraBoundsClampPackageEvidence: GameplayCapabilityEvidence = cameraBoundsClampPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const cameraBoundsClampPackageQa: GameplayCapabilityQaEvidence = cameraBoundsClampPackageReport.supportEligible
+  ? { requiredProbeIds: [CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const cameraSideFollowPackageReport = validateGameplayCapabilityPackage(createCameraSideFollowPackageContract());
 const cameraSideFollowPackageEvidence: GameplayCapabilityEvidence = cameraSideFollowPackageReport.supportEligible
   ? {
@@ -683,6 +700,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     artifactNoHiddenScriptPackageEvidence,
     artifactNoHiddenScriptPackageQa
+  ),
+  planned(
+    'camera.bounds_clamp.v1',
+    'camera',
+    'Camera world-bounds clamp',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    cameraBoundsClampPackageEvidence,
+    cameraBoundsClampPackageQa
   ),
   runtimeBacked('camera.top_down_follow.v1', 'camera', 'Top-down follow camera', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], ['top_down_camera']),
   runtimeBacked('movement.eight_direction.v1', 'movement', 'Eight-direction movement', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], [

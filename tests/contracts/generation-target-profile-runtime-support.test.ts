@@ -5,6 +5,8 @@ import {
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
   ARTIFACT_NO_HIDDEN_SCRIPT_EVENT_TYPE,
   ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID,
+  CAMERA_BOUNDS_CLAMP_EVENT_TYPE,
+  CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID,
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   COLLISION_PLATFORM_REQUIRED_PROBE_ID,
   COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID,
@@ -48,6 +50,7 @@ import {
   buildGenerationTargetProfileRuntimeSupportReport,
   createArtifactLineageNoManualPatchPackageContract,
   createArtifactNoHiddenScriptPackageContract,
+  createCameraBoundsClampPackageContract,
   createCameraSideFollowPackageContract,
   createCollisionPlatformPackageContract,
   createCombatAirborneFirePackageContract,
@@ -67,11 +70,13 @@ import {
   createWeaponSpreadShotPackageContract,
   createWeaponReplacementRulePackageContract,
   evaluateCapabilityQaReport,
-  resolveGameplayCapabilityGraph
+  resolveGameplayCapabilityGraph,
+  type GameplayCapabilityPackageContract
 } from '../../packages/game-dsl/src/index.js';
 
 const artifactLineageNoManualPatchCapabilityId = 'artifact.lineage_no_manual_patch.v1';
 const artifactNoHiddenScriptCapabilityId = 'artifact.no_hidden_script.v1';
+const cameraBoundsClampCapabilityId = 'camera.bounds_clamp.v1';
 const cameraCapabilityId = 'camera.side_follow.v1';
 const collisionCapabilityId = 'collision.platform.v1';
 const airborneFireCapabilityId = 'combat.airborne_fire.v1';
@@ -519,6 +524,83 @@ describe('Step 37 target profile runtime support overlay', () => {
       observedCompleteSupported: true,
       requiredProbeIds: [ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID],
       verifiedRequiredProbeIds: [ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+  });
+
+  it('observes camera bounds clamp only when camera evidence includes boundary state proof', () => {
+    const missingStateQaReport = buildSingleCapabilityQaReport({
+      capabilityId: cameraBoundsClampCapabilityId,
+      packageContract: createCameraBoundsClampPackageContract(),
+      eventType: CAMERA_BOUNDS_CLAMP_EVENT_TYPE,
+      probeId: CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID,
+      action: 'verify_camera_bounds',
+      sourceRef: 'runtime.camera.bounds',
+      stateFields: undefined
+    });
+    const observedStateQaReport = buildSingleCapabilityQaReport({
+      capabilityId: cameraBoundsClampCapabilityId,
+      packageContract: createCameraBoundsClampPackageContract(),
+      eventType: CAMERA_BOUNDS_CLAMP_EVENT_TYPE,
+      probeId: CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID,
+      action: 'verify_camera_bounds',
+      sourceRef: 'runtime.camera.bounds',
+      stateFields: {
+        cameraWithinWorldBounds: true,
+        leftBoundaryClamped: true,
+        rightBoundaryClamped: true
+      }
+    });
+    const missingStateReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_camera_bounds_missing_state',
+      capabilityQaReport: missingStateQaReport
+    });
+    const observedStateReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_camera_bounds_observed_state',
+      capabilityQaReport: observedStateQaReport
+    });
+    const missingState = missingStateReport.capabilities.find((entry) => entry.capabilityId === cameraBoundsClampCapabilityId);
+    const observedState = observedStateReport.capabilities.find((entry) => entry.capabilityId === cameraBoundsClampCapabilityId);
+
+    expect(missingStateQaReport.requiredResults.find((entry) => entry.probeId === CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID}.assertion.bounds_clamped`,
+          status: 'failed',
+          message: expect.stringContaining('expected cameraWithinWorldBounds=true, observed <missing>')
+        })
+      ])
+    });
+    expect(missingStateReport).toMatchObject({
+      observedCompleteSupportedCount: 0,
+      blockers: [
+        `capability_qa_report_missing_required_probe:${CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID}`,
+        'target_profile_runtime_support_incomplete:0/59'
+      ]
+    });
+    expect(missingState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedStateReport).toMatchObject({
+      observedCompleteSupportedCount: 1,
+      observedCapabilityIds: [cameraBoundsClampCapabilityId],
+      blockers: ['target_profile_runtime_support_incomplete:1/59']
+    });
+    expect(observedState).toMatchObject({
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID],
       missingRequiredProbeIds: [],
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
@@ -1483,7 +1565,7 @@ function buildDefaultWeaponQaReport(
 
 function buildSingleCapabilityQaReport(input: {
   capabilityId: string;
-  packageContract: ReturnType<typeof createArtifactNoHiddenScriptPackageContract>;
+  packageContract: GameplayCapabilityPackageContract;
   eventType: string;
   probeId: string;
   action: string;

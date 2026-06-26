@@ -37,6 +37,9 @@ import {
   ARTIFACT_NO_HIDDEN_SCRIPT_EVENT_TYPE,
   ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID,
   createArtifactNoHiddenScriptPackageContract,
+  CAMERA_BOUNDS_CLAMP_EVENT_TYPE,
+  CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID,
+  createCameraBoundsClampPackageContract,
   type CapabilityQaProbeDescriptor,
   type GameplayCapabilityPackageContract
 } from '../../packages/game-dsl/src/index.js';
@@ -1042,6 +1045,86 @@ describe('Capability-owned runtime QA probes', () => {
       })
     ]));
     expect(observedManifestState.status).toBe('passed');
+  });
+
+  it('does not verify camera bounds clamp when scroll evidence lacks boundary state fields', () => {
+    const capabilityId = 'camera.bounds_clamp.v1';
+    const probeId = CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID;
+    const packageContract = createCameraBoundsClampPackageContract();
+    const packages = [packageContract];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingBoundaryState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_camera_bounds',
+              eventType: CAMERA_BOUNDS_CLAMP_EVENT_TYPE,
+              eventTypes: [CAMERA_BOUNDS_CLAMP_EVENT_TYPE, 'camera.side_follow.active'],
+              sourceRef: 'runtime.camera.bounds',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedBoundaryState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_camera_bounds',
+              eventType: CAMERA_BOUNDS_CLAMP_EVENT_TYPE,
+              eventTypes: [CAMERA_BOUNDS_CLAMP_EVENT_TYPE, 'camera.side_follow.active'],
+              cameraWithinWorldBounds: true,
+              leftBoundaryClamped: true,
+              rightBoundaryClamped: true,
+              sourceRef: 'runtime.camera.bounds',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingBoundaryState.status).toBe('failed');
+    expect(missingBoundaryState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingBoundaryState.requiredResults[0]?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.bounds_clamped`,
+        status: 'failed',
+        message: expect.stringContaining('expected cameraWithinWorldBounds=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.bounds_clamped`,
+        status: 'failed',
+        message: expect.stringContaining('expected leftBoundaryClamped=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.bounds_clamped`,
+        status: 'failed',
+        message: expect.stringContaining('expected rightBoundaryClamped=true, observed <missing>')
+      })
+    ]));
+    expect(observedBoundaryState.status).toBe('passed');
   });
 });
 

@@ -146,6 +146,9 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   declaredModulesOnly?: boolean;
   hiddenScriptDetected?: boolean;
   moduleLoadManifestVerified?: boolean;
+  cameraWithinWorldBounds?: boolean;
+  leftBoundaryClamped?: boolean;
+  rightBoundaryClamped?: boolean;
   status?: string;
   sourceRef?: string;
 };
@@ -417,7 +420,10 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('lineageVerified', expected, observed.lineageVerified),
     ...compareExpectedBooleanField('declaredModulesOnly', expected, observed.declaredModulesOnly),
     ...compareExpectedBooleanField('hiddenScriptDetected', expected, observed.hiddenScriptDetected),
-    ...compareExpectedBooleanField('moduleLoadManifestVerified', expected, observed.moduleLoadManifestVerified)
+    ...compareExpectedBooleanField('moduleLoadManifestVerified', expected, observed.moduleLoadManifestVerified),
+    ...compareExpectedBooleanField('cameraWithinWorldBounds', expected, observed.cameraWithinWorldBounds),
+    ...compareExpectedBooleanField('leftBoundaryClamped', expected, observed.leftBoundaryClamped),
+    ...compareExpectedBooleanField('rightBoundaryClamped', expected, observed.rightBoundaryClamped)
   ];
 }
 

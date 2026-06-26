@@ -70,6 +70,15 @@ import {
   CAMERA_SIDE_FOLLOW_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/camera-side-follow-runtime-module.js';
 import {
+  CAMERA_BOUNDS_CLAMP_PACKAGE_REQUIRED_EVIDENCE_ID,
+  CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID,
+  createCameraBoundsClampPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/camera-bounds-clamp-package.js';
+import {
+  CAMERA_BOUNDS_CLAMP_EVENT_TYPE,
+  CAMERA_BOUNDS_CLAMP_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/camera-bounds-clamp-runtime-module.js';
+import {
   COLLISION_PLATFORM_PACKAGE_REQUIRED_EVIDENCE_ID,
   COLLISION_PLATFORM_REQUIRED_PROBE_ID,
   createCollisionPlatformPackageContract
@@ -428,6 +437,57 @@ describe('Gameplay capability package contract', () => {
       capabilityId: 'camera.side_follow.v1',
       severity: 'required',
       observations: [expect.objectContaining({ kind: 'camera_scroll', runtimeSystemId: CAMERA_SIDE_FOLLOW_RUNTIME_SYSTEM_ID, ref: 'camera.side_follow.active' })]
+    });
+  });
+
+  it('accepts the camera bounds-clamp package-owned QA contract', () => {
+    const contract = createCameraBoundsClampPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'camera.bounds_clamp.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([CAMERA_BOUNDS_CLAMP_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: CAMERA_BOUNDS_CLAMP_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'camera.bounds_clamp.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: CAMERA_BOUNDS_CLAMP_EVENT_TYPE,
+          parameters: expect.objectContaining({
+            boundaryPolicy: 'world_bounds',
+            clampRequired: true
+          })
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'camera_scroll',
+          runtimeSystemId: CAMERA_BOUNDS_CLAMP_RUNTIME_SYSTEM_ID,
+          ref: CAMERA_BOUNDS_CLAMP_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID}.assertion.bounds_clamped`,
+          expected: {
+            cameraWithinWorldBounds: true,
+            leftBoundaryClamped: true,
+            rightBoundaryClamped: true
+          }
+        })
+      ]
     });
   });
 
