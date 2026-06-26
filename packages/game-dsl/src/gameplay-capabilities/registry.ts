@@ -22,6 +22,10 @@ import {
   createCameraBoundsClampPackageContract
 } from './camera-bounds-clamp-package.js';
 import {
+  CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
+  createCanonicalSemanticPreservationPackageContract
+} from './canonical-semantic-preservation-package.js';
+import {
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   createCameraSideFollowPackageContract
 } from './camera-side-follow-package.js';
@@ -126,6 +130,7 @@ export const GAMEPLAY_CAPABILITY_DOMAINS = [
   'asset',
   'audio',
   'camera',
+  'canonical',
   'collision',
   'combat',
   'enemy',
@@ -460,6 +465,19 @@ const cameraBoundsClampPackageEvidence: GameplayCapabilityEvidence = cameraBound
 const cameraBoundsClampPackageQa: GameplayCapabilityQaEvidence = cameraBoundsClampPackageReport.supportEligible
   ? { requiredProbeIds: [CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const canonicalSemanticPreservationPackageReport = validateGameplayCapabilityPackage(createCanonicalSemanticPreservationPackageContract());
+const canonicalSemanticPreservationPackageEvidence: GameplayCapabilityEvidence = canonicalSemanticPreservationPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const canonicalSemanticPreservationPackageQa: GameplayCapabilityQaEvidence = canonicalSemanticPreservationPackageReport.supportEligible
+  ? { requiredProbeIds: [CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const cameraSideFollowPackageReport = validateGameplayCapabilityPackage(createCameraSideFollowPackageContract());
 const cameraSideFollowPackageEvidence: GameplayCapabilityEvidence = cameraSideFollowPackageReport.supportEligible
   ? {
@@ -710,6 +728,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     cameraBoundsClampPackageEvidence,
     cameraBoundsClampPackageQa
+  ),
+  planned(
+    'canonical.semantic_preservation.v1',
+    'canonical',
+    'Canonical semantic preservation',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    canonicalSemanticPreservationPackageEvidence,
+    canonicalSemanticPreservationPackageQa
   ),
   runtimeBacked('camera.top_down_follow.v1', 'camera', 'Top-down follow camera', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], ['top_down_camera']),
   runtimeBacked('movement.eight_direction.v1', 'movement', 'Eight-direction movement', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], [

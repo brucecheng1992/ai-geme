@@ -8,6 +8,8 @@ import {
   CAMERA_BOUNDS_CLAMP_EVENT_TYPE,
   CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID,
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
+  CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE,
+  CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
   COLLISION_PLATFORM_REQUIRED_PROBE_ID,
   COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
@@ -52,6 +54,7 @@ import {
   createArtifactNoHiddenScriptPackageContract,
   createCameraBoundsClampPackageContract,
   createCameraSideFollowPackageContract,
+  createCanonicalSemanticPreservationPackageContract,
   createCollisionPlatformPackageContract,
   createCombatAirborneFirePackageContract,
   createCombatProjectilePackageContract,
@@ -77,6 +80,7 @@ import {
 const artifactLineageNoManualPatchCapabilityId = 'artifact.lineage_no_manual_patch.v1';
 const artifactNoHiddenScriptCapabilityId = 'artifact.no_hidden_script.v1';
 const cameraBoundsClampCapabilityId = 'camera.bounds_clamp.v1';
+const canonicalSemanticPreservationCapabilityId = 'canonical.semantic_preservation.v1';
 const cameraCapabilityId = 'camera.side_follow.v1';
 const collisionCapabilityId = 'collision.platform.v1';
 const airborneFireCapabilityId = 'combat.airborne_fire.v1';
@@ -601,6 +605,83 @@ describe('Step 37 target profile runtime support overlay', () => {
       observedCompleteSupported: true,
       requiredProbeIds: [CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID],
       verifiedRequiredProbeIds: [CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+  });
+
+  it('observes canonical semantic preservation only when evidence includes semantic preservation state proof', () => {
+    const missingStateQaReport = buildSingleCapabilityQaReport({
+      capabilityId: canonicalSemanticPreservationCapabilityId,
+      packageContract: createCanonicalSemanticPreservationPackageContract(),
+      eventType: CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE,
+      probeId: CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
+      action: 'verify_semantic_preservation',
+      sourceRef: 'canonical.semantic.hash',
+      stateFields: undefined
+    });
+    const observedStateQaReport = buildSingleCapabilityQaReport({
+      capabilityId: canonicalSemanticPreservationCapabilityId,
+      packageContract: createCanonicalSemanticPreservationPackageContract(),
+      eventType: CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE,
+      probeId: CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
+      action: 'verify_semantic_preservation',
+      sourceRef: 'canonical.semantic.hash',
+      stateFields: {
+        canonicalHashMatched: true,
+        semanticIntentPreserved: true,
+        droppedCanonicalNodes: false
+      }
+    });
+    const missingStateReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_canonical_semantic_missing_state',
+      capabilityQaReport: missingStateQaReport
+    });
+    const observedStateReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_canonical_semantic_observed_state',
+      capabilityQaReport: observedStateQaReport
+    });
+    const missingState = missingStateReport.capabilities.find((entry) => entry.capabilityId === canonicalSemanticPreservationCapabilityId);
+    const observedState = observedStateReport.capabilities.find((entry) => entry.capabilityId === canonicalSemanticPreservationCapabilityId);
+
+    expect(missingStateQaReport.requiredResults.find((entry) => entry.probeId === CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID}.assertion.semantic_preserved`,
+          status: 'failed',
+          message: expect.stringContaining('expected canonicalHashMatched=true, observed <missing>')
+        })
+      ])
+    });
+    expect(missingStateReport).toMatchObject({
+      observedCompleteSupportedCount: 0,
+      blockers: [
+        `capability_qa_report_missing_required_probe:${CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID}`,
+        'target_profile_runtime_support_incomplete:0/59'
+      ]
+    });
+    expect(missingState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedStateReport).toMatchObject({
+      observedCompleteSupportedCount: 1,
+      observedCapabilityIds: [canonicalSemanticPreservationCapabilityId],
+      blockers: ['target_profile_runtime_support_incomplete:1/59']
+    });
+    expect(observedState).toMatchObject({
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID],
       missingRequiredProbeIds: [],
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }

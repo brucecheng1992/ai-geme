@@ -40,6 +40,9 @@ import {
   CAMERA_BOUNDS_CLAMP_EVENT_TYPE,
   CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID,
   createCameraBoundsClampPackageContract,
+  CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE,
+  CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
+  createCanonicalSemanticPreservationPackageContract,
   type CapabilityQaProbeDescriptor,
   type GameplayCapabilityPackageContract
 } from '../../packages/game-dsl/src/index.js';
@@ -1125,6 +1128,86 @@ describe('Capability-owned runtime QA probes', () => {
       })
     ]));
     expect(observedBoundaryState.status).toBe('passed');
+  });
+
+  it('does not verify canonical semantic preservation when evidence lacks semantic state fields', () => {
+    const capabilityId = 'canonical.semantic_preservation.v1';
+    const probeId = CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID;
+    const packageContract = createCanonicalSemanticPreservationPackageContract();
+    const packages = [packageContract];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingSemanticState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_semantic_preservation',
+              eventType: CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE,
+              eventTypes: [CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE],
+              sourceRef: 'canonical.semantic.hash',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedSemanticState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_semantic_preservation',
+              eventType: CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE,
+              eventTypes: [CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE],
+              canonicalHashMatched: true,
+              semanticIntentPreserved: true,
+              droppedCanonicalNodes: false,
+              sourceRef: 'canonical.semantic.hash',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingSemanticState.status).toBe('failed');
+    expect(missingSemanticState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingSemanticState.requiredResults[0]?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.semantic_preserved`,
+        status: 'failed',
+        message: expect.stringContaining('expected canonicalHashMatched=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.semantic_preserved`,
+        status: 'failed',
+        message: expect.stringContaining('expected semanticIntentPreserved=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.semantic_preserved`,
+        status: 'failed',
+        message: expect.stringContaining('expected droppedCanonicalNodes=false, observed <missing>')
+      })
+    ]));
+    expect(observedSemanticState.status).toBe('passed');
   });
 });
 

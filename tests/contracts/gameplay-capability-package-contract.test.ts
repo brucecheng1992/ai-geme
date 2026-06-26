@@ -79,6 +79,15 @@ import {
   CAMERA_BOUNDS_CLAMP_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/camera-bounds-clamp-runtime-module.js';
 import {
+  CANONICAL_SEMANTIC_PRESERVATION_PACKAGE_REQUIRED_EVIDENCE_ID,
+  CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
+  createCanonicalSemanticPreservationPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/canonical-semantic-preservation-package.js';
+import {
+  CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE,
+  CANONICAL_SEMANTIC_PRESERVATION_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/canonical-semantic-preservation-runtime-module.js';
+import {
   COLLISION_PLATFORM_PACKAGE_REQUIRED_EVIDENCE_ID,
   COLLISION_PLATFORM_REQUIRED_PROBE_ID,
   createCollisionPlatformPackageContract
@@ -485,6 +494,49 @@ describe('Gameplay capability package contract', () => {
             cameraWithinWorldBounds: true,
             leftBoundaryClamped: true,
             rightBoundaryClamped: true
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the canonical semantic-preservation package-owned QA contract', () => {
+    const contract = createCanonicalSemanticPreservationPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'canonical.semantic_preservation.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([CANONICAL_SEMANTIC_PRESERVATION_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: CANONICAL_SEMANTIC_PRESERVATION_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'canonical.semantic_preservation.v1',
+      severity: 'required',
+      actions: [expect.objectContaining({ target: CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE })],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: CANONICAL_SEMANTIC_PRESERVATION_RUNTIME_SYSTEM_ID,
+          ref: CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID}.assertion.semantic_preserved`,
+          expected: {
+            canonicalHashMatched: true,
+            semanticIntentPreserved: true,
+            droppedCanonicalNodes: false
           }
         })
       ]

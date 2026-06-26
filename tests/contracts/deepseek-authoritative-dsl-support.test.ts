@@ -379,6 +379,21 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       missingEvidenceDimensions: ['qa_observed'],
       missingSupportEvidencePrerequisites: ['requiredProbesVerified']
     });
+    expect(capabilities.get('canonical.semantic_preservation.v1')).toMatchObject({
+      registered: true,
+      classification: 'DEFERRED',
+      completeSupported: false,
+      legacyBacked: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
   });
 
   it('reports rapid-fire weapon package-backed evidence without QA completion', () => {
@@ -511,6 +526,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       'camera.side_follow.v1',
       'camera.top_down_follow.v1',
       'camera.vertical_scroll.v1',
+      'canonical.semantic_preservation.v1',
       'collision.brick_grid.v1',
       'collision.platform.v1',
       'combat.airborne_fire.v1',

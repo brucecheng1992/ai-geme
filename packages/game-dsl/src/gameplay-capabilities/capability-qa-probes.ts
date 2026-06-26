@@ -149,6 +149,9 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   cameraWithinWorldBounds?: boolean;
   leftBoundaryClamped?: boolean;
   rightBoundaryClamped?: boolean;
+  canonicalHashMatched?: boolean;
+  semanticIntentPreserved?: boolean;
+  droppedCanonicalNodes?: boolean;
   status?: string;
   sourceRef?: string;
 };
@@ -423,7 +426,10 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('moduleLoadManifestVerified', expected, observed.moduleLoadManifestVerified),
     ...compareExpectedBooleanField('cameraWithinWorldBounds', expected, observed.cameraWithinWorldBounds),
     ...compareExpectedBooleanField('leftBoundaryClamped', expected, observed.leftBoundaryClamped),
-    ...compareExpectedBooleanField('rightBoundaryClamped', expected, observed.rightBoundaryClamped)
+    ...compareExpectedBooleanField('rightBoundaryClamped', expected, observed.rightBoundaryClamped),
+    ...compareExpectedBooleanField('canonicalHashMatched', expected, observed.canonicalHashMatched),
+    ...compareExpectedBooleanField('semanticIntentPreserved', expected, observed.semanticIntentPreserved),
+    ...compareExpectedBooleanField('droppedCanonicalNodes', expected, observed.droppedCanonicalNodes)
   ];
 }
 

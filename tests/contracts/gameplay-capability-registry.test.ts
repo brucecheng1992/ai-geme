@@ -16,6 +16,7 @@ import {
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
   ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID,
   CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID,
+  CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
   MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
@@ -42,6 +43,10 @@ describe('Gameplay capability registry', () => {
       legacyRuntimeCapabilities: []
     });
     expect(findGameplayCapability('camera.bounds_clamp.v1')).toMatchObject({
+      status: 'planned',
+      legacyRuntimeCapabilities: []
+    });
+    expect(findGameplayCapability('canonical.semantic_preservation.v1')).toMatchObject({
       status: 'planned',
       legacyRuntimeCapabilities: []
     });
@@ -303,6 +308,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(boundsClamp)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(boundsClamp)).toBe(false);
+  });
+
+  it('scopes canonical semantic-preservation package-owned QA without static support promotion', () => {
+    const semanticPreservation = findGameplayCapability('canonical.semantic_preservation.v1');
+
+    if (semanticPreservation === undefined) {
+      throw new Error('Expected canonical.semantic_preservation.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(semanticPreservation)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(semanticPreservation.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(semanticPreservation.qa).toEqual({
+      requiredProbeIds: [CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(semanticPreservation)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(semanticPreservation)).toBe(false);
   });
 
   it('scopes weapon rapid fire package-owned QA without static support promotion', () => {
