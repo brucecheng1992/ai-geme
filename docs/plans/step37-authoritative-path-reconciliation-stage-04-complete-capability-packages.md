@@ -5093,11 +5093,15 @@ Checkpoint identity:
 closure_scope: atomic_step
 atomic_step:
   id: stage4.weapon_death_reset_v1.complete_supported_package_slice
-  status: locally_validated
+  status: closed
   implementation_status: complete
   local_validation_status: passed
-  candidate_status: ready_for_commit
-  oracle_status: not_submitted
+  candidate_status: committed
+  candidate_commit: f1a28d68471194c81b57ca6f4a4a79d98f0cae5b
+  reviewed_commit_sha: f1a28d68471194c81b57ca6f4a4a79d98f0cae5b
+  reviewed_skill_revision: aea1af2a6b7304e666193a0b176c6187a49226305edba9bdc01d89e809f24faf
+  oracle_status: approved
+  closure_status: closed
 parent_stage:
   id: stage4
   status: running
@@ -5108,7 +5112,7 @@ parent_loop:
   global_exit_conditions_met: false
   user_input_required: false
   next_action: CONTINUE_PARENT_LOOP
-  next_atomic_step: stage4.weapon_death_reset_v1.complete_supported_package_slice
+  next_atomic_step: stage4.weapon_rapid_fire_v1.complete_supported_package_slice
   next_atomic_step_scope: implementation
 ```
 
@@ -5239,4 +5243,46 @@ exitCode=0
 result=weapon.death_reset.v1 evidence={schema_expressible:true,normalized:true,compiled:true,runtime_consumed:true,qa_observed:false}; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false; completeSupportedCount=0
 ```
 
-Candidate readiness assessment: `READY_FOR_COMMIT`. Oracle request has not been submitted yet, so `oracle_status=not_submitted`. The candidate must not write its own commit SHA into this same candidate tree; the immutable repo candidate SHA and Skill bundle digest will be bound by the external Oracle review record after candidate commit creation.
+Candidate post-commit checks:
+
+```text
+command=git rev-parse HEAD
+exitCode=0
+result=f1a28d68471194c81b57ca6f4a4a79d98f0cae5b
+
+command=git rev-parse HEAD^{tree}
+exitCode=0
+result=15f6dda3010bb8255ba3ec9d60af48bc283ac362
+
+command=git status --short
+exitCode=0
+result=clean
+
+command=git show --check --oneline HEAD
+exitCode=0
+result=PASS
+```
+
+Oracle approval receipt:
+
+```text
+submission_id=019f0167-5cb0-7680-9a20-f0786a92900a
+submission_id_source=multi_agent_v1.send_input return field
+agent_id=019effae-8aa2-7c22-b5ba-8c4b69f21d20
+agent_id_source=existing Oracle agent id
+polling_id_type=agent_id
+reviewed_commit_sha=f1a28d68471194c81b57ca6f4a4a79d98f0cae5b
+reviewed_commit_tree=15f6dda3010bb8255ba3ec9d60af48bc283ac362
+reviewed_skill_revision=aea1af2a6b7304e666193a0b176c6187a49226305edba9bdc01d89e809f24faf
+oracle_verdict=PASS_NO_P0_P1_P2_BLOCKERS
+oracle_findings=P0=0; P1=0; P2=0; P3=0
+```
+
+Receipt boundary:
+
+- This receipt records Oracle approval for immutable candidate commit `f1a28d68471194c81b57ca6f4a4a79d98f0cae5b` and Skill revision `aea1af2a6b7304e666193a0b176c6187a49226305edba9bdc01d89e809f24faf`.
+- It intentionally does not record its own receipt commit SHA to avoid self-reference churn.
+- Receipt diff is docs-only closure metadata and must not modify implementation, validator, contract semantics, Skill, AGENTS.md, tests, or runtime.
+- Stage 4 and Step37 remain running. This closes only `stage4.weapon_death_reset_v1.complete_supported_package_slice`.
+
+Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4.weapon_death_reset_v1.complete_supported_package_slice` after candidate commit creation, local validation, Oracle PASS, and receipt-only metadata update. It does not close Stage 4, Step37, production default cutover, legacy authoritative path exit, Stage 5, or final global closure. Parent Loop Driver must continue with `stage4.weapon_rapid_fire_v1.complete_supported_package_slice` while global exits remain false and no verified user blocker exists.
