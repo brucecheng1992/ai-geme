@@ -28,6 +28,7 @@ import {
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID,
   GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID,
   HAZARD_FALLING_AREA_REQUIRED_PROBE_ID,
+  HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID,
   MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
@@ -679,6 +680,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(fallingArea)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(fallingArea)).toBe(false);
+  });
+
+  it('scopes hazard timed explosion package-owned QA without static support promotion', () => {
+    const timedExplosion = findGameplayCapability('hazard.timed_explosion.v1');
+
+    if (timedExplosion === undefined) {
+      throw new Error('Expected hazard.timed_explosion.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(timedExplosion)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(timedExplosion.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(timedExplosion.qa).toEqual({
+      requiredProbeIds: [HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(timedExplosion)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(timedExplosion)).toBe(false);
   });
 
   it('scopes weapon rapid fire package-owned QA without static support promotion', () => {

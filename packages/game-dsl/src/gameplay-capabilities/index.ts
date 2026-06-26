@@ -39,6 +39,8 @@ export * from './goal-boss-unlock-runtime-module.js';
 export * from './goal-boss-unlock-package.js';
 export * from './hazard-falling-area-runtime-module.js';
 export * from './hazard-falling-area-package.js';
+export * from './hazard-timed-explosion-runtime-module.js';
+export * from './hazard-timed-explosion-package.js';
 export * from './collision-platform-runtime-module.js';
 export * from './collision-platform-package.js';
 export * from './default-straight-single-weapon-runtime-module.js';

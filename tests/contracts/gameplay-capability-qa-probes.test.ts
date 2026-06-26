@@ -114,6 +114,15 @@ import {
   HAZARD_FALLING_AREA_REQUIRED_PROBE_ID,
   HAZARD_FALLING_AREA_TELEGRAPH_MS,
   createHazardFallingAreaPackageContract,
+  HAZARD_TIMED_EXPLOSION_COUNTDOWN_MS,
+  HAZARD_TIMED_EXPLOSION_DAMAGE,
+  HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
+  HAZARD_TIMED_EXPLOSION_HAZARD_ID,
+  HAZARD_TIMED_EXPLOSION_RADIUS,
+  HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID,
+  HAZARD_TIMED_EXPLOSION_TIMER_ID,
+  HAZARD_TIMED_EXPLOSION_TRIGGER_CONDITION,
+  createHazardTimedExplosionPackageContract,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
@@ -2426,6 +2435,95 @@ describe('Capability-owned runtime QA probes', () => {
       ])
     );
     expect(observedFallingArea.status).toBe('passed');
+  });
+
+  it('does not verify timed explosion hazards from generic hazard or explosion evidence without timer causality state', () => {
+    const capabilityId = 'hazard.timed_explosion.v1';
+    const probeId = HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID;
+    const packages = [createHazardTimedExplosionPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const genericExplosionEvidence = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'explode',
+              eventType: 'explosion.triggered',
+              eventTypes: ['hazard.spawned', 'explosion.triggered'],
+              sourceRef: 'runtime.hazard.generic_explosion',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedTimedExplosion = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_timed_explosion',
+              eventType: HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
+              eventTypes: [HAZARD_TIMED_EXPLOSION_EVENT_TYPE, 'explosion.triggered'],
+              timedExplosionActive: true,
+              timedExplosionHazardId: HAZARD_TIMED_EXPLOSION_HAZARD_ID,
+              timedExplosionTimerId: HAZARD_TIMED_EXPLOSION_TIMER_ID,
+              timedExplosionCountdownMs: HAZARD_TIMED_EXPLOSION_COUNTDOWN_MS,
+              timedExplosionElapsedMs: HAZARD_TIMED_EXPLOSION_COUNTDOWN_MS,
+              timedExplosionTriggerCondition: HAZARD_TIMED_EXPLOSION_TRIGGER_CONDITION,
+              timedExplosionTriggeredByTimer: true,
+              timedExplosionOccurred: true,
+              timedExplosionDamagesPlayer: true,
+              timedExplosionDamage: HAZARD_TIMED_EXPLOSION_DAMAGE,
+              timedExplosionRadius: HAZARD_TIMED_EXPLOSION_RADIUS,
+              sourceRef: 'runtime.hazard.timed_explosion',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericExplosionEvidence.status).toBe('failed');
+    expect(genericExplosionEvidence.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericExplosionEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.timed_explosion_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${HAZARD_TIMED_EXPLOSION_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.timed_explosion_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected timedExplosionTriggeredByTimer=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.timed_explosion_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`expected timedExplosionTriggerCondition=${HAZARD_TIMED_EXPLOSION_TRIGGER_CONDITION}, observed <missing>`)
+        })
+      ])
+    );
+    expect(observedTimedExplosion.status).toBe('passed');
   });
 });
 

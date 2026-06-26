@@ -1,0 +1,9 @@
+export const HAZARD_TIMED_EXPLOSION_CAPABILITY_ID = 'hazard.timed_explosion.v1';
+export const HAZARD_TIMED_EXPLOSION_RUNTIME_SYSTEM_ID = 'hazard.timed_explosion';
+export const HAZARD_TIMED_EXPLOSION_EVENT_TYPE = 'hazard.timed_explosion.verified';
+export const HAZARD_TIMED_EXPLOSION_HAZARD_ID = 'timed_explosion_1';
+export const HAZARD_TIMED_EXPLOSION_TIMER_ID = 'timed_explosion_countdown_1';
+export const HAZARD_TIMED_EXPLOSION_COUNTDOWN_MS = 1200;
+export const HAZARD_TIMED_EXPLOSION_TRIGGER_CONDITION = 'countdown_elapsed';
+export const HAZARD_TIMED_EXPLOSION_DAMAGE = 1;
+export const HAZARD_TIMED_EXPLOSION_RADIUS = 64;

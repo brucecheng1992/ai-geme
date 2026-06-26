@@ -70,6 +70,10 @@ import {
   createHazardFallingAreaPackageContract
 } from './hazard-falling-area-package.js';
 import {
+  HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID,
+  createHazardTimedExplosionPackageContract
+} from './hazard-timed-explosion-package.js';
+import {
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   createCameraSideFollowPackageContract
 } from './camera-side-follow-package.js';
@@ -666,6 +670,19 @@ const hazardFallingAreaPackageEvidence: GameplayCapabilityEvidence = hazardFalli
 const hazardFallingAreaPackageQa: GameplayCapabilityQaEvidence = hazardFallingAreaPackageReport.supportEligible
   ? { requiredProbeIds: [HAZARD_FALLING_AREA_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const hazardTimedExplosionPackageReport = validateGameplayCapabilityPackage(createHazardTimedExplosionPackageContract());
+const hazardTimedExplosionPackageEvidence: GameplayCapabilityEvidence = hazardTimedExplosionPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const hazardTimedExplosionPackageQa: GameplayCapabilityQaEvidence = hazardTimedExplosionPackageReport.supportEligible
+  ? { requiredProbeIds: [HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const cameraSideFollowPackageReport = validateGameplayCapabilityPackage(createCameraSideFollowPackageContract());
 const cameraSideFollowPackageEvidence: GameplayCapabilityEvidence = cameraSideFollowPackageReport.supportEligible
   ? {
@@ -1036,6 +1053,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     hazardFallingAreaPackageEvidence,
     hazardFallingAreaPackageQa
+  ),
+  planned(
+    'hazard.timed_explosion.v1',
+    'hazard',
+    'Timed explosion hazard',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    hazardTimedExplosionPackageEvidence,
+    hazardTimedExplosionPackageQa
   ),
   runtimeBacked('camera.top_down_follow.v1', 'camera', 'Top-down follow camera', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], ['top_down_camera']),
   runtimeBacked('movement.eight_direction.v1', 'movement', 'Eight-direction movement', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], [

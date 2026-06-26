@@ -223,6 +223,17 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   fallingAreaDamagesPlayer?: boolean;
   fallingAreaDamage?: number;
   fallingAreaTelegraphMs?: number;
+  timedExplosionActive?: boolean;
+  timedExplosionHazardId?: string;
+  timedExplosionTimerId?: string;
+  timedExplosionCountdownMs?: number;
+  timedExplosionElapsedMs?: number;
+  timedExplosionTriggerCondition?: string;
+  timedExplosionTriggeredByTimer?: boolean;
+  timedExplosionOccurred?: boolean;
+  timedExplosionDamagesPlayer?: boolean;
+  timedExplosionDamage?: number;
+  timedExplosionRadius?: number;
   status?: string;
   sourceRef?: string;
 };
@@ -571,7 +582,18 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('fallingAreaArmed', expected, observed.fallingAreaArmed),
     ...compareExpectedBooleanField('fallingAreaDamagesPlayer', expected, observed.fallingAreaDamagesPlayer),
     ...compareExpectedNumberField('fallingAreaDamage', expected, observed.fallingAreaDamage),
-    ...compareExpectedNumberField('fallingAreaTelegraphMs', expected, observed.fallingAreaTelegraphMs)
+    ...compareExpectedNumberField('fallingAreaTelegraphMs', expected, observed.fallingAreaTelegraphMs),
+    ...compareExpectedBooleanField('timedExplosionActive', expected, observed.timedExplosionActive),
+    ...compareExpectedStringField('timedExplosionHazardId', expected, observed.timedExplosionHazardId),
+    ...compareExpectedStringField('timedExplosionTimerId', expected, observed.timedExplosionTimerId),
+    ...compareExpectedNumberField('timedExplosionCountdownMs', expected, observed.timedExplosionCountdownMs),
+    ...compareExpectedNumberField('timedExplosionElapsedMs', expected, observed.timedExplosionElapsedMs),
+    ...compareExpectedStringField('timedExplosionTriggerCondition', expected, observed.timedExplosionTriggerCondition),
+    ...compareExpectedBooleanField('timedExplosionTriggeredByTimer', expected, observed.timedExplosionTriggeredByTimer),
+    ...compareExpectedBooleanField('timedExplosionOccurred', expected, observed.timedExplosionOccurred),
+    ...compareExpectedBooleanField('timedExplosionDamagesPlayer', expected, observed.timedExplosionDamagesPlayer),
+    ...compareExpectedNumberField('timedExplosionDamage', expected, observed.timedExplosionDamage),
+    ...compareExpectedNumberField('timedExplosionRadius', expected, observed.timedExplosionRadius)
   ];
 }
 

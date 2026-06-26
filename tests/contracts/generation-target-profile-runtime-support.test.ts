@@ -76,6 +76,14 @@ import {
   HAZARD_FALLING_AREA_PATTERN_ID,
   HAZARD_FALLING_AREA_REQUIRED_PROBE_ID,
   HAZARD_FALLING_AREA_TELEGRAPH_MS,
+  HAZARD_TIMED_EXPLOSION_COUNTDOWN_MS,
+  HAZARD_TIMED_EXPLOSION_DAMAGE,
+  HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
+  HAZARD_TIMED_EXPLOSION_HAZARD_ID,
+  HAZARD_TIMED_EXPLOSION_RADIUS,
+  HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID,
+  HAZARD_TIMED_EXPLOSION_TIMER_ID,
+  HAZARD_TIMED_EXPLOSION_TRIGGER_CONDITION,
   GenerationTargetProfileRuntimeSupportReportSchema,
   HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID,
   HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
@@ -131,6 +139,7 @@ import {
   createGenerationFallbackPolicyFailClosedPackageContract,
   createGoalBossUnlockPackageContract,
   createHazardFallingAreaPackageContract,
+  createHazardTimedExplosionPackageContract,
   createHealthDamageInvulnerabilityPackageContract,
   createHealthPlayerHealthPointsPackageContract,
   createMovementCrouchPackageContract,
@@ -164,6 +173,7 @@ const feedbackVictoryDeclarationCapabilityId = 'feedback.victory_declaration.v1'
 const generationFallbackPolicyFailClosedCapabilityId = 'generation.fallback_policy_fail_closed.v1';
 const goalBossUnlockCapabilityId = 'goal.boss_unlock.v1';
 const hazardFallingAreaCapabilityId = 'hazard.falling_area.v1';
+const hazardTimedExplosionCapabilityId = 'hazard.timed_explosion.v1';
 const cameraCapabilityId = 'camera.side_follow.v1';
 const collisionCapabilityId = 'collision.platform.v1';
 const airborneFireCapabilityId = 'combat.airborne_fire.v1';
@@ -199,6 +209,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
       GOAL_BOSS_UNLOCK_EVENT_TYPE,
       HAZARD_FALLING_AREA_EVENT_TYPE,
+      HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
       'combat.airborne_fire.fired',
       'player.fired',
       'projectile.spawned',
@@ -259,7 +270,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 29,
+      observedCompleteSupportedCount: 30,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
@@ -278,6 +289,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         generationFallbackPolicyFailClosedCapabilityId,
         goalBossUnlockCapabilityId,
         hazardFallingAreaCapabilityId,
+        hazardTimedExplosionCapabilityId,
         damageInvulnerabilityCapabilityId,
         healthCapabilityId,
         fixedPromptBindingCapabilityId,
@@ -293,7 +305,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         replacementRuleCapabilityId,
         spreadShotCapabilityId
       ],
-      blockers: ['target_profile_runtime_support_incomplete:29/59']
+      blockers: ['target_profile_runtime_support_incomplete:30/59']
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
       capabilityId: artifactLineageNoManualPatchCapabilityId,
@@ -515,6 +527,18 @@ describe('Step 37 target profile runtime support overlay', () => {
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
     });
+    const hazardTimedExplosion = report.capabilities.find((entry) => entry.capabilityId === hazardTimedExplosionCapabilityId);
+    expect(hazardTimedExplosion).toMatchObject({
+      capabilityId: hazardTimedExplosionCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
     expect(damageInvulnerability).toMatchObject({
       capabilityId: damageInvulnerabilityCapabilityId,
       runtimeVerified: true,
@@ -632,6 +656,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
       GOAL_BOSS_UNLOCK_EVENT_TYPE,
       HAZARD_FALLING_AREA_EVENT_TYPE,
+      HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
       'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -674,11 +699,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 28,
+      observedCompleteSupportedCount: 29,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:28/59'
+        'target_profile_runtime_support_incomplete:29/59'
       ]
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
@@ -1016,6 +1041,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
       GOAL_BOSS_UNLOCK_EVENT_TYPE,
       HAZARD_FALLING_AREA_EVENT_TYPE,
+      HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
       'combat.airborne_fire.fired',
       'player.fired',
       'projectile.spawned',
@@ -1045,11 +1071,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 28,
+      observedCompleteSupportedCount: 29,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:28/59'
+        'target_profile_runtime_support_incomplete:29/59'
       ]
     });
     expect(fixedPromptBinding).toMatchObject({
@@ -1076,6 +1102,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
       GOAL_BOSS_UNLOCK_EVENT_TYPE,
       HAZARD_FALLING_AREA_EVENT_TYPE,
+      HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
       'combat.airborne_fire.fired',
       'player.fired',
       'projectile.spawned',
@@ -1105,11 +1132,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 28,
+      observedCompleteSupportedCount: 29,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:28/59'
+        'target_profile_runtime_support_incomplete:29/59'
       ]
     });
     expect(profileBinding).toMatchObject({
@@ -1163,6 +1190,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
       GOAL_BOSS_UNLOCK_EVENT_TYPE,
       HAZARD_FALLING_AREA_EVENT_TYPE,
+      HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
       'combat.airborne_fire.fired',
       'player.fired',
       'projectile.spawned',
@@ -1205,7 +1233,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 28,
+      observedCompleteSupportedCount: 29,
       targetProfileCompleteSupported: false,
       observedCapabilityIds: [
         artifactLineageNoManualPatchCapabilityId,
@@ -1223,6 +1251,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         generationFallbackPolicyFailClosedCapabilityId,
         goalBossUnlockCapabilityId,
         hazardFallingAreaCapabilityId,
+        hazardTimedExplosionCapabilityId,
         healthCapabilityId,
         fixedPromptBindingCapabilityId,
         crouchCapabilityId,
@@ -1239,7 +1268,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ],
       blockers: [
         `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:28/59'
+        'target_profile_runtime_support_incomplete:29/59'
       ]
     });
     expect(damageInvulnerability).toMatchObject({
@@ -1267,6 +1296,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
       GOAL_BOSS_UNLOCK_EVENT_TYPE,
       HAZARD_FALLING_AREA_EVENT_TYPE,
+      HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
       'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -1312,11 +1342,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 28,
+      observedCompleteSupportedCount: 29,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:28/59'
+        'target_profile_runtime_support_incomplete:29/59'
       ]
     });
     expect(pickup).toMatchObject({
@@ -1344,6 +1374,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
       GOAL_BOSS_UNLOCK_EVENT_TYPE,
       HAZARD_FALLING_AREA_EVENT_TYPE,
+      HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
       'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -1386,11 +1417,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 28,
+      observedCompleteSupportedCount: 29,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:28/59'
+        'target_profile_runtime_support_incomplete:29/59'
       ]
     });
     expect(spawnEnemyWave).toMatchObject({
@@ -1418,6 +1449,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
       GOAL_BOSS_UNLOCK_EVENT_TYPE,
       HAZARD_FALLING_AREA_EVENT_TYPE,
+      HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
       'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -1465,11 +1497,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 28,
+      observedCompleteSupportedCount: 29,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:28/59'
+        'target_profile_runtime_support_incomplete:29/59'
       ]
     });
     expect(flyingRightEntry).toMatchObject({
@@ -1497,6 +1529,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
       GOAL_BOSS_UNLOCK_EVENT_TYPE,
       HAZARD_FALLING_AREA_EVENT_TYPE,
+      HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
       'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -1544,11 +1577,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 28,
+      observedCompleteSupportedCount: 29,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:28/59'
+        'target_profile_runtime_support_incomplete:29/59'
       ]
     });
     expect(patrolInfantry).toMatchObject({
@@ -1576,6 +1609,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
       GOAL_BOSS_UNLOCK_EVENT_TYPE,
       HAZARD_FALLING_AREA_EVENT_TYPE,
+      HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
       'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -1625,11 +1659,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 28,
+      observedCompleteSupportedCount: 29,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:28/59'
+        'target_profile_runtime_support_incomplete:29/59'
       ]
     });
     expect(victoryDeclaration).toMatchObject({
@@ -1946,6 +1980,97 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
   });
 
+  it('keeps timed explosion unverified when generic explosion evidence lacks timer causality proof', () => {
+    const genericExplosionQaReport = buildSingleCapabilityQaReport({
+      capabilityId: hazardTimedExplosionCapabilityId,
+      packageContract: createHazardTimedExplosionPackageContract(),
+      eventType: 'explosion.triggered',
+      probeId: HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID,
+      action: 'explode',
+      sourceRef: 'runtime.hazard.generic_explosion',
+      stateFields: {
+        hazardSpawned: true,
+        explosionOccurred: true
+      }
+    });
+    const observedTimedExplosionQaReport = buildSingleCapabilityQaReport({
+      capabilityId: hazardTimedExplosionCapabilityId,
+      packageContract: createHazardTimedExplosionPackageContract(),
+      eventType: HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
+      probeId: HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID,
+      action: 'verify_timed_explosion',
+      sourceRef: 'runtime.hazard.timed_explosion',
+      stateFields: {
+        timedExplosionActive: true,
+        timedExplosionHazardId: HAZARD_TIMED_EXPLOSION_HAZARD_ID,
+        timedExplosionTimerId: HAZARD_TIMED_EXPLOSION_TIMER_ID,
+        timedExplosionCountdownMs: HAZARD_TIMED_EXPLOSION_COUNTDOWN_MS,
+        timedExplosionElapsedMs: HAZARD_TIMED_EXPLOSION_COUNTDOWN_MS,
+        timedExplosionTriggerCondition: HAZARD_TIMED_EXPLOSION_TRIGGER_CONDITION,
+        timedExplosionTriggeredByTimer: true,
+        timedExplosionOccurred: true,
+        timedExplosionDamagesPlayer: true,
+        timedExplosionDamage: HAZARD_TIMED_EXPLOSION_DAMAGE,
+        timedExplosionRadius: HAZARD_TIMED_EXPLOSION_RADIUS
+      }
+    });
+    const genericExplosionReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_timed_explosion_missing_state',
+      capabilityQaReport: genericExplosionQaReport
+    });
+    const observedTimedExplosionReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_timed_explosion_observed_state',
+      capabilityQaReport: observedTimedExplosionQaReport
+    });
+    const genericExplosionState = genericExplosionReport.capabilities.find((entry) => entry.capabilityId === hazardTimedExplosionCapabilityId);
+    const observedTimedExplosionState = observedTimedExplosionReport.capabilities.find((entry) => entry.capabilityId === hazardTimedExplosionCapabilityId);
+
+    expect(genericExplosionQaReport.requiredResults.find((entry) => entry.probeId === HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID}.assertion.timed_explosion_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${HAZARD_TIMED_EXPLOSION_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID}.assertion.timed_explosion_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected timedExplosionTriggeredByTimer=true, observed <missing>')
+        })
+      ])
+    });
+    expect(genericExplosionReport).toMatchObject({
+      observedCompleteSupportedCount: 0,
+      observedCapabilityIds: [],
+      blockers: [`capability_qa_report_missing_required_probe:${HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID}`, 'target_profile_runtime_support_incomplete:0/59']
+    });
+    expect(genericExplosionState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedTimedExplosionReport).toMatchObject({
+      observedCompleteSupportedCount: 1,
+      observedCapabilityIds: [hazardTimedExplosionCapabilityId],
+      blockers: ['target_profile_runtime_support_incomplete:1/59']
+    });
+    expect(observedTimedExplosionState).toMatchObject({
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+  });
+
   it('keeps weapon death reset unverified when restore evidence lacks reset state fields', () => {
     const capabilityQaReport = buildDefaultWeaponQaReport(
       [
@@ -1962,6 +2087,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
       GOAL_BOSS_UNLOCK_EVENT_TYPE,
       HAZARD_FALLING_AREA_EVENT_TYPE,
+      HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
       'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -2004,11 +2130,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 28,
+      observedCompleteSupportedCount: 29,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:28/59'
+        'target_profile_runtime_support_incomplete:29/59'
       ]
     });
     expect(deathReset).toMatchObject({
@@ -2036,6 +2162,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
       GOAL_BOSS_UNLOCK_EVENT_TYPE,
       HAZARD_FALLING_AREA_EVENT_TYPE,
+      HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
       'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -2078,11 +2205,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 28,
+      observedCompleteSupportedCount: 29,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:28/59'
+        'target_profile_runtime_support_incomplete:29/59'
       ]
     });
     expect(rapidFire).toMatchObject({
@@ -2110,6 +2237,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
       GOAL_BOSS_UNLOCK_EVENT_TYPE,
       HAZARD_FALLING_AREA_EVENT_TYPE,
+      HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
       'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -2152,11 +2280,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 28,
+      observedCompleteSupportedCount: 29,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:28/59'
+        'target_profile_runtime_support_incomplete:29/59'
       ]
     });
     expect(spreadShot).toMatchObject({
@@ -2184,6 +2312,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
       GOAL_BOSS_UNLOCK_EVENT_TYPE,
       HAZARD_FALLING_AREA_EVENT_TYPE,
+      HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
       'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -2226,11 +2355,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 28,
+      observedCompleteSupportedCount: 29,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:28/59'
+        'target_profile_runtime_support_incomplete:29/59'
       ]
     });
     expect(replacementRule).toMatchObject({
@@ -2259,6 +2388,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       `capability_qa_report_missing_required_probe:${GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${HAZARD_FALLING_AREA_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID}`,
@@ -2291,6 +2421,7 @@ function buildDefaultWeaponQaReport(
     generationFallbackPolicyFailClosedStateFields?: boolean;
     goalBossUnlockStateFields?: boolean;
     hazardFallingAreaStateFields?: boolean;
+    hazardTimedExplosionStateFields?: boolean;
     pickupStateFields?: boolean;
     spawnEnemyWaveOrderedFields?: boolean;
     weaponDeathResetStateFields?: boolean;
@@ -2553,6 +2684,34 @@ function buildDefaultWeaponQaReport(
                 }),
             status: 'observed' as const,
             sourceRef: 'runtime.hazard.falling_area'
+          }
+        ]
+      : []),
+    ...(eventTypes.includes(HAZARD_TIMED_EXPLOSION_EVENT_TYPE)
+      ? [
+          {
+            capabilityId: hazardTimedExplosionCapabilityId,
+            probeId: HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID,
+            action: 'verify_timed_explosion',
+            eventType: HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
+            eventTypes,
+            ...(options.hazardTimedExplosionStateFields === false
+              ? {}
+              : {
+                  timedExplosionActive: true,
+                  timedExplosionHazardId: HAZARD_TIMED_EXPLOSION_HAZARD_ID,
+                  timedExplosionTimerId: HAZARD_TIMED_EXPLOSION_TIMER_ID,
+                  timedExplosionCountdownMs: HAZARD_TIMED_EXPLOSION_COUNTDOWN_MS,
+                  timedExplosionElapsedMs: HAZARD_TIMED_EXPLOSION_COUNTDOWN_MS,
+                  timedExplosionTriggerCondition: HAZARD_TIMED_EXPLOSION_TRIGGER_CONDITION,
+                  timedExplosionTriggeredByTimer: true,
+                  timedExplosionOccurred: true,
+                  timedExplosionDamagesPlayer: true,
+                  timedExplosionDamage: HAZARD_TIMED_EXPLOSION_DAMAGE,
+                  timedExplosionRadius: HAZARD_TIMED_EXPLOSION_RADIUS
+                }),
+            status: 'observed' as const,
+            sourceRef: 'runtime.hazard.timed_explosion'
           }
         ]
       : []),
@@ -2925,6 +3084,7 @@ function buildDefaultWeaponQaPlan() {
     createGenerationFallbackPolicyFailClosedPackageContract(),
     createGoalBossUnlockPackageContract(),
     createHazardFallingAreaPackageContract(),
+    createHazardTimedExplosionPackageContract(),
     createCameraSideFollowPackageContract(),
     createCollisionPlatformPackageContract(),
     createCombatAirborneFirePackageContract(),
@@ -2957,6 +3117,7 @@ function buildDefaultWeaponQaPlan() {
       generationFallbackPolicyFailClosedCapabilityId,
       goalBossUnlockCapabilityId,
       hazardFallingAreaCapabilityId,
+      hazardTimedExplosionCapabilityId,
       cameraCapabilityId,
       collisionCapabilityId,
       airborneFireCapabilityId,

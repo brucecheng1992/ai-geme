@@ -225,6 +225,21 @@ import {
   HAZARD_FALLING_AREA_TELEGRAPH_MS
 } from '../../packages/game-dsl/src/gameplay-capabilities/hazard-falling-area-runtime-module.js';
 import {
+  HAZARD_TIMED_EXPLOSION_PACKAGE_REQUIRED_EVIDENCE_ID,
+  HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID,
+  createHazardTimedExplosionPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/hazard-timed-explosion-package.js';
+import {
+  HAZARD_TIMED_EXPLOSION_COUNTDOWN_MS,
+  HAZARD_TIMED_EXPLOSION_DAMAGE,
+  HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
+  HAZARD_TIMED_EXPLOSION_HAZARD_ID,
+  HAZARD_TIMED_EXPLOSION_RADIUS,
+  HAZARD_TIMED_EXPLOSION_RUNTIME_SYSTEM_ID,
+  HAZARD_TIMED_EXPLOSION_TIMER_ID,
+  HAZARD_TIMED_EXPLOSION_TRIGGER_CONDITION
+} from '../../packages/game-dsl/src/gameplay-capabilities/hazard-timed-explosion-runtime-module.js';
+import {
   COLLISION_PLATFORM_PACKAGE_REQUIRED_EVIDENCE_ID,
   COLLISION_PLATFORM_REQUIRED_PROBE_ID,
   createCollisionPlatformPackageContract
@@ -1303,6 +1318,76 @@ describe('Gameplay capability package contract', () => {
             fallingAreaDamagesPlayer: true,
             fallingAreaDamage: HAZARD_FALLING_AREA_DAMAGE,
             fallingAreaTelegraphMs: HAZARD_FALLING_AREA_TELEGRAPH_MS
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the hazard timed explosion package-owned QA contract', () => {
+    const contract = createHazardTimedExplosionPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'hazard.timed_explosion.v1'
+    });
+    expect(contract.runtime.systems).toEqual([
+      {
+        id: HAZARD_TIMED_EXPLOSION_RUNTIME_SYSTEM_ID,
+        version: 'v1',
+        phase: 'gameplay',
+        dependencies: ['collision.damage_affinity_matrix']
+      }
+    ]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: HAZARD_TIMED_EXPLOSION_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'hazard.timed_explosion.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
+          parameters: {
+            hazardId: HAZARD_TIMED_EXPLOSION_HAZARD_ID,
+            timerId: HAZARD_TIMED_EXPLOSION_TIMER_ID,
+            countdownMs: HAZARD_TIMED_EXPLOSION_COUNTDOWN_MS,
+            triggerCondition: HAZARD_TIMED_EXPLOSION_TRIGGER_CONDITION,
+            damage: HAZARD_TIMED_EXPLOSION_DAMAGE,
+            radius: HAZARD_TIMED_EXPLOSION_RADIUS
+          }
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: HAZARD_TIMED_EXPLOSION_RUNTIME_SYSTEM_ID,
+          ref: HAZARD_TIMED_EXPLOSION_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID}.assertion.timed_explosion_verified`,
+          expected: {
+            timedExplosionActive: true,
+            timedExplosionHazardId: HAZARD_TIMED_EXPLOSION_HAZARD_ID,
+            timedExplosionTimerId: HAZARD_TIMED_EXPLOSION_TIMER_ID,
+            timedExplosionCountdownMs: HAZARD_TIMED_EXPLOSION_COUNTDOWN_MS,
+            timedExplosionElapsedMs: HAZARD_TIMED_EXPLOSION_COUNTDOWN_MS,
+            timedExplosionTriggerCondition: HAZARD_TIMED_EXPLOSION_TRIGGER_CONDITION,
+            timedExplosionTriggeredByTimer: true,
+            timedExplosionOccurred: true,
+            timedExplosionDamagesPlayer: true,
+            timedExplosionDamage: HAZARD_TIMED_EXPLOSION_DAMAGE,
+            timedExplosionRadius: HAZARD_TIMED_EXPLOSION_RADIUS
           }
         })
       ]

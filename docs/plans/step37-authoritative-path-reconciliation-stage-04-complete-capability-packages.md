@@ -6167,6 +6167,157 @@ next_action=CONTINUE_PARENT_LOOP
 next_atomic_step=RUN_PARENT_LOOP_DRIVER_TO_SELECT_NEXT_UNMET_CHECKPOINT
 ```
 
+## Step37 Current Long Loop Skill Freshness Revalidation
+
+- checkpoint_id: `hierarchical_completion_parent_loop_guardrail`.
+- scope: current Step37 long-loop validation evidence only; prior candidate and receipt history remains unchanged.
+- active_skill_root: `/Users/dahufa/.agents/skills/code-change-discipline`.
+- active_skill_file: `/Users/dahufa/.agents/skills/code-change-discipline/SKILL.md`.
+
+```text
+command=node - <<'NODE' ... compute code-change-discipline single-file Skill bundle ...
+exitCode=0
+result=skill_root=/Users/dahufa/.agents/skills/code-change-discipline; skill_bundle_format=single_file_v1; skill_bundle_file_count=1; skill_bundle_file_byte_length=47003; skill_bundle_file_sha256=dd5abe3945818f6feefbe77e30c02432b014a76bacb7e39afe814103659100db; skill_bundle_digest=f7824ee9c700e9982923f9691c0a490d23041e36fc05e7dc223b6565543f6d5b; skill_bundle_generation_exit_code=0
+```
+
+## Stage 4 Implementation: `hazard.timed_explosion.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.hazard_timed_explosion_v1.complete_supported_package_slice
+parent_stage_id=stage4
+capability_id=hazard.timed_explosion.v1
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=not_closed
+global_exit_conditions_met=false
+user_input_required=false
+next_action_after_candidate=ORACLE_REVIEW_CANDIDATE_COMMIT
+reviewed_skill_revision=f7824ee9c700e9982923f9691c0a490d23041e36fc05e7dc223b6565543f6d5b
+```
+
+`hazard.timed_explosion.v1` was selected by the Parent Loop Driver after the `hazard.falling_area.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
+
+Minimum closure requirements:
+
+1. Add a package-owned timed explosion hazard contract with stable capability identity, runtime system identity, timer-triggered explosion event identity, required probe id, and required QA evidence id.
+2. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `hazard.timed_explosion.v1` only when the timer causality event and timed explosion state fields are present.
+5. Require timer causality state fields: `timedExplosionTriggeredByTimer=true`, `timedExplosionTriggerCondition=countdown_elapsed`, `timedExplosionElapsedMs=1200`, `timedExplosionCountdownMs=1200`, `timedExplosionOccurred=true`, and `timedExplosionDamagesPlayer=true`.
+6. Add a negative regression proving generic hazard/spawn/explosion evidence without timer causality keeps the capability unverified and emits the required missing-probe blocker.
+7. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/hazard-timed-explosion-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/hazard-timed-explosion-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `tests/contracts/contract-freeze.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createHazardTimedExplosionPackageContract()`.
+- Runtime module identity: `HAZARD_TIMED_EXPLOSION_RUNTIME_SYSTEM_ID=hazard.timed_explosion`.
+- Runtime evidence event: `HAZARD_TIMED_EXPLOSION_EVENT_TYPE=hazard.timed_explosion.verified`.
+- Required probe: `HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID=hazard.timed_explosion.v1.explosion.browser_qa.v1`.
+- Required state fields: `timedExplosionActive`, `timedExplosionHazardId`, `timedExplosionTimerId`, `timedExplosionCountdownMs`, `timedExplosionElapsedMs`, `timedExplosionTriggerCondition`, `timedExplosionTriggeredByTimer`, `timedExplosionOccurred`, `timedExplosionDamagesPlayer`, `timedExplosionDamage`, and `timedExplosionRadius`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares timer causality and damage state fields and fails the required probe when any field is missing or mismatched.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for the same run; it does not mutate static `completeSupported`.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned timed explosion hazard contract, runtime system identity, timer-triggered explosion event, required probe id, required evidence id, and runtime evidence fields for countdown-triggered explosion state. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, Step37 remaining-inventory driver, telemetry/event freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves timer causality and timed explosion damage state fields. |
+| Authority | Package-owned QA evidence defines the capability authority: generic hazard spawn, generic explosion, wave/order evidence, or probe name presence is insufficient unless evidence proves the countdown timer caused the damaging explosion. |
+| Legacy strategy | Legacy or generic explosion telemetry cannot overclaim this capability. Missing timer id, trigger condition, elapsed/countdown match, damage/radius, or current-run identity keeps the capability unverified. |
+| Failure policy | Missing package contract, wrong event identity, missing timer causality fields, wrong capability/probe identity, stale evidence, or generic explosion payload keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, registry support advancement without complete support, QA reader positive/negative timer-causality behavior, target-profile overlay positive/negative behavior, remaining-inventory selection, and event/schema freeze coverage. |
+| Rollback | Reverting this slice removes only the timed explosion package/probe/reader wiring and returns `hazard.timed_explosion.v1` to unsupported evidence without changing business runtime gameplay templates. |
+
+Focused validation:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=1
+duration=real 1.81s
+result=RED: timed explosion package/runtime module did not exist; registry support remained registeredCapabilityCount=33; QA reader did not yet expose createHazardTimedExplosionPackageContract().
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 1.80s
+result=PASS: 8 files / 200 tests
+
+command=/usr/bin/time -p npx vitest run tests/contracts/step37-parent-loop-driver.test.ts
+exitCode=0
+duration=real 1.31s
+result=PASS: 1 file / 20 tests; active code-change-discipline Skill freshness record matches current bundle.
+```
+
+Local validation before candidate:
+
+```text
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 9.77s
+result=PASS: 98 files / 1226 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 59.87s
+result=PASS: contracts 98 files / 1226 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.63s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.03s
+result=PASS
+
+command=/usr/bin/time -p npx tsx - <<'TS' ... support summary and remaining inventory alignment ...
+exitCode=0
+duration=real 0.48s
+result=PASS: currentCheckpointId=stage4.hazard_timed_explosion_v1.complete_supported_package_slice; currentAtomicStep="Stage 4 hazard.timed_explosion.v1 complete-supported package slice implementation atomic step"; committedClosedCapabilityCount=33; registeredCapabilityCount=34; completeSupportedCount=0; hazard.timed_explosion.v1 classification=DEFERRED; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; selectionFailure=null.
+
+command=/usr/bin/time -p node - <<'NODE' ... active Skill freshness digest ...
+exitCode=0
+duration=real 0.06s
+result=PASS: code-change-discipline skill_bundle_digest=f7824ee9c700e9982923f9691c0a490d23041e36fc05e7dc223b6565543f6d5b; review-gated-delivery Skill.md digest=62f2d930c9bdcd92d49bc6b9052a33d6fc8fa81b1445c09b2b4dd8feca2e6ac5.
+
+command=git diff --name-status && git diff --stat && git status --short
+exitCode=0
+result=PASS: diff scope is limited to hazard timed explosion package/probe/registry/schema/contracts plus this Step37 evidence record; untracked files are the two new hazard timed explosion package/runtime modules.
+```
+
+Post-record validation requirement:
+
+- This candidate-ready record changes the final tree. Before creating the immutable candidate commit, focused contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, final diff range check, inventory alignment, and Skill freshness must be re-run or explicitly recorded as fresh for this final tree.
+- Candidate commit must not write its own SHA into this candidate record.
+- Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=f7824ee9c700e9982923f9691c0a490d23041e36fc05e7dc223b6565543f6d5b`.
+- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+
 ## Stage 4 Implementation: `hazard.falling_area.v1` complete-supported package slice
 
 Checkpoint identity:
