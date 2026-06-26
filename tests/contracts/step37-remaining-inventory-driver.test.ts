@@ -162,6 +162,7 @@ describe('Step37 remaining complete-supported inventory driver', () => {
       'rules.retry_count.v1',
       'rules.state_transition_graph.v1',
       'runtime.manifest_binding.v1',
+      'runtime.module_load_receipt.v1',
       'spawn.enemy_wave.v1',
       'spawn.static.v1',
       'weapon.death_reset.v1',
@@ -182,16 +183,22 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     });
 
     expect(report.requiredCapabilityCount).toBe(59);
-    expect(report.registeredCapabilityCount).toBe(43);
+    expect(report.registeredCapabilityCount).toBe(44);
     expect(report.staticCompleteSupportedCount).toBe(0);
-    expect(report.stateCounts.unsupported_unregistered).toBe(16);
-    expect(report.committedClosedCapabilityCount).toBe(42);
+    expect(report.stateCounts.unsupported_unregistered).toBe(15);
+    expect(report.committedClosedCapabilityCount).toBe(43);
+    expect(report.capabilities.find((item) => item.capabilityId === 'runtime.module_load_receipt.v1')).toMatchObject({
+      closedInCommittedHistory: true,
+      closedByCheckpointIds: ['closed.runtime.module_load_receipt.v1']
+    });
     expect(report.nextCheckpoint).not.toBeNull();
-    expect(report.nextCheckpoint?.checkpoint_id).toBe('stage4.runtime_module_load_receipt_v1.complete_supported_package_slice');
+    expect(report.nextCheckpoint?.checkpoint_id).toBe('stage4.runtime_plan_coverage_v1.complete_supported_package_slice');
     expect(report.nextCheckpoint?.next_atomic_step).toBe(
-      'Stage 4 runtime.module_load_receipt.v1 complete-supported package slice implementation atomic step'
+      'Stage 4 runtime.plan_coverage.v1 complete-supported package slice implementation atomic step'
     );
-    expect(report.checkpointInventory.some((checkpoint) => closedCapabilityIds.has(checkpoint.checkpoint_id))).toBe(false);
+    expect(report.checkpointInventory.map((checkpoint) => checkpoint.checkpoint_id)).not.toContain(
+      'stage4.runtime_module_load_receipt_v1.complete_supported_package_slice'
+    );
   });
 
   it('requires committed closure history to have traceable source revisions instead of stale memory labels', () => {

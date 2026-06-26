@@ -204,6 +204,14 @@ import {
   RUNTIME_MODULE_LOAD_RECEIPT_REQUIRED_PROBE_ID,
   RUNTIME_MODULE_LOAD_RECEIPT_SCHEMA_VERSION,
   createRuntimeModuleLoadReceiptPackageContract,
+  RUNTIME_PLAN_COVERAGE_CAPABILITY_ID,
+  RUNTIME_PLAN_COVERAGE_EVENT_TYPE,
+  RUNTIME_PLAN_COVERAGE_KIND,
+  RUNTIME_PLAN_COVERAGE_PROFILE_ID,
+  RUNTIME_PLAN_COVERAGE_REQUIRED_PROBE_ID,
+  RUNTIME_PLAN_COVERAGE_RUNTIME_FAMILY,
+  RUNTIME_PLAN_COVERAGE_SCHEMA_VERSION,
+  createRuntimePlanCoveragePackageContract,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
@@ -4555,6 +4563,105 @@ describe('Capability-owned runtime QA probes', () => {
     );
     expect(observedReceipt.status).toBe('passed');
   });
+
+  it('does not verify runtime plan coverage when plan evidence lacks coverage state fields', () => {
+    const capabilityId = RUNTIME_PLAN_COVERAGE_CAPABILITY_ID;
+    const probeId = RUNTIME_PLAN_COVERAGE_REQUIRED_PROBE_ID;
+    const packages = [createRuntimePlanCoveragePackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const genericPlanEvent = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_coverage',
+              eventType: 'runtime.plan.generated',
+              eventTypes: ['runtime.plan.generated'],
+              sourceRef: 'runtime.plan',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const missingCoverageState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_coverage',
+              eventType: RUNTIME_PLAN_COVERAGE_EVENT_TYPE,
+              eventTypes: [RUNTIME_PLAN_COVERAGE_EVENT_TYPE],
+              sourceRef: 'runtime.plan_coverage',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedCoverage = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            runtimePlanCoverageObserved({
+              capabilityId,
+              probeId
+            })
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericPlanEvent.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericPlanEvent.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.coverage`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${RUNTIME_PLAN_COVERAGE_EVENT_TYPE} not observed`)
+        })
+      ])
+    );
+    expect(missingCoverageState.status).toBe('failed');
+    expect(missingCoverageState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.coverage`,
+          status: 'failed',
+          message: expect.stringContaining('expected runtimePlanCoverageComputed=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.coverage`,
+          status: 'failed',
+          message: expect.stringContaining(`expected runtimePlanCoverageKind=${RUNTIME_PLAN_COVERAGE_KIND}`)
+        })
+      ])
+    );
+    expect(observedCoverage.status).toBe('passed');
+  });
 });
 
 function finalOracleGateObserved(
@@ -4604,6 +4711,30 @@ function runtimeModuleLoadReceiptObserved(
     runtimeModuleLoadReceiptLoaderPlanHashMatched: true,
     runtimeModuleLoadReceiptLifecycleComplete: true,
     sourceRef: 'runtime.module_load_receipt',
+    status: 'observed'
+  };
+}
+
+function runtimePlanCoverageObserved(
+  overrides: Pick<CapabilityRuntimeObservedProbeEvidence, 'capabilityId' | 'probeId'>
+): CapabilityRuntimeObservedProbeEvidence {
+  return {
+    ...overrides,
+    action: 'verify_coverage',
+    eventType: RUNTIME_PLAN_COVERAGE_EVENT_TYPE,
+    eventTypes: [RUNTIME_PLAN_COVERAGE_EVENT_TYPE],
+    runtimePlanCoverageComputed: true,
+    runtimePlanCoverageKind: RUNTIME_PLAN_COVERAGE_KIND,
+    runtimePlanCoverageSchemaVersion: RUNTIME_PLAN_COVERAGE_SCHEMA_VERSION,
+    runtimePlanCoverageProfileId: RUNTIME_PLAN_COVERAGE_PROFILE_ID,
+    runtimePlanCoverageRuntimeFamily: RUNTIME_PLAN_COVERAGE_RUNTIME_FAMILY,
+    runtimePlanCoverageCapabilityLockMatched: true,
+    runtimePlanCoverageRequiredCapabilitiesEnumerated: true,
+    runtimePlanCoveragePackageInventoryMatched: true,
+    runtimePlanCoverageMissingCapabilitiesReported: true,
+    runtimePlanCoverageNoUnclassifiedRequiredCapabilities: true,
+    runtimePlanCoverageReportHashPresent: true,
+    sourceRef: 'runtime.plan_coverage',
     status: 'observed'
   };
 }

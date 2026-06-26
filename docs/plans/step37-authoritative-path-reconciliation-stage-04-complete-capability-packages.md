@@ -6527,6 +6527,188 @@ source_plan_revision=post-runtime-module-load-receipt-receipt
 remaining_inventory_result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=43; staticCompleteSupportedCount=0; committedClosedCapabilityCount=43; unsupported_unregistered=16; next_checkpoint_id=stage4.runtime_plan_coverage_v1.complete_supported_package_slice; selectionFailure=null.
 ```
 
+## Stage 4 Implementation: `runtime.plan_coverage.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.runtime_plan_coverage_v1.complete_supported_package_slice
+closure_record_id=stage4.runtime_plan_coverage_v1.complete_supported_package_slice.candidate_record
+record_status=active
+current_active_record=true
+parent_stage_id=stage4
+capability_id=runtime.plan_coverage.v1
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+post_record_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=open
+global_exit_conditions_met=false
+user_input_required=false
+next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
+skill_revision_type=sha256_bundle
+skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
+active_skill_paths=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery
+active_skill_bundle_digest=bf5145fefb8306e77b51df7b208853c146a97f4ba134acad68e29f8b6ab61dde
+active_skill_file_count=8
+active_skill_manifest_protocol=skill-id-relative path, file kind, raw byte length, executable bit, SHA-256, symlink target, symlinkEscapesRoot; stable sort by root-relative row
+freshness_status=aligned
+repo_pre_candidate_head=557a921e12b7c57d3d4d82de11bf880a37247fb1
+candidate_commit_sha=not_created
+candidate_commit_tree=not_created
+reviewed_commit_sha=not_submitted
+reviewed_commit_tree=not_submitted
+oracle_agent_id=not_submitted
+oracle_agent_id_source=not_submitted
+oracle_submission_id=not_submitted
+oracle_submission_id_source=not_submitted
+oracle_poll_id_type=agent_id_required_after_submission
+```
+
+`runtime.plan_coverage.v1` was selected by the Parent Loop Driver after the `runtime.module_load_receipt.v1` receipt. Baseline support at entry reported `registered=false` before this implementation slice, and current support after implementation is `registered=true`, `classification=DEFERRED`, `schema_expressible=true`, `normalized=true`, `compiled=true`, `runtime_consumed=true`, `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+
+Minimum closure requirements:
+
+1. Add a package-owned runtime plan coverage contract with stable capability identity, runtime system identity, telemetry event identity, required probe id, required QA evidence id, and no capability graph dependency that could conflate it with runtime module load receipt closure.
+2. Prove the package validates at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `runtime.plan_coverage.v1` only when runtime evidence contains explicit coverage fields for profile identity, runtime family, capability lock match, required capability enumeration, package inventory match, missing capability reporting, unclassified gap absence, and report hash presence.
+5. Add negative regressions proving a generic runtime plan event or the correct event without coverage state fields keeps the capability unverified and emits the required missing-probe blocker.
+6. Keep count changes identity-driven: new target-profile missing-count changes must be caused by `runtime.plan_coverage.v1.verify_runtime_plan_coverage.browser_qa.v1`, not mechanical global count edits.
+7. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/runtime-plan-coverage-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/runtime-plan-coverage-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `tests/contracts/contract-freeze.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createRuntimePlanCoveragePackageContract()`.
+- Runtime module identity: `RUNTIME_PLAN_COVERAGE_RUNTIME_SYSTEM_ID=runtime.plan_coverage`.
+- Runtime event: `RUNTIME_PLAN_COVERAGE_EVENT_TYPE=runtime.plan_coverage.verified`.
+- Required probe: `RUNTIME_PLAN_COVERAGE_REQUIRED_PROBE_ID=runtime.plan_coverage.v1.verify_runtime_plan_coverage.browser_qa.v1`.
+- Required evidence id: `runtime.plan_coverage.v1.evidence.capability_qa_report.v1`.
+- Runtime family/profile binding: `phaser_2d_action_arcade.v1` and `side_scrolling_run_and_gun.v1`.
+- Required state fields: `runtimePlanCoverageComputed`, `runtimePlanCoverageKind`, `runtimePlanCoverageSchemaVersion`, `runtimePlanCoverageProfileId`, `runtimePlanCoverageRuntimeFamily`, `runtimePlanCoverageCapabilityLockMatched`, `runtimePlanCoverageRequiredCapabilitiesEnumerated`, `runtimePlanCoveragePackageInventoryMatched`, `runtimePlanCoverageMissingCapabilitiesReported`, `runtimePlanCoverageNoUnclassifiedRequiredCapabilities`, and `runtimePlanCoverageReportHashPresent`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares runtime plan coverage fields and fails the required probe when generic runtime plan refs or missing coverage fields cannot prove full coverage semantics.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for same-run package-owned QA evidence; it does not mutate static `completeSupported`.
+- Parent Loop inventory: `buildStep37RemainingCompleteSupportedInventory()` selects `stage4.runtime_plan_coverage_v1.complete_supported_package_slice` after the committed `runtime.module_load_receipt.v1` receipt until this candidate is committed and receipted.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned runtime plan coverage capability contract, runtime system identity, `runtime.plan_coverage.verified` telemetry event, required probe id, required evidence id, and runtime evidence fields proving plan coverage computation and registry/package alignment. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, Step37 remaining-inventory driver, telemetry/event freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves the explicit runtime plan coverage fields. |
+| Authority | Package-owned QA evidence defines the capability authority: a generic runtime plan event is insufficient unless `runtime.plan_coverage.verified` evidence proves profile/runtime identity, lock/inventory match, required capability enumeration, missing capability reporting, and report hash presence. |
+| Legacy strategy | Legacy runtime plan, profile, or receipt events remain contextual evidence only; they cannot claim runtime plan coverage closure, exact-lock readiness, production default cutover, or Stage 5 entry. |
+| Failure policy | Missing package contract, missing `runtime.plan_coverage.verified` event, missing or mismatched coverage state fields, wrong capability/probe identity, stale evidence, or count-only evidence keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, QA reader positive/negative behavior, registry support advancement without complete support, target-profile overlay positive/negative behavior, remaining-inventory selection, and event/schema freeze coverage. |
+| Rollback | Reverting this slice removes only the runtime plan coverage package/probe/reader wiring and returns `runtime.plan_coverage.v1` to unsupported evidence without changing business runtime gameplay templates or entering Stage 5. |
+
+Focused and local validation before closure-record sync:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 1.79s
+result=PASS: 8 files / 258 tests
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 9.76s
+result=PASS: 98 files / 1284 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 59.42s
+result=PASS: contracts 98 files / 1284 tests; workspace 34 files / 410 tests; Playwright QA runner 45 tests passed.
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.99s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.02s
+result=PASS
+
+command=/usr/bin/time -p npx tsx -e "<runtime.plan_coverage.v1 support summary and remaining inventory>"
+exitCode=0
+duration=real 0.54s
+result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=44; staticCompleteSupportedCount=0; committedClosedCapabilityCount=43; unsupported_unregistered=15; runtime.plan_coverage.v1 classification=DEFERRED; state=registered_without_required_probe_verification; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; completeSupported=false; remaining next_checkpoint_id=stage4.runtime_plan_coverage_v1.complete_supported_package_slice; selectionFailure=null.
+
+command=step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle digest script
+exitCode=0
+duration=real <0.01s
+result=PASS: active_skill_paths=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_file_count=8; skill_bundle_digest=bf5145fefb8306e77b51df7b208853c146a97f4ba134acad68e29f8b6ab61dde.
+```
+
+Post-record validation requirement:
+
+- This candidate record changed the final tree. Focused closure contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, final diff range check, Skill freshness, capability support alignment, and Parent Loop inventory alignment were re-run against the post-record final tree before candidate commit creation.
+- Candidate commit must not write its own SHA into this candidate record.
+- Oracle request must bind the candidate commit SHA plus `reviewed_skill_revision=bf5145fefb8306e77b51df7b208853c146a97f4ba134acad68e29f8b6ab61dde`.
+- Candidate pre-review state keeps `oracle_status=not_submitted`; Oracle pending state belongs to the external review run after the request is accepted and an `agent_id` is recorded.
+
+Post-record validation after closure-record sync:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-focused-validation.test.ts
+exitCode=0
+duration=real 2.18s
+result=PASS: 11 files / 319 tests
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 9.16s
+result=PASS: 98 files / 1284 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 59.19s
+result=PASS: contracts 98 files / 1284 tests; workspace 34 files / 410 tests; Playwright QA runner 45 tests passed.
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.64s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.03s
+result=PASS
+
+command=/usr/bin/time -p npx tsx -e "<runtime.plan_coverage.v1 support summary and remaining inventory>"
+exitCode=0
+duration=real 0.70s
+result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=44; staticCompleteSupportedCount=0; committedClosedCapabilityCount=43; unsupported_unregistered=15; next_checkpoint_id=stage4.runtime_plan_coverage_v1.complete_supported_package_slice; selectionFailure=null; runtime.plan_coverage.v1 registered=true; qa_observed=false; completeSupported=false.
+
+command=step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle digest script
+exitCode=0
+duration=real <0.01s
+result=PASS: skill_file_count=8; active_skill_bundle_digest=bf5145fefb8306e77b51df7b208853c146a97f4ba134acad68e29f8b6ab61dde.
+```
+
 ## Stage 4 Implementation: `rules.state_transition_graph.v1` complete-supported package slice
 
 Checkpoint identity:

@@ -1,0 +1,9 @@
+export const RUNTIME_PLAN_COVERAGE_CAPABILITY_ID = 'runtime.plan_coverage.v1';
+export const RUNTIME_PLAN_COVERAGE_RUNTIME_SYSTEM_ID = 'runtime.plan_coverage';
+export const RUNTIME_PLAN_COVERAGE_EVENT_TYPE = 'runtime.plan_coverage.verified';
+export const RUNTIME_PLAN_COVERAGE_RUNTIME_FAMILY = 'phaser_2d_action_arcade.v1';
+export const RUNTIME_PLAN_COVERAGE_PROFILE_ID = 'side_scrolling_run_and_gun.v1';
+export const RUNTIME_PLAN_COVERAGE_KIND = 'runtime_plan_coverage';
+export const RUNTIME_PLAN_COVERAGE_SCHEMA_VERSION = 'runtime_plan_coverage.v0.1';
+export const RUNTIME_PLAN_COVERAGE_SYSTEM_VERSION = 'v1';
+export const RUNTIME_PLAN_COVERAGE_SYSTEM_PHASE = 'bootstrap';

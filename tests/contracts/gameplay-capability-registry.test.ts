@@ -36,6 +36,7 @@ import {
   REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID,
   RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID,
   RUNTIME_MODULE_LOAD_RECEIPT_REQUIRED_PROBE_ID,
+  RUNTIME_PLAN_COVERAGE_REQUIRED_PROBE_ID,
   RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID,
   RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID,
   RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
@@ -164,6 +165,11 @@ describe('Gameplay capability registry', () => {
       legacyRuntimeCapabilities: []
     });
     expect(findGameplayCapability('runtime.module_load_receipt.v1')).toMatchObject({
+      status: 'planned',
+      domain: 'runtime',
+      legacyRuntimeCapabilities: []
+    });
+    expect(findGameplayCapability('runtime.plan_coverage.v1')).toMatchObject({
       status: 'planned',
       domain: 'runtime',
       legacyRuntimeCapabilities: []
@@ -933,6 +939,34 @@ describe('Gameplay capability registry', () => {
     expect(moduleLoadReceipt.legacyRuntimeCapabilities).toEqual([]);
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(moduleLoadReceipt)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(moduleLoadReceipt)).toBe(false);
+  });
+
+  it('scopes runtime plan coverage package-owned QA without static support promotion', () => {
+    const planCoverage = findGameplayCapability('runtime.plan_coverage.v1');
+
+    if (planCoverage === undefined) {
+      throw new Error('Expected runtime.plan_coverage.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(planCoverage)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(planCoverage.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(planCoverage.qa).toEqual({
+      requiredProbeIds: [RUNTIME_PLAN_COVERAGE_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(planCoverage.legacyRuntimeCapabilities).toEqual([]);
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(planCoverage)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(planCoverage)).toBe(false);
   });
 
   it('scopes pickup weapon supply package-owned QA without static support promotion', () => {

@@ -465,6 +465,22 @@ import {
   RUNTIME_MODULE_LOAD_RECEIPT_SYSTEM_VERSION
 } from '../../packages/game-dsl/src/gameplay-capabilities/runtime-module-load-receipt-runtime-module.js';
 import {
+  RUNTIME_PLAN_COVERAGE_PACKAGE_REQUIRED_EVIDENCE_ID,
+  RUNTIME_PLAN_COVERAGE_REQUIRED_PROBE_ID,
+  createRuntimePlanCoveragePackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/runtime-plan-coverage-package.js';
+import {
+  RUNTIME_PLAN_COVERAGE_CAPABILITY_ID,
+  RUNTIME_PLAN_COVERAGE_EVENT_TYPE,
+  RUNTIME_PLAN_COVERAGE_KIND,
+  RUNTIME_PLAN_COVERAGE_PROFILE_ID,
+  RUNTIME_PLAN_COVERAGE_RUNTIME_FAMILY,
+  RUNTIME_PLAN_COVERAGE_RUNTIME_SYSTEM_ID,
+  RUNTIME_PLAN_COVERAGE_SCHEMA_VERSION,
+  RUNTIME_PLAN_COVERAGE_SYSTEM_PHASE,
+  RUNTIME_PLAN_COVERAGE_SYSTEM_VERSION
+} from '../../packages/game-dsl/src/gameplay-capabilities/runtime-plan-coverage-runtime-module.js';
+import {
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_PACKAGE_REQUIRED_EVIDENCE_ID,
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
   createArtifactLineageNoManualPatchPackageContract
@@ -1920,6 +1936,75 @@ describe('Gameplay capability package contract', () => {
             runtimeModuleLoadReceiptRuntimePlanHashMatched: true,
             runtimeModuleLoadReceiptLoaderPlanHashMatched: true,
             runtimeModuleLoadReceiptLifecycleComplete: true
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the runtime plan coverage package-owned QA contract', () => {
+    const contract = createRuntimePlanCoveragePackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === RUNTIME_PLAN_COVERAGE_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: RUNTIME_PLAN_COVERAGE_CAPABILITY_ID
+    });
+    expect(contract.dependencies).toEqual([]);
+    expect(contract.runtime.systems).toEqual([
+      {
+        id: RUNTIME_PLAN_COVERAGE_RUNTIME_SYSTEM_ID,
+        version: RUNTIME_PLAN_COVERAGE_SYSTEM_VERSION,
+        phase: RUNTIME_PLAN_COVERAGE_SYSTEM_PHASE,
+        dependencies: ['capability_lock', 'capability_registry', 'runtime_manifest']
+      }
+    ]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: RUNTIME_PLAN_COVERAGE_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: RUNTIME_PLAN_COVERAGE_CAPABILITY_ID,
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: RUNTIME_PLAN_COVERAGE_EVENT_TYPE,
+          parameters: {
+            artifactKind: RUNTIME_PLAN_COVERAGE_KIND,
+            schemaVersion: RUNTIME_PLAN_COVERAGE_SCHEMA_VERSION,
+            profileId: RUNTIME_PLAN_COVERAGE_PROFILE_ID,
+            runtimeFamily: RUNTIME_PLAN_COVERAGE_RUNTIME_FAMILY
+          }
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'state_probe',
+          runtimeSystemId: RUNTIME_PLAN_COVERAGE_RUNTIME_SYSTEM_ID,
+          ref: RUNTIME_PLAN_COVERAGE_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${RUNTIME_PLAN_COVERAGE_REQUIRED_PROBE_ID}.assertion.coverage`,
+          expected: {
+            runtimePlanCoverageComputed: true,
+            runtimePlanCoverageKind: RUNTIME_PLAN_COVERAGE_KIND,
+            runtimePlanCoverageSchemaVersion: RUNTIME_PLAN_COVERAGE_SCHEMA_VERSION,
+            runtimePlanCoverageProfileId: RUNTIME_PLAN_COVERAGE_PROFILE_ID,
+            runtimePlanCoverageRuntimeFamily: RUNTIME_PLAN_COVERAGE_RUNTIME_FAMILY,
+            runtimePlanCoverageCapabilityLockMatched: true,
+            runtimePlanCoverageRequiredCapabilitiesEnumerated: true,
+            runtimePlanCoveragePackageInventoryMatched: true,
+            runtimePlanCoverageMissingCapabilitiesReported: true,
+            runtimePlanCoverageNoUnclassifiedRequiredCapabilities: true,
+            runtimePlanCoverageReportHashPresent: true
           }
         })
       ]

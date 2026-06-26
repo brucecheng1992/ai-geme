@@ -201,6 +201,17 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   runtimeModuleLoadReceiptRuntimePlanHashMatched?: boolean;
   runtimeModuleLoadReceiptLoaderPlanHashMatched?: boolean;
   runtimeModuleLoadReceiptLifecycleComplete?: boolean;
+  runtimePlanCoverageComputed?: boolean;
+  runtimePlanCoverageKind?: string;
+  runtimePlanCoverageSchemaVersion?: string;
+  runtimePlanCoverageProfileId?: string;
+  runtimePlanCoverageRuntimeFamily?: string;
+  runtimePlanCoverageCapabilityLockMatched?: boolean;
+  runtimePlanCoverageRequiredCapabilitiesEnumerated?: boolean;
+  runtimePlanCoveragePackageInventoryMatched?: boolean;
+  runtimePlanCoverageMissingCapabilitiesReported?: boolean;
+  runtimePlanCoverageNoUnclassifiedRequiredCapabilities?: boolean;
+  runtimePlanCoverageReportHashPresent?: boolean;
   encounterGateClosedEntrance?: boolean;
   encounterGateGateId?: string;
   encounterGateEntranceId?: string;
@@ -729,6 +740,25 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
       observed.runtimeModuleLoadReceiptLoaderPlanHashMatched
     ),
     ...compareExpectedBooleanField('runtimeModuleLoadReceiptLifecycleComplete', expected, observed.runtimeModuleLoadReceiptLifecycleComplete),
+    ...compareExpectedBooleanField('runtimePlanCoverageComputed', expected, observed.runtimePlanCoverageComputed),
+    ...compareExpectedStringField('runtimePlanCoverageKind', expected, observed.runtimePlanCoverageKind),
+    ...compareExpectedStringField('runtimePlanCoverageSchemaVersion', expected, observed.runtimePlanCoverageSchemaVersion),
+    ...compareExpectedStringField('runtimePlanCoverageProfileId', expected, observed.runtimePlanCoverageProfileId),
+    ...compareExpectedStringField('runtimePlanCoverageRuntimeFamily', expected, observed.runtimePlanCoverageRuntimeFamily),
+    ...compareExpectedBooleanField('runtimePlanCoverageCapabilityLockMatched', expected, observed.runtimePlanCoverageCapabilityLockMatched),
+    ...compareExpectedBooleanField(
+      'runtimePlanCoverageRequiredCapabilitiesEnumerated',
+      expected,
+      observed.runtimePlanCoverageRequiredCapabilitiesEnumerated
+    ),
+    ...compareExpectedBooleanField('runtimePlanCoveragePackageInventoryMatched', expected, observed.runtimePlanCoveragePackageInventoryMatched),
+    ...compareExpectedBooleanField('runtimePlanCoverageMissingCapabilitiesReported', expected, observed.runtimePlanCoverageMissingCapabilitiesReported),
+    ...compareExpectedBooleanField(
+      'runtimePlanCoverageNoUnclassifiedRequiredCapabilities',
+      expected,
+      observed.runtimePlanCoverageNoUnclassifiedRequiredCapabilities
+    ),
+    ...compareExpectedBooleanField('runtimePlanCoverageReportHashPresent', expected, observed.runtimePlanCoverageReportHashPresent),
     ...compareExpectedBooleanField('encounterGateClosedEntrance', expected, observed.encounterGateClosedEntrance),
     ...compareExpectedStringField('encounterGateGateId', expected, observed.encounterGateGateId),
     ...compareExpectedStringField('encounterGateEntranceId', expected, observed.encounterGateEntranceId),

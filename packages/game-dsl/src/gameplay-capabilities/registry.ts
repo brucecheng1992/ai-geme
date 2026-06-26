@@ -26,6 +26,10 @@ import {
   createRuntimeModuleLoadReceiptPackageContract
 } from './runtime-module-load-receipt-package.js';
 import {
+  RUNTIME_PLAN_COVERAGE_REQUIRED_PROBE_ID,
+  createRuntimePlanCoveragePackageContract
+} from './runtime-plan-coverage-package.js';
+import {
   RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID,
   createRulesCheckpointRestorePackageContract
 } from './rules-checkpoint-restore-package.js';
@@ -565,6 +569,19 @@ const runtimeModuleLoadReceiptPackageEvidence: GameplayCapabilityEvidence = runt
   : canonicalRuntimeLoaderEvidence;
 const runtimeModuleLoadReceiptPackageQa: GameplayCapabilityQaEvidence = runtimeModuleLoadReceiptPackageReport.supportEligible
   ? { requiredProbeIds: [RUNTIME_MODULE_LOAD_RECEIPT_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
+const runtimePlanCoveragePackageReport = validateGameplayCapabilityPackage(createRuntimePlanCoveragePackageContract());
+const runtimePlanCoveragePackageEvidence: GameplayCapabilityEvidence = runtimePlanCoveragePackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const runtimePlanCoveragePackageQa: GameplayCapabilityQaEvidence = runtimePlanCoveragePackageReport.supportEligible
+  ? { requiredProbeIds: [RUNTIME_PLAN_COVERAGE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
 const rulesCheckpointRestorePackageReport = validateGameplayCapabilityPackage(createRulesCheckpointRestorePackageContract());
 const rulesCheckpointRestorePackageEvidence: GameplayCapabilityEvidence = rulesCheckpointRestorePackageReport.supportEligible
@@ -1294,6 +1311,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     runtimeModuleLoadReceiptPackageEvidence,
     runtimeModuleLoadReceiptPackageQa
+  ),
+  planned(
+    'runtime.plan_coverage.v1',
+    'runtime',
+    'Runtime plan coverage',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    runtimePlanCoveragePackageEvidence,
+    runtimePlanCoveragePackageQa
   ),
   planned(
     'combat.airborne_fire.v1',
