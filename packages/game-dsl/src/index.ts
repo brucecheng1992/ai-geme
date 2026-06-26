@@ -255,6 +255,19 @@ export {
   type DeepSeekRunAndGunVerificationClass
 } from './deepseek-run-and-gun-validation-profile-v1.js';
 export {
+  STEP37_REMAINING_CAPABILITY_STATES,
+  STEP37_REMAINING_INVENTORY_ARTIFACT_KIND,
+  STEP37_REMAINING_INVENTORY_SCHEMA_VERSION,
+  buildStep37RemainingCompleteSupportedInventory,
+  deriveStep37RemainingCapabilityState,
+  type Step37CommittedCapabilityClosure,
+  type Step37RemainingCapabilityInventoryItem,
+  type Step37RemainingCapabilityState,
+  type Step37RemainingInventoryDriverInput,
+  type Step37RemainingInventoryReport,
+  type Step37RemainingInventorySelectionFailure
+} from './step37-remaining-inventory-driver.js';
+export {
   GENERATION_TARGET_PROFILE_RUNTIME_SUPPORT_REPORT_KIND,
   GENERATION_TARGET_PROFILE_RUNTIME_SUPPORT_REPORT_PATH,
   GENERATION_TARGET_PROFILE_RUNTIME_SUPPORT_REPORT_SCHEMA_VERSION,

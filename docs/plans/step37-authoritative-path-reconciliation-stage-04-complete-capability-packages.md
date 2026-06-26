@@ -4465,3 +4465,137 @@ parent_loop:
 ```
 
 Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4.remaining_complete_supported_package_inventory_audit`. It does not close Stage 4 or Step37. The next atomic step must implement an authoritative remaining-inventory driver before further package-slice selection can be treated as parent-loop evidence.
+
+## Stage 4 Implementation — Remaining Complete-Supported Inventory Driver
+
+- checkpoint_id: `stage4.remaining_complete_supported_package_inventory_driver_implementation`.
+- closure_scope: `atomic_step`.
+- implementation_status: `complete`.
+- local_validation_status: `passed`.
+- candidate_status: `ready_for_commit`.
+- oracle_status: `not_submitted`.
+- closure_status: `not_closed_candidate_pending`.
+- parent_stage_status: `running`.
+- parent_loop_status: `running`.
+- global_exit_conditions_met: `false`.
+- user_input_required: `false`.
+
+Implementation scope:
+
+- Add a package-local Step37 remaining inventory driver that converts the current DeepSeek target-profile support summary plus committed capability closure history into a machine-readable checkpoint inventory.
+- Add contract coverage proving the driver distinguishes static complete support, same-run observed overlay, registered missing probe verification, registered static QA gaps, legacy-backed support, unsupported/unregistered support, closed-history skip behavior, and fail-closed missing-next-checkpoint behavior.
+- Do not modify business runtime, product templates, Stage 4 or Stage 5 implementation semantics, already closed candidate/receipt records, or old audit history.
+
+Modified code paths:
+
+- `packages/game-dsl/src/step37-remaining-inventory-driver.ts`.
+- `packages/game-dsl/src/index.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Producer authority: `buildDeepSeekRunAndGunValidationProfileSupportSummary()`.
+- Closure-history input: committed Stage 4 package-slice capability closures supplied as explicit `capabilityId`, `checkpointId`, and `sourceRevision` records.
+- Driver output: `step37_remaining_complete_supported_inventory.v0.1` with `checkpointInventory` and `nextCheckpoint`.
+- Parent-loop consumer: `selectNextAtomicCheckpoint()` / `decideStep37ParentLoop()` consume the generated `Step37CheckpointInventoryItem` shape.
+- Overlay rule: `sameRunObserved=true` never mutates `staticCompleteSupported`; static Stage 4 closure remains blocked while `staticCompleteSupportedCount=0/59`.
+
+Current driver observation:
+
+```text
+command=npx tsx --eval 'import { buildDeepSeekRunAndGunValidationProfileSupportSummary, buildStep37RemainingCompleteSupportedInventory } from "./packages/game-dsl/src/index.ts"; ...'
+exitCode=0
+requiredCapabilityCount=59
+registeredCapabilityCount=18
+staticCompleteSupportedCount=0
+sameRunObservedOnlyCount=12
+committedClosedCapabilityCount=12
+stateCounts={complete_supported:0,same_run_observed_only:12,registered_without_required_probe_verification:6,registered_static_qa_observed_false:0,legacy_backed:0,unsupported_unregistered:41}
+next_checkpoint_id=stage4.metadata_fixed_prompt_binding_v1.complete_supported_package_slice
+next_atomic_step=Stage 4 metadata.fixed_prompt_binding.v1 complete-supported package slice implementation atomic step
+```
+
+Validation completed before candidate:
+
+```text
+command=npx vitest run tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/step37-parent-loop-driver.test.ts
+exitCode=0
+result=PASS: 2 files / 26 tests
+
+command=npx vitest run tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-closure-implementation-trace.test.ts
+exitCode=0
+result=PASS: 3 files / 60 tests
+
+command=npm run test:contracts
+exitCode=0
+result=PASS: 98 files / 1136 tests
+
+command=npm test
+exitCode=0
+result=PASS: contracts 98 files / 1136 tests; workspace 34 files / 410 tests
+
+command=npm run typecheck
+exitCode=0
+result=PASS
+
+command=git diff --check
+exitCode=0
+result=PASS
+
+command=git status --short
+exitCode=0
+result=only expected docs/helper/export/contract files are modified or untracked before candidate commit
+```
+
+External Skill freshness:
+
+```text
+skill_root=/Users/dahufa/.agents/skills/code-change-discipline
+skill_bundle_format=single_file_v1
+skill_bundle_file_count=1
+skill_bundle_file_byte_length=43467
+skill_bundle_file_sha256=f816d70eeb76d9a97d18472696ae9fa6ae1abc94ffa2ead9acf7a56e7150fea3
+skill_bundle_digest=afb000865c530f9fc1afdda9323846882fb8da38dfd2402687e9e5b745a02d1e
+skill_bundle_generation_exit_code=0
+```
+
+Final validation before candidate:
+
+- The status update above was docs-only, but it changed the final tree. The following revalidation was run before candidate creation:
+
+```text
+command=npx vitest run tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-closure-implementation-trace.test.ts
+exitCode=0
+result=PASS: 3 files / 60 tests
+
+command=npm run test:contracts
+exitCode=0
+result=PASS: 98 files / 1136 tests
+
+command=npm test
+exitCode=0
+result=PASS: contracts 98 files / 1136 tests; workspace 34 files / 410 tests
+
+command=npm run typecheck
+exitCode=0
+result=PASS
+
+command=git diff --check
+exitCode=0
+result=PASS
+
+command=git diff --name-only
+exitCode=0
+result=tracked files: docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md, packages/game-dsl/src/index.ts
+
+command=git ls-files --others --exclude-standard
+exitCode=0
+result=untracked files: packages/game-dsl/src/step37-remaining-inventory-driver.ts, tests/contracts/step37-remaining-inventory-driver.test.ts
+
+command=external Skill freshness digest
+exitCode=0
+result=skill_bundle_digest=afb000865c530f9fc1afdda9323846882fb8da38dfd2402687e9e5b745a02d1e
+```
+
+Exit assessment: `LOCALLY_VALIDATED_READY_FOR_CANDIDATE`. This atomic step is not closed and no candidate commit exists yet. Candidate creation is allowed only after the final read-only recheck confirms this exact tree. It does not close Stage 4 or Step37.
