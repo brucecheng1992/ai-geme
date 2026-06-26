@@ -6194,10 +6194,17 @@ active_skill_revision_type=sha256_bundle
 active_skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
 active_skill_root_identity=/Users/dahufa/.agents/skills
 active_skill_file_count=8
-active_skill_bundle_digest=fce4a8982f4a4c4df435b1531c5bd36b656eeab87ab53961a821fc50dfd6f02e
+active_skill_manifest_columns=relativePath,fileType,byteLength,mode,sha256,symlinkTarget,symlinkEscapesRoot
+active_skill_manifest_order=ascii_root_relative_path
+active_skill_manifest_sha_input_bytes=1096
+active_skill_bundle_digest=cfa7dcd5b5a97ae5027526712ee848e91ab7043912a15cc69ff3efc6822d3b28
 reviewed_skill_bundle_digest=pending_oracle_review
 repo_base_commit=16b5f6afa1168059bbf09accb72e06ee11de6a3e
 repo_base_tree=23e2cc255072d2e818bb91a2454c6ecaa76dee6d
+superseded_candidate_commit_sha=d3410fcd206de7db7f661394c4ef6b357f0626de
+superseded_oracle_submission_id=019f05e8-9b90-7410-ac37-b4ccfbf5a00a
+superseded_oracle_agent_id=019f058a-4f55-7da1-acfe-22d429657c2c
+superseded_oracle_result=CHANGES_REQUIRED_P2_SKILL_DIGEST_NOT_REPRODUCIBLE
 post_record_validation_status=passed
 ```
 
@@ -6305,7 +6312,7 @@ result=PASS
 command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
 exitCode=0
 duration=real 0.07s
-result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_root_identity=/Users/dahufa/.agents/skills; skill_file_count=8; skill_bundle_digest=fce4a8982f4a4c4df435b1531c5bd36b656eeab87ab53961a821fc50dfd6f02e; manifest_sha_input_bytes=1932.
+result=SUPERSEDED_BY_ORACLE_P2: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_root_identity=/Users/dahufa/.agents/skills; skill_file_count=8; skill_bundle_digest=fce4a8982f4a4c4df435b1531c5bd36b656eeab87ab53961a821fc50dfd6f02e; manifest_sha_input_bytes=1932; reason=Oracle found this digest was not reproducible from the declared root-relative manifest protocol.
 
 command=/usr/bin/time -p npx tsx - <<'TS' ... ui.hud_retries.v1 support summary and remaining inventory ...
 exitCode=0
@@ -6317,7 +6324,7 @@ Post-record validation requirement:
 
 - This closure record changes the final tree. Before creating the immutable candidate commit, focused contracts, full contracts, `npm test`, typecheck, `diff --check`, final diff range check, Skill freshness, and inventory alignment must be re-run against the final tree.
 - Candidate commit must not write its own SHA into this candidate record.
-- Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=fce4a8982f4a4c4df435b1531c5bd36b656eeab87ab53961a821fc50dfd6f02e`.
+- Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=cfa7dcd5b5a97ae5027526712ee848e91ab7043912a15cc69ff3efc6822d3b28`.
 - `oracle_status` remains `not_submitted` until the Oracle request is accepted and an `agent_id` is recorded outside the frozen candidate.
 
 Post-record final validation:
@@ -6325,37 +6332,37 @@ Post-record final validation:
 ```text
 command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-focused-validation.test.ts
 exitCode=0
-duration=real 2.15s
+duration=real 2.12s
 result=PASS: 10 files / 312 tests
 
 command=/usr/bin/time -p npm run test:contracts
 exitCode=0
-duration=real 9.73s
+duration=real 9.50s
 result=PASS: 98 files / 1326 tests
 
 command=/usr/bin/time -p npm test
 exitCode=0
-duration=real 59.99s
+duration=real 59.40s
 result=PASS: contracts 98 files / 1326 tests; workspace 34 files / 410 tests
 
 command=/usr/bin/time -p npm run typecheck
 exitCode=0
-duration=real 6.57s
+duration=real 6.56s
 result=PASS
 
 command=/usr/bin/time -p git diff --check
 exitCode=0
-duration=real 0.03s
+duration=real 0.02s
 result=PASS
 
 command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
 exitCode=0
 duration=real 0.06s
-result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_root_identity=/Users/dahufa/.agents/skills; skill_file_count=8; skill_bundle_digest=fce4a8982f4a4c4df435b1531c5bd36b656eeab87ab53961a821fc50dfd6f02e; manifest_sha_input_bytes=1932.
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_root_identity=/Users/dahufa/.agents/skills; skill_file_count=8; skill_manifest_columns=relativePath,fileType,byteLength,mode,sha256,symlinkTarget,symlinkEscapesRoot; skill_manifest_order=ascii_root_relative_path; skill_bundle_digest=cfa7dcd5b5a97ae5027526712ee848e91ab7043912a15cc69ff3efc6822d3b28; manifest_sha_input_bytes=1096; previous_unreproducible_digest=fce4a8982f4a4c4df435b1531c5bd36b656eeab87ab53961a821fc50dfd6f02e.
 
 command=/usr/bin/time -p npx tsx - <<'TS' ... ui.hud_retries.v1 support summary and remaining inventory ...
 exitCode=0
-duration=real 0.53s
+duration=real 0.66s
 result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=53; staticCompleteSupportedCount=0; committedClosedCapabilityCount=52; unsupported_unregistered=6; currentCheckpointId=stage4.ui_hud_retries_v1.complete_supported_package_slice; ui.hud_retries.v1 classification=DEFERRED; state=registered_without_required_probe_verification; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; completeSupported=false; missingSupportEvidencePrerequisites=[requiredProbesVerified]; selectionFailure=null.
 ```
 
