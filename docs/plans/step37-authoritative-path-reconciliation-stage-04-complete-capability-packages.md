@@ -6167,6 +6167,232 @@ next_action=CONTINUE_PARENT_LOOP
 next_atomic_step=RUN_PARENT_LOOP_DRIVER_TO_SELECT_NEXT_UNMET_CHECKPOINT
 ```
 
+## Stage 4 Implementation: `ui.win_failure_transitions.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.ui_win_failure_transitions_v1.complete_supported_package_slice
+parent_stage_id=stage4
+capability_id=ui.win_failure_transitions.v1
+closure_record_id=stage4.ui_win_failure_transitions_v1.complete_supported_package_slice.candidate_record
+record_status=active
+current_active_record=true
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+oracle_submission_id=
+oracle_agent_id=
+oracle_result=
+review_required=true
+closure_status=open
+parent_stage_status=running
+parent_loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=pending_parent_loop_recalculation_after_receipt
+active_skill_revision_type=sha256_bundle
+active_skill_bundle_format=step37_manifest_v1_path_type_size_sha_symlink
+active_skill_protocol_source=tests/contracts/step37-closure-implementation-trace.test.ts::digestSkillBundleManifest
+active_skill_root_identity=/Users/dahufa/.agents/skills
+active_skill_file_count=8
+active_skill_manifest_columns=relativePath,fileType,byteLength,sha256,symlinkTarget,symlinkEscapesRoot
+active_skill_manifest_order=ascii_root_relative_path
+active_skill_manifest_sha_input_bytes=1056
+active_skill_bundle_digest=a5894b071c4513d7b1a7ee0058aeace9830bb3604f327ee75c6b9248f7247189
+historical_session_skill_digest_clue=06fa14205c4a623e8808b1b701a45a9d1e74234ee0a52bea614e2652e6f99b61
+previous_wrong_request_skill_digest=27e8ffdc072b4247d6eb20dc79679ed8f24a81a77ed33b3712b56b61b3da7416
+freshness_interpretation=Historical session digests are clues only. This candidate record binds the current HEAD Skill digest reproduced from the executable contract helper manifest protocol; 06fa and 27e8 are not current evidence for this checkpoint.
+candidate_commit_sha=
+candidate_commit_tree=
+reviewed_commit_sha=
+reviewed_commit_tree=
+reviewed_skill_bundle_digest=
+repo_base_commit=5b25d92640a335f6e3154048e8cf8b9e2f8a7d85
+repo_base_tree=0d08c6d42bb6a7c20f7469bf5b06fd694730d629
+post_record_validation_status=passed
+```
+
+Current review conclusion:
+
+`ui.win_failure_transitions.v1` was selected by the Parent Loop Driver after the `ui.hud_retries.v1` receipt. At entry, the target profile required terminal win/failure UI behavior, but the registry had no package-owned `ui.win_failure_transitions.v1` descriptor, runtime system identity, telemetry event, required probe, QA reader fields, or target-profile overlay evidence. This atomic step only implements the package slice and validation contracts. It does not modify product runtime gameplay, enter Stage 5, cut over production default, exit the legacy authoritative path, or close Step37 globally.
+
+Minimum closure requirements:
+
+1. Add a package-owned `ui.win_failure_transitions.v1` contract with a distinct required probe and required evidence id.
+2. Add runtime system identity and package-owned telemetry event `ui.win_failure_transitions.verified`.
+3. Register package-backed support so `schema_expressible`, `normalized`, `compiled`, and `runtime_consumed` are true while static `qa_observed=false` and `completeSupported=false`.
+4. Make the QA reader verify real terminal UI transition state fields: win screen, failure screen, terminal-state distinction, win/failure text, trigger identity, input lock, schema/profile/runtime identity, and no implicit fallback.
+5. Prove generic `game.won`, `game.lost`, or terminal event refs are insufficient without the package-owned transition state payload.
+6. Prove the dependency chain is real: `feedback.victory_declaration.v1`, `ui.failure_restart.v1`, and `rules.state_transition_graph.v1` must resolve, including their transitive package evidence, before failure can be attributed to this capability.
+7. Update target-profile and registry expectations only where the new package identity directly changes the canonical inventory.
+8. Include telemetry schema freeze validation because this atom adds the package-owned event `ui.win_failure_transitions.verified`.
+
+Implementation paths:
+
+```text
+packages/game-dsl/src/gameplay-capabilities/ui-win-failure-transitions-runtime-module.ts
+packages/game-dsl/src/gameplay-capabilities/ui-win-failure-transitions-package.ts
+packages/game-dsl/src/gameplay-capabilities/index.ts
+packages/game-dsl/src/gameplay-capabilities/registry.ts
+packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts
+packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts
+tests/contracts/gameplay-capability-package-contract.test.ts
+tests/contracts/gameplay-capability-qa-probes.test.ts
+tests/contracts/generation-target-profile-runtime-support.test.ts
+tests/contracts/contract-freeze.test.ts
+tests/contracts/deepseek-authoritative-dsl-support.test.ts
+tests/contracts/dsl-consumption-report.test.ts
+tests/contracts/step37-remaining-inventory-driver.test.ts
+docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md
+```
+
+Evidence/probe chain:
+
+```text
+package_id=ui.win_failure_transitions.v1
+required_probe_id=ui.win_failure_transitions.v1.terminal_ui.browser_qa.v1
+required_evidence_id=ui.win_failure_transitions.v1.evidence.capability_qa_report.v1
+runtime_system_id=ui.win_failure_transitions
+telemetry_event=ui.win_failure_transitions.verified
+dependency_capability_id=feedback.victory_declaration.v1
+dependency_capability_id=ui.failure_restart.v1
+dependency_capability_id=rules.state_transition_graph.v1
+transitive_dependency_capability_id=enemy.boss_lifecycle.v1
+transitive_dependency_capability_id=health.player_health_points.v1
+transitive_dependency_capability_id=rules.retry_count.v1
+must_pass_state_fields=winFailureTransitionsVerified,winFailureTransitionsSchemaVersion,winFailureTransitionsProfileId,winFailureTransitionsRuntimeFamily,winFailureTransitionsWinScreenShown,winFailureTransitionsWinText,winFailureTransitionsWinTrigger,winFailureTransitionsFailureScreenShown,winFailureTransitionsFailureText,winFailureTransitionsFailureTrigger,winFailureTransitionsTerminalStatesDistinct,winFailureTransitionsNoImplicitFallback,winFailureTransitionsInputLockedOnTerminal
+semantic_negative=generic terminal events without winFailureTransitions* fields do not verify ui.win_failure_transitions.v1
+same_run_overlay=complete package evidence advances only observed overlay; static completeSupported remains false
+```
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Added package-owned `ui.win_failure_transitions.v1` contract, runtime identity `ui.win_failure_transitions`, event `ui.win_failure_transitions.verified`, required probe, registry entry, and QA reader terminal-transition fields. |
+| Consumer list | Package validator, capability registry, telemetry schema freeze, capability QA evidence reader, target-profile support overlay, DSL consumption report, and remaining-inventory driver. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED` until same-run QA evidence verifies the required probe; registry support is package-backed but static `completeSupported=false`. |
+| Authority | Package-owned QA evidence for `ui.win_failure_transitions.v1.terminal_ui.browser_qa.v1`; generic win/loss events are only supporting event refs. |
+| Legacy strategy | Legacy/static target-profile support remains fail-closed; same-run observed overlay may advance only with current-run dependency evidence and terminal UI transition state evidence. |
+| Failure policy | Missing package, telemetry event, terminal UI state fields, dependency probes, wrong capability/probe identity, stale evidence, or generic event-only evidence keeps `qa_observed=false` and reports missing required probe evidence. |
+| Evidence | Focused contracts prove package contract validity, telemetry schema acceptance, generic-terminal negative, full dependency-chain fixture, and same-run positive overlay while preserving static incomplete support. |
+| Rollback | Reverting this atom removes only package/registry/schema/QA-reader wiring and returns `ui.win_failure_transitions.v1` to unsupported/unregistered without changing product runtime or Stage 5 state. |
+
+RED evidence:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts -t "UI win/failure transitions"
+exitCode=1
+duration=real 1.00s
+result=RED: ui-win-failure-transitions package/runtime module did not exist; gameplay-capability-package-contract could not import ../../packages/game-dsl/src/gameplay-capabilities/ui-win-failure-transitions-package.js.
+```
+
+Pre-record local validation:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts -t "UI win/failure transitions"
+exitCode=0
+duration=real 1.44s
+result=PASS: 2 files / 2 tests
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/contract-freeze.test.ts -t "UI win/failure transitions|win/failure transitions telemetry"
+exitCode=0
+duration=real 1.51s
+result=PASS: 4 files / 4 tests
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 1.92s
+result=PASS: 6 files / 173 tests
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 9.83s
+result=PASS: 98 files / 1330 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 60.21s
+result=PASS: contracts 98 files / 1330 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.88s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.02s
+result=PASS
+
+command=/usr/bin/time -p node --input-type=module "<step37 Skill bundle contract-helper digest script>"
+exitCode=0
+duration=real 0.06s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_sha_symlink; skill_manifest_columns=relativePath,fileType,byteLength,sha256,symlinkTarget,symlinkEscapesRoot; skill_root_identity=/Users/dahufa/.agents/skills; skill_file_count=8; manifest_sha_input_bytes=1056; skill_bundle_digest=a5894b071c4513d7b1a7ee0058aeace9830bb3604f327ee75c6b9248f7247189.
+
+command=/usr/bin/time -p npx tsx - <<'TS' ... ui.win_failure_transitions.v1 support summary and remaining inventory ...
+exitCode=0
+duration=real 0.57s
+result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=54; staticCompleteSupportedCount=0; committedClosedCapabilityCount=53; unsupported_unregistered=5; currentCheckpointId=stage4.ui_win_failure_transitions_v1.complete_supported_package_slice; ui.win_failure_transitions.v1 classification=DEFERRED; state=registered_without_required_probe_verification; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; completeSupported=false; missingSupportEvidencePrerequisites=[requiredProbesVerified]; selectionFailure=null.
+```
+
+Post-record validation requirement:
+
+- This closure record changes the final tree. Before creating the immutable candidate commit, focused contracts, full contracts, `npm test`, typecheck, `diff --check`, final diff range check, Skill freshness, and inventory alignment must be re-run against the final tree.
+- Candidate commit must not write its own SHA into this candidate record.
+- Oracle request must bind the candidate commit SHA and `reviewed_skill_bundle_digest=a5894b071c4513d7b1a7ee0058aeace9830bb3604f327ee75c6b9248f7247189`.
+- `oracle_status` remains `not_submitted` until the Oracle request is accepted and an `agent_id` is recorded outside the frozen candidate.
+
+Post-record final validation:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-focused-validation.test.ts
+exitCode=0
+duration=real 2.18s
+result=PASS: 10 files / 316 tests
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 9.82s
+result=PASS: 98 files / 1330 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 59.76s
+result=PASS: contracts 98 files / 1330 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 7.35s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.03s
+result=PASS
+
+command=/usr/bin/time -p node --input-type=module "<step37 Skill bundle contract-helper digest script>"
+exitCode=0
+duration=real 0.05s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_sha_symlink; skill_manifest_columns=relativePath,fileType,byteLength,sha256,symlinkTarget,symlinkEscapesRoot; skill_root_identity=/Users/dahufa/.agents/skills; skill_file_count=8; manifest_sha_input_bytes=1056; skill_bundle_digest=a5894b071c4513d7b1a7ee0058aeace9830bb3604f327ee75c6b9248f7247189.
+
+command=/usr/bin/time -p npx tsx - <<'TS' ... ui.win_failure_transitions.v1 support summary and remaining inventory ...
+exitCode=0
+duration=real 0.60s
+result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=54; staticCompleteSupportedCount=0; committedClosedCapabilityCount=53; unsupported_unregistered=5; currentCheckpointId=stage4.ui_win_failure_transitions_v1.complete_supported_package_slice; currentNextAtomicStep="Stage 4 ui.win_failure_transitions.v1 complete-supported package slice implementation atomic step"; ui.win_failure_transitions.v1 classification=DEFERRED; state=registered_without_required_probe_verification; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; completeSupported=false; missingSupportEvidencePrerequisites=[requiredProbesVerified]; selectionFailure=null.
+
+command=git diff --name-status
+exitCode=0
+duration=sub-second
+result=PASS: diff scope contains only ui.win_failure_transitions package/registry/QA reader/telemetry schema/target-profile expectations/remaining-inventory expectation and this closure record.
+```
+
+Exit assessment before candidate: `LOCALLY_VALIDATED_READY_FOR_CANDIDATE`. The implementation is landed in the working tree and post-record validation passed against the final tree. The atomic step is not closed: candidate commit, Oracle review, receipt, post-receipt checks, and Parent Loop Driver handoff are still required.
+
 ## Stage 4 Implementation: `ui.hud_retries.v1` complete-supported package slice
 
 Checkpoint identity:

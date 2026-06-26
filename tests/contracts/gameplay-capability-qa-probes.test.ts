@@ -105,6 +105,16 @@ import {
   UI_FAILURE_RESTART_RUNTIME_FAMILY,
   UI_FAILURE_RESTART_SCHEMA_VERSION,
   createUiFailureRestartPackageContract,
+  UI_WIN_FAILURE_TRANSITIONS_EVENT_TYPE,
+  UI_WIN_FAILURE_TRANSITIONS_FAILURE_TEXT,
+  UI_WIN_FAILURE_TRANSITIONS_FAILURE_TRIGGER,
+  UI_WIN_FAILURE_TRANSITIONS_PROFILE_ID,
+  UI_WIN_FAILURE_TRANSITIONS_REQUIRED_PROBE_ID,
+  UI_WIN_FAILURE_TRANSITIONS_RUNTIME_FAMILY,
+  UI_WIN_FAILURE_TRANSITIONS_SCHEMA_VERSION,
+  UI_WIN_FAILURE_TRANSITIONS_WIN_TEXT,
+  UI_WIN_FAILURE_TRANSITIONS_WIN_TRIGGER,
+  createUiWinFailureTransitionsPackageContract,
   UI_HUD_BOSS_HEALTH_CURRENT,
   UI_HUD_BOSS_HEALTH_EVENT_TYPE,
   UI_HUD_BOSS_HEALTH_LABEL_TEXT,
@@ -4816,6 +4826,229 @@ describe('Capability-owned runtime QA probes', () => {
       ])
     );
     expect(observedFailureRestart.status).toBe('passed');
+  });
+
+  it('does not verify UI win/failure transitions from generic terminal events without transition state', () => {
+    const capabilityId = 'ui.win_failure_transitions.v1';
+    const probeId = UI_WIN_FAILURE_TRANSITIONS_REQUIRED_PROBE_ID;
+    const packages = [
+      createEnemyBossLifecyclePackageContract(),
+      createFeedbackVictoryDeclarationPackageContract(),
+      createHealthPlayerHealthPointsPackageContract(),
+      createRulesRetryCountPackageContract(),
+      createUiFailureRestartPackageContract(),
+      createRulesStateTransitionGraphPackageContract(),
+      createUiWinFailureTransitionsPackageContract()
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const dependencyEvidence: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: 'enemy.boss_lifecycle.v1',
+        probeId: ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID,
+        action: 'verify_boss_lifecycle',
+        eventType: ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
+        eventTypes: [ENEMY_BOSS_LIFECYCLE_EVENT_TYPE],
+        bossLifecycleStarted: true,
+        bossEntityId: ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID,
+        bossMaxHealth: ENEMY_BOSS_LIFECYCLE_MAX_HEALTH,
+        bossHealthInitialized: true,
+        bossDefeated: true,
+        sourceRef: 'runtime.enemy.boss_lifecycle',
+        status: 'observed'
+      },
+      {
+        capabilityId: 'feedback.victory_declaration.v1',
+        probeId: FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID,
+        action: 'verify_victory_declaration',
+        eventType: FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
+        eventTypes: [FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE],
+        victoryDeclarationShown: true,
+        victoryDeclarationText: FEEDBACK_VICTORY_DECLARATION_TEXT,
+        victoryDeclarationTrigger: FEEDBACK_VICTORY_DECLARATION_TRIGGER,
+        victoryDeclarationOutcome: FEEDBACK_VICTORY_DECLARATION_OUTCOME,
+        victoryDeclarationObjectiveCompleted: true,
+        sourceRef: 'runtime.feedback.victory_declaration',
+        status: 'observed'
+      },
+      {
+        capabilityId: 'health.player_health_points.v1',
+        probeId: HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+        action: 'observe_health_points',
+        eventType: HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE,
+        eventTypes: [HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE],
+        sourceRef: 'runtime.health.player_health_points',
+        status: 'observed'
+      },
+      {
+        capabilityId: 'rules.retry_count.v1',
+        probeId: RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
+        action: 'consume_retry',
+        eventType: RULES_RETRY_COUNT_EVENT_TYPE,
+        eventTypes: [RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE, RULES_RETRY_COUNT_EVENT_TYPE],
+        retryCountConfigured: true,
+        retryCountInitial: RULES_RETRY_COUNT_INITIAL_RETRIES,
+        retryCountBefore: RULES_RETRY_COUNT_BEFORE,
+        retryCountAfter: RULES_RETRY_COUNT_AFTER,
+        retryCountRemaining: RULES_RETRY_COUNT_REMAINING,
+        retryCountConsumed: true,
+        retryCountDecremented: true,
+        retryCountExhausted: false,
+        retryCountFailureScreenShown: false,
+        sourceRef: 'runtime.rules.retry_count',
+        status: 'observed'
+      },
+      {
+        capabilityId: 'ui.failure_restart.v1',
+        probeId: UI_FAILURE_RESTART_REQUIRED_PROBE_ID,
+        action: 'restart_from_failure',
+        eventType: UI_FAILURE_RESTART_EVENT_TYPE,
+        eventTypes: ['game.lost', 'input.received', UI_FAILURE_RESTART_RESTART_EVENT_TYPE, UI_FAILURE_RESTART_EVENT_TYPE],
+        failureRestartVerified: true,
+        failureRestartSchemaVersion: UI_FAILURE_RESTART_SCHEMA_VERSION,
+        failureRestartProfileId: UI_FAILURE_RESTART_PROFILE_ID,
+        failureRestartRuntimeFamily: UI_FAILURE_RESTART_RUNTIME_FAMILY,
+        failureRestartNoRetriesRemaining: true,
+        failureRestartFailureScreenShown: true,
+        failureRestartFailureText: UI_FAILURE_RESTART_FAILURE_TEXT,
+        failureRestartPromptVisible: true,
+        failureRestartPromptText: UI_FAILURE_RESTART_PROMPT_TEXT,
+        failureRestartInputReceived: true,
+        failureRestartInput: UI_FAILURE_RESTART_INPUT,
+        failureRestartGameRestarted: true,
+        failureRestartRestartEventType: UI_FAILURE_RESTART_RESTART_EVENT_TYPE,
+        failureRestartStateReset: true,
+        failureRestartPlayerHealthReset: true,
+        failureRestartRetryCountReset: true,
+        failureRestartFailureScreenCleared: true,
+        sourceRef: 'runtime.ui.failure_restart',
+        status: 'observed'
+      },
+      {
+        capabilityId: 'rules.state_transition_graph.v1',
+        probeId: RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID,
+        action: 'verify_graph',
+        eventType: RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE,
+        eventTypes: [RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE],
+        stateTransitionGraphDeclared: true,
+        stateTransitionGraphId: RULES_STATE_TRANSITION_GRAPH_ID,
+        stateTransitionGraphStateCount: RULES_STATE_TRANSITION_GRAPH_STATE_COUNT,
+        stateTransitionGraphTransitionCount: RULES_STATE_TRANSITION_GRAPH_TRANSITION_COUNT,
+        stateTransitionGraphFromState: RULES_STATE_TRANSITION_GRAPH_FROM_STATE,
+        stateTransitionGraphToState: RULES_STATE_TRANSITION_GRAPH_TO_STATE,
+        stateTransitionGraphTrigger: RULES_STATE_TRANSITION_GRAPH_TRIGGER,
+        stateTransitionGraphTerminalStatesIncluded: true,
+        stateTransitionGraphNoImplicitFallback: true,
+        stateTransitionGraphReachabilityVerified: true,
+        sourceRef: 'runtime.rules.state_transition_graph',
+        status: 'observed'
+      }
+    ];
+    const genericTerminalEventsOnly = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_terminal_ui_transitions',
+              eventType: 'game.won',
+              eventTypes: ['game.won', 'game.lost'],
+              winFailureTransitionsWinScreenShown: true,
+              winFailureTransitionsFailureScreenShown: true,
+              sourceRef: 'runtime.ui.generic_terminal_events',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedTerminalTransitions = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_terminal_ui_transitions',
+              eventType: UI_WIN_FAILURE_TRANSITIONS_EVENT_TYPE,
+              eventTypes: ['game.won', 'game.lost', UI_WIN_FAILURE_TRANSITIONS_EVENT_TYPE],
+              winFailureTransitionsVerified: true,
+              winFailureTransitionsSchemaVersion: UI_WIN_FAILURE_TRANSITIONS_SCHEMA_VERSION,
+              winFailureTransitionsProfileId: UI_WIN_FAILURE_TRANSITIONS_PROFILE_ID,
+              winFailureTransitionsRuntimeFamily: UI_WIN_FAILURE_TRANSITIONS_RUNTIME_FAMILY,
+              winFailureTransitionsWinScreenShown: true,
+              winFailureTransitionsWinText: UI_WIN_FAILURE_TRANSITIONS_WIN_TEXT,
+              winFailureTransitionsWinTrigger: UI_WIN_FAILURE_TRANSITIONS_WIN_TRIGGER,
+              winFailureTransitionsFailureScreenShown: true,
+              winFailureTransitionsFailureText: UI_WIN_FAILURE_TRANSITIONS_FAILURE_TEXT,
+              winFailureTransitionsFailureTrigger: UI_WIN_FAILURE_TRANSITIONS_FAILURE_TRIGGER,
+              winFailureTransitionsTerminalStatesDistinct: true,
+              winFailureTransitionsNoImplicitFallback: true,
+              winFailureTransitionsInputLockedOnTerminal: true,
+              sourceRef: 'runtime.ui.win_failure_transitions',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericTerminalEventsOnly.status).toBe('failed');
+    expect(genericTerminalEventsOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericTerminalEventsOnly.requiredResults.find((entry) => entry.probeId === FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericTerminalEventsOnly.requiredResults.find((entry) => entry.probeId === ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericTerminalEventsOnly.requiredResults.find((entry) => entry.probeId === HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericTerminalEventsOnly.requiredResults.find((entry) => entry.probeId === RULES_RETRY_COUNT_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericTerminalEventsOnly.requiredResults.find((entry) => entry.probeId === UI_FAILURE_RESTART_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericTerminalEventsOnly.requiredResults.find((entry) => entry.probeId === RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericTerminalEventsOnly.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.terminal_ui_transitions_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${UI_WIN_FAILURE_TRANSITIONS_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.terminal_ui_transitions_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected winFailureTransitionsVerified=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.terminal_ui_transitions_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected winFailureTransitionsNoImplicitFallback=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedTerminalTransitions.status).toBe('passed');
   });
 
   it('does not verify UI boss health HUD from boss lifecycle evidence without HUD binding fields', () => {

@@ -54,6 +54,10 @@ import {
   createUiFailureRestartPackageContract
 } from './ui-failure-restart-package.js';
 import {
+  UI_WIN_FAILURE_TRANSITIONS_REQUIRED_PROBE_ID,
+  createUiWinFailureTransitionsPackageContract
+} from './ui-win-failure-transitions-package.js';
+import {
   UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID,
   createUiHudCurrentWeaponPackageContract
 } from './ui-hud-current-weapon-package.js';
@@ -696,6 +700,19 @@ const uiFailureRestartPackageEvidence: GameplayCapabilityEvidence = uiFailureRes
   : canonicalRuntimeLoaderEvidence;
 const uiFailureRestartPackageQa: GameplayCapabilityQaEvidence = uiFailureRestartPackageReport.supportEligible
   ? { requiredProbeIds: [UI_FAILURE_RESTART_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
+const uiWinFailureTransitionsPackageReport = validateGameplayCapabilityPackage(createUiWinFailureTransitionsPackageContract());
+const uiWinFailureTransitionsPackageEvidence: GameplayCapabilityEvidence = uiWinFailureTransitionsPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const uiWinFailureTransitionsPackageQa: GameplayCapabilityQaEvidence = uiWinFailureTransitionsPackageReport.supportEligible
+  ? { requiredProbeIds: [UI_WIN_FAILURE_TRANSITIONS_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
 const uiHudCurrentWeaponPackageReport = validateGameplayCapabilityPackage(createUiHudCurrentWeaponPackageContract());
 const uiHudCurrentWeaponPackageEvidence: GameplayCapabilityEvidence = uiHudCurrentWeaponPackageReport.supportEligible
@@ -1651,6 +1668,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     uiFailureRestartPackageEvidence,
     uiFailureRestartPackageQa
+  ),
+  planned(
+    'ui.win_failure_transitions.v1',
+    'ui',
+    'Win and failure terminal UI transitions',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    uiWinFailureTransitionsPackageEvidence,
+    uiWinFailureTransitionsPackageQa
   ),
   planned(
     'ui.hud_current_weapon.v1',

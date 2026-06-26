@@ -594,6 +594,11 @@ describe('Contract Freeze', () => {
     expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('ui.failure_restart.verified');
   });
 
+  it('allows package-owned UI win/failure transitions telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'ui.win_failure_transitions.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('ui.win_failure_transitions.verified');
+  });
+
   it('allows package-owned UI boss-health HUD telemetry without making it a QA gate requirement', () => {
     expect(() => TelemetryEventSchema.parse({ type: 'ui.hud_boss_health.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
     expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('ui.hud_boss_health.verified');

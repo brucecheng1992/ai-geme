@@ -192,6 +192,19 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   failureRestartPlayerHealthReset?: boolean;
   failureRestartRetryCountReset?: boolean;
   failureRestartFailureScreenCleared?: boolean;
+  winFailureTransitionsVerified?: boolean;
+  winFailureTransitionsSchemaVersion?: string;
+  winFailureTransitionsProfileId?: string;
+  winFailureTransitionsRuntimeFamily?: string;
+  winFailureTransitionsWinScreenShown?: boolean;
+  winFailureTransitionsWinText?: string;
+  winFailureTransitionsWinTrigger?: string;
+  winFailureTransitionsFailureScreenShown?: boolean;
+  winFailureTransitionsFailureText?: string;
+  winFailureTransitionsFailureTrigger?: string;
+  winFailureTransitionsTerminalStatesDistinct?: boolean;
+  winFailureTransitionsNoImplicitFallback?: boolean;
+  winFailureTransitionsInputLockedOnTerminal?: boolean;
   hudCurrentWeaponVisible?: boolean;
   hudCurrentWeaponSchemaVersion?: string;
   hudCurrentWeaponProfileId?: string;
@@ -832,6 +845,27 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('failureRestartPlayerHealthReset', expected, observed.failureRestartPlayerHealthReset),
     ...compareExpectedBooleanField('failureRestartRetryCountReset', expected, observed.failureRestartRetryCountReset),
     ...compareExpectedBooleanField('failureRestartFailureScreenCleared', expected, observed.failureRestartFailureScreenCleared),
+    ...compareExpectedBooleanField('winFailureTransitionsVerified', expected, observed.winFailureTransitionsVerified),
+    ...compareExpectedStringField('winFailureTransitionsSchemaVersion', expected, observed.winFailureTransitionsSchemaVersion),
+    ...compareExpectedStringField('winFailureTransitionsProfileId', expected, observed.winFailureTransitionsProfileId),
+    ...compareExpectedStringField('winFailureTransitionsRuntimeFamily', expected, observed.winFailureTransitionsRuntimeFamily),
+    ...compareExpectedBooleanField('winFailureTransitionsWinScreenShown', expected, observed.winFailureTransitionsWinScreenShown),
+    ...compareExpectedStringField('winFailureTransitionsWinText', expected, observed.winFailureTransitionsWinText),
+    ...compareExpectedStringField('winFailureTransitionsWinTrigger', expected, observed.winFailureTransitionsWinTrigger),
+    ...compareExpectedBooleanField('winFailureTransitionsFailureScreenShown', expected, observed.winFailureTransitionsFailureScreenShown),
+    ...compareExpectedStringField('winFailureTransitionsFailureText', expected, observed.winFailureTransitionsFailureText),
+    ...compareExpectedStringField('winFailureTransitionsFailureTrigger', expected, observed.winFailureTransitionsFailureTrigger),
+    ...compareExpectedBooleanField(
+      'winFailureTransitionsTerminalStatesDistinct',
+      expected,
+      observed.winFailureTransitionsTerminalStatesDistinct
+    ),
+    ...compareExpectedBooleanField('winFailureTransitionsNoImplicitFallback', expected, observed.winFailureTransitionsNoImplicitFallback),
+    ...compareExpectedBooleanField(
+      'winFailureTransitionsInputLockedOnTerminal',
+      expected,
+      observed.winFailureTransitionsInputLockedOnTerminal
+    ),
     ...compareExpectedBooleanField('hudCurrentWeaponVisible', expected, observed.hudCurrentWeaponVisible),
     ...compareExpectedStringField('hudCurrentWeaponSchemaVersion', expected, observed.hudCurrentWeaponSchemaVersion),
     ...compareExpectedStringField('hudCurrentWeaponProfileId', expected, observed.hudCurrentWeaponProfileId),

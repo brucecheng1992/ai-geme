@@ -66,6 +66,15 @@ import {
   UI_FAILURE_RESTART_RESTART_EVENT_TYPE,
   UI_FAILURE_RESTART_RUNTIME_FAMILY,
   UI_FAILURE_RESTART_SCHEMA_VERSION,
+  UI_WIN_FAILURE_TRANSITIONS_EVENT_TYPE,
+  UI_WIN_FAILURE_TRANSITIONS_FAILURE_TEXT,
+  UI_WIN_FAILURE_TRANSITIONS_FAILURE_TRIGGER,
+  UI_WIN_FAILURE_TRANSITIONS_PROFILE_ID,
+  UI_WIN_FAILURE_TRANSITIONS_REQUIRED_PROBE_ID,
+  UI_WIN_FAILURE_TRANSITIONS_RUNTIME_FAMILY,
+  UI_WIN_FAILURE_TRANSITIONS_SCHEMA_VERSION,
+  UI_WIN_FAILURE_TRANSITIONS_WIN_TEXT,
+  UI_WIN_FAILURE_TRANSITIONS_WIN_TRIGGER,
   UI_HUD_BOSS_HEALTH_CURRENT,
   UI_HUD_BOSS_HEALTH_EVENT_TYPE,
   UI_HUD_BOSS_HEALTH_LABEL_TEXT,
@@ -282,6 +291,7 @@ import {
   createEnemyPatrolInfantryPackageContract,
   createFeedbackVictoryDeclarationPackageContract,
   createUiFailureRestartPackageContract,
+  createUiWinFailureTransitionsPackageContract,
   createUiHudBossHealthPackageContract,
   createFixedPromptBindingPackageContract,
   createGenerationFallbackPolicyFailClosedPackageContract,
@@ -330,6 +340,7 @@ const enemyFlyingRightEntryCapabilityId = 'enemy.flying_right_entry.v1';
 const enemyPatrolInfantryCapabilityId = 'enemy.patrol_infantry.v1';
 const feedbackVictoryDeclarationCapabilityId = 'feedback.victory_declaration.v1';
 const uiFailureRestartCapabilityId = 'ui.failure_restart.v1';
+const uiWinFailureTransitionsCapabilityId = 'ui.win_failure_transitions.v1';
 const uiHudCurrentWeaponCapabilityId = 'ui.hud_current_weapon.v1';
 const uiHudBossHealthCapabilityId = 'ui.hud_boss_health.v1';
 const uiHudPlayerHealthCapabilityId = 'ui.hud_player_health.v1';
@@ -3239,6 +3250,189 @@ describe('Step 37 target profile runtime support overlay', () => {
       observedCompleteSupported: true,
       requiredProbeIds: [UI_FAILURE_RESTART_REQUIRED_PROBE_ID],
       verifiedRequiredProbeIds: [UI_FAILURE_RESTART_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+  });
+
+  it('keeps UI win/failure transitions unverified when generic terminal events lack transition state', () => {
+    const dependencyEvidence: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: enemyBossLifecycleCapabilityId,
+        probeId: ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID,
+        action: 'verify_boss_lifecycle',
+        eventType: ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
+        eventTypes: [ENEMY_BOSS_LIFECYCLE_EVENT_TYPE],
+        bossLifecycleStarted: true,
+        bossEntityId: ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID,
+        bossMaxHealth: ENEMY_BOSS_LIFECYCLE_MAX_HEALTH,
+        bossHealthInitialized: true,
+        bossDefeated: true,
+        sourceRef: 'runtime.enemy.boss_lifecycle',
+        status: 'observed'
+      },
+      {
+        capabilityId: feedbackVictoryDeclarationCapabilityId,
+        probeId: FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID,
+        action: 'verify_victory_declaration',
+        eventType: FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
+        eventTypes: [FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE],
+        victoryDeclarationShown: true,
+        victoryDeclarationText: FEEDBACK_VICTORY_DECLARATION_TEXT,
+        victoryDeclarationTrigger: FEEDBACK_VICTORY_DECLARATION_TRIGGER,
+        victoryDeclarationOutcome: FEEDBACK_VICTORY_DECLARATION_OUTCOME,
+        victoryDeclarationObjectiveCompleted: true,
+        sourceRef: 'runtime.feedback.victory_declaration',
+        status: 'observed'
+      },
+      {
+        capabilityId: healthCapabilityId,
+        probeId: HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+        action: 'observe_health_points',
+        eventType: 'health.player_health.current',
+        eventTypes: ['health.player_health.current'],
+        sourceRef: 'runtime.health.player_health_points',
+        status: 'observed'
+      },
+      {
+        capabilityId: rulesRetryCountCapabilityId,
+        probeId: RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
+        action: 'consume_retry',
+        eventType: RULES_RETRY_COUNT_EVENT_TYPE,
+        eventTypes: [RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE, RULES_RETRY_COUNT_EVENT_TYPE],
+        retryCountConfigured: true,
+        retryCountInitial: RULES_RETRY_COUNT_INITIAL_RETRIES,
+        retryCountBefore: RULES_RETRY_COUNT_BEFORE,
+        retryCountAfter: RULES_RETRY_COUNT_AFTER,
+        retryCountRemaining: RULES_RETRY_COUNT_REMAINING,
+        retryCountConsumed: true,
+        retryCountDecremented: true,
+        retryCountExhausted: false,
+        retryCountFailureScreenShown: false,
+        sourceRef: 'runtime.rules.retry_count',
+        status: 'observed'
+      },
+      {
+        capabilityId: uiFailureRestartCapabilityId,
+        probeId: UI_FAILURE_RESTART_REQUIRED_PROBE_ID,
+        action: 'restart_from_failure',
+        eventType: UI_FAILURE_RESTART_EVENT_TYPE,
+        eventTypes: ['game.lost', 'input.received', UI_FAILURE_RESTART_RESTART_EVENT_TYPE, UI_FAILURE_RESTART_EVENT_TYPE],
+        ...failureRestartStateFields(),
+        sourceRef: 'runtime.ui.failure_restart',
+        status: 'observed'
+      },
+      {
+        capabilityId: rulesStateTransitionGraphCapabilityId,
+        probeId: RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID,
+        action: 'verify_graph',
+        eventType: RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE,
+        eventTypes: [RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE],
+        stateTransitionGraphDeclared: true,
+        stateTransitionGraphId: RULES_STATE_TRANSITION_GRAPH_ID,
+        stateTransitionGraphStateCount: RULES_STATE_TRANSITION_GRAPH_STATE_COUNT,
+        stateTransitionGraphTransitionCount: RULES_STATE_TRANSITION_GRAPH_TRANSITION_COUNT,
+        stateTransitionGraphFromState: RULES_STATE_TRANSITION_GRAPH_FROM_STATE,
+        stateTransitionGraphToState: RULES_STATE_TRANSITION_GRAPH_TO_STATE,
+        stateTransitionGraphTrigger: RULES_STATE_TRANSITION_GRAPH_TRIGGER,
+        stateTransitionGraphTerminalStatesIncluded: true,
+        stateTransitionGraphNoImplicitFallback: true,
+        stateTransitionGraphReachabilityVerified: true,
+        sourceRef: 'runtime.rules.state_transition_graph',
+        status: 'observed'
+      }
+    ];
+    const dependencyPackages = [
+      createEnemyBossLifecyclePackageContract(),
+      createFeedbackVictoryDeclarationPackageContract(),
+      createHealthPlayerHealthPointsPackageContract(),
+      createRulesRetryCountPackageContract(),
+      createUiFailureRestartPackageContract(),
+      createRulesStateTransitionGraphPackageContract()
+    ];
+    const genericTerminalQaReport = buildSingleCapabilityQaReport({
+      capabilityId: uiWinFailureTransitionsCapabilityId,
+      packageContract: createUiWinFailureTransitionsPackageContract(),
+      dependencyPackages,
+      additionalObserved: dependencyEvidence,
+      eventType: 'game.won',
+      eventTypes: ['game.won', 'game.lost'],
+      probeId: UI_WIN_FAILURE_TRANSITIONS_REQUIRED_PROBE_ID,
+      action: 'verify_terminal_ui_transitions',
+      sourceRef: 'runtime.ui.generic_terminal_events',
+      stateFields: {
+        winFailureTransitionsWinScreenShown: true,
+        winFailureTransitionsFailureScreenShown: true
+      }
+    });
+    const observedTransitionsQaReport = buildSingleCapabilityQaReport({
+      capabilityId: uiWinFailureTransitionsCapabilityId,
+      packageContract: createUiWinFailureTransitionsPackageContract(),
+      dependencyPackages,
+      additionalObserved: dependencyEvidence,
+      eventType: UI_WIN_FAILURE_TRANSITIONS_EVENT_TYPE,
+      eventTypes: ['game.won', 'game.lost', UI_WIN_FAILURE_TRANSITIONS_EVENT_TYPE],
+      probeId: UI_WIN_FAILURE_TRANSITIONS_REQUIRED_PROBE_ID,
+      action: 'verify_terminal_ui_transitions',
+      sourceRef: 'runtime.ui.win_failure_transitions',
+      stateFields: winFailureTransitionsStateFields()
+    });
+    const genericTerminalReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_ui_win_failure_transitions_generic_terminal',
+      capabilityQaReport: genericTerminalQaReport
+    });
+    const observedTransitionsReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_ui_win_failure_transitions_observed_state',
+      capabilityQaReport: observedTransitionsQaReport
+    });
+    const genericTerminalState = genericTerminalReport.capabilities.find((entry) => entry.capabilityId === uiWinFailureTransitionsCapabilityId);
+    const observedTransitionsState = observedTransitionsReport.capabilities.find((entry) => entry.capabilityId === uiWinFailureTransitionsCapabilityId);
+
+    expect(genericTerminalQaReport.requiredResults.find((entry) => entry.probeId === FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericTerminalQaReport.requiredResults.find((entry) => entry.probeId === UI_FAILURE_RESTART_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericTerminalQaReport.requiredResults.find((entry) => entry.probeId === RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericTerminalQaReport.requiredResults.find((entry) => entry.probeId === UI_WIN_FAILURE_TRANSITIONS_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${UI_WIN_FAILURE_TRANSITIONS_REQUIRED_PROBE_ID}.assertion.terminal_ui_transitions_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${UI_WIN_FAILURE_TRANSITIONS_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${UI_WIN_FAILURE_TRANSITIONS_REQUIRED_PROBE_ID}.assertion.terminal_ui_transitions_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected winFailureTransitionsVerified=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${UI_WIN_FAILURE_TRANSITIONS_REQUIRED_PROBE_ID}.assertion.terminal_ui_transitions_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected winFailureTransitionsNoImplicitFallback=true, observed <missing>')
+        })
+      ])
+    });
+    expect(genericTerminalState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [UI_WIN_FAILURE_TRANSITIONS_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedTransitionsState).toMatchObject({
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [UI_WIN_FAILURE_TRANSITIONS_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [UI_WIN_FAILURE_TRANSITIONS_REQUIRED_PROBE_ID],
       missingRequiredProbeIds: [],
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
@@ -6176,6 +6370,24 @@ function failureRestartStateFields(): Record<string, unknown> {
     failureRestartPlayerHealthReset: true,
     failureRestartRetryCountReset: true,
     failureRestartFailureScreenCleared: true
+  };
+}
+
+function winFailureTransitionsStateFields(): Record<string, unknown> {
+  return {
+    winFailureTransitionsVerified: true,
+    winFailureTransitionsSchemaVersion: UI_WIN_FAILURE_TRANSITIONS_SCHEMA_VERSION,
+    winFailureTransitionsProfileId: UI_WIN_FAILURE_TRANSITIONS_PROFILE_ID,
+    winFailureTransitionsRuntimeFamily: UI_WIN_FAILURE_TRANSITIONS_RUNTIME_FAMILY,
+    winFailureTransitionsWinScreenShown: true,
+    winFailureTransitionsWinText: UI_WIN_FAILURE_TRANSITIONS_WIN_TEXT,
+    winFailureTransitionsWinTrigger: UI_WIN_FAILURE_TRANSITIONS_WIN_TRIGGER,
+    winFailureTransitionsFailureScreenShown: true,
+    winFailureTransitionsFailureText: UI_WIN_FAILURE_TRANSITIONS_FAILURE_TEXT,
+    winFailureTransitionsFailureTrigger: UI_WIN_FAILURE_TRANSITIONS_FAILURE_TRIGGER,
+    winFailureTransitionsTerminalStatesDistinct: true,
+    winFailureTransitionsNoImplicitFallback: true,
+    winFailureTransitionsInputLockedOnTerminal: true
   };
 }
 

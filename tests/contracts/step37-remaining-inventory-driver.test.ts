@@ -191,9 +191,9 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     });
 
     expect(report.requiredCapabilityCount).toBe(59);
-    expect(report.registeredCapabilityCount).toBe(53);
+    expect(report.registeredCapabilityCount).toBe(54);
     expect(report.staticCompleteSupportedCount).toBe(0);
-    expect(report.stateCounts.unsupported_unregistered).toBe(6);
+    expect(report.stateCounts.unsupported_unregistered).toBe(5);
     expect(report.committedClosedCapabilityCount).toBe(51);
     expect(report.capabilities.find((item) => item.capabilityId === 'runtime.module_load_receipt.v1')).toMatchObject({
       closedInCommittedHistory: true,

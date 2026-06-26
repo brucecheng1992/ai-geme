@@ -192,6 +192,11 @@ import {
   createUiFailureRestartPackageContract
 } from '../../packages/game-dsl/src/gameplay-capabilities/ui-failure-restart-package.js';
 import {
+  UI_WIN_FAILURE_TRANSITIONS_PACKAGE_REQUIRED_EVIDENCE_ID,
+  UI_WIN_FAILURE_TRANSITIONS_REQUIRED_PROBE_ID,
+  createUiWinFailureTransitionsPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/ui-win-failure-transitions-package.js';
+import {
   UI_HUD_BOSS_HEALTH_PACKAGE_REQUIRED_EVIDENCE_ID,
   UI_HUD_BOSS_HEALTH_REQUIRED_PROBE_ID,
   createUiHudBossHealthPackageContract
@@ -222,6 +227,17 @@ import {
   UI_FAILURE_RESTART_RUNTIME_SYSTEM_ID,
   UI_FAILURE_RESTART_SCHEMA_VERSION
 } from '../../packages/game-dsl/src/gameplay-capabilities/ui-failure-restart-runtime-module.js';
+import {
+  UI_WIN_FAILURE_TRANSITIONS_EVENT_TYPE,
+  UI_WIN_FAILURE_TRANSITIONS_FAILURE_TEXT,
+  UI_WIN_FAILURE_TRANSITIONS_FAILURE_TRIGGER,
+  UI_WIN_FAILURE_TRANSITIONS_PROFILE_ID,
+  UI_WIN_FAILURE_TRANSITIONS_RUNTIME_FAMILY,
+  UI_WIN_FAILURE_TRANSITIONS_RUNTIME_SYSTEM_ID,
+  UI_WIN_FAILURE_TRANSITIONS_SCHEMA_VERSION,
+  UI_WIN_FAILURE_TRANSITIONS_WIN_TEXT,
+  UI_WIN_FAILURE_TRANSITIONS_WIN_TRIGGER
+} from '../../packages/game-dsl/src/gameplay-capabilities/ui-win-failure-transitions-runtime-module.js';
 import {
   UI_HUD_BOSS_HEALTH_CURRENT,
   UI_HUD_BOSS_HEALTH_EVENT_TYPE,
@@ -1480,6 +1496,73 @@ describe('Gameplay capability package contract', () => {
             failureRestartPlayerHealthReset: true,
             failureRestartRetryCountReset: true,
             failureRestartFailureScreenCleared: true
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the UI win/failure transitions package-owned QA contract with terminal UI state evidence', () => {
+    const contract = createUiWinFailureTransitionsPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === UI_WIN_FAILURE_TRANSITIONS_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'ui.win_failure_transitions.v1'
+    });
+    expect(contract.dependencies).toEqual([
+      { capabilityId: 'feedback.victory_declaration.v1', range: '^v1' },
+      { capabilityId: 'ui.failure_restart.v1', range: '^v1' },
+      { capabilityId: 'rules.state_transition_graph.v1', range: '^v1' }
+    ]);
+    expect(contract.runtime.systems).toEqual([
+      expect.objectContaining({
+        id: UI_WIN_FAILURE_TRANSITIONS_RUNTIME_SYSTEM_ID,
+        phase: 'feedback',
+        dependencies: ['feedback.victory_declaration', 'ui.failure_restart', 'rules.state_transition_graph']
+      })
+    ]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: UI_WIN_FAILURE_TRANSITIONS_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'ui.win_failure_transitions.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: UI_WIN_FAILURE_TRANSITIONS_EVENT_TYPE,
+          parameters: expect.objectContaining({
+            winTrigger: UI_WIN_FAILURE_TRANSITIONS_WIN_TRIGGER,
+            failureTrigger: UI_WIN_FAILURE_TRANSITIONS_FAILURE_TRIGGER,
+            winText: UI_WIN_FAILURE_TRANSITIONS_WIN_TEXT,
+            failureText: UI_WIN_FAILURE_TRANSITIONS_FAILURE_TEXT
+          })
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${UI_WIN_FAILURE_TRANSITIONS_REQUIRED_PROBE_ID}.assertion.terminal_ui_transitions_verified`,
+          expected: {
+            winFailureTransitionsVerified: true,
+            winFailureTransitionsSchemaVersion: UI_WIN_FAILURE_TRANSITIONS_SCHEMA_VERSION,
+            winFailureTransitionsProfileId: UI_WIN_FAILURE_TRANSITIONS_PROFILE_ID,
+            winFailureTransitionsRuntimeFamily: UI_WIN_FAILURE_TRANSITIONS_RUNTIME_FAMILY,
+            winFailureTransitionsWinScreenShown: true,
+            winFailureTransitionsWinText: UI_WIN_FAILURE_TRANSITIONS_WIN_TEXT,
+            winFailureTransitionsWinTrigger: UI_WIN_FAILURE_TRANSITIONS_WIN_TRIGGER,
+            winFailureTransitionsFailureScreenShown: true,
+            winFailureTransitionsFailureText: UI_WIN_FAILURE_TRANSITIONS_FAILURE_TEXT,
+            winFailureTransitionsFailureTrigger: UI_WIN_FAILURE_TRANSITIONS_FAILURE_TRIGGER,
+            winFailureTransitionsTerminalStatesDistinct: true,
+            winFailureTransitionsNoImplicitFallback: true,
+            winFailureTransitionsInputLockedOnTerminal: true
           }
         })
       ]

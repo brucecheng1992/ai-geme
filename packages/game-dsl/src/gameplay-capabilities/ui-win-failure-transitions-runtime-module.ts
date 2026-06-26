@@ -1,0 +1,10 @@
+export const UI_WIN_FAILURE_TRANSITIONS_CAPABILITY_ID = 'ui.win_failure_transitions.v1';
+export const UI_WIN_FAILURE_TRANSITIONS_RUNTIME_SYSTEM_ID = 'ui.win_failure_transitions';
+export const UI_WIN_FAILURE_TRANSITIONS_EVENT_TYPE = 'ui.win_failure_transitions.verified';
+export const UI_WIN_FAILURE_TRANSITIONS_PROFILE_ID = 'DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1';
+export const UI_WIN_FAILURE_TRANSITIONS_RUNTIME_FAMILY = 'phaser_2d_action_arcade.v1';
+export const UI_WIN_FAILURE_TRANSITIONS_SCHEMA_VERSION = 'ui_win_failure_transitions.v0.1';
+export const UI_WIN_FAILURE_TRANSITIONS_WIN_TEXT = 'VICTORY';
+export const UI_WIN_FAILURE_TRANSITIONS_FAILURE_TEXT = 'DEFEAT';
+export const UI_WIN_FAILURE_TRANSITIONS_WIN_TRIGGER = 'boss_defeated';
+export const UI_WIN_FAILURE_TRANSITIONS_FAILURE_TRIGGER = 'player_defeated_no_retries';
