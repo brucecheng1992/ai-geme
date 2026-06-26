@@ -33,6 +33,8 @@ export * from './enemy-patrol-infantry-runtime-module.js';
 export * from './enemy-patrol-infantry-package.js';
 export * from './feedback-victory-declaration-runtime-module.js';
 export * from './feedback-victory-declaration-package.js';
+export * from './generation-fallback-policy-fail-closed-runtime-module.js';
+export * from './generation-fallback-policy-fail-closed-package.js';
 export * from './collision-platform-runtime-module.js';
 export * from './collision-platform-package.js';
 export * from './default-straight-single-weapon-runtime-module.js';

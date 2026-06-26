@@ -59,6 +59,10 @@ import {
   FEEDBACK_VICTORY_DECLARATION_TRIGGER,
   FIXED_PROMPT_BINDING_EVENT_TYPE,
   FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
+  GENERATION_FALLBACK_POLICY_FAIL_CLOSED_ERROR_CODE,
+  GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
+  GENERATION_FALLBACK_POLICY_FAIL_CLOSED_POLICY,
+  GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID,
   GenerationTargetProfileRuntimeSupportReportSchema,
   HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID,
   HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
@@ -111,6 +115,7 @@ import {
   createEnemyPatrolInfantryPackageContract,
   createFeedbackVictoryDeclarationPackageContract,
   createFixedPromptBindingPackageContract,
+  createGenerationFallbackPolicyFailClosedPackageContract,
   createHealthDamageInvulnerabilityPackageContract,
   createHealthPlayerHealthPointsPackageContract,
   createMovementCrouchPackageContract,
@@ -140,6 +145,7 @@ const enemyFixedTurretCapabilityId = 'enemy.fixed_turret.v1';
 const enemyFlyingRightEntryCapabilityId = 'enemy.flying_right_entry.v1';
 const enemyPatrolInfantryCapabilityId = 'enemy.patrol_infantry.v1';
 const feedbackVictoryDeclarationCapabilityId = 'feedback.victory_declaration.v1';
+const generationFallbackPolicyFailClosedCapabilityId = 'generation.fallback_policy_fail_closed.v1';
 const cameraCapabilityId = 'camera.side_follow.v1';
 const collisionCapabilityId = 'collision.platform.v1';
 const airborneFireCapabilityId = 'combat.airborne_fire.v1';
@@ -172,6 +178,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE,
       ENEMY_PATROL_INFANTRY_EVENT_TYPE,
       FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
+      GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
       'combat.airborne_fire.fired',
       'player.fired',
       'projectile.spawned',
@@ -207,6 +214,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     const enemyFlyingRightEntry = report.capabilities.find((entry) => entry.capabilityId === enemyFlyingRightEntryCapabilityId);
     const enemyPatrolInfantry = report.capabilities.find((entry) => entry.capabilityId === enemyPatrolInfantryCapabilityId);
     const feedbackVictoryDeclaration = report.capabilities.find((entry) => entry.capabilityId === feedbackVictoryDeclarationCapabilityId);
+    const generationFallbackPolicyFailClosed = report.capabilities.find((entry) => entry.capabilityId === generationFallbackPolicyFailClosedCapabilityId);
     const defaultWeapon = report.capabilities.find((entry) => entry.capabilityId === defaultWeaponCapabilityId);
     const projectile = report.capabilities.find((entry) => entry.capabilityId === projectileCapabilityId);
     const movement = report.capabilities.find((entry) => entry.capabilityId === movementCapabilityId);
@@ -229,7 +237,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 26,
+      observedCompleteSupportedCount: 27,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
@@ -245,6 +253,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         enemyFlyingRightEntryCapabilityId,
         enemyPatrolInfantryCapabilityId,
         feedbackVictoryDeclarationCapabilityId,
+        generationFallbackPolicyFailClosedCapabilityId,
         damageInvulnerabilityCapabilityId,
         healthCapabilityId,
         fixedPromptBindingCapabilityId,
@@ -260,7 +269,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         replacementRuleCapabilityId,
         spreadShotCapabilityId
       ],
-      blockers: ['target_profile_runtime_support_incomplete:26/59']
+      blockers: ['target_profile_runtime_support_incomplete:27/59']
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
       capabilityId: artifactLineageNoManualPatchCapabilityId,
@@ -449,6 +458,17 @@ describe('Step 37 target profile runtime support overlay', () => {
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
     });
+    expect(generationFallbackPolicyFailClosed).toMatchObject({
+      capabilityId: generationFallbackPolicyFailClosedCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
     expect(damageInvulnerability).toMatchObject({
       capabilityId: damageInvulnerabilityCapabilityId,
       runtimeVerified: true,
@@ -563,6 +583,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE,
       ENEMY_PATROL_INFANTRY_EVENT_TYPE,
       FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
+      GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
       'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -605,11 +626,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 25,
+      observedCompleteSupportedCount: 26,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:25/59'
+        'target_profile_runtime_support_incomplete:26/59'
       ]
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
@@ -944,6 +965,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE,
       ENEMY_PATROL_INFANTRY_EVENT_TYPE,
       FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
+      GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
       'combat.airborne_fire.fired',
       'player.fired',
       'projectile.spawned',
@@ -973,11 +995,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 25,
+      observedCompleteSupportedCount: 26,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:25/59'
+        'target_profile_runtime_support_incomplete:26/59'
       ]
     });
     expect(fixedPromptBinding).toMatchObject({
@@ -1001,6 +1023,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE,
       ENEMY_PATROL_INFANTRY_EVENT_TYPE,
       FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
+      GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
       'combat.airborne_fire.fired',
       'player.fired',
       'projectile.spawned',
@@ -1030,11 +1053,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 25,
+      observedCompleteSupportedCount: 26,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:25/59'
+        'target_profile_runtime_support_incomplete:26/59'
       ]
     });
     expect(profileBinding).toMatchObject({
@@ -1085,6 +1108,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE,
       ENEMY_PATROL_INFANTRY_EVENT_TYPE,
       FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
+      GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
       'combat.airborne_fire.fired',
       'player.fired',
       'projectile.spawned',
@@ -1127,7 +1151,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 25,
+      observedCompleteSupportedCount: 26,
       targetProfileCompleteSupported: false,
       observedCapabilityIds: [
         artifactLineageNoManualPatchCapabilityId,
@@ -1142,6 +1166,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         enemyFlyingRightEntryCapabilityId,
         enemyPatrolInfantryCapabilityId,
         feedbackVictoryDeclarationCapabilityId,
+        generationFallbackPolicyFailClosedCapabilityId,
         healthCapabilityId,
         fixedPromptBindingCapabilityId,
         crouchCapabilityId,
@@ -1158,7 +1183,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ],
       blockers: [
         `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:25/59'
+        'target_profile_runtime_support_incomplete:26/59'
       ]
     });
     expect(damageInvulnerability).toMatchObject({
@@ -1183,6 +1208,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE,
       ENEMY_PATROL_INFANTRY_EVENT_TYPE,
       FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
+      GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
       'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -1228,11 +1254,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 25,
+      observedCompleteSupportedCount: 26,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:25/59'
+        'target_profile_runtime_support_incomplete:26/59'
       ]
     });
     expect(pickup).toMatchObject({
@@ -1257,6 +1283,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE,
       ENEMY_PATROL_INFANTRY_EVENT_TYPE,
       FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
+      GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
       'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -1299,11 +1326,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 25,
+      observedCompleteSupportedCount: 26,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:25/59'
+        'target_profile_runtime_support_incomplete:26/59'
       ]
     });
     expect(spawnEnemyWave).toMatchObject({
@@ -1328,6 +1355,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE,
         ENEMY_PATROL_INFANTRY_EVENT_TYPE,
         FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
+        GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
         'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -1375,11 +1403,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 25,
+      observedCompleteSupportedCount: 26,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:25/59'
+        'target_profile_runtime_support_incomplete:26/59'
       ]
     });
     expect(flyingRightEntry).toMatchObject({
@@ -1404,6 +1432,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE,
         ENEMY_PATROL_INFANTRY_EVENT_TYPE,
         FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
+        GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
         'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -1451,11 +1480,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 25,
+      observedCompleteSupportedCount: 26,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:25/59'
+        'target_profile_runtime_support_incomplete:26/59'
       ]
     });
     expect(patrolInfantry).toMatchObject({
@@ -1480,6 +1509,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE,
         ENEMY_PATROL_INFANTRY_EVENT_TYPE,
         FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
+        GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
         'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -1529,11 +1559,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 25,
+      observedCompleteSupportedCount: 26,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:25/59'
+        'target_profile_runtime_support_incomplete:26/59'
       ]
     });
     expect(victoryDeclaration).toMatchObject({
@@ -1542,6 +1572,90 @@ describe('Step 37 target profile runtime support overlay', () => {
       verifiedRequiredProbeIds: [],
       missingRequiredProbeIds: [FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID],
       observedEvidenceDimensions: { qa_observed: false }
+    });
+  });
+
+  it('keeps generation fallback policy unverified when generic generation evidence lacks fail-closed state proof', () => {
+    const genericReceiptQaReport = buildSingleCapabilityQaReport({
+      capabilityId: generationFallbackPolicyFailClosedCapabilityId,
+      packageContract: createGenerationFallbackPolicyFailClosedPackageContract(),
+      eventType: 'generation.completed',
+      probeId: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID,
+      action: 'verify_fail_closed_policy',
+      sourceRef: 'generation.path.generic_receipt',
+      stateFields: undefined
+    });
+    const observedPolicyQaReport = buildSingleCapabilityQaReport({
+      capabilityId: generationFallbackPolicyFailClosedCapabilityId,
+      packageContract: createGenerationFallbackPolicyFailClosedPackageContract(),
+      eventType: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
+      probeId: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID,
+      action: 'verify_fail_closed_policy',
+      sourceRef: 'generation.path.fail_closed_policy',
+      stateFields: {
+        fallbackPolicy: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_POLICY,
+        fallbackPolicyVerified: true,
+        undeclaredFallbackDetected: false,
+        fallbackOutputGenerated: false,
+        fallbackFailureCode: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_ERROR_CODE
+      }
+    });
+    const genericReceiptReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_generation_fallback_missing_state',
+      capabilityQaReport: genericReceiptQaReport
+    });
+    const observedPolicyReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_generation_fallback_observed_state',
+      capabilityQaReport: observedPolicyQaReport
+    });
+    const genericReceiptState = genericReceiptReport.capabilities.find((entry) => entry.capabilityId === generationFallbackPolicyFailClosedCapabilityId);
+    const observedPolicyState = observedPolicyReport.capabilities.find((entry) => entry.capabilityId === generationFallbackPolicyFailClosedCapabilityId);
+
+    expect(genericReceiptQaReport.requiredResults.find((entry) => entry.probeId === GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID}.assertion.fail_closed_policy`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID}.assertion.fail_closed_policy`,
+          status: 'failed',
+          message: expect.stringContaining(`expected fallbackPolicy=${GENERATION_FALLBACK_POLICY_FAIL_CLOSED_POLICY}, observed <missing>`)
+        })
+      ])
+    });
+    expect(genericReceiptReport).toMatchObject({
+      observedCompleteSupportedCount: 0,
+      blockers: [
+        `capability_qa_report_missing_required_probe:${GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID}`,
+        'target_profile_runtime_support_incomplete:0/59'
+      ]
+    });
+    expect(genericReceiptState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedPolicyReport).toMatchObject({
+      observedCompleteSupportedCount: 1,
+      observedCapabilityIds: [generationFallbackPolicyFailClosedCapabilityId],
+      blockers: ['target_profile_runtime_support_incomplete:1/59']
+    });
+    expect(observedPolicyState).toMatchObject({
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
     });
   });
 
@@ -1558,6 +1672,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE,
         ENEMY_PATROL_INFANTRY_EVENT_TYPE,
         FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
+        GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
         'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -1600,11 +1715,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 25,
+      observedCompleteSupportedCount: 26,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:25/59'
+        'target_profile_runtime_support_incomplete:26/59'
       ]
     });
     expect(deathReset).toMatchObject({
@@ -1629,6 +1744,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE,
         ENEMY_PATROL_INFANTRY_EVENT_TYPE,
         FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
+        GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
         'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -1671,11 +1787,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 25,
+      observedCompleteSupportedCount: 26,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:25/59'
+        'target_profile_runtime_support_incomplete:26/59'
       ]
     });
     expect(rapidFire).toMatchObject({
@@ -1700,6 +1816,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE,
         ENEMY_PATROL_INFANTRY_EVENT_TYPE,
         FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
+        GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
         'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -1742,11 +1859,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 25,
+      observedCompleteSupportedCount: 26,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:25/59'
+        'target_profile_runtime_support_incomplete:26/59'
       ]
     });
     expect(spreadShot).toMatchObject({
@@ -1771,6 +1888,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE,
         ENEMY_PATROL_INFANTRY_EVENT_TYPE,
         FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
+        GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
         'combat.airborne_fire.fired',
         'player.fired',
         'projectile.spawned',
@@ -1813,11 +1931,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 25,
+      observedCompleteSupportedCount: 26,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:25/59'
+        'target_profile_runtime_support_incomplete:26/59'
       ]
     });
     expect(replacementRule).toMatchObject({
@@ -1843,6 +1961,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       `capability_qa_report_missing_required_probe:${ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID}`,
@@ -1872,6 +1991,7 @@ function buildDefaultWeaponQaReport(
     enemyFlyingRightEntryStateFields?: boolean;
     enemyPatrolInfantryStateFields?: boolean;
     feedbackVictoryDeclarationStateFields?: boolean;
+    generationFallbackPolicyFailClosedStateFields?: boolean;
     pickupStateFields?: boolean;
     spawnEnemyWaveOrderedFields?: boolean;
     weaponDeathResetStateFields?: boolean;
@@ -2061,6 +2181,28 @@ function buildDefaultWeaponQaReport(
                 }),
             status: 'observed' as const,
             sourceRef: 'runtime.feedback.victory_declaration'
+          }
+        ]
+      : []),
+    ...(eventTypes.includes(GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE)
+      ? [
+          {
+            capabilityId: generationFallbackPolicyFailClosedCapabilityId,
+            probeId: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID,
+            action: 'verify_fail_closed_policy',
+            eventType: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
+            eventTypes,
+            ...(options.generationFallbackPolicyFailClosedStateFields === false
+              ? {}
+              : {
+                  fallbackPolicy: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_POLICY,
+                  fallbackPolicyVerified: true,
+                  undeclaredFallbackDetected: false,
+                  fallbackOutputGenerated: false,
+                  fallbackFailureCode: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_ERROR_CODE
+                }),
+            status: 'observed' as const,
+            sourceRef: 'generation.path.fail_closed_policy'
           }
         ]
       : []),
@@ -2427,6 +2569,7 @@ function buildDefaultWeaponQaPlan() {
     createEnemyFlyingRightEntryPackageContract(),
     createEnemyPatrolInfantryPackageContract(),
     createFeedbackVictoryDeclarationPackageContract(),
+    createGenerationFallbackPolicyFailClosedPackageContract(),
     createCameraSideFollowPackageContract(),
     createCollisionPlatformPackageContract(),
     createCombatAirborneFirePackageContract(),
@@ -2456,6 +2599,7 @@ function buildDefaultWeaponQaPlan() {
       enemyFlyingRightEntryCapabilityId,
       enemyPatrolInfantryCapabilityId,
       feedbackVictoryDeclarationCapabilityId,
+      generationFallbackPolicyFailClosedCapabilityId,
       cameraCapabilityId,
       collisionCapabilityId,
       airborneFireCapabilityId,

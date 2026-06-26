@@ -58,6 +58,10 @@ import {
   createFeedbackVictoryDeclarationPackageContract
 } from './feedback-victory-declaration-package.js';
 import {
+  GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID,
+  createGenerationFallbackPolicyFailClosedPackageContract
+} from './generation-fallback-policy-fail-closed-package.js';
+import {
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   createCameraSideFollowPackageContract
 } from './camera-side-follow-package.js';
@@ -167,6 +171,7 @@ export const GAMEPLAY_CAPABILITY_DOMAINS = [
   'combat',
   'enemy',
   'feedback',
+  'generation',
   'goal',
   'hazard',
   'health',
@@ -614,6 +619,19 @@ const feedbackVictoryDeclarationPackageEvidence: GameplayCapabilityEvidence = fe
 const feedbackVictoryDeclarationPackageQa: GameplayCapabilityQaEvidence = feedbackVictoryDeclarationPackageReport.supportEligible
   ? { requiredProbeIds: [FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const generationFallbackPolicyFailClosedPackageReport = validateGameplayCapabilityPackage(createGenerationFallbackPolicyFailClosedPackageContract());
+const generationFallbackPolicyFailClosedPackageEvidence: GameplayCapabilityEvidence = generationFallbackPolicyFailClosedPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const generationFallbackPolicyFailClosedPackageQa: GameplayCapabilityQaEvidence = generationFallbackPolicyFailClosedPackageReport.supportEligible
+  ? { requiredProbeIds: [GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const cameraSideFollowPackageReport = validateGameplayCapabilityPackage(createCameraSideFollowPackageContract());
 const cameraSideFollowPackageEvidence: GameplayCapabilityEvidence = cameraSideFollowPackageReport.supportEligible
   ? {
@@ -954,6 +972,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     feedbackVictoryDeclarationPackageEvidence,
     feedbackVictoryDeclarationPackageQa
+  ),
+  planned(
+    'generation.fallback_policy_fail_closed.v1',
+    'generation',
+    'Generation fallback fail-closed policy',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    generationFallbackPolicyFailClosedPackageEvidence,
+    generationFallbackPolicyFailClosedPackageQa
   ),
   runtimeBacked('camera.top_down_follow.v1', 'camera', 'Top-down follow camera', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], ['top_down_camera']),
   runtimeBacked('movement.eight_direction.v1', 'movement', 'Eight-direction movement', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], [

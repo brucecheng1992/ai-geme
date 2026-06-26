@@ -201,6 +201,11 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   victoryDeclarationTrigger?: string;
   victoryDeclarationOutcome?: string;
   victoryDeclarationObjectiveCompleted?: boolean;
+  fallbackPolicy?: string;
+  fallbackPolicyVerified?: boolean;
+  undeclaredFallbackDetected?: boolean;
+  fallbackOutputGenerated?: boolean;
+  fallbackFailureCode?: string;
   status?: string;
   sourceRef?: string;
 };
@@ -527,7 +532,12 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedStringField('victoryDeclarationText', expected, observed.victoryDeclarationText),
     ...compareExpectedStringField('victoryDeclarationTrigger', expected, observed.victoryDeclarationTrigger),
     ...compareExpectedStringField('victoryDeclarationOutcome', expected, observed.victoryDeclarationOutcome),
-    ...compareExpectedBooleanField('victoryDeclarationObjectiveCompleted', expected, observed.victoryDeclarationObjectiveCompleted)
+    ...compareExpectedBooleanField('victoryDeclarationObjectiveCompleted', expected, observed.victoryDeclarationObjectiveCompleted),
+    ...compareExpectedStringField('fallbackPolicy', expected, observed.fallbackPolicy),
+    ...compareExpectedBooleanField('fallbackPolicyVerified', expected, observed.fallbackPolicyVerified),
+    ...compareExpectedBooleanField('undeclaredFallbackDetected', expected, observed.undeclaredFallbackDetected),
+    ...compareExpectedBooleanField('fallbackOutputGenerated', expected, observed.fallbackOutputGenerated),
+    ...compareExpectedStringField('fallbackFailureCode', expected, observed.fallbackFailureCode)
   ];
 }
 

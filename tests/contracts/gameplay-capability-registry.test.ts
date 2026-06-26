@@ -25,6 +25,7 @@ import {
   ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID,
   ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID,
   FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID,
+  GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID,
   MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
@@ -95,6 +96,10 @@ describe('Gameplay capability registry', () => {
       legacyRuntimeCapabilities: []
     });
     expect(findGameplayCapability('feedback.victory_declaration.v1')).toMatchObject({
+      status: 'planned',
+      legacyRuntimeCapabilities: []
+    });
+    expect(findGameplayCapability('generation.fallback_policy_fail_closed.v1')).toMatchObject({
       status: 'planned',
       legacyRuntimeCapabilities: []
     });
@@ -591,6 +596,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(victoryDeclaration)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(victoryDeclaration)).toBe(false);
+  });
+
+  it('scopes generation fallback fail-closed package-owned QA without static support promotion', () => {
+    const fallbackPolicy = findGameplayCapability('generation.fallback_policy_fail_closed.v1');
+
+    if (fallbackPolicy === undefined) {
+      throw new Error('Expected generation.fallback_policy_fail_closed.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(fallbackPolicy)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(fallbackPolicy.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(fallbackPolicy.qa).toEqual({
+      requiredProbeIds: [GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(fallbackPolicy)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(fallbackPolicy)).toBe(false);
   });
 
   it('scopes weapon rapid fire package-owned QA without static support promotion', () => {

@@ -187,6 +187,17 @@ import {
   FEEDBACK_VICTORY_DECLARATION_TRIGGER
 } from '../../packages/game-dsl/src/gameplay-capabilities/feedback-victory-declaration-runtime-module.js';
 import {
+  GENERATION_FALLBACK_POLICY_FAIL_CLOSED_PACKAGE_REQUIRED_EVIDENCE_ID,
+  GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID,
+  createGenerationFallbackPolicyFailClosedPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/generation-fallback-policy-fail-closed-package.js';
+import {
+  GENERATION_FALLBACK_POLICY_FAIL_CLOSED_ERROR_CODE,
+  GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
+  GENERATION_FALLBACK_POLICY_FAIL_CLOSED_POLICY,
+  GENERATION_FALLBACK_POLICY_FAIL_CLOSED_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/generation-fallback-policy-fail-closed-runtime-module.js';
+import {
   COLLISION_PLATFORM_PACKAGE_REQUIRED_EVIDENCE_ID,
   COLLISION_PLATFORM_REQUIRED_PROBE_ID,
   createCollisionPlatformPackageContract
@@ -1079,6 +1090,60 @@ describe('Gameplay capability package contract', () => {
             victoryDeclarationTrigger: FEEDBACK_VICTORY_DECLARATION_TRIGGER,
             victoryDeclarationOutcome: FEEDBACK_VICTORY_DECLARATION_OUTCOME,
             victoryDeclarationObjectiveCompleted: true
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the generation fallback fail-closed package-owned QA contract', () => {
+    const contract = createGenerationFallbackPolicyFailClosedPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'generation.fallback_policy_fail_closed.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([GENERATION_FALLBACK_POLICY_FAIL_CLOSED_RUNTIME_SYSTEM_ID]);
+    expect(contract.render.fallbackPolicy).toBe('not_applicable');
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'generation.fallback_policy_fail_closed.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
+          parameters: expect.objectContaining({
+            source: 'generation_path_receipt',
+            fallbackPolicy: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_POLICY
+          })
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_RUNTIME_SYSTEM_ID,
+          ref: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID}.assertion.fail_closed_policy`,
+          expected: {
+            fallbackPolicy: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_POLICY,
+            fallbackPolicyVerified: true,
+            undeclaredFallbackDetected: false,
+            fallbackOutputGenerated: false,
+            fallbackFailureCode: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_ERROR_CODE
           }
         })
       ]

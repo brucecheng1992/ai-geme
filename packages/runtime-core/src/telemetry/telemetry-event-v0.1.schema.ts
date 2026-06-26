@@ -21,6 +21,7 @@ export const TelemetryEventTypeSchema = z.enum([
   'enemy.flying_right_entry.verified',
   'enemy.patrol_infantry.verified',
   'feedback.victory_declaration.verified',
+  'generation.fallback_policy_fail_closed.verified',
   'hazard.spawned',
   'player.damaged',
   'health.damage_invulnerability.activated',

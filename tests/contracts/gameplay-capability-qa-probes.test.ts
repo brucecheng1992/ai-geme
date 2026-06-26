@@ -94,6 +94,11 @@ import {
   FEEDBACK_VICTORY_DECLARATION_TEXT,
   FEEDBACK_VICTORY_DECLARATION_TRIGGER,
   createFeedbackVictoryDeclarationPackageContract,
+  GENERATION_FALLBACK_POLICY_FAIL_CLOSED_ERROR_CODE,
+  GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
+  GENERATION_FALLBACK_POLICY_FAIL_CLOSED_POLICY,
+  GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID,
+  createGenerationFallbackPolicyFailClosedPackageContract,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
@@ -2100,6 +2105,89 @@ describe('Capability-owned runtime QA probes', () => {
       ])
     );
     expect(observedDeclarationState.status).toBe('passed');
+  });
+
+  it('does not verify generation fallback fail-closed when generic generation receipt lacks policy state fields', () => {
+    const capabilityId = 'generation.fallback_policy_fail_closed.v1';
+    const probeId = GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID;
+    const packages = [createGenerationFallbackPolicyFailClosedPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const genericGenerationReceipt = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_fail_closed_policy',
+              eventType: 'generation.completed',
+              eventTypes: ['generation.completed', 'model.unavailable'],
+              sourceRef: 'generation.path.generic_receipt',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedFailClosedPolicy = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_fail_closed_policy',
+              eventType: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
+              eventTypes: [GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE, 'model.unavailable'],
+              fallbackPolicy: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_POLICY,
+              fallbackPolicyVerified: true,
+              undeclaredFallbackDetected: false,
+              fallbackOutputGenerated: false,
+              fallbackFailureCode: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_ERROR_CODE,
+              sourceRef: 'generation.path.fail_closed_policy',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericGenerationReceipt.status).toBe('failed');
+    expect(genericGenerationReceipt.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericGenerationReceipt.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.fail_closed_policy`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.fail_closed_policy`,
+          status: 'failed',
+          message: expect.stringContaining(`expected fallbackPolicy=${GENERATION_FALLBACK_POLICY_FAIL_CLOSED_POLICY}, observed <missing>`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.fail_closed_policy`,
+          status: 'failed',
+          message: expect.stringContaining('expected undeclaredFallbackDetected=false, observed <missing>')
+        })
+      ])
+    );
+    expect(observedFailClosedPolicy.status).toBe('passed');
   });
 });
 
