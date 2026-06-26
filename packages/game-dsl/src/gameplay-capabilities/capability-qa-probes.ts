@@ -236,6 +236,7 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   sceneVisualPresentationColorDepthBits?: number;
   sceneVisualPresentationOriginalityPolicy?: string;
   sceneVisualPresentationAssetPlanBound?: boolean;
+  sceneVisualPresentationTemplateParamsBound?: boolean;
   sceneVisualPresentationNoProtectedReuse?: boolean;
   encounterGateClosedEntrance?: boolean;
   encounterGateGateId?: string;
@@ -808,6 +809,7 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedNumberField('sceneVisualPresentationColorDepthBits', expected, observed.sceneVisualPresentationColorDepthBits),
     ...compareExpectedStringField('sceneVisualPresentationOriginalityPolicy', expected, observed.sceneVisualPresentationOriginalityPolicy),
     ...compareExpectedBooleanField('sceneVisualPresentationAssetPlanBound', expected, observed.sceneVisualPresentationAssetPlanBound),
+    ...compareExpectedBooleanField('sceneVisualPresentationTemplateParamsBound', expected, observed.sceneVisualPresentationTemplateParamsBound),
     ...compareExpectedBooleanField('sceneVisualPresentationNoProtectedReuse', expected, observed.sceneVisualPresentationNoProtectedReuse),
     ...compareExpectedBooleanField('encounterGateClosedEntrance', expected, observed.encounterGateClosedEntrance),
     ...compareExpectedStringField('encounterGateGateId', expected, observed.encounterGateGateId),

@@ -6187,7 +6187,14 @@ user_input_required=false
 next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
 candidate_skill_revision_type=sha256_bundle
 candidate_skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
-candidate_skill_revision=e17aa1ac2f125a16af87ceaf371d5a8b73caac682cdaa2410b4b2e55dbf1b783
+candidate_skill_revision=97ddde4b80b3e2afcb5ffd93b45dc76b30065c644edec6bcea2df59cedd4eb70
+previous_recorded_skill_revision=e17aa1ac2f125a16af87ceaf371d5a8b73caac682cdaa2410b4b2e55dbf1b783
+current_active_skill_revision=97ddde4b80b3e2afcb5ffd93b45dc76b30065c644edec6bcea2df59cedd4eb70
+skill_freshness_status=aligned_after_revalidation
+superseded_candidate_commit_sha=57c674cf9284b6d78d952384e030b8f76b8a67e0
+superseded_candidate_oracle_status=changes_required
+superseded_candidate_oracle_p1=sceneVisualPresentationTemplateParamsBound missing from required QA state contract
+p1_remediation_status=landed_and_locally_validated
 ```
 
 `scene.visual_presentation_metadata.v1` was selected by the Parent Loop Driver after the `scene.ordered_segments.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
@@ -6197,8 +6204,8 @@ Minimum closure requirements:
 1. Add a package-owned scene visual-presentation metadata contract with stable capability identity, runtime system identity, visual metadata verification event identity, required probe id, and required QA evidence id.
 2. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
 3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
-4. Prove same-run runtime overlay observes `scene.visual_presentation_metadata.v1` only when package-owned evidence proves the 16-bit pixel style fields, asset-plan/template binding, and no protected reuse.
-5. Require state fields: `sceneVisualPresentationMetadataVerified`, `sceneVisualPresentationStyleId`, `sceneVisualPresentationStyleLabel`, `sceneVisualPresentationPixelArt`, `sceneVisualPresentationColorDepthBits`, `sceneVisualPresentationOriginalityPolicy`, `sceneVisualPresentationAssetPlanBound`, and `sceneVisualPresentationNoProtectedReuse`.
+4. Prove same-run runtime overlay observes `scene.visual_presentation_metadata.v1` only when package-owned evidence proves the 16-bit pixel style fields, asset-plan binding, template params binding, and no protected reuse.
+5. Require state fields: `sceneVisualPresentationMetadataVerified`, `sceneVisualPresentationStyleId`, `sceneVisualPresentationStyleLabel`, `sceneVisualPresentationPixelArt`, `sceneVisualPresentationColorDepthBits`, `sceneVisualPresentationOriginalityPolicy`, `sceneVisualPresentationAssetPlanBound`, `sceneVisualPresentationTemplateParamsBound`, and `sceneVisualPresentationNoProtectedReuse`.
 6. Add negative regressions proving generic visual-theme events or package-owned events without those state fields keep the capability unverified and emit the required missing-probe blocker.
 7. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
 
@@ -6226,7 +6233,7 @@ Evidence/probe chain:
 - Runtime module identity: `SCENE_VISUAL_PRESENTATION_METADATA_RUNTIME_SYSTEM_ID=scene.visual_presentation_metadata`.
 - Visual metadata verification event: `SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE=scene.visual_presentation_metadata.verified`.
 - Required probe: `SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID=scene.visual_presentation_metadata.v1.verify_visual_metadata.browser_qa.v1`.
-- Required state fields: `sceneVisualPresentationMetadataVerified`, `sceneVisualPresentationSchemaVersion`, `sceneVisualPresentationProfileId`, `sceneVisualPresentationRuntimeFamily`, `sceneVisualPresentationStyleId`, `sceneVisualPresentationStyleLabel`, `sceneVisualPresentationPixelArt`, `sceneVisualPresentationColorDepthBits`, `sceneVisualPresentationOriginalityPolicy`, `sceneVisualPresentationAssetPlanBound`, and `sceneVisualPresentationNoProtectedReuse`.
+- Required state fields: `sceneVisualPresentationMetadataVerified`, `sceneVisualPresentationSchemaVersion`, `sceneVisualPresentationProfileId`, `sceneVisualPresentationRuntimeFamily`, `sceneVisualPresentationStyleId`, `sceneVisualPresentationStyleLabel`, `sceneVisualPresentationPixelArt`, `sceneVisualPresentationColorDepthBits`, `sceneVisualPresentationOriginalityPolicy`, `sceneVisualPresentationAssetPlanBound`, `sceneVisualPresentationTemplateParamsBound`, and `sceneVisualPresentationNoProtectedReuse`.
 - QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares the visual metadata state fields and fails the required probe when any field is missing or mismatched.
 - Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for the same run; it does not mutate static `completeSupported`.
 
@@ -6234,10 +6241,10 @@ Compatibility & Cutover:
 
 | Check | Required answer |
 | --- | --- |
-| Producer change | Adds a package-owned scene visual-presentation metadata capability contract, runtime system identity, visual metadata event, required probe id, required evidence id, and runtime evidence fields for 16-bit pixel style, asset-plan/template binding, and no protected reuse. |
+| Producer change | Adds a package-owned scene visual-presentation metadata capability contract, runtime system identity, visual metadata event, required probe id, required evidence id, and runtime evidence fields for 16-bit pixel style, asset-plan binding, template params binding, and no protected reuse. |
 | Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, Step37 remaining-inventory driver, telemetry/event freeze contract. |
-| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves the 16-bit visual metadata fields and downstream binding state. |
-| Authority | Package-owned QA evidence defines the capability authority: generic visual-theme metadata is insufficient unless evidence also proves `sceneVisualPresentationStyleId=sixteen_bit_pixel`, `sceneVisualPresentationColorDepthBits=16`, `sceneVisualPresentationAssetPlanBound=true`, and `sceneVisualPresentationNoProtectedReuse=true`. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves the 16-bit visual metadata fields, asset-plan binding, template params binding, and downstream originality policy state. |
+| Authority | Package-owned QA evidence defines the capability authority: generic visual-theme metadata is insufficient unless evidence also proves `sceneVisualPresentationStyleId=sixteen_bit_pixel`, `sceneVisualPresentationColorDepthBits=16`, `sceneVisualPresentationAssetPlanBound=true`, `sceneVisualPresentationTemplateParamsBound=true`, and `sceneVisualPresentationNoProtectedReuse=true`. |
 | Legacy strategy | Existing natural-language style prompts, generic profile metadata, or visual-theme strings remain non-authoritative for this capability unless the required package-owned probe evidence is present. |
 | Failure policy | Missing package contract, missing visual metadata event, missing state fields, wrong capability/probe identity, or stale evidence keeps `qa_observed=false` and fails closed as missing required probe evidence. |
 | Evidence | Focused contracts prove package validation, registry support advancement without complete support, QA reader positive/negative visual metadata field behavior, target-profile overlay positive/negative behavior, remaining-inventory selection, and event/schema freeze coverage. |
@@ -6275,6 +6282,16 @@ command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-pack
 exitCode=0
 duration=real 1.86s
 result=PASS: 8 files / 268 tests
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/step37-closure-implementation-trace.test.ts
+exitCode=0
+duration=real 1.68s
+result=PASS: P1 remediation focused subset; template params binding is required by package expected fields, QA reader comparison, QA probe negative coverage, and target-profile negative coverage.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-focused-validation.test.ts
+exitCode=0
+duration=real 2.08s
+result=PASS: P1 remediation complete focused set; 11 files / 329 tests
 ```
 
 Focused set selection:
@@ -6296,37 +6313,107 @@ exitCode=0
 duration=real 9.26s
 result=PASS: 98 files / 1294 tests
 
+command=/usr/bin/time -p npx vitest run tests/contracts
+exitCode=0
+duration=real 9.19s
+result=PASS: P1 remediation full contracts; 98 files / 1294 tests
+
 command=/usr/bin/time -p npm test
 exitCode=0
 duration=real 59.15s
 result=PASS: contracts 98 files / 1294 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 59.03s
+result=PASS: P1 remediation full test; contracts 98 files / 1294 tests; workspace 34 files / 410 tests
 
 command=/usr/bin/time -p npm run typecheck
 exitCode=0
 duration=real 6.62s
 result=PASS
 
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.91s
+result=PASS: P1 remediation typecheck
+
 command=/usr/bin/time -p git diff --check
 exitCode=0
 duration=real 0.02s
 result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.02s
+result=PASS: P1 remediation diff check
 
 command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
 exitCode=0
 duration=real 0.05s
 result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_roots=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery; skill_file_count=8; skill_bundle_digest=e17aa1ac2f125a16af87ceaf371d5a8b73caac682cdaa2410b4b2e55dbf1b783.
 
+command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
+exitCode=0
+duration=real 0.06s
+result=PASS: P1 remediation Skill freshness; skill_bundle_digest=e17aa1ac2f125a16af87ceaf371d5a8b73caac682cdaa2410b4b2e55dbf1b783.
+
 command=/usr/bin/time -p npx tsx "<scene.visual_presentation_metadata.v1 support summary and remaining inventory>"
 exitCode=0
 duration=real 0.53s
 result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=46; unsupported_unregistered=13; committedClosedCapabilityCount=45; scene.visual_presentation_metadata.v1 classification=DEFERRED; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false; remaining next_checkpoint_id=stage4.scene_visual_presentation_metadata_v1.complete_supported_package_slice.
+
+command=/usr/bin/time -p npx tsx "<scene.visual_presentation_metadata.v1 support summary and remaining inventory>"
+exitCode=0
+duration=real 0.58s
+result=PASS: P1 remediation inventory alignment; next_checkpoint_id=stage4.scene_visual_presentation_metadata_v1.complete_supported_package_slice; selectionFailure=null; registeredCapabilityCount=46; unsupported_unregistered=13.
 ```
 
 Post-record validation requirement:
 
 - This closure record changes the final tree. Before creating the immutable candidate commit, focused closure contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, final diff range check, capability support / inventory alignment, Parent Loop inventory alignment, and Skill freshness must be re-run or explicitly recorded as fresh for the final tree.
 - Candidate commit must not write its own SHA into this candidate record.
-- Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=e17aa1ac2f125a16af87ceaf371d5a8b73caac682cdaa2410b4b2e55dbf1b783`.
+- Active Skill freshness changed after the earlier local validation record: the previous recorded bundle digest was `e17aa1ac2f125a16af87ceaf371d5a8b73caac682cdaa2410b4b2e55dbf1b783`, while the current active Skill bundle digest computed from the same `step37_manifest_v1_path_type_size_mode_sha_symlink` protocol is `97ddde4b80b3e2afcb5ffd93b45dc76b30065c644edec6bcea2df59cedd4eb70`. The older validation evidence is therefore stale for candidate creation until the full gate set is re-run against this updated repo tree and Skill revision.
+
+Final validation after active Skill revision sync:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-focused-validation.test.ts
+exitCode=0
+duration=real 2.08s
+result=PASS: focused package/QA/registry/target-profile/schema-freeze/closure/parent-loop set; 11 files / 329 tests
+
+command=/usr/bin/time -p npx vitest run tests/contracts
+exitCode=0
+duration=real 9.26s
+result=PASS: full contracts; 98 files / 1294 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 58.96s
+result=PASS: contracts 98 files / 1294 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.68s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.03s
+result=PASS
+
+command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
+exitCode=0
+duration=real 0.06s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_file_count=8; computed_skill_bundle_digest=97ddde4b80b3e2afcb5ffd93b45dc76b30065c644edec6bcea2df59cedd4eb70; aligned=true.
+
+command=/usr/bin/time -p npx tsx --eval "<scene.visual_presentation_metadata.v1 support summary and remaining inventory>"
+exitCode=0
+duration=real 0.56s
+result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=46; staticCompleteSupportedCount=0; committedClosedCapabilityCount=45; unsupported_unregistered=13; next_checkpoint_id=stage4.scene_visual_presentation_metadata_v1.complete_supported_package_slice; selectionFailure=null; scene.visual_presentation_metadata.v1 classification=DEFERRED; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false.
+```
+- Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=97ddde4b80b3e2afcb5ffd93b45dc76b30065c644edec6bcea2df59cedd4eb70`.
 - `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
 
 ## Stage 4 Implementation: `scene.ordered_segments.v1` complete-supported package slice

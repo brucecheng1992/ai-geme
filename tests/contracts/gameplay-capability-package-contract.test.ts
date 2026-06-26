@@ -2193,6 +2193,7 @@ describe('Gameplay capability package contract', () => {
             sceneVisualPresentationColorDepthBits: SCENE_VISUAL_PRESENTATION_METADATA_COLOR_DEPTH_BITS,
             sceneVisualPresentationOriginalityPolicy: SCENE_VISUAL_PRESENTATION_METADATA_ORIGINALITY_POLICY,
             sceneVisualPresentationAssetPlanBound: true,
+            sceneVisualPresentationTemplateParamsBound: true,
             sceneVisualPresentationNoProtectedReuse: true
           }
         })

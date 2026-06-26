@@ -233,6 +233,7 @@ import {
   SCENE_VISUAL_PRESENTATION_METADATA_RUNTIME_FAMILY,
   SCENE_VISUAL_PRESENTATION_METADATA_SCHEMA_VERSION,
   SCENE_VISUAL_PRESENTATION_METADATA_STYLE_ID,
+  SCENE_VISUAL_PRESENTATION_METADATA_STYLE_LABEL,
   createSceneVisualPresentationMetadataPackageContract,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
@@ -4837,6 +4838,23 @@ describe('Capability-owned runtime QA probes', () => {
         }
       })
     });
+    const visualMetadataWithoutTemplateParams = sceneVisualPresentationMetadataObserved({
+      capabilityId,
+      probeId
+    });
+    delete visualMetadataWithoutTemplateParams.sceneVisualPresentationTemplateParamsBound;
+    const missingTemplateBinding = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [visualMetadataWithoutTemplateParams],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
     const observedVisualMetadata = evaluateCapabilityQaReport({
       plan,
       probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
@@ -4877,6 +4895,16 @@ describe('Capability-owned runtime QA probes', () => {
           assertionId: `${probeId}.assertion.visual_metadata`,
           status: 'failed',
           message: expect.stringContaining(`expected sceneVisualPresentationStyleId=${SCENE_VISUAL_PRESENTATION_METADATA_STYLE_ID}`)
+        })
+      ])
+    );
+    expect(missingTemplateBinding.status).toBe('failed');
+    expect(missingTemplateBinding.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.visual_metadata`,
+          status: 'failed',
+          message: expect.stringContaining('expected sceneVisualPresentationTemplateParamsBound=true, observed <missing>')
         })
       ])
     );
@@ -4999,11 +5027,12 @@ function sceneVisualPresentationMetadataObserved(
     sceneVisualPresentationProfileId: SCENE_VISUAL_PRESENTATION_METADATA_PROFILE_ID,
     sceneVisualPresentationRuntimeFamily: SCENE_VISUAL_PRESENTATION_METADATA_RUNTIME_FAMILY,
     sceneVisualPresentationStyleId: SCENE_VISUAL_PRESENTATION_METADATA_STYLE_ID,
-    sceneVisualPresentationStyleLabel: '16-bit pixel',
+    sceneVisualPresentationStyleLabel: SCENE_VISUAL_PRESENTATION_METADATA_STYLE_LABEL,
     sceneVisualPresentationPixelArt: true,
     sceneVisualPresentationColorDepthBits: SCENE_VISUAL_PRESENTATION_METADATA_COLOR_DEPTH_BITS,
     sceneVisualPresentationOriginalityPolicy: SCENE_VISUAL_PRESENTATION_METADATA_ORIGINALITY_POLICY,
     sceneVisualPresentationAssetPlanBound: true,
+    sceneVisualPresentationTemplateParamsBound: true,
     sceneVisualPresentationNoProtectedReuse: true,
     sourceRef: 'scene.visual_presentation_metadata',
     status: 'observed'

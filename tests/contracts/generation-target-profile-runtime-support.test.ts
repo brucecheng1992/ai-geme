@@ -3458,6 +3458,18 @@ describe('Step 37 target profile runtime support overlay', () => {
       sourceRef: 'scene.visual_presentation_metadata',
       stateFields: undefined
     });
+    const visualStateWithoutTemplateParams = sceneVisualPresentationMetadataStateFields();
+    delete visualStateWithoutTemplateParams.sceneVisualPresentationTemplateParamsBound;
+    const missingTemplateBindingQaReport = buildSingleCapabilityQaReport({
+      capabilityId: sceneVisualPresentationMetadataCapabilityId,
+      packageContract: createSceneVisualPresentationMetadataPackageContract(),
+      eventType: SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE,
+      eventTypes: [SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE],
+      probeId: SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID,
+      action: 'verify_visual_metadata',
+      sourceRef: 'scene.visual_presentation_metadata',
+      stateFields: visualStateWithoutTemplateParams
+    });
     const observedVisualStateQaReport = buildSingleCapabilityQaReport({
       capabilityId: sceneVisualPresentationMetadataCapabilityId,
       packageContract: createSceneVisualPresentationMetadataPackageContract(),
@@ -3516,6 +3528,18 @@ describe('Step 37 target profile runtime support overlay', () => {
           assertionId: `${SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID}.assertion.visual_metadata`,
           status: 'failed',
           message: expect.stringContaining('expected sceneVisualPresentationAssetPlanBound=true, observed <missing>')
+        })
+      ])
+    });
+    expect(
+      missingTemplateBindingQaReport.requiredResults.find((entry) => entry.probeId === SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID)
+    ).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID}.assertion.visual_metadata`,
+          status: 'failed',
+          message: expect.stringContaining('expected sceneVisualPresentationTemplateParamsBound=true, observed <missing>')
         })
       ])
     });
@@ -5047,6 +5071,7 @@ function sceneVisualPresentationMetadataStateFields(): Record<string, unknown> {
     sceneVisualPresentationColorDepthBits: SCENE_VISUAL_PRESENTATION_METADATA_COLOR_DEPTH_BITS,
     sceneVisualPresentationOriginalityPolicy: SCENE_VISUAL_PRESENTATION_METADATA_ORIGINALITY_POLICY,
     sceneVisualPresentationAssetPlanBound: true,
+    sceneVisualPresentationTemplateParamsBound: true,
     sceneVisualPresentationNoProtectedReuse: true
   };
 }

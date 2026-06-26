@@ -117,6 +117,7 @@ export function createSceneVisualPresentationMetadataPackageContract(): Gameplay
                 sceneVisualPresentationColorDepthBits: SCENE_VISUAL_PRESENTATION_METADATA_COLOR_DEPTH_BITS,
                 sceneVisualPresentationOriginalityPolicy: SCENE_VISUAL_PRESENTATION_METADATA_ORIGINALITY_POLICY,
                 sceneVisualPresentationAssetPlanBound: true,
+                sceneVisualPresentationTemplateParamsBound: true,
                 sceneVisualPresentationNoProtectedReuse: true
               },
               message: 'visual presentation metadata must prove 16-bit pixel style binding and no protected reuse'
@@ -170,6 +171,7 @@ export function createSceneVisualPresentationMetadataPackageContract(): Gameplay
         'sceneVisualPresentationColorDepthBits',
         'sceneVisualPresentationOriginalityPolicy',
         'sceneVisualPresentationAssetPlanBound',
+        'sceneVisualPresentationTemplateParamsBound',
         'sceneVisualPresentationNoProtectedReuse'
       ]
     },
