@@ -6193,6 +6193,13 @@ active_skill_freshness_command=node --input-type=module "<step37_manifest_v1_pat
 active_skill_freshness_exit_code=0
 previous_checkpoint_skill_digest=97ddde4b80b3e2afcb5ffd93b45dc76b30065c644edec6bcea2df59cedd4eb70
 skill_freshness_status=current_checkpoint_requires_new_digest_binding
+superseded_candidate_commit_sha=813cfa3c824da16a4390f342a074caab2b9298dd
+superseded_candidate_oracle_agent_id=019f0488-39ff-7e33-a790-4caca4a838a3
+superseded_candidate_oracle_submission_id=019f0510-971c-72b1-8525-8ed53e98b42c
+superseded_candidate_oracle_status=changes_required
+superseded_candidate_oracle_p1=spawn.explicit_declarations.verified missing from telemetry event schema and contract-freeze
+superseded_candidate_oracle_p3=modified_paths listed tests/contracts/gameplay-capability-registry.test.ts but the candidate diff did not modify that file
+p1_remediation_status=landed_and_locally_validated
 ```
 
 `spawn.explicit_declarations.v1` was selected by the Parent Loop Driver after the `scene.visual_presentation_metadata.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
@@ -6217,10 +6224,11 @@ Modified paths so far:
 - `tests/contracts/gameplay-capability-package-contract.test.ts`.
 - `tests/contracts/gameplay-capability-qa-probes.test.ts`.
 - `tests/contracts/generation-target-profile-runtime-support.test.ts`.
-- `tests/contracts/gameplay-capability-registry.test.ts`.
 - `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
 - `tests/contracts/dsl-consumption-report.test.ts`.
 - `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`.
+- `tests/contracts/contract-freeze.test.ts`.
 - `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
 
 Evidence/probe chain:
@@ -6282,27 +6290,27 @@ Final local validation before candidate commit:
 ```text
 command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-focused-validation.test.ts
 exitCode=0
-duration=real 2.15s
-result=PASS: focused package/QA/registry/target-profile/schema-freeze/closure/parent-loop set; 11 files / 332 tests
+duration=real 2.12s
+result=PASS: focused package/QA/registry/target-profile/schema-freeze/closure/parent-loop set; 11 files / 333 tests
 
 command=/usr/bin/time -p npx vitest run tests/contracts
 exitCode=0
-duration=real 9.29s
-result=PASS: full contracts; 98 files / 1297 tests
+duration=real 9.37s
+result=PASS: full contracts; 98 files / 1298 tests
 
 command=/usr/bin/time -p npm test
 exitCode=0
-duration=real 59.31s
-result=PASS: contracts 98 files / 1297 tests; workspace 34 files / 410 tests
+duration=real 59.50s
+result=PASS: contracts 98 files / 1298 tests; workspace 34 files / 410 tests
 
 command=/usr/bin/time -p npm run typecheck
 exitCode=0
-duration=real 6.73s
+duration=real 6.85s
 result=PASS
 
 command=/usr/bin/time -p git diff --check
 exitCode=0
-duration=real 0.03s
+duration=real 0.02s
 result=PASS
 
 command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
@@ -6312,7 +6320,7 @@ result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manif
 
 command=/usr/bin/time -p npx tsx --eval "<spawn.explicit_declarations.v1 support summary and remaining inventory>"
 exitCode=0
-duration=real 0.63s
+duration=real 0.68s
 result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=47; staticCompleteSupportedCount=0; committedClosedCapabilityCount=46; unsupported_unregistered=12; next_checkpoint_id=stage4.spawn_explicit_declarations_v1.complete_supported_package_slice; selectionFailure=null; spawn.explicit_declarations.v1 classification=DEFERRED; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false.
 ```
 
