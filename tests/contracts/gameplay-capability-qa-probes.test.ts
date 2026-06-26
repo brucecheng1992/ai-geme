@@ -157,6 +157,14 @@ import {
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_POLICY,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID,
   createGenerationFallbackPolicyFailClosedPackageContract,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_ERROR_CODE,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_EVENT_TYPE,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_KIND,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PATH,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PROFILE_ID,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_SCHEMA_VERSION,
+  createValidationFailClosedUnknownNodesPackageContract,
   GOAL_BOSS_UNLOCK_BOSS_ENTITY_ID,
   GOAL_BOSS_UNLOCK_EVENT_TYPE,
   GOAL_BOSS_UNLOCK_REASON,
@@ -3945,6 +3953,93 @@ describe('Capability-owned runtime QA probes', () => {
       ])
     );
     expect(observedFailClosedPolicy.status).toBe('passed');
+  });
+
+  it('does not verify validation fail-closed unknown nodes from generic validation errors without rejection state', () => {
+    const capabilityId = 'validation.fail_closed_unknown_nodes.v1';
+    const probeId = VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID;
+    const packages = [createValidationFailClosedUnknownNodesPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const genericValidationError = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_unknown_node_rejection',
+              eventType: 'dsl.validation.failed',
+              eventTypes: ['dsl.validation.failed', 'runtime.plan.invalid'],
+              sourceRef: 'dsl.validation.generic_error',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedUnknownNodeRejection = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_unknown_node_rejection',
+              eventType: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_EVENT_TYPE,
+              eventTypes: [VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_EVENT_TYPE, 'dsl.validation.failed'],
+              unknownNodesRejected: true,
+              unknownNodeValidationSchemaVersion: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_SCHEMA_VERSION,
+              unknownNodeFailureCode: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_ERROR_CODE,
+              unknownNodeAccepted: false,
+              fallbackRuntimeGenerated: false,
+              validatorFailedClosed: true,
+              unknownNodeKind: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_KIND,
+              unknownNodePath: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PATH,
+              unknownNodeProfileId: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PROFILE_ID,
+              sourceRef: 'dsl.validation.fail_closed_unknown_nodes',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericValidationError.status).toBe('failed');
+    expect(genericValidationError.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericValidationError.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.fail_closed_unknown_nodes`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.fail_closed_unknown_nodes`,
+          status: 'failed',
+          message: expect.stringContaining('expected unknownNodesRejected=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.fail_closed_unknown_nodes`,
+          status: 'failed',
+          message: expect.stringContaining('expected fallbackRuntimeGenerated=false, observed <missing>')
+        })
+      ])
+    );
+    expect(observedUnknownNodeRejection.status).toBe('passed');
   });
 
   it('does not verify boss unlock when wave and boss evidence lacks unlock state fields', () => {

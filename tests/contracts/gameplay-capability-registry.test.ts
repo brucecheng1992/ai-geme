@@ -222,12 +222,29 @@ describe('Gameplay capability registry', () => {
     const runtimeLikeDomain = validateGameplayCapabilityRegistry([
       { ...base, id: 'runntime.manifest_binding.v1', domain: 'runntime' } as unknown as GameplayCapabilityDescriptor
     ]);
+    const validationDomain = validateGameplayCapabilityRegistry([
+      {
+        ...base,
+        id: 'validation.fail_closed_unknown_nodes.v1',
+        domain: 'validation',
+        label: 'Validation fail-closed unknown nodes'
+      }
+    ]);
+    const validationLikeDomain = validateGameplayCapabilityRegistry([
+      {
+        ...base,
+        id: 'valiadation.fail_closed_unknown_nodes.v1',
+        domain: 'valiadation'
+      } as unknown as GameplayCapabilityDescriptor
+    ]);
 
     expect(badId.ok).toBe(false);
     expect(badVersion.ok).toBe(false);
     expect(badDomain.ok).toBe(false);
     expect(reviewLikeDomain.ok).toBe(false);
     expect(runtimeLikeDomain.ok).toBe(false);
+    expect(validationDomain.ok).toBe(true);
+    expect(validationLikeDomain.ok).toBe(false);
     if (!badId.ok) {
       expect(badId.issues.some((issue) => issue.code === 'CAPABILITY_SCHEMA_INVALID' && issue.path.endsWith('.id'))).toBe(true);
     }
@@ -242,6 +259,9 @@ describe('Gameplay capability registry', () => {
     }
     if (!runtimeLikeDomain.ok) {
       expect(runtimeLikeDomain.issues.some((issue) => issue.code === 'CAPABILITY_SCHEMA_INVALID' && issue.path.endsWith('.domain'))).toBe(true);
+    }
+    if (!validationLikeDomain.ok) {
+      expect(validationLikeDomain.issues.some((issue) => issue.code === 'CAPABILITY_SCHEMA_INVALID' && issue.path.endsWith('.domain'))).toBe(true);
     }
   });
 

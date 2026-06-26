@@ -114,6 +114,13 @@ import {
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_POLICY,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_ERROR_CODE,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_EVENT_TYPE,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_KIND,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PATH,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PROFILE_ID,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_SCHEMA_VERSION,
   GOAL_BOSS_UNLOCK_BOSS_ENTITY_ID,
   GOAL_BOSS_UNLOCK_EVENT_TYPE,
   GOAL_BOSS_UNLOCK_REASON,
@@ -295,6 +302,7 @@ import {
   createUiHudBossHealthPackageContract,
   createFixedPromptBindingPackageContract,
   createGenerationFallbackPolicyFailClosedPackageContract,
+  createValidationFailClosedUnknownNodesPackageContract,
   createGoalBossUnlockPackageContract,
   createHazardFallingAreaPackageContract,
   createHazardTimedExplosionPackageContract,
@@ -346,6 +354,7 @@ const uiHudBossHealthCapabilityId = 'ui.hud_boss_health.v1';
 const uiHudPlayerHealthCapabilityId = 'ui.hud_player_health.v1';
 const uiHudRetriesCapabilityId = 'ui.hud_retries.v1';
 const generationFallbackPolicyFailClosedCapabilityId = 'generation.fallback_policy_fail_closed.v1';
+const validationFailClosedUnknownNodesCapabilityId = 'validation.fail_closed_unknown_nodes.v1';
 const goalBossUnlockCapabilityId = 'goal.boss_unlock.v1';
 const hazardFallingAreaCapabilityId = 'hazard.falling_area.v1';
 const hazardTimedExplosionCapabilityId = 'hazard.timed_explosion.v1';
@@ -492,7 +501,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 44,
+      observedCompleteSupportedCount: 45,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
@@ -535,13 +544,14 @@ describe('Step 37 target profile runtime support overlay', () => {
         spawnExplicitDeclarationsCapabilityId,
         spawnStaticCapabilityId,
         spawnStopOnBossDefeatCapabilityId,
+        validationFailClosedUnknownNodesCapabilityId,
         deathResetCapabilityId,
         defaultWeaponCapabilityId,
         rapidFireCapabilityId,
         replacementRuleCapabilityId,
         spreadShotCapabilityId
       ],
-      blockers: ['target_profile_runtime_support_incomplete:44/59']
+      blockers: ['target_profile_runtime_support_incomplete:45/59']
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
       capabilityId: artifactLineageNoManualPatchCapabilityId,
@@ -1091,11 +1101,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 43,
+      observedCompleteSupportedCount: 44,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:43/59'
+        'target_profile_runtime_support_incomplete:44/59'
       ]
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
@@ -1466,11 +1476,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 42,
+      observedCompleteSupportedCount: 43,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:42/59'
+        'target_profile_runtime_support_incomplete:43/59'
       ]
     });
     expect(fixedPromptBinding).toMatchObject({
@@ -1531,11 +1541,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 42,
+      observedCompleteSupportedCount: 43,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:42/59'
+        'target_profile_runtime_support_incomplete:43/59'
       ]
     });
     expect(profileBinding).toMatchObject({
@@ -1746,7 +1756,8 @@ describe('Step 37 target profile runtime support overlay', () => {
       includeDefaultSceneOrderedSegments: false,
       includeDefaultSceneVisualPresentationMetadata: false,
       includeDefaultSpawnExplicitDeclarations: false,
-      includeDefaultSpawnStopOnBossDefeat: false
+      includeDefaultSpawnStopOnBossDefeat: false,
+      includeDefaultValidationFailClosedUnknownNodes: false
     });
     const report = buildGenerationTargetProfileRuntimeSupportReport({
       projectId: 'proj_20260625_target_runtime_support',
@@ -1834,7 +1845,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 43,
+      observedCompleteSupportedCount: 44,
       targetProfileCompleteSupported: false,
       observedCapabilityIds: [
         artifactLineageNoManualPatchCapabilityId,
@@ -1875,6 +1886,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         spawnExplicitDeclarationsCapabilityId,
         spawnStaticCapabilityId,
         spawnStopOnBossDefeatCapabilityId,
+        validationFailClosedUnknownNodesCapabilityId,
         deathResetCapabilityId,
         defaultWeaponCapabilityId,
         rapidFireCapabilityId,
@@ -1883,7 +1895,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ],
       blockers: [
         `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:43/59'
+        'target_profile_runtime_support_incomplete:44/59'
       ]
     });
     expect(damageInvulnerability).toMatchObject({
@@ -1960,11 +1972,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 41,
+      observedCompleteSupportedCount: 42,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:41/59'
+        'target_profile_runtime_support_incomplete:42/59'
       ]
     });
     expect(pickup).toMatchObject({
@@ -2167,11 +2179,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 37,
+      observedCompleteSupportedCount: 38,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:37/59'
+        'target_profile_runtime_support_incomplete:38/59'
       ]
     });
     expect(spawnEnemyWave).toMatchObject({
@@ -2256,11 +2268,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 43,
+      observedCompleteSupportedCount: 44,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:43/59'
+        'target_profile_runtime_support_incomplete:44/59'
       ]
     });
     expect(flyingRightEntry).toMatchObject({
@@ -2339,11 +2351,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 43,
+      observedCompleteSupportedCount: 44,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:43/59'
+        'target_profile_runtime_support_incomplete:44/59'
       ]
     });
     expect(patrolInfantry).toMatchObject({
@@ -2424,11 +2436,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 43,
+      observedCompleteSupportedCount: 44,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:43/59'
+        'target_profile_runtime_support_incomplete:44/59'
       ]
     });
     expect(victoryDeclaration).toMatchObject({
@@ -2518,6 +2530,96 @@ describe('Step 37 target profile runtime support overlay', () => {
       observedCompleteSupported: true,
       requiredProbeIds: [GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID],
       verifiedRequiredProbeIds: [GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+  });
+
+  it('keeps validation fail-closed unknown nodes unverified when generic validation errors lack rejection state proof', () => {
+    const genericValidationQaReport = buildSingleCapabilityQaReport({
+      capabilityId: validationFailClosedUnknownNodesCapabilityId,
+      packageContract: createValidationFailClosedUnknownNodesPackageContract(),
+      eventType: 'dsl.validation.failed',
+      eventTypes: ['dsl.validation.failed', 'runtime.plan.invalid'],
+      probeId: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID,
+      action: 'verify_unknown_node_rejection',
+      sourceRef: 'dsl.validation.generic_error',
+      stateFields: undefined
+    });
+    const observedUnknownNodeQaReport = buildSingleCapabilityQaReport({
+      capabilityId: validationFailClosedUnknownNodesCapabilityId,
+      packageContract: createValidationFailClosedUnknownNodesPackageContract(),
+      eventType: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_EVENT_TYPE,
+      probeId: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID,
+      action: 'verify_unknown_node_rejection',
+      sourceRef: 'validation.fail_closed_unknown_nodes',
+      stateFields: validationFailClosedUnknownNodesStateFields()
+    });
+    const genericValidationReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_validation_fail_closed_unknown_nodes_generic_error',
+      capabilityQaReport: genericValidationQaReport
+    });
+    const observedUnknownNodeReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_validation_fail_closed_unknown_nodes_observed_state',
+      capabilityQaReport: observedUnknownNodeQaReport
+    });
+    const genericValidationState = genericValidationReport.capabilities.find(
+      (entry) => entry.capabilityId === validationFailClosedUnknownNodesCapabilityId
+    );
+    const observedUnknownNodeState = observedUnknownNodeReport.capabilities.find(
+      (entry) => entry.capabilityId === validationFailClosedUnknownNodesCapabilityId
+    );
+
+    expect(
+      genericValidationQaReport.requiredResults.find((entry) => entry.probeId === VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID)
+    ).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID}.assertion.fail_closed_unknown_nodes`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID}.assertion.fail_closed_unknown_nodes`,
+          status: 'failed',
+          message: expect.stringContaining('expected unknownNodesRejected=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID}.assertion.fail_closed_unknown_nodes`,
+          status: 'failed',
+          message: expect.stringContaining('expected fallbackRuntimeGenerated=false, observed <missing>')
+        })
+      ])
+    });
+    expect(genericValidationReport).toMatchObject({
+      observedCompleteSupportedCount: 0,
+      blockers: [
+        `capability_qa_report_missing_required_probe:${VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID}`,
+        'target_profile_runtime_support_incomplete:0/59'
+      ]
+    });
+    expect(genericValidationState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedUnknownNodeReport).toMatchObject({
+      observedCompleteSupportedCount: 1,
+      observedCapabilityIds: [validationFailClosedUnknownNodesCapabilityId],
+      blockers: ['target_profile_runtime_support_incomplete:1/59']
+    });
+    expect(observedUnknownNodeState).toMatchObject({
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID],
       missingRequiredProbeIds: [],
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
@@ -4876,11 +4978,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 43,
+      observedCompleteSupportedCount: 44,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:43/59'
+        'target_profile_runtime_support_incomplete:44/59'
       ]
     });
     expect(deathReset).toMatchObject({
@@ -4954,11 +5056,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 42,
+      observedCompleteSupportedCount: 43,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:42/59'
+        'target_profile_runtime_support_incomplete:43/59'
       ]
     });
     expect(rapidFire).toMatchObject({
@@ -5033,11 +5135,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 43,
+      observedCompleteSupportedCount: 44,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:43/59'
+        'target_profile_runtime_support_incomplete:44/59'
       ]
     });
     expect(spreadShot).toMatchObject({
@@ -5111,11 +5213,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 43,
+      observedCompleteSupportedCount: 44,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:43/59'
+        'target_profile_runtime_support_incomplete:44/59'
       ]
     });
     expect(replacementRule).toMatchObject({
@@ -5168,6 +5270,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       `capability_qa_report_missing_required_probe:${SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${SPAWN_STATIC_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID}`,
@@ -5189,6 +5292,7 @@ function buildDefaultWeaponQaReport(
     enemyPatrolInfantryStateFields?: boolean;
     feedbackVictoryDeclarationStateFields?: boolean;
     generationFallbackPolicyFailClosedStateFields?: boolean;
+    validationFailClosedUnknownNodesStateFields?: boolean;
     goalBossUnlockStateFields?: boolean;
     hazardFallingAreaStateFields?: boolean;
     hazardTimedExplosionStateFields?: boolean;
@@ -5203,6 +5307,7 @@ function buildDefaultWeaponQaReport(
     includeDefaultSceneVisualPresentationMetadata?: boolean;
     includeDefaultSpawnExplicitDeclarations?: boolean;
     includeDefaultSpawnStopOnBossDefeat?: boolean;
+    includeDefaultValidationFailClosedUnknownNodes?: boolean;
     sceneOrderedSegmentsStateFields?: boolean;
     sceneVisualPresentationMetadataStateFields?: boolean;
     spawnStopOnBossDefeatStateFields?: boolean;
@@ -5421,6 +5526,20 @@ function buildDefaultWeaponQaReport(
                 }),
             status: 'observed' as const,
             sourceRef: 'generation.path.fail_closed_policy'
+          }
+        ]
+      : []),
+    ...(effectiveEventTypes.includes(VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_EVENT_TYPE)
+      ? [
+          {
+            capabilityId: validationFailClosedUnknownNodesCapabilityId,
+            probeId: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID,
+            action: 'verify_unknown_node_rejection',
+            eventType: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_EVENT_TYPE,
+            eventTypes: effectiveEventTypes,
+            ...(options.validationFailClosedUnknownNodesStateFields === false ? {} : validationFailClosedUnknownNodesStateFields()),
+            status: 'observed' as const,
+            sourceRef: 'validation.fail_closed_unknown_nodes'
           }
         ]
       : []),
@@ -6083,6 +6202,7 @@ function withDefaultPackageOwnedEvents(
     includeDefaultSceneVisualPresentationMetadata?: boolean;
     includeDefaultSpawnExplicitDeclarations?: boolean;
     includeDefaultSpawnStopOnBossDefeat?: boolean;
+    includeDefaultValidationFailClosedUnknownNodes?: boolean;
   } = {}
 ): readonly string[] {
   const packageOwnedEvents = [
@@ -6090,6 +6210,7 @@ function withDefaultPackageOwnedEvents(
     ...(options.includeDefaultSceneVisualPresentationMetadata === false ? [] : [SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE]),
     ...(options.includeDefaultSpawnExplicitDeclarations === false ? [] : [SPAWN_EXPLICIT_DECLARATIONS_EVENT_TYPE]),
     ...(options.includeDefaultSpawnStopOnBossDefeat === false ? [] : [SPAWN_STOP_ON_BOSS_DEFEAT_EVENT_TYPE]),
+    ...(options.includeDefaultValidationFailClosedUnknownNodes === false ? [] : [VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_EVENT_TYPE]),
     ...(eventTypes.includes(FIXED_PROMPT_BINDING_EVENT_TYPE) || eventTypes.includes(PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE)
       ? [
           PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE,
@@ -6188,6 +6309,7 @@ function buildDefaultWeaponQaPlan() {
     createEnemyPatrolInfantryPackageContract(),
     createFeedbackVictoryDeclarationPackageContract(),
     createGenerationFallbackPolicyFailClosedPackageContract(),
+    createValidationFailClosedUnknownNodesPackageContract(),
     createGoalBossUnlockPackageContract(),
     createHazardFallingAreaPackageContract(),
     createHazardTimedExplosionPackageContract(),
@@ -6235,6 +6357,7 @@ function buildDefaultWeaponQaPlan() {
       enemyPatrolInfantryCapabilityId,
       feedbackVictoryDeclarationCapabilityId,
       generationFallbackPolicyFailClosedCapabilityId,
+      validationFailClosedUnknownNodesCapabilityId,
       goalBossUnlockCapabilityId,
       hazardFallingAreaCapabilityId,
       hazardTimedExplosionCapabilityId,
@@ -6299,6 +6422,20 @@ function finalOracleGateStateFields(): Record<string, unknown> {
     finalOracleP0Count: 0,
     finalOracleP1Count: 0,
     finalOracleP2Count: 0
+  };
+}
+
+function validationFailClosedUnknownNodesStateFields(): Record<string, unknown> {
+  return {
+    unknownNodesRejected: true,
+    unknownNodeValidationSchemaVersion: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_SCHEMA_VERSION,
+    unknownNodeFailureCode: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_ERROR_CODE,
+    unknownNodeAccepted: false,
+    fallbackRuntimeGenerated: false,
+    validatorFailedClosed: true,
+    unknownNodeKind: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_KIND,
+    unknownNodePath: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PATH,
+    unknownNodeProfileId: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PROFILE_ID
   };
 }
 

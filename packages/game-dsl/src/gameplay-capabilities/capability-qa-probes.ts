@@ -435,6 +435,15 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   undeclaredFallbackDetected?: boolean;
   fallbackOutputGenerated?: boolean;
   fallbackFailureCode?: string;
+  unknownNodesRejected?: boolean;
+  unknownNodeValidationSchemaVersion?: string;
+  unknownNodeFailureCode?: string;
+  unknownNodeAccepted?: boolean;
+  fallbackRuntimeGenerated?: boolean;
+  validatorFailedClosed?: boolean;
+  unknownNodeKind?: string;
+  unknownNodePath?: string;
+  unknownNodeProfileId?: string;
   deepSeekAuthoritativeDraftProduced?: boolean;
   deepSeekProviderId?: string;
   deepSeekDraftArtifactKind?: string;
@@ -1184,6 +1193,15 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('undeclaredFallbackDetected', expected, observed.undeclaredFallbackDetected),
     ...compareExpectedBooleanField('fallbackOutputGenerated', expected, observed.fallbackOutputGenerated),
     ...compareExpectedStringField('fallbackFailureCode', expected, observed.fallbackFailureCode),
+    ...compareExpectedBooleanField('unknownNodesRejected', expected, observed.unknownNodesRejected),
+    ...compareExpectedStringField('unknownNodeValidationSchemaVersion', expected, observed.unknownNodeValidationSchemaVersion),
+    ...compareExpectedStringField('unknownNodeFailureCode', expected, observed.unknownNodeFailureCode),
+    ...compareExpectedBooleanField('unknownNodeAccepted', expected, observed.unknownNodeAccepted),
+    ...compareExpectedBooleanField('fallbackRuntimeGenerated', expected, observed.fallbackRuntimeGenerated),
+    ...compareExpectedBooleanField('validatorFailedClosed', expected, observed.validatorFailedClosed),
+    ...compareExpectedStringField('unknownNodeKind', expected, observed.unknownNodeKind),
+    ...compareExpectedStringField('unknownNodePath', expected, observed.unknownNodePath),
+    ...compareExpectedStringField('unknownNodeProfileId', expected, observed.unknownNodeProfileId),
     ...compareExpectedBooleanField('deepSeekAuthoritativeDraftProduced', expected, observed.deepSeekAuthoritativeDraftProduced),
     ...compareExpectedStringField('deepSeekProviderId', expected, observed.deepSeekProviderId),
     ...compareExpectedStringField('deepSeekDraftArtifactKind', expected, observed.deepSeekDraftArtifactKind),

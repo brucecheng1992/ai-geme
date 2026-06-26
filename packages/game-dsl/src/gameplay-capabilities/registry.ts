@@ -130,6 +130,10 @@ import {
   createGenerationFallbackPolicyFailClosedPackageContract
 } from './generation-fallback-policy-fail-closed-package.js';
 import {
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID,
+  createValidationFailClosedUnknownNodesPackageContract
+} from './validation-fail-closed-unknown-nodes-package.js';
+import {
   GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID,
   createGoalBossUnlockPackageContract
 } from './goal-boss-unlock-package.js';
@@ -280,6 +284,7 @@ export const GAMEPLAY_CAPABILITY_DOMAINS = [
   'spawn',
   'telemetry',
   'ui',
+  'validation',
   'weapon'
 ] as const;
 
@@ -948,6 +953,19 @@ const generationFallbackPolicyFailClosedPackageEvidence: GameplayCapabilityEvide
 const generationFallbackPolicyFailClosedPackageQa: GameplayCapabilityQaEvidence = generationFallbackPolicyFailClosedPackageReport.supportEligible
   ? { requiredProbeIds: [GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const validationFailClosedUnknownNodesPackageReport = validateGameplayCapabilityPackage(createValidationFailClosedUnknownNodesPackageContract());
+const validationFailClosedUnknownNodesPackageEvidence: GameplayCapabilityEvidence = validationFailClosedUnknownNodesPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const validationFailClosedUnknownNodesPackageQa: GameplayCapabilityQaEvidence = validationFailClosedUnknownNodesPackageReport.supportEligible
+  ? { requiredProbeIds: [VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const goalBossUnlockPackageReport = validateGameplayCapabilityPackage(createGoalBossUnlockPackageContract());
 const goalBossUnlockPackageEvidence: GameplayCapabilityEvidence = goalBossUnlockPackageReport.supportEligible
   ? {
@@ -1376,6 +1394,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     generationFallbackPolicyFailClosedPackageEvidence,
     generationFallbackPolicyFailClosedPackageQa
+  ),
+  planned(
+    'validation.fail_closed_unknown_nodes.v1',
+    'validation',
+    'Validation fail-closed unknown nodes',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    validationFailClosedUnknownNodesPackageEvidence,
+    validationFailClosedUnknownNodesPackageQa
   ),
   planned(
     'goal.boss_unlock.v1',

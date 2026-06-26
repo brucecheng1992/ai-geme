@@ -502,6 +502,11 @@ describe('Contract Freeze', () => {
     expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('generation.fallback_policy_fail_closed.verified');
   });
 
+  it('allows package-owned validation fail-closed unknown nodes telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'validation.fail_closed_unknown_nodes.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('validation.fail_closed_unknown_nodes.verified');
+  });
+
   it('allows package-owned boss unlock telemetry without making it a QA gate requirement', () => {
     expect(() => TelemetryEventSchema.parse({ type: 'goal.boss_unlock.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
     expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('goal.boss_unlock.verified');

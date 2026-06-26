@@ -291,6 +291,20 @@ import {
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/generation-fallback-policy-fail-closed-runtime-module.js';
 import {
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PACKAGE_REQUIRED_EVIDENCE_ID,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID,
+  createValidationFailClosedUnknownNodesPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/validation-fail-closed-unknown-nodes-package.js';
+import {
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_ERROR_CODE,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_EVENT_TYPE,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_KIND,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PATH,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PROFILE_ID,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_RUNTIME_SYSTEM_ID,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_SCHEMA_VERSION
+} from '../../packages/game-dsl/src/gameplay-capabilities/validation-fail-closed-unknown-nodes-runtime-module.js';
+import {
   GOAL_BOSS_UNLOCK_PACKAGE_REQUIRED_EVIDENCE_ID,
   GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID,
   createGoalBossUnlockPackageContract
@@ -1866,6 +1880,64 @@ describe('Gameplay capability package contract', () => {
             undeclaredFallbackDetected: false,
             fallbackOutputGenerated: false,
             fallbackFailureCode: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_ERROR_CODE
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the validation fail-closed unknown nodes package-owned QA contract', () => {
+    const contract = createValidationFailClosedUnknownNodesPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'validation.fail_closed_unknown_nodes.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_RUNTIME_SYSTEM_ID]);
+    expect(contract.render.fallbackPolicy).toBe('not_applicable');
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'validation.fail_closed_unknown_nodes.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_EVENT_TYPE,
+          parameters: expect.objectContaining({
+            unknownNodeFixture: 'dsl_unknown_runtime_node',
+            expectedFailureCode: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_ERROR_CODE
+          })
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_RUNTIME_SYSTEM_ID,
+          ref: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID}.assertion.fail_closed_unknown_nodes`,
+          expected: {
+            unknownNodesRejected: true,
+            unknownNodeValidationSchemaVersion: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_SCHEMA_VERSION,
+            unknownNodeFailureCode: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_ERROR_CODE,
+            unknownNodeAccepted: false,
+            fallbackRuntimeGenerated: false,
+            validatorFailedClosed: true,
+            unknownNodeKind: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_KIND,
+            unknownNodePath: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PATH,
+            unknownNodeProfileId: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PROFILE_ID
           }
         })
       ]

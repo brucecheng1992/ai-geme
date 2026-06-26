@@ -6167,6 +6167,136 @@ next_action=CONTINUE_PARENT_LOOP
 next_atomic_step=RUN_PARENT_LOOP_DRIVER_TO_SELECT_NEXT_UNMET_CHECKPOINT
 ```
 
+## Stage 4 Implementation: `validation.fail_closed_unknown_nodes.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.validation_fail_closed_unknown_nodes_v1.complete_supported_package_slice
+parent_stage_id=stage4
+capability_id=validation.fail_closed_unknown_nodes.v1
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=not_closed
+global_exit_conditions_met=false
+user_input_required=false
+next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
+skill_revision_type=sha256_bundle
+skill_bundle_format=step37_manifest_v1_path_size_sha
+skill_root_identity=/Users/dahufa/.agents/skills/review-gated-delivery
+skill_file_count=7
+reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
+```
+
+`validation.fail_closed_unknown_nodes.v1` was selected by the Parent Loop Driver after the `ui.win_failure_transitions.v1` receipt. The previous receipt recorded `next_atomic_step=stage4.validation_fail_closed_unknown_nodes_v1.complete_supported_package_slice`, `global_exit_conditions_met=false`, and `user_input_required=false`; this atomic step therefore continues Stage 4 and does not enter Stage 5.
+
+Minimum closure requirements:
+
+1. Add a package-owned validation fail-closed unknown-nodes capability contract with stable capability identity, runtime system identity, verification event identity, required probe id, and required QA evidence id.
+2. Add the `validation` capability domain only as a concrete allowlist entry; unknown or misspelled validation-like domains must still fail.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Add QA reader state fields that prove the validator rejected unknown nodes fail-closed and no fallback runtime was generated.
+5. Preserve the negative semantic boundary: generic DSL validation errors, runtime-plan invalid events, or generic receipts do not verify this capability without authoritative unknown-node rejection state fields.
+6. Add telemetry schema freeze coverage for `validation.fail_closed_unknown_nodes.verified` without making it a side-scrolling global QA gate requirement.
+7. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/validation-fail-closed-unknown-nodes-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/validation-fail-closed-unknown-nodes-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`.
+- `tests/contracts/contract-freeze.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createValidationFailClosedUnknownNodesPackageContract()`.
+- Runtime module identity: `VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_RUNTIME_SYSTEM_ID=validation.fail_closed_unknown_nodes`.
+- Verification event: `VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_EVENT_TYPE=validation.fail_closed_unknown_nodes.verified`.
+- Required probe: `VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID=validation.fail_closed_unknown_nodes.v1.unknown_node.browser_qa.v1`.
+- Required state fields: `unknownNodesRejected`, `unknownNodeValidationSchemaVersion`, `unknownNodeFailureCode`, `unknownNodeAccepted`, `fallbackRuntimeGenerated`, `validatorFailedClosed`, `unknownNodeKind`, `unknownNodePath`, and `unknownNodeProfileId`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares the unknown-node rejection state fields and fails the required probe when generic validation events omit those fields.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for same-run full rejection evidence; it does not mutate static `completeSupported`.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned validation fail-closed unknown-nodes capability contract, runtime system identity, verification event, required probe id, required evidence id, runtime evidence fields, and one concrete `validation` capability domain allowlist entry. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, telemetry event schema, target-profile runtime support overlay, Step37 remaining-inventory driver, and schema freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves unknown-node rejection and no fallback runtime generation. |
+| Authority | Package-owned QA evidence defines the capability authority: generic validation failure events are insufficient unless evidence proves `unknownNodesRejected=true`, `validatorFailedClosed=true`, and `fallbackRuntimeGenerated=false` for the expected unknown node fixture. |
+| Legacy strategy | Legacy validation errors, generic runtime-plan invalid events, or natural-language receipt text cannot overclaim this capability. Unknown or unsupported nodes remain fail-closed and non-authoritative without the package-owned probe payload. |
+| Failure policy | Missing package contract, missing verification event, missing state fields, wrong capability/probe identity, stale evidence, or wrong domain keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused and full contracts prove package validation, registry domain boundary, registry support advancement without static complete support, QA reader positive/negative behavior, target-profile overlay positive/negative behavior, remaining-inventory count changes, and telemetry schema freeze coverage. |
+| Rollback | Reverting this slice removes only the validation unknown-node package/probe/reader/schema wiring and returns `validation.fail_closed_unknown_nodes.v1` to unsupported evidence without changing business runtime gameplay templates or Stage 5 policy. |
+
+Validation:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts -t "validation fail-closed unknown nodes|invalid IDs and version drift|stable target profile support ordering|does not delete or rename existing registry and runtime capability IDs|surfaces default weapon runtime consumer evidence|reports next incomplete Step 37 checkpoint|Contract Freeze"
+exitCode=0
+duration=real 1.78s
+result=PASS: focused set 7 passed / 1 skipped files; 52 passed / 256 skipped tests
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 2.13s
+result=PASS: 8 files / 308 tests
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 10.02s
+result=PASS: 98 files / 1334 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 60.13s
+result=PASS: contracts 98 files / 1334 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.69s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.03s
+result=PASS
+
+command=/usr/bin/time -p node --input-type=module - <<'JS' ... review-gated-delivery root-relative path_size_sha Skill bundle digest ...
+exitCode=0
+duration=real 0.06s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_size_sha; skill_root_identity=/Users/dahufa/.agents/skills/review-gated-delivery; skill_file_count=7; skill_bundle_digest=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1.
+
+command=/usr/bin/time -p npx tsx - <<'TS' ... validation.fail_closed_unknown_nodes.v1 support summary and inventory alignment ...
+exitCode=0
+duration=real 0.49s
+result=PASS: support registeredCapabilityCount=55; unsupported_unregistered=4; validation.fail_closed_unknown_nodes.v1 classification=DEFERRED; state=registered_without_required_probe_verification; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false; previous receipt selected current checkpoint `stage4.validation_fail_closed_unknown_nodes_v1.complete_supported_package_slice`.
+```
+
+Post-record validation requirement:
+
+- This closure record changes the final tree. Before creating the immutable candidate commit, focused closure contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, final diff range check, and Skill freshness must be re-run or explicitly recorded as fresh for the final tree.
+- Candidate commit must not write its own SHA into this candidate record.
+- Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1`.
+- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+- Oracle PASS is required before any receipt may update `closure_status=closed`.
+
 ## Stage 4 Implementation: `ui.win_failure_transitions.v1` complete-supported package slice
 
 Checkpoint identity:
