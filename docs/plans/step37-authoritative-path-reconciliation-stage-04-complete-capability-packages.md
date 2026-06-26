@@ -4846,8 +4846,18 @@ Current status:
 
 - implementation_status: `complete`.
 - local_validation_status: `passed`.
-- candidate_status: `ready_for_commit`.
-- oracle_status: `not_submitted`.
+- candidate_status: `committed`.
+- oracle_status: `approved`.
+- closure_status: `closed`.
+- candidate_commit: `e457853e784c7cf0aeff9a7531ad691023c6a471`.
+- reviewed_commit_sha: `e457853e784c7cf0aeff9a7531ad691023c6a471`.
+- reviewed_commit_tree: `6857b5b25bb64af46d8d84785ee611eb964ad29f`.
+- reviewed_skill_revision: `afb000865c530f9fc1afdda9323846882fb8da38dfd2402687e9e5b745a02d1e`.
+- oracle_submission_id: `019f0156-0561-7c12-b30f-4947caa182c4`.
+- oracle_agent_id: `019effae-8aa2-7c22-b5ba-8c4b69f21d20`.
+- oracle_verdict: `PASS_NO_P0_P1_P2_BLOCKERS`.
+- oracle_findings: `P0=0; P1=0; P2=0; P3=0`.
+- receipt_commit: `not_self_referenced_in_receipt`.
 - closure_scope: `atomic_step`.
 - parent_stage_status: `running`.
 - parent_loop_status: `running`.
@@ -4965,7 +4975,112 @@ exitCode=0
 result=skill_root=/Users/dahufa/.agents/skills/code-change-discipline; skill_bundle_format=single_file_v1; skill_bundle_file_count=1; skill_bundle_file_byte_length=43467; skill_bundle_file_sha256=f816d70eeb76d9a97d18472696ae9fa6ae1abc94ffa2ead9acf7a56e7150fea3; skill_bundle_digest=afb000865c530f9fc1afdda9323846882fb8da38dfd2402687e9e5b745a02d1e; skill_bundle_generation_exit_code=0
 ```
 
-Final candidate precondition:
+Final tree revalidation before candidate:
 
-- This status update is docs-only but changes the final tree. Before creating the candidate commit, rerun focused contracts, complete related contracts, `npm test`, `npm run typecheck`, `git diff --check`, final diff/untracked scope checks, and external Skill freshness against this exact final tree.
-- Oracle remains `not_submitted` until the immutable candidate commit is created and submitted.
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 1.50s
+result=PASS: 5 files / 74 tests
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 8.51s
+result=PASS: 98 files / 1141 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 58.20s
+result=PASS: contracts 98 files / 1141 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.05s
+result=PASS: root, maker-api, and maker-workbench TypeScript checks passed
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.01s
+result=PASS
+
+command=git status --short
+exitCode=0
+result=only expected docs/package/helper/export/contract files were modified or untracked before candidate commit
+
+command=external Skill freshness digest
+exitCode=0
+result=skill_root=/Users/dahufa/.agents/skills/code-change-discipline; skill_bundle_format=single_file_v1; skill_bundle_file_count=1; skill_bundle_file_byte_length=43467; skill_bundle_file_sha256=f816d70eeb76d9a97d18472696ae9fa6ae1abc94ffa2ead9acf7a56e7150fea3; skill_bundle_digest=afb000865c530f9fc1afdda9323846882fb8da38dfd2402687e9e5b745a02d1e; skill_bundle_generation_exit_code=0
+```
+
+Candidate post-commit checks:
+
+```text
+command=git rev-parse HEAD
+exitCode=0
+result=e457853e784c7cf0aeff9a7531ad691023c6a471
+
+command=git rev-parse HEAD^{tree}
+exitCode=0
+result=6857b5b25bb64af46d8d84785ee611eb964ad29f
+
+command=git status --short
+exitCode=0
+result=clean
+
+command=git show --check --oneline HEAD
+exitCode=0
+result=PASS
+```
+
+Oracle approval receipt:
+
+```text
+submission_id=019f0156-0561-7c12-b30f-4947caa182c4
+submission_id_source=multi_agent_v1.send_input return field
+agent_id=019effae-8aa2-7c22-b5ba-8c4b69f21d20
+agent_id_source=existing Oracle agent id
+polling_id_type=agent_id
+reviewed_commit_sha=e457853e784c7cf0aeff9a7531ad691023c6a471
+reviewed_commit_tree=6857b5b25bb64af46d8d84785ee611eb964ad29f
+reviewed_skill_revision=afb000865c530f9fc1afdda9323846882fb8da38dfd2402687e9e5b745a02d1e
+oracle_verdict=PASS_NO_P0_P1_P2_BLOCKERS
+oracle_findings=P0=0; P1=0; P2=0; P3=0
+```
+
+Parent Loop Driver post-receipt projection:
+
+```text
+command=npx tsx --eval 'import { buildDeepSeekRunAndGunValidationProfileSupportSummary, buildStep37RemainingCompleteSupportedInventory } from "./packages/game-dsl/src/index.ts"; ...'
+exitCode=0
+result=requiredCapabilityCount=59; staticCompleteSupportedCount=0; committedClosedCapabilityCount=14; sameRunObservedOnlyCount=14; next_checkpoint_id=stage4.weapon_death_reset_v1.complete_supported_package_slice; next_atomic_step="Stage 4 weapon.death_reset.v1 complete-supported package slice implementation atomic step"
+```
+
+Receipt boundary:
+
+```yaml
+closure_scope: atomic_step
+atomic_step:
+  id: stage4.profile_deepseek_run_and_gun_validation_v1.complete_supported_package_slice
+  status: closed
+  implementation_status: complete
+  local_validation_status: passed
+  candidate_commit: e457853e784c7cf0aeff9a7531ad691023c6a471
+  reviewed_commit_sha: e457853e784c7cf0aeff9a7531ad691023c6a471
+  receipt_commit: not_self_referenced_in_receipt
+  oracle_status: approved
+  closure_status: closed
+parent_stage:
+  id: stage4
+  status: running
+  exit_conditions_met: false
+parent_loop:
+  id: step37
+  status: running
+  global_exit_conditions_met: false
+  user_input_required: false
+  next_action: CONTINUE_PARENT_LOOP
+  next_atomic_step: stage4.weapon_death_reset_v1.complete_supported_package_slice
+  next_atomic_step_scope: implementation
+```
+
+Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4.profile_deepseek_run_and_gun_validation_v1.complete_supported_package_slice` after candidate commit creation, local validation, Oracle PASS, and receipt-only metadata update. It does not close Stage 4, Step37, production default cutover, legacy authoritative path exit, Stage 5, or final global closure. Parent Loop Driver must continue with `stage4.weapon_death_reset_v1.complete_supported_package_slice` while global exits remain false and no verified user blocker exists.
