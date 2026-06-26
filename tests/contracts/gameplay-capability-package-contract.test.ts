@@ -202,6 +202,11 @@ import {
   createUiHudCurrentWeaponPackageContract
 } from '../../packages/game-dsl/src/gameplay-capabilities/ui-hud-current-weapon-package.js';
 import {
+  UI_HUD_PLAYER_HEALTH_PACKAGE_REQUIRED_EVIDENCE_ID,
+  UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID,
+  createUiHudPlayerHealthPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/ui-hud-player-health-package.js';
+import {
   UI_FAILURE_RESTART_EVENT_TYPE,
   UI_FAILURE_RESTART_FAILURE_TEXT,
   UI_FAILURE_RESTART_INPUT,
@@ -232,6 +237,17 @@ import {
   UI_HUD_CURRENT_WEAPON_SLOT,
   UI_HUD_CURRENT_WEAPON_WEAPON_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/ui-hud-current-weapon-runtime-module.js';
+import {
+  UI_HUD_PLAYER_HEALTH_CURRENT,
+  UI_HUD_PLAYER_HEALTH_EVENT_TYPE,
+  UI_HUD_PLAYER_HEALTH_LABEL_TEXT,
+  UI_HUD_PLAYER_HEALTH_MAX,
+  UI_HUD_PLAYER_HEALTH_PROFILE_ID,
+  UI_HUD_PLAYER_HEALTH_RATIO,
+  UI_HUD_PLAYER_HEALTH_RUNTIME_FAMILY,
+  UI_HUD_PLAYER_HEALTH_RUNTIME_SYSTEM_ID,
+  UI_HUD_PLAYER_HEALTH_SCHEMA_VERSION
+} from '../../packages/game-dsl/src/gameplay-capabilities/ui-hud-player-health-runtime-module.js';
 import {
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_PACKAGE_REQUIRED_EVIDENCE_ID,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID,
@@ -1573,6 +1589,69 @@ describe('Gameplay capability package contract', () => {
             hudCurrentWeaponIconVisible: true,
             hudCurrentWeaponBoundToWeaponState: true,
             hudCurrentWeaponMatchesCurrentWeapon: true
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the UI player-health HUD package-owned QA contract with health-bound HUD state evidence', () => {
+    const contract = createUiHudPlayerHealthPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'ui.hud_player_health.v1'
+    });
+    expect(contract.dependencies).toEqual([{ capabilityId: 'health.player_health_points.v1', range: '^v1' }]);
+    expect(contract.runtime.systems).toEqual([
+      expect.objectContaining({
+        id: UI_HUD_PLAYER_HEALTH_RUNTIME_SYSTEM_ID,
+        phase: 'feedback',
+        dependencies: ['health.player_health_points']
+      })
+    ]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: UI_HUD_PLAYER_HEALTH_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'ui.hud_player_health.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: UI_HUD_PLAYER_HEALTH_EVENT_TYPE,
+          parameters: expect.objectContaining({
+            labelText: UI_HUD_PLAYER_HEALTH_LABEL_TEXT,
+            currentHealth: UI_HUD_PLAYER_HEALTH_CURRENT,
+            maxHealth: UI_HUD_PLAYER_HEALTH_MAX
+          })
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID}.assertion.player_health_hud_verified`,
+          expected: {
+            hudPlayerHealthVisible: true,
+            hudPlayerHealthSchemaVersion: UI_HUD_PLAYER_HEALTH_SCHEMA_VERSION,
+            hudPlayerHealthProfileId: UI_HUD_PLAYER_HEALTH_PROFILE_ID,
+            hudPlayerHealthRuntimeFamily: UI_HUD_PLAYER_HEALTH_RUNTIME_FAMILY,
+            hudPlayerHealthOwnerEntityId: 'player',
+            hudPlayerHealthCurrent: UI_HUD_PLAYER_HEALTH_CURRENT,
+            hudPlayerHealthMax: UI_HUD_PLAYER_HEALTH_MAX,
+            hudPlayerHealthRatio: UI_HUD_PLAYER_HEALTH_RATIO,
+            hudPlayerHealthLabelVisible: true,
+            hudPlayerHealthLabelText: UI_HUD_PLAYER_HEALTH_LABEL_TEXT,
+            hudPlayerHealthBarVisible: true,
+            hudPlayerHealthBarValueMatchesPlayerHealth: true,
+            hudPlayerHealthBoundToPlayerHealth: true,
+            hudPlayerHealthUpdatesOnDamage: true
           }
         })
       ]

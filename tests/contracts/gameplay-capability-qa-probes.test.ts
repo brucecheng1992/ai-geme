@@ -123,6 +123,16 @@ import {
   UI_HUD_CURRENT_WEAPON_SLOT,
   UI_HUD_CURRENT_WEAPON_WEAPON_ID,
   createUiHudCurrentWeaponPackageContract,
+  UI_HUD_PLAYER_HEALTH_CURRENT,
+  UI_HUD_PLAYER_HEALTH_EVENT_TYPE,
+  UI_HUD_PLAYER_HEALTH_LABEL_TEXT,
+  UI_HUD_PLAYER_HEALTH_MAX,
+  UI_HUD_PLAYER_HEALTH_PROFILE_ID,
+  UI_HUD_PLAYER_HEALTH_RATIO,
+  UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID,
+  UI_HUD_PLAYER_HEALTH_RUNTIME_FAMILY,
+  UI_HUD_PLAYER_HEALTH_SCHEMA_VERSION,
+  createUiHudPlayerHealthPackageContract,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_ERROR_CODE,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_POLICY,
@@ -5014,6 +5024,112 @@ describe('Capability-owned runtime QA probes', () => {
           assertionId: `${probeId}.assertion.current_weapon_hud_verified`,
           status: 'failed',
           message: expect.stringContaining('expected hudCurrentWeaponBoundToWeaponState=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedHud.status).toBe('passed');
+  });
+
+  it('does not verify UI player health HUD from health events without HUD binding fields', () => {
+    const capabilityId = 'ui.hud_player_health.v1';
+    const probeId = UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID;
+    const packages = [createHealthPlayerHealthPointsPackageContract(), createUiHudPlayerHealthPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const healthEvidence: CapabilityRuntimeObservedProbeEvidence = {
+      capabilityId: 'health.player_health_points.v1',
+      probeId: HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+      action: 'observe_health_points',
+      eventType: HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE,
+      eventTypes: [HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE],
+      sourceRef: 'runtime.health.player_health_points',
+      status: 'observed'
+    };
+    const healthOnly = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            healthEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'show_player_health_hud',
+              eventType: HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE,
+              eventTypes: [HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE],
+              sourceRef: 'runtime.health.player_health_points',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedHud = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            healthEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'show_player_health_hud',
+              eventType: UI_HUD_PLAYER_HEALTH_EVENT_TYPE,
+              eventTypes: [HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE, UI_HUD_PLAYER_HEALTH_EVENT_TYPE],
+              hudPlayerHealthVisible: true,
+              hudPlayerHealthSchemaVersion: UI_HUD_PLAYER_HEALTH_SCHEMA_VERSION,
+              hudPlayerHealthProfileId: UI_HUD_PLAYER_HEALTH_PROFILE_ID,
+              hudPlayerHealthRuntimeFamily: UI_HUD_PLAYER_HEALTH_RUNTIME_FAMILY,
+              hudPlayerHealthOwnerEntityId: 'player',
+              hudPlayerHealthCurrent: UI_HUD_PLAYER_HEALTH_CURRENT,
+              hudPlayerHealthMax: UI_HUD_PLAYER_HEALTH_MAX,
+              hudPlayerHealthRatio: UI_HUD_PLAYER_HEALTH_RATIO,
+              hudPlayerHealthLabelVisible: true,
+              hudPlayerHealthLabelText: UI_HUD_PLAYER_HEALTH_LABEL_TEXT,
+              hudPlayerHealthBarVisible: true,
+              hudPlayerHealthBarValueMatchesPlayerHealth: true,
+              hudPlayerHealthBoundToPlayerHealth: true,
+              hudPlayerHealthUpdatesOnDamage: true,
+              sourceRef: 'runtime.ui.hud_player_health',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(healthOnly.status).toBe('failed');
+    expect(healthOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(healthOnly.requiredResults.find((entry) => entry.probeId === HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(healthOnly.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.player_health_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${UI_HUD_PLAYER_HEALTH_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.player_health_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected hudPlayerHealthVisible=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.player_health_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected hudPlayerHealthBoundToPlayerHealth=true, observed <missing>')
         })
       ])
     );

@@ -58,6 +58,10 @@ import {
   createUiHudCurrentWeaponPackageContract
 } from './ui-hud-current-weapon-package.js';
 import {
+  UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID,
+  createUiHudPlayerHealthPackageContract
+} from './ui-hud-player-health-package.js';
+import {
   UI_HUD_BOSS_HEALTH_REQUIRED_PROBE_ID,
   createUiHudBossHealthPackageContract
 } from './ui-hud-boss-health-package.js';
@@ -701,6 +705,19 @@ const uiHudCurrentWeaponPackageEvidence: GameplayCapabilityEvidence = uiHudCurre
   : canonicalRuntimeLoaderEvidence;
 const uiHudCurrentWeaponPackageQa: GameplayCapabilityQaEvidence = uiHudCurrentWeaponPackageReport.supportEligible
   ? { requiredProbeIds: [UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
+const uiHudPlayerHealthPackageReport = validateGameplayCapabilityPackage(createUiHudPlayerHealthPackageContract());
+const uiHudPlayerHealthPackageEvidence: GameplayCapabilityEvidence = uiHudPlayerHealthPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const uiHudPlayerHealthPackageQa: GameplayCapabilityQaEvidence = uiHudPlayerHealthPackageReport.supportEligible
+  ? { requiredProbeIds: [UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
 const uiHudBossHealthPackageReport = validateGameplayCapabilityPackage(createUiHudBossHealthPackageContract());
 const uiHudBossHealthPackageEvidence: GameplayCapabilityEvidence = uiHudBossHealthPackageReport.supportEligible
@@ -1627,6 +1644,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     uiHudCurrentWeaponPackageEvidence,
     uiHudCurrentWeaponPackageQa
+  ),
+  planned(
+    'ui.hud_player_health.v1',
+    'ui',
+    'Player health HUD',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    uiHudPlayerHealthPackageEvidence,
+    uiHudPlayerHealthPackageQa
   ),
   planned(
     'ui.hud_boss_health.v1',

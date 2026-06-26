@@ -6167,6 +6167,193 @@ next_action=CONTINUE_PARENT_LOOP
 next_atomic_step=RUN_PARENT_LOOP_DRIVER_TO_SELECT_NEXT_UNMET_CHECKPOINT
 ```
 
+## Stage 4 Implementation: `ui.hud_player_health.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.ui_hud_player_health_v1.complete_supported_package_slice
+parent_stage_id=stage4
+capability_id=ui.hud_player_health.v1
+closure_record_id=stage4.ui_hud_player_health_v1.complete_supported_package_slice.candidate_record
+record_status=active
+current_active_record=true
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=not_closed
+global_exit_conditions_met=false
+user_input_required=false
+next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
+post_record_validation_status=passed
+active_skill_revision_type=sha256_bundle
+active_skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
+active_skill_root_identity=/Users/dahufa/.agents/skills
+active_skill_file_count=8
+active_skill_bundle_digest=079f417530d6f68c02a9f869631d78610d6a3a58c588e67e4849d92ec6ca379c
+```
+
+Current review conclusion:
+
+`ui.hud_player_health.v1` was selected by the Parent Loop Driver after the `ui.hud_current_weapon.v1` receipt. At entry, the target profile already required R045 (`HUD shows player health`), but the registry had no package-owned `ui.hud_player_health.v1` descriptor, runtime system identity, telemetry event, required probe, QA reader fields, or target-profile overlay evidence. This atomic step only implements the player-health HUD package slice. It does not modify product runtime gameplay, enter Stage 5, cut over production default, exit the legacy authoritative path, or close Step37 globally.
+
+Minimum closure requirements:
+
+1. Add a package-owned `ui.hud_player_health.v1` contract with a distinct required probe and required evidence id.
+2. Add runtime system identity and package-owned telemetry event `ui.hud_player_health.verified`.
+3. Register package-backed support so `schema_expressible`, `normalized`, `compiled`, and `runtime_consumed` are true while static `qa_observed=false` and `completeSupported=false`.
+4. Make the QA reader verify real HUD state fields: visible HUD, schema/profile/runtime identity, player owner, current/max health, ratio, label, bar, player-health binding, and damage update behavior.
+5. Prove a plain `health.player_health.current` event is insufficient; `ui.hud_player_health.v1` requires HUD-specific state fields.
+6. Prove same-run overlay remains unverified when the dependency probe `health.player_health_points.v1.current.browser_qa.v1` is missing.
+7. Update target-profile and registry expectations only where the new package identity directly changes the canonical inventory.
+8. Include telemetry schema freeze validation because this atom adds the package-owned event `ui.hud_player_health.verified`.
+
+Implementation paths:
+
+```text
+packages/game-dsl/src/gameplay-capabilities/ui-hud-player-health-runtime-module.ts
+packages/game-dsl/src/gameplay-capabilities/ui-hud-player-health-package.ts
+packages/game-dsl/src/gameplay-capabilities/index.ts
+packages/game-dsl/src/gameplay-capabilities/registry.ts
+packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts
+packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts
+tests/contracts/gameplay-capability-package-contract.test.ts
+tests/contracts/gameplay-capability-qa-probes.test.ts
+tests/contracts/generation-target-profile-runtime-support.test.ts
+tests/contracts/contract-freeze.test.ts
+tests/contracts/deepseek-authoritative-dsl-support.test.ts
+tests/contracts/dsl-consumption-report.test.ts
+tests/contracts/step37-remaining-inventory-driver.test.ts
+docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md
+```
+
+Evidence/probe chain:
+
+```text
+package_id=ui.hud_player_health.v1
+required_probe_id=ui.hud_player_health.v1.player_health_hud.browser_qa.v1
+required_evidence_id=ui.hud_player_health.v1.evidence.capability_qa_report.v1
+runtime_system_id=ui.hud_player_health
+telemetry_event=ui.hud_player_health.verified
+dependency_capability_id=health.player_health_points.v1
+dependency_required_probe_id=health.player_health_points.v1.current.browser_qa.v1
+must_pass_state_fields=hudPlayerHealthVisible,hudPlayerHealthSchemaVersion,hudPlayerHealthProfileId,hudPlayerHealthRuntimeFamily,hudPlayerHealthOwnerEntityId,hudPlayerHealthCurrent,hudPlayerHealthMax,hudPlayerHealthRatio,hudPlayerHealthLabelVisible,hudPlayerHealthLabelText,hudPlayerHealthBarVisible,hudPlayerHealthBarValueMatchesPlayerHealth,hudPlayerHealthBoundToPlayerHealth,hudPlayerHealthUpdatesOnDamage
+semantic_negative=health.player_health.current without hudPlayerHealth* fields does not verify ui.hud_player_health.v1
+dependency_negative=ui.hud_player_health.verified without health.player_health_points required probe does not advance overlay
+```
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Added package-owned `ui.hud_player_health.v1` contract, runtime identity `ui.hud_player_health`, event `ui.hud_player_health.verified`, required probe, registry entry, and QA reader HUD fields. |
+| Consumer list | Package validator, capability registry, telemetry schema freeze, capability QA evidence reader, target-profile support overlay, DSL consumption report, and remaining-inventory driver. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED` until same-run QA evidence verifies the required probe; registry support is package-backed but static `completeSupported=false`. |
+| Authority | Package-owned QA evidence for `ui.hud_player_health.v1.player_health_hud.browser_qa.v1`; generic health events are dependency evidence only. |
+| Legacy strategy | Legacy/static target-profile support remains fail-closed; same-run observed overlay may advance only with current-run dependency and HUD state evidence. |
+| Failure policy | Missing package, telemetry event, HUD state fields, player-health dependency probe, or wrong capability/probe identity keeps `qa_observed=false` and reports missing required probe evidence. |
+| Evidence | Focused contracts prove package contract validity, telemetry schema acceptance, health-only negative, missing-dependency negative, and same-run positive overlay while preserving static incomplete support. |
+| Rollback | Reverting this atom removes only package/registry/schema/QA-reader wiring and returns `ui.hud_player_health.v1` to unsupported/unregistered without changing product runtime or Stage 5 state. |
+
+RED evidence:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts
+exitCode=1
+duration=real 1.92s
+result=RED: ui-hud-player-health package/runtime module did not exist; telemetry schema rejected ui.hud_player_health.verified; QA reader did not expose createUiHudPlayerHealthPackageContract(); target-profile overlay could not evaluate the new player-health HUD probe.
+```
+
+Pre-record local validation:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts
+exitCode=0
+duration=real 1.94s
+result=PASS: 7 files / 246 tests
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 9.68s
+result=PASS: 98 files / 1321 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 59.77s
+result=PASS: contracts 98 files / 1321 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.60s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.03s
+result=PASS
+
+command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
+exitCode=0
+duration=real 0.06s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_root_identity=/Users/dahufa/.agents/skills; skill_file_count=8; skill_bundle_digest=079f417530d6f68c02a9f869631d78610d6a3a58c588e67e4849d92ec6ca379c.
+
+command=/usr/bin/time -p npx tsx "<ui.hud_player_health.v1 support summary and remaining inventory>"
+exitCode=0
+duration=real 0.48s
+result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=52; staticCompleteSupportedCount=0; committedClosedCapabilityCount=51; unsupported_unregistered=7; ui.hud_player_health.v1 classification=DEFERRED; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; completeSupported=false; nextCheckpointId=stage4.ui_hud_player_health_v1.complete_supported_package_slice; selectionFailure=null.
+```
+
+Post-record validation requirement:
+
+- This closure record changes the final tree. Before creating the immutable candidate commit, focused contracts, full contracts, `npm test`, typecheck, `diff --check`, final diff range check, Skill freshness, and inventory alignment must be re-run against the final tree.
+- Candidate commit must not write its own SHA into this candidate record.
+- Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=079f417530d6f68c02a9f869631d78610d6a3a58c588e67e4849d92ec6ca379c`.
+- `oracle_status` remains `not_submitted` until the Oracle request is accepted and an `agent_id` is recorded outside the frozen candidate.
+
+Post-record final validation:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-focused-validation.test.ts
+exitCode=0
+duration=real 2.11s
+result=PASS: 10 files / 307 tests
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 9.57s
+result=PASS: 98 files / 1321 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 59.78s
+result=PASS: contracts 98 files / 1321 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.82s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.03s
+result=PASS
+
+command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
+exitCode=0
+duration=real 0.06s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_root_identity=/Users/dahufa/.agents/skills; skill_file_count=8; skill_bundle_digest=079f417530d6f68c02a9f869631d78610d6a3a58c588e67e4849d92ec6ca379c.
+
+command=/usr/bin/time -p npx tsx "<ui.hud_player_health.v1 support summary and remaining inventory>"
+exitCode=0
+duration=real 0.50s
+result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=52; staticCompleteSupportedCount=0; committedClosedCapabilityCount=51; unsupported_unregistered=7; currentCheckpointId=stage4.ui_hud_player_health_v1.complete_supported_package_slice; ui.hud_player_health.v1 classification=DEFERRED; completeSupported=false; selectionFailure=null.
+```
+
+Exit assessment before candidate commit: `LOCALLY_VALIDATED_CANDIDATE_READY_FOR_COMMIT`. The current atomic implementation is locally validated and ready for an immutable candidate commit, but it is not closed until candidate commit, Oracle approval, receipt-only closure, and post-receipt checks finish. Stage 4 remains active and Step37 global exits remain unmet.
+
 ## Stage 4 Implementation: `ui.hud_current_weapon.v1` complete-supported package slice
 
 checkpoint_id=stage4.ui_hud_current_weapon_v1.complete_supported_package_slice

@@ -82,6 +82,15 @@ import {
   UI_HUD_CURRENT_WEAPON_SCHEMA_VERSION,
   UI_HUD_CURRENT_WEAPON_SLOT,
   UI_HUD_CURRENT_WEAPON_WEAPON_ID,
+  UI_HUD_PLAYER_HEALTH_CURRENT,
+  UI_HUD_PLAYER_HEALTH_EVENT_TYPE,
+  UI_HUD_PLAYER_HEALTH_LABEL_TEXT,
+  UI_HUD_PLAYER_HEALTH_MAX,
+  UI_HUD_PLAYER_HEALTH_PROFILE_ID,
+  UI_HUD_PLAYER_HEALTH_RATIO,
+  UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID,
+  UI_HUD_PLAYER_HEALTH_RUNTIME_FAMILY,
+  UI_HUD_PLAYER_HEALTH_SCHEMA_VERSION,
   FIXED_PROMPT_BINDING_EVENT_TYPE,
   FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_ERROR_CODE,
@@ -184,6 +193,7 @@ import {
   RUNTIME_PLAN_COVERAGE_SCHEMA_VERSION,
   createRuntimePlanCoveragePackageContract,
   createUiHudCurrentWeaponPackageContract,
+  createUiHudPlayerHealthPackageContract,
   SCENE_ORDERED_SEGMENTS_CAPABILITY_ID,
   SCENE_ORDERED_SEGMENTS_COUNT,
   SCENE_ORDERED_SEGMENTS_EVENT_TYPE,
@@ -313,6 +323,7 @@ const feedbackVictoryDeclarationCapabilityId = 'feedback.victory_declaration.v1'
 const uiFailureRestartCapabilityId = 'ui.failure_restart.v1';
 const uiHudCurrentWeaponCapabilityId = 'ui.hud_current_weapon.v1';
 const uiHudBossHealthCapabilityId = 'ui.hud_boss_health.v1';
+const uiHudPlayerHealthCapabilityId = 'ui.hud_player_health.v1';
 const generationFallbackPolicyFailClosedCapabilityId = 'generation.fallback_policy_fail_closed.v1';
 const goalBossUnlockCapabilityId = 'goal.boss_unlock.v1';
 const hazardFallingAreaCapabilityId = 'hazard.falling_area.v1';
@@ -3453,6 +3464,131 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
   });
 
+  it('keeps player health HUD unverified when health evidence exists but HUD binding fields are missing', () => {
+    const dependencyEvidence: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: healthCapabilityId,
+        probeId: HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+        action: 'observe_health_points',
+        eventType: 'health.player_health.current',
+        eventTypes: ['health.player_health.current'],
+        sourceRef: 'runtime.health.player_health_points',
+        status: 'observed'
+      }
+    ];
+    const healthOnlyQaReport = buildSingleCapabilityQaReport({
+      capabilityId: uiHudPlayerHealthCapabilityId,
+      packageContract: createUiHudPlayerHealthPackageContract(),
+      dependencyPackages: [createHealthPlayerHealthPointsPackageContract()],
+      additionalObserved: dependencyEvidence,
+      eventType: 'health.player_health.current',
+      eventTypes: ['health.player_health.current'],
+      probeId: UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID,
+      action: 'show_player_health_hud',
+      sourceRef: 'runtime.health.player_health_points',
+      stateFields: undefined
+    });
+    const observedHudQaReport = buildSingleCapabilityQaReport({
+      capabilityId: uiHudPlayerHealthCapabilityId,
+      packageContract: createUiHudPlayerHealthPackageContract(),
+      dependencyPackages: [createHealthPlayerHealthPointsPackageContract()],
+      additionalObserved: dependencyEvidence,
+      eventType: UI_HUD_PLAYER_HEALTH_EVENT_TYPE,
+      eventTypes: ['health.player_health.current', UI_HUD_PLAYER_HEALTH_EVENT_TYPE],
+      probeId: UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID,
+      action: 'show_player_health_hud',
+      sourceRef: 'runtime.ui.hud_player_health',
+      stateFields: hudPlayerHealthStateFields()
+    });
+    const healthOnlyReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_ui_hud_player_health_health_only',
+      capabilityQaReport: healthOnlyQaReport
+    });
+    const observedHudReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_ui_hud_player_health_observed_state',
+      capabilityQaReport: observedHudQaReport
+    });
+    const healthOnlyState = healthOnlyReport.capabilities.find((entry) => entry.capabilityId === uiHudPlayerHealthCapabilityId);
+    const observedHudState = observedHudReport.capabilities.find((entry) => entry.capabilityId === uiHudPlayerHealthCapabilityId);
+
+    expect(healthOnlyQaReport.requiredResults.find((entry) => entry.probeId === HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(healthOnlyQaReport.requiredResults.find((entry) => entry.probeId === UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID}.assertion.player_health_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${UI_HUD_PLAYER_HEALTH_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID}.assertion.player_health_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected hudPlayerHealthVisible=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID}.assertion.player_health_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected hudPlayerHealthBoundToPlayerHealth=true, observed <missing>')
+        })
+      ])
+    });
+    expect(healthOnlyState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedHudState).toMatchObject({
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+  });
+
+  it('keeps player health HUD unverified when its health dependency probe is missing', () => {
+    const missingDependencyQaReport = buildSingleCapabilityQaReport({
+      capabilityId: uiHudPlayerHealthCapabilityId,
+      packageContract: createUiHudPlayerHealthPackageContract(),
+      dependencyPackages: [createHealthPlayerHealthPointsPackageContract()],
+      eventType: UI_HUD_PLAYER_HEALTH_EVENT_TYPE,
+      eventTypes: ['health.player_health.current', UI_HUD_PLAYER_HEALTH_EVENT_TYPE],
+      probeId: UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID,
+      action: 'show_player_health_hud',
+      sourceRef: 'runtime.ui.hud_player_health',
+      stateFields: hudPlayerHealthStateFields()
+    });
+    const report = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_ui_hud_player_health_missing_dependency',
+      capabilityQaReport: missingDependencyQaReport
+    });
+    const playerHealthHudState = report.capabilities.find((entry) => entry.capabilityId === uiHudPlayerHealthCapabilityId);
+
+    expect(missingDependencyQaReport.requiredResults.find((entry) => entry.probeId === UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(missingDependencyQaReport.missingRequiredProbeIds).toEqual([HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID]);
+    expect(playerHealthHudState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      dependencyRequiredProbeIds: [HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID],
+      missingDependencyRequiredProbeIds: [HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+  });
+
   it('keeps state transition graph unverified when win lose evidence lacks explicit graph fields', () => {
     const genericGraphQaReport = buildSingleCapabilityQaReport({
       capabilityId: rulesStateTransitionGraphCapabilityId,
@@ -5911,6 +6047,25 @@ function hudCurrentWeaponStateFields(): Record<string, unknown> {
     hudCurrentWeaponIconVisible: true,
     hudCurrentWeaponBoundToWeaponState: true,
     hudCurrentWeaponMatchesCurrentWeapon: true
+  };
+}
+
+function hudPlayerHealthStateFields(): Record<string, unknown> {
+  return {
+    hudPlayerHealthVisible: true,
+    hudPlayerHealthSchemaVersion: UI_HUD_PLAYER_HEALTH_SCHEMA_VERSION,
+    hudPlayerHealthProfileId: UI_HUD_PLAYER_HEALTH_PROFILE_ID,
+    hudPlayerHealthRuntimeFamily: UI_HUD_PLAYER_HEALTH_RUNTIME_FAMILY,
+    hudPlayerHealthOwnerEntityId: 'player',
+    hudPlayerHealthCurrent: UI_HUD_PLAYER_HEALTH_CURRENT,
+    hudPlayerHealthMax: UI_HUD_PLAYER_HEALTH_MAX,
+    hudPlayerHealthRatio: UI_HUD_PLAYER_HEALTH_RATIO,
+    hudPlayerHealthLabelVisible: true,
+    hudPlayerHealthLabelText: UI_HUD_PLAYER_HEALTH_LABEL_TEXT,
+    hudPlayerHealthBarVisible: true,
+    hudPlayerHealthBarValueMatchesPlayerHealth: true,
+    hudPlayerHealthBoundToPlayerHealth: true,
+    hudPlayerHealthUpdatesOnDamage: true
   };
 }
 

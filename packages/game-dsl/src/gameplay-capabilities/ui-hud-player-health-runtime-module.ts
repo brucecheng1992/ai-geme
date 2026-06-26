@@ -1,0 +1,10 @@
+export const UI_HUD_PLAYER_HEALTH_CAPABILITY_ID = 'ui.hud_player_health.v1';
+export const UI_HUD_PLAYER_HEALTH_RUNTIME_SYSTEM_ID = 'ui.hud_player_health';
+export const UI_HUD_PLAYER_HEALTH_EVENT_TYPE = 'ui.hud_player_health.verified';
+export const UI_HUD_PLAYER_HEALTH_PROFILE_ID = 'DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1';
+export const UI_HUD_PLAYER_HEALTH_RUNTIME_FAMILY = 'phaser_2d_action_arcade.v1';
+export const UI_HUD_PLAYER_HEALTH_SCHEMA_VERSION = 'ui_hud_player_health.v0.1';
+export const UI_HUD_PLAYER_HEALTH_LABEL_TEXT = 'HP';
+export const UI_HUD_PLAYER_HEALTH_CURRENT = 3;
+export const UI_HUD_PLAYER_HEALTH_MAX = 5;
+export const UI_HUD_PLAYER_HEALTH_RATIO = 0.6;

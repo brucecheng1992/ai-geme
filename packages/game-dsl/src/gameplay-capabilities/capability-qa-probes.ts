@@ -204,6 +204,20 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   hudCurrentWeaponIconVisible?: boolean;
   hudCurrentWeaponBoundToWeaponState?: boolean;
   hudCurrentWeaponMatchesCurrentWeapon?: boolean;
+  hudPlayerHealthVisible?: boolean;
+  hudPlayerHealthSchemaVersion?: string;
+  hudPlayerHealthProfileId?: string;
+  hudPlayerHealthRuntimeFamily?: string;
+  hudPlayerHealthOwnerEntityId?: string;
+  hudPlayerHealthCurrent?: number;
+  hudPlayerHealthMax?: number;
+  hudPlayerHealthRatio?: number;
+  hudPlayerHealthLabelVisible?: boolean;
+  hudPlayerHealthLabelText?: string;
+  hudPlayerHealthBarVisible?: boolean;
+  hudPlayerHealthBarValueMatchesPlayerHealth?: boolean;
+  hudPlayerHealthBoundToPlayerHealth?: boolean;
+  hudPlayerHealthUpdatesOnDamage?: boolean;
   hudBossHealthVisible?: boolean;
   hudBossHealthSchemaVersion?: string;
   hudBossHealthProfileId?: string;
@@ -817,6 +831,24 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('hudCurrentWeaponIconVisible', expected, observed.hudCurrentWeaponIconVisible),
     ...compareExpectedBooleanField('hudCurrentWeaponBoundToWeaponState', expected, observed.hudCurrentWeaponBoundToWeaponState),
     ...compareExpectedBooleanField('hudCurrentWeaponMatchesCurrentWeapon', expected, observed.hudCurrentWeaponMatchesCurrentWeapon),
+    ...compareExpectedBooleanField('hudPlayerHealthVisible', expected, observed.hudPlayerHealthVisible),
+    ...compareExpectedStringField('hudPlayerHealthSchemaVersion', expected, observed.hudPlayerHealthSchemaVersion),
+    ...compareExpectedStringField('hudPlayerHealthProfileId', expected, observed.hudPlayerHealthProfileId),
+    ...compareExpectedStringField('hudPlayerHealthRuntimeFamily', expected, observed.hudPlayerHealthRuntimeFamily),
+    ...compareExpectedStringField('hudPlayerHealthOwnerEntityId', expected, observed.hudPlayerHealthOwnerEntityId),
+    ...compareExpectedNumberField('hudPlayerHealthCurrent', expected, observed.hudPlayerHealthCurrent),
+    ...compareExpectedNumberField('hudPlayerHealthMax', expected, observed.hudPlayerHealthMax),
+    ...compareExpectedNumberField('hudPlayerHealthRatio', expected, observed.hudPlayerHealthRatio),
+    ...compareExpectedBooleanField('hudPlayerHealthLabelVisible', expected, observed.hudPlayerHealthLabelVisible),
+    ...compareExpectedStringField('hudPlayerHealthLabelText', expected, observed.hudPlayerHealthLabelText),
+    ...compareExpectedBooleanField('hudPlayerHealthBarVisible', expected, observed.hudPlayerHealthBarVisible),
+    ...compareExpectedBooleanField(
+      'hudPlayerHealthBarValueMatchesPlayerHealth',
+      expected,
+      observed.hudPlayerHealthBarValueMatchesPlayerHealth
+    ),
+    ...compareExpectedBooleanField('hudPlayerHealthBoundToPlayerHealth', expected, observed.hudPlayerHealthBoundToPlayerHealth),
+    ...compareExpectedBooleanField('hudPlayerHealthUpdatesOnDamage', expected, observed.hudPlayerHealthUpdatesOnDamage),
     ...compareExpectedBooleanField('hudBossHealthVisible', expected, observed.hudBossHealthVisible),
     ...compareExpectedStringField('hudBossHealthSchemaVersion', expected, observed.hudBossHealthSchemaVersion),
     ...compareExpectedStringField('hudBossHealthProfileId', expected, observed.hudBossHealthProfileId),
