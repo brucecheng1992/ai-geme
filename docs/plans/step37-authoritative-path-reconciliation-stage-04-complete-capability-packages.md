@@ -6175,14 +6175,15 @@ closure_record_id=stage4.ui_hud_current_weapon_v1.implementation.2026-06-26
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
+closure_status=closed
 parent_stage_status=running
 parent_loop_status=running
 global_exit_conditions_met=false
 user_input_required=false
-next_action=CONTINUE_CURRENT_ATOM
-next_atomic_step=stage4.ui_hud_current_weapon_v1.complete_supported_package_slice
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage4.ui_hud_player_health_v1.complete_supported_package_slice
 
 Current Stage review conclusion:
 
@@ -6360,8 +6361,9 @@ Post-P1 final validation and candidate readiness:
 ```text
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
+closure_status=closed
 review_required=true
 reviewed_skill_revision_type=sha256_bundle
 reviewed_skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
@@ -6369,13 +6371,31 @@ reviewed_skill_root_identity=/Users/dahufa/.agents/skills
 reviewed_skill_file_count=8
 reviewed_skill_revision=0ee367b211376b90d99f05f6825beb79171e1bc7e61bfdb71c043ef749ffca5f
 reviewed_skill_bundle_digest=0ee367b211376b90d99f05f6825beb79171e1bc7e61bfdb71c043ef749ffca5f
+candidate_commit_sha=71633656b9357e5d6a08e56373a2f85039385f70
+candidate_commit_tree=7e432a4208940fe445112a1fed0767cc6cf1c3b2
+reviewed_commit_sha=71633656b9357e5d6a08e56373a2f85039385f70
+reviewed_commit_tree=7e432a4208940fe445112a1fed0767cc6cf1c3b2
+oracle_submission_id=019f05a4-c338-7400-a677-0df6e2bc8c66
+oracle_submission_id_source=multi_agent_v1.send_input.submission_id
+oracle_agent_id=019f058a-4f55-7da1-acfe-22d429657c2c
+oracle_agent_id_source=existing_oracle_agent_id
+oracle_status_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 receipt metadata should update pre-commit wording
 previous_candidate_commit_sha=3248ca4ab07ca1714ad1d57cc4cee0306d79fd8d
 previous_candidate_status=superseded_by_oracle_p1_rework
 previous_recorded_skill_digest=968329aee2513d0486dc24a92051e6695dd929baec9d7c9a3db80ab8f6f51131
 current_active_skill_digest=0ee367b211376b90d99f05f6825beb79171e1bc7e61bfdb71c043ef749ffca5f
 freshness_status=changed
 freshness_interpretation=The previous candidate digest remains historical evidence for 3248ca4ab07ca1714ad1d57cc4cee0306d79fd8d. The current candidate request must bind the freshly recomputed active Skill bundle digest and must not reuse the superseded digest.
-unresolved_items=new candidate not created; Oracle re-review not submitted; receipt not created; Parent Loop Driver not run after receipt
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for immutable candidate 71633656b9357e5d6a08e56373a2f85039385f70. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, Stage 5, production default cutover, legacy authoritative path exit, or prior closed history.
+parent_loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage4.ui_hud_player_health_v1.complete_supported_package_slice
+next_atomic_step_source=Step37 remaining inventory helper after adding ui.hud_current_weapon.v1 to committed closures
+unresolved_items=Stage 4 remains running; Step37 global exits remain false; next atomic step must continue
 ```
 
 Post-P1 final validation commands:
@@ -6417,7 +6437,31 @@ duration=real 0.55s
 result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=51; staticCompleteSupportedCount=0; committedClosedCapabilityCount=50; sameRunObservedOnlyCount=50; unsupported_unregistered=8; currentCheckpointId=stage4.ui_hud_current_weapon_v1.complete_supported_package_slice; nextAtomicStep="Stage 4 ui.hud_current_weapon.v1 complete-supported package slice implementation atomic step"; selectionFailure=null; ui.hud_current_weapon.v1 state=registered_without_required_probe_verification; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false.
 ```
 
-Exit assessment: `LOCALLY_VALIDATED_AWAITING_CANDIDATE_COMMIT`. The superseded candidate `3248ca4ab07ca1714ad1d57cc4cee0306d79fd8d` cannot receive a receipt. The next action inside this atom is to create a new immutable candidate commit, submit that candidate plus `reviewed_skill_revision=0ee367b211376b90d99f05f6825beb79171e1bc7e61bfdb71c043ef749ffca5f` for Oracle re-review, and only then write a receipt if Oracle approves.
+Oracle re-review and receipt:
+
+```text
+reviewed_commit_sha=71633656b9357e5d6a08e56373a2f85039385f70
+reviewed_commit_tree=7e432a4208940fe445112a1fed0767cc6cf1c3b2
+reviewed_skill_revision=0ee367b211376b90d99f05f6825beb79171e1bc7e61bfdb71c043ef749ffca5f
+oracle_submission_id=019f05a4-c338-7400-a677-0df6e2bc8c66
+oracle_agent_id=019f058a-4f55-7da1-acfe-22d429657c2c
+oracle_result=APPROVED_FOR_RECEIPT
+p0=none
+p1=none
+p2=none
+p3=receipt metadata should update the candidate record from pre-commit wording; handled by this receipt-only metadata update
+```
+
+Parent Loop handoff after receipt:
+
+```text
+command=/usr/bin/time -p npx tsx --eval "<ui.hud_current_weapon.v1 committed closure support summary and remaining inventory>"
+exitCode=0
+duration=real 0.48s
+result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=51; staticCompleteSupportedCount=0; committedClosedCapabilityCount=51; sameRunObservedOnlyCount=51; unsupported_unregistered=8; nextCheckpointId=stage4.ui_hud_player_health_v1.complete_supported_package_slice; nextAtomicStep="Stage 4 ui.hud_player_health.v1 complete-supported package slice implementation atomic step"; selectionFailure=null.
+```
+
+Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4.ui_hud_current_weapon_v1.complete_supported_package_slice` after candidate commit creation, full local validation, Oracle `APPROVED_FOR_RECEIPT`, and receipt-only metadata update. It does not close Stage 4, Step37, production default cutover, legacy authoritative path exit, Stage 5, or final global closure. Parent Loop Driver must continue with `stage4.ui_hud_player_health_v1.complete_supported_package_slice` while global exits remain false and no verified user blocker exists.
 
 ## Stage 4 Implementation: `ui.hud_boss_health.v1` complete-supported package slice
 
