@@ -23,6 +23,8 @@ export * from './enemy-boss-attack-pattern-runtime-module.js';
 export * from './enemy-boss-attack-pattern-package.js';
 export * from './enemy-boss-lifecycle-runtime-module.js';
 export * from './enemy-boss-lifecycle-package.js';
+export * from './enemy-boss-phase-transition-runtime-module.js';
+export * from './enemy-boss-phase-transition-package.js';
 export * from './collision-platform-runtime-module.js';
 export * from './collision-platform-package.js';
 export * from './default-straight-single-weapon-runtime-module.js';

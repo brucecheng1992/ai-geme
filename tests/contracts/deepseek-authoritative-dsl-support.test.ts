@@ -439,6 +439,21 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       missingEvidenceDimensions: ['qa_observed'],
       missingSupportEvidencePrerequisites: ['requiredProbesVerified']
     });
+    expect(capabilities.get('enemy.boss_phase_transition.v1')).toMatchObject({
+      registered: true,
+      classification: 'DEFERRED',
+      completeSupported: false,
+      legacyBacked: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
   });
 
   it('reports rapid-fire weapon package-backed evidence without QA completion', () => {
@@ -579,6 +594,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       'combat.projectile.v1',
       'enemy.boss_attack_pattern.v1',
       'enemy.boss_lifecycle.v1',
+      'enemy.boss_phase_transition.v1',
       'enemy.chaser_pathfinding.v1',
       'enemy.vertical_shooter_pattern.v1',
       'goal.destroy_target.v1',

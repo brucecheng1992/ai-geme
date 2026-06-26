@@ -38,6 +38,10 @@ import {
   createEnemyBossLifecyclePackageContract
 } from './enemy-boss-lifecycle-package.js';
 import {
+  ENEMY_BOSS_PHASE_TRANSITION_REQUIRED_PROBE_ID,
+  createEnemyBossPhaseTransitionPackageContract
+} from './enemy-boss-phase-transition-package.js';
+import {
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   createCameraSideFollowPackageContract
 } from './camera-side-follow-package.js';
@@ -529,6 +533,19 @@ const enemyBossLifecyclePackageEvidence: GameplayCapabilityEvidence = enemyBossL
 const enemyBossLifecyclePackageQa: GameplayCapabilityQaEvidence = enemyBossLifecyclePackageReport.supportEligible
   ? { requiredProbeIds: [ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const enemyBossPhaseTransitionPackageReport = validateGameplayCapabilityPackage(createEnemyBossPhaseTransitionPackageContract());
+const enemyBossPhaseTransitionPackageEvidence: GameplayCapabilityEvidence = enemyBossPhaseTransitionPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const enemyBossPhaseTransitionPackageQa: GameplayCapabilityQaEvidence = enemyBossPhaseTransitionPackageReport.supportEligible
+  ? { requiredProbeIds: [ENEMY_BOSS_PHASE_TRANSITION_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const cameraSideFollowPackageReport = validateGameplayCapabilityPackage(createCameraSideFollowPackageContract());
 const cameraSideFollowPackageEvidence: GameplayCapabilityEvidence = cameraSideFollowPackageReport.supportEligible
   ? {
@@ -819,6 +836,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     enemyBossLifecyclePackageEvidence,
     enemyBossLifecyclePackageQa
+  ),
+  planned(
+    'enemy.boss_phase_transition.v1',
+    'enemy',
+    'Enemy boss phase transition',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    enemyBossPhaseTransitionPackageEvidence,
+    enemyBossPhaseTransitionPackageQa
   ),
   runtimeBacked('camera.top_down_follow.v1', 'camera', 'Top-down follow camera', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], ['top_down_camera']),
   runtimeBacked('movement.eight_direction.v1', 'movement', 'Eight-direction movement', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], [

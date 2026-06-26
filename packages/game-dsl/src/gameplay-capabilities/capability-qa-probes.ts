@@ -168,6 +168,12 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   bossMaxHealth?: number;
   bossHealthInitialized?: boolean;
   bossDefeated?: boolean;
+  bossPhaseTransitioned?: boolean;
+  bossPreviousPhaseId?: string;
+  bossCurrentPhaseId?: string;
+  bossHealthThresholdRatio?: number;
+  bossSpeedMultiplier?: number;
+  bossSpeedMultiplierApplied?: boolean;
   status?: string;
   sourceRef?: string;
 };
@@ -461,7 +467,13 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedStringField('bossEntityId', expected, observed.bossEntityId),
     ...compareExpectedNumberField('bossMaxHealth', expected, observed.bossMaxHealth),
     ...compareExpectedBooleanField('bossHealthInitialized', expected, observed.bossHealthInitialized),
-    ...compareExpectedBooleanField('bossDefeated', expected, observed.bossDefeated)
+    ...compareExpectedBooleanField('bossDefeated', expected, observed.bossDefeated),
+    ...compareExpectedBooleanField('bossPhaseTransitioned', expected, observed.bossPhaseTransitioned),
+    ...compareExpectedStringField('bossPreviousPhaseId', expected, observed.bossPreviousPhaseId),
+    ...compareExpectedStringField('bossCurrentPhaseId', expected, observed.bossCurrentPhaseId),
+    ...compareExpectedNumberField('bossHealthThresholdRatio', expected, observed.bossHealthThresholdRatio),
+    ...compareExpectedNumberField('bossSpeedMultiplier', expected, observed.bossSpeedMultiplier),
+    ...compareExpectedBooleanField('bossSpeedMultiplierApplied', expected, observed.bossSpeedMultiplierApplied)
   ];
 }
 

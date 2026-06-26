@@ -120,6 +120,19 @@ import {
   ENEMY_BOSS_LIFECYCLE_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/enemy-boss-lifecycle-runtime-module.js';
 import {
+  ENEMY_BOSS_PHASE_TRANSITION_PACKAGE_REQUIRED_EVIDENCE_ID,
+  ENEMY_BOSS_PHASE_TRANSITION_REQUIRED_PROBE_ID,
+  createEnemyBossPhaseTransitionPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/enemy-boss-phase-transition-package.js';
+import {
+  ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE,
+  ENEMY_BOSS_PHASE_TRANSITION_FROM_PHASE_ID,
+  ENEMY_BOSS_PHASE_TRANSITION_HEALTH_THRESHOLD_RATIO,
+  ENEMY_BOSS_PHASE_TRANSITION_RUNTIME_SYSTEM_ID,
+  ENEMY_BOSS_PHASE_TRANSITION_SPEED_MULTIPLIER,
+  ENEMY_BOSS_PHASE_TRANSITION_TO_PHASE_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/enemy-boss-phase-transition-runtime-module.js';
+import {
   COLLISION_PLATFORM_PACKAGE_REQUIRED_EVIDENCE_ID,
   COLLISION_PLATFORM_REQUIRED_PROBE_ID,
   createCollisionPlatformPackageContract
@@ -724,6 +737,62 @@ describe('Gameplay capability package contract', () => {
             bossMaxHealth: ENEMY_BOSS_LIFECYCLE_MAX_HEALTH,
             bossHealthInitialized: true,
             bossDefeated: true
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the enemy boss phase-transition package-owned QA contract', () => {
+    const contract = createEnemyBossPhaseTransitionPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === ENEMY_BOSS_PHASE_TRANSITION_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'enemy.boss_phase_transition.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([ENEMY_BOSS_PHASE_TRANSITION_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: ENEMY_BOSS_PHASE_TRANSITION_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'enemy.boss_phase_transition.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE,
+          parameters: expect.objectContaining({
+            fromPhaseId: ENEMY_BOSS_PHASE_TRANSITION_FROM_PHASE_ID,
+            toPhaseId: ENEMY_BOSS_PHASE_TRANSITION_TO_PHASE_ID,
+            healthThresholdRatio: ENEMY_BOSS_PHASE_TRANSITION_HEALTH_THRESHOLD_RATIO,
+            speedMultiplier: ENEMY_BOSS_PHASE_TRANSITION_SPEED_MULTIPLIER
+          })
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: ENEMY_BOSS_PHASE_TRANSITION_RUNTIME_SYSTEM_ID,
+          ref: ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${ENEMY_BOSS_PHASE_TRANSITION_REQUIRED_PROBE_ID}.assertion.phase_transition_verified`,
+          expected: {
+            bossPhaseTransitioned: true,
+            bossPreviousPhaseId: ENEMY_BOSS_PHASE_TRANSITION_FROM_PHASE_ID,
+            bossCurrentPhaseId: ENEMY_BOSS_PHASE_TRANSITION_TO_PHASE_ID,
+            bossHealthThresholdRatio: ENEMY_BOSS_PHASE_TRANSITION_HEALTH_THRESHOLD_RATIO,
+            bossSpeedMultiplier: ENEMY_BOSS_PHASE_TRANSITION_SPEED_MULTIPLIER,
+            bossSpeedMultiplierApplied: true
           }
         })
       ]

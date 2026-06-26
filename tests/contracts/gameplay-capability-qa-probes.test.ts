@@ -57,6 +57,13 @@ import {
   ENEMY_BOSS_LIFECYCLE_MAX_HEALTH,
   ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID,
   createEnemyBossLifecyclePackageContract,
+  ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE,
+  ENEMY_BOSS_PHASE_TRANSITION_FROM_PHASE_ID,
+  ENEMY_BOSS_PHASE_TRANSITION_HEALTH_THRESHOLD_RATIO,
+  ENEMY_BOSS_PHASE_TRANSITION_REQUIRED_PROBE_ID,
+  ENEMY_BOSS_PHASE_TRANSITION_SPEED_MULTIPLIER,
+  ENEMY_BOSS_PHASE_TRANSITION_TO_PHASE_ID,
+  createEnemyBossPhaseTransitionPackageContract,
   type CapabilityQaProbeDescriptor,
   type GameplayCapabilityPackageContract
 } from '../../packages/game-dsl/src/index.js';
@@ -1484,6 +1491,93 @@ describe('Capability-owned runtime QA probes', () => {
       })
     ]));
     expect(observedLifecycleState.status).toBe('passed');
+  });
+
+  it('does not verify enemy boss phase transition when evidence lacks runtime phase state fields', () => {
+    const capabilityId = 'enemy.boss_phase_transition.v1';
+    const probeId = ENEMY_BOSS_PHASE_TRANSITION_REQUIRED_PROBE_ID;
+    const packages = [createEnemyBossLifecyclePackageContract(), createEnemyBossPhaseTransitionPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingPhaseState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_boss_phase_transition',
+              eventType: ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE,
+              eventTypes: [ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE],
+              sourceRef: 'runtime.boss.phase_transition',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedPhaseState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_boss_phase_transition',
+              eventType: ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE,
+              eventTypes: [ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE],
+              bossPhaseTransitioned: true,
+              bossPreviousPhaseId: ENEMY_BOSS_PHASE_TRANSITION_FROM_PHASE_ID,
+              bossCurrentPhaseId: ENEMY_BOSS_PHASE_TRANSITION_TO_PHASE_ID,
+              bossHealthThresholdRatio: ENEMY_BOSS_PHASE_TRANSITION_HEALTH_THRESHOLD_RATIO,
+              bossSpeedMultiplier: ENEMY_BOSS_PHASE_TRANSITION_SPEED_MULTIPLIER,
+              bossSpeedMultiplierApplied: true,
+              sourceRef: 'runtime.boss.phase_transition',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingPhaseState.status).toBe('failed');
+    expect(missingPhaseState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingPhaseState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.phase_transition_verified`,
+        status: 'failed',
+        message: expect.stringContaining('expected bossPhaseTransitioned=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.phase_transition_verified`,
+        status: 'failed',
+        message: expect.stringContaining(`expected bossPreviousPhaseId=${ENEMY_BOSS_PHASE_TRANSITION_FROM_PHASE_ID}, observed <missing>`)
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.phase_transition_verified`,
+        status: 'failed',
+        message: expect.stringContaining(`expected bossCurrentPhaseId=${ENEMY_BOSS_PHASE_TRANSITION_TO_PHASE_ID}, observed <missing>`)
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.phase_transition_verified`,
+        status: 'failed',
+        message: expect.stringContaining(`expected bossSpeedMultiplier=${ENEMY_BOSS_PHASE_TRANSITION_SPEED_MULTIPLIER}, observed <missing>`)
+      })
+    ]));
+    expect(observedPhaseState.status).toBe('passed');
   });
 });
 
