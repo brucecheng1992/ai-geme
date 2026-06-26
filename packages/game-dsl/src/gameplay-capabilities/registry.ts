@@ -62,6 +62,10 @@ import {
   createGenerationFallbackPolicyFailClosedPackageContract
 } from './generation-fallback-policy-fail-closed-package.js';
 import {
+  GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID,
+  createGoalBossUnlockPackageContract
+} from './goal-boss-unlock-package.js';
+import {
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   createCameraSideFollowPackageContract
 } from './camera-side-follow-package.js';
@@ -632,6 +636,19 @@ const generationFallbackPolicyFailClosedPackageEvidence: GameplayCapabilityEvide
 const generationFallbackPolicyFailClosedPackageQa: GameplayCapabilityQaEvidence = generationFallbackPolicyFailClosedPackageReport.supportEligible
   ? { requiredProbeIds: [GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const goalBossUnlockPackageReport = validateGameplayCapabilityPackage(createGoalBossUnlockPackageContract());
+const goalBossUnlockPackageEvidence: GameplayCapabilityEvidence = goalBossUnlockPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const goalBossUnlockPackageQa: GameplayCapabilityQaEvidence = goalBossUnlockPackageReport.supportEligible
+  ? { requiredProbeIds: [GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const cameraSideFollowPackageReport = validateGameplayCapabilityPackage(createCameraSideFollowPackageContract());
 const cameraSideFollowPackageEvidence: GameplayCapabilityEvidence = cameraSideFollowPackageReport.supportEligible
   ? {
@@ -982,6 +999,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     generationFallbackPolicyFailClosedPackageEvidence,
     generationFallbackPolicyFailClosedPackageQa
+  ),
+  planned(
+    'goal.boss_unlock.v1',
+    'goal',
+    'Boss battle unlock after wave clear',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    goalBossUnlockPackageEvidence,
+    goalBossUnlockPackageQa
   ),
   runtimeBacked('camera.top_down_follow.v1', 'camera', 'Top-down follow camera', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], ['top_down_camera']),
   runtimeBacked('movement.eight_direction.v1', 'movement', 'Eight-direction movement', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], [

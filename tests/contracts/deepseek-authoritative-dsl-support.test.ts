@@ -529,6 +529,21 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       missingEvidenceDimensions: ['qa_observed'],
       missingSupportEvidencePrerequisites: ['requiredProbesVerified']
     });
+    expect(capabilities.get('goal.boss_unlock.v1')).toMatchObject({
+      registered: true,
+      classification: 'DEFERRED',
+      completeSupported: false,
+      legacyBacked: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
   });
 
   it('reports rapid-fire weapon package-backed evidence without QA completion', () => {
@@ -677,6 +692,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       'enemy.vertical_shooter_pattern.v1',
       'feedback.victory_declaration.v1',
       'generation.fallback_policy_fail_closed.v1',
+      'goal.boss_unlock.v1',
       'goal.destroy_target.v1',
       'goal.reach_exit.v1',
       'hazard.contact_damage.v1',

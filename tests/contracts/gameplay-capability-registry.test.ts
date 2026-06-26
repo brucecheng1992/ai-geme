@@ -26,6 +26,7 @@ import {
   ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID,
   FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID,
+  GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID,
   MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
@@ -623,6 +624,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(fallbackPolicy)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(fallbackPolicy)).toBe(false);
+  });
+
+  it('scopes goal boss unlock package-owned QA without static support promotion', () => {
+    const bossUnlock = findGameplayCapability('goal.boss_unlock.v1');
+
+    if (bossUnlock === undefined) {
+      throw new Error('Expected goal.boss_unlock.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(bossUnlock)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(bossUnlock.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(bossUnlock.qa).toEqual({
+      requiredProbeIds: [GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(bossUnlock)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(bossUnlock)).toBe(false);
   });
 
   it('scopes weapon rapid fire package-owned QA without static support promotion', () => {

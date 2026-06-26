@@ -98,7 +98,7 @@ export function createSpawnEnemyWavePackageContract(): GameplayCapabilityPackage
       sceneBindings: [],
       fallbackPolicy: 'not_applicable'
     },
-    dependencies: [{ capabilityId: 'spawn.static.v1', range: '^1.0.0' }],
+    dependencies: [{ capabilityId: 'spawn.static.v1', range: '^v1' }],
     optionalDependencies: [],
     conflictsWith: [],
     provides: [{ id: 'spawn.enemy_wave.service', version: 'v1' }],

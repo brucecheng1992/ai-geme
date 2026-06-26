@@ -206,6 +206,14 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   undeclaredFallbackDetected?: boolean;
   fallbackOutputGenerated?: boolean;
   fallbackFailureCode?: string;
+  wavesCleared?: boolean;
+  clearedWaveCount?: number;
+  requiredWaveCount?: number;
+  bossUnlockTriggered?: boolean;
+  bossUnlockReason?: string;
+  bossEncounterUnlocked?: boolean;
+  bossUnlockWaveId?: string;
+  bossUnlockBossEntityId?: string;
   status?: string;
   sourceRef?: string;
 };
@@ -537,7 +545,15 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('fallbackPolicyVerified', expected, observed.fallbackPolicyVerified),
     ...compareExpectedBooleanField('undeclaredFallbackDetected', expected, observed.undeclaredFallbackDetected),
     ...compareExpectedBooleanField('fallbackOutputGenerated', expected, observed.fallbackOutputGenerated),
-    ...compareExpectedStringField('fallbackFailureCode', expected, observed.fallbackFailureCode)
+    ...compareExpectedStringField('fallbackFailureCode', expected, observed.fallbackFailureCode),
+    ...compareExpectedBooleanField('wavesCleared', expected, observed.wavesCleared),
+    ...compareExpectedNumberField('clearedWaveCount', expected, observed.clearedWaveCount),
+    ...compareExpectedNumberField('requiredWaveCount', expected, observed.requiredWaveCount),
+    ...compareExpectedBooleanField('bossUnlockTriggered', expected, observed.bossUnlockTriggered),
+    ...compareExpectedStringField('bossUnlockReason', expected, observed.bossUnlockReason),
+    ...compareExpectedBooleanField('bossEncounterUnlocked', expected, observed.bossEncounterUnlocked),
+    ...compareExpectedStringField('bossUnlockWaveId', expected, observed.bossUnlockWaveId),
+    ...compareExpectedStringField('bossUnlockBossEntityId', expected, observed.bossUnlockBossEntityId)
   ];
 }
 

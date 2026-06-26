@@ -198,6 +198,19 @@ import {
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/generation-fallback-policy-fail-closed-runtime-module.js';
 import {
+  GOAL_BOSS_UNLOCK_PACKAGE_REQUIRED_EVIDENCE_ID,
+  GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID,
+  createGoalBossUnlockPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/goal-boss-unlock-package.js';
+import {
+  GOAL_BOSS_UNLOCK_BOSS_ENTITY_ID,
+  GOAL_BOSS_UNLOCK_EVENT_TYPE,
+  GOAL_BOSS_UNLOCK_REASON,
+  GOAL_BOSS_UNLOCK_REQUIRED_WAVE_COUNT,
+  GOAL_BOSS_UNLOCK_RUNTIME_SYSTEM_ID,
+  GOAL_BOSS_UNLOCK_WAVE_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/goal-boss-unlock-runtime-module.js';
+import {
   COLLISION_PLATFORM_PACKAGE_REQUIRED_EVIDENCE_ID,
   COLLISION_PLATFORM_REQUIRED_PROBE_ID,
   createCollisionPlatformPackageContract
@@ -1144,6 +1157,71 @@ describe('Gameplay capability package contract', () => {
             undeclaredFallbackDetected: false,
             fallbackOutputGenerated: false,
             fallbackFailureCode: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_ERROR_CODE
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the goal boss unlock package-owned QA contract', () => {
+    const contract = createGoalBossUnlockPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'goal.boss_unlock.v1'
+    });
+    expect(contract.runtime.systems).toEqual([
+      {
+        id: GOAL_BOSS_UNLOCK_RUNTIME_SYSTEM_ID,
+        version: 'v1',
+        phase: 'gameplay',
+        dependencies: ['spawn.enemy_wave', 'enemy.boss_lifecycle']
+      }
+    ]);
+    expect(contract.dependencies.map((dependency) => dependency.capabilityId)).toEqual(['spawn.enemy_wave.v1', 'enemy.boss_lifecycle.v1']);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: GOAL_BOSS_UNLOCK_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'goal.boss_unlock.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: GOAL_BOSS_UNLOCK_EVENT_TYPE,
+          parameters: {
+            waveId: GOAL_BOSS_UNLOCK_WAVE_ID,
+            bossEntityId: GOAL_BOSS_UNLOCK_BOSS_ENTITY_ID,
+            unlockReason: GOAL_BOSS_UNLOCK_REASON
+          }
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: GOAL_BOSS_UNLOCK_RUNTIME_SYSTEM_ID,
+          ref: GOAL_BOSS_UNLOCK_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID}.assertion.boss_unlock_verified`,
+          expected: {
+            wavesCleared: true,
+            clearedWaveCount: GOAL_BOSS_UNLOCK_REQUIRED_WAVE_COUNT,
+            requiredWaveCount: GOAL_BOSS_UNLOCK_REQUIRED_WAVE_COUNT,
+            bossUnlockTriggered: true,
+            bossUnlockReason: GOAL_BOSS_UNLOCK_REASON,
+            bossEncounterUnlocked: true,
+            bossUnlockWaveId: GOAL_BOSS_UNLOCK_WAVE_ID,
+            bossUnlockBossEntityId: GOAL_BOSS_UNLOCK_BOSS_ENTITY_ID
           }
         })
       ]

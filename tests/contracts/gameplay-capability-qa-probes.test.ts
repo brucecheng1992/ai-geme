@@ -99,6 +99,13 @@ import {
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_POLICY,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID,
   createGenerationFallbackPolicyFailClosedPackageContract,
+  GOAL_BOSS_UNLOCK_BOSS_ENTITY_ID,
+  GOAL_BOSS_UNLOCK_EVENT_TYPE,
+  GOAL_BOSS_UNLOCK_REASON,
+  GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID,
+  GOAL_BOSS_UNLOCK_REQUIRED_WAVE_COUNT,
+  GOAL_BOSS_UNLOCK_WAVE_ID,
+  createGoalBossUnlockPackageContract,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
@@ -2188,6 +2195,142 @@ describe('Capability-owned runtime QA probes', () => {
       ])
     );
     expect(observedFailClosedPolicy.status).toBe('passed');
+  });
+
+  it('does not verify boss unlock when wave and boss evidence lacks unlock state fields', () => {
+    const capabilityId = 'goal.boss_unlock.v1';
+    const probeId = GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID;
+    const packages = [
+      createSpawnStaticPackageContract(),
+      createSpawnEnemyWavePackageContract(),
+      createEnemyBossLifecyclePackageContract(),
+      createGoalBossUnlockPackageContract()
+    ];
+    const spawnStaticEvidence = {
+      capabilityId: 'spawn.static.v1',
+      probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
+      action: 'spawn',
+      eventType: 'spawn.static.triggered',
+      eventTypes: ['spawn.static.triggered'],
+      sourceRef: 'runtime.spawn.static',
+      status: 'observed' as const
+    };
+    const spawnEnemyWaveEvidence = {
+      capabilityId: 'spawn.enemy_wave.v1',
+      probeId: SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+      action: 'spawn',
+      eventType: 'spawn.enemy_wave.ordered',
+      eventTypes: ['spawn.enemy_wave.ordered'],
+      orderedWaveSequence: true,
+      gateTriggered: true,
+      waveSpawned: true,
+      sequenceIndex: 0,
+      waveId: GOAL_BOSS_UNLOCK_WAVE_ID,
+      sourceRef: 'runtime.spawn.enemy_wave',
+      status: 'observed' as const
+    };
+    const bossLifecycleEvidence = {
+      capabilityId: 'enemy.boss_lifecycle.v1',
+      probeId: ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID,
+      action: 'verify_boss_lifecycle',
+      eventType: ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
+      eventTypes: [ENEMY_BOSS_LIFECYCLE_EVENT_TYPE],
+      bossLifecycleStarted: true,
+      bossEntityId: ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID,
+      bossMaxHealth: ENEMY_BOSS_LIFECYCLE_MAX_HEALTH,
+      bossHealthInitialized: true,
+      bossDefeated: true,
+      sourceRef: 'runtime.enemy.boss_lifecycle',
+      status: 'observed' as const
+    };
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const genericWaveAndBossEvidence = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            spawnStaticEvidence,
+            spawnEnemyWaveEvidence,
+            bossLifecycleEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'spawn',
+              eventType: 'spawn.enemy_wave.ordered',
+              eventTypes: ['spawn.enemy_wave.ordered', 'enemy.boss_lifecycle.verified'],
+              waveSpawned: true,
+              orderedWaveSequence: true,
+              sourceRef: 'runtime_plan.side_scrolling.waves.ordered_sequence',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedBossUnlock = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            spawnStaticEvidence,
+            spawnEnemyWaveEvidence,
+            bossLifecycleEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'unlock_boss',
+              eventType: GOAL_BOSS_UNLOCK_EVENT_TYPE,
+              eventTypes: [GOAL_BOSS_UNLOCK_EVENT_TYPE, 'spawn.enemy_wave.ordered', 'enemy.boss_lifecycle.verified'],
+              wavesCleared: true,
+              clearedWaveCount: GOAL_BOSS_UNLOCK_REQUIRED_WAVE_COUNT,
+              requiredWaveCount: GOAL_BOSS_UNLOCK_REQUIRED_WAVE_COUNT,
+              bossUnlockTriggered: true,
+              bossUnlockReason: GOAL_BOSS_UNLOCK_REASON,
+              bossEncounterUnlocked: true,
+              bossUnlockWaveId: GOAL_BOSS_UNLOCK_WAVE_ID,
+              bossUnlockBossEntityId: GOAL_BOSS_UNLOCK_BOSS_ENTITY_ID,
+              sourceRef: 'runtime.goal.boss_unlock',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericWaveAndBossEvidence.status).toBe('failed');
+    expect(genericWaveAndBossEvidence.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericWaveAndBossEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.boss_unlock_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${GOAL_BOSS_UNLOCK_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.boss_unlock_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected bossUnlockTriggered=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.boss_unlock_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`expected bossUnlockReason=${GOAL_BOSS_UNLOCK_REASON}, observed <missing>`)
+        })
+      ])
+    );
+    expect(observedBossUnlock.status).toBe('passed');
   });
 });
 
