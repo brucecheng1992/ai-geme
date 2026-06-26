@@ -66,6 +66,14 @@ import {
   UI_FAILURE_RESTART_RESTART_EVENT_TYPE,
   UI_FAILURE_RESTART_RUNTIME_FAMILY,
   UI_FAILURE_RESTART_SCHEMA_VERSION,
+  UI_HUD_BOSS_HEALTH_CURRENT,
+  UI_HUD_BOSS_HEALTH_EVENT_TYPE,
+  UI_HUD_BOSS_HEALTH_LABEL_TEXT,
+  UI_HUD_BOSS_HEALTH_PROFILE_ID,
+  UI_HUD_BOSS_HEALTH_RATIO,
+  UI_HUD_BOSS_HEALTH_REQUIRED_PROBE_ID,
+  UI_HUD_BOSS_HEALTH_RUNTIME_FAMILY,
+  UI_HUD_BOSS_HEALTH_SCHEMA_VERSION,
   FIXED_PROMPT_BINDING_EVENT_TYPE,
   FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_ERROR_CODE,
@@ -246,6 +254,7 @@ import {
   createEnemyPatrolInfantryPackageContract,
   createFeedbackVictoryDeclarationPackageContract,
   createUiFailureRestartPackageContract,
+  createUiHudBossHealthPackageContract,
   createFixedPromptBindingPackageContract,
   createGenerationFallbackPolicyFailClosedPackageContract,
   createGoalBossUnlockPackageContract,
@@ -293,6 +302,7 @@ const enemyFlyingRightEntryCapabilityId = 'enemy.flying_right_entry.v1';
 const enemyPatrolInfantryCapabilityId = 'enemy.patrol_infantry.v1';
 const feedbackVictoryDeclarationCapabilityId = 'feedback.victory_declaration.v1';
 const uiFailureRestartCapabilityId = 'ui.failure_restart.v1';
+const uiHudBossHealthCapabilityId = 'ui.hud_boss_health.v1';
 const generationFallbackPolicyFailClosedCapabilityId = 'generation.fallback_policy_fail_closed.v1';
 const goalBossUnlockCapabilityId = 'goal.boss_unlock.v1';
 const hazardFallingAreaCapabilityId = 'hazard.falling_area.v1';
@@ -3194,6 +3204,107 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
   });
 
+  it('keeps boss health HUD unverified when boss lifecycle exists but HUD binding fields are missing', () => {
+    const dependencyEvidence: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: enemyBossLifecycleCapabilityId,
+        probeId: ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID,
+        action: 'verify_boss_lifecycle',
+        eventType: ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
+        eventTypes: [ENEMY_BOSS_LIFECYCLE_EVENT_TYPE],
+        bossLifecycleStarted: true,
+        bossEntityId: ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID,
+        bossMaxHealth: ENEMY_BOSS_LIFECYCLE_MAX_HEALTH,
+        bossHealthInitialized: true,
+        bossDefeated: true,
+        sourceRef: 'runtime.enemy.boss_lifecycle',
+        status: 'observed'
+      }
+    ];
+    const lifecycleOnlyQaReport = buildSingleCapabilityQaReport({
+      capabilityId: uiHudBossHealthCapabilityId,
+      packageContract: createUiHudBossHealthPackageContract(),
+      dependencyPackages: [createEnemyBossLifecyclePackageContract()],
+      additionalObserved: dependencyEvidence,
+      eventType: ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
+      eventTypes: [ENEMY_BOSS_LIFECYCLE_EVENT_TYPE],
+      probeId: UI_HUD_BOSS_HEALTH_REQUIRED_PROBE_ID,
+      action: 'show_boss_health_hud',
+      sourceRef: 'runtime.enemy.boss_lifecycle',
+      stateFields: {
+        bossLifecycleStarted: true,
+        bossEntityId: ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID,
+        bossMaxHealth: ENEMY_BOSS_LIFECYCLE_MAX_HEALTH,
+        bossHealthInitialized: true
+      }
+    });
+    const observedHudQaReport = buildSingleCapabilityQaReport({
+      capabilityId: uiHudBossHealthCapabilityId,
+      packageContract: createUiHudBossHealthPackageContract(),
+      dependencyPackages: [createEnemyBossLifecyclePackageContract()],
+      additionalObserved: dependencyEvidence,
+      eventType: UI_HUD_BOSS_HEALTH_EVENT_TYPE,
+      eventTypes: [ENEMY_BOSS_LIFECYCLE_EVENT_TYPE, UI_HUD_BOSS_HEALTH_EVENT_TYPE],
+      probeId: UI_HUD_BOSS_HEALTH_REQUIRED_PROBE_ID,
+      action: 'show_boss_health_hud',
+      sourceRef: 'runtime.ui.hud_boss_health',
+      stateFields: hudBossHealthStateFields()
+    });
+    const lifecycleOnlyReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_ui_hud_boss_health_lifecycle_only',
+      capabilityQaReport: lifecycleOnlyQaReport
+    });
+    const observedHudReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_ui_hud_boss_health_observed_state',
+      capabilityQaReport: observedHudQaReport
+    });
+    const lifecycleOnlyState = lifecycleOnlyReport.capabilities.find((entry) => entry.capabilityId === uiHudBossHealthCapabilityId);
+    const observedHudState = observedHudReport.capabilities.find((entry) => entry.capabilityId === uiHudBossHealthCapabilityId);
+
+    expect(lifecycleOnlyQaReport.requiredResults.find((entry) => entry.probeId === ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(lifecycleOnlyQaReport.requiredResults.find((entry) => entry.probeId === UI_HUD_BOSS_HEALTH_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${UI_HUD_BOSS_HEALTH_REQUIRED_PROBE_ID}.assertion.boss_health_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${UI_HUD_BOSS_HEALTH_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${UI_HUD_BOSS_HEALTH_REQUIRED_PROBE_ID}.assertion.boss_health_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected hudBossHealthVisible=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${UI_HUD_BOSS_HEALTH_REQUIRED_PROBE_ID}.assertion.boss_health_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected hudBossHealthBoundToBossLifecycle=true, observed <missing>')
+        })
+      ])
+    });
+    expect(lifecycleOnlyState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [UI_HUD_BOSS_HEALTH_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedHudState).toMatchObject({
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [UI_HUD_BOSS_HEALTH_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [UI_HUD_BOSS_HEALTH_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+  });
+
   it('keeps state transition graph unverified when win lose evidence lacks explicit graph fields', () => {
     const genericGraphQaReport = buildSingleCapabilityQaReport({
       capabilityId: rulesStateTransitionGraphCapabilityId,
@@ -5601,6 +5712,25 @@ function failureRestartStateFields(): Record<string, unknown> {
     failureRestartPlayerHealthReset: true,
     failureRestartRetryCountReset: true,
     failureRestartFailureScreenCleared: true
+  };
+}
+
+function hudBossHealthStateFields(): Record<string, unknown> {
+  return {
+    hudBossHealthVisible: true,
+    hudBossHealthSchemaVersion: UI_HUD_BOSS_HEALTH_SCHEMA_VERSION,
+    hudBossHealthProfileId: UI_HUD_BOSS_HEALTH_PROFILE_ID,
+    hudBossHealthRuntimeFamily: UI_HUD_BOSS_HEALTH_RUNTIME_FAMILY,
+    hudBossHealthBossEntityId: ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID,
+    hudBossHealthCurrent: UI_HUD_BOSS_HEALTH_CURRENT,
+    hudBossHealthMax: ENEMY_BOSS_LIFECYCLE_MAX_HEALTH,
+    hudBossHealthRatio: UI_HUD_BOSS_HEALTH_RATIO,
+    hudBossHealthLabelVisible: true,
+    hudBossHealthLabelText: UI_HUD_BOSS_HEALTH_LABEL_TEXT,
+    hudBossHealthBarVisible: true,
+    hudBossHealthBarValueMatchesBoss: true,
+    hudBossHealthBoundToBossLifecycle: true,
+    hudBossHealthUpdatesOnDamage: true
   };
 }
 

@@ -6167,6 +6167,179 @@ next_action=CONTINUE_PARENT_LOOP
 next_atomic_step=RUN_PARENT_LOOP_DRIVER_TO_SELECT_NEXT_UNMET_CHECKPOINT
 ```
 
+## Stage 4 Implementation: `ui.hud_boss_health.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.ui_hud_boss_health_v1.complete_supported_package_slice
+closure_record_id=stage4.ui_hud_boss_health_v1.complete_supported_package_slice.candidate_record
+record_status=active
+current_active_record=true
+parent_stage_id=stage4
+capability_id=ui.hud_boss_health.v1
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=not_met
+global_exit_conditions_met=false
+user_input_required=false
+next_action_after_receipt=CONTINUE_PARENT_LOOP
+active_skill_revision_type=sha256_bundle
+active_skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
+active_skill_roots=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery
+active_skill_file_count=8
+active_skill_bundle_digest=9000c515569664ab59b567f79604f018c805e862d22208162982d03003accdc3
+active_skill_freshness_command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
+active_skill_freshness_exit_code=0
+post_record_validation_status=passed
+```
+
+`ui.hud_boss_health.v1` was selected by the Parent Loop Driver after the `ui.failure_restart.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
+
+Minimum closure requirements:
+
+1. Add a package-owned boss-health HUD capability contract with stable capability identity, runtime system identity, HUD verification event identity, required probe id, and required QA evidence id.
+2. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `ui.hud_boss_health.v1` only when dependency probe evidence for `enemy.boss_lifecycle.v1` has passed and the current probe proves visible boss-health HUD state.
+5. Require HUD state fields: `hudBossHealthVisible=true`, `hudBossHealthBossEntityId=boss_1`, `hudBossHealthCurrent=18`, `hudBossHealthMax=30`, `hudBossHealthRatio=0.6`, `hudBossHealthLabelVisible=true`, `hudBossHealthLabelText=BOSS`, `hudBossHealthBarVisible=true`, `hudBossHealthBarValueMatchesBoss=true`, `hudBossHealthBoundToBossLifecycle=true`, and `hudBossHealthUpdatesOnDamage=true`.
+6. Add negative regressions proving boss lifecycle evidence, generic boss health state, or HUD visibility without boss-bound current/max/ratio fields keeps the capability unverified and reports the required missing probe.
+7. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/ui-hud-boss-health-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/ui-hud-boss-health-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/contract-freeze.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createUiHudBossHealthPackageContract()`.
+- Runtime module identity: `UI_HUD_BOSS_HEALTH_RUNTIME_SYSTEM_ID=ui.hud_boss_health`.
+- HUD verification event: `UI_HUD_BOSS_HEALTH_EVENT_TYPE=ui.hud_boss_health.verified`.
+- Required probe: `UI_HUD_BOSS_HEALTH_REQUIRED_PROBE_ID=ui.hud_boss_health.v1.boss_health_hud.browser_qa.v1`.
+- Required evidence id: `ui.hud_boss_health.v1.evidence.capability_qa_report.v1`.
+- Dependency: `enemy.boss_lifecycle.v1`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares the HUD visible, boss entity, current health, max health, ratio, label, bar visibility, boss lifecycle binding, and damage-update fields, and fails the required probe when any field is missing or mismatched.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for the same run; it does not mutate static `completeSupported`.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned `ui.hud_boss_health.v1` capability contract, runtime system identity, HUD verification event, required probe id, required evidence id, and runtime evidence fields for visible boss-health HUD state bound to boss lifecycle health. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, telemetry/event freeze contract, DSL consumption report, and Step37 remaining-inventory driver. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves HUD state fields and boss lifecycle binding. |
+| Authority | Package-owned QA evidence defines the capability authority: `enemy.boss_lifecycle.v1` success, generic boss health state, or HUD visibility is insufficient unless `ui.hud_boss_health.verified` proves the boss-bound HUD fields. |
+| Legacy strategy | No legacy runtime alias is claimed by this UI slice. Boss lifecycle evidence remains dependency evidence, not authoritative HUD evidence. |
+| Failure policy | Missing package contract, missing `ui.hud_boss_health.verified` event, missing HUD fields, missing boss lifecycle binding, wrong capability/probe identity, or stale evidence keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, registry support advancement without complete support, QA reader positive/negative HUD field behavior, target-profile overlay positive/negative behavior, remaining-inventory selection, and telemetry schema freeze coverage. |
+| Rollback | Reverting this slice removes only the boss-health HUD package/probe/reader wiring and returns `ui.hud_boss_health.v1` to unsupported evidence without changing business runtime gameplay templates or entering Stage 5. |
+
+Focused validation:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts
+exitCode=1
+duration=real 1.98s
+result=RED: ui.hud_boss_health package/runtime module did not exist; telemetry schema rejected `ui.hud_boss_health.verified`; registry support remained registeredCapabilityCount=49; QA reader did not expose `createUiHudBossHealthPackageContract()`.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts
+exitCode=0
+duration=real 1.94s
+result=PASS: 7 files / 235 tests
+```
+
+Focused set selection:
+
+- `gameplay-capability-package-contract.test.ts`: validates the new boss-health HUD package contract, required evidence id, runtime system, HUD event, dependency, and required assertion fields.
+- `gameplay-capability-qa-probes.test.ts`: validates that boss lifecycle evidence without HUD binding fields fails while full `ui.hud_boss_health.verified` state evidence passes after dependency evidence passes.
+- `generation-target-profile-runtime-support.test.ts`: validates same-run overlay positive/negative behavior and preservation of static `completeSupported=false`.
+- `contract-freeze.test.ts`: included because this diff introduces telemetry/runtime event identity `ui.hud_boss_health.verified`.
+- `deepseek-authoritative-dsl-support.test.ts`: validates support dimensions and prerequisites for the target capability.
+- `dsl-consumption-report.test.ts`: validates the consumption report reads the updated package-backed support dimensions.
+- `step37-remaining-inventory-driver.test.ts`: validates parent-loop inventory consumption after the registry count advances to 50 and selects this current checkpoint before it is committed.
+
+Freshness and inventory alignment:
+
+```text
+command=/usr/bin/time -p node --input-type=module <<'NODE' ... step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script ... NODE
+exitCode=0
+duration=real 0.06s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_roots=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery; skill_file_count=8; skill_bundle_digest=9000c515569664ab59b567f79604f018c805e862d22208162982d03003accdc3.
+
+command=/usr/bin/time -p npx tsx --eval "<ui.hud_boss_health.v1 support summary and remaining inventory>"
+exitCode=0
+duration=real 0.52s
+result=PASS: currentCheckpointId=stage4.ui_hud_boss_health_v1.complete_supported_package_slice; requiredCapabilityCount=59; registeredCapabilityCount=50; staticCompleteSupportedCount=0; committedClosedCapabilityCount=49; ui.hud_boss_health.v1 classification=DEFERRED; state=registered_without_required_probe_verification; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; next_checkpoint_id=stage4.ui_hud_boss_health_v1.complete_supported_package_slice; selectionFailure=null.
+```
+
+Local validation after closure-record sync:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-focused-validation.test.ts
+exitCode=0
+duration=real 2.20s
+result=PASS: 11 files / 345 tests
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 9.68s
+result=PASS: 98 files / 1310 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 59.90s
+result=PASS: contracts 98 files / 1310 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.58s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.03s
+result=PASS
+
+command=/usr/bin/time -p node --input-type=module <<'NODE' ... step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script ... NODE
+exitCode=0
+duration=real 0.05s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_file_count=8; skill_bundle_digest=9000c515569664ab59b567f79604f018c805e862d22208162982d03003accdc3.
+
+command=/usr/bin/time -p npx tsx --eval "<ui.hud_boss_health.v1 support summary and remaining inventory>"
+exitCode=0
+duration=real 0.63s
+result=PASS: currentCheckpointId=stage4.ui_hud_boss_health_v1.complete_supported_package_slice; registeredCapabilityCount=50; staticCompleteSupportedCount=0; committedClosedCapabilityCount=49; next_checkpoint_id=stage4.ui_hud_boss_health_v1.complete_supported_package_slice; selectionFailure=null.
+
+command=git status --short && git diff --stat && git diff --name-status
+exitCode=0
+duration=sub-second
+result=PASS: diff scope limited to ui.hud_boss_health package/runtime module, QA reader fields, registry/export/schema, direct contracts, remaining-inventory fixture, and this closure record; no Stage 5, production default cutover, Skill, AGENTS.md, runtime gameplay template, or unrelated history changes.
+```
+
+Post-record validation requirement:
+
+- This final state update changes the tree after the recorded local validation. Before creating the immutable candidate commit, focused closure contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, final diff range check, Skill freshness, and inventory alignment must be re-run for this final tree.
+- Candidate commit must not write its own SHA into this candidate record.
+- Oracle request must bind the candidate commit SHA plus `reviewed_skill_revision=9000c515569664ab59b567f79604f018c805e862d22208162982d03003accdc3`.
+- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+
 ## Stage 4 Implementation: `ui.failure_restart.v1` complete-supported package slice
 
 Checkpoint identity:

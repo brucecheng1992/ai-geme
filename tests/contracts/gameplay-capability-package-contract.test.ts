@@ -192,6 +192,11 @@ import {
   createUiFailureRestartPackageContract
 } from '../../packages/game-dsl/src/gameplay-capabilities/ui-failure-restart-package.js';
 import {
+  UI_HUD_BOSS_HEALTH_PACKAGE_REQUIRED_EVIDENCE_ID,
+  UI_HUD_BOSS_HEALTH_REQUIRED_PROBE_ID,
+  createUiHudBossHealthPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/ui-hud-boss-health-package.js';
+import {
   UI_FAILURE_RESTART_EVENT_TYPE,
   UI_FAILURE_RESTART_FAILURE_TEXT,
   UI_FAILURE_RESTART_INPUT,
@@ -202,6 +207,16 @@ import {
   UI_FAILURE_RESTART_RUNTIME_SYSTEM_ID,
   UI_FAILURE_RESTART_SCHEMA_VERSION
 } from '../../packages/game-dsl/src/gameplay-capabilities/ui-failure-restart-runtime-module.js';
+import {
+  UI_HUD_BOSS_HEALTH_CURRENT,
+  UI_HUD_BOSS_HEALTH_EVENT_TYPE,
+  UI_HUD_BOSS_HEALTH_LABEL_TEXT,
+  UI_HUD_BOSS_HEALTH_PROFILE_ID,
+  UI_HUD_BOSS_HEALTH_RATIO,
+  UI_HUD_BOSS_HEALTH_RUNTIME_FAMILY,
+  UI_HUD_BOSS_HEALTH_RUNTIME_SYSTEM_ID,
+  UI_HUD_BOSS_HEALTH_SCHEMA_VERSION
+} from '../../packages/game-dsl/src/gameplay-capabilities/ui-hud-boss-health-runtime-module.js';
 import {
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_PACKAGE_REQUIRED_EVIDENCE_ID,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID,
@@ -1419,6 +1434,69 @@ describe('Gameplay capability package contract', () => {
             failureRestartPlayerHealthReset: true,
             failureRestartRetryCountReset: true,
             failureRestartFailureScreenCleared: true
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the UI boss-health HUD package-owned QA contract with boss-bound HUD state evidence', () => {
+    const contract = createUiHudBossHealthPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === UI_HUD_BOSS_HEALTH_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'ui.hud_boss_health.v1'
+    });
+    expect(contract.dependencies).toEqual([{ capabilityId: 'enemy.boss_lifecycle.v1', range: '^v1' }]);
+    expect(contract.runtime.systems).toEqual([
+      expect.objectContaining({
+        id: UI_HUD_BOSS_HEALTH_RUNTIME_SYSTEM_ID,
+        phase: 'feedback',
+        dependencies: ['enemy.boss_lifecycle']
+      })
+    ]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: UI_HUD_BOSS_HEALTH_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'ui.hud_boss_health.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: UI_HUD_BOSS_HEALTH_EVENT_TYPE,
+          parameters: expect.objectContaining({
+            labelText: UI_HUD_BOSS_HEALTH_LABEL_TEXT,
+            currentHealth: UI_HUD_BOSS_HEALTH_CURRENT,
+            maxHealth: ENEMY_BOSS_LIFECYCLE_MAX_HEALTH
+          })
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${UI_HUD_BOSS_HEALTH_REQUIRED_PROBE_ID}.assertion.boss_health_hud_verified`,
+          expected: {
+            hudBossHealthVisible: true,
+            hudBossHealthSchemaVersion: UI_HUD_BOSS_HEALTH_SCHEMA_VERSION,
+            hudBossHealthProfileId: UI_HUD_BOSS_HEALTH_PROFILE_ID,
+            hudBossHealthRuntimeFamily: UI_HUD_BOSS_HEALTH_RUNTIME_FAMILY,
+            hudBossHealthBossEntityId: ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID,
+            hudBossHealthCurrent: UI_HUD_BOSS_HEALTH_CURRENT,
+            hudBossHealthMax: ENEMY_BOSS_LIFECYCLE_MAX_HEALTH,
+            hudBossHealthRatio: UI_HUD_BOSS_HEALTH_RATIO,
+            hudBossHealthLabelVisible: true,
+            hudBossHealthLabelText: UI_HUD_BOSS_HEALTH_LABEL_TEXT,
+            hudBossHealthBarVisible: true,
+            hudBossHealthBarValueMatchesBoss: true,
+            hudBossHealthBoundToBossLifecycle: true,
+            hudBossHealthUpdatesOnDamage: true
           }
         })
       ]

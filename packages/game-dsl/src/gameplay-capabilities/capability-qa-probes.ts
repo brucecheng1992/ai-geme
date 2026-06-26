@@ -185,6 +185,20 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   failureRestartPlayerHealthReset?: boolean;
   failureRestartRetryCountReset?: boolean;
   failureRestartFailureScreenCleared?: boolean;
+  hudBossHealthVisible?: boolean;
+  hudBossHealthSchemaVersion?: string;
+  hudBossHealthProfileId?: string;
+  hudBossHealthRuntimeFamily?: string;
+  hudBossHealthBossEntityId?: string;
+  hudBossHealthCurrent?: number;
+  hudBossHealthMax?: number;
+  hudBossHealthRatio?: number;
+  hudBossHealthLabelVisible?: boolean;
+  hudBossHealthLabelText?: string;
+  hudBossHealthBarVisible?: boolean;
+  hudBossHealthBarValueMatchesBoss?: boolean;
+  hudBossHealthBoundToBossLifecycle?: boolean;
+  hudBossHealthUpdatesOnDamage?: boolean;
   stateTransitionGraphDeclared?: boolean;
   stateTransitionGraphId?: string;
   stateTransitionGraphStateCount?: number;
@@ -766,6 +780,20 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('failureRestartPlayerHealthReset', expected, observed.failureRestartPlayerHealthReset),
     ...compareExpectedBooleanField('failureRestartRetryCountReset', expected, observed.failureRestartRetryCountReset),
     ...compareExpectedBooleanField('failureRestartFailureScreenCleared', expected, observed.failureRestartFailureScreenCleared),
+    ...compareExpectedBooleanField('hudBossHealthVisible', expected, observed.hudBossHealthVisible),
+    ...compareExpectedStringField('hudBossHealthSchemaVersion', expected, observed.hudBossHealthSchemaVersion),
+    ...compareExpectedStringField('hudBossHealthProfileId', expected, observed.hudBossHealthProfileId),
+    ...compareExpectedStringField('hudBossHealthRuntimeFamily', expected, observed.hudBossHealthRuntimeFamily),
+    ...compareExpectedStringField('hudBossHealthBossEntityId', expected, observed.hudBossHealthBossEntityId),
+    ...compareExpectedNumberField('hudBossHealthCurrent', expected, observed.hudBossHealthCurrent),
+    ...compareExpectedNumberField('hudBossHealthMax', expected, observed.hudBossHealthMax),
+    ...compareExpectedNumberField('hudBossHealthRatio', expected, observed.hudBossHealthRatio),
+    ...compareExpectedBooleanField('hudBossHealthLabelVisible', expected, observed.hudBossHealthLabelVisible),
+    ...compareExpectedStringField('hudBossHealthLabelText', expected, observed.hudBossHealthLabelText),
+    ...compareExpectedBooleanField('hudBossHealthBarVisible', expected, observed.hudBossHealthBarVisible),
+    ...compareExpectedBooleanField('hudBossHealthBarValueMatchesBoss', expected, observed.hudBossHealthBarValueMatchesBoss),
+    ...compareExpectedBooleanField('hudBossHealthBoundToBossLifecycle', expected, observed.hudBossHealthBoundToBossLifecycle),
+    ...compareExpectedBooleanField('hudBossHealthUpdatesOnDamage', expected, observed.hudBossHealthUpdatesOnDamage),
     ...compareExpectedBooleanField('stateTransitionGraphDeclared', expected, observed.stateTransitionGraphDeclared),
     ...compareExpectedStringField('stateTransitionGraphId', expected, observed.stateTransitionGraphId),
     ...compareExpectedNumberField('stateTransitionGraphStateCount', expected, observed.stateTransitionGraphStateCount),

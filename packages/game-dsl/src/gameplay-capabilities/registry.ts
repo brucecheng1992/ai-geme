@@ -54,6 +54,10 @@ import {
   createUiFailureRestartPackageContract
 } from './ui-failure-restart-package.js';
 import {
+  UI_HUD_BOSS_HEALTH_REQUIRED_PROBE_ID,
+  createUiHudBossHealthPackageContract
+} from './ui-hud-boss-health-package.js';
+import {
   RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID,
   createRulesStateTransitionGraphPackageContract
 } from './rules-state-transition-graph-package.js';
@@ -680,6 +684,19 @@ const uiFailureRestartPackageEvidence: GameplayCapabilityEvidence = uiFailureRes
   : canonicalRuntimeLoaderEvidence;
 const uiFailureRestartPackageQa: GameplayCapabilityQaEvidence = uiFailureRestartPackageReport.supportEligible
   ? { requiredProbeIds: [UI_FAILURE_RESTART_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
+const uiHudBossHealthPackageReport = validateGameplayCapabilityPackage(createUiHudBossHealthPackageContract());
+const uiHudBossHealthPackageEvidence: GameplayCapabilityEvidence = uiHudBossHealthPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const uiHudBossHealthPackageQa: GameplayCapabilityQaEvidence = uiHudBossHealthPackageReport.supportEligible
+  ? { requiredProbeIds: [UI_HUD_BOSS_HEALTH_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
 const rulesStateTransitionGraphPackageReport = validateGameplayCapabilityPackage(createRulesStateTransitionGraphPackageContract());
 const rulesStateTransitionGraphPackageEvidence: GameplayCapabilityEvidence = rulesStateTransitionGraphPackageReport.supportEligible
@@ -1583,6 +1600,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     uiFailureRestartPackageEvidence,
     uiFailureRestartPackageQa
+  ),
+  planned(
+    'ui.hud_boss_health.v1',
+    'ui',
+    'Boss health HUD',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    uiHudBossHealthPackageEvidence,
+    uiHudBossHealthPackageQa
   ),
   contractSeeded(
     'health.damage_invulnerability.v1',

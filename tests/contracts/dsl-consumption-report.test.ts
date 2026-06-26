@@ -166,7 +166,7 @@ describe('Step 33 DSL consumption report', () => {
 
     expect(report.targetProfileSupport).toMatchObject({
       requiredCapabilityCount: 59,
-      registeredCapabilityCount: 49,
+      registeredCapabilityCount: 50,
       completeSupportedCount: 0,
       completePackageClosure: {
         status: 'blocked_incomplete_target_profile',
