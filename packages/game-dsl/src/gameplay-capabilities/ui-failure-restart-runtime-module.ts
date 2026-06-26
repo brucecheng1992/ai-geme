@@ -1,0 +1,10 @@
+export const UI_FAILURE_RESTART_CAPABILITY_ID = 'ui.failure_restart.v1';
+export const UI_FAILURE_RESTART_RUNTIME_SYSTEM_ID = 'ui.failure_restart';
+export const UI_FAILURE_RESTART_EVENT_TYPE = 'ui.failure_restart.verified';
+export const UI_FAILURE_RESTART_RESTART_EVENT_TYPE = 'game.restarted';
+export const UI_FAILURE_RESTART_PROFILE_ID = 'DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1';
+export const UI_FAILURE_RESTART_RUNTIME_FAMILY = 'phaser_2d_action_arcade.v1';
+export const UI_FAILURE_RESTART_SCHEMA_VERSION = 'ui_failure_restart.v0.1';
+export const UI_FAILURE_RESTART_FAILURE_TEXT = 'DEFEAT';
+export const UI_FAILURE_RESTART_PROMPT_TEXT = 'Press R to restart';
+export const UI_FAILURE_RESTART_INPUT = 'restart';

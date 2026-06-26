@@ -168,6 +168,23 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   retryCountDecremented?: boolean;
   retryCountExhausted?: boolean;
   retryCountFailureScreenShown?: boolean;
+  failureRestartVerified?: boolean;
+  failureRestartSchemaVersion?: string;
+  failureRestartProfileId?: string;
+  failureRestartRuntimeFamily?: string;
+  failureRestartNoRetriesRemaining?: boolean;
+  failureRestartFailureScreenShown?: boolean;
+  failureRestartFailureText?: string;
+  failureRestartPromptVisible?: boolean;
+  failureRestartPromptText?: string;
+  failureRestartInputReceived?: boolean;
+  failureRestartInput?: string;
+  failureRestartGameRestarted?: boolean;
+  failureRestartRestartEventType?: string;
+  failureRestartStateReset?: boolean;
+  failureRestartPlayerHealthReset?: boolean;
+  failureRestartRetryCountReset?: boolean;
+  failureRestartFailureScreenCleared?: boolean;
   stateTransitionGraphDeclared?: boolean;
   stateTransitionGraphId?: string;
   stateTransitionGraphStateCount?: number;
@@ -732,6 +749,23 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('retryCountDecremented', expected, observed.retryCountDecremented),
     ...compareExpectedBooleanField('retryCountExhausted', expected, observed.retryCountExhausted),
     ...compareExpectedBooleanField('retryCountFailureScreenShown', expected, observed.retryCountFailureScreenShown),
+    ...compareExpectedBooleanField('failureRestartVerified', expected, observed.failureRestartVerified),
+    ...compareExpectedStringField('failureRestartSchemaVersion', expected, observed.failureRestartSchemaVersion),
+    ...compareExpectedStringField('failureRestartProfileId', expected, observed.failureRestartProfileId),
+    ...compareExpectedStringField('failureRestartRuntimeFamily', expected, observed.failureRestartRuntimeFamily),
+    ...compareExpectedBooleanField('failureRestartNoRetriesRemaining', expected, observed.failureRestartNoRetriesRemaining),
+    ...compareExpectedBooleanField('failureRestartFailureScreenShown', expected, observed.failureRestartFailureScreenShown),
+    ...compareExpectedStringField('failureRestartFailureText', expected, observed.failureRestartFailureText),
+    ...compareExpectedBooleanField('failureRestartPromptVisible', expected, observed.failureRestartPromptVisible),
+    ...compareExpectedStringField('failureRestartPromptText', expected, observed.failureRestartPromptText),
+    ...compareExpectedBooleanField('failureRestartInputReceived', expected, observed.failureRestartInputReceived),
+    ...compareExpectedStringField('failureRestartInput', expected, observed.failureRestartInput),
+    ...compareExpectedBooleanField('failureRestartGameRestarted', expected, observed.failureRestartGameRestarted),
+    ...compareExpectedStringField('failureRestartRestartEventType', expected, observed.failureRestartRestartEventType),
+    ...compareExpectedBooleanField('failureRestartStateReset', expected, observed.failureRestartStateReset),
+    ...compareExpectedBooleanField('failureRestartPlayerHealthReset', expected, observed.failureRestartPlayerHealthReset),
+    ...compareExpectedBooleanField('failureRestartRetryCountReset', expected, observed.failureRestartRetryCountReset),
+    ...compareExpectedBooleanField('failureRestartFailureScreenCleared', expected, observed.failureRestartFailureScreenCleared),
     ...compareExpectedBooleanField('stateTransitionGraphDeclared', expected, observed.stateTransitionGraphDeclared),
     ...compareExpectedStringField('stateTransitionGraphId', expected, observed.stateTransitionGraphId),
     ...compareExpectedNumberField('stateTransitionGraphStateCount', expected, observed.stateTransitionGraphStateCount),

@@ -95,6 +95,16 @@ import {
   FEEDBACK_VICTORY_DECLARATION_TEXT,
   FEEDBACK_VICTORY_DECLARATION_TRIGGER,
   createFeedbackVictoryDeclarationPackageContract,
+  UI_FAILURE_RESTART_EVENT_TYPE,
+  UI_FAILURE_RESTART_FAILURE_TEXT,
+  UI_FAILURE_RESTART_INPUT,
+  UI_FAILURE_RESTART_PROFILE_ID,
+  UI_FAILURE_RESTART_PROMPT_TEXT,
+  UI_FAILURE_RESTART_REQUIRED_PROBE_ID,
+  UI_FAILURE_RESTART_RESTART_EVENT_TYPE,
+  UI_FAILURE_RESTART_RUNTIME_FAMILY,
+  UI_FAILURE_RESTART_SCHEMA_VERSION,
+  createUiFailureRestartPackageContract,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_ERROR_CODE,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_POLICY,
@@ -4598,6 +4608,146 @@ describe('Capability-owned runtime QA probes', () => {
       ])
     );
     expect(observedRetryCount.status).toBe('passed');
+  });
+
+  it('does not verify UI failure restart from generic restart evidence without failure-screen reset state', () => {
+    const capabilityId = 'ui.failure_restart.v1';
+    const probeId = UI_FAILURE_RESTART_REQUIRED_PROBE_ID;
+    const packages = [
+      createHealthPlayerHealthPointsPackageContract(),
+      createRulesRetryCountPackageContract(),
+      createUiFailureRestartPackageContract()
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const dependencyEvidence: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: 'health.player_health_points.v1',
+        probeId: HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+        action: 'observe_health_points',
+        eventType: HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE,
+        eventTypes: [HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE],
+        sourceRef: 'runtime.health.player_health_points',
+        status: 'observed'
+      },
+      {
+        capabilityId: 'rules.retry_count.v1',
+        probeId: RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
+        action: 'consume_retry',
+        eventType: RULES_RETRY_COUNT_EVENT_TYPE,
+        eventTypes: [RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE, RULES_RETRY_COUNT_EVENT_TYPE],
+        retryCountConfigured: true,
+        retryCountInitial: RULES_RETRY_COUNT_INITIAL_RETRIES,
+        retryCountBefore: RULES_RETRY_COUNT_BEFORE,
+        retryCountAfter: RULES_RETRY_COUNT_AFTER,
+        retryCountRemaining: RULES_RETRY_COUNT_REMAINING,
+        retryCountConsumed: true,
+        retryCountDecremented: true,
+        retryCountExhausted: false,
+        retryCountFailureScreenShown: false,
+        sourceRef: 'runtime.rules.retry_count',
+        status: 'observed'
+      }
+    ];
+    const genericRestartOnly = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'restart_from_failure',
+              eventType: UI_FAILURE_RESTART_RESTART_EVENT_TYPE,
+              eventTypes: ['game.lost', 'input.received', UI_FAILURE_RESTART_RESTART_EVENT_TYPE],
+              failureRestartFailureScreenShown: true,
+              failureRestartFailureText: UI_FAILURE_RESTART_FAILURE_TEXT,
+              failureRestartPromptVisible: true,
+              failureRestartPromptText: UI_FAILURE_RESTART_PROMPT_TEXT,
+              sourceRef: 'runtime.ui.generic_restart',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedFailureRestart = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'restart_from_failure',
+              eventType: UI_FAILURE_RESTART_EVENT_TYPE,
+              eventTypes: ['game.lost', 'input.received', UI_FAILURE_RESTART_RESTART_EVENT_TYPE, UI_FAILURE_RESTART_EVENT_TYPE],
+              failureRestartVerified: true,
+              failureRestartSchemaVersion: UI_FAILURE_RESTART_SCHEMA_VERSION,
+              failureRestartProfileId: UI_FAILURE_RESTART_PROFILE_ID,
+              failureRestartRuntimeFamily: UI_FAILURE_RESTART_RUNTIME_FAMILY,
+              failureRestartNoRetriesRemaining: true,
+              failureRestartFailureScreenShown: true,
+              failureRestartFailureText: UI_FAILURE_RESTART_FAILURE_TEXT,
+              failureRestartPromptVisible: true,
+              failureRestartPromptText: UI_FAILURE_RESTART_PROMPT_TEXT,
+              failureRestartInputReceived: true,
+              failureRestartInput: UI_FAILURE_RESTART_INPUT,
+              failureRestartGameRestarted: true,
+              failureRestartRestartEventType: UI_FAILURE_RESTART_RESTART_EVENT_TYPE,
+              failureRestartStateReset: true,
+              failureRestartPlayerHealthReset: true,
+              failureRestartRetryCountReset: true,
+              failureRestartFailureScreenCleared: true,
+              sourceRef: 'runtime.ui.failure_restart',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericRestartOnly.status).toBe('failed');
+    expect(genericRestartOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericRestartOnly.requiredResults.find((entry) => entry.probeId === HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericRestartOnly.requiredResults.find((entry) => entry.probeId === RULES_RETRY_COUNT_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericRestartOnly.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.failure_restart_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${UI_FAILURE_RESTART_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.failure_restart_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected failureRestartVerified=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.failure_restart_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected failureRestartStateReset=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedFailureRestart.status).toBe('passed');
   });
 
   it('does not verify state transition graph from win lose events without explicit graph fields', () => {

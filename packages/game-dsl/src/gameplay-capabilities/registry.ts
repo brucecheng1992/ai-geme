@@ -50,6 +50,10 @@ import {
   createRulesRetryCountPackageContract
 } from './rules-retry-count-package.js';
 import {
+  UI_FAILURE_RESTART_REQUIRED_PROBE_ID,
+  createUiFailureRestartPackageContract
+} from './ui-failure-restart-package.js';
+import {
   RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID,
   createRulesStateTransitionGraphPackageContract
 } from './rules-state-transition-graph-package.js';
@@ -663,6 +667,19 @@ const rulesRetryCountPackageEvidence: GameplayCapabilityEvidence = rulesRetryCou
   : canonicalRuntimeLoaderEvidence;
 const rulesRetryCountPackageQa: GameplayCapabilityQaEvidence = rulesRetryCountPackageReport.supportEligible
   ? { requiredProbeIds: [RULES_RETRY_COUNT_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
+const uiFailureRestartPackageReport = validateGameplayCapabilityPackage(createUiFailureRestartPackageContract());
+const uiFailureRestartPackageEvidence: GameplayCapabilityEvidence = uiFailureRestartPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const uiFailureRestartPackageQa: GameplayCapabilityQaEvidence = uiFailureRestartPackageReport.supportEligible
+  ? { requiredProbeIds: [UI_FAILURE_RESTART_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
 const rulesStateTransitionGraphPackageReport = validateGameplayCapabilityPackage(createRulesStateTransitionGraphPackageContract());
 const rulesStateTransitionGraphPackageEvidence: GameplayCapabilityEvidence = rulesStateTransitionGraphPackageReport.supportEligible
@@ -1557,6 +1574,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     'restart_loop',
     'checkpoint_or_lives_system'
   ]),
+  planned(
+    'ui.failure_restart.v1',
+    'ui',
+    'Failure screen restart',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    uiFailureRestartPackageEvidence,
+    uiFailureRestartPackageQa
+  ),
   contractSeeded(
     'health.damage_invulnerability.v1',
     'health',

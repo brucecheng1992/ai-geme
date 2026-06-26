@@ -187,6 +187,22 @@ import {
   FEEDBACK_VICTORY_DECLARATION_TRIGGER
 } from '../../packages/game-dsl/src/gameplay-capabilities/feedback-victory-declaration-runtime-module.js';
 import {
+  UI_FAILURE_RESTART_PACKAGE_REQUIRED_EVIDENCE_ID,
+  UI_FAILURE_RESTART_REQUIRED_PROBE_ID,
+  createUiFailureRestartPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/ui-failure-restart-package.js';
+import {
+  UI_FAILURE_RESTART_EVENT_TYPE,
+  UI_FAILURE_RESTART_FAILURE_TEXT,
+  UI_FAILURE_RESTART_INPUT,
+  UI_FAILURE_RESTART_PROFILE_ID,
+  UI_FAILURE_RESTART_PROMPT_TEXT,
+  UI_FAILURE_RESTART_RESTART_EVENT_TYPE,
+  UI_FAILURE_RESTART_RUNTIME_FAMILY,
+  UI_FAILURE_RESTART_RUNTIME_SYSTEM_ID,
+  UI_FAILURE_RESTART_SCHEMA_VERSION
+} from '../../packages/game-dsl/src/gameplay-capabilities/ui-failure-restart-runtime-module.js';
+import {
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_PACKAGE_REQUIRED_EVIDENCE_ID,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID,
   createGenerationFallbackPolicyFailClosedPackageContract
@@ -1333,6 +1349,76 @@ describe('Gameplay capability package contract', () => {
             victoryDeclarationTrigger: FEEDBACK_VICTORY_DECLARATION_TRIGGER,
             victoryDeclarationOutcome: FEEDBACK_VICTORY_DECLARATION_OUTCOME,
             victoryDeclarationObjectiveCompleted: true
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the UI failure-restart package-owned QA contract with reset state evidence', () => {
+    const contract = createUiFailureRestartPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === UI_FAILURE_RESTART_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'ui.failure_restart.v1'
+    });
+    expect(contract.dependencies).toEqual([
+      { capabilityId: 'health.player_health_points.v1', range: '^v1' },
+      { capabilityId: 'rules.retry_count.v1', range: '^v1' }
+    ]);
+    expect(contract.runtime.systems).toEqual([
+      expect.objectContaining({
+        id: UI_FAILURE_RESTART_RUNTIME_SYSTEM_ID,
+        phase: 'feedback',
+        dependencies: ['health.player_health_points', 'rules.retry_count']
+      })
+    ]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: UI_FAILURE_RESTART_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'ui.failure_restart.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: UI_FAILURE_RESTART_EVENT_TYPE,
+          parameters: expect.objectContaining({
+            input: UI_FAILURE_RESTART_INPUT,
+            restartEvent: UI_FAILURE_RESTART_RESTART_EVENT_TYPE,
+            failureText: UI_FAILURE_RESTART_FAILURE_TEXT,
+            promptText: UI_FAILURE_RESTART_PROMPT_TEXT
+          })
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${UI_FAILURE_RESTART_REQUIRED_PROBE_ID}.assertion.failure_restart_verified`,
+          expected: {
+            failureRestartVerified: true,
+            failureRestartSchemaVersion: UI_FAILURE_RESTART_SCHEMA_VERSION,
+            failureRestartProfileId: UI_FAILURE_RESTART_PROFILE_ID,
+            failureRestartRuntimeFamily: UI_FAILURE_RESTART_RUNTIME_FAMILY,
+            failureRestartNoRetriesRemaining: true,
+            failureRestartFailureScreenShown: true,
+            failureRestartFailureText: UI_FAILURE_RESTART_FAILURE_TEXT,
+            failureRestartPromptVisible: true,
+            failureRestartPromptText: UI_FAILURE_RESTART_PROMPT_TEXT,
+            failureRestartInputReceived: true,
+            failureRestartInput: UI_FAILURE_RESTART_INPUT,
+            failureRestartGameRestarted: true,
+            failureRestartRestartEventType: UI_FAILURE_RESTART_RESTART_EVENT_TYPE,
+            failureRestartStateReset: true,
+            failureRestartPlayerHealthReset: true,
+            failureRestartRetryCountReset: true,
+            failureRestartFailureScreenCleared: true
           }
         })
       ]

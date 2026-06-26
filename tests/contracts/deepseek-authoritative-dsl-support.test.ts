@@ -939,6 +939,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       'spawn.static.v1',
       'spawn.stop_on_boss_defeat.v1',
       'telemetry.gameplay_events.v1',
+      'ui.failure_restart.v1',
       'weapon.cooldown.v1',
       'weapon.death_reset.v1',
       'weapon.default_straight_single.v1',
