@@ -6178,10 +6178,10 @@ capability_id=ui.failure_restart.v1
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
 review_required=true
-closure_status=not_closed
+closure_status=closed
 global_exit_conditions_met=false
 user_input_required=false
 next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
@@ -6192,11 +6192,29 @@ active_skill_file_count=8
 active_skill_bundle_digest=0c039f164ed082b6e48482661bcd4cdb457192847c57f4f04b6873cc58227172
 active_skill_freshness_command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
 active_skill_freshness_exit_code=0
-candidate_commit_sha=not_created
-reviewed_commit_sha=not_submitted
-reviewed_skill_revision=not_submitted
-oracle_agent_id=not_submitted
-oracle_submission_id=not_submitted
+candidate_commit_sha=f37674417333d43b320255b02634038265ede825
+reviewed_commit_sha=f37674417333d43b320255b02634038265ede825
+reviewed_commit_tree=380b6ce2c8ab064ae28b732d1eb0a09e4860dcaa
+reviewed_skill_revision=0c039f164ed082b6e48482661bcd4cdb457192847c57f4f04b6873cc58227172
+reviewed_skill_bundle_digest=0c039f164ed082b6e48482661bcd4cdb457192847c57f4f04b6873cc58227172
+oracle_agent_id=019f0488-39ff-7e33-a790-4caca4a838a3
+oracle_submission_id=019f0560-98ff-76e3-bc93-3196ea26305f
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_p0_findings=0
+oracle_p1_findings=0
+oracle_p2_findings=0
+oracle_p3_findings=0
+parent_stage_status=running
+parent_loop_status=running
+parent_loop_global_exit_conditions_met=false
+parent_loop_user_input_required=false
+parent_loop_next_action=CONTINUE_PARENT_LOOP
+parent_loop_next_atomic_step=stage4.ui_hud_boss_health_v1.complete_supported_package_slice
+parent_loop_next_atomic_step_scope=implementation
+parent_loop_next_atomic_step_entry_conditions=Stage 4 remains active; no verified user blocker; current atom closed by Oracle-approved receipt; next checkpoint remains unmet and entry conditions are satisfied.
+parent_loop_inventory_source_plan_revision=f37674417333d43b320255b02634038265ede825:docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md
+parent_loop_selection_rule=first_unmet_checkpoint_in_authoritative_inventory
+parent_loop_next_unmet_reason=Stage 4 ui.hud_boss_health.v1 remains unsupported_unregistered; static completeSupported=false; missingEvidenceDimensions=[schema_expressible,normalized,compiled,runtime_consumed,qa_observed]; missingSupportEvidencePrerequisites=[dslSchema,normalizer,irCompiler,runtimeModule,amendmentOperations,capabilityOwnedQa,artifactEvidence,renderContract,requiredProbeIds,requiredProbesVerified].
 superseded_candidate_commit_sha=d719a9c79f304750b1545a05dda6d3d3a097bd8a
 superseded_candidate_tree=5c5c1f252969868af8e837c24333ee85beea974e
 superseded_oracle_submission_id=019f0555-f46b-77a1-b867-22e72cdb2a71
@@ -6378,6 +6396,36 @@ result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manif
 - Candidate commit must not write its own SHA into this candidate record.
 - Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=0c039f164ed082b6e48482661bcd4cdb457192847c57f4f04b6873cc58227172`.
 - `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+
+Oracle receipt:
+
+```text
+reviewed_commit_sha=f37674417333d43b320255b02634038265ede825
+reviewed_commit_tree=380b6ce2c8ab064ae28b732d1eb0a09e4860dcaa
+reviewed_skill_revision=0c039f164ed082b6e48482661bcd4cdb457192847c57f4f04b6873cc58227172
+oracle_submission_id=019f0560-98ff-76e3-bc93-3196ea26305f
+oracle_agent_id=019f0488-39ff-7e33-a790-4caca4a838a3
+oracle_status=approved
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 none
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for the immutable candidate only. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, Stage 5, production default cutover, or prior closed history.
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
+```
+
+Parent Loop Driver after receipt:
+
+```text
+closure_scope=atomic_step
+atomic_step_status=closed
+parent_stage_status=running
+loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage4.ui_hud_boss_health_v1.complete_supported_package_slice
+next_atomic_step_source=Step37 remaining inventory helper on reviewed candidate f37674417333d43b320255b02634038265ede825
+```
 
 ## Stage 4 Implementation: `spawn.stop_on_boss_defeat.v1` complete-supported package slice
 
