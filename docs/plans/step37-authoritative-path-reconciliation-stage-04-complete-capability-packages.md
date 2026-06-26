@@ -6173,7 +6173,7 @@ Checkpoint identity:
 
 ```text
 checkpoint_id=stage4.rules_state_transition_graph_v1.complete_supported_package_slice
-closure_record_id=stage4.rules_state_transition_graph_v1.complete_supported_package_slice.candidate_record
+closure_record_id=stage4.rules_state_transition_graph_v1.complete_supported_package_slice.receipt_for_1fd5af94
 record_status=active
 current_active_record=true
 parent_stage_id=stage4
@@ -6181,18 +6181,27 @@ capability_id=rules.state_transition_graph.v1
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
 review_required=true
-closure_status=not_closed
+closure_status=closed
 global_exit_conditions_met=false
 user_input_required=false
-next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
+next_action_after_receipt=CONTINUE_PARENT_LOOP
 repo_pre_candidate_head=063c970888a69e2c2fae98158c8f1662d3594160
+candidate_commit_sha=1fd5af9438c9ff0be16b9448f7645a7c97875e3d
+reviewed_commit_sha=1fd5af9438c9ff0be16b9448f7645a7c97875e3d
+oracle_agent_id=019f0449-5fe9-7bc1-8a99-ddebdde20387
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_p0_findings=0
+oracle_p1_findings=0
+oracle_p2_findings=0
+oracle_p3_findings=0
 skill_revision_type=sha256_bundle
 skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
 active_skill_paths=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery
 active_skill_bundle_digest=a42995a88597a6c2e6c01184d81ae0efa0ace1eb94a51431566fc5fe7cd3eb7a
+reviewed_skill_bundle_digest=a42995a88597a6c2e6c01184d81ae0efa0ace1eb94a51431566fc5fe7cd3eb7a
 active_skill_file_count=8
 active_skill_manifest_protocol=skill_id-relative path, file kind, raw byte length, executable bit, SHA-256, symlink target, symlink escape flag; stable sort by skill id then relative path
 freshness_status=aligned
@@ -6294,7 +6303,32 @@ Post-record validation requirement:
 - This candidate-ready record changes the final tree. Before creating the immutable candidate commit, focused closure contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, final diff range check, Skill freshness, capability support alignment, and Parent Loop inventory alignment must be re-run or explicitly recorded as fresh for the final tree.
 - Candidate commit must not write its own SHA into this candidate record.
 - Oracle request must bind the candidate commit SHA plus `reviewed_skill_revision=a42995a88597a6c2e6c01184d81ae0efa0ace1eb94a51431566fc5fe7cd3eb7a`.
-- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+- Candidate pre-review state kept `oracle_status=not_submitted`; receipt state advanced to `oracle_status=approved` only after Oracle accepted the request and returned `agent_id=019f0449-5fe9-7bc1-8a99-ddebdde20387`.
+
+Oracle review after candidate:
+
+```text
+reviewed_commit_sha=1fd5af9438c9ff0be16b9448f7645a7c97875e3d
+reviewed_skill_bundle_digest=a42995a88597a6c2e6c01184d81ae0efa0ace1eb94a51431566fc5fe7cd3eb7a
+oracle_agent_id=019f0449-5fe9-7bc1-8a99-ddebdde20387
+oracle_status=APPROVED_FOR_RECEIPT
+oracle_p0_findings=0
+oracle_p1_findings=0
+oracle_p2_findings=0
+oracle_p3_findings=0
+receipt_constraints=atomic_step_only; preserve static completeSupported=false, qa_observed=false, requiredProbesVerified=false; run Parent Loop Driver after receipt.
+```
+
+Parent Loop Driver after receipt:
+
+```text
+command=/usr/bin/time -p npx tsx <<'TS' ... remaining inventory after rules.state_transition_graph.v1 receipt ...
+exitCode=0
+duration=real 0.43s
+result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=41; staticCompleteSupportedCount=0; committedClosedCapabilityCount=41; sameRunObservedOnlyCount=41; next_checkpoint_id=stage4.runtime_manifest_binding_v1.complete_supported_package_slice; next_atomic_step="Stage 4 runtime.manifest_binding.v1 complete-supported package slice implementation atomic step"; selection_rule=first_unmet_checkpoint_in_authoritative_inventory; next_action=CONTINUE_PARENT_LOOP; global_exit_conditions_met=false; user_input_required=false; selectionFailure=null.
+```
+
+Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4.rules_state_transition_graph_v1.complete_supported_package_slice` after candidate commit creation, full local validation, Oracle `APPROVED_FOR_RECEIPT`, and receipt-only metadata update. It does not close Stage 4, Step37, production default cutover, legacy authoritative path exit, Stage 5, or final global closure. Parent Loop Driver must continue with `stage4.runtime_manifest_binding_v1.complete_supported_package_slice` while global exits remain false and no verified user blocker exists.
 
 ## Stage 4 Implementation: `rules.encounter_gate.v1` complete-supported package slice
 
