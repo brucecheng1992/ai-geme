@@ -6178,14 +6178,23 @@ capability_id=runtime.manifest_binding.v1
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
 review_required=true
-closure_status=not_closed
+closure_status=closed
 global_exit_conditions_met=false
 user_input_required=false
-next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
+next_action_after_receipt=CONTINUE_PARENT_LOOP
 repo_pre_candidate_head=d80c6bf93b09541ecf8e10f15c027d1706240798
+candidate_commit_sha=85d533e914b1d5198879618cd8f2adbad17da847
+reviewed_commit_sha=85d533e914b1d5198879618cd8f2adbad17da847
+reviewed_commit_tree=6258f3036b9d49fe664ff5fe41367216c81a806c
+oracle_agent_id=019f046a-931b-7e81-b547-042d712aa8c6
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_p0_findings=0
+oracle_p1_findings=0
+oracle_p2_findings=0
+oracle_p3_findings=0
 skill_revision_type=sha256_bundle
 skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
 active_skill_paths=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery
@@ -6295,6 +6304,42 @@ Post-record validation requirement:
 - Candidate commit must not write its own SHA into this candidate record.
 - Oracle request must bind the candidate commit SHA plus `reviewed_skill_revision=8f115bb21c7acbc1157a3be65c93820aa28ed73042d9cfec3437da59366fe40b`.
 - Candidate pre-review state keeps `oracle_status=not_submitted`; Oracle pending state belongs to the external review run after the request is accepted and an `agent_id` is recorded.
+
+Oracle receipt:
+
+```text
+reviewed_commit_sha=85d533e914b1d5198879618cd8f2adbad17da847
+reviewed_commit_tree=6258f3036b9d49fe664ff5fe41367216c81a806c
+reviewed_skill_revision=8f115bb21c7acbc1157a3be65c93820aa28ed73042d9cfec3437da59366fe40b
+reviewed_skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
+oracle_submission_id=not_returned_by_spawn_agent
+oracle_agent_id=019f046a-931b-7e81-b547-042d712aa8c6
+oracle_agent_id_source=multi_agent_v1.spawn_agent.agent_id
+oracle_poll_id_type=agent_id
+oracle_status=approved
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 none
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for the immutable candidate only. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, Stage 5, production default cutover, or prior closed history.
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
+```
+
+Parent Loop Driver after receipt:
+
+```text
+closure_scope=atomic_step
+atomic_step_status=closed
+parent_stage_status=running
+loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage4.runtime_module_load_receipt_v1.complete_supported_package_slice
+next_atomic_step_label=Stage 4 runtime.module_load_receipt.v1 complete-supported package slice implementation atomic step
+selection_rule=first_unmet_checkpoint_in_authoritative_inventory
+source_plan_revision=post-receipt-candidate:85d533e914b1d5198879618cd8f2adbad17da847
+remaining_inventory_result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=42; staticCompleteSupportedCount=0; committedClosedCapabilityCount=42; unsupported_unregistered=17; next_checkpoint_id=stage4.runtime_module_load_receipt_v1.complete_supported_package_slice; selectionFailure=null.
+```
 
 ## Stage 4 Implementation: `rules.state_transition_graph.v1` complete-supported package slice
 
