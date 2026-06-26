@@ -6181,10 +6181,10 @@ capability_id=ui.hud_boss_health.v1
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
 review_required=true
-closure_status=not_met
+closure_status=closed
 global_exit_conditions_met=false
 user_input_required=false
 next_action_after_receipt=CONTINUE_PARENT_LOOP
@@ -6196,6 +6196,20 @@ active_skill_bundle_digest=9000c515569664ab59b567f79604f018c805e862d22208162982d
 active_skill_freshness_command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
 active_skill_freshness_exit_code=0
 post_record_validation_status=passed
+candidate_commit_sha=fe9f0e21888271a1577ad815872b6ae8b007c29b
+candidate_commit_tree=dc0233b32af0a057b013edca7ddc55b301bc5a70
+reviewed_commit_sha=fe9f0e21888271a1577ad815872b6ae8b007c29b
+reviewed_commit_tree=dc0233b32af0a057b013edca7ddc55b301bc5a70
+reviewed_skill_revision=9000c515569664ab59b567f79604f018c805e862d22208162982d03003accdc3
+reviewed_skill_bundle_digest=9000c515569664ab59b567f79604f018c805e862d22208162982d03003accdc3
+oracle_agent_id=019f0574-77e4-72a0-9c79-5347d0d2f767
+oracle_agent_id_source=multi_agent_v1.spawn_agent.agent_id
+oracle_submission_id=not_exposed_by_multi_agent_v1.spawn_agent
+oracle_status_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 none
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for immutable candidate fe9f0e21888271a1577ad815872b6ae8b007c29b. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, Stage 5, production default cutover, legacy authoritative path exit, or prior closed history.
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
 ```
 
 `ui.hud_boss_health.v1` was selected by the Parent Loop Driver after the `ui.failure_restart.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
@@ -6335,10 +6349,37 @@ result=PASS: diff scope limited to ui.hud_boss_health package/runtime module, QA
 
 Post-record validation requirement:
 
-- This final state update changes the tree after the recorded local validation. Before creating the immutable candidate commit, focused closure contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, final diff range check, Skill freshness, and inventory alignment must be re-run for this final tree.
-- Candidate commit must not write its own SHA into this candidate record.
-- Oracle request must bind the candidate commit SHA plus `reviewed_skill_revision=9000c515569664ab59b567f79604f018c805e862d22208162982d03003accdc3`.
-- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+- Candidate commit did not write its own SHA into the candidate record. The candidate SHA is recorded only by this receipt metadata after commit creation and Oracle approval.
+- Oracle reviewed immutable candidate commit `fe9f0e21888271a1577ad815872b6ae8b007c29b` with `reviewed_skill_revision=9000c515569664ab59b567f79604f018c805e862d22208162982d03003accdc3`.
+- This receipt is docs-only closure metadata. If any implementation, validator, contract, test, Skill, AGENTS.md, runtime, or state-machine semantic file changes in this receipt commit, the Oracle approval is stale and the atom must return to candidate review.
+
+Oracle receipt:
+
+```text
+reviewed_commit_sha=fe9f0e21888271a1577ad815872b6ae8b007c29b
+reviewed_commit_tree=dc0233b32af0a057b013edca7ddc55b301bc5a70
+reviewed_skill_revision=9000c515569664ab59b567f79604f018c805e862d22208162982d03003accdc3
+oracle_agent_id=019f0574-77e4-72a0-9c79-5347d0d2f767
+oracle_agent_id_source=multi_agent_v1.spawn_agent.agent_id
+oracle_submission_id=not_exposed_by_multi_agent_v1.spawn_agent
+oracle_status=approved
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 none
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for immutable candidate fe9f0e21888271a1577ad815872b6ae8b007c29b only. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, Stage 5, production default cutover, legacy authoritative path exit, or prior closed history.
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
+```
+
+Parent Loop Driver after receipt:
+
+```text
+command=/usr/bin/time -p npx tsx --eval "<remaining inventory after ui.hud_boss_health.v1 receipt>"
+exitCode=0
+duration=real 0.53s
+result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=50; staticCompleteSupportedCount=0; committedClosedCapabilityCount=50; sameRunObservedOnlyCount=50; unsupported_unregistered=9; next_checkpoint_id=stage4.ui_hud_current_weapon_v1.complete_supported_package_slice; next_atomic_step="Stage 4 ui.hud_current_weapon.v1 complete-supported package slice implementation atomic step"; selection_rule=first_unmet_checkpoint_in_authoritative_inventory; next_action=CONTINUE_PARENT_LOOP; global_exit_conditions_met=false; user_input_required=false; selectionFailure=null.
+```
+
+Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4.ui_hud_boss_health_v1.complete_supported_package_slice` after candidate commit creation, full local validation, Oracle `APPROVED_FOR_RECEIPT`, and receipt-only metadata update. It does not close Stage 4, Step37, production default cutover, legacy authoritative path exit, Stage 5, or final global closure. Parent Loop Driver must continue with `stage4.ui_hud_current_weapon_v1.complete_supported_package_slice` while global exits remain false and no verified user blocker exists.
 
 ## Stage 4 Implementation: `ui.failure_restart.v1` complete-supported package slice
 
