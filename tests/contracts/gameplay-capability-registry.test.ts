@@ -33,6 +33,7 @@ import {
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
   PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID,
   PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID,
+  VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID,
   REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID,
   RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID,
   RUNTIME_MODULE_LOAD_RECEIPT_REQUIRED_PROBE_ID,
@@ -154,6 +155,11 @@ describe('Gameplay capability registry', () => {
     expect(findGameplayCapability('provider.deepseek_authoritative_draft.v1')).toMatchObject({
       status: 'planned',
       domain: 'provider',
+      legacyRuntimeCapabilities: []
+    });
+    expect(findGameplayCapability('validation.fixed_prompt_end_to_end.v1')).toMatchObject({
+      status: 'planned',
+      domain: 'validation',
       legacyRuntimeCapabilities: []
     });
     expect(findGameplayCapability('review.oracle_final_gate.v1')).toMatchObject({
@@ -1099,6 +1105,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(providerDraft)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(providerDraft)).toBe(false);
+  });
+
+  it('scopes fixed prompt end-to-end validation package-owned QA without static support promotion', () => {
+    const fixedPromptEndToEnd = findGameplayCapability('validation.fixed_prompt_end_to_end.v1');
+
+    if (fixedPromptEndToEnd === undefined) {
+      throw new Error('Expected validation.fixed_prompt_end_to_end.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(fixedPromptEndToEnd)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(fixedPromptEndToEnd.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(fixedPromptEndToEnd.qa).toEqual({
+      requiredProbeIds: [VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(fixedPromptEndToEnd)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(fixedPromptEndToEnd)).toBe(false);
   });
 
   it('scopes final Oracle gate package-owned QA without static support promotion', () => {

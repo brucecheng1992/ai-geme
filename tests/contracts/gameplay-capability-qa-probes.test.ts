@@ -165,6 +165,13 @@ import {
   VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID,
   VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_SCHEMA_VERSION,
   createValidationFailClosedUnknownNodesPackageContract,
+  VALIDATION_FIXED_PROMPT_END_TO_END_EVENT_TYPE,
+  VALIDATION_FIXED_PROMPT_END_TO_END_PROFILE_ID,
+  VALIDATION_FIXED_PROMPT_END_TO_END_PROMPT_SOURCE,
+  VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID,
+  VALIDATION_FIXED_PROMPT_END_TO_END_RUNTIME_FAMILY,
+  VALIDATION_FIXED_PROMPT_END_TO_END_SCHEMA_VERSION,
+  createValidationFixedPromptEndToEndPackageContract,
   GOAL_BOSS_UNLOCK_BOSS_ENTITY_ID,
   GOAL_BOSS_UNLOCK_EVENT_TYPE,
   GOAL_BOSS_UNLOCK_REASON,
@@ -2084,6 +2091,182 @@ describe('Capability-owned runtime QA probes', () => {
           status: 'failed'
         })
       ])
+    });
+  });
+
+  it('requires fixed prompt end-to-end evidence in addition to provider/profile dependency probes', () => {
+    const capabilityId = 'validation.fixed_prompt_end_to_end.v1';
+    const probeId = VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID;
+    const packages = [
+      createFixedPromptBindingPackageContract(),
+      createProfileDeepSeekRunAndGunValidationPackageContract(),
+      createProviderDeepSeekAuthoritativeDraftPackageContract(),
+      createValidationFixedPromptEndToEndPackageContract()
+    ];
+    const dependencyEvidence = [
+      {
+        capabilityId: 'metadata.fixed_prompt_binding.v1',
+        probeId: FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
+        action: 'observe',
+        eventType: FIXED_PROMPT_BINDING_EVENT_TYPE,
+        eventTypes: [FIXED_PROMPT_BINDING_EVENT_TYPE],
+        status: 'observed' as const
+      },
+      {
+        capabilityId: 'profile.deepseek_run_and_gun_validation.v1',
+        probeId: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID,
+        action: 'observe',
+        eventType: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE,
+        eventTypes: [PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE],
+        status: 'observed' as const
+      },
+      {
+        capabilityId: 'provider.deepseek_authoritative_draft.v1',
+        probeId: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID,
+        action: 'verify_authoritative_draft',
+        eventType: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE,
+        eventTypes: [PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE],
+        deepSeekAuthoritativeDraftProduced: true,
+        deepSeekProviderId: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PROVIDER_ID,
+        deepSeekDraftArtifactKind: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_ARTIFACT_KIND,
+        deepSeekDraftSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_SCHEMA_VERSION,
+        deepSeekDraftNormalized: true,
+        deepSeekCanonicalSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_CANONICAL_SCHEMA_VERSION,
+        deepSeekComposedSchemaHashMatched: true,
+        deepSeekCapabilityLockHashMatched: true,
+        deepSeekTrustedEvidenceRejected: true,
+        status: 'observed' as const
+      }
+    ];
+    const fixedPromptEndToEndState = {
+      fixedPromptEndToEndVerified: true,
+      fixedPromptSchemaVersion: VALIDATION_FIXED_PROMPT_END_TO_END_SCHEMA_VERSION,
+      fixedPromptSource: VALIDATION_FIXED_PROMPT_END_TO_END_PROMPT_SOURCE,
+      fixedPromptProfileId: VALIDATION_FIXED_PROMPT_END_TO_END_PROFILE_ID,
+      fixedPromptRuntimeFamily: VALIDATION_FIXED_PROMPT_END_TO_END_RUNTIME_FAMILY,
+      fixedPromptBindingObserved: true,
+      fixedPromptProfileBindingObserved: true,
+      fixedPromptProviderDraftValidated: true,
+      fixedPromptProviderId: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PROVIDER_ID,
+      fixedPromptDraftSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_SCHEMA_VERSION,
+      fixedPromptCanonicalSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_CANONICAL_SCHEMA_VERSION,
+      fixedPromptHashMatched: true,
+      fixedPromptFallbackPromptUsed: false
+    };
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    expect(plan.status).toBe('ready');
+    expect(plan.requiredProbes.map((probe) => probe.id)).toEqual([
+      FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
+      PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID,
+      PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID,
+      VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID
+    ]);
+
+    const providerOnly = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: dependencyEvidence,
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const missingCompositeState = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_fixed_prompt_chain',
+              eventType: VALIDATION_FIXED_PROMPT_END_TO_END_EVENT_TYPE,
+              eventTypes: [VALIDATION_FIXED_PROMPT_END_TO_END_EVENT_TYPE],
+              fixedPromptBindingObserved: true,
+              fixedPromptProfileBindingObserved: true,
+              fixedPromptProviderDraftValidated: true,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedFixedPromptChain = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_fixed_prompt_chain',
+              eventType: VALIDATION_FIXED_PROMPT_END_TO_END_EVENT_TYPE,
+              eventTypes: [VALIDATION_FIXED_PROMPT_END_TO_END_EVENT_TYPE],
+              ...fixedPromptEndToEndState,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(providerOnly.status).toBe('failed');
+    expect(providerOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingCompositeState.status).toBe('failed');
+    expect(missingCompositeState.missingRequiredProbeIds).toEqual([probeId]);
+    for (const dependencyProbeId of [
+      FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
+      PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID,
+      PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID
+    ]) {
+      expect(missingCompositeState.requiredResults.find((entry) => entry.probeId === dependencyProbeId)).toMatchObject({
+        status: 'passed',
+        planHash: plan.planHash
+      });
+    }
+    expect(missingCompositeState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.fixed_prompt_end_to_end`,
+          status: 'failed',
+          message: expect.stringContaining('expected fixedPromptEndToEndVerified=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.fixed_prompt_end_to_end`,
+          status: 'failed',
+          message: expect.stringContaining(`expected fixedPromptSource=${VALIDATION_FIXED_PROMPT_END_TO_END_PROMPT_SOURCE}, observed <missing>`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.fixed_prompt_end_to_end`,
+          status: 'failed',
+          message: expect.stringContaining('expected fixedPromptHashMatched=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedFixedPromptChain.status).toBe('passed');
+    expect(observedFixedPromptChain.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'passed',
+      planHash: plan.planHash
     });
   });
 

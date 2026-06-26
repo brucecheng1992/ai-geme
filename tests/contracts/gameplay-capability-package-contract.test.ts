@@ -305,6 +305,19 @@ import {
   VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_SCHEMA_VERSION
 } from '../../packages/game-dsl/src/gameplay-capabilities/validation-fail-closed-unknown-nodes-runtime-module.js';
 import {
+  VALIDATION_FIXED_PROMPT_END_TO_END_PACKAGE_REQUIRED_EVIDENCE_ID,
+  VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID,
+  createValidationFixedPromptEndToEndPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/validation-fixed-prompt-end-to-end-package.js';
+import {
+  VALIDATION_FIXED_PROMPT_END_TO_END_EVENT_TYPE,
+  VALIDATION_FIXED_PROMPT_END_TO_END_PROFILE_ID,
+  VALIDATION_FIXED_PROMPT_END_TO_END_PROMPT_SOURCE,
+  VALIDATION_FIXED_PROMPT_END_TO_END_RUNTIME_FAMILY,
+  VALIDATION_FIXED_PROMPT_END_TO_END_RUNTIME_SYSTEM_ID,
+  VALIDATION_FIXED_PROMPT_END_TO_END_SCHEMA_VERSION
+} from '../../packages/game-dsl/src/gameplay-capabilities/validation-fixed-prompt-end-to-end-runtime-module.js';
+import {
   GOAL_BOSS_UNLOCK_PACKAGE_REQUIRED_EVIDENCE_ID,
   GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID,
   createGoalBossUnlockPackageContract
@@ -1938,6 +1951,83 @@ describe('Gameplay capability package contract', () => {
             unknownNodeKind: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_KIND,
             unknownNodePath: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PATH,
             unknownNodeProfileId: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PROFILE_ID
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the fixed prompt end-to-end validation package only with the composite provider/profile proof', () => {
+    const contract = createValidationFixedPromptEndToEndPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'validation.fixed_prompt_end_to_end.v1'
+    });
+    expect(contract.dependencies).toEqual([
+      { capabilityId: 'metadata.fixed_prompt_binding.v1', range: '^v1' },
+      { capabilityId: 'profile.deepseek_run_and_gun_validation.v1', range: '^v1' },
+      { capabilityId: 'provider.deepseek_authoritative_draft.v1', range: '^v1' }
+    ]);
+    expect(contract.runtime.systems).toEqual([
+      expect.objectContaining({
+        id: VALIDATION_FIXED_PROMPT_END_TO_END_RUNTIME_SYSTEM_ID,
+        dependencies: [
+          FIXED_PROMPT_BINDING_RUNTIME_SYSTEM_ID,
+          PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_RUNTIME_SYSTEM_ID,
+          PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_RUNTIME_SYSTEM_ID
+        ]
+      })
+    ]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: VALIDATION_FIXED_PROMPT_END_TO_END_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'validation.fixed_prompt_end_to_end.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: VALIDATION_FIXED_PROMPT_END_TO_END_EVENT_TYPE,
+          parameters: {
+            promptSource: VALIDATION_FIXED_PROMPT_END_TO_END_PROMPT_SOURCE,
+            providerId: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PROVIDER_ID,
+            draftSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_SCHEMA_VERSION,
+            canonicalSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_CANONICAL_SCHEMA_VERSION
+          }
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: VALIDATION_FIXED_PROMPT_END_TO_END_RUNTIME_SYSTEM_ID,
+          ref: VALIDATION_FIXED_PROMPT_END_TO_END_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID}.assertion.fixed_prompt_end_to_end`,
+          expected: {
+            fixedPromptEndToEndVerified: true,
+            fixedPromptSchemaVersion: VALIDATION_FIXED_PROMPT_END_TO_END_SCHEMA_VERSION,
+            fixedPromptSource: VALIDATION_FIXED_PROMPT_END_TO_END_PROMPT_SOURCE,
+            fixedPromptProfileId: VALIDATION_FIXED_PROMPT_END_TO_END_PROFILE_ID,
+            fixedPromptRuntimeFamily: VALIDATION_FIXED_PROMPT_END_TO_END_RUNTIME_FAMILY,
+            fixedPromptBindingObserved: true,
+            fixedPromptProfileBindingObserved: true,
+            fixedPromptProviderDraftValidated: true,
+            fixedPromptProviderId: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PROVIDER_ID,
+            fixedPromptDraftSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_SCHEMA_VERSION,
+            fixedPromptCanonicalSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_CANONICAL_SCHEMA_VERSION,
+            fixedPromptHashMatched: true,
+            fixedPromptFallbackPromptUsed: false
           }
         })
       ]

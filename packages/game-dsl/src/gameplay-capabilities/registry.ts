@@ -134,6 +134,10 @@ import {
   createValidationFailClosedUnknownNodesPackageContract
 } from './validation-fail-closed-unknown-nodes-package.js';
 import {
+  VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID,
+  createValidationFixedPromptEndToEndPackageContract
+} from './validation-fixed-prompt-end-to-end-package.js';
+import {
   GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID,
   createGoalBossUnlockPackageContract
 } from './goal-boss-unlock-package.js';
@@ -966,6 +970,19 @@ const validationFailClosedUnknownNodesPackageEvidence: GameplayCapabilityEvidenc
 const validationFailClosedUnknownNodesPackageQa: GameplayCapabilityQaEvidence = validationFailClosedUnknownNodesPackageReport.supportEligible
   ? { requiredProbeIds: [VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const validationFixedPromptEndToEndPackageReport = validateGameplayCapabilityPackage(createValidationFixedPromptEndToEndPackageContract());
+const validationFixedPromptEndToEndPackageEvidence: GameplayCapabilityEvidence = validationFixedPromptEndToEndPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const validationFixedPromptEndToEndPackageQa: GameplayCapabilityQaEvidence = validationFixedPromptEndToEndPackageReport.supportEligible
+  ? { requiredProbeIds: [VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const goalBossUnlockPackageReport = validateGameplayCapabilityPackage(createGoalBossUnlockPackageContract());
 const goalBossUnlockPackageEvidence: GameplayCapabilityEvidence = goalBossUnlockPackageReport.supportEligible
   ? {
@@ -1404,6 +1421,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     validationFailClosedUnknownNodesPackageEvidence,
     validationFailClosedUnknownNodesPackageQa
+  ),
+  planned(
+    'validation.fixed_prompt_end_to_end.v1',
+    'validation',
+    'Fixed prompt end-to-end validation',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    validationFixedPromptEndToEndPackageEvidence,
+    validationFixedPromptEndToEndPackageQa
   ),
   planned(
     'goal.boss_unlock.v1',

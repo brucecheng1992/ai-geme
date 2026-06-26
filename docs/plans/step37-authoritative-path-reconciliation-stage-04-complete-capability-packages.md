@@ -6345,6 +6345,161 @@ next_atomic_step_label=Stage 4 validation.fixed_prompt_end_to_end.v1 complete-su
 remaining_inventory_result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=55; staticCompleteSupportedCount=0; committedClosedCapabilityCount=55; unsupported_unregistered=4; nextCheckpointId=stage4.validation_fixed_prompt_end_to_end_v1.complete_supported_package_slice; selectionFailure=null.
 ```
 
+## Stage 4 Implementation: `validation.fixed_prompt_end_to_end.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.validation_fixed_prompt_end_to_end_v1.complete_supported_package_slice
+parent_stage_id=stage4
+capability_id=validation.fixed_prompt_end_to_end.v1
+closure_record_id=stage4.validation_fixed_prompt_end_to_end_v1.complete_supported_package_slice.implementation_record
+record_status=active
+current_active_record=true
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=open
+parent_stage_status=running
+parent_loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
+skill_revision_type=sha256_bundle
+skill_bundle_format=step37_manifest_v1_path_size_sha
+skill_root_identity=/Users/dahufa/.agents/skills/review-gated-delivery
+skill_file_count=7
+current_active_skill_digest=1993fc085fccd9a74744ba77f5d5bb8beaebfa273b52228bbdd3d1f41671715d
+local_validation_gate_scope=pre_candidate_final_tree_required
+```
+
+`validation.fixed_prompt_end_to_end.v1` was selected by the Parent Loop Driver after the `validation.fail_closed_unknown_nodes.v1` receipt. The previous receipt recorded `next_atomic_step=stage4.validation_fixed_prompt_end_to_end_v1.complete_supported_package_slice`, `global_exit_conditions_met=false`, and `user_input_required=false`; this atomic step therefore continues Stage 4 and does not enter Stage 5.
+
+Minimum closure requirements:
+
+1. Add a package-owned fixed-prompt end-to-end validation capability contract with stable capability identity, runtime system identity, verification event identity, required probe id, and required QA evidence id.
+2. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Require the fixed-prompt end-to-end probe to prove the composite provider/profile prompt validation semantics, not merely provider draft success or profile binding success.
+5. Require QA evidence fields: `fixedPromptEndToEndVerified`, `fixedPromptSchemaVersion`, `fixedPromptSource`, `fixedPromptProfileId`, `fixedPromptRuntimeFamily`, `fixedPromptBindingObserved`, `fixedPromptProfileBindingObserved`, `fixedPromptProviderDraftValidated`, `fixedPromptProviderId`, `fixedPromptDraftSchemaVersion`, `fixedPromptCanonicalSchemaVersion`, `fixedPromptHashMatched`, and `fixedPromptFallbackPromptUsed`.
+6. Preserve negative regressions proving provider/profile events without the composite fixed-prompt state fields keep the capability unverified and emit the required missing-probe blocker.
+7. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/validation-fixed-prompt-end-to-end-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/validation-fixed-prompt-end-to-end-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`.
+- `tests/contracts/contract-freeze.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createValidationFixedPromptEndToEndPackageContract()`.
+- Runtime module identity: `VALIDATION_FIXED_PROMPT_END_TO_END_RUNTIME_SYSTEM_ID=validation.fixed_prompt_end_to_end`.
+- Verification event: `VALIDATION_FIXED_PROMPT_END_TO_END_EVENT_TYPE=validation.fixed_prompt_end_to_end.verified`.
+- Required probe: `VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID=validation.fixed_prompt_end_to_end.v1.fixed_prompt.browser_qa.v1`.
+- Required evidence: `VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_EVIDENCE_ID=validation.fixed_prompt_end_to_end.v1.evidence.capability_qa_report.v1`.
+- Dependency capabilities: `metadata.fixed_prompt_binding.v1`, `profile.deepseek_run_and_gun_validation.v1`, and `provider.deepseek_authoritative_draft.v1`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares the fixed-prompt composite state fields and fails the required probe when provider/profile events omit those fields.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for same-run full composite fixed-prompt evidence; it does not mutate static `completeSupported`.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned fixed-prompt end-to-end validation capability contract, runtime system identity, verification event, required probe id, required evidence id, dependency chain, and runtime evidence fields for composite fixed-prompt provider/profile validation. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, Step37 remaining-inventory driver, telemetry/event freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves the fixed-prompt binding, profile validation, provider authoritative draft, hash match, and no fallback prompt use. |
+| Authority | Package-owned QA evidence defines the capability authority: provider/profile events are insufficient unless evidence also proves `fixedPromptEndToEndVerified=true`, `fixedPromptHashMatched=true`, and `fixedPromptFallbackPromptUsed=false` for the expected fixed prompt source/profile/runtime family. |
+| Legacy strategy | Provider draft success, profile validation success, generic prompt text, or natural-language receipt text cannot overclaim this capability without the package-owned composite probe payload. |
+| Failure policy | Missing package contract, missing verification event, missing composite state fields, wrong capability/probe identity, stale evidence, wrong provider/profile/family, hash mismatch, or fallback prompt use keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, registry support advancement without complete support, QA reader positive/negative composite state behavior, dependency probes, target-profile overlay positive/negative behavior, remaining-inventory count changes, and event/schema freeze coverage. |
+| Rollback | Reverting this slice removes only the validation fixed-prompt package/probe/reader/schema wiring and returns `validation.fixed_prompt_end_to_end.v1` to unsupported evidence without changing business runtime gameplay templates or Stage 5 policy. |
+
+Validation performed before this record update:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts -t "fixed prompt end-to-end|validation fixed prompt|DeepSeek authoritative draft|target profile runtime support overlay|missing required probe blockers|remaining complete-supported inventory|Contract Freeze"
+exitCode=1
+result=RED: initial implementation overlapped dependency-owned DSL paths and then missed target-profile count/identity expectations after adding the new required probe.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts -t "fixed prompt end-to-end|validation fixed prompt|DeepSeek authoritative draft|target profile runtime support overlay|missing required probe blockers|remaining complete-supported inventory|Contract Freeze"
+exitCode=0
+duration=real 2.03s
+result=PASS: focused set 6 passed / 2 skipped files; 108 passed / 205 skipped tests.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 2.19s
+result=PASS: 8 files / 313 tests.
+```
+
+Local validation after implementation record update:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-focused-validation.test.ts -t "fixed prompt end-to-end|validation fixed prompt|DeepSeek authoritative draft|target profile runtime support overlay|missing required probe blockers|remaining complete-supported inventory|Contract Freeze|closure|Parent Loop|focused validation"
+exitCode=0
+duration=real 2.24s
+result=PASS: focused set 9 passed / 2 skipped files; 152 passed / 222 skipped tests.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-focused-validation.test.ts
+exitCode=0
+duration=real 2.29s
+result=PASS: 11 files / 374 tests.
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 10.29s
+result=PASS: 98 files / 1339 tests.
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 60.24s
+result=PASS: contracts 98 files / 1339 tests; workspace 34 files / 410 tests.
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.90s
+result=PASS.
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.03s
+result=PASS.
+
+command=/usr/bin/time -p node --input-type=module - <<'JS' ... review-gated-delivery root-relative path_size_sha Skill bundle digest ...
+exitCode=0
+duration=real 0.07s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_size_sha; skill_root_identity=/Users/dahufa/.agents/skills/review-gated-delivery; skill_file_count=7; skill_manifest_input_bytes=696; skill_bundle_digest=1993fc085fccd9a74744ba77f5d5bb8beaebfa273b52228bbdd3d1f41671715d.
+
+command=/usr/bin/time -p npx tsx - <<'TS' ... previous receipt boundary plus current support summary alignment ...
+exitCode=0
+duration=real 0.45s
+result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=56; staticCompleteSupportedCount=0; committedClosedCapabilityCount=55; unsupported_unregistered=3; current checkpoint remains stage4.validation_fixed_prompt_end_to_end_v1.complete_supported_package_slice; current capability state=registered_without_required_probe_verification; selectionFailure=null.
+```
+
+Post-record validation requirement:
+
+- This status/digest sync changes the final tree. Before creating the immutable candidate commit, focused contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, Skill freshness, capability support alignment, Parent Loop inventory alignment, and final diff range check must be re-run against the updated final tree.
+- Candidate commit must not write its own SHA into this implementation record.
+- Oracle request must bind the candidate commit SHA and the final recomputed `reviewed_skill_revision`.
+- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+- Oracle PASS is required before any receipt may update `closure_status=closed`.
+
 ## Stage 4 Implementation: `ui.win_failure_transitions.v1` complete-supported package slice
 
 Checkpoint identity:

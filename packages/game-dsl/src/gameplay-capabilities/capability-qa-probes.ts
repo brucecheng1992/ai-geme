@@ -453,6 +453,19 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   deepSeekComposedSchemaHashMatched?: boolean;
   deepSeekCapabilityLockHashMatched?: boolean;
   deepSeekTrustedEvidenceRejected?: boolean;
+  fixedPromptEndToEndVerified?: boolean;
+  fixedPromptSchemaVersion?: string;
+  fixedPromptSource?: string;
+  fixedPromptProfileId?: string;
+  fixedPromptRuntimeFamily?: string;
+  fixedPromptBindingObserved?: boolean;
+  fixedPromptProfileBindingObserved?: boolean;
+  fixedPromptProviderDraftValidated?: boolean;
+  fixedPromptProviderId?: string;
+  fixedPromptDraftSchemaVersion?: string;
+  fixedPromptCanonicalSchemaVersion?: string;
+  fixedPromptHashMatched?: boolean;
+  fixedPromptFallbackPromptUsed?: boolean;
   finalOracleGateApproved?: boolean;
   finalOracleReviewedCommitShaPresent?: boolean;
   finalOracleReviewedSkillRevisionPresent?: boolean;
@@ -1211,6 +1224,19 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('deepSeekComposedSchemaHashMatched', expected, observed.deepSeekComposedSchemaHashMatched),
     ...compareExpectedBooleanField('deepSeekCapabilityLockHashMatched', expected, observed.deepSeekCapabilityLockHashMatched),
     ...compareExpectedBooleanField('deepSeekTrustedEvidenceRejected', expected, observed.deepSeekTrustedEvidenceRejected),
+    ...compareExpectedBooleanField('fixedPromptEndToEndVerified', expected, observed.fixedPromptEndToEndVerified),
+    ...compareExpectedStringField('fixedPromptSchemaVersion', expected, observed.fixedPromptSchemaVersion),
+    ...compareExpectedStringField('fixedPromptSource', expected, observed.fixedPromptSource),
+    ...compareExpectedStringField('fixedPromptProfileId', expected, observed.fixedPromptProfileId),
+    ...compareExpectedStringField('fixedPromptRuntimeFamily', expected, observed.fixedPromptRuntimeFamily),
+    ...compareExpectedBooleanField('fixedPromptBindingObserved', expected, observed.fixedPromptBindingObserved),
+    ...compareExpectedBooleanField('fixedPromptProfileBindingObserved', expected, observed.fixedPromptProfileBindingObserved),
+    ...compareExpectedBooleanField('fixedPromptProviderDraftValidated', expected, observed.fixedPromptProviderDraftValidated),
+    ...compareExpectedStringField('fixedPromptProviderId', expected, observed.fixedPromptProviderId),
+    ...compareExpectedStringField('fixedPromptDraftSchemaVersion', expected, observed.fixedPromptDraftSchemaVersion),
+    ...compareExpectedStringField('fixedPromptCanonicalSchemaVersion', expected, observed.fixedPromptCanonicalSchemaVersion),
+    ...compareExpectedBooleanField('fixedPromptHashMatched', expected, observed.fixedPromptHashMatched),
+    ...compareExpectedBooleanField('fixedPromptFallbackPromptUsed', expected, observed.fixedPromptFallbackPromptUsed),
     ...compareExpectedBooleanField('finalOracleGateApproved', expected, finalOracleFacts.finalOracleGateApproved),
     ...compareExpectedBooleanField('finalOracleReviewedCommitShaPresent', expected, finalOracleFacts.finalOracleReviewedCommitShaPresent),
     ...compareExpectedBooleanField('finalOracleReviewedSkillRevisionPresent', expected, finalOracleFacts.finalOracleReviewedSkillRevisionPresent),

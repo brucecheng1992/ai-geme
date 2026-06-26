@@ -39,6 +39,7 @@ export const TelemetryEventTypeSchema = z.enum([
   'feedback.victory_declaration.verified',
   'generation.fallback_policy_fail_closed.verified',
   'validation.fail_closed_unknown_nodes.verified',
+  'validation.fixed_prompt_end_to_end.verified',
   'goal.boss_unlock.verified',
   'hazard.spawned',
   'hazard.falling_area.verified',

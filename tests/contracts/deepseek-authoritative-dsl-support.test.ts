@@ -739,6 +739,21 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       missingEvidenceDimensions: ['qa_observed'],
       missingSupportEvidencePrerequisites: ['requiredProbesVerified']
     });
+    expect(capabilities.get('validation.fixed_prompt_end_to_end.v1')).toMatchObject({
+      registered: true,
+      classification: 'DEFERRED',
+      completeSupported: false,
+      legacyBacked: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
     expect(capabilities.get('review.oracle_final_gate.v1')).toMatchObject({
       registered: true,
       classification: 'DEFERRED',
@@ -946,6 +961,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       'ui.hud_retries.v1',
       'ui.win_failure_transitions.v1',
       'validation.fail_closed_unknown_nodes.v1',
+      'validation.fixed_prompt_end_to_end.v1',
       'weapon.cooldown.v1',
       'weapon.death_reset.v1',
       'weapon.default_straight_single.v1',

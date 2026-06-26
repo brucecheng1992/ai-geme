@@ -121,6 +121,12 @@ import {
   VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PROFILE_ID,
   VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID,
   VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_SCHEMA_VERSION,
+  VALIDATION_FIXED_PROMPT_END_TO_END_EVENT_TYPE,
+  VALIDATION_FIXED_PROMPT_END_TO_END_PROFILE_ID,
+  VALIDATION_FIXED_PROMPT_END_TO_END_PROMPT_SOURCE,
+  VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID,
+  VALIDATION_FIXED_PROMPT_END_TO_END_RUNTIME_FAMILY,
+  VALIDATION_FIXED_PROMPT_END_TO_END_SCHEMA_VERSION,
   GOAL_BOSS_UNLOCK_BOSS_ENTITY_ID,
   GOAL_BOSS_UNLOCK_EVENT_TYPE,
   GOAL_BOSS_UNLOCK_REASON,
@@ -303,6 +309,7 @@ import {
   createFixedPromptBindingPackageContract,
   createGenerationFallbackPolicyFailClosedPackageContract,
   createValidationFailClosedUnknownNodesPackageContract,
+  createValidationFixedPromptEndToEndPackageContract,
   createGoalBossUnlockPackageContract,
   createHazardFallingAreaPackageContract,
   createHazardTimedExplosionPackageContract,
@@ -355,6 +362,7 @@ const uiHudPlayerHealthCapabilityId = 'ui.hud_player_health.v1';
 const uiHudRetriesCapabilityId = 'ui.hud_retries.v1';
 const generationFallbackPolicyFailClosedCapabilityId = 'generation.fallback_policy_fail_closed.v1';
 const validationFailClosedUnknownNodesCapabilityId = 'validation.fail_closed_unknown_nodes.v1';
+const validationFixedPromptEndToEndCapabilityId = 'validation.fixed_prompt_end_to_end.v1';
 const goalBossUnlockCapabilityId = 'goal.boss_unlock.v1';
 const hazardFallingAreaCapabilityId = 'hazard.falling_area.v1';
 const hazardTimedExplosionCapabilityId = 'hazard.timed_explosion.v1';
@@ -477,6 +485,9 @@ describe('Step 37 target profile runtime support overlay', () => {
     const providerDeepSeekAuthoritativeDraft = report.capabilities.find(
       (entry) => entry.capabilityId === providerDeepSeekAuthoritativeDraftCapabilityId
     );
+    const validationFixedPromptEndToEnd = report.capabilities.find(
+      (entry) => entry.capabilityId === validationFixedPromptEndToEndCapabilityId
+    );
     const reviewOracleFinalGate = report.capabilities.find((entry) => entry.capabilityId === reviewOracleFinalGateCapabilityId);
     const runtimeManifestBinding = report.capabilities.find((entry) => entry.capabilityId === runtimeManifestBindingCapabilityId);
     const runtimeModuleLoadReceipt = report.capabilities.find((entry) => entry.capabilityId === runtimeModuleLoadReceiptCapabilityId);
@@ -501,7 +512,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 45,
+      observedCompleteSupportedCount: 46,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
@@ -545,13 +556,14 @@ describe('Step 37 target profile runtime support overlay', () => {
         spawnStaticCapabilityId,
         spawnStopOnBossDefeatCapabilityId,
         validationFailClosedUnknownNodesCapabilityId,
+        validationFixedPromptEndToEndCapabilityId,
         deathResetCapabilityId,
         defaultWeaponCapabilityId,
         rapidFireCapabilityId,
         replacementRuleCapabilityId,
         spreadShotCapabilityId
       ],
-      blockers: ['target_profile_runtime_support_incomplete:45/59']
+      blockers: ['target_profile_runtime_support_incomplete:46/59']
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
       capabilityId: artifactLineageNoManualPatchCapabilityId,
@@ -982,6 +994,17 @@ describe('Step 37 target profile runtime support overlay', () => {
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
     });
+    expect(validationFixedPromptEndToEnd).toMatchObject({
+      capabilityId: validationFixedPromptEndToEndCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
     expect(reviewOracleFinalGate).toMatchObject({
       capabilityId: reviewOracleFinalGateCapabilityId,
       runtimeVerified: true,
@@ -1101,11 +1124,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 44,
+      observedCompleteSupportedCount: 45,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:44/59'
+        'target_profile_runtime_support_incomplete:45/59'
       ]
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
@@ -1480,6 +1503,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID}`,
+        `capability_qa_report_missing_required_probe:${VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID}`,
         'target_profile_runtime_support_incomplete:43/59'
       ]
     });
@@ -1545,6 +1569,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID}`,
+        `capability_qa_report_missing_required_probe:${VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID}`,
         'target_profile_runtime_support_incomplete:43/59'
       ]
     });
@@ -1669,6 +1694,143 @@ describe('Step 37 target profile runtime support overlay', () => {
       runtimeVerified: true,
       observedCompleteSupported: true,
       verifiedRequiredProbeIds: [PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+  });
+
+  it('keeps fixed prompt end-to-end validation unverified when provider/profile events lack composite prompt proof', () => {
+    const dependencyObserved: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: fixedPromptBindingCapabilityId,
+        probeId: FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
+        action: 'observe',
+        eventType: FIXED_PROMPT_BINDING_EVENT_TYPE,
+        eventTypes: [FIXED_PROMPT_BINDING_EVENT_TYPE],
+        status: 'observed',
+        sourceRef: 'target_profile.fixedPrompt.sha256'
+      },
+      {
+        capabilityId: profileBindingCapabilityId,
+        probeId: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID,
+        action: 'observe',
+        eventType: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE,
+        eventTypes: [PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE],
+        status: 'observed',
+        sourceRef: 'canonical_dsl.profile.id'
+      },
+      {
+        capabilityId: providerDeepSeekAuthoritativeDraftCapabilityId,
+        probeId: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID,
+        action: 'verify_authoritative_draft',
+        eventType: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE,
+        eventTypes: [PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE],
+        deepSeekAuthoritativeDraftProduced: true,
+        deepSeekProviderId: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PROVIDER_ID,
+        deepSeekDraftArtifactKind: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_ARTIFACT_KIND,
+        deepSeekDraftSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_SCHEMA_VERSION,
+        deepSeekDraftNormalized: true,
+        deepSeekCanonicalSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_CANONICAL_SCHEMA_VERSION,
+        deepSeekComposedSchemaHashMatched: true,
+        deepSeekCapabilityLockHashMatched: true,
+        deepSeekTrustedEvidenceRejected: true,
+        status: 'observed',
+        sourceRef: 'normalization_report.capability_game_dsl_draft'
+      }
+    ];
+    const providerOnlyQaReport = buildSingleCapabilityQaReport({
+      capabilityId: validationFixedPromptEndToEndCapabilityId,
+      dependencyPackages: [
+        createFixedPromptBindingPackageContract(),
+        createProfileDeepSeekRunAndGunValidationPackageContract(),
+        createProviderDeepSeekAuthoritativeDraftPackageContract()
+      ],
+      additionalObserved: dependencyObserved,
+      packageContract: createValidationFixedPromptEndToEndPackageContract(),
+      eventType: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE,
+      probeId: VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID,
+      action: 'provider_draft_only',
+      sourceRef: 'normalization_report.capability_game_dsl_draft',
+      stateFields: {
+        fixedPromptBindingObserved: true,
+        fixedPromptProfileBindingObserved: true,
+        fixedPromptProviderDraftValidated: true
+      }
+    });
+    const observedFixedPromptQaReport = buildSingleCapabilityQaReport({
+      capabilityId: validationFixedPromptEndToEndCapabilityId,
+      dependencyPackages: [
+        createFixedPromptBindingPackageContract(),
+        createProfileDeepSeekRunAndGunValidationPackageContract(),
+        createProviderDeepSeekAuthoritativeDraftPackageContract()
+      ],
+      additionalObserved: dependencyObserved,
+      packageContract: createValidationFixedPromptEndToEndPackageContract(),
+      eventType: VALIDATION_FIXED_PROMPT_END_TO_END_EVENT_TYPE,
+      probeId: VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID,
+      action: 'verify_fixed_prompt_chain',
+      sourceRef: 'validation.fixed_prompt_end_to_end',
+      stateFields: validationFixedPromptEndToEndStateFields()
+    });
+    const providerOnlyReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_fixed_prompt_provider_only',
+      capabilityQaReport: providerOnlyQaReport
+    });
+    const observedFixedPromptReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_fixed_prompt_end_to_end',
+      capabilityQaReport: observedFixedPromptQaReport
+    });
+    const providerOnlyState = providerOnlyReport.capabilities.find((entry) => entry.capabilityId === validationFixedPromptEndToEndCapabilityId);
+    const observedFixedPromptState = observedFixedPromptReport.capabilities.find(
+      (entry) => entry.capabilityId === validationFixedPromptEndToEndCapabilityId
+    );
+
+    expect(providerOnlyQaReport.requiredResults.find((entry) => entry.probeId === VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID))
+      .toMatchObject({
+        status: 'failed',
+        assertionResults: expect.arrayContaining([
+          expect.objectContaining({
+            assertionId: `${VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID}.assertion.fixed_prompt_end_to_end`,
+            status: 'failed',
+            message: expect.stringContaining(`observation ${VALIDATION_FIXED_PROMPT_END_TO_END_EVENT_TYPE} not observed`)
+          }),
+          expect.objectContaining({
+            assertionId: `${VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID}.assertion.fixed_prompt_end_to_end`,
+            status: 'failed',
+            message: expect.stringContaining('expected fixedPromptEndToEndVerified=true, observed <missing>')
+          })
+        ])
+      });
+    expect(providerOnlyReport).toMatchObject({
+      observedCompleteSupportedCount: 3,
+      blockers: [
+        `capability_qa_report_missing_required_probe:${VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID}`,
+        'target_profile_runtime_support_incomplete:3/59'
+      ]
+    });
+    expect(providerOnlyState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedFixedPromptReport).toMatchObject({
+      observedCompleteSupportedCount: 4,
+      observedCapabilityIds: [
+        fixedPromptBindingCapabilityId,
+        profileBindingCapabilityId,
+        providerDeepSeekAuthoritativeDraftCapabilityId,
+        validationFixedPromptEndToEndCapabilityId
+      ],
+      blockers: ['target_profile_runtime_support_incomplete:4/59']
+    });
+    expect(observedFixedPromptState).toMatchObject({
+      runtimeVerified: true,
+      observedCompleteSupported: true,
+      verifiedRequiredProbeIds: [VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID],
       missingRequiredProbeIds: [],
       observedEvidenceDimensions: { qa_observed: true }
     });
@@ -1845,7 +2007,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 44,
+      observedCompleteSupportedCount: 45,
       targetProfileCompleteSupported: false,
       observedCapabilityIds: [
         artifactLineageNoManualPatchCapabilityId,
@@ -1887,6 +2049,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         spawnStaticCapabilityId,
         spawnStopOnBossDefeatCapabilityId,
         validationFailClosedUnknownNodesCapabilityId,
+        validationFixedPromptEndToEndCapabilityId,
         deathResetCapabilityId,
         defaultWeaponCapabilityId,
         rapidFireCapabilityId,
@@ -1895,7 +2058,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ],
       blockers: [
         `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:44/59'
+        'target_profile_runtime_support_incomplete:45/59'
       ]
     });
     expect(damageInvulnerability).toMatchObject({
@@ -1972,11 +2135,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 42,
+      observedCompleteSupportedCount: 43,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:42/59'
+        'target_profile_runtime_support_incomplete:43/59'
       ]
     });
     expect(pickup).toMatchObject({
@@ -2179,11 +2342,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 38,
+      observedCompleteSupportedCount: 39,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:38/59'
+        'target_profile_runtime_support_incomplete:39/59'
       ]
     });
     expect(spawnEnemyWave).toMatchObject({
@@ -2268,11 +2431,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 44,
+      observedCompleteSupportedCount: 45,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:44/59'
+        'target_profile_runtime_support_incomplete:45/59'
       ]
     });
     expect(flyingRightEntry).toMatchObject({
@@ -2351,11 +2514,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 44,
+      observedCompleteSupportedCount: 45,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:44/59'
+        'target_profile_runtime_support_incomplete:45/59'
       ]
     });
     expect(patrolInfantry).toMatchObject({
@@ -2436,11 +2599,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 44,
+      observedCompleteSupportedCount: 45,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:44/59'
+        'target_profile_runtime_support_incomplete:45/59'
       ]
     });
     expect(victoryDeclaration).toMatchObject({
@@ -4978,11 +5141,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 44,
+      observedCompleteSupportedCount: 45,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:44/59'
+        'target_profile_runtime_support_incomplete:45/59'
       ]
     });
     expect(deathReset).toMatchObject({
@@ -5056,11 +5219,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 43,
+      observedCompleteSupportedCount: 44,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:43/59'
+        'target_profile_runtime_support_incomplete:44/59'
       ]
     });
     expect(rapidFire).toMatchObject({
@@ -5135,11 +5298,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 44,
+      observedCompleteSupportedCount: 45,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:44/59'
+        'target_profile_runtime_support_incomplete:45/59'
       ]
     });
     expect(spreadShot).toMatchObject({
@@ -5213,11 +5376,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 44,
+      observedCompleteSupportedCount: 45,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:44/59'
+        'target_profile_runtime_support_incomplete:45/59'
       ]
     });
     expect(replacementRule).toMatchObject({
@@ -5271,6 +5434,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       `capability_qa_report_missing_required_probe:${SPAWN_STATIC_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID}`,
@@ -5314,6 +5478,7 @@ function buildDefaultWeaponQaReport(
     pickupStateFields?: boolean;
     pickupWeaponSupplyStateFields?: boolean;
     providerDeepSeekAuthoritativeDraftStateFields?: boolean;
+    validationFixedPromptEndToEndStateFields?: boolean;
     reviewOracleFinalGateStateFields?: boolean;
     spawnEnemyWaveOrderedFields?: boolean;
     weaponDeathResetStateFields?: boolean;
@@ -6011,6 +6176,20 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
+    ...(effectiveEventTypes.includes(VALIDATION_FIXED_PROMPT_END_TO_END_EVENT_TYPE)
+      ? [
+          {
+            capabilityId: validationFixedPromptEndToEndCapabilityId,
+            probeId: VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID,
+            action: 'verify_fixed_prompt_chain',
+            eventType: VALIDATION_FIXED_PROMPT_END_TO_END_EVENT_TYPE,
+            eventTypes: effectiveEventTypes,
+            ...(options.validationFixedPromptEndToEndStateFields === false ? {} : validationFixedPromptEndToEndStateFields()),
+            status: 'observed' as const,
+            sourceRef: 'validation.fixed_prompt_end_to_end'
+          }
+        ]
+      : []),
     ...(effectiveEventTypes.includes(REVIEW_ORACLE_FINAL_GATE_EVENT_TYPE)
       ? [
           {
@@ -6220,6 +6399,9 @@ function withDefaultPackageOwnedEvents(
           RUNTIME_PLAN_COVERAGE_EVENT_TYPE
         ]
       : []),
+    ...(eventTypes.includes(FIXED_PROMPT_BINDING_EVENT_TYPE) && eventTypes.includes(PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE)
+      ? [VALIDATION_FIXED_PROMPT_END_TO_END_EVENT_TYPE]
+      : []),
     ...(eventTypes.includes(RULES_CHECKPOINT_RESTORE_EVENT_TYPE)
       ? [RULES_ENCOUNTER_GATE_EVENT_TYPE, RULES_RETRY_COUNT_EVENT_TYPE, RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE]
       : [])
@@ -6325,6 +6507,7 @@ function buildDefaultWeaponQaPlan() {
     createFixedPromptBindingPackageContract(),
     createProfileDeepSeekRunAndGunValidationPackageContract(),
     createProviderDeepSeekAuthoritativeDraftPackageContract(),
+    createValidationFixedPromptEndToEndPackageContract(),
     createReviewOracleFinalGatePackageContract(),
     createRuntimeManifestBindingPackageContract(),
     createRuntimeModuleLoadReceiptPackageContract(),
@@ -6373,6 +6556,7 @@ function buildDefaultWeaponQaPlan() {
       fixedPromptBindingCapabilityId,
       profileBindingCapabilityId,
       providerDeepSeekAuthoritativeDraftCapabilityId,
+      validationFixedPromptEndToEndCapabilityId,
       reviewOracleFinalGateCapabilityId,
       runtimeManifestBindingCapabilityId,
       runtimeModuleLoadReceiptCapabilityId,
@@ -6436,6 +6620,24 @@ function validationFailClosedUnknownNodesStateFields(): Record<string, unknown> 
     unknownNodeKind: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_KIND,
     unknownNodePath: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PATH,
     unknownNodeProfileId: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PROFILE_ID
+  };
+}
+
+function validationFixedPromptEndToEndStateFields(): Record<string, unknown> {
+  return {
+    fixedPromptEndToEndVerified: true,
+    fixedPromptSchemaVersion: VALIDATION_FIXED_PROMPT_END_TO_END_SCHEMA_VERSION,
+    fixedPromptSource: VALIDATION_FIXED_PROMPT_END_TO_END_PROMPT_SOURCE,
+    fixedPromptProfileId: VALIDATION_FIXED_PROMPT_END_TO_END_PROFILE_ID,
+    fixedPromptRuntimeFamily: VALIDATION_FIXED_PROMPT_END_TO_END_RUNTIME_FAMILY,
+    fixedPromptBindingObserved: true,
+    fixedPromptProfileBindingObserved: true,
+    fixedPromptProviderDraftValidated: true,
+    fixedPromptProviderId: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PROVIDER_ID,
+    fixedPromptDraftSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_SCHEMA_VERSION,
+    fixedPromptCanonicalSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_CANONICAL_SCHEMA_VERSION,
+    fixedPromptHashMatched: true,
+    fixedPromptFallbackPromptUsed: false
   };
 }
 
