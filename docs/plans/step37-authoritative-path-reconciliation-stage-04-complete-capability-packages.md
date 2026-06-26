@@ -4656,9 +4656,18 @@ Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4.rem
 - closure_scope: `atomic_step`.
 - implementation_status: `complete`.
 - local_validation_status: `passed`.
-- candidate_status: `ready_for_commit`.
-- oracle_status: `not_submitted`.
-- closure_status: `not_closed_candidate_pending`.
+- candidate_status: `created`.
+- oracle_status: `approved`.
+- closure_status: `closed`.
+- candidate_commit: `b041d91148cefca8607398db6b8154e23170ae9b`.
+- reviewed_commit_sha: `b041d91148cefca8607398db6b8154e23170ae9b`.
+- reviewed_commit_tree: `0d20b391399975771fae43c275136e0c022e4d2e`.
+- reviewed_skill_revision: `afb000865c530f9fc1afdda9323846882fb8da38dfd2402687e9e5b745a02d1e`.
+- oracle_submission_id: `019f0149-0bcb-7f72-a23d-9c2485be2a74`.
+- oracle_agent_id: `019effae-8aa2-7c22-b5ba-8c4b69f21d20`.
+- oracle_verdict: `PASS_NO_P0_P1_P2_BLOCKERS`.
+- oracle_findings: `P0=0; P1=0; P2=0; P3=0`.
+- receipt_commit: `not_self_referenced_in_receipt`.
 - parent_stage_status: `running`.
 - parent_loop_status: `running`.
 - global_exit_conditions_met: `false`.
@@ -4786,4 +4795,45 @@ exitCode=0
 result=skill_bundle_digest=afb000865c530f9fc1afdda9323846882fb8da38dfd2402687e9e5b745a02d1e
 ```
 
-Exit assessment: `LOCALLY_VALIDATED_READY_FOR_CANDIDATE`. This atomic step is not closed and no candidate commit exists yet. It does not close Stage 4 or Step37.
+Oracle approval receipt:
+
+```text
+submission_id=019f0149-0bcb-7f72-a23d-9c2485be2a74
+agent_id=019effae-8aa2-7c22-b5ba-8c4b69f21d20
+polling_id_type=agent_id
+reviewed_commit_sha=b041d91148cefca8607398db6b8154e23170ae9b
+reviewed_commit_tree=0d20b391399975771fae43c275136e0c022e4d2e
+reviewed_skill_revision=afb000865c530f9fc1afdda9323846882fb8da38dfd2402687e9e5b745a02d1e
+oracle_verdict=PASS_NO_P0_P1_P2_BLOCKERS
+oracle_findings=P0=0; P1=0; P2=0; P3=0
+```
+
+Receipt boundary:
+
+```yaml
+closure_scope: atomic_step
+atomic_step:
+  id: stage4.metadata_fixed_prompt_binding_v1.complete_supported_package_slice
+  status: closed
+  implementation_status: complete
+  local_validation_status: passed
+  candidate_commit: b041d91148cefca8607398db6b8154e23170ae9b
+  reviewed_commit_sha: b041d91148cefca8607398db6b8154e23170ae9b
+  receipt_commit: not_self_referenced_in_receipt
+  oracle_status: approved
+  closure_status: closed
+parent_stage:
+  id: stage4
+  status: running
+  exit_conditions_met: false
+parent_loop:
+  id: step37
+  status: running
+  global_exit_conditions_met: false
+  user_input_required: false
+  next_action: CONTINUE_PARENT_LOOP
+  next_atomic_step: stage4.profile_deepseek_run_and_gun_validation_v1.complete_supported_package_slice
+  next_atomic_step_scope: implementation
+```
+
+Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4.metadata_fixed_prompt_binding_v1.complete_supported_package_slice` after candidate commit creation, local validation, Oracle PASS, and receipt-only metadata update. It does not close Stage 4, Step37, production default cutover, legacy authoritative path exit, Stage 5, or final global closure. Parent Loop Driver must continue while global exits remain false and no verified user blocker exists.
