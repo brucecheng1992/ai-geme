@@ -6173,7 +6173,7 @@ Checkpoint identity:
 
 ```text
 checkpoint_id=stage4.provider_deepseek_authoritative_draft_v1.complete_supported_package_slice
-closure_record_id=stage4.provider_deepseek_authoritative_draft_v1.complete_supported_package_slice.active.working_tree
+closure_record_id=stage4.provider_deepseek_authoritative_draft_v1.complete_supported_package_slice.receipt_for_3134e196
 record_status=active
 current_active_record=true
 supersedes_record_id=none
@@ -6182,25 +6182,26 @@ capability_id=provider.deepseek_authoritative_draft.v1
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
 review_required=true
-closure_status=not_closed
+closure_status=closed
 global_exit_conditions_met=false
 user_input_required=false
 next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
 reviewed_skill_revision_type=sha256_bundle
-reviewed_skill_revision=ce2d2020aa88c8a330a47570c802fccb52d0e6a981190e7c183ab3c50c2da01b
+reviewed_skill_revision=2729dda333fe63d7dd24412e540ff16da39801b4e50bf570b95e2d631a16b44e
 active_skill_path=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery
 active_skill_revision_type=sha256_bundle
 active_skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
 active_skill_file_count=8
-previous_recorded_skill_digest=2729dda333fe63d7dd24412e540ff16da39801b4e50bf570b95e2d631a16b44e
-current_active_skill_digest=ce2d2020aa88c8a330a47570c802fccb52d0e6a981190e7c183ab3c50c2da01b
-freshness_status=aligned
-freshness_interpretation=The earlier candidate record digest was rejected as stale; current candidate and Oracle evidence must bind current_active_skill_digest.
-candidate_commit_sha=pending until candidate checkpoint commit is created
-reviewed_commit_sha=pending until Oracle reviews the candidate commit
+previous_recorded_skill_digest=ce2d2020aa88c8a330a47570c802fccb52d0e6a981190e7c183ab3c50c2da01b
+current_active_skill_digest=2729dda333fe63d7dd24412e540ff16da39801b4e50bf570b95e2d631a16b44e
+freshness_status=changed
+freshness_interpretation=The previous WIP closure digest is preserved as stale historical input; current candidate and Oracle evidence bind current_active_skill_digest.
+candidate_commit_sha=3134e1967dd3cf53e8be7588c7cb831ea7d15a03
+reviewed_commit_sha=3134e1967dd3cf53e8be7588c7cb831ea7d15a03
+reviewed_commit_tree=d4bf26ffb2779a25a879b8ecdac644aa1d78080f
 ```
 
 `provider.deepseek_authoritative_draft.v1` was selected by the Parent Loop Driver after the `pickup.weapon_supply.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
@@ -6315,7 +6316,7 @@ result=PASS: currentCheckpointId=stage4.provider_deepseek_authoritative_draft_v1
 command=node --input-type=module <<'NODE' ... step37 active Skill bundle digest ... NODE
 exitCode=0
 duration=sub-second
-result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_roots=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery; skill_file_count=8; skill_bundle_digest=ce2d2020aa88c8a330a47570c802fccb52d0e6a981190e7c183ab3c50c2da01b.
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_roots=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery; skill_file_count=8; skill_bundle_digest=2729dda333fe63d7dd24412e540ff16da39801b4e50bf570b95e2d631a16b44e.
 ```
 
 Validation isolation note:
@@ -6334,13 +6335,40 @@ isolated_usage_error_case_duration=4270ms
 interpretation=The timeout was treated as suite-only/order-dependent/residual-state suspicion; no timeout, assertion, resolver, runtime, or must-pass semantic weakening was applied. Full contracts were required to and did later pass on the current tree.
 ```
 
-Post-record validation requirement:
+Oracle receipt:
 
-- This closure record changes the final tree. Before creating the immutable candidate commit, focused closure contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, final diff range check, capability support / inventory alignment, Parent Loop inventory alignment, and Skill freshness must be re-run or explicitly recorded as fresh for the final tree.
-- Candidate commit must not write its own SHA into this candidate record.
-- Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=ce2d2020aa88c8a330a47570c802fccb52d0e6a981190e7c183ab3c50c2da01b`.
-- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
-- Stage 4 remains active; Stage 5 has not been entered by this atomic step.
+```text
+reviewed_commit_sha=3134e1967dd3cf53e8be7588c7cb831ea7d15a03
+reviewed_commit_tree=d4bf26ffb2779a25a879b8ecdac644aa1d78080f
+reviewed_skill_revision=2729dda333fe63d7dd24412e540ff16da39801b4e50bf570b95e2d631a16b44e
+oracle_submission_id=not_provided_by_multi_agent_v1.spawn_agent
+oracle_agent_id=019f038d-1253-73e2-a852-cfda38c56b85
+oracle_agent_id_source=multi_agent_v1.spawn_agent.agent_id
+oracle_poll_id_used=oracle_agent_id
+oracle_status=approved
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 non-candidate operational note: exclude later unstaged Skill-digest drift from receipt.
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for immutable candidate 3134e1967dd3cf53e8be7588c7cb831ea7d15a03. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, Stage 5, production default cutover, legacy authoritative path exit, or prior closed history.
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
+```
+
+Parent Loop Driver after receipt:
+
+```text
+closure_scope=atomic_step
+atomic_step_status=closed
+parent_stage_status=running
+loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=Stage 4 review.oracle_final_gate.v1 complete-supported package slice implementation atomic step
+next_checkpoint_id=stage4.review_oracle_final_gate_v1.complete_supported_package_slice
+next_checkpoint_unmet_reason=Stage 4 review.oracle_final_gate.v1 remains unsupported_unregistered; static completeSupported=false; missingEvidenceDimensions=[schema_expressible,normalized,compiled,runtime_consumed,qa_observed]; missingSupportEvidencePrerequisites=[dslSchema,normalizer,irCompiler,runtimeModule,amendmentOperations,capabilityOwnedQa,artifactEvidence,renderContract,requiredProbeIds,requiredProbesVerified].
+next_checkpoint_selection_rule=first_unmet_checkpoint_in_authoritative_inventory
+next_checkpoint_source_plan_revision=HEAD:docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md
+```
 
 ## Stage 4 Implementation: `pickup.weapon_supply.v1` complete-supported package slice
 
