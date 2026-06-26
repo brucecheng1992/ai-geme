@@ -6533,7 +6533,7 @@ Checkpoint identity:
 
 ```text
 checkpoint_id=stage4.runtime_plan_coverage_v1.complete_supported_package_slice
-closure_record_id=stage4.runtime_plan_coverage_v1.complete_supported_package_slice.candidate_record
+closure_record_id=stage4.runtime_plan_coverage_v1.complete_supported_package_slice.receipt_for_f29ae2e9
 record_status=active
 current_active_record=true
 parent_stage_id=stage4
@@ -6542,30 +6542,39 @@ closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
 post_record_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
 review_required=true
-closure_status=open
+closure_status=closed
 global_exit_conditions_met=false
 user_input_required=false
-next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
+next_action_after_receipt=CONTINUE_PARENT_LOOP
 skill_revision_type=sha256_bundle
 skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
 active_skill_paths=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery
 active_skill_bundle_digest=bf5145fefb8306e77b51df7b208853c146a97f4ba134acad68e29f8b6ab61dde
+reviewed_skill_bundle_digest=bf5145fefb8306e77b51df7b208853c146a97f4ba134acad68e29f8b6ab61dde
 active_skill_file_count=8
 active_skill_manifest_protocol=skill-id-relative path, file kind, raw byte length, executable bit, SHA-256, symlink target, symlinkEscapesRoot; stable sort by root-relative row
 freshness_status=aligned
 repo_pre_candidate_head=557a921e12b7c57d3d4d82de11bf880a37247fb1
-candidate_commit_sha=not_created
-candidate_commit_tree=not_created
-reviewed_commit_sha=not_submitted
-reviewed_commit_tree=not_submitted
-oracle_agent_id=not_submitted
-oracle_agent_id_source=not_submitted
-oracle_submission_id=not_submitted
-oracle_submission_id_source=not_submitted
-oracle_poll_id_type=agent_id_required_after_submission
+candidate_commit_sha=f29ae2e9bf533f6622bfb96e4bd386ad10c53cc7
+candidate_commit_tree=de4bcfd339c57d74bd5765b2e9cf765182922df3
+reviewed_commit_sha=f29ae2e9bf533f6622bfb96e4bd386ad10c53cc7
+reviewed_commit_tree=de4bcfd339c57d74bd5765b2e9cf765182922df3
+oracle_agent_id=019f04ac-2f64-72d2-b05f-d64d5b843b6e
+oracle_agent_id_source=multi_agent_v1.spawn_agent.agent_id
+oracle_submission_id=not_returned_by_spawn_agent
+oracle_submission_id_source=multi_agent_v1.spawn_agent returned no submission_id field
+oracle_poll_id_type=agent_id
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_p0_findings=0
+oracle_p1_findings=0
+oracle_p2_findings=0
+oracle_p3_findings=1
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for the immutable candidate only. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, Stage 5, production default cutover, or prior closed history.
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
 ```
 
 `runtime.plan_coverage.v1` was selected by the Parent Loop Driver after the `runtime.module_load_receipt.v1` receipt. Baseline support at entry reported `registered=false` before this implementation slice, and current support after implementation is `registered=true`, `classification=DEFERRED`, `schema_expressible=true`, `normalized=true`, `compiled=true`, `runtime_consumed=true`, `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
@@ -6707,6 +6716,42 @@ command=step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle digest s
 exitCode=0
 duration=real <0.01s
 result=PASS: skill_file_count=8; active_skill_bundle_digest=bf5145fefb8306e77b51df7b208853c146a97f4ba134acad68e29f8b6ab61dde.
+```
+
+Oracle receipt:
+
+```text
+reviewed_commit_sha=f29ae2e9bf533f6622bfb96e4bd386ad10c53cc7
+reviewed_commit_tree=de4bcfd339c57d74bd5765b2e9cf765182922df3
+reviewed_skill_bundle_digest=bf5145fefb8306e77b51df7b208853c146a97f4ba134acad68e29f8b6ab61dde
+oracle_submission_id=not_returned_by_spawn_agent
+oracle_submission_id_source=multi_agent_v1.spawn_agent returned no submission_id field
+oracle_agent_id=019f04ac-2f64-72d2-b05f-d64d5b843b6e
+oracle_agent_id_source=multi_agent_v1.spawn_agent.agent_id
+oracle_poll_id_type=agent_id
+oracle_status=approved
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 operational flake watch for isolated phaser-templates transient, non-blocking.
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for the immutable candidate only. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, Stage 5, production default cutover, or prior closed history.
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
+```
+
+Parent Loop Driver after receipt:
+
+```text
+closure_scope=atomic_step
+atomic_step_status=closed
+parent_stage_status=running
+loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage4.scene_ordered_segments_v1.complete_supported_package_slice
+next_atomic_step_label=Stage 4 scene.ordered_segments.v1 complete-supported package slice implementation atomic step
+selection_rule=first_unmet_checkpoint_in_authoritative_inventory
+source_plan_revision=post-runtime-plan-coverage-receipt
+remaining_inventory_result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=44; staticCompleteSupportedCount=0; committedClosedCapabilityCount=44; unsupported_unregistered=15; next_checkpoint_id=stage4.scene_ordered_segments_v1.complete_supported_package_slice; selectionFailure=null.
 ```
 
 ## Stage 4 Implementation: `rules.state_transition_graph.v1` complete-supported package slice
