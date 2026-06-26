@@ -280,6 +280,21 @@ import {
   RULES_RETRY_COUNT_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/rules-retry-count-runtime-module.js';
 import {
+  RULES_STATE_TRANSITION_GRAPH_PACKAGE_REQUIRED_EVIDENCE_ID,
+  RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID,
+  createRulesStateTransitionGraphPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/rules-state-transition-graph-package.js';
+import {
+  RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE,
+  RULES_STATE_TRANSITION_GRAPH_FROM_STATE,
+  RULES_STATE_TRANSITION_GRAPH_ID,
+  RULES_STATE_TRANSITION_GRAPH_RUNTIME_SYSTEM_ID,
+  RULES_STATE_TRANSITION_GRAPH_STATE_COUNT,
+  RULES_STATE_TRANSITION_GRAPH_TO_STATE,
+  RULES_STATE_TRANSITION_GRAPH_TRANSITION_COUNT,
+  RULES_STATE_TRANSITION_GRAPH_TRIGGER
+} from '../../packages/game-dsl/src/gameplay-capabilities/rules-state-transition-graph-runtime-module.js';
+import {
   COLLISION_PLATFORM_PACKAGE_REQUIRED_EVIDENCE_ID,
   COLLISION_PLATFORM_REQUIRED_PROBE_ID,
   createCollisionPlatformPackageContract
@@ -1669,6 +1684,73 @@ describe('Gameplay capability package contract', () => {
           }
         })
       ])
+    });
+  });
+
+  it('accepts the rules state transition graph package-owned QA contract', () => {
+    const contract = createRulesStateTransitionGraphPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'rules.state_transition_graph.v1'
+    });
+    expect(contract.runtime.systems).toEqual([
+      {
+        id: RULES_STATE_TRANSITION_GRAPH_RUNTIME_SYSTEM_ID,
+        version: 'v1',
+        phase: 'gameplay',
+        dependencies: ['runtime_plan', 'win_lose_system']
+      }
+    ]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: RULES_STATE_TRANSITION_GRAPH_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'rules.state_transition_graph.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE,
+          parameters: {
+            graphId: RULES_STATE_TRANSITION_GRAPH_ID,
+            fromState: RULES_STATE_TRANSITION_GRAPH_FROM_STATE,
+            toState: RULES_STATE_TRANSITION_GRAPH_TO_STATE,
+            trigger: RULES_STATE_TRANSITION_GRAPH_TRIGGER
+          }
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'state_probe',
+          runtimeSystemId: RULES_STATE_TRANSITION_GRAPH_RUNTIME_SYSTEM_ID,
+          ref: RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID}.assertion.explicit_graph`,
+          expected: {
+            stateTransitionGraphDeclared: true,
+            stateTransitionGraphId: RULES_STATE_TRANSITION_GRAPH_ID,
+            stateTransitionGraphStateCount: RULES_STATE_TRANSITION_GRAPH_STATE_COUNT,
+            stateTransitionGraphTransitionCount: RULES_STATE_TRANSITION_GRAPH_TRANSITION_COUNT,
+            stateTransitionGraphFromState: RULES_STATE_TRANSITION_GRAPH_FROM_STATE,
+            stateTransitionGraphToState: RULES_STATE_TRANSITION_GRAPH_TO_STATE,
+            stateTransitionGraphTrigger: RULES_STATE_TRANSITION_GRAPH_TRIGGER,
+            stateTransitionGraphTerminalStatesIncluded: true,
+            stateTransitionGraphNoImplicitFallback: true,
+            stateTransitionGraphReachabilityVerified: true
+          }
+        })
+      ]
     });
   });
   it('accepts the collision platform package-owned QA contract', () => {

@@ -37,6 +37,7 @@ import {
   RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID,
   RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID,
   RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
+  RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   WEAPON_DEATH_RESET_REQUIRED_PROBE_ID,
   WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID,
@@ -829,6 +830,34 @@ describe('Gameplay capability registry', () => {
     expect(retryCount.legacyRuntimeCapabilities).toEqual([]);
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(retryCount)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(retryCount)).toBe(false);
+  });
+
+  it('scopes rules state transition graph package-owned QA without static support promotion', () => {
+    const stateTransitionGraph = findGameplayCapability('rules.state_transition_graph.v1');
+
+    if (stateTransitionGraph === undefined) {
+      throw new Error('Expected rules.state_transition_graph.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(stateTransitionGraph)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(stateTransitionGraph.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(stateTransitionGraph.qa).toEqual({
+      requiredProbeIds: [RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(stateTransitionGraph.legacyRuntimeCapabilities).toEqual([]);
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(stateTransitionGraph)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(stateTransitionGraph)).toBe(false);
   });
 
   it('scopes pickup weapon supply package-owned QA without static support promotion', () => {

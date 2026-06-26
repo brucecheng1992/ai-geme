@@ -30,6 +30,10 @@ import {
   createRulesRetryCountPackageContract
 } from './rules-retry-count-package.js';
 import {
+  RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID,
+  createRulesStateTransitionGraphPackageContract
+} from './rules-state-transition-graph-package.js';
+import {
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
   createArtifactLineageNoManualPatchPackageContract
 } from './artifact-lineage-no-manual-patch-package.js';
@@ -565,6 +569,19 @@ const rulesRetryCountPackageEvidence: GameplayCapabilityEvidence = rulesRetryCou
   : canonicalRuntimeLoaderEvidence;
 const rulesRetryCountPackageQa: GameplayCapabilityQaEvidence = rulesRetryCountPackageReport.supportEligible
   ? { requiredProbeIds: [RULES_RETRY_COUNT_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
+const rulesStateTransitionGraphPackageReport = validateGameplayCapabilityPackage(createRulesStateTransitionGraphPackageContract());
+const rulesStateTransitionGraphPackageEvidence: GameplayCapabilityEvidence = rulesStateTransitionGraphPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const rulesStateTransitionGraphPackageQa: GameplayCapabilityQaEvidence = rulesStateTransitionGraphPackageReport.supportEligible
+  ? { requiredProbeIds: [RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
 const artifactLineageNoManualPatchPackageReport = validateGameplayCapabilityPackage(createArtifactLineageNoManualPatchPackageContract());
 const artifactLineageNoManualPatchPackageEvidence: GameplayCapabilityEvidence = artifactLineageNoManualPatchPackageReport.supportEligible
@@ -1335,6 +1352,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     rulesRetryCountPackageEvidence,
     rulesRetryCountPackageQa
+  ),
+  planned(
+    'rules.state_transition_graph.v1',
+    'rules',
+    'Explicit state transition graph',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    rulesStateTransitionGraphPackageEvidence,
+    rulesStateTransitionGraphPackageQa
   ),
   runtimeBacked('rules.restart_loop.v1', 'rules', 'Restart and checkpoint loop', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], [
     'restart_loop',

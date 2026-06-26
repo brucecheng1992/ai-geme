@@ -1,0 +1,9 @@
+export const RULES_STATE_TRANSITION_GRAPH_CAPABILITY_ID = 'rules.state_transition_graph.v1';
+export const RULES_STATE_TRANSITION_GRAPH_RUNTIME_SYSTEM_ID = 'rules.state_transition_graph';
+export const RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE = 'rules.state_transition_graph.verified';
+export const RULES_STATE_TRANSITION_GRAPH_ID = 'side_scrolling_run_and_gun.state_graph.v1';
+export const RULES_STATE_TRANSITION_GRAPH_STATE_COUNT = 5;
+export const RULES_STATE_TRANSITION_GRAPH_TRANSITION_COUNT = 4;
+export const RULES_STATE_TRANSITION_GRAPH_FROM_STATE = 'enemy_core';
+export const RULES_STATE_TRANSITION_GRAPH_TO_STATE = 'boss_fight';
+export const RULES_STATE_TRANSITION_GRAPH_TRIGGER = 'enemy_waves_cleared';

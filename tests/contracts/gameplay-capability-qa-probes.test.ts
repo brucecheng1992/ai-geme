@@ -146,6 +146,15 @@ import {
   RULES_RETRY_COUNT_REMAINING,
   RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
   createRulesRetryCountPackageContract,
+  RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE,
+  RULES_STATE_TRANSITION_GRAPH_FROM_STATE,
+  RULES_STATE_TRANSITION_GRAPH_ID,
+  RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID,
+  RULES_STATE_TRANSITION_GRAPH_STATE_COUNT,
+  RULES_STATE_TRANSITION_GRAPH_TO_STATE,
+  RULES_STATE_TRANSITION_GRAPH_TRANSITION_COUNT,
+  RULES_STATE_TRANSITION_GRAPH_TRIGGER,
+  createRulesStateTransitionGraphPackageContract,
   createCollisionPlatformPackageContract,
   DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
   createDefaultStraightSingleWeaponPackageContract,
@@ -4154,6 +4163,135 @@ describe('Capability-owned runtime QA probes', () => {
       ])
     );
     expect(observedRetryCount.status).toBe('passed');
+  });
+
+  it('does not verify state transition graph from win lose events without explicit graph fields', () => {
+    const capabilityId = 'rules.state_transition_graph.v1';
+    const probeId = RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID;
+    const packages = [createRulesStateTransitionGraphPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const genericWinLoseEvidence = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_graph',
+              eventType: 'game.won',
+              eventTypes: ['game.won', 'game.lost'],
+              sourceRef: 'runtime.rules.generic_win_lose',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const wrongGraphEvidence = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_graph',
+              eventType: RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE,
+              eventTypes: [RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE],
+              stateTransitionGraphDeclared: true,
+              stateTransitionGraphId: RULES_STATE_TRANSITION_GRAPH_ID,
+              stateTransitionGraphStateCount: RULES_STATE_TRANSITION_GRAPH_STATE_COUNT,
+              stateTransitionGraphTransitionCount: RULES_STATE_TRANSITION_GRAPH_TRANSITION_COUNT - 1,
+              stateTransitionGraphFromState: RULES_STATE_TRANSITION_GRAPH_FROM_STATE,
+              stateTransitionGraphToState: RULES_STATE_TRANSITION_GRAPH_TO_STATE,
+              stateTransitionGraphTrigger: RULES_STATE_TRANSITION_GRAPH_TRIGGER,
+              stateTransitionGraphTerminalStatesIncluded: false,
+              stateTransitionGraphNoImplicitFallback: true,
+              stateTransitionGraphReachabilityVerified: true,
+              sourceRef: 'runtime.rules.state_transition_graph',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedGraph = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_graph',
+              eventType: RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE,
+              eventTypes: [RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE],
+              stateTransitionGraphDeclared: true,
+              stateTransitionGraphId: RULES_STATE_TRANSITION_GRAPH_ID,
+              stateTransitionGraphStateCount: RULES_STATE_TRANSITION_GRAPH_STATE_COUNT,
+              stateTransitionGraphTransitionCount: RULES_STATE_TRANSITION_GRAPH_TRANSITION_COUNT,
+              stateTransitionGraphFromState: RULES_STATE_TRANSITION_GRAPH_FROM_STATE,
+              stateTransitionGraphToState: RULES_STATE_TRANSITION_GRAPH_TO_STATE,
+              stateTransitionGraphTrigger: RULES_STATE_TRANSITION_GRAPH_TRIGGER,
+              stateTransitionGraphTerminalStatesIncluded: true,
+              stateTransitionGraphNoImplicitFallback: true,
+              stateTransitionGraphReachabilityVerified: true,
+              sourceRef: 'runtime.rules.state_transition_graph',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericWinLoseEvidence.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericWinLoseEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.explicit_graph`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.explicit_graph`,
+          status: 'failed',
+          message: expect.stringContaining('expected stateTransitionGraphDeclared=true, observed <missing>')
+        })
+      ])
+    );
+    expect(wrongGraphEvidence.status).toBe('failed');
+    expect(wrongGraphEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.explicit_graph`,
+          status: 'failed',
+          message: expect.stringContaining(`expected stateTransitionGraphTransitionCount=${RULES_STATE_TRANSITION_GRAPH_TRANSITION_COUNT}`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.explicit_graph`,
+          status: 'failed',
+          message: expect.stringContaining('expected stateTransitionGraphTerminalStatesIncluded=true, observed false')
+        })
+      ])
+    );
+    expect(observedGraph.status).toBe('passed');
   });
 });
 

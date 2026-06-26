@@ -103,6 +103,14 @@ import {
   RULES_RETRY_COUNT_INITIAL_RETRIES,
   RULES_RETRY_COUNT_REMAINING,
   RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
+  RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE,
+  RULES_STATE_TRANSITION_GRAPH_FROM_STATE,
+  RULES_STATE_TRANSITION_GRAPH_ID,
+  RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID,
+  RULES_STATE_TRANSITION_GRAPH_STATE_COUNT,
+  RULES_STATE_TRANSITION_GRAPH_TO_STATE,
+  RULES_STATE_TRANSITION_GRAPH_TRANSITION_COUNT,
+  RULES_STATE_TRANSITION_GRAPH_TRIGGER,
   GenerationTargetProfileRuntimeSupportReportSchema,
   HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID,
   HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
@@ -184,6 +192,7 @@ import {
   createRulesCheckpointRestorePackageContract,
   createRulesEncounterGatePackageContract,
   createRulesRetryCountPackageContract,
+  createRulesStateTransitionGraphPackageContract,
   createSpawnEnemyWavePackageContract,
   createSpawnStaticPackageContract,
   createWeaponDeathResetPackageContract,
@@ -215,6 +224,7 @@ const hazardTimedExplosionCapabilityId = 'hazard.timed_explosion.v1';
 const rulesCheckpointRestoreCapabilityId = 'rules.checkpoint_restore.v1';
 const rulesEncounterGateCapabilityId = 'rules.encounter_gate.v1';
 const rulesRetryCountCapabilityId = 'rules.retry_count.v1';
+const rulesStateTransitionGraphCapabilityId = 'rules.state_transition_graph.v1';
 const cameraCapabilityId = 'camera.side_follow.v1';
 const collisionCapabilityId = 'collision.platform.v1';
 const airborneFireCapabilityId = 'combat.airborne_fire.v1';
@@ -258,6 +268,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       RULES_CHECKPOINT_RESTORE_EVENT_TYPE,
       RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE,
       RULES_RETRY_COUNT_EVENT_TYPE,
+      RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE,
       'combat.airborne_fire.fired',
       'player.fired',
       'projectile.spawned',
@@ -302,6 +313,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     const hazardTimedExplosion = report.capabilities.find((entry) => entry.capabilityId === hazardTimedExplosionCapabilityId);
     const rulesCheckpointRestore = report.capabilities.find((entry) => entry.capabilityId === rulesCheckpointRestoreCapabilityId);
     const rulesRetryCount = report.capabilities.find((entry) => entry.capabilityId === rulesRetryCountCapabilityId);
+    const rulesStateTransitionGraph = report.capabilities.find((entry) => entry.capabilityId === rulesStateTransitionGraphCapabilityId);
     const defaultWeapon = report.capabilities.find((entry) => entry.capabilityId === defaultWeaponCapabilityId);
     const projectile = report.capabilities.find((entry) => entry.capabilityId === projectileCapabilityId);
     const movement = report.capabilities.find((entry) => entry.capabilityId === movementCapabilityId);
@@ -330,7 +342,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 36,
+      observedCompleteSupportedCount: 37,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
@@ -363,6 +375,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         rulesCheckpointRestoreCapabilityId,
         rulesEncounterGateCapabilityId,
         rulesRetryCountCapabilityId,
+        rulesStateTransitionGraphCapabilityId,
         spawnEnemyWaveCapabilityId,
         spawnStaticCapabilityId,
         deathResetCapabilityId,
@@ -371,7 +384,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         replacementRuleCapabilityId,
         spreadShotCapabilityId
       ],
-      blockers: ['target_profile_runtime_support_incomplete:36/59']
+      blockers: ['target_profile_runtime_support_incomplete:37/59']
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
       capabilityId: artifactLineageNoManualPatchCapabilityId,
@@ -402,6 +415,17 @@ describe('Step 37 target profile runtime support overlay', () => {
       observedCompleteSupported: true,
       requiredProbeIds: [RULES_RETRY_COUNT_REQUIRED_PROBE_ID],
       verifiedRequiredProbeIds: [RULES_RETRY_COUNT_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+    expect(rulesStateTransitionGraph).toMatchObject({
+      capabilityId: rulesStateTransitionGraphCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID],
       missingRequiredProbeIds: [],
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
@@ -833,11 +857,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 35,
+      observedCompleteSupportedCount: 36,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:35/59'
+        'target_profile_runtime_support_incomplete:36/59'
       ]
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
@@ -1208,11 +1232,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 35,
+      observedCompleteSupportedCount: 36,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:35/59'
+        'target_profile_runtime_support_incomplete:36/59'
       ]
     });
     expect(fixedPromptBinding).toMatchObject({
@@ -1272,11 +1296,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 35,
+      observedCompleteSupportedCount: 36,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:35/59'
+        'target_profile_runtime_support_incomplete:36/59'
       ]
     });
     expect(profileBinding).toMatchObject({
@@ -1569,7 +1593,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 35,
+      observedCompleteSupportedCount: 36,
       targetProfileCompleteSupported: false,
       observedCapabilityIds: [
         artifactLineageNoManualPatchCapabilityId,
@@ -1600,6 +1624,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         rulesCheckpointRestoreCapabilityId,
         rulesEncounterGateCapabilityId,
         rulesRetryCountCapabilityId,
+        rulesStateTransitionGraphCapabilityId,
         spawnEnemyWaveCapabilityId,
         spawnStaticCapabilityId,
         deathResetCapabilityId,
@@ -1610,7 +1635,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ],
       blockers: [
         `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:35/59'
+        'target_profile_runtime_support_incomplete:36/59'
       ]
     });
     expect(damageInvulnerability).toMatchObject({
@@ -1687,11 +1712,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 35,
+      observedCompleteSupportedCount: 36,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:35/59'
+        'target_profile_runtime_support_incomplete:36/59'
       ]
     });
     expect(pickup).toMatchObject({
@@ -1892,11 +1917,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 35,
+      observedCompleteSupportedCount: 36,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:35/59'
+        'target_profile_runtime_support_incomplete:36/59'
       ]
     });
     expect(spawnEnemyWave).toMatchObject({
@@ -1975,11 +2000,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 35,
+      observedCompleteSupportedCount: 36,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:35/59'
+        'target_profile_runtime_support_incomplete:36/59'
       ]
     });
     expect(flyingRightEntry).toMatchObject({
@@ -2058,11 +2083,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 35,
+      observedCompleteSupportedCount: 36,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:35/59'
+        'target_profile_runtime_support_incomplete:36/59'
       ]
     });
     expect(patrolInfantry).toMatchObject({
@@ -2143,11 +2168,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 35,
+      observedCompleteSupportedCount: 36,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:35/59'
+        'target_profile_runtime_support_incomplete:36/59'
       ]
     });
     expect(victoryDeclaration).toMatchObject({
@@ -2858,6 +2883,85 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
   });
 
+  it('keeps state transition graph unverified when win lose evidence lacks explicit graph fields', () => {
+    const genericGraphQaReport = buildSingleCapabilityQaReport({
+      capabilityId: rulesStateTransitionGraphCapabilityId,
+      packageContract: createRulesStateTransitionGraphPackageContract(),
+      eventType: 'game.won',
+      eventTypes: ['game.won', 'game.lost'],
+      probeId: RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID,
+      action: 'resolve_win_lose',
+      sourceRef: 'runtime.win_lose.generic',
+      stateFields: undefined
+    });
+    const observedGraphQaReport = buildSingleCapabilityQaReport({
+      capabilityId: rulesStateTransitionGraphCapabilityId,
+      packageContract: createRulesStateTransitionGraphPackageContract(),
+      eventType: RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE,
+      eventTypes: [RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE],
+      probeId: RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID,
+      action: 'verify_graph',
+      sourceRef: 'runtime.rules.state_transition_graph',
+      stateFields: {
+        stateTransitionGraphDeclared: true,
+        stateTransitionGraphId: RULES_STATE_TRANSITION_GRAPH_ID,
+        stateTransitionGraphStateCount: RULES_STATE_TRANSITION_GRAPH_STATE_COUNT,
+        stateTransitionGraphTransitionCount: RULES_STATE_TRANSITION_GRAPH_TRANSITION_COUNT,
+        stateTransitionGraphFromState: RULES_STATE_TRANSITION_GRAPH_FROM_STATE,
+        stateTransitionGraphToState: RULES_STATE_TRANSITION_GRAPH_TO_STATE,
+        stateTransitionGraphTrigger: RULES_STATE_TRANSITION_GRAPH_TRIGGER,
+        stateTransitionGraphTerminalStatesIncluded: true,
+        stateTransitionGraphNoImplicitFallback: true,
+        stateTransitionGraphReachabilityVerified: true
+      }
+    });
+    const genericGraphReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_state_transition_graph_missing_state',
+      capabilityQaReport: genericGraphQaReport
+    });
+    const observedGraphReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_state_transition_graph_observed_state',
+      capabilityQaReport: observedGraphQaReport
+    });
+    const genericGraphState = genericGraphReport.capabilities.find((entry) => entry.capabilityId === rulesStateTransitionGraphCapabilityId);
+    const observedGraphState = observedGraphReport.capabilities.find((entry) => entry.capabilityId === rulesStateTransitionGraphCapabilityId);
+
+    expect(genericGraphQaReport.requiredResults.find((entry) => entry.probeId === RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID}.assertion.explicit_graph`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID}.assertion.explicit_graph`,
+          status: 'failed',
+          message: expect.stringContaining('expected stateTransitionGraphDeclared=true, observed <missing>')
+        })
+      ])
+    });
+    expect(genericGraphState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedGraphState).toMatchObject({
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+  });
+
   it('keeps weapon death reset unverified when restore evidence lacks reset state fields', () => {
     const capabilityQaReport = buildDefaultWeaponQaReport(
       [
@@ -2920,11 +3024,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 35,
+      observedCompleteSupportedCount: 36,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:35/59'
+        'target_profile_runtime_support_incomplete:36/59'
       ]
     });
     expect(deathReset).toMatchObject({
@@ -2998,11 +3102,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 35,
+      observedCompleteSupportedCount: 36,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:35/59'
+        'target_profile_runtime_support_incomplete:36/59'
       ]
     });
     expect(rapidFire).toMatchObject({
@@ -3076,11 +3180,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 35,
+      observedCompleteSupportedCount: 36,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:35/59'
+        'target_profile_runtime_support_incomplete:36/59'
       ]
     });
     expect(spreadShot).toMatchObject({
@@ -3154,11 +3258,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 35,
+      observedCompleteSupportedCount: 36,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:35/59'
+        'target_profile_runtime_support_incomplete:36/59'
       ]
     });
     expect(replacementRule).toMatchObject({
@@ -3201,6 +3305,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       `capability_qa_report_missing_required_probe:${RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${RULES_RETRY_COUNT_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${SPAWN_STATIC_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
@@ -3230,6 +3335,7 @@ function buildDefaultWeaponQaReport(
     rulesCheckpointRestoreStateFields?: boolean;
     rulesEncounterGateStateFields?: boolean;
     rulesRetryCountStateFields?: boolean;
+    rulesStateTransitionGraphStateFields?: boolean;
     pickupStateFields?: boolean;
     pickupWeaponSupplyStateFields?: boolean;
     providerDeepSeekAuthoritativeDraftStateFields?: boolean;
@@ -3611,6 +3717,33 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
+    ...(effectiveEventTypes.includes(RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE)
+      ? [
+          {
+            capabilityId: rulesStateTransitionGraphCapabilityId,
+            probeId: RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID,
+            action: 'verify_graph',
+            eventType: RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE,
+            eventTypes: effectiveEventTypes,
+            ...(options.rulesStateTransitionGraphStateFields === false
+              ? {}
+              : {
+                  stateTransitionGraphDeclared: true,
+                  stateTransitionGraphId: RULES_STATE_TRANSITION_GRAPH_ID,
+                  stateTransitionGraphStateCount: RULES_STATE_TRANSITION_GRAPH_STATE_COUNT,
+                  stateTransitionGraphTransitionCount: RULES_STATE_TRANSITION_GRAPH_TRANSITION_COUNT,
+                  stateTransitionGraphFromState: RULES_STATE_TRANSITION_GRAPH_FROM_STATE,
+                  stateTransitionGraphToState: RULES_STATE_TRANSITION_GRAPH_TO_STATE,
+                  stateTransitionGraphTrigger: RULES_STATE_TRANSITION_GRAPH_TRIGGER,
+                  stateTransitionGraphTerminalStatesIncluded: true,
+                  stateTransitionGraphNoImplicitFallback: true,
+                  stateTransitionGraphReachabilityVerified: true
+                }),
+            status: 'observed' as const,
+            sourceRef: 'runtime.rules.state_transition_graph'
+          }
+        ]
+      : []),
     ...(effectiveEventTypes.includes('camera.side_follow.active')
       ? [
           {
@@ -3980,7 +4113,9 @@ function withDefaultPackageOwnedEvents(eventTypes: readonly string[]): readonly 
     ...(eventTypes.includes(FIXED_PROMPT_BINDING_EVENT_TYPE) || eventTypes.includes(PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE)
       ? [PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE, REVIEW_ORACLE_FINAL_GATE_EVENT_TYPE]
       : []),
-    ...(eventTypes.includes(RULES_CHECKPOINT_RESTORE_EVENT_TYPE) ? [RULES_ENCOUNTER_GATE_EVENT_TYPE, RULES_RETRY_COUNT_EVENT_TYPE] : [])
+    ...(eventTypes.includes(RULES_CHECKPOINT_RESTORE_EVENT_TYPE)
+      ? [RULES_ENCOUNTER_GATE_EVENT_TYPE, RULES_RETRY_COUNT_EVENT_TYPE, RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE]
+      : [])
   ];
   return [...eventTypes, ...packageOwnedEvents.filter((eventType) => !eventTypes.includes(eventType))];
 }
@@ -4059,6 +4194,7 @@ function buildDefaultWeaponQaPlan() {
     createRulesCheckpointRestorePackageContract(),
     createRulesEncounterGatePackageContract(),
     createRulesRetryCountPackageContract(),
+    createRulesStateTransitionGraphPackageContract(),
     createCameraSideFollowPackageContract(),
     createCollisionPlatformPackageContract(),
     createCombatAirborneFirePackageContract(),
@@ -4098,6 +4234,7 @@ function buildDefaultWeaponQaPlan() {
       rulesCheckpointRestoreCapabilityId,
       rulesEncounterGateCapabilityId,
       rulesRetryCountCapabilityId,
+      rulesStateTransitionGraphCapabilityId,
       cameraCapabilityId,
       collisionCapabilityId,
       airborneFireCapabilityId,

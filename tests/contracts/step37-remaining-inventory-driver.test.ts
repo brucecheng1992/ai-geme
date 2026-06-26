@@ -157,6 +157,9 @@ describe('Step37 remaining complete-supported inventory driver', () => {
       'profile.deepseek_run_and_gun_validation.v1',
       'provider.deepseek_authoritative_draft.v1',
       'review.oracle_final_gate.v1',
+      'rules.checkpoint_restore.v1',
+      'rules.encounter_gate.v1',
+      'rules.retry_count.v1',
       'spawn.enemy_wave.v1',
       'spawn.static.v1',
       'weapon.death_reset.v1',
@@ -177,14 +180,14 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     });
 
     expect(report.requiredCapabilityCount).toBe(59);
-    expect(report.registeredCapabilityCount).toBe(40);
+    expect(report.registeredCapabilityCount).toBe(41);
     expect(report.staticCompleteSupportedCount).toBe(0);
-    expect(report.stateCounts.unsupported_unregistered).toBe(19);
-    expect(report.committedClosedCapabilityCount).toBe(37);
+    expect(report.stateCounts.unsupported_unregistered).toBe(18);
+    expect(report.committedClosedCapabilityCount).toBe(40);
     expect(report.nextCheckpoint).not.toBeNull();
-    expect(report.nextCheckpoint?.checkpoint_id).toBe('stage4.rules_checkpoint_restore_v1.complete_supported_package_slice');
+    expect(report.nextCheckpoint?.checkpoint_id).toBe('stage4.rules_state_transition_graph_v1.complete_supported_package_slice');
     expect(report.nextCheckpoint?.next_atomic_step).toBe(
-      'Stage 4 rules.checkpoint_restore.v1 complete-supported package slice implementation atomic step'
+      'Stage 4 rules.state_transition_graph.v1 complete-supported package slice implementation atomic step'
     );
     expect(report.checkpointInventory.some((checkpoint) => closedCapabilityIds.has(checkpoint.checkpoint_id))).toBe(false);
   });

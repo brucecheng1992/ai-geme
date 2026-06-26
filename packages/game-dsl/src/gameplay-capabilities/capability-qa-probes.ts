@@ -168,6 +168,16 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   retryCountDecremented?: boolean;
   retryCountExhausted?: boolean;
   retryCountFailureScreenShown?: boolean;
+  stateTransitionGraphDeclared?: boolean;
+  stateTransitionGraphId?: string;
+  stateTransitionGraphStateCount?: number;
+  stateTransitionGraphTransitionCount?: number;
+  stateTransitionGraphFromState?: string;
+  stateTransitionGraphToState?: string;
+  stateTransitionGraphTrigger?: string;
+  stateTransitionGraphTerminalStatesIncluded?: boolean;
+  stateTransitionGraphNoImplicitFallback?: boolean;
+  stateTransitionGraphReachabilityVerified?: boolean;
   encounterGateClosedEntrance?: boolean;
   encounterGateGateId?: string;
   encounterGateEntranceId?: string;
@@ -639,6 +649,20 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('retryCountDecremented', expected, observed.retryCountDecremented),
     ...compareExpectedBooleanField('retryCountExhausted', expected, observed.retryCountExhausted),
     ...compareExpectedBooleanField('retryCountFailureScreenShown', expected, observed.retryCountFailureScreenShown),
+    ...compareExpectedBooleanField('stateTransitionGraphDeclared', expected, observed.stateTransitionGraphDeclared),
+    ...compareExpectedStringField('stateTransitionGraphId', expected, observed.stateTransitionGraphId),
+    ...compareExpectedNumberField('stateTransitionGraphStateCount', expected, observed.stateTransitionGraphStateCount),
+    ...compareExpectedNumberField('stateTransitionGraphTransitionCount', expected, observed.stateTransitionGraphTransitionCount),
+    ...compareExpectedStringField('stateTransitionGraphFromState', expected, observed.stateTransitionGraphFromState),
+    ...compareExpectedStringField('stateTransitionGraphToState', expected, observed.stateTransitionGraphToState),
+    ...compareExpectedStringField('stateTransitionGraphTrigger', expected, observed.stateTransitionGraphTrigger),
+    ...compareExpectedBooleanField(
+      'stateTransitionGraphTerminalStatesIncluded',
+      expected,
+      observed.stateTransitionGraphTerminalStatesIncluded
+    ),
+    ...compareExpectedBooleanField('stateTransitionGraphNoImplicitFallback', expected, observed.stateTransitionGraphNoImplicitFallback),
+    ...compareExpectedBooleanField('stateTransitionGraphReachabilityVerified', expected, observed.stateTransitionGraphReachabilityVerified),
     ...compareExpectedBooleanField('encounterGateClosedEntrance', expected, observed.encounterGateClosedEntrance),
     ...compareExpectedStringField('encounterGateGateId', expected, observed.encounterGateGateId),
     ...compareExpectedStringField('encounterGateEntranceId', expected, observed.encounterGateEntranceId),
