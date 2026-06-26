@@ -6181,19 +6181,34 @@ current_active_record=true
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+candidate_commit_sha=fc6c8eebc5091961c9f328ff0d86b0a3a749e824
+reviewed_commit_sha=fc6c8eebc5091961c9f328ff0d86b0a3a749e824
+reviewed_commit_tree=f274ac268886709cefc7a7255528af4819d494ae
+oracle_status=approved
+oracle_submission_id=019f05cf-1539-7ad3-871e-0d69fb9f9e7f
+oracle_agent_id=019f058a-4f55-7da1-acfe-22d429657c2c
+oracle_result=APPROVED_FOR_RECEIPT
 review_required=true
-closure_status=not_closed
+closure_status=closed
+parent_stage_status=running
+parent_loop_status=running
 global_exit_conditions_met=false
 user_input_required=false
-next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage4.ui_hud_retries_v1.complete_supported_package_slice
+next_atomic_step_label=Stage 4 ui.hud_retries.v1 complete-supported package slice implementation atomic step
+next_atomic_step_parent_stage_id=stage4
+next_atomic_step_selection_rule=first_unmet_checkpoint_in_authoritative_inventory
+next_atomic_step_source_plan_revision=docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md@fc6c8eebc5091961c9f328ff0d86b0a3a749e824
+next_atomic_step_unmet_reason=Stage 4 ui.hud_retries.v1 remains unsupported_unregistered; static completeSupported=false; missingEvidenceDimensions=[schema_expressible,normalized,compiled,runtime_consumed,qa_observed]; missingSupportEvidencePrerequisites=[dslSchema,normalizer,irCompiler,runtimeModule,amendmentOperations,capabilityOwnedQa,artifactEvidence,renderContract,requiredProbeIds,requiredProbesVerified].
 post_record_validation_status=passed
 active_skill_revision_type=sha256_bundle
 active_skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
 active_skill_root_identity=/Users/dahufa/.agents/skills
 active_skill_file_count=8
 active_skill_bundle_digest=5cd4735569473824dd190e341908f155081443b4cc7b963fcac6007301eb8f6a
+reviewed_skill_bundle_digest=5cd4735569473824dd190e341908f155081443b4cc7b963fcac6007301eb8f6a
 ```
 
 Current review conclusion:
@@ -6352,7 +6367,40 @@ duration=real 0.50s
 result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=52; staticCompleteSupportedCount=0; committedClosedCapabilityCount=51; unsupported_unregistered=7; currentCheckpointId=stage4.ui_hud_player_health_v1.complete_supported_package_slice; ui.hud_player_health.v1 classification=DEFERRED; completeSupported=false; selectionFailure=null.
 ```
 
-Exit assessment before candidate commit: `LOCALLY_VALIDATED_CANDIDATE_READY_FOR_COMMIT`. The current atomic implementation is locally validated and ready for an immutable candidate commit, but it is not closed until candidate commit, Oracle approval, receipt-only closure, and post-receipt checks finish. Stage 4 remains active and Step37 global exits remain unmet.
+Oracle re-review receipt:
+
+```text
+oracle_submission_id=019f05cf-1539-7ad3-871e-0d69fb9f9e7f
+oracle_agent_id=019f058a-4f55-7da1-acfe-22d429657c2c
+oracle_result=APPROVED_FOR_RECEIPT
+reviewed_commit_sha=fc6c8eebc5091961c9f328ff0d86b0a3a749e824
+reviewed_commit_tree=f274ac268886709cefc7a7255528af4819d494ae
+reviewed_skill_bundle_digest=5cd4735569473824dd190e341908f155081443b4cc7b963fcac6007301eb8f6a
+oracle_p0=none
+oracle_p1=none
+oracle_p2=none
+oracle_p3=none
+result=APPROVED_FOR_RECEIPT: Oracle recomputed the declared 8-file Skill bundle protocol on current HEAD and matched the candidate record digest.
+```
+
+Parent Loop Driver handoff:
+
+```text
+closure_scope=atomic_step
+atomic_step_status=closed
+parent_stage_status=running
+parent_loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage4.ui_hud_retries_v1.complete_supported_package_slice
+next_atomic_step_label=Stage 4 ui.hud_retries.v1 complete-supported package slice implementation atomic step
+remaining_inventory_command=/usr/bin/time -p npx tsx "<ui.hud_player_health.v1 closed support summary and remaining inventory>"
+remaining_inventory_exit_code=0
+remaining_inventory_result=PASS: committedClosedCapabilityCount=52; unsupported_unregistered=7; nextCheckpointId=stage4.ui_hud_retries_v1.complete_supported_package_slice; selectionFailure=null.
+```
+
+Exit assessment after receipt: `CLOSED_ATOMIC_STEP_ONLY`. The current atomic implementation is locally validated, committed as candidate `fc6c8eebc5091961c9f328ff0d86b0a3a749e824`, approved by Oracle for receipt, and closed only for `stage4.ui_hud_player_health_v1.complete_supported_package_slice`. Stage 4 remains active and Step37 global exits remain unmet; the Parent Loop must continue with `stage4.ui_hud_retries_v1.complete_supported_package_slice` unless a verified blocker appears.
 
 ## Stage 4 Implementation: `ui.hud_current_weapon.v1` complete-supported package slice
 
