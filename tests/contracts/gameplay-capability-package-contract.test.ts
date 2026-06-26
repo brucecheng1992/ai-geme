@@ -354,6 +354,19 @@ import {
   PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/profile-deepseek-run-and-gun-validation-runtime-module.js';
 import {
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PACKAGE_REQUIRED_EVIDENCE_ID,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID,
+  createProviderDeepSeekAuthoritativeDraftPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/provider-deepseek-authoritative-draft-package.js';
+import {
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_ARTIFACT_KIND,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_CANONICAL_SCHEMA_VERSION,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PROVIDER_ID,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_RUNTIME_SYSTEM_ID,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_SCHEMA_VERSION
+} from '../../packages/game-dsl/src/gameplay-capabilities/provider-deepseek-authoritative-draft-runtime-module.js';
+import {
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_PACKAGE_REQUIRED_EVIDENCE_ID,
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
   createArtifactLineageNoManualPatchPackageContract
@@ -1845,6 +1858,70 @@ describe('Gameplay capability package contract', () => {
           kind: 'runtime_event',
           runtimeSystemId: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_RUNTIME_SYSTEM_ID,
           ref: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE
+        })
+      ]
+    });
+  });
+
+  it('accepts the DeepSeek authoritative draft provider package-owned artifact QA contract', () => {
+    const contract = createProviderDeepSeekAuthoritativeDraftPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'provider.deepseek_authoritative_draft.v1'
+    });
+    expect(contract.dependencies).toEqual([
+      { capabilityId: 'metadata.fixed_prompt_binding.v1', range: '^v1' },
+      { capabilityId: 'profile.deepseek_run_and_gun_validation.v1', range: '^v1' }
+    ]);
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_RUNTIME_SYSTEM_ID]);
+    expect(contract.dsl.ownedPaths).toEqual(['/provider/deepseek_authoritative_draft']);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'provider.deepseek_authoritative_draft.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE,
+          parameters: {
+            providerId: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PROVIDER_ID,
+            draftArtifactKind: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_ARTIFACT_KIND,
+            draftSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_SCHEMA_VERSION,
+            canonicalSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_CANONICAL_SCHEMA_VERSION
+          }
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_RUNTIME_SYSTEM_ID,
+          ref: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID}.assertion.authoritative_draft_verified`,
+          expected: {
+            deepSeekAuthoritativeDraftProduced: true,
+            deepSeekProviderId: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PROVIDER_ID,
+            deepSeekDraftArtifactKind: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_ARTIFACT_KIND,
+            deepSeekDraftSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_SCHEMA_VERSION,
+            deepSeekDraftNormalized: true,
+            deepSeekCanonicalSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_CANONICAL_SCHEMA_VERSION,
+            deepSeekComposedSchemaHashMatched: true,
+            deepSeekCapabilityLockHashMatched: true,
+            deepSeekTrustedEvidenceRejected: true
+          }
         })
       ]
     });

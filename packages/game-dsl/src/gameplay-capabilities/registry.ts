@@ -10,6 +10,10 @@ import {
   createProfileDeepSeekRunAndGunValidationPackageContract
 } from './profile-deepseek-run-and-gun-validation-package.js';
 import {
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID,
+  createProviderDeepSeekAuthoritativeDraftPackageContract
+} from './provider-deepseek-authoritative-draft-package.js';
+import {
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
   createArtifactLineageNoManualPatchPackageContract
 } from './artifact-lineage-no-manual-patch-package.js';
@@ -196,6 +200,7 @@ export const GAMEPLAY_CAPABILITY_DOMAINS = [
   'physics',
   'pickup',
   'profile',
+  'provider',
   'rules',
   'scene',
   'spawn',
@@ -478,6 +483,19 @@ const profileDeepSeekRunAndGunValidationPackageEvidence: GameplayCapabilityEvide
   : canonicalRuntimeLoaderEvidence;
 const profileDeepSeekRunAndGunValidationPackageQa: GameplayCapabilityQaEvidence = profileDeepSeekRunAndGunValidationPackageReport.supportEligible
   ? { requiredProbeIds: [PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
+const providerDeepSeekAuthoritativeDraftPackageReport = validateGameplayCapabilityPackage(createProviderDeepSeekAuthoritativeDraftPackageContract());
+const providerDeepSeekAuthoritativeDraftPackageEvidence: GameplayCapabilityEvidence = providerDeepSeekAuthoritativeDraftPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const providerDeepSeekAuthoritativeDraftPackageQa: GameplayCapabilityQaEvidence = providerDeepSeekAuthoritativeDraftPackageReport.supportEligible
+  ? { requiredProbeIds: [PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
 const artifactLineageNoManualPatchPackageReport = validateGameplayCapabilityPackage(createArtifactLineageNoManualPatchPackageContract());
 const artifactLineageNoManualPatchPackageEvidence: GameplayCapabilityEvidence = artifactLineageNoManualPatchPackageReport.supportEligible
@@ -1115,6 +1133,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     fixedPromptBindingPackageEvidence,
     fixedPromptBindingPackageQa
+  ),
+  planned(
+    'provider.deepseek_authoritative_draft.v1',
+    'provider',
+    'DeepSeek authoritative capability draft',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    providerDeepSeekAuthoritativeDraftPackageEvidence,
+    providerDeepSeekAuthoritativeDraftPackageQa
   ),
   planned(
     'combat.airborne_fire.v1',

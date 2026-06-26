@@ -135,6 +135,19 @@ import {
   PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID,
   PICKUP_WEAPON_SUPPLY_WEAPON_ID,
   createPickupWeaponSupplyPackageContract,
+  FIXED_PROMPT_BINDING_EVENT_TYPE,
+  FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
+  createFixedPromptBindingPackageContract,
+  PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE,
+  PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID,
+  createProfileDeepSeekRunAndGunValidationPackageContract,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_ARTIFACT_KIND,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_CANONICAL_SCHEMA_VERSION,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PROVIDER_ID,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_SCHEMA_VERSION,
+  createProviderDeepSeekAuthoritativeDraftPackageContract,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
@@ -1288,6 +1301,220 @@ describe('Capability-owned runtime QA probes', () => {
     expect(observedWeaponSupply.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
       status: 'passed',
       planHash: plan.planHash
+    });
+  });
+
+  it('verifies DeepSeek authoritative draft only from provider draft and canonical normalization state', () => {
+    const capabilityId = 'provider.deepseek_authoritative_draft.v1';
+    const probeId = PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID;
+    const packages = [
+      createFixedPromptBindingPackageContract(),
+      createProfileDeepSeekRunAndGunValidationPackageContract(),
+      createProviderDeepSeekAuthoritativeDraftPackageContract()
+    ];
+    const dependencyEvidence = [
+      {
+        capabilityId: 'metadata.fixed_prompt_binding.v1',
+        probeId: FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
+        action: 'observe',
+        eventType: FIXED_PROMPT_BINDING_EVENT_TYPE,
+        eventTypes: [FIXED_PROMPT_BINDING_EVENT_TYPE],
+        status: 'observed' as const
+      },
+      {
+        capabilityId: 'profile.deepseek_run_and_gun_validation.v1',
+        probeId: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID,
+        action: 'observe',
+        eventType: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE,
+        eventTypes: [PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE],
+        status: 'observed' as const
+      }
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    expect(plan.status).toBe('ready');
+    expect(plan.requiredProbes.map((probe) => probe.id)).toEqual([
+      FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
+      PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID,
+      PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID
+    ]);
+    const genericModelOutput = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'model_output',
+              eventType: 'provider.model_output.generated',
+              eventTypes: ['provider.model_output.generated'],
+              deepSeekAuthoritativeDraftProduced: true,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedAuthoritativeDraft = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_authoritative_draft',
+              eventType: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE,
+              eventTypes: [PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE],
+              deepSeekAuthoritativeDraftProduced: true,
+              deepSeekProviderId: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PROVIDER_ID,
+              deepSeekDraftArtifactKind: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_ARTIFACT_KIND,
+              deepSeekDraftSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_SCHEMA_VERSION,
+              deepSeekDraftNormalized: true,
+              deepSeekCanonicalSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_CANONICAL_SCHEMA_VERSION,
+              deepSeekComposedSchemaHashMatched: true,
+              deepSeekCapabilityLockHashMatched: true,
+              deepSeekTrustedEvidenceRejected: true,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericModelOutput.status).toBe('failed');
+    expect(genericModelOutput.missingRequiredProbeIds).toEqual([probeId]);
+    for (const dependencyProbeId of [FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID, PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID]) {
+      expect(genericModelOutput.requiredResults.find((entry) => entry.probeId === dependencyProbeId)).toMatchObject({
+        status: 'passed',
+        planHash: plan.planHash
+      });
+    }
+    expect(genericModelOutput.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'failed',
+      planHash: plan.planHash
+    });
+    expect(genericModelOutput.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.authoritative_draft_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.authoritative_draft_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`expected deepSeekProviderId=${PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PROVIDER_ID}, observed <missing>`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.authoritative_draft_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected deepSeekDraftNormalized=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedAuthoritativeDraft.status).toBe('passed');
+    expect(observedAuthoritativeDraft.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'passed',
+      planHash: plan.planHash
+    });
+  });
+
+  it('keeps wrong-plan DeepSeek authoritative draft evidence from satisfying the current QA plan', () => {
+    const capabilityId = 'provider.deepseek_authoritative_draft.v1';
+    const probeId = PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID;
+    const packages = [
+      createFixedPromptBindingPackageContract(),
+      createProfileDeepSeekRunAndGunValidationPackageContract(),
+      createProviderDeepSeekAuthoritativeDraftPackageContract()
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const currentPlanProbeResults = buildCapabilityQaProbeResultsFromRuntimeEvidence({
+      plan,
+      evidence: {
+        status: 'PASSED',
+        observed: [
+          {
+            capabilityId: 'metadata.fixed_prompt_binding.v1',
+            probeId: FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
+            action: 'observe',
+            eventType: FIXED_PROMPT_BINDING_EVENT_TYPE,
+            eventTypes: [FIXED_PROMPT_BINDING_EVENT_TYPE],
+            status: 'observed'
+          },
+          {
+            capabilityId: 'profile.deepseek_run_and_gun_validation.v1',
+            probeId: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID,
+            action: 'observe',
+            eventType: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE,
+            eventTypes: [PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE],
+            status: 'observed'
+          },
+          {
+            capabilityId,
+            probeId,
+            action: 'verify_authoritative_draft',
+            eventType: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE,
+            eventTypes: [PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE],
+            deepSeekAuthoritativeDraftProduced: true,
+            deepSeekProviderId: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PROVIDER_ID,
+            deepSeekDraftArtifactKind: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_ARTIFACT_KIND,
+            deepSeekDraftSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_SCHEMA_VERSION,
+            deepSeekDraftNormalized: true,
+            deepSeekCanonicalSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_CANONICAL_SCHEMA_VERSION,
+            deepSeekComposedSchemaHashMatched: true,
+            deepSeekCapabilityLockHashMatched: true,
+            deepSeekTrustedEvidenceRejected: true,
+            status: 'observed'
+          }
+        ],
+        missingProbeIds: [],
+        mismatches: []
+      }
+    });
+    const report = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: currentPlanProbeResults.map((result) =>
+        result.probeId === probeId ? { ...result, planHash: 'wrong_deepseek_provider_plan_hash' } : result
+      )
+    });
+
+    expect(report.status).toBe('failed');
+    expect(report.missingRequiredProbeIds).toEqual([probeId]);
+    expect(report.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.plan_hash`,
+          failureKind: 'PLAN_MISMATCH',
+          capabilityId,
+          expectedPlanHash: plan.planHash,
+          actualPlanHash: 'wrong_deepseek_provider_plan_hash',
+          resultSource: 'probe_result',
+          status: 'failed'
+        })
+      ])
     });
   });
 

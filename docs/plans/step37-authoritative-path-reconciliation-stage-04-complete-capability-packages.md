@@ -6167,6 +6167,153 @@ next_action=CONTINUE_PARENT_LOOP
 next_atomic_step=RUN_PARENT_LOOP_DRIVER_TO_SELECT_NEXT_UNMET_CHECKPOINT
 ```
 
+## Stage 4 Implementation: `provider.deepseek_authoritative_draft.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.provider_deepseek_authoritative_draft_v1.complete_supported_package_slice
+parent_stage_id=stage4
+capability_id=provider.deepseek_authoritative_draft.v1
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=not_closed
+global_exit_conditions_met=false
+user_input_required=false
+next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
+reviewed_skill_revision_type=sha256_bundle
+reviewed_skill_revision=ce2d2020aa88c8a330a47570c802fccb52d0e6a981190e7c183ab3c50c2da01b
+candidate_commit_sha=pending until candidate checkpoint commit is created
+reviewed_commit_sha=pending until Oracle reviews the candidate commit
+```
+
+`provider.deepseek_authoritative_draft.v1` was selected by the Parent Loop Driver after the `pickup.weapon_supply.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
+
+Minimum closure requirements:
+
+1. Add a package-owned DeepSeek authoritative draft capability contract with stable capability identity, runtime system identity, provider validation event identity, required probe id, and required QA evidence id.
+2. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `provider.deepseek_authoritative_draft.v1` only when the runtime evidence includes authoritative DeepSeek draft and canonical normalization state fields, not generic model output.
+5. Require provider state fields: `deepSeekAuthoritativeDraftProduced=true`, `deepSeekProviderId=deepseek`, `deepSeekDraftArtifactKind=capability_game_dsl_draft`, `deepSeekDraftSchemaVersion=capability-game-dsl-draft.v1`, `deepSeekDraftNormalized=true`, `deepSeekCanonicalSchemaVersion=game-dsl.v0.2`, `deepSeekComposedSchemaHashMatched=true`, `deepSeekCapabilityLockHashMatched=true`, and `deepSeekTrustedEvidenceRejected=true`.
+6. Keep dependency evidence plan-scoped: `metadata.fixed_prompt_binding.v1` and `profile.deepseek_run_and_gun_validation.v1` probes must be same-plan dependencies; explicit wrong-plan provider evidence must fail closed with `PLAN_MISMATCH`.
+7. Add negative regressions proving generic provider/model output without authoritative draft state fields stays unverified, and wrong-plan provider evidence cannot satisfy the current QA plan.
+8. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/provider-deepseek-authoritative-draft-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/provider-deepseek-authoritative-draft-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `tests/contracts/contract-freeze.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createProviderDeepSeekAuthoritativeDraftPackageContract()`.
+- Runtime module identity: `PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_RUNTIME_SYSTEM_ID=provider.deepseek_authoritative_draft`.
+- Provider validation event: `PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE=provider.deepseek_authoritative_draft.validated`.
+- Required probe: `PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID=provider.deepseek_authoritative_draft.v1.draft.browser_qa.v1`.
+- Required evidence id: `provider.deepseek_authoritative_draft.v1.evidence.capability_qa_report.v1`.
+- Dependencies: `metadata.fixed_prompt_binding.v1` and `profile.deepseek_run_and_gun_validation.v1`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares the DeepSeek provider, artifact kind, draft schema, canonical schema, normalization, composed schema hash, capability lock hash, and trusted-evidence rejection fields, and fails the required probe when any field is missing or mismatched.
+- Plan freshness guard: `CapabilityQaProbeResult.planHash` remains optional for legacy fixtures, but current builder output stamps `plan.planHash`; explicit provider wrong-plan evidence fails closed with structured `PLAN_MISMATCH`.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for the same run; it does not mutate static `completeSupported`.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned provider DeepSeek authoritative draft capability contract, runtime system identity, provider validation event, required probe id, required evidence id, and runtime evidence fields for authoritative draft and canonical normalization state. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, telemetry/event freeze contract, DSL consumption report, and Step37 remaining-inventory driver. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves authoritative DeepSeek draft and canonical normalization state fields. |
+| Authority | Package-owned QA evidence defines the capability authority: generic model output, provider output names, dependency success, or profile binding evidence is insufficient unless `provider.deepseek_authoritative_draft.validated` also proves all required authoritative draft state fields under the current plan. |
+| Legacy strategy | Legacy model output, trusted natural-language evidence, and generic provider events cannot overclaim this capability. Existing legacy fixtures without `planHash` remain compatible only when plan affinity is not the contract under test. |
+| Failure policy | Missing package contract, missing provider validation event, missing authoritative draft fields, wrong provider/schema/artifact/canonical values, wrong capability/probe identity, or explicit wrong-plan evidence keeps `qa_observed=false` and fails closed as missing required probe evidence or `PLAN_MISMATCH`. |
+| Evidence | Focused contracts prove package validation, registry support advancement without complete support, QA reader positive/negative provider state behavior, wrong-plan rejection, target-profile overlay positive/negative behavior, remaining-inventory selection, and telemetry schema freeze coverage. |
+| Rollback | Reverting this slice removes only the provider DeepSeek authoritative draft package/probe/reader wiring and returns `provider.deepseek_authoritative_draft.v1` to unsupported evidence without changing business runtime gameplay templates or entering Stage 5. |
+
+Focused validation:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=1
+duration=real 5.92s
+result=RED: provider telemetry schema freeze did not yet include `provider.deepseek_authoritative_draft.validated`, and existing target-profile negative fixtures exposed the new provider required probe as missing instead of isolating the intended negative capability.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 9.93s
+result=PASS: 8 files / 217 tests
+```
+
+Focused set selection:
+
+- `gameplay-capability-package-contract.test.ts`: validates the new provider DeepSeek authoritative draft package contract, required evidence id, runtime system, provider event, authoritative draft assertion fields, dependency identities, and required probe.
+- `gameplay-capability-qa-probes.test.ts`: validates that generic model output without authoritative draft state fields fails, full provider draft state evidence passes, and explicit wrong-plan provider evidence fails with structured `PLAN_MISMATCH`.
+- `generation-target-profile-runtime-support.test.ts`: validates same-run overlay positive/negative behavior, dependency success isolation, wrong generic provider evidence rejection, and preservation of static `completeSupported=false`.
+- `gameplay-capability-registry.test.ts`: validates static registry evidence, provider domain registration, and required probe wiring without static support promotion.
+- `deepseek-authoritative-dsl-support.test.ts`: validates support dimensions and prerequisites for the target capability.
+- `dsl-consumption-report.test.ts`: validates the consumption report reads the updated package-backed support dimensions.
+- `step37-remaining-inventory-driver.test.ts`: validates parent-loop inventory consumption after the registry count advances to 36 and still selects this current provider checkpoint before it is committed.
+- `contract-freeze.test.ts`: included because this diff introduces telemetry/runtime event identity `provider.deepseek_authoritative_draft.validated` and QA evidence fields, so focused validation follows the actual schema and event-contract impact surface.
+
+Local validation before closure-record sync:
+
+```text
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 23.34s
+result=PASS: 98 files / 1243 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 85.44s
+result=PASS: contracts 98 files / 1243 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 9.58s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.02s
+result=PASS
+
+command=/usr/bin/time -p npx tsx -e "<provider.deepseek_authoritative_draft.v1 support summary and remaining inventory>"
+exitCode=0
+duration=real 0.86s
+result=PASS: currentCheckpointId=stage4.provider_deepseek_authoritative_draft_v1.complete_supported_package_slice; committedClosedCapabilityCount=35; registeredCapabilityCount=36; completeSupportedCount=0; provider.deepseek_authoritative_draft.v1 classification=DEFERRED; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; next_checkpoint_id=stage4.provider_deepseek_authoritative_draft_v1.complete_supported_package_slice; selectionFailure=null.
+
+command=/usr/bin/time -p node --input-type=module <<'NODE' ... step37 active Skill bundle digest ... NODE
+exitCode=0
+duration=real 0.08s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_roots=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery; skill_file_count=8; skill_bundle_digest=ce2d2020aa88c8a330a47570c802fccb52d0e6a981190e7c183ab3c50c2da01b.
+```
+
+Post-record validation requirement:
+
+- This closure record changes the final tree. Before creating the immutable candidate commit, focused closure contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, final diff range check, capability support / inventory alignment, Parent Loop inventory alignment, and Skill freshness must be re-run or explicitly recorded as fresh for the final tree.
+- Candidate commit must not write its own SHA into this candidate record.
+- Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=ce2d2020aa88c8a330a47570c802fccb52d0e6a981190e7c183ab3c50c2da01b`.
+- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+- Stage 4 remains active; Stage 5 has not been entered by this atomic step.
+
 ## Stage 4 Implementation: `pickup.weapon_supply.v1` complete-supported package slice
 
 Checkpoint identity:

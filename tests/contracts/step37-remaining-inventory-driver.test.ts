@@ -153,6 +153,7 @@ describe('Step37 remaining complete-supported inventory driver', () => {
       'movement.crouch.v1',
       'movement.run_jump.v1',
       'pickup.collectible.v1',
+      'pickup.weapon_supply.v1',
       'profile.deepseek_run_and_gun_validation.v1',
       'spawn.enemy_wave.v1',
       'spawn.static.v1',
@@ -174,14 +175,14 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     });
 
     expect(report.requiredCapabilityCount).toBe(59);
-    expect(report.registeredCapabilityCount).toBe(35);
+    expect(report.registeredCapabilityCount).toBe(36);
     expect(report.staticCompleteSupportedCount).toBe(0);
-    expect(report.stateCounts.unsupported_unregistered).toBe(24);
-    expect(report.committedClosedCapabilityCount).toBe(34);
+    expect(report.stateCounts.unsupported_unregistered).toBe(23);
+    expect(report.committedClosedCapabilityCount).toBe(35);
     expect(report.nextCheckpoint).not.toBeNull();
-    expect(report.nextCheckpoint?.checkpoint_id).toBe('stage4.pickup_weapon_supply_v1.complete_supported_package_slice');
+    expect(report.nextCheckpoint?.checkpoint_id).toBe('stage4.provider_deepseek_authoritative_draft_v1.complete_supported_package_slice');
     expect(report.nextCheckpoint?.next_atomic_step).toBe(
-      'Stage 4 pickup.weapon_supply.v1 complete-supported package slice implementation atomic step'
+      'Stage 4 provider.deepseek_authoritative_draft.v1 complete-supported package slice implementation atomic step'
     );
     expect(report.checkpointInventory.some((checkpoint) => closedCapabilityIds.has(checkpoint.checkpoint_id))).toBe(false);
   });

@@ -225,6 +225,15 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   undeclaredFallbackDetected?: boolean;
   fallbackOutputGenerated?: boolean;
   fallbackFailureCode?: string;
+  deepSeekAuthoritativeDraftProduced?: boolean;
+  deepSeekProviderId?: string;
+  deepSeekDraftArtifactKind?: string;
+  deepSeekDraftSchemaVersion?: string;
+  deepSeekDraftNormalized?: boolean;
+  deepSeekCanonicalSchemaVersion?: string;
+  deepSeekComposedSchemaHashMatched?: boolean;
+  deepSeekCapabilityLockHashMatched?: boolean;
+  deepSeekTrustedEvidenceRejected?: boolean;
   wavesCleared?: boolean;
   clearedWaveCount?: number;
   requiredWaveCount?: number;
@@ -639,6 +648,15 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('undeclaredFallbackDetected', expected, observed.undeclaredFallbackDetected),
     ...compareExpectedBooleanField('fallbackOutputGenerated', expected, observed.fallbackOutputGenerated),
     ...compareExpectedStringField('fallbackFailureCode', expected, observed.fallbackFailureCode),
+    ...compareExpectedBooleanField('deepSeekAuthoritativeDraftProduced', expected, observed.deepSeekAuthoritativeDraftProduced),
+    ...compareExpectedStringField('deepSeekProviderId', expected, observed.deepSeekProviderId),
+    ...compareExpectedStringField('deepSeekDraftArtifactKind', expected, observed.deepSeekDraftArtifactKind),
+    ...compareExpectedStringField('deepSeekDraftSchemaVersion', expected, observed.deepSeekDraftSchemaVersion),
+    ...compareExpectedBooleanField('deepSeekDraftNormalized', expected, observed.deepSeekDraftNormalized),
+    ...compareExpectedStringField('deepSeekCanonicalSchemaVersion', expected, observed.deepSeekCanonicalSchemaVersion),
+    ...compareExpectedBooleanField('deepSeekComposedSchemaHashMatched', expected, observed.deepSeekComposedSchemaHashMatched),
+    ...compareExpectedBooleanField('deepSeekCapabilityLockHashMatched', expected, observed.deepSeekCapabilityLockHashMatched),
+    ...compareExpectedBooleanField('deepSeekTrustedEvidenceRejected', expected, observed.deepSeekTrustedEvidenceRejected),
     ...compareExpectedBooleanField('wavesCleared', expected, observed.wavesCleared),
     ...compareExpectedNumberField('clearedWaveCount', expected, observed.clearedWaveCount),
     ...compareExpectedNumberField('requiredWaveCount', expected, observed.requiredWaveCount),

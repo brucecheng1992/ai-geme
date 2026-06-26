@@ -98,6 +98,12 @@ import {
   PICKUP_WEAPON_SUPPLY_WEAPON_ID,
   PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE,
   PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_ARTIFACT_KIND,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_CANONICAL_SCHEMA_VERSION,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PROVIDER_ID,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_SCHEMA_VERSION,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
   WEAPON_DEATH_RESET_EVENT_TYPE,
@@ -152,6 +158,7 @@ import {
   createPickupCollectiblePackageContract,
   createPickupWeaponSupplyPackageContract,
   createProfileDeepSeekRunAndGunValidationPackageContract,
+  createProviderDeepSeekAuthoritativeDraftPackageContract,
   createSpawnEnemyWavePackageContract,
   createSpawnStaticPackageContract,
   createWeaponDeathResetPackageContract,
@@ -195,6 +202,7 @@ const pickupCapabilityId = 'pickup.collectible.v1';
 const pickupWeaponSupplyCapabilityId = 'pickup.weapon_supply.v1';
 const fixedPromptBindingCapabilityId = 'metadata.fixed_prompt_binding.v1';
 const profileBindingCapabilityId = 'profile.deepseek_run_and_gun_validation.v1';
+const providerDeepSeekAuthoritativeDraftCapabilityId = 'provider.deepseek_authoritative_draft.v1';
 const deathResetCapabilityId = 'weapon.death_reset.v1';
 const rapidFireCapabilityId = 'weapon.rapid_fire.v1';
 const spreadShotCapabilityId = 'weapon.spread_shot.v1';
@@ -232,6 +240,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       'health.player_health.current',
       FIXED_PROMPT_BINDING_EVENT_TYPE,
       PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE,
+      PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE,
       WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE,
       WEAPON_DEATH_RESET_EVENT_TYPE,
       WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
@@ -266,6 +275,9 @@ describe('Step 37 target profile runtime support overlay', () => {
     const pickupWeaponSupply = report.capabilities.find((entry) => entry.capabilityId === pickupWeaponSupplyCapabilityId);
     const fixedPromptBinding = report.capabilities.find((entry) => entry.capabilityId === fixedPromptBindingCapabilityId);
     const profileBinding = report.capabilities.find((entry) => entry.capabilityId === profileBindingCapabilityId);
+    const providerDeepSeekAuthoritativeDraft = report.capabilities.find(
+      (entry) => entry.capabilityId === providerDeepSeekAuthoritativeDraftCapabilityId
+    );
     const deathReset = report.capabilities.find((entry) => entry.capabilityId === deathResetCapabilityId);
     const rapidFire = report.capabilities.find((entry) => entry.capabilityId === rapidFireCapabilityId);
     const spreadShot = report.capabilities.find((entry) => entry.capabilityId === spreadShotCapabilityId);
@@ -279,7 +291,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 31,
+      observedCompleteSupportedCount: 32,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
@@ -307,6 +319,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         pickupCapabilityId,
         pickupWeaponSupplyCapabilityId,
         profileBindingCapabilityId,
+        providerDeepSeekAuthoritativeDraftCapabilityId,
         spawnEnemyWaveCapabilityId,
         spawnStaticCapabilityId,
         deathResetCapabilityId,
@@ -315,7 +328,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         replacementRuleCapabilityId,
         spreadShotCapabilityId
       ],
-      blockers: ['target_profile_runtime_support_incomplete:31/59']
+      blockers: ['target_profile_runtime_support_incomplete:32/59']
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
       capabilityId: artifactLineageNoManualPatchCapabilityId,
@@ -615,6 +628,17 @@ describe('Step 37 target profile runtime support overlay', () => {
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
     });
+    expect(providerDeepSeekAuthoritativeDraft).toMatchObject({
+      capabilityId: providerDeepSeekAuthoritativeDraftCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
     expect(deathReset).toMatchObject({
       capabilityId: deathResetCapabilityId,
       runtimeVerified: true,
@@ -721,11 +745,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 30,
+      observedCompleteSupportedCount: 31,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:30/59'
+        'target_profile_runtime_support_incomplete:31/59'
       ]
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
@@ -1094,11 +1118,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 30,
+      observedCompleteSupportedCount: 31,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:30/59'
+        'target_profile_runtime_support_incomplete:31/59'
       ]
     });
     expect(fixedPromptBinding).toMatchObject({
@@ -1156,11 +1180,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 30,
+      observedCompleteSupportedCount: 31,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:30/59'
+        'target_profile_runtime_support_incomplete:31/59'
       ]
     });
     expect(profileBinding).toMatchObject({
@@ -1169,6 +1193,122 @@ describe('Step 37 target profile runtime support overlay', () => {
       verifiedRequiredProbeIds: [],
       missingRequiredProbeIds: [PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID],
       observedEvidenceDimensions: { qa_observed: false }
+    });
+  });
+
+  it('keeps DeepSeek provider draft unverified when generic model output lacks authoritative draft state proof', () => {
+    const dependencyObserved: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: fixedPromptBindingCapabilityId,
+        probeId: FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
+        action: 'observe',
+        eventType: FIXED_PROMPT_BINDING_EVENT_TYPE,
+        eventTypes: [FIXED_PROMPT_BINDING_EVENT_TYPE],
+        status: 'observed',
+        sourceRef: 'target_profile.fixedPrompt.sha256'
+      },
+      {
+        capabilityId: profileBindingCapabilityId,
+        probeId: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID,
+        action: 'observe',
+        eventType: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE,
+        eventTypes: [PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE],
+        status: 'observed',
+        sourceRef: 'canonical_dsl.profile.id'
+      }
+    ];
+    const genericProviderQaReport = buildSingleCapabilityQaReport({
+      capabilityId: providerDeepSeekAuthoritativeDraftCapabilityId,
+      dependencyPackages: [createFixedPromptBindingPackageContract(), createProfileDeepSeekRunAndGunValidationPackageContract()],
+      additionalObserved: dependencyObserved,
+      packageContract: createProviderDeepSeekAuthoritativeDraftPackageContract(),
+      eventType: 'provider.model_output.generated',
+      probeId: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID,
+      action: 'verify_authoritative_draft',
+      sourceRef: 'provider.deepseek.generic_model_output',
+      stateFields: {
+        deepSeekAuthoritativeDraftProduced: true
+      }
+    });
+    const observedProviderQaReport = buildSingleCapabilityQaReport({
+      capabilityId: providerDeepSeekAuthoritativeDraftCapabilityId,
+      dependencyPackages: [createFixedPromptBindingPackageContract(), createProfileDeepSeekRunAndGunValidationPackageContract()],
+      additionalObserved: dependencyObserved,
+      packageContract: createProviderDeepSeekAuthoritativeDraftPackageContract(),
+      eventType: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE,
+      probeId: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID,
+      action: 'verify_authoritative_draft',
+      sourceRef: 'normalization_report.capability_game_dsl_draft',
+      stateFields: {
+        deepSeekAuthoritativeDraftProduced: true,
+        deepSeekProviderId: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PROVIDER_ID,
+        deepSeekDraftArtifactKind: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_ARTIFACT_KIND,
+        deepSeekDraftSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_SCHEMA_VERSION,
+        deepSeekDraftNormalized: true,
+        deepSeekCanonicalSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_CANONICAL_SCHEMA_VERSION,
+        deepSeekComposedSchemaHashMatched: true,
+        deepSeekCapabilityLockHashMatched: true,
+        deepSeekTrustedEvidenceRejected: true
+      }
+    });
+    const genericProviderReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_provider_deepseek_generic_model_output',
+      capabilityQaReport: genericProviderQaReport
+    });
+    const observedProviderReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_provider_deepseek_authoritative_draft',
+      capabilityQaReport: observedProviderQaReport
+    });
+    const genericProviderState = genericProviderReport.capabilities.find(
+      (entry) => entry.capabilityId === providerDeepSeekAuthoritativeDraftCapabilityId
+    );
+    const observedProviderState = observedProviderReport.capabilities.find(
+      (entry) => entry.capabilityId === providerDeepSeekAuthoritativeDraftCapabilityId
+    );
+
+    expect(genericProviderQaReport.requiredResults.find((entry) => entry.probeId === PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID))
+      .toMatchObject({
+        status: 'failed',
+        assertionResults: expect.arrayContaining([
+          expect.objectContaining({
+            assertionId: `${PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID}.assertion.authoritative_draft_verified`,
+            status: 'failed',
+            message: expect.stringContaining(`observation ${PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE} not observed`)
+          }),
+          expect.objectContaining({
+            assertionId: `${PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID}.assertion.authoritative_draft_verified`,
+            status: 'failed',
+            message: expect.stringContaining(`expected deepSeekProviderId=${PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PROVIDER_ID}, observed <missing>`)
+          })
+        ])
+      });
+    expect(genericProviderReport).toMatchObject({
+      observedCompleteSupportedCount: 2,
+      blockers: [
+        `capability_qa_report_missing_required_probe:${PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID}`,
+        'target_profile_runtime_support_incomplete:2/59'
+      ]
+    });
+    expect(genericProviderState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedProviderReport).toMatchObject({
+      observedCompleteSupportedCount: 3,
+      observedCapabilityIds: [fixedPromptBindingCapabilityId, profileBindingCapabilityId, providerDeepSeekAuthoritativeDraftCapabilityId],
+      blockers: ['target_profile_runtime_support_incomplete:3/59']
+    });
+    expect(observedProviderState).toMatchObject({
+      runtimeVerified: true,
+      observedCompleteSupported: true,
+      verifiedRequiredProbeIds: [PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      observedEvidenceDimensions: { qa_observed: true }
     });
   });
 
@@ -1258,7 +1398,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 30,
+      observedCompleteSupportedCount: 31,
       targetProfileCompleteSupported: false,
       observedCapabilityIds: [
         artifactLineageNoManualPatchCapabilityId,
@@ -1284,6 +1424,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         pickupCapabilityId,
         pickupWeaponSupplyCapabilityId,
         profileBindingCapabilityId,
+        providerDeepSeekAuthoritativeDraftCapabilityId,
         spawnEnemyWaveCapabilityId,
         spawnStaticCapabilityId,
         deathResetCapabilityId,
@@ -1294,7 +1435,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ],
       blockers: [
         `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:30/59'
+        'target_profile_runtime_support_incomplete:31/59'
       ]
     });
     expect(damageInvulnerability).toMatchObject({
@@ -1369,11 +1510,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 30,
+      observedCompleteSupportedCount: 31,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:30/59'
+        'target_profile_runtime_support_incomplete:31/59'
       ]
     });
     expect(pickup).toMatchObject({
@@ -1572,11 +1713,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 30,
+      observedCompleteSupportedCount: 31,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:30/59'
+        'target_profile_runtime_support_incomplete:31/59'
       ]
     });
     expect(spawnEnemyWave).toMatchObject({
@@ -1653,11 +1794,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 30,
+      observedCompleteSupportedCount: 31,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:30/59'
+        'target_profile_runtime_support_incomplete:31/59'
       ]
     });
     expect(flyingRightEntry).toMatchObject({
@@ -1734,11 +1875,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 30,
+      observedCompleteSupportedCount: 31,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:30/59'
+        'target_profile_runtime_support_incomplete:31/59'
       ]
     });
     expect(patrolInfantry).toMatchObject({
@@ -1817,11 +1958,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 30,
+      observedCompleteSupportedCount: 31,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:30/59'
+        'target_profile_runtime_support_incomplete:31/59'
       ]
     });
     expect(victoryDeclaration).toMatchObject({
@@ -2289,11 +2430,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 30,
+      observedCompleteSupportedCount: 31,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:30/59'
+        'target_profile_runtime_support_incomplete:31/59'
       ]
     });
     expect(deathReset).toMatchObject({
@@ -2365,11 +2506,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 30,
+      observedCompleteSupportedCount: 31,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:30/59'
+        'target_profile_runtime_support_incomplete:31/59'
       ]
     });
     expect(rapidFire).toMatchObject({
@@ -2441,11 +2582,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 30,
+      observedCompleteSupportedCount: 31,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:30/59'
+        'target_profile_runtime_support_incomplete:31/59'
       ]
     });
     expect(spreadShot).toMatchObject({
@@ -2517,11 +2658,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 30,
+      observedCompleteSupportedCount: 31,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:30/59'
+        'target_profile_runtime_support_incomplete:31/59'
       ]
     });
     expect(replacementRule).toMatchObject({
@@ -2559,6 +2700,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${SPAWN_STATIC_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
@@ -2587,6 +2729,7 @@ function buildDefaultWeaponQaReport(
     hazardTimedExplosionStateFields?: boolean;
     pickupStateFields?: boolean;
     pickupWeaponSupplyStateFields?: boolean;
+    providerDeepSeekAuthoritativeDraftStateFields?: boolean;
     spawnEnemyWaveOrderedFields?: boolean;
     weaponDeathResetStateFields?: boolean;
     weaponRapidFireStateFields?: boolean;
@@ -2595,15 +2738,16 @@ function buildDefaultWeaponQaReport(
   } = {}
 ) {
   const { plan } = buildDefaultWeaponQaPlan();
+  const effectiveEventTypes = withProviderDeepSeekAuthoritativeDraftEvent(eventTypes);
   const observed = [
-    ...(eventTypes.includes(ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE)
+    ...(effectiveEventTypes.includes(ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE)
       ? [
           {
             capabilityId: artifactLineageNoManualPatchCapabilityId,
             probeId: ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
             action: 'verify_lineage',
             eventType: ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             ...(options.artifactLineageNoManualPatchStateFields === false
               ? {}
               : {
@@ -2616,14 +2760,14 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
-    ...(eventTypes.includes(ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE)
+    ...(effectiveEventTypes.includes(ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE)
       ? [
           {
             capabilityId: enemyBossAttackPatternCapabilityId,
             probeId: ENEMY_BOSS_ATTACK_PATTERN_REQUIRED_PROBE_ID,
             action: 'verify_boss_attack_pattern',
             eventType: ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE,
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             ...(options.enemyBossAttackPatternStateFields === false
               ? {}
               : {
@@ -2638,14 +2782,14 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
-    ...(eventTypes.includes(ENEMY_BOSS_LIFECYCLE_EVENT_TYPE)
+    ...(effectiveEventTypes.includes(ENEMY_BOSS_LIFECYCLE_EVENT_TYPE)
       ? [
           {
             capabilityId: enemyBossLifecycleCapabilityId,
             probeId: ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID,
             action: 'verify_boss_lifecycle',
             eventType: ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             ...(options.enemyBossLifecycleStateFields === false
               ? {}
               : {
@@ -2660,14 +2804,14 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
-    ...(eventTypes.includes(ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE)
+    ...(effectiveEventTypes.includes(ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE)
       ? [
           {
             capabilityId: enemyBossPhaseTransitionCapabilityId,
             probeId: ENEMY_BOSS_PHASE_TRANSITION_REQUIRED_PROBE_ID,
             action: 'verify_boss_phase_transition',
             eventType: ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE,
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             ...(options.enemyBossPhaseTransitionStateFields === false
               ? {}
               : {
@@ -2683,14 +2827,14 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
-    ...(eventTypes.includes(ENEMY_FIXED_TURRET_EVENT_TYPE)
+    ...(effectiveEventTypes.includes(ENEMY_FIXED_TURRET_EVENT_TYPE)
       ? [
           {
             capabilityId: enemyFixedTurretCapabilityId,
             probeId: ENEMY_FIXED_TURRET_REQUIRED_PROBE_ID,
             action: 'verify_fixed_turret',
             eventType: ENEMY_FIXED_TURRET_EVENT_TYPE,
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             ...(options.enemyFixedTurretStateFields === false
               ? {}
               : {
@@ -2707,14 +2851,14 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
-    ...(eventTypes.includes(ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE)
+    ...(effectiveEventTypes.includes(ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE)
       ? [
           {
             capabilityId: enemyFlyingRightEntryCapabilityId,
             probeId: ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID,
             action: 'verify_right_entry',
             eventType: ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE,
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             ...(options.enemyFlyingRightEntryStateFields === false
               ? {}
               : {
@@ -2732,14 +2876,14 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
-    ...(eventTypes.includes(ENEMY_PATROL_INFANTRY_EVENT_TYPE)
+    ...(effectiveEventTypes.includes(ENEMY_PATROL_INFANTRY_EVENT_TYPE)
       ? [
           {
             capabilityId: enemyPatrolInfantryCapabilityId,
             probeId: ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID,
             action: 'verify_patrol_infantry',
             eventType: ENEMY_PATROL_INFANTRY_EVENT_TYPE,
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             ...(options.enemyPatrolInfantryStateFields === false
               ? {}
               : {
@@ -2756,14 +2900,14 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
-    ...(eventTypes.includes(FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE)
+    ...(effectiveEventTypes.includes(FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE)
       ? [
           {
             capabilityId: feedbackVictoryDeclarationCapabilityId,
             probeId: FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID,
             action: 'verify_victory_declaration',
             eventType: FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             ...(options.feedbackVictoryDeclarationStateFields === false
               ? {}
               : {
@@ -2778,14 +2922,14 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
-    ...(eventTypes.includes(GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE)
+    ...(effectiveEventTypes.includes(GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE)
       ? [
           {
             capabilityId: generationFallbackPolicyFailClosedCapabilityId,
             probeId: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID,
             action: 'verify_fail_closed_policy',
             eventType: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             ...(options.generationFallbackPolicyFailClosedStateFields === false
               ? {}
               : {
@@ -2800,14 +2944,14 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
-    ...(eventTypes.includes(GOAL_BOSS_UNLOCK_EVENT_TYPE)
+    ...(effectiveEventTypes.includes(GOAL_BOSS_UNLOCK_EVENT_TYPE)
       ? [
           {
             capabilityId: goalBossUnlockCapabilityId,
             probeId: GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID,
             action: 'unlock_boss',
             eventType: GOAL_BOSS_UNLOCK_EVENT_TYPE,
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             ...(options.goalBossUnlockStateFields === false
               ? {}
               : {
@@ -2825,14 +2969,14 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
-    ...(eventTypes.includes(HAZARD_FALLING_AREA_EVENT_TYPE)
+    ...(effectiveEventTypes.includes(HAZARD_FALLING_AREA_EVENT_TYPE)
       ? [
           {
             capabilityId: hazardFallingAreaCapabilityId,
             probeId: HAZARD_FALLING_AREA_REQUIRED_PROBE_ID,
             action: 'verify_falling_area',
             eventType: HAZARD_FALLING_AREA_EVENT_TYPE,
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             ...(options.hazardFallingAreaStateFields === false
               ? {}
               : {
@@ -2851,14 +2995,14 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
-    ...(eventTypes.includes(HAZARD_TIMED_EXPLOSION_EVENT_TYPE)
+    ...(effectiveEventTypes.includes(HAZARD_TIMED_EXPLOSION_EVENT_TYPE)
       ? [
           {
             capabilityId: hazardTimedExplosionCapabilityId,
             probeId: HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID,
             action: 'verify_timed_explosion',
             eventType: HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             ...(options.hazardTimedExplosionStateFields === false
               ? {}
               : {
@@ -2879,79 +3023,79 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
-    ...(eventTypes.includes('camera.side_follow.active')
+    ...(effectiveEventTypes.includes('camera.side_follow.active')
       ? [
           {
             capabilityId: cameraCapabilityId,
             probeId: CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
             action: 'move',
             eventType: 'camera.side_follow.active',
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             status: 'observed' as const,
             sourceRef: 'qa_report.snapshot.camera.scrollX'
           }
         ]
       : []),
-    ...(eventTypes.includes('collision.platform.grounded')
+    ...(effectiveEventTypes.includes('collision.platform.grounded')
       ? [
           {
             capabilityId: collisionCapabilityId,
             probeId: COLLISION_PLATFORM_REQUIRED_PROBE_ID,
             action: 'collide',
             eventType: 'collision.platform.grounded',
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             status: 'observed' as const,
             sourceRef: 'qa_report.snapshot.player.onGround'
           }
         ]
       : []),
-    ...(eventTypes.includes('player.fired')
+    ...(effectiveEventTypes.includes('player.fired')
       ? [
           {
             capabilityId: defaultWeaponCapabilityId,
             probeId: DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
             action: 'fire',
             eventType: 'player.fired',
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             status: 'observed' as const,
             sourceRef: 'qa_report.capability_runtime'
           }
         ]
       : []),
-    ...(eventTypes.includes('combat.airborne_fire.fired')
+    ...(effectiveEventTypes.includes('combat.airborne_fire.fired')
       ? [
           {
             capabilityId: airborneFireCapabilityId,
             probeId: COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID,
             action: 'fire',
             eventType: 'combat.airborne_fire.fired',
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             status: 'observed' as const,
             sourceRef: 'qa_report.capability_runtime'
           }
         ]
       : []),
-    ...(eventTypes.includes('projectile.spawned')
+    ...(effectiveEventTypes.includes('projectile.spawned')
       ? [
           {
             capabilityId: projectileCapabilityId,
             probeId: COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
             action: 'fire',
             eventType: 'projectile.spawned',
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             status: 'observed' as const,
             sourceRef: 'qa_report.capability_runtime'
           }
         ]
       : []),
-    ...(eventTypes.includes('movement.crouch.entered')
+    ...(effectiveEventTypes.includes('movement.crouch.entered')
       ? [
           {
             capabilityId: crouchCapabilityId,
             probeId: MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
             action: 'crouch',
             eventType: 'movement.crouch.entered',
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             crouching: true,
             heightScale: MOVEMENT_CROUCH_HEIGHT_SCALE,
             status: 'observed' as const,
@@ -2959,27 +3103,27 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
-    ...(eventTypes.includes('health.damage_invulnerability.blocked')
+    ...(effectiveEventTypes.includes('health.damage_invulnerability.blocked')
       ? [
           {
             capabilityId: damageInvulnerabilityCapabilityId,
             probeId: HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID,
             action: 'block_damage',
             eventType: 'health.damage_invulnerability.blocked',
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             status: 'observed' as const,
             sourceRef: 'qa_report.capability_runtime'
           }
         ]
       : []),
-    ...(eventTypes.includes('pickup.collectible.collected')
+    ...(effectiveEventTypes.includes('pickup.collectible.collected')
       ? [
           {
             capabilityId: pickupCapabilityId,
             probeId: PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
             action: 'collect',
             eventType: 'pickup.collectible.collected',
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             ...(options.pickupStateFields === false
               ? {}
               : {
@@ -2992,14 +3136,14 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
-    ...(eventTypes.includes(PICKUP_WEAPON_SUPPLY_EVENT_TYPE)
+    ...(effectiveEventTypes.includes(PICKUP_WEAPON_SUPPLY_EVENT_TYPE)
       ? [
           {
             capabilityId: pickupWeaponSupplyCapabilityId,
             probeId: PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID,
             action: 'collect_weapon_supply',
             eventType: PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             ...(options.pickupWeaponSupplyStateFields === false
               ? {}
               : {
@@ -3016,40 +3160,40 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
-    ...(eventTypes.includes('player.jumped')
+    ...(effectiveEventTypes.includes('player.jumped')
       ? [
           {
             capabilityId: movementCapabilityId,
             probeId: MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID,
             action: 'jump',
             eventType: 'player.jumped',
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             status: 'observed' as const,
             sourceRef: 'qa_report.capability_runtime'
           }
         ]
       : []),
-    ...(eventTypes.includes('spawn.static.triggered')
+    ...(effectiveEventTypes.includes('spawn.static.triggered')
       ? [
           {
             capabilityId: spawnStaticCapabilityId,
             probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
             action: 'spawn',
             eventType: 'spawn.static.triggered',
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             status: 'observed' as const,
             sourceRef: 'qa_report.snapshot.waves'
           }
         ]
       : []),
-    ...(eventTypes.includes('spawn.enemy_wave.ordered')
+    ...(effectiveEventTypes.includes('spawn.enemy_wave.ordered')
       ? [
           {
             capabilityId: spawnEnemyWaveCapabilityId,
             probeId: SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
             action: 'spawn',
             eventType: 'spawn.enemy_wave.ordered',
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             ...(options.spawnEnemyWaveOrderedFields === false
               ? {}
               : {
@@ -3064,53 +3208,79 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
-    ...(eventTypes.includes('health.player_health.current')
+    ...(effectiveEventTypes.includes('health.player_health.current')
       ? [
           {
             capabilityId: healthCapabilityId,
             probeId: HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
             action: 'observe',
             eventType: 'health.player_health.current',
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             status: 'observed' as const,
             sourceRef: 'qa_report.snapshot.health'
           }
         ]
       : []),
-    ...(eventTypes.includes(FIXED_PROMPT_BINDING_EVENT_TYPE)
+    ...(effectiveEventTypes.includes(FIXED_PROMPT_BINDING_EVENT_TYPE)
       ? [
           {
             capabilityId: fixedPromptBindingCapabilityId,
             probeId: FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
             action: 'observe',
             eventType: FIXED_PROMPT_BINDING_EVENT_TYPE,
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             status: 'observed' as const,
             sourceRef: 'target_profile.fixedPrompt.sha256'
           }
         ]
       : []),
-    ...(eventTypes.includes(PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE)
+    ...(effectiveEventTypes.includes(PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE)
       ? [
           {
             capabilityId: profileBindingCapabilityId,
             probeId: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID,
             action: 'observe',
             eventType: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE,
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             status: 'observed' as const,
             sourceRef: 'canonical_dsl.profile.id'
           }
         ]
       : []),
-    ...(eventTypes.includes(WEAPON_DEATH_RESET_EVENT_TYPE)
+    ...(effectiveEventTypes.includes(PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE)
+      ? [
+          {
+            capabilityId: providerDeepSeekAuthoritativeDraftCapabilityId,
+            probeId: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID,
+            action: 'verify_authoritative_draft',
+            eventType: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE,
+            eventTypes: effectiveEventTypes,
+            ...(options.providerDeepSeekAuthoritativeDraftStateFields === false
+              ? {}
+              : {
+                  deepSeekAuthoritativeDraftProduced: true,
+                  deepSeekProviderId: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PROVIDER_ID,
+                  deepSeekDraftArtifactKind: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_ARTIFACT_KIND,
+                  deepSeekDraftSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_SCHEMA_VERSION,
+                  deepSeekDraftNormalized: true,
+                  deepSeekCanonicalSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_CANONICAL_SCHEMA_VERSION,
+                  deepSeekComposedSchemaHashMatched: true,
+                  deepSeekCapabilityLockHashMatched: true,
+                  deepSeekTrustedEvidenceRejected: true
+                }),
+            status: 'observed' as const,
+            sourceRef: 'normalization_report.capability_game_dsl_draft'
+          }
+        ]
+      : []),
+    ...(effectiveEventTypes.includes(WEAPON_DEATH_RESET_EVENT_TYPE)
       ? [
           {
             capabilityId: deathResetCapabilityId,
             probeId: WEAPON_DEATH_RESET_REQUIRED_PROBE_ID,
             action: 'restore_initial_weapon',
             eventType: WEAPON_DEATH_RESET_EVENT_TYPE,
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             ...(options.weaponDeathResetStateFields === false
               ? {}
               : {
@@ -3124,14 +3294,14 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
-    ...(eventTypes.includes(WEAPON_RAPID_FIRE_BURST_EVENT_TYPE)
+    ...(effectiveEventTypes.includes(WEAPON_RAPID_FIRE_BURST_EVENT_TYPE)
       ? [
           {
             capabilityId: rapidFireCapabilityId,
             probeId: WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID,
             action: 'fire_burst',
             eventType: WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             ...(options.weaponRapidFireStateFields === false
               ? {}
               : {
@@ -3145,14 +3315,14 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
-    ...(eventTypes.includes(WEAPON_SPREAD_SHOT_EVENT_TYPE)
+    ...(effectiveEventTypes.includes(WEAPON_SPREAD_SHOT_EVENT_TYPE)
       ? [
           {
             capabilityId: spreadShotCapabilityId,
             probeId: WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID,
             action: 'fire_spread',
             eventType: WEAPON_SPREAD_SHOT_EVENT_TYPE,
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             ...(options.weaponSpreadShotStateFields === false
               ? {}
               : {
@@ -3166,14 +3336,14 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
-    ...(eventTypes.includes(WEAPON_REPLACEMENT_RULE_EVENT_TYPE)
+    ...(effectiveEventTypes.includes(WEAPON_REPLACEMENT_RULE_EVENT_TYPE)
       ? [
           {
             capabilityId: replacementRuleCapabilityId,
             probeId: WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID,
             action: 'collect_weapon_pickup',
             eventType: WEAPON_REPLACEMENT_RULE_EVENT_TYPE,
-            eventTypes,
+            eventTypes: effectiveEventTypes,
             pickupCollected: true,
             ...(options.weaponReplacementStateFields === false
               ? {}
@@ -3201,6 +3371,16 @@ function buildDefaultWeaponQaReport(
       }
     })
   });
+}
+
+function withProviderDeepSeekAuthoritativeDraftEvent(eventTypes: readonly string[]): readonly string[] {
+  if (
+    eventTypes.includes(PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE) ||
+    (!eventTypes.includes(FIXED_PROMPT_BINDING_EVENT_TYPE) && !eventTypes.includes(PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE))
+  ) {
+    return eventTypes;
+  }
+  return [...eventTypes, PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE];
 }
 
 function buildSingleCapabilityQaReport(input: {
@@ -3280,6 +3460,7 @@ function buildDefaultWeaponQaPlan() {
     createCombatProjectilePackageContract(),
     createFixedPromptBindingPackageContract(),
     createProfileDeepSeekRunAndGunValidationPackageContract(),
+    createProviderDeepSeekAuthoritativeDraftPackageContract(),
     createWeaponDeathResetPackageContract(),
     createWeaponRapidFirePackageContract(),
     createWeaponSpreadShotPackageContract(),
@@ -3314,6 +3495,7 @@ function buildDefaultWeaponQaPlan() {
       projectileCapabilityId,
       fixedPromptBindingCapabilityId,
       profileBindingCapabilityId,
+      providerDeepSeekAuthoritativeDraftCapabilityId,
       deathResetCapabilityId,
       rapidFireCapabilityId,
       spreadShotCapabilityId,

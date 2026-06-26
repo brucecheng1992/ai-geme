@@ -18,6 +18,7 @@ export const TelemetryEventTypeSchema = z.enum([
   'pickup.collectible.collected',
   'pickup.collectible.state_changed',
   'pickup.weapon_supply.verified',
+  'provider.deepseek_authoritative_draft.validated',
   'spawn.enemy_wave.ordered',
   'enemy.flying_right_entry.verified',
   'enemy.patrol_infantry.verified',

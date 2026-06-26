@@ -32,6 +32,7 @@ import {
   MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
   PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   WEAPON_DEATH_RESET_REQUIRED_PROBE_ID,
   WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID,
@@ -139,6 +140,11 @@ describe('Gameplay capability registry', () => {
     expect(findGameplayCapability('pickup.collectible.v1')).toMatchObject({
       status: 'runtime_backed',
       legacyRuntimeCapabilities: ['collectibles']
+    });
+    expect(findGameplayCapability('provider.deepseek_authoritative_draft.v1')).toMatchObject({
+      status: 'planned',
+      domain: 'provider',
+      legacyRuntimeCapabilities: []
     });
     expect(GameplayCapabilityRegistry.entries.some(isCompleteSupportedGameplayCapability)).toBe(false);
   });
@@ -735,6 +741,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(weaponSupply)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(weaponSupply)).toBe(false);
+  });
+
+  it('scopes DeepSeek authoritative draft provider package-owned QA without static support promotion', () => {
+    const providerDraft = findGameplayCapability('provider.deepseek_authoritative_draft.v1');
+
+    if (providerDraft === undefined) {
+      throw new Error('Expected provider.deepseek_authoritative_draft.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(providerDraft)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(providerDraft.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(providerDraft.qa).toEqual({
+      requiredProbeIds: [PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(providerDraft)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(providerDraft)).toBe(false);
   });
 
   it('scopes weapon rapid fire package-owned QA without static support promotion', () => {
