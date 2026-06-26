@@ -119,7 +119,7 @@ export function createPickupCollectiblePackageContract(): GameplayCapabilityPack
       sceneBindings: [],
       fallbackPolicy: 'optional_assets_allowed'
     },
-    dependencies: [{ capabilityId: 'collision.platform.v1', range: '^1.0.0' }],
+    dependencies: [{ capabilityId: 'collision.platform.v1', range: '^v1' }],
     optionalDependencies: [{ capabilityId: 'health.player_health_points.v1', range: '^1.0.0' }],
     conflictsWith: [],
     provides: [{ id: 'pickup.collectible.service', version: 'v1' }],

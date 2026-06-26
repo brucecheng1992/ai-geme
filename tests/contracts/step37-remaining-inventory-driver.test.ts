@@ -146,6 +146,7 @@ describe('Step37 remaining complete-supported inventory driver', () => {
       'generation.fallback_policy_fail_closed.v1',
       'goal.boss_unlock.v1',
       'hazard.falling_area.v1',
+      'hazard.timed_explosion.v1',
       'health.damage_invulnerability.v1',
       'health.player_health_points.v1',
       'metadata.fixed_prompt_binding.v1',
@@ -173,14 +174,14 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     });
 
     expect(report.requiredCapabilityCount).toBe(59);
-    expect(report.registeredCapabilityCount).toBe(34);
+    expect(report.registeredCapabilityCount).toBe(35);
     expect(report.staticCompleteSupportedCount).toBe(0);
-    expect(report.stateCounts.unsupported_unregistered).toBe(25);
-    expect(report.committedClosedCapabilityCount).toBe(33);
+    expect(report.stateCounts.unsupported_unregistered).toBe(24);
+    expect(report.committedClosedCapabilityCount).toBe(34);
     expect(report.nextCheckpoint).not.toBeNull();
-    expect(report.nextCheckpoint?.checkpoint_id).toBe('stage4.hazard_timed_explosion_v1.complete_supported_package_slice');
+    expect(report.nextCheckpoint?.checkpoint_id).toBe('stage4.pickup_weapon_supply_v1.complete_supported_package_slice');
     expect(report.nextCheckpoint?.next_atomic_step).toBe(
-      'Stage 4 hazard.timed_explosion.v1 complete-supported package slice implementation atomic step'
+      'Stage 4 pickup.weapon_supply.v1 complete-supported package slice implementation atomic step'
     );
     expect(report.checkpointInventory.some((checkpoint) => closedCapabilityIds.has(checkpoint.checkpoint_id))).toBe(false);
   });

@@ -137,6 +137,10 @@ import {
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
   createPickupCollectiblePackageContract
 } from './pickup-collectible-package.js';
+import {
+  PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID,
+  createPickupWeaponSupplyPackageContract
+} from './pickup-weapon-supply-package.js';
 import { validateGameplayCapabilityPackage } from './package-contract.js';
 import { hashStableJson } from './stable-json.js';
 
@@ -891,6 +895,19 @@ const pickupCollectiblePackageEvidence: GameplayCapabilityEvidence = pickupColle
 const pickupCollectiblePackageQa: GameplayCapabilityQaEvidence = pickupCollectiblePackageReport.supportEligible
   ? { requiredProbeIds: [PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const pickupWeaponSupplyPackageReport = validateGameplayCapabilityPackage(createPickupWeaponSupplyPackageContract());
+const pickupWeaponSupplyPackageEvidence: GameplayCapabilityEvidence = pickupWeaponSupplyPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const pickupWeaponSupplyPackageQa: GameplayCapabilityQaEvidence = pickupWeaponSupplyPackageReport.supportEligible
+  ? { requiredProbeIds: [PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 
 const contractCompilerEvidence: GameplayCapabilityEvidence = {
   ...contractSeedEvidence,
@@ -1079,6 +1096,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     pickupCollectiblePackageQa
   ),
   runtimeBacked('hazard.contact_damage.v1', 'hazard', 'Contact hazard damage', [topDownActionArcade], ['dodger.v1'], ['hazards']),
+  planned(
+    'pickup.weapon_supply.v1',
+    'pickup',
+    'Weapon supply pickup',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    pickupWeaponSupplyPackageEvidence,
+    pickupWeaponSupplyPackageQa
+  ),
   contractSeeded(
     'metadata.fixed_prompt_binding.v1',
     'metadata',

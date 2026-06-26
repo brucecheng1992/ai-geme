@@ -31,6 +31,7 @@ import {
   HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID,
   MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+  PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   WEAPON_DEATH_RESET_REQUIRED_PROBE_ID,
   WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID,
@@ -707,6 +708,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(timedExplosion)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(timedExplosion)).toBe(false);
+  });
+
+  it('scopes pickup weapon supply package-owned QA without static support promotion', () => {
+    const weaponSupply = findGameplayCapability('pickup.weapon_supply.v1');
+
+    if (weaponSupply === undefined) {
+      throw new Error('Expected pickup.weapon_supply.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(weaponSupply)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(weaponSupply.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(weaponSupply.qa).toEqual({
+      requiredProbeIds: [PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(weaponSupply)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(weaponSupply)).toBe(false);
   });
 
   it('scopes weapon rapid fire package-owned QA without static support promotion', () => {

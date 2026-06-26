@@ -574,6 +574,21 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       missingEvidenceDimensions: ['qa_observed'],
       missingSupportEvidencePrerequisites: ['requiredProbesVerified']
     });
+    expect(capabilities.get('pickup.weapon_supply.v1')).toMatchObject({
+      registered: true,
+      classification: 'DEFERRED',
+      completeSupported: false,
+      legacyBacked: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
   });
 
   it('reports rapid-fire weapon package-backed evidence without QA completion', () => {
@@ -739,6 +754,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       'physics.paddle_ball.v1',
       'pickup.collectible.v1',
       'pickup.drop_collect.v1',
+      'pickup.weapon_supply.v1',
       'profile.deepseek_run_and_gun_validation.v1',
       'rules.restart_loop.v1',
       'scene.parallax_background.v1',

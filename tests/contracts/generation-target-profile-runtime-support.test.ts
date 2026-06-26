@@ -91,6 +91,11 @@ import {
   MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
   MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID,
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+  PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
+  PICKUP_WEAPON_SUPPLY_NODE_ID,
+  PICKUP_WEAPON_SUPPLY_PICKUP_ID,
+  PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID,
+  PICKUP_WEAPON_SUPPLY_WEAPON_ID,
   PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE,
   PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
@@ -145,6 +150,7 @@ import {
   createMovementCrouchPackageContract,
   createMovementRunJumpPackageContract,
   createPickupCollectiblePackageContract,
+  createPickupWeaponSupplyPackageContract,
   createProfileDeepSeekRunAndGunValidationPackageContract,
   createSpawnEnemyWavePackageContract,
   createSpawnStaticPackageContract,
@@ -186,6 +192,7 @@ const spawnStaticCapabilityId = 'spawn.static.v1';
 const damageInvulnerabilityCapabilityId = 'health.damage_invulnerability.v1';
 const healthCapabilityId = 'health.player_health_points.v1';
 const pickupCapabilityId = 'pickup.collectible.v1';
+const pickupWeaponSupplyCapabilityId = 'pickup.weapon_supply.v1';
 const fixedPromptBindingCapabilityId = 'metadata.fixed_prompt_binding.v1';
 const profileBindingCapabilityId = 'profile.deepseek_run_and_gun_validation.v1';
 const deathResetCapabilityId = 'weapon.death_reset.v1';
@@ -217,6 +224,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       'player.jumped',
       'pickup.collectible.collected',
       'pickup.collectible.state_changed',
+      PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
       'spawn.enemy_wave.ordered',
       'spawn.static.triggered',
       'health.damage_invulnerability.activated',
@@ -255,6 +263,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     const damageInvulnerability = report.capabilities.find((entry) => entry.capabilityId === damageInvulnerabilityCapabilityId);
     const health = report.capabilities.find((entry) => entry.capabilityId === healthCapabilityId);
     const pickup = report.capabilities.find((entry) => entry.capabilityId === pickupCapabilityId);
+    const pickupWeaponSupply = report.capabilities.find((entry) => entry.capabilityId === pickupWeaponSupplyCapabilityId);
     const fixedPromptBinding = report.capabilities.find((entry) => entry.capabilityId === fixedPromptBindingCapabilityId);
     const profileBinding = report.capabilities.find((entry) => entry.capabilityId === profileBindingCapabilityId);
     const deathReset = report.capabilities.find((entry) => entry.capabilityId === deathResetCapabilityId);
@@ -270,7 +279,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 30,
+      observedCompleteSupportedCount: 31,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
@@ -296,6 +305,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         crouchCapabilityId,
         movementCapabilityId,
         pickupCapabilityId,
+        pickupWeaponSupplyCapabilityId,
         profileBindingCapabilityId,
         spawnEnemyWaveCapabilityId,
         spawnStaticCapabilityId,
@@ -305,7 +315,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         replacementRuleCapabilityId,
         spreadShotCapabilityId
       ],
-      blockers: ['target_profile_runtime_support_incomplete:30/59']
+      blockers: ['target_profile_runtime_support_incomplete:31/59']
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
       capabilityId: artifactLineageNoManualPatchCapabilityId,
@@ -572,6 +582,17 @@ describe('Step 37 target profile runtime support overlay', () => {
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
     });
+    expect(pickupWeaponSupply).toMatchObject({
+      capabilityId: pickupWeaponSupplyCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
     expect(fixedPromptBinding).toMatchObject({
       capabilityId: fixedPromptBindingCapabilityId,
       runtimeVerified: true,
@@ -658,13 +679,14 @@ describe('Step 37 target profile runtime support overlay', () => {
       HAZARD_FALLING_AREA_EVENT_TYPE,
       HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
       'combat.airborne_fire.fired',
-        'player.fired',
-        'projectile.spawned',
-        'movement.crouch.entered',
-        'player.jumped',
-        'pickup.collectible.collected',
-        'pickup.collectible.state_changed',
-        'spawn.enemy_wave.ordered',
+      'player.fired',
+      'projectile.spawned',
+      'movement.crouch.entered',
+      'player.jumped',
+      'pickup.collectible.collected',
+      'pickup.collectible.state_changed',
+      PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
+      'spawn.enemy_wave.ordered',
         'spawn.static.triggered',
         'health.damage_invulnerability.activated',
         'health.damage_invulnerability.blocked',
@@ -699,11 +721,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 29,
+      observedCompleteSupportedCount: 30,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:29/59'
+        'target_profile_runtime_support_incomplete:30/59'
       ]
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
@@ -1049,6 +1071,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       'player.jumped',
       'pickup.collectible.collected',
       'pickup.collectible.state_changed',
+      PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
       'spawn.enemy_wave.ordered',
       'spawn.static.triggered',
       'health.damage_invulnerability.activated',
@@ -1071,11 +1094,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 29,
+      observedCompleteSupportedCount: 30,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:29/59'
+        'target_profile_runtime_support_incomplete:30/59'
       ]
     });
     expect(fixedPromptBinding).toMatchObject({
@@ -1110,6 +1133,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       'player.jumped',
       'pickup.collectible.collected',
       'pickup.collectible.state_changed',
+      PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
       'spawn.enemy_wave.ordered',
       'spawn.static.triggered',
       'health.damage_invulnerability.activated',
@@ -1132,11 +1156,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 29,
+      observedCompleteSupportedCount: 30,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:29/59'
+        'target_profile_runtime_support_incomplete:30/59'
       ]
     });
     expect(profileBinding).toMatchObject({
@@ -1198,6 +1222,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       'player.jumped',
       'pickup.collectible.collected',
       'pickup.collectible.state_changed',
+      PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
       'spawn.enemy_wave.ordered',
       'spawn.static.triggered',
       'health.damage_invulnerability.blocked',
@@ -1233,7 +1258,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 29,
+      observedCompleteSupportedCount: 30,
       targetProfileCompleteSupported: false,
       observedCapabilityIds: [
         artifactLineageNoManualPatchCapabilityId,
@@ -1257,6 +1282,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         crouchCapabilityId,
         movementCapabilityId,
         pickupCapabilityId,
+        pickupWeaponSupplyCapabilityId,
         profileBindingCapabilityId,
         spawnEnemyWaveCapabilityId,
         spawnStaticCapabilityId,
@@ -1268,7 +1294,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ],
       blockers: [
         `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:29/59'
+        'target_profile_runtime_support_incomplete:30/59'
       ]
     });
     expect(damageInvulnerability).toMatchObject({
@@ -1304,6 +1330,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         'player.jumped',
         'pickup.collectible.collected',
         'pickup.collectible.state_changed',
+        PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
         'spawn.enemy_wave.ordered',
       'spawn.static.triggered',
       'health.damage_invulnerability.activated',
@@ -1342,11 +1369,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 29,
+      observedCompleteSupportedCount: 30,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:29/59'
+        'target_profile_runtime_support_incomplete:30/59'
       ]
     });
     expect(pickup).toMatchObject({
@@ -1355,6 +1382,133 @@ describe('Step 37 target profile runtime support overlay', () => {
       verifiedRequiredProbeIds: [],
       missingRequiredProbeIds: [PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID],
       observedEvidenceDimensions: { qa_observed: false }
+    });
+  });
+
+  it('keeps weapon supply unverified when generic pickup evidence lacks supply grant state proof', () => {
+    const dependencyObserved: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: collisionCapabilityId,
+        probeId: COLLISION_PLATFORM_REQUIRED_PROBE_ID,
+        action: 'collide',
+        eventType: 'collision.platform.grounded',
+        eventTypes: ['collision.platform.grounded'],
+        status: 'observed'
+      },
+      {
+        capabilityId: pickupCapabilityId,
+        probeId: PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+        action: 'collect',
+        eventType: 'pickup.collectible.collected',
+        eventTypes: ['pickup.collectible.collected', 'pickup.collectible.state_changed'],
+        pickupCollected: true,
+        pickupConsumed: true,
+        pickupStateChanged: true,
+        status: 'observed'
+      },
+      {
+        capabilityId: defaultWeaponCapabilityId,
+        probeId: DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
+        action: 'fire',
+        eventType: 'player.fired',
+        eventTypes: ['player.fired', 'projectile.spawned'],
+        status: 'observed'
+      }
+    ];
+    const genericPickupQaReport = buildSingleCapabilityQaReport({
+      capabilityId: pickupWeaponSupplyCapabilityId,
+      packageContract: createPickupWeaponSupplyPackageContract(),
+      dependencyPackages: [
+        createCollisionPlatformPackageContract(),
+        createPickupCollectiblePackageContract(),
+        createDefaultStraightSingleWeaponPackageContract()
+      ],
+      eventType: 'pickup.collectible.collected',
+      probeId: PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID,
+      action: 'collect',
+      sourceRef: 'runtime.pickup.generic_collectible',
+      additionalObserved: dependencyObserved,
+      stateFields: {
+        pickupCollected: true,
+        pickupConsumed: true,
+        pickupStateChanged: true,
+        weaponReplaced: true
+      }
+    });
+    const observedSupplyQaReport = buildSingleCapabilityQaReport({
+      capabilityId: pickupWeaponSupplyCapabilityId,
+      packageContract: createPickupWeaponSupplyPackageContract(),
+      dependencyPackages: [
+        createCollisionPlatformPackageContract(),
+        createPickupCollectiblePackageContract(),
+        createDefaultStraightSingleWeaponPackageContract()
+      ],
+      eventType: PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
+      probeId: PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID,
+      action: 'collect_weapon_supply',
+      sourceRef: 'runtime.pickup.weapon_supply',
+      additionalObserved: dependencyObserved,
+      stateFields: {
+        weaponSupplyAvailable: true,
+        weaponSupplyNodeId: PICKUP_WEAPON_SUPPLY_NODE_ID,
+        weaponSupplyPickupId: PICKUP_WEAPON_SUPPLY_PICKUP_ID,
+        weaponSupplyWeaponId: PICKUP_WEAPON_SUPPLY_WEAPON_ID,
+        weaponSupplyCollected: true,
+        weaponSupplyConsumed: true,
+        weaponSupplyGranted: true
+      }
+    });
+    const genericReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260625_target_runtime_support',
+      runId: 'run_20260626_weapon_supply_generic_pickup',
+      capabilityQaReport: genericPickupQaReport
+    });
+    const observedReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260625_target_runtime_support',
+      runId: 'run_20260626_weapon_supply_observed',
+      capabilityQaReport: observedSupplyQaReport
+    });
+    const genericSupply = genericReport.capabilities.find((entry) => entry.capabilityId === pickupWeaponSupplyCapabilityId);
+    const observedSupply = observedReport.capabilities.find((entry) => entry.capabilityId === pickupWeaponSupplyCapabilityId);
+
+    expect(genericPickupQaReport.requiredResults.find((entry) => entry.probeId === PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID}.assertion.weapon_supply_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${PICKUP_WEAPON_SUPPLY_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID}.assertion.weapon_supply_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected weaponSupplyGranted=true, observed <missing>')
+        })
+      ])
+    });
+    expect(genericReport).toMatchObject({
+      status: 'blocked_incomplete_target_profile',
+      observedCompleteSupportedCount: 3,
+      targetProfileCompleteSupported: false,
+      blockers: [`capability_qa_report_missing_required_probe:${PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID}`, 'target_profile_runtime_support_incomplete:3/59']
+    });
+    expect(genericSupply).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedReport).toMatchObject({
+      observedCompleteSupportedCount: 4,
+      blockers: ['target_profile_runtime_support_incomplete:4/59']
+    });
+    expect(observedSupply).toMatchObject({
+      runtimeVerified: true,
+      observedCompleteSupported: true,
+      requiredProbeIds: [PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: []
     });
   });
 
@@ -1382,6 +1536,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         'player.jumped',
         'pickup.collectible.collected',
         'pickup.collectible.state_changed',
+        PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
         'spawn.enemy_wave.ordered',
       'spawn.static.triggered',
       'health.damage_invulnerability.activated',
@@ -1417,11 +1572,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 29,
+      observedCompleteSupportedCount: 30,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:29/59'
+        'target_profile_runtime_support_incomplete:30/59'
       ]
     });
     expect(spawnEnemyWave).toMatchObject({
@@ -1457,6 +1612,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         'player.jumped',
         'pickup.collectible.collected',
         'pickup.collectible.state_changed',
+        PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
         'spawn.enemy_wave.ordered',
         'spawn.static.triggered',
         'health.damage_invulnerability.activated',
@@ -1497,11 +1653,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 29,
+      observedCompleteSupportedCount: 30,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:29/59'
+        'target_profile_runtime_support_incomplete:30/59'
       ]
     });
     expect(flyingRightEntry).toMatchObject({
@@ -1537,6 +1693,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         'player.jumped',
         'pickup.collectible.collected',
         'pickup.collectible.state_changed',
+        PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
         'spawn.enemy_wave.ordered',
         'spawn.static.triggered',
         'health.damage_invulnerability.activated',
@@ -1577,11 +1734,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 29,
+      observedCompleteSupportedCount: 30,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:29/59'
+        'target_profile_runtime_support_incomplete:30/59'
       ]
     });
     expect(patrolInfantry).toMatchObject({
@@ -1617,6 +1774,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         'player.jumped',
         'pickup.collectible.collected',
         'pickup.collectible.state_changed',
+        PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
         'spawn.enemy_wave.ordered',
         'spawn.static.triggered',
         'health.damage_invulnerability.activated',
@@ -1659,11 +1817,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 29,
+      observedCompleteSupportedCount: 30,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:29/59'
+        'target_profile_runtime_support_incomplete:30/59'
       ]
     });
     expect(victoryDeclaration).toMatchObject({
@@ -2095,6 +2253,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         'player.jumped',
         'pickup.collectible.collected',
         'pickup.collectible.state_changed',
+        PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
         'spawn.enemy_wave.ordered',
         'spawn.static.triggered',
         'health.damage_invulnerability.activated',
@@ -2130,11 +2289,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 29,
+      observedCompleteSupportedCount: 30,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:29/59'
+        'target_profile_runtime_support_incomplete:30/59'
       ]
     });
     expect(deathReset).toMatchObject({
@@ -2170,6 +2329,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         'player.jumped',
         'pickup.collectible.collected',
         'pickup.collectible.state_changed',
+        PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
         'spawn.enemy_wave.ordered',
         'spawn.static.triggered',
         'health.damage_invulnerability.activated',
@@ -2205,11 +2365,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 29,
+      observedCompleteSupportedCount: 30,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:29/59'
+        'target_profile_runtime_support_incomplete:30/59'
       ]
     });
     expect(rapidFire).toMatchObject({
@@ -2245,6 +2405,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         'player.jumped',
         'pickup.collectible.collected',
         'pickup.collectible.state_changed',
+        PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
         'spawn.enemy_wave.ordered',
         'spawn.static.triggered',
         'health.damage_invulnerability.activated',
@@ -2280,11 +2441,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 29,
+      observedCompleteSupportedCount: 30,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:29/59'
+        'target_profile_runtime_support_incomplete:30/59'
       ]
     });
     expect(spreadShot).toMatchObject({
@@ -2320,6 +2481,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         'player.jumped',
         'pickup.collectible.collected',
         'pickup.collectible.state_changed',
+        PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
         'spawn.enemy_wave.ordered',
         'spawn.static.triggered',
         'health.damage_invulnerability.activated',
@@ -2355,11 +2517,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 29,
+      observedCompleteSupportedCount: 30,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:29/59'
+        'target_profile_runtime_support_incomplete:30/59'
       ]
     });
     expect(replacementRule).toMatchObject({
@@ -2395,6 +2557,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       `capability_qa_report_missing_required_probe:${MOVEMENT_CROUCH_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${MOVEMENT_RUN_JUMP_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${SPAWN_STATIC_REQUIRED_PROBE_ID}`,
@@ -2423,6 +2586,7 @@ function buildDefaultWeaponQaReport(
     hazardFallingAreaStateFields?: boolean;
     hazardTimedExplosionStateFields?: boolean;
     pickupStateFields?: boolean;
+    pickupWeaponSupplyStateFields?: boolean;
     spawnEnemyWaveOrderedFields?: boolean;
     weaponDeathResetStateFields?: boolean;
     weaponRapidFireStateFields?: boolean;
@@ -2828,6 +2992,30 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
+    ...(eventTypes.includes(PICKUP_WEAPON_SUPPLY_EVENT_TYPE)
+      ? [
+          {
+            capabilityId: pickupWeaponSupplyCapabilityId,
+            probeId: PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID,
+            action: 'collect_weapon_supply',
+            eventType: PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
+            eventTypes,
+            ...(options.pickupWeaponSupplyStateFields === false
+              ? {}
+              : {
+                  weaponSupplyAvailable: true,
+                  weaponSupplyNodeId: PICKUP_WEAPON_SUPPLY_NODE_ID,
+                  weaponSupplyPickupId: PICKUP_WEAPON_SUPPLY_PICKUP_ID,
+                  weaponSupplyWeaponId: PICKUP_WEAPON_SUPPLY_WEAPON_ID,
+                  weaponSupplyCollected: true,
+                  weaponSupplyConsumed: true,
+                  weaponSupplyGranted: true
+                }),
+            status: 'observed' as const,
+            sourceRef: 'qa_report.capability_runtime.pickup.weapon_supply'
+          }
+        ]
+      : []),
     ...(eventTypes.includes('player.jumped')
       ? [
           {
@@ -3099,6 +3287,7 @@ function buildDefaultWeaponQaPlan() {
     createMovementCrouchPackageContract(),
     createHealthDamageInvulnerabilityPackageContract(),
     createPickupCollectiblePackageContract(),
+    createPickupWeaponSupplyPackageContract(),
     createMovementRunJumpPackageContract(),
     createSpawnEnemyWavePackageContract(),
     createSpawnStaticPackageContract(),
@@ -3132,6 +3321,7 @@ function buildDefaultWeaponQaPlan() {
       crouchCapabilityId,
       damageInvulnerabilityCapabilityId,
       pickupCapabilityId,
+      pickupWeaponSupplyCapabilityId,
       movementCapabilityId,
       spawnEnemyWaveCapabilityId,
       spawnStaticCapabilityId,

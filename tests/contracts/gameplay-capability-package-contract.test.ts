@@ -324,6 +324,18 @@ import {
   PICKUP_COLLECTIBLE_STATE_CHANGED_EVENT_TYPE
 } from '../../packages/game-dsl/src/gameplay-capabilities/pickup-collectible-runtime-module.js';
 import {
+  PICKUP_WEAPON_SUPPLY_PACKAGE_REQUIRED_EVIDENCE_ID,
+  PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID,
+  createPickupWeaponSupplyPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/pickup-weapon-supply-package.js';
+import {
+  PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
+  PICKUP_WEAPON_SUPPLY_NODE_ID,
+  PICKUP_WEAPON_SUPPLY_PICKUP_ID,
+  PICKUP_WEAPON_SUPPLY_RUNTIME_SYSTEM_ID,
+  PICKUP_WEAPON_SUPPLY_WEAPON_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/pickup-weapon-supply-runtime-module.js';
+import {
   FIXED_PROMPT_BINDING_PACKAGE_REQUIRED_EVIDENCE_ID,
   FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
   createFixedPromptBindingPackageContract
@@ -1704,6 +1716,70 @@ describe('Gameplay capability package contract', () => {
           expected: { pickupConsumed: true, pickupStateChanged: true }
         })
       ])
+    });
+  });
+
+  it('accepts the pickup weapon supply package-owned QA contract', () => {
+    const contract = createPickupWeaponSupplyPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'pickup.weapon_supply.v1'
+    });
+    expect(contract.runtime.systems).toEqual([
+      {
+        id: PICKUP_WEAPON_SUPPLY_RUNTIME_SYSTEM_ID,
+        version: 'v1',
+        phase: 'gameplay',
+        dependencies: ['pickup.collectible', 'weapon.default_straight_single']
+      }
+    ]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: PICKUP_WEAPON_SUPPLY_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'pickup.weapon_supply.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
+          parameters: {
+            supplyNodeId: PICKUP_WEAPON_SUPPLY_NODE_ID,
+            pickupId: PICKUP_WEAPON_SUPPLY_PICKUP_ID,
+            weaponId: PICKUP_WEAPON_SUPPLY_WEAPON_ID,
+            action: 'collect_weapon_supply'
+          }
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: PICKUP_WEAPON_SUPPLY_RUNTIME_SYSTEM_ID,
+          ref: PICKUP_WEAPON_SUPPLY_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID}.assertion.weapon_supply_verified`,
+          expected: {
+            weaponSupplyAvailable: true,
+            weaponSupplyNodeId: PICKUP_WEAPON_SUPPLY_NODE_ID,
+            weaponSupplyPickupId: PICKUP_WEAPON_SUPPLY_PICKUP_ID,
+            weaponSupplyWeaponId: PICKUP_WEAPON_SUPPLY_WEAPON_ID,
+            weaponSupplyCollected: true,
+            weaponSupplyConsumed: true,
+            weaponSupplyGranted: true
+          }
+        })
+      ]
     });
   });
 

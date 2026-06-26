@@ -40,6 +40,7 @@ import {
   CAMERA_BOUNDS_CLAMP_EVENT_TYPE,
   CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID,
   createCameraBoundsClampPackageContract,
+  COLLISION_PLATFORM_REQUIRED_PROBE_ID,
   CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE,
   CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
   createCanonicalSemanticPreservationPackageContract,
@@ -123,6 +124,17 @@ import {
   HAZARD_TIMED_EXPLOSION_TIMER_ID,
   HAZARD_TIMED_EXPLOSION_TRIGGER_CONDITION,
   createHazardTimedExplosionPackageContract,
+  createCollisionPlatformPackageContract,
+  DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
+  createDefaultStraightSingleWeaponPackageContract,
+  PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+  createPickupCollectiblePackageContract,
+  PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
+  PICKUP_WEAPON_SUPPLY_NODE_ID,
+  PICKUP_WEAPON_SUPPLY_PICKUP_ID,
+  PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID,
+  PICKUP_WEAPON_SUPPLY_WEAPON_ID,
+  createPickupWeaponSupplyPackageContract,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
@@ -306,6 +318,52 @@ describe('Capability-owned runtime QA probes', () => {
     expect(plan.status).toBe('ready');
     expect(report.status).toBe('failed');
     expect(report.missingRequiredProbeIds).toEqual(['side_scrolling_run_and_gun.v1.qa.destroy_target']);
+  });
+
+  it('keeps legacy unscoped probe results compatible unless current-plan evidence is required', () => {
+    const movement = createPackage('movement.run_jump.v1');
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock([movement], ['movement.run_jump.v1']),
+      packages: [movement]
+    });
+    const unscopedProbeResult = {
+      probeId: 'movement.run_jump.v1.qa.required',
+      status: 'passed' as const,
+      assertionResults: passedAssertionsFor(plan, 'movement.run_jump.v1.qa.required')
+    };
+    const legacyReport = evaluateCapabilityQaReport({
+      plan,
+      probeResults: [unscopedProbeResult]
+    });
+    const planScopedReport = evaluateCapabilityQaReport({
+      plan,
+      probeResults: [unscopedProbeResult],
+      requirePlanScopedResults: true
+    });
+
+    expect(legacyReport.status).toBe('passed');
+    expect(legacyReport.requiredResults[0]).toMatchObject({
+      probeId: 'movement.run_jump.v1.qa.required',
+      status: 'passed'
+    });
+    expect(legacyReport.requiredResults[0]?.planHash).toBeUndefined();
+    expect(planScopedReport.status).toBe('failed');
+    expect(planScopedReport.missingRequiredProbeIds).toEqual(['movement.run_jump.v1.qa.required']);
+    expect(planScopedReport.requiredResults[0]).toMatchObject({
+      probeId: 'movement.run_jump.v1.qa.required',
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: 'movement.run_jump.v1.qa.required.plan_hash',
+          failureKind: 'PLAN_SCOPE_REQUIRED',
+          capabilityId: 'movement.run_jump.v1',
+          expectedPlanHash: plan.planHash,
+          actualPlanHash: '<missing>',
+          resultSource: 'probe_result'
+        })
+      ])
+    });
   });
 
   it('blocks malformed profile scenarios before external results can mark them passed', () => {
@@ -974,6 +1032,481 @@ describe('Capability-owned runtime QA probes', () => {
       })
     ]));
     expect(observedReplacementState.status).toBe('passed');
+  });
+
+  it('resolves weapon supply only when the full dependency chain is present', () => {
+    const report = resolveGameplayCapabilityGraph({
+      requestedCapabilities: ['pickup.weapon_supply.v1'],
+      packages: [
+        createCollisionPlatformPackageContract(),
+        createPickupCollectiblePackageContract(),
+        createDefaultStraightSingleWeaponPackageContract(),
+        createPickupWeaponSupplyPackageContract()
+      ],
+      runtimeFamily: 'phaser_2d_action_arcade.v1'
+    });
+
+    expect(report.status).toBe('resolved');
+    expect(report.diagnostics).toEqual([]);
+    expect(report.selectedCapabilityIds).toEqual([
+      'collision.platform.v1',
+      'pickup.collectible.v1',
+      'pickup.weapon_supply.v1',
+      'weapon.default_straight_single.v1'
+    ]);
+  });
+
+  it('fails closed when weapon supply is missing the transitive collision dependency', () => {
+    const report = resolveGameplayCapabilityGraph({
+      requestedCapabilities: ['pickup.weapon_supply.v1'],
+      packages: [
+        createPickupCollectiblePackageContract(),
+        createDefaultStraightSingleWeaponPackageContract(),
+        createPickupWeaponSupplyPackageContract()
+      ],
+      runtimeFamily: 'phaser_2d_action_arcade.v1'
+    });
+
+    expect(report.status).toBe('blocked');
+    expect(report.lock).toBeUndefined();
+    expect(report.selectedCapabilityIds).toEqual([
+      'pickup.collectible.v1',
+      'pickup.weapon_supply.v1',
+      'weapon.default_straight_single.v1'
+    ]);
+    expect(report.diagnostics.map((diagnostic) => diagnostic.capabilityId)).toEqual(['collision.platform.v1']);
+    expect(report.diagnostics).not.toEqual(expect.arrayContaining([expect.objectContaining({ capabilityId: 'pickup.weapon_supply.v1' })]));
+    expect(report.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'MISSING_CAPABILITY',
+          capabilityId: 'collision.platform.v1',
+          requestedBy: ['pickup.collectible.v1']
+        })
+      ])
+    );
+    expect(report.diagnostics.find((diagnostic) => diagnostic.capabilityId === 'collision.platform.v1')?.explanation).toContain(
+      'No package candidate exists'
+    );
+  });
+
+  it('fails closed when pickup collectible declares package semver for a capability dependency range', () => {
+    const packageSemverCollectible: GameplayCapabilityPackageContract = {
+      ...createPickupCollectiblePackageContract(),
+      dependencies: [{ capabilityId: 'collision.platform.v1', range: '^1.0.0' }]
+    };
+    const report = resolveGameplayCapabilityGraph({
+      requestedCapabilities: ['pickup.weapon_supply.v1'],
+      packages: [
+        createCollisionPlatformPackageContract(),
+        packageSemverCollectible,
+        createDefaultStraightSingleWeaponPackageContract(),
+        createPickupWeaponSupplyPackageContract()
+      ],
+      runtimeFamily: 'phaser_2d_action_arcade.v1'
+    });
+
+    expect(report.status).toBe('blocked');
+    expect(report.lock).toBeUndefined();
+    expect(report.selectedCapabilityIds).toEqual([
+      'pickup.collectible.v1',
+      'pickup.weapon_supply.v1',
+      'weapon.default_straight_single.v1'
+    ]);
+    expect(report.diagnostics.map((diagnostic) => diagnostic.capabilityId)).toEqual(['collision.platform.v1']);
+    expect(report.diagnostics).not.toEqual(expect.arrayContaining([expect.objectContaining({ capabilityId: 'pickup.weapon_supply.v1' })]));
+    expect(report.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'VERSION_CONFLICT',
+          capabilityId: 'collision.platform.v1',
+          requestedBy: ['pickup.collectible.v1']
+        })
+      ])
+    );
+    expect(report.diagnostics.find((diagnostic) => diagnostic.capabilityId === 'collision.platform.v1')?.explanation).toContain(
+      'version range ^1.0.0'
+    );
+  });
+
+  it('does not verify weapon supply from generic pickup or replacement evidence without supply grant state', () => {
+    const capabilityId = 'pickup.weapon_supply.v1';
+    const probeId = PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID;
+    const packages = [
+      createCollisionPlatformPackageContract(),
+      createPickupCollectiblePackageContract(),
+      createDefaultStraightSingleWeaponPackageContract(),
+      createPickupWeaponSupplyPackageContract()
+    ];
+    const dependencyEvidence = [
+      {
+        capabilityId: 'collision.platform.v1',
+        probeId: COLLISION_PLATFORM_REQUIRED_PROBE_ID,
+        action: 'collide',
+        eventType: 'collision.platform.grounded',
+        eventTypes: ['collision.platform.grounded'],
+        status: 'observed' as const
+      },
+      {
+        capabilityId: 'pickup.collectible.v1',
+        probeId: PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+        action: 'collect',
+        eventType: 'pickup.collectible.collected',
+        eventTypes: ['pickup.collectible.collected', 'pickup.collectible.state_changed'],
+        pickupCollected: true,
+        pickupConsumed: true,
+        pickupStateChanged: true,
+        status: 'observed' as const
+      },
+      {
+        capabilityId: 'weapon.default_straight_single.v1',
+        probeId: DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
+        action: 'fire',
+        eventType: 'player.fired',
+        eventTypes: ['player.fired', 'projectile.spawned'],
+        status: 'observed' as const
+      }
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    expect(plan.status).toBe('ready');
+    expect(plan.requiredProbes.map((probe) => probe.id)).toEqual([
+      COLLISION_PLATFORM_REQUIRED_PROBE_ID,
+      PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+      PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID,
+      DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID
+    ]);
+    const genericPickupEvidence = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'collect',
+              eventType: 'pickup.collectible.collected',
+              eventTypes: ['pickup.collectible.collected', WEAPON_REPLACEMENT_RULE_EVENT_TYPE],
+              pickupCollected: true,
+              pickupConsumed: true,
+              pickupStateChanged: true,
+              weaponReplaced: true,
+              replacementWeaponId: WEAPON_REPLACEMENT_RULE_REPLACEMENT_WEAPON_ID,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedWeaponSupply = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'collect_weapon_supply',
+              eventType: PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
+              eventTypes: [PICKUP_WEAPON_SUPPLY_EVENT_TYPE, 'pickup.collectible.collected'],
+              weaponSupplyAvailable: true,
+              weaponSupplyNodeId: PICKUP_WEAPON_SUPPLY_NODE_ID,
+              weaponSupplyPickupId: PICKUP_WEAPON_SUPPLY_PICKUP_ID,
+              weaponSupplyWeaponId: PICKUP_WEAPON_SUPPLY_WEAPON_ID,
+              weaponSupplyCollected: true,
+              weaponSupplyConsumed: true,
+              weaponSupplyGranted: true,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericPickupEvidence.status).toBe('failed');
+    expect(genericPickupEvidence.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericPickupEvidence.requiredResults.filter((entry) => entry.status === 'failed').map((entry) => entry.probeId)).toEqual([probeId]);
+    for (const dependencyProbeId of [
+      COLLISION_PLATFORM_REQUIRED_PROBE_ID,
+      PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+      DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID
+    ]) {
+      expect(genericPickupEvidence.requiredResults.find((entry) => entry.probeId === dependencyProbeId)).toMatchObject({
+        status: 'passed',
+        planHash: plan.planHash
+      });
+    }
+    expect(genericPickupEvidence.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'failed',
+      planHash: plan.planHash
+    });
+    expect(genericPickupEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.weapon_supply_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${PICKUP_WEAPON_SUPPLY_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.weapon_supply_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected weaponSupplyGranted=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.weapon_supply_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`expected weaponSupplyNodeId=${PICKUP_WEAPON_SUPPLY_NODE_ID}, observed <missing>`)
+        })
+      ])
+    );
+    expect(observedWeaponSupply.status).toBe('passed');
+    for (const dependencyProbeId of [
+      COLLISION_PLATFORM_REQUIRED_PROBE_ID,
+      PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+      DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID
+    ]) {
+      expect(observedWeaponSupply.requiredResults.find((entry) => entry.probeId === dependencyProbeId)).toMatchObject({
+        status: 'passed',
+        planHash: plan.planHash
+      });
+    }
+    expect(observedWeaponSupply.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'passed',
+      planHash: plan.planHash
+    });
+  });
+
+  it('keeps stale weapon supply probe evidence from satisfying the current QA plan', () => {
+    const capabilityId = 'pickup.weapon_supply.v1';
+    const probeId = PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID;
+    const packages = [
+      createCollisionPlatformPackageContract(),
+      createPickupCollectiblePackageContract(),
+      createDefaultStraightSingleWeaponPackageContract(),
+      createPickupWeaponSupplyPackageContract()
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const currentPlanProbeResults = buildCapabilityQaProbeResultsFromRuntimeEvidence({
+      plan,
+      evidence: {
+        status: 'PASSED',
+        observed: [
+          {
+            capabilityId: 'collision.platform.v1',
+            probeId: COLLISION_PLATFORM_REQUIRED_PROBE_ID,
+            action: 'collide',
+            eventType: 'collision.platform.grounded',
+            eventTypes: ['collision.platform.grounded'],
+            status: 'observed'
+          },
+          {
+            capabilityId: 'pickup.collectible.v1',
+            probeId: PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+            action: 'collect',
+            eventType: 'pickup.collectible.collected',
+            eventTypes: ['pickup.collectible.collected', 'pickup.collectible.state_changed'],
+            pickupCollected: true,
+            pickupConsumed: true,
+            pickupStateChanged: true,
+            status: 'observed'
+          },
+          {
+            capabilityId: 'weapon.default_straight_single.v1',
+            probeId: DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
+            action: 'fire',
+            eventType: 'player.fired',
+            eventTypes: ['player.fired', 'projectile.spawned'],
+            status: 'observed'
+          },
+          {
+            capabilityId,
+            probeId,
+            action: 'collect_weapon_supply',
+            eventType: PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
+            eventTypes: [PICKUP_WEAPON_SUPPLY_EVENT_TYPE, 'pickup.collectible.collected'],
+            weaponSupplyAvailable: true,
+            weaponSupplyNodeId: PICKUP_WEAPON_SUPPLY_NODE_ID,
+            weaponSupplyPickupId: PICKUP_WEAPON_SUPPLY_PICKUP_ID,
+            weaponSupplyWeaponId: PICKUP_WEAPON_SUPPLY_WEAPON_ID,
+            weaponSupplyCollected: true,
+            weaponSupplyConsumed: true,
+            weaponSupplyGranted: true,
+            status: 'observed'
+          }
+        ],
+        missingProbeIds: [],
+        mismatches: []
+      }
+    });
+    expect(currentPlanProbeResults.every((result) => result.planHash === plan.planHash)).toBe(true);
+    const unscopedProbeResults = currentPlanProbeResults.map((result) => {
+      if (result.probeId !== probeId) {
+        return result;
+      }
+      const { planHash: _planHash, ...unscopedResult } = result;
+      return unscopedResult;
+    });
+    const probeResults = currentPlanProbeResults.map((result) => (result.probeId === probeId ? { ...result, planHash: 'stale_plan_hash' } : result));
+    const unscopedReport = evaluateCapabilityQaReport({ plan, probeResults: unscopedProbeResults, requirePlanScopedResults: true });
+    const report = evaluateCapabilityQaReport({ plan, probeResults, requirePlanScopedResults: true });
+
+    expect(unscopedReport.status).toBe('failed');
+    expect(unscopedReport.missingRequiredProbeIds).toEqual([probeId]);
+    expect(unscopedReport.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.plan_hash`,
+          failureKind: 'PLAN_SCOPE_REQUIRED',
+          capabilityId,
+          expectedPlanHash: plan.planHash,
+          actualPlanHash: '<missing>',
+          resultSource: 'probe_result',
+          status: 'failed'
+        })
+      ])
+    });
+    expect(report.status).toBe('failed');
+    expect(report.missingRequiredProbeIds).toEqual([probeId]);
+    for (const dependencyProbeId of [
+      COLLISION_PLATFORM_REQUIRED_PROBE_ID,
+      PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+      DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID
+    ]) {
+      expect(report.requiredResults.find((entry) => entry.probeId === dependencyProbeId)).toMatchObject({
+        status: 'passed',
+        planHash: plan.planHash
+      });
+    }
+    expect(report.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.plan_hash`,
+          failureKind: 'PLAN_MISMATCH',
+          capabilityId,
+          expectedPlanHash: plan.planHash,
+          actualPlanHash: 'stale_plan_hash',
+          resultSource: 'probe_result',
+          status: 'failed',
+          message: expect.stringContaining('expected')
+        })
+      ])
+    });
+  });
+
+  it('does not treat stale dependency probe evidence as current weapon supply dependency success', () => {
+    const capabilityId = 'pickup.weapon_supply.v1';
+    const probeId = PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID;
+    const packages = [
+      createCollisionPlatformPackageContract(),
+      createPickupCollectiblePackageContract(),
+      createDefaultStraightSingleWeaponPackageContract(),
+      createPickupWeaponSupplyPackageContract()
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const currentPlanProbeResults = buildCapabilityQaProbeResultsFromRuntimeEvidence({
+      plan,
+      evidence: {
+        status: 'PASSED',
+        observed: [
+          {
+            capabilityId: 'collision.platform.v1',
+            probeId: COLLISION_PLATFORM_REQUIRED_PROBE_ID,
+            action: 'collide',
+            eventType: 'collision.platform.grounded',
+            eventTypes: ['collision.platform.grounded'],
+            status: 'observed'
+          },
+          {
+            capabilityId: 'pickup.collectible.v1',
+            probeId: PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+            action: 'collect',
+            eventType: 'pickup.collectible.collected',
+            eventTypes: ['pickup.collectible.collected', 'pickup.collectible.state_changed'],
+            pickupCollected: true,
+            pickupConsumed: true,
+            pickupStateChanged: true,
+            status: 'observed'
+          },
+          {
+            capabilityId: 'weapon.default_straight_single.v1',
+            probeId: DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
+            action: 'fire',
+            eventType: 'player.fired',
+            eventTypes: ['player.fired', 'projectile.spawned'],
+            status: 'observed'
+          },
+          {
+            capabilityId,
+            probeId,
+            action: 'collect_weapon_supply',
+            eventType: PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
+            eventTypes: [PICKUP_WEAPON_SUPPLY_EVENT_TYPE, 'pickup.collectible.collected'],
+            weaponSupplyAvailable: true,
+            weaponSupplyNodeId: PICKUP_WEAPON_SUPPLY_NODE_ID,
+            weaponSupplyPickupId: PICKUP_WEAPON_SUPPLY_PICKUP_ID,
+            weaponSupplyWeaponId: PICKUP_WEAPON_SUPPLY_WEAPON_ID,
+            weaponSupplyCollected: true,
+            weaponSupplyConsumed: true,
+            weaponSupplyGranted: true,
+            status: 'observed'
+          }
+        ],
+        missingProbeIds: [],
+        mismatches: []
+      }
+    });
+    expect(currentPlanProbeResults.every((result) => result.planHash === plan.planHash)).toBe(true);
+    const probeResults = currentPlanProbeResults.map((result) =>
+      result.probeId === PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID ? { ...result, planHash: 'stale_dependency_plan_hash' } : result
+    );
+    const report = evaluateCapabilityQaReport({ plan, probeResults, requirePlanScopedResults: true });
+
+    expect(report.status).toBe('failed');
+    expect(report.missingRequiredProbeIds).toEqual([PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID]);
+    expect(report.requiredResults.find((entry) => entry.probeId === PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}.plan_hash`,
+          failureKind: 'PLAN_MISMATCH',
+          capabilityId: 'pickup.collectible.v1',
+          expectedPlanHash: plan.planHash,
+          actualPlanHash: 'stale_dependency_plan_hash',
+          resultSource: 'probe_result',
+          status: 'failed',
+          message: expect.stringContaining('stale_dependency_plan_hash')
+        })
+      ])
+    });
+    expect(report.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'passed',
+      planHash: plan.planHash
+    });
   });
 
   it('does not verify artifact lineage no-manual-patch when lineage evidence lacks no-manual-patch state fields', () => {

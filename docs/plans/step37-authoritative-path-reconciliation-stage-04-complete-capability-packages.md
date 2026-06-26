@@ -6167,6 +6167,162 @@ next_action=CONTINUE_PARENT_LOOP
 next_atomic_step=RUN_PARENT_LOOP_DRIVER_TO_SELECT_NEXT_UNMET_CHECKPOINT
 ```
 
+## Stage 4 Implementation: `pickup.weapon_supply.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.pickup_weapon_supply_v1.complete_supported_package_slice
+parent_stage_id=stage4
+capability_id=pickup.weapon_supply.v1
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+post_record_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=not_closed
+global_exit_conditions_met=false
+user_input_required=false
+next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
+active_skill_path=/Users/dahufa/.agents/skills/code-change-discipline/SKILL.md
+active_skill_revision_type=sha256_bundle
+active_skill_bundle_format=skill-bundle-sha256-v1
+active_skill_file_count=1
+active_skill_bundle_digest=f35b98e8b607241dbae1772f2b2d0c2896036f7299c1db60a3e644f8bda3a5ef
+active_skill_md_sha256=dd5abe3945818f6feefbe77e30c02432b014a76bacb7e39afe814103659100db
+review_skill_path=/Users/dahufa/.agents/skills/review-gated-delivery/SKILL.md
+review_skill_revision_type=sha256_bundle
+review_skill_bundle_format=skill-bundle-sha256-v1
+review_skill_file_count=7
+review_skill_bundle_digest=c4575bdd7f1f34e7f1177bee9756e51e6a497f4abfb2b6a340ebca1b95918946
+review_skill_md_sha256=27303f4b666d053c6d08e93a4b6ba7a6dbb7041ab7a264425bfaaae0bebab167
+```
+
+`pickup.weapon_supply.v1` was selected by the Parent Loop Driver after the `hazard.timed_explosion.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
+
+Minimum closure requirements:
+
+1. Add a package-owned weapon supply capability contract with stable capability identity, runtime system identity, weapon supply verification event identity, required probe id, and required QA evidence id.
+2. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `pickup.weapon_supply.v1` only when the runtime evidence includes weapon-supply-specific grant state fields, not generic pickup or replacement evidence.
+5. Require weapon supply state fields: `weaponSupplyAvailable=true`, matching `weaponSupplyNodeId`, matching `weaponSupplyPickupId`, matching `weaponSupplyWeaponId`, `weaponSupplyCollected=true`, `weaponSupplyConsumed=true`, and `weaponSupplyGranted=true`.
+6. Keep the dependency graph fail-closed: `pickup.weapon_supply.v1` depends on `pickup.collectible.v1` and `weapon.default_straight_single.v1`; `pickup.collectible.v1` transitively depends on `collision.platform.v1`; missing transitive dependency must remain `MISSING_CAPABILITY`, and package-semver-style capability ranges such as `^1.0.0` must remain `VERSION_CONFLICT`.
+7. Add plan freshness protection for current QA evidence: runtime evidence builder output carries the current `planHash`; explicit wrong-plan results fail closed with `PLAN_MISMATCH`; absent `planHash` remains legacy-compatible by default but cannot satisfy plan-sensitive same-plan assertions.
+8. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/pickup-weapon-supply-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/pickup-weapon-supply-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/pickup-collectible-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`.
+- `tests/contracts/contract-freeze.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createPickupWeaponSupplyPackageContract()`.
+- Runtime module identity: `PICKUP_WEAPON_SUPPLY_RUNTIME_SYSTEM_ID=pickup.weapon_supply`.
+- Runtime evidence event: `PICKUP_WEAPON_SUPPLY_EVENT_TYPE=pickup.weapon_supply.verified`.
+- Required probe: `PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID=pickup.weapon_supply.v1.supply.browser_qa.v1`.
+- Required state fields: `weaponSupplyAvailable`, `weaponSupplyNodeId`, `weaponSupplyPickupId`, `weaponSupplyWeaponId`, `weaponSupplyCollected`, `weaponSupplyConsumed`, and `weaponSupplyGranted`.
+- Dependency chain: `pickup.weapon_supply.v1 -> pickup.collectible.v1 -> collision.platform.v1`, plus direct `weapon.default_straight_single.v1`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares weapon supply grant fields and attaches the current `planHash` to builder-generated probe results; `evaluateCapabilityQaReport()` fail-closes explicit wrong-plan results and can require plan-scoped results for plan-sensitive checks.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for the same report/run input; it does not mutate static `completeSupported`.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned pickup weapon supply capability contract, runtime system identity, weapon supply verification event, required probe id, required evidence id, runtime evidence fields for weapon grant state, and optional `planHash` freshness on QA probe results. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, Step37 remaining-inventory driver, telemetry/event freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves weapon-supply grant state fields and required probe verification. |
+| Authority | Package-owned QA evidence defines the capability authority: generic pickup, generic supply, weapon replacement, or dependency success evidence is insufficient unless the `pickup.weapon_supply.verified` evidence also proves the configured supply node/pickup/weapon grant fields under the current plan. |
+| Legacy strategy | Legacy pickup or weapon replacement paths remain non-authoritative for this capability unless the required weapon-supply probe evidence is present. |
+| Failure policy | Missing package contract, missing transitive dependency, capability-version range mismatch, missing weapon supply event, missing grant state fields, wrong capability/probe identity, wrong planHash, or stale/unscoped evidence in a plan-sensitive check keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, registry support advancement without complete support, resolver fail-closed behavior for missing transitive dependency and wrong range style, QA reader positive/negative weapon supply field behavior, planHash freshness behavior, target-profile overlay positive/negative behavior, remaining-inventory selection, and event/schema freeze coverage. |
+| Rollback | Reverting this slice removes only the pickup weapon supply package/probe/reader wiring and returns `pickup.weapon_supply.v1` to unsupported evidence without changing business runtime gameplay templates. |
+
+Focused validation before closure-record sync:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-qa-probes.test.ts --testNamePattern "planHash|weapon supply|transitive collision|package semver|full dependency chain|stale|legacy unscoped"
+exitCode=0
+duration=real 1.41s
+result=PASS: 1 file / 7 tests
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 1.93s
+result=PASS: 8 files / 211 tests
+```
+
+Full local validation before closure-record sync:
+
+```text
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 11.78s
+result=PASS: 98 files / 1237 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 63.99s
+result=PASS: contracts 98 files / 1237 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 7.74s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.03s
+result=PASS
+
+command=node --input-type=module -e "<deterministic Skill bundle digest for code-change-discipline and review-gated-delivery>"
+exitCode=0
+duration=real 0.07s
+result=PASS: code-change-discipline skill_bundle_format=skill-bundle-sha256-v1 skill_file_count=1 skill_bundle_digest=f35b98e8b607241dbae1772f2b2d0c2896036f7299c1db60a3e644f8bda3a5ef; SKILL.md sha256=dd5abe3945818f6feefbe77e30c02432b014a76bacb7e39afe814103659100db. review-gated-delivery skill_bundle_format=skill-bundle-sha256-v1 skill_file_count=7 skill_bundle_digest=c4575bdd7f1f34e7f1177bee9756e51e6a497f4abfb2b6a340ebca1b95918946; SKILL.md sha256=27303f4b666d053c6d08e93a4b6ba7a6dbb7041ab7a264425bfaaae0bebab167.
+
+command=npx tsx -e "<pickup.weapon_supply.v1 support summary and remaining inventory>"
+exitCode=0
+duration=real 0.57s
+result=PASS: currentCheckpointId=stage4.pickup_weapon_supply_v1.complete_supported_package_slice; currentAtomicStep="Stage 4 pickup.weapon_supply.v1 complete-supported package slice implementation atomic step"; committedClosedCapabilityCount=34; registeredCapabilityCount=35; completeSupportedCount=0; pickup.weapon_supply.v1 classification=DEFERRED; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; selectionFailure=null.
+```
+
+Focused set selection:
+
+- `gameplay-capability-package-contract.test.ts`: validates the new pickup weapon supply package contract, required evidence id, runtime system, weapon supply verification event, dependency declarations, weapon supply assertion fields, and required probe.
+- `gameplay-capability-qa-probes.test.ts`: validates full dependency-chain resolution, resolver fail-closed behavior for missing `collision.platform.v1`, `VERSION_CONFLICT` for package-semver-style capability ranges, dependency probe success isolation, generic pickup/replacement negative behavior, current-plan `planHash` binding, wrong-plan rejection, and legacy unscoped compatibility outside plan-sensitive checks.
+- `generation-target-profile-runtime-support.test.ts`: validates same-run overlay positive/negative behavior, generic pickup negative behavior, required probe blockers, and preservation of static `completeSupported=false`.
+- `gameplay-capability-registry.test.ts`: validates static registry evidence and required probe wiring without static support promotion.
+- `deepseek-authoritative-dsl-support.test.ts`: validates support dimensions and prerequisites for the target capability.
+- `dsl-consumption-report.test.ts`: validates the consumption report reads the updated package-backed support dimensions.
+- `step37-remaining-inventory-driver.test.ts`: validates parent-loop inventory consumption after the registry count advances to 35 and selects the current pickup weapon supply checkpoint from committed closure history.
+- `contract-freeze.test.ts`: included because this diff introduces telemetry/runtime event identity `pickup.weapon_supply.verified` and QA evidence fields, so focused validation follows the actual schema and event-contract impact surface.
+
+Post-record validation requirement:
+
+- This closure record changes the final tree. Before creating the immutable candidate commit, focused closure contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, final diff range check, Skill freshness, capability support alignment, and Parent Loop inventory alignment must be re-run against the final tree.
+- Candidate commit must not write its own SHA into this candidate record.
+- Oracle request must bind the candidate commit SHA, `reviewed_skill_revision=f35b98e8b607241dbae1772f2b2d0c2896036f7299c1db60a3e644f8bda3a5ef`, `reviewed_review_skill_revision=c4575bdd7f1f34e7f1177bee9756e51e6a497f4abfb2b6a340ebca1b95918946`, and the current repo tree.
+- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+- Oracle PASS is required before any receipt may update `closure_status=closed`.
+
 ## Step37 Current Long Loop Skill Freshness Revalidation
 
 - checkpoint_id: `hierarchical_completion_parent_loop_guardrail`.

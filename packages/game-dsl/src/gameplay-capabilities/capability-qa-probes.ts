@@ -102,8 +102,20 @@ export type CapabilityRuntimeQaPlan = {
 export type CapabilityQaProbeResult = {
   probeId: string;
   status: 'passed' | 'failed' | 'skipped';
-  assertionResults?: Array<{ assertionId: string; status: 'passed' | 'failed'; message?: string }>;
+  planHash?: string;
+  assertionResults?: CapabilityQaAssertionResult[];
   observationRefs?: string[];
+};
+
+export type CapabilityQaAssertionResult = {
+  assertionId: string;
+  status: 'passed' | 'failed';
+  message?: string;
+  failureKind?: 'PLAN_MISMATCH' | 'PLAN_SCOPE_REQUIRED';
+  capabilityId?: string;
+  expectedPlanHash?: string;
+  actualPlanHash?: string;
+  resultSource?: 'probe_result';
 };
 
 export type CapabilityRuntimeObservedProbeEvidence = {
@@ -121,6 +133,13 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   pickupCollected?: boolean;
   pickupConsumed?: boolean;
   pickupStateChanged?: boolean;
+  weaponSupplyAvailable?: boolean;
+  weaponSupplyNodeId?: string;
+  weaponSupplyPickupId?: string;
+  weaponSupplyWeaponId?: string;
+  weaponSupplyCollected?: boolean;
+  weaponSupplyConsumed?: boolean;
+  weaponSupplyGranted?: boolean;
   orderedWaveSequence?: boolean;
   gateTriggered?: boolean;
   waveSpawned?: boolean;
@@ -352,10 +371,20 @@ export function buildCapabilityRuntimeQaPlan(input: {
   return { ...payload, planHash: hashStableJson(payload) };
 }
 
-export function evaluateCapabilityQaReport(input: { plan: CapabilityRuntimeQaPlan; probeResults: readonly CapabilityQaProbeResult[] }): CapabilityQaReport {
-  const results = new Map(input.probeResults.map((result) => [result.probeId, result]));
+export function evaluateCapabilityQaReport(input: {
+  plan: CapabilityRuntimeQaPlan;
+  probeResults: readonly CapabilityQaProbeResult[];
+  requirePlanScopedResults?: boolean;
+}): CapabilityQaReport {
   const requiredPlanProbes = [...input.plan.requiredProbes, ...input.plan.profileScenarioProbes.filter((probe) => probe.severity === 'required')];
   const optionalPlanProbes = [...input.plan.optionalProbes, ...input.plan.profileScenarioProbes.filter((probe) => probe.severity === 'optional')];
+  const planProbesById = new Map([...requiredPlanProbes, ...optionalPlanProbes].map((probe) => [probe.id, probe]));
+  const results = new Map(
+    input.probeResults.map((result) => [
+      result.probeId,
+      bindProbeResultToPlan(result, input.plan.planHash, planProbesById.get(result.probeId), input.requirePlanScopedResults === true)
+    ])
+  );
   const requiredResults = requiredPlanProbes.map((probe) => results.get(probe.id) ?? { probeId: probe.id, status: 'skipped' as const });
   const optionalResults = optionalPlanProbes.map((probe) => results.get(probe.id) ?? { probeId: probe.id, status: 'skipped' as const });
   const requiredAssertionIds = buildPlanAssertionMap(requiredPlanProbes);
@@ -394,11 +423,15 @@ export function buildCapabilityQaProbeResultsFromRuntimeEvidence(input: {
 
   const observedByProbeId = new Map(input.evidence.observed.map((probe) => [probe.probeId, probe]));
   return [...input.plan.requiredProbes, ...input.plan.optionalProbes]
-    .flatMap((probe) => buildProbeResultFromRuntimeEvidence(probe, observedByProbeId.get(probe.id)))
+    .flatMap((probe) => buildProbeResultFromRuntimeEvidence(probe, observedByProbeId.get(probe.id), input.plan.planHash))
     .sort(compareProbeResults);
 }
 
-function buildProbeResultFromRuntimeEvidence(probe: CapabilityQaPlanProbe, observed: CapabilityRuntimeObservedProbeEvidence | undefined): CapabilityQaProbeResult[] {
+function buildProbeResultFromRuntimeEvidence(
+  probe: CapabilityQaPlanProbe,
+  observed: CapabilityRuntimeObservedProbeEvidence | undefined,
+  planHash: string
+): CapabilityQaProbeResult[] {
   if (observed === undefined) {
     return [];
   }
@@ -443,10 +476,43 @@ function buildProbeResultFromRuntimeEvidence(probe: CapabilityQaPlanProbe, obser
     {
       probeId: probe.id,
       status: assertionResults.every((assertion) => assertion.status === 'passed') ? 'passed' : 'failed',
+      planHash,
       assertionResults,
       observationRefs: observed.sourceRef === undefined ? [...eventTypes].sort() : [observed.sourceRef]
     }
   ];
+}
+
+function bindProbeResultToPlan(
+  result: CapabilityQaProbeResult,
+  planHash: string,
+  probe: CapabilityQaPlanProbe | undefined,
+  requirePlanScopedResult: boolean
+): CapabilityQaProbeResult {
+  if (result.planHash === planHash) {
+    return result;
+  }
+  if (result.planHash === undefined && !requirePlanScopedResult) {
+    return result;
+  }
+  const planFailureKind = result.planHash === undefined ? 'PLAN_SCOPE_REQUIRED' : 'PLAN_MISMATCH';
+  return {
+    ...result,
+    status: 'failed',
+    assertionResults: [
+      ...(result.assertionResults ?? []),
+      {
+        assertionId: `${result.probeId}.plan_hash`,
+        status: 'failed',
+        failureKind: planFailureKind,
+        capabilityId: probe?.capabilityId,
+        expectedPlanHash: planHash,
+        actualPlanHash: result.planHash ?? '<missing>',
+        resultSource: 'probe_result',
+        message: `Probe result planHash expected ${planHash}, observed ${result.planHash ?? '<missing>'}.`
+      }
+    ]
+  };
 }
 
 function buildRuntimeEvidenceAssertionFailureMessage(input: {
@@ -481,6 +547,13 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('pickupCollected', expected, observed.pickupCollected),
     ...compareExpectedBooleanField('pickupConsumed', expected, observed.pickupConsumed),
     ...compareExpectedBooleanField('pickupStateChanged', expected, observed.pickupStateChanged),
+    ...compareExpectedBooleanField('weaponSupplyAvailable', expected, observed.weaponSupplyAvailable),
+    ...compareExpectedStringField('weaponSupplyNodeId', expected, observed.weaponSupplyNodeId),
+    ...compareExpectedStringField('weaponSupplyPickupId', expected, observed.weaponSupplyPickupId),
+    ...compareExpectedStringField('weaponSupplyWeaponId', expected, observed.weaponSupplyWeaponId),
+    ...compareExpectedBooleanField('weaponSupplyCollected', expected, observed.weaponSupplyCollected),
+    ...compareExpectedBooleanField('weaponSupplyConsumed', expected, observed.weaponSupplyConsumed),
+    ...compareExpectedBooleanField('weaponSupplyGranted', expected, observed.weaponSupplyGranted),
     ...compareExpectedBooleanField('orderedWaveSequence', expected, observed.orderedWaveSequence),
     ...compareExpectedBooleanField('gateTriggered', expected, observed.gateTriggered),
     ...compareExpectedBooleanField('waveSpawned', expected, observed.waveSpawned),
