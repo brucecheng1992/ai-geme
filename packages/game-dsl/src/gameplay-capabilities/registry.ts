@@ -22,6 +22,10 @@ import {
   createDefaultStraightSingleWeaponPackageContract
 } from './default-straight-single-weapon-package.js';
 import {
+  WEAPON_DEATH_RESET_REQUIRED_PROBE_ID,
+  createWeaponDeathResetPackageContract
+} from './weapon-death-reset-package.js';
+import {
   COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID,
   createCombatAirborneFirePackageContract
 } from './combat-airborne-fire-package.js';
@@ -431,6 +435,19 @@ const defaultStraightSingleWeaponPackageEvidence: GameplayCapabilityEvidence = d
 const defaultStraightSingleWeaponPackageQa: GameplayCapabilityQaEvidence = defaultStraightSingleWeaponPackageReport.supportEligible
   ? { requiredProbeIds: [DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const weaponDeathResetPackageReport = validateGameplayCapabilityPackage(createWeaponDeathResetPackageContract());
+const weaponDeathResetPackageEvidence: GameplayCapabilityEvidence = weaponDeathResetPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const weaponDeathResetPackageQa: GameplayCapabilityQaEvidence = weaponDeathResetPackageReport.supportEligible
+  ? { requiredProbeIds: [WEAPON_DEATH_RESET_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const combatAirborneFirePackageReport = validateGameplayCapabilityPackage(createCombatAirborneFirePackageContract());
 const combatAirborneFirePackageEvidence: GameplayCapabilityEvidence = combatAirborneFirePackageReport.supportEligible
   ? {
@@ -694,7 +711,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     healthPlayerHealthPointsPackageQa
   ),
   contractSeeded('weapon.cooldown.v1', 'weapon', 'Weapon cooldown', [topDownActionArcade, phaser2dActionArcade], ['shooter.v1', 'side_scrolling_run_and_gun.v1'], []),
-  planned('weapon.death_reset.v1', 'weapon', 'Weapon reset on death', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),
+  planned(
+    'weapon.death_reset.v1',
+    'weapon',
+    'Weapon reset on death',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    weaponDeathResetPackageEvidence,
+    weaponDeathResetPackageQa
+  ),
   planned(
     'weapon.default_straight_single.v1',
     'weapon',

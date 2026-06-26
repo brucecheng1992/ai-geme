@@ -349,14 +349,32 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
     });
   });
 
+  it('registers weapon death reset as package-backed but still incomplete support', () => {
+    const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
+    const capabilities = new Map(support.capabilities.map((capability) => [capability.capabilityId, capability]));
+
+    expect(capabilities.get('weapon.death_reset.v1')).toMatchObject({
+      registered: true,
+      classification: 'DEFERRED',
+      completeSupported: false,
+      legacyBacked: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+  });
+
   it('keeps remaining M3 weapon lifecycle capabilities deferred without support evidence', () => {
     const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
     const capabilities = new Map(support.capabilities.map((capability) => [capability.capabilityId, capability]));
 
-    for (const capabilityId of [
-      'weapon.death_reset.v1',
-      'weapon.replacement_rule.v1'
-    ]) {
+    for (const capabilityId of ['weapon.replacement_rule.v1']) {
       expect(capabilities.get(capabilityId)).toMatchObject({
         registered: true,
         classification: 'DEFERRED',

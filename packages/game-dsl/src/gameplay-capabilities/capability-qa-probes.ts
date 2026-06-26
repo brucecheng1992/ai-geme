@@ -126,6 +126,10 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   waveSpawned?: boolean;
   sequenceIndex?: number;
   waveId?: string;
+  weaponReset?: boolean;
+  currentWeaponId?: string;
+  initialWeaponId?: string;
+  previousWeaponId?: string;
   status?: string;
   sourceRef?: string;
 };
@@ -377,7 +381,11 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('gateTriggered', expected, observed.gateTriggered),
     ...compareExpectedBooleanField('waveSpawned', expected, observed.waveSpawned),
     ...compareExpectedNumberField('sequenceIndex', expected, observed.sequenceIndex),
-    ...compareExpectedStringField('waveId', expected, observed.waveId)
+    ...compareExpectedStringField('waveId', expected, observed.waveId),
+    ...compareExpectedBooleanField('weaponReset', expected, observed.weaponReset),
+    ...compareExpectedStringField('currentWeaponId', expected, observed.currentWeaponId),
+    ...compareExpectedStringField('initialWeaponId', expected, observed.initialWeaponId),
+    ...compareExpectedStringField('previousWeaponId', expected, observed.previousWeaponId)
   ];
 }
 

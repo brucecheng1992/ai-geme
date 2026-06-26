@@ -5084,3 +5084,159 @@ parent_loop:
 ```
 
 Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4.profile_deepseek_run_and_gun_validation_v1.complete_supported_package_slice` after candidate commit creation, local validation, Oracle PASS, and receipt-only metadata update. It does not close Stage 4, Step37, production default cutover, legacy authoritative path exit, Stage 5, or final global closure. Parent Loop Driver must continue with `stage4.weapon_death_reset_v1.complete_supported_package_slice` while global exits remain false and no verified user blocker exists.
+
+## Stage 4 Closure Implementation: weapon.death_reset.v1 Complete-Supported Package Slice
+
+Checkpoint identity:
+
+```yaml
+closure_scope: atomic_step
+atomic_step:
+  id: stage4.weapon_death_reset_v1.complete_supported_package_slice
+  status: locally_validated
+  implementation_status: complete
+  local_validation_status: passed
+  candidate_status: ready_for_commit
+  oracle_status: not_submitted
+parent_stage:
+  id: stage4
+  status: running
+  exit_conditions_met: false
+parent_loop:
+  id: step37
+  status: running
+  global_exit_conditions_met: false
+  user_input_required: false
+  next_action: CONTINUE_PARENT_LOOP
+  next_atomic_step: stage4.weapon_death_reset_v1.complete_supported_package_slice
+  next_atomic_step_scope: implementation
+```
+
+Current Stage review conclusion:
+
+`weapon.death_reset.v1` was selected by the Parent Loop Driver after the `profile.deepseek_run_and_gun_validation.v1` receipt. Before this implementation, support summary reported `schema_expressible=false`, `normalized=false`, `compiled=false`, `runtime_consumed=false`, and `qa_observed=false`, with missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
+
+Minimum closure requirements:
+
+1. Add a package-owned weapon death reset contract with stable capability identity, runtime system identity, death-trigger event identity, restored-weapon event identity, required probe id, and required QA evidence id.
+2. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `weapon.death_reset.v1` only when `player.defeated` and `weapon.death_reset.restored` evidence are present.
+5. Require restored-weapon state fields: `weaponReset=true`, `currentWeaponId=<initial weapon>`, `initialWeaponId=<initial weapon>`, and `previousWeaponId=<non-initial weapon>`.
+6. Add a negative regression proving the restore event without reset state fields keeps the capability unverified and emits the required missing-probe blocker.
+7. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/weapon-death-reset-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/weapon-death-reset-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createWeaponDeathResetPackageContract()`.
+- Runtime module identity: `WEAPON_DEATH_RESET_RUNTIME_SYSTEM_ID=weapon.death_reset`.
+- Trigger event: `WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE=player.defeated`.
+- Restored-state event: `WEAPON_DEATH_RESET_EVENT_TYPE=weapon.death_reset.restored`.
+- Required probe: `WEAPON_DEATH_RESET_REQUIRED_PROBE_ID=weapon.death_reset.v1.restore.browser_qa.v1`.
+- Required state fields: `weaponReset`, `currentWeaponId`, `initialWeaponId`, and `previousWeaponId`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares the reset state fields and fails the required probe when any field is missing or mismatched.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for the same run; it does not mutate static `completeSupported`.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned weapon death reset capability contract, runtime system identity, death-trigger event, restored-state event, required probe id, required evidence id, and runtime evidence fields for reset state. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, Step37 remaining-inventory driver, telemetry/event freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves both death trigger and restored weapon state. |
+| Authority | Canonical DSL `capability_configs.weapon_death_reset` and package-owned QA evidence define the semantic authority for reset-on-death behavior. |
+| Legacy strategy | Existing pickup or default weapon support cannot overclaim reset-on-death. Legacy weapon behavior remains non-authoritative for this capability. |
+| Failure policy | Missing package contract, missing death event, missing restored event, missing reset state fields, or wrong capability/probe identity keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, registry support advancement without complete support, QA reader positive/negative state-field behavior, target-profile overlay positive/negative behavior, canonical missing-probe ordering, and event/schema freeze coverage. |
+| Rollback | Reverting this slice removes only the death-reset package/probe/reader wiring and returns `weapon.death_reset.v1` to deferred unsupported evidence without changing business runtime gameplay templates. |
+
+Focused validation completed so far:
+
+```text
+command=npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=1
+duration=1.16s
+result=RED: weapon death reset package/runtime module did not exist; registry and target support summary still reported no support evidence.
+
+command=npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=1.17s
+result=PASS: 7 files / 113 tests
+```
+
+Focused set selection:
+
+- `gameplay-capability-package-contract.test.ts`: validates the new death-reset package contract, required evidence id, runtime system, trigger event, restored-state event, and required probe.
+- `gameplay-capability-qa-probes.test.ts`: validates that restore event evidence without reset state fields fails and that full reset state evidence passes.
+- `generation-target-profile-runtime-support.test.ts`: validates same-run overlay positive/negative behavior, canonical missing-probe order, and preservation of static `completeSupported=false`.
+- `deepseek-authoritative-dsl-support.test.ts`: validates registry support dimensions and prerequisites for the target capability.
+- `gameplay-capability-registry.test.ts`: validates static registry evidence and required probe wiring without static support promotion.
+- `step37-remaining-inventory-driver.test.ts`: validates parent-loop inventory consumption for same-run observed-only slices.
+- `contract-freeze.test.ts`: included because this diff introduces telemetry/runtime event identities and QA evidence fields, so the focused set follows the actual schema and event-contract impact surface.
+
+External Skill freshness:
+
+```text
+command={ for f in /Users/dahufa/.agents/skills/code-change-discipline/SKILL.md /Users/dahufa/.agents/skills/review-gated-delivery/SKILL.md /Users/dahufa/.agents/skills/review-gated-delivery/assets/*.txt /Users/dahufa/.agents/skills/review-gated-delivery/assets/*.md; do ...; done; } | LC_ALL=C sort > /tmp/step37_skill_manifest.tsv && wc -l /tmp/step37_skill_manifest.tsv && shasum -a 256 /tmp/step37_skill_manifest.tsv
+exitCode=0
+skill_bundle_format=step37_manifest_v1_path_size_sha
+skill_file_count=8
+skill_bundle_digest=aea1af2a6b7304e666193a0b176c6187a49226305edba9bdc01d89e809f24faf
+```
+
+Local validation completed before candidate:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 1.70s
+result=PASS: 7 files / 113 tests
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 8.43s
+result=PASS: 98 files / 1146 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 57.74s
+result=PASS: contracts 98 files / 1146 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.28s
+result=PASS: root, maker-api, and maker-workbench TypeScript checks passed
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.02s
+result=PASS
+
+command=git status --short && git diff --stat && git diff --name-only
+exitCode=0
+result=only expected Stage 4 death-reset docs/package/helper/export/registry/contract files are modified or untracked before candidate commit; no business runtime, Stage 5, AGENTS.md, external Skill, or unrelated files are modified.
+
+command={ for f in /Users/dahufa/.agents/skills/code-change-discipline/SKILL.md /Users/dahufa/.agents/skills/review-gated-delivery/SKILL.md /Users/dahufa/.agents/skills/review-gated-delivery/assets/*.txt /Users/dahufa/.agents/skills/review-gated-delivery/assets/*.md; do ...; done; } | LC_ALL=C sort > /tmp/step37_skill_manifest.tsv && wc -l /tmp/step37_skill_manifest.tsv && shasum -a 256 /tmp/step37_skill_manifest.tsv
+exitCode=0
+result=PASS: skill_bundle_format=step37_manifest_v1_path_size_sha; skill_file_count=8; skill_bundle_digest=aea1af2a6b7304e666193a0b176c6187a49226305edba9bdc01d89e809f24faf.
+
+command=npx tsx --eval 'import { buildDeepSeekRunAndGunValidationProfileSupportSummary, buildGameplayCapabilityInventoryReport } from "./packages/game-dsl/src/index.ts"; ...'
+exitCode=0
+result=weapon.death_reset.v1 evidence={schema_expressible:true,normalized:true,compiled:true,runtime_consumed:true,qa_observed:false}; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false; completeSupportedCount=0
+```
+
+Candidate readiness assessment: `READY_FOR_COMMIT`. Oracle request has not been submitted yet, so `oracle_status=not_submitted`. The candidate must not write its own commit SHA into this same candidate tree; the immutable repo candidate SHA and Skill bundle digest will be bound by the external Oracle review record after candidate commit creation.

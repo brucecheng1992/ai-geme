@@ -7,6 +7,12 @@ import {
   evaluateCapabilityQaReport,
   resolveGameplayCapabilityGraph,
   validateGameplayCapabilityPackage,
+  WEAPON_DEATH_RESET_EVENT_TYPE,
+  WEAPON_DEATH_RESET_INITIAL_WEAPON_ID,
+  WEAPON_DEATH_RESET_NON_INITIAL_WEAPON_ID,
+  WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE,
+  WEAPON_DEATH_RESET_REQUIRED_PROBE_ID,
+  createWeaponDeathResetPackageContract,
   type CapabilityQaProbeDescriptor,
   type GameplayCapabilityPackageContract
 } from '../../packages/game-dsl/src/index.js';
@@ -574,6 +580,75 @@ describe('Capability-owned runtime QA probes', () => {
       })
     ]);
     expect(observedOrder.status).toBe('passed');
+  });
+
+  it('does not verify weapon death reset when restore evidence lacks reset state fields', () => {
+    const capabilityId = 'weapon.death_reset.v1';
+    const probeId = WEAPON_DEATH_RESET_REQUIRED_PROBE_ID;
+    const deathResetPackage = createWeaponDeathResetPackageContract();
+    const packages = [{ ...deathResetPackage, dependencies: [] }];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingResetState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'restore_initial_weapon',
+              eventType: WEAPON_DEATH_RESET_EVENT_TYPE,
+              eventTypes: [WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE, WEAPON_DEATH_RESET_EVENT_TYPE],
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedResetState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'restore_initial_weapon',
+              eventType: WEAPON_DEATH_RESET_EVENT_TYPE,
+              eventTypes: [WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE, WEAPON_DEATH_RESET_EVENT_TYPE],
+              weaponReset: true,
+              currentWeaponId: WEAPON_DEATH_RESET_INITIAL_WEAPON_ID,
+              initialWeaponId: WEAPON_DEATH_RESET_INITIAL_WEAPON_ID,
+              previousWeaponId: WEAPON_DEATH_RESET_NON_INITIAL_WEAPON_ID,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingResetState.status).toBe('failed');
+    expect(missingResetState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingResetState.requiredResults[0]?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.restored_initial_weapon`,
+        status: 'failed',
+        message: expect.stringContaining('expected weaponReset=true, observed <missing>')
+      })
+    ]));
+    expect(observedResetState.status).toBe('passed');
   });
 });
 

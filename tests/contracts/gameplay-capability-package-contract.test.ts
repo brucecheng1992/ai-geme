@@ -14,6 +14,18 @@ import {
   DEFAULT_STRAIGHT_SINGLE_WEAPON_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/default-straight-single-weapon-runtime-module.js';
 import {
+  WEAPON_DEATH_RESET_PACKAGE_REQUIRED_EVIDENCE_ID,
+  WEAPON_DEATH_RESET_REQUIRED_PROBE_ID,
+  createWeaponDeathResetPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/weapon-death-reset-package.js';
+import {
+  WEAPON_DEATH_RESET_EVENT_TYPE,
+  WEAPON_DEATH_RESET_INITIAL_WEAPON_ID,
+  WEAPON_DEATH_RESET_NON_INITIAL_WEAPON_ID,
+  WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE,
+  WEAPON_DEATH_RESET_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/weapon-death-reset-runtime-module.js';
+import {
   CAMERA_SIDE_FOLLOW_PACKAGE_REQUIRED_EVIDENCE_ID,
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   createCameraSideFollowPackageContract
@@ -160,6 +172,52 @@ describe('Gameplay capability package contract', () => {
       capabilityId: 'weapon.default_straight_single.v1',
       severity: 'required',
       observations: expect.arrayContaining([expect.objectContaining({ runtimeSystemId: DEFAULT_STRAIGHT_SINGLE_WEAPON_RUNTIME_SYSTEM_ID })])
+    });
+  });
+
+  it('accepts the weapon death reset package-owned QA contract', () => {
+    const contract = createWeaponDeathResetPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === WEAPON_DEATH_RESET_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'weapon.death_reset.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([WEAPON_DEATH_RESET_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: WEAPON_DEATH_RESET_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'weapon.death_reset.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE,
+          parameters: expect.objectContaining({
+            previousWeaponId: WEAPON_DEATH_RESET_NON_INITIAL_WEAPON_ID,
+            initialWeaponId: WEAPON_DEATH_RESET_INITIAL_WEAPON_ID
+          })
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: WEAPON_DEATH_RESET_RUNTIME_SYSTEM_ID,
+          ref: WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE
+        }),
+        expect.objectContaining({
+          kind: 'state_probe',
+          runtimeSystemId: WEAPON_DEATH_RESET_RUNTIME_SYSTEM_ID,
+          ref: WEAPON_DEATH_RESET_EVENT_TYPE
+        })
+      ]
     });
   });
 
