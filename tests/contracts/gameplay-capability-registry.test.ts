@@ -34,6 +34,7 @@ import {
   PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID,
   PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID,
   REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID,
+  RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   WEAPON_DEATH_RESET_REQUIRED_PROBE_ID,
   WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID,
@@ -150,6 +151,11 @@ describe('Gameplay capability registry', () => {
     expect(findGameplayCapability('review.oracle_final_gate.v1')).toMatchObject({
       status: 'planned',
       domain: 'review',
+      legacyRuntimeCapabilities: []
+    });
+    expect(findGameplayCapability('rules.checkpoint_restore.v1')).toMatchObject({
+      status: 'planned',
+      domain: 'rules',
       legacyRuntimeCapabilities: []
     });
     expect(GameplayCapabilityRegistry.entries.some(isCompleteSupportedGameplayCapability)).toBe(false);
@@ -727,6 +733,34 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(timedExplosion)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(timedExplosion)).toBe(false);
+  });
+
+  it('scopes rules checkpoint restore package-owned QA without static support promotion', () => {
+    const checkpointRestore = findGameplayCapability('rules.checkpoint_restore.v1');
+
+    if (checkpointRestore === undefined) {
+      throw new Error('Expected rules.checkpoint_restore.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(checkpointRestore)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(checkpointRestore.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(checkpointRestore.qa).toEqual({
+      requiredProbeIds: [RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(checkpointRestore.legacyRuntimeCapabilities).toEqual([]);
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(checkpointRestore)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(checkpointRestore)).toBe(false);
   });
 
   it('scopes pickup weapon supply package-owned QA without static support promotion', () => {

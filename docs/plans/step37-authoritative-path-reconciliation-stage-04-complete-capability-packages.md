@@ -6587,6 +6587,141 @@ next_checkpoint_source_plan_revision=HEAD:docs/plans/step37-authoritative-path-r
 remaining_inventory_summary=requiredCapabilityCount=59; registeredCapabilityCount=37; completeSupportedCount=0; committedClosedCapabilityCount=37; unsupported_unregistered=22; selectionFailure=null
 ```
 
+## Stage 4 Implementation: `rules.checkpoint_restore.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.rules_checkpoint_restore_v1.complete_supported_package_slice
+closure_record_id=stage4.rules_checkpoint_restore_v1.complete_supported_package_slice.candidate_record
+record_status=active
+current_active_record=true
+parent_stage_id=stage4
+capability_id=rules.checkpoint_restore.v1
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=incomplete
+global_exit_conditions_met=false
+user_input_required=false
+reviewed_skill_revision_type=component_sha256_bundle
+reviewed_skill_revision=code-change-discipline:f7824ee9c700e9982923f9691c0a490d23041e36fc05e7dc223b6565543f6d5b;review-gated-delivery:58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
+active_skill_path=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery
+active_skill_revision_type=component_sha256_bundle
+previous_recorded_skill_digest=09712290a7ae6a031101f9afd6f69df2a778404613853a81bab8bcc9ef10b3f0
+code_change_skill_bundle_format=single_file_v1
+code_change_skill_file_count=1
+code_change_skill_file_byte_length=47003
+code_change_skill_file_sha256=dd5abe3945818f6feefbe77e30c02432b014a76bacb7e39afe814103659100db
+code_change_skill_bundle_digest=f7824ee9c700e9982923f9691c0a490d23041e36fc05e7dc223b6565543f6d5b
+review_skill_bundle_format=step37_manifest_v1_path_size_sha
+review_skill_file_count=7
+review_skill_bundle_digest=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
+freshness_status=aligned
+freshness_interpretation=Historical aggregate digest 09712290a7ae6a031101f9afd6f69df2a778404613853a81bab8bcc9ef10b3f0 is retained as prior evidence only; this candidate binds current component Skill digests and cannot reuse the prior aggregate digest as current freshness evidence.
+candidate_commit_sha=not_created_yet
+candidate_commit_tree=not_created_yet
+reviewed_commit_sha=not_submitted
+reviewed_commit_tree=not_submitted
+post_record_validation_status=passed
+```
+
+Minimum closure requirements:
+
+1. Add a package-owned checkpoint restore capability contract with stable capability identity, runtime system identity, zero-health trigger event, restore event, required probe id, and required QA evidence id.
+2. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `rules.checkpoint_restore.v1` only when runtime evidence includes both the zero-health trigger and restored checkpoint state fields.
+5. Keep `checkpoint_or_lives_system` legacy ownership with `rules.restart_loop.v1`; this package-owned slice must not duplicate that legacy alias.
+6. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/rules-checkpoint-restore-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/rules-checkpoint-restore-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `tests/contracts/contract-freeze.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createRulesCheckpointRestorePackageContract()`.
+- Runtime module identity: `RULES_CHECKPOINT_RESTORE_RUNTIME_SYSTEM_ID=rules.checkpoint_restore`.
+- Zero-health trigger event: `RULES_CHECKPOINT_RESTORE_DAMAGE_EVENT_TYPE=player.damaged`.
+- Restore event: `RULES_CHECKPOINT_RESTORE_EVENT_TYPE=rules.checkpoint_restore.restored`.
+- Required probe: `RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID=rules.checkpoint_restore.v1.restore.browser_qa.v1`.
+- Required evidence id: `rules.checkpoint_restore.v1.evidence.capability_qa_report.v1`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` retains and validates `checkpointRestoreTriggeredByZeroHealth`, `checkpointRestoreRetryConsumed`, retry counts before/after, nearest-checkpoint selection, actual/expected checkpoint id, position match, player respawn, and failure-screen absence.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for same-run evidence; it does not mutate static `completeSupported`.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned checkpoint restore contract, runtime system, required probe, required evidence id, telemetry event, and runtime evidence fields for zero-health retry restoration. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, telemetry/event freeze contract, DSL consumption report, and Step37 remaining-inventory driver. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves zero-health retry restoration to the expected checkpoint. |
+| Authority | Package-owned QA evidence defines the capability authority: generic checkpoint reached events, restart events, or legacy restart loop ownership are insufficient unless `rules.checkpoint_restore.restored` evidence proves the required restore state fields and trigger chain. |
+| Legacy strategy | `checkpoint_or_lives_system` remains owned by `rules.restart_loop.v1`; this slice does not duplicate legacy authoritative ownership. |
+| Failure policy | Missing restore package, missing trigger event, missing restore event, missing retry fields, wrong checkpoint id, failure screen shown, generic checkpoint-only evidence, or wrong capability/probe identity keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, registry support advancement without complete support, QA reader positive/negative checkpoint restore behavior, target-profile overlay positive/negative behavior, canonical missing-probe ordering, remaining-inventory selection, and telemetry schema freeze coverage. |
+| Rollback | Reverting this slice removes only the checkpoint-restore package/probe/reader wiring and returns `rules.checkpoint_restore.v1` to unsupported evidence without changing business runtime gameplay templates or entering Stage 5. |
+
+Validation after this closure record:
+
+```text
+focused_command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/step37-closure-implementation-trace.test.ts
+focused_exit_code=0
+focused_duration=real 2.64s
+focused_result=PASS: 9 files / 262 tests
+contracts_command=/usr/bin/time -p npm run test:contracts
+contracts_exit_code=0
+contracts_duration=real 12.60s
+contracts_result=PASS: 98 files / 1254 tests
+npm_test_command=/usr/bin/time -p npm test
+npm_test_exit_code=0
+npm_test_duration=real 62.13s
+npm_test_result=PASS: contracts 98 files / 1254 tests; workspace 34 files / 410 tests
+typecheck_command=/usr/bin/time -p npm run typecheck
+typecheck_exit_code=0
+typecheck_duration=real 6.53s
+typecheck_result=PASS
+diff_check_command=/usr/bin/time -p git diff --check
+diff_check_exit_code=0
+diff_check_duration=real 0.03s
+diff_check_result=PASS
+skill_freshness_command=/usr/bin/time -p node - <<'NODE' ... compute code-change-discipline single-file digest and review-gated-delivery path/size/sha bundle digest ... NODE
+skill_freshness_exit_code=0
+skill_freshness_duration=real 0.07s
+skill_freshness_result=PASS: code-change-discipline single_file_v1 digest=f7824ee9c700e9982923f9691c0a490d23041e36fc05e7dc223b6565543f6d5b; review-gated-delivery step37_manifest_v1_path_size_sha digest=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
+inventory_alignment_command=/usr/bin/time -p npx tsx -e "... rules.checkpoint_restore.v1 support summary and remaining inventory ..."
+inventory_alignment_exit_code=0
+inventory_alignment_duration=real 0.92s
+inventory_alignment_result=PASS: currentCheckpointId=stage4.rules_checkpoint_restore_v1.complete_supported_package_slice; committedClosedCapabilityCount=37; requiredCapabilityCount=59; registeredCapabilityCount=38; completeSupportedCount=0; rules.checkpoint_restore.v1 classification=DEFERRED; state=registered_without_required_probe_verification; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; next_checkpoint_id=stage4.rules_checkpoint_restore_v1.complete_supported_package_slice; selectionFailure=null.
+final_diff_scope_command=git diff --stat && git diff --name-status && git status --short && git ls-files --others --exclude-standard
+final_diff_scope_result=PASS: diff only contains the rules.checkpoint_restore.v1 package slice, adjacent QA/registry/target-profile/telemetry contracts, and this closure record; untracked files are the two new rules checkpoint restore package/runtime-module files.
+```
+
+Candidate creation requirement:
+
+- This closure record has been validated on the current final tree by focused closure contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, final diff range check, capability/inventory alignment, and Skill freshness.
+- Candidate commit must not write its own SHA into this candidate record.
+- Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=code-change-discipline:f7824ee9c700e9982923f9691c0a490d23041e36fc05e7dc223b6565543f6d5b;review-gated-delivery:58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1`.
+- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+
 ## Stage 4 Implementation: `pickup.weapon_supply.v1` complete-supported package slice
 
 Checkpoint identity:

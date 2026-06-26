@@ -33,6 +33,7 @@ export const TelemetryEventTypeSchema = z.enum([
   'health.damage_invulnerability.activated',
   'health.damage_invulnerability.blocked',
   'checkpoint.reached',
+  'rules.checkpoint_restore.restored',
   'level.segment.completed',
   'score.changed',
   'survival_time.changed',

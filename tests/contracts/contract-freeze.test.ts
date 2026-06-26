@@ -517,6 +517,11 @@ describe('Contract Freeze', () => {
     expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('hazard.timed_explosion.verified');
   });
 
+  it('allows package-owned checkpoint restore telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'rules.checkpoint_restore.restored', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('rules.checkpoint_restore.restored');
+  });
+
   it('allows package-owned weapon supply telemetry without making it a QA gate requirement', () => {
     expect(() => TelemetryEventSchema.parse({ type: 'pickup.weapon_supply.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
     expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('pickup.weapon_supply.verified');

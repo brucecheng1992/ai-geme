@@ -149,6 +149,16 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   currentWeaponId?: string;
   initialWeaponId?: string;
   previousWeaponId?: string;
+  checkpointRestoreTriggeredByZeroHealth?: boolean;
+  checkpointRestoreRetryConsumed?: boolean;
+  checkpointRestoreRetryCountBefore?: number;
+  checkpointRestoreRetryCountAfter?: number;
+  checkpointRestoreNearestCheckpointSelected?: boolean;
+  checkpointRestoreCheckpointId?: string;
+  checkpointRestoreExpectedCheckpointId?: string;
+  checkpointRestorePositionMatched?: boolean;
+  checkpointRestorePlayerRespawned?: boolean;
+  checkpointRestoreFailureScreenShown?: boolean;
   rapidFire?: boolean;
   cooldownMs?: number;
   burstShotCount?: number;
@@ -593,6 +603,16 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedStringField('currentWeaponId', expected, observed.currentWeaponId),
     ...compareExpectedStringField('initialWeaponId', expected, observed.initialWeaponId),
     ...compareExpectedStringField('previousWeaponId', expected, observed.previousWeaponId),
+    ...compareExpectedBooleanField('checkpointRestoreTriggeredByZeroHealth', expected, observed.checkpointRestoreTriggeredByZeroHealth),
+    ...compareExpectedBooleanField('checkpointRestoreRetryConsumed', expected, observed.checkpointRestoreRetryConsumed),
+    ...compareExpectedNumberField('checkpointRestoreRetryCountBefore', expected, observed.checkpointRestoreRetryCountBefore),
+    ...compareExpectedNumberField('checkpointRestoreRetryCountAfter', expected, observed.checkpointRestoreRetryCountAfter),
+    ...compareExpectedBooleanField('checkpointRestoreNearestCheckpointSelected', expected, observed.checkpointRestoreNearestCheckpointSelected),
+    ...compareExpectedStringField('checkpointRestoreCheckpointId', expected, observed.checkpointRestoreCheckpointId),
+    ...compareExpectedStringField('checkpointRestoreExpectedCheckpointId', expected, observed.checkpointRestoreExpectedCheckpointId),
+    ...compareExpectedBooleanField('checkpointRestorePositionMatched', expected, observed.checkpointRestorePositionMatched),
+    ...compareExpectedBooleanField('checkpointRestorePlayerRespawned', expected, observed.checkpointRestorePlayerRespawned),
+    ...compareExpectedBooleanField('checkpointRestoreFailureScreenShown', expected, observed.checkpointRestoreFailureScreenShown),
     ...compareExpectedBooleanField('rapidFire', expected, observed.rapidFire),
     ...compareExpectedNumberField('cooldownMs', expected, observed.cooldownMs),
     ...compareExpectedNumberField('burstShotCount', expected, observed.burstShotCount),

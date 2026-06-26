@@ -240,6 +240,19 @@ import {
   HAZARD_TIMED_EXPLOSION_TRIGGER_CONDITION
 } from '../../packages/game-dsl/src/gameplay-capabilities/hazard-timed-explosion-runtime-module.js';
 import {
+  RULES_CHECKPOINT_RESTORE_PACKAGE_REQUIRED_EVIDENCE_ID,
+  RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID,
+  createRulesCheckpointRestorePackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/rules-checkpoint-restore-package.js';
+import {
+  RULES_CHECKPOINT_RESTORE_CHECKPOINT_ID,
+  RULES_CHECKPOINT_RESTORE_DAMAGE_EVENT_TYPE,
+  RULES_CHECKPOINT_RESTORE_EVENT_TYPE,
+  RULES_CHECKPOINT_RESTORE_RETRY_COUNT_AFTER,
+  RULES_CHECKPOINT_RESTORE_RETRY_COUNT_BEFORE,
+  RULES_CHECKPOINT_RESTORE_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/rules-checkpoint-restore-runtime-module.js';
+import {
   COLLISION_PLATFORM_PACKAGE_REQUIRED_EVIDENCE_ID,
   COLLISION_PLATFORM_REQUIRED_PROBE_ID,
   createCollisionPlatformPackageContract
@@ -1425,6 +1438,78 @@ describe('Gameplay capability package contract', () => {
           }
         })
       ]
+    });
+  });
+
+  it('accepts the rules checkpoint restore package-owned QA contract', () => {
+    const contract = createRulesCheckpointRestorePackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'rules.checkpoint_restore.v1'
+    });
+    expect(contract.runtime.systems).toEqual([
+      {
+        id: RULES_CHECKPOINT_RESTORE_RUNTIME_SYSTEM_ID,
+        version: 'v1',
+        phase: 'gameplay',
+        dependencies: ['health.player_health_points', 'checkpoint_or_lives_system']
+      }
+    ]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: RULES_CHECKPOINT_RESTORE_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'rules.checkpoint_restore.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: RULES_CHECKPOINT_RESTORE_DAMAGE_EVENT_TYPE,
+          parameters: {
+            damageEvent: RULES_CHECKPOINT_RESTORE_DAMAGE_EVENT_TYPE,
+            retryCountBefore: RULES_CHECKPOINT_RESTORE_RETRY_COUNT_BEFORE,
+            retryCountAfter: RULES_CHECKPOINT_RESTORE_RETRY_COUNT_AFTER,
+            expectedCheckpointId: RULES_CHECKPOINT_RESTORE_CHECKPOINT_ID
+          }
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: RULES_CHECKPOINT_RESTORE_RUNTIME_SYSTEM_ID,
+          ref: RULES_CHECKPOINT_RESTORE_DAMAGE_EVENT_TYPE
+        }),
+        expect.objectContaining({
+          kind: 'state_probe',
+          runtimeSystemId: RULES_CHECKPOINT_RESTORE_RUNTIME_SYSTEM_ID,
+          ref: RULES_CHECKPOINT_RESTORE_EVENT_TYPE
+        })
+      ],
+      assertions: expect.arrayContaining([
+        expect.objectContaining({
+          id: `${RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID}.assertion.restored_checkpoint`,
+          expected: {
+            checkpointRestoreTriggeredByZeroHealth: true,
+            checkpointRestoreRetryConsumed: true,
+            checkpointRestoreRetryCountBefore: RULES_CHECKPOINT_RESTORE_RETRY_COUNT_BEFORE,
+            checkpointRestoreRetryCountAfter: RULES_CHECKPOINT_RESTORE_RETRY_COUNT_AFTER,
+            checkpointRestoreNearestCheckpointSelected: true,
+            checkpointRestoreCheckpointId: RULES_CHECKPOINT_RESTORE_CHECKPOINT_ID,
+            checkpointRestoreExpectedCheckpointId: RULES_CHECKPOINT_RESTORE_CHECKPOINT_ID,
+            checkpointRestorePositionMatched: true,
+            checkpointRestorePlayerRespawned: true,
+            checkpointRestoreFailureScreenShown: false
+          }
+        })
+      ])
     });
   });
 

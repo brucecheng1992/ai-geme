@@ -124,6 +124,13 @@ import {
   HAZARD_TIMED_EXPLOSION_TIMER_ID,
   HAZARD_TIMED_EXPLOSION_TRIGGER_CONDITION,
   createHazardTimedExplosionPackageContract,
+  RULES_CHECKPOINT_RESTORE_CHECKPOINT_ID,
+  RULES_CHECKPOINT_RESTORE_DAMAGE_EVENT_TYPE,
+  RULES_CHECKPOINT_RESTORE_EVENT_TYPE,
+  RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID,
+  RULES_CHECKPOINT_RESTORE_RETRY_COUNT_AFTER,
+  RULES_CHECKPOINT_RESTORE_RETRY_COUNT_BEFORE,
+  createRulesCheckpointRestorePackageContract,
   createCollisionPlatformPackageContract,
   DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
   createDefaultStraightSingleWeaponPackageContract,
@@ -3700,6 +3707,136 @@ describe('Capability-owned runtime QA probes', () => {
       ])
     );
     expect(observedTimedExplosion.status).toBe('passed');
+  });
+
+  it('does not verify checkpoint restore from checkpoint reached or restart events without retry restore state', () => {
+    const capabilityId = 'rules.checkpoint_restore.v1';
+    const probeId = RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID;
+    const packages = [createRulesCheckpointRestorePackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const genericCheckpointEvidence = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'reach_checkpoint',
+              eventType: 'checkpoint.reached',
+              eventTypes: ['checkpoint.reached', 'game.restarted'],
+              sourceRef: 'runtime.rules.generic_checkpoint',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedCheckpointRestore = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'restore_checkpoint',
+              eventType: RULES_CHECKPOINT_RESTORE_EVENT_TYPE,
+              eventTypes: [RULES_CHECKPOINT_RESTORE_DAMAGE_EVENT_TYPE, RULES_CHECKPOINT_RESTORE_EVENT_TYPE],
+              checkpointRestoreTriggeredByZeroHealth: true,
+              checkpointRestoreRetryConsumed: true,
+              checkpointRestoreRetryCountBefore: RULES_CHECKPOINT_RESTORE_RETRY_COUNT_BEFORE,
+              checkpointRestoreRetryCountAfter: RULES_CHECKPOINT_RESTORE_RETRY_COUNT_AFTER,
+              checkpointRestoreNearestCheckpointSelected: true,
+              checkpointRestoreCheckpointId: RULES_CHECKPOINT_RESTORE_CHECKPOINT_ID,
+              checkpointRestoreExpectedCheckpointId: RULES_CHECKPOINT_RESTORE_CHECKPOINT_ID,
+              checkpointRestorePositionMatched: true,
+              checkpointRestorePlayerRespawned: true,
+              checkpointRestoreFailureScreenShown: false,
+              sourceRef: 'runtime.rules.checkpoint_restore',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const wrongCheckpointRestore = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'restore_checkpoint',
+              eventType: RULES_CHECKPOINT_RESTORE_EVENT_TYPE,
+              eventTypes: [RULES_CHECKPOINT_RESTORE_DAMAGE_EVENT_TYPE, RULES_CHECKPOINT_RESTORE_EVENT_TYPE],
+              checkpointRestoreTriggeredByZeroHealth: true,
+              checkpointRestoreRetryConsumed: true,
+              checkpointRestoreRetryCountBefore: RULES_CHECKPOINT_RESTORE_RETRY_COUNT_BEFORE,
+              checkpointRestoreRetryCountAfter: RULES_CHECKPOINT_RESTORE_RETRY_COUNT_AFTER,
+              checkpointRestoreNearestCheckpointSelected: true,
+              checkpointRestoreCheckpointId: 'checkpoint_wrong_previous_area',
+              checkpointRestoreExpectedCheckpointId: RULES_CHECKPOINT_RESTORE_CHECKPOINT_ID,
+              checkpointRestorePositionMatched: true,
+              checkpointRestorePlayerRespawned: true,
+              checkpointRestoreFailureScreenShown: false,
+              sourceRef: 'runtime.rules.checkpoint_restore',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericCheckpointEvidence.status).toBe('failed');
+    expect(genericCheckpointEvidence.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericCheckpointEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.restored_checkpoint`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${RULES_CHECKPOINT_RESTORE_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.restored_checkpoint`,
+          status: 'failed',
+          message: expect.stringContaining('expected checkpointRestoreRetryConsumed=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.restored_checkpoint`,
+          status: 'failed',
+          message: expect.stringContaining(`expected checkpointRestoreCheckpointId=${RULES_CHECKPOINT_RESTORE_CHECKPOINT_ID}, observed <missing>`)
+        })
+      ])
+    );
+    expect(wrongCheckpointRestore.status).toBe('failed');
+    expect(wrongCheckpointRestore.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.restored_checkpoint`,
+          status: 'failed',
+          message: expect.stringContaining(`expected checkpointRestoreCheckpointId=${RULES_CHECKPOINT_RESTORE_CHECKPOINT_ID}`)
+        })
+      ])
+    );
+    expect(observedCheckpointRestore.status).toBe('passed');
   });
 });
 

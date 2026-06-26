@@ -18,6 +18,10 @@ import {
   createReviewOracleFinalGatePackageContract
 } from './review-oracle-final-gate-package.js';
 import {
+  RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID,
+  createRulesCheckpointRestorePackageContract
+} from './rules-checkpoint-restore-package.js';
+import {
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
   createArtifactLineageNoManualPatchPackageContract
 } from './artifact-lineage-no-manual-patch-package.js';
@@ -514,6 +518,19 @@ const reviewOracleFinalGatePackageEvidence: GameplayCapabilityEvidence = reviewO
   : canonicalRuntimeLoaderEvidence;
 const reviewOracleFinalGatePackageQa: GameplayCapabilityQaEvidence = reviewOracleFinalGatePackageReport.supportEligible
   ? { requiredProbeIds: [REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
+const rulesCheckpointRestorePackageReport = validateGameplayCapabilityPackage(createRulesCheckpointRestorePackageContract());
+const rulesCheckpointRestorePackageEvidence: GameplayCapabilityEvidence = rulesCheckpointRestorePackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const rulesCheckpointRestorePackageQa: GameplayCapabilityQaEvidence = rulesCheckpointRestorePackageReport.supportEligible
+  ? { requiredProbeIds: [RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
 const artifactLineageNoManualPatchPackageReport = validateGameplayCapabilityPackage(createArtifactLineageNoManualPatchPackageContract());
 const artifactLineageNoManualPatchPackageEvidence: GameplayCapabilityEvidence = artifactLineageNoManualPatchPackageReport.supportEligible
@@ -1254,6 +1271,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     ['enemy_spawn', 'enemy_spawn_triggers'],
     spawnStaticPackageEvidence,
     spawnStaticPackageQa
+  ),
+  planned(
+    'rules.checkpoint_restore.v1',
+    'rules',
+    'Checkpoint restoration on retry',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    rulesCheckpointRestorePackageEvidence,
+    rulesCheckpointRestorePackageQa
   ),
   runtimeBacked('rules.restart_loop.v1', 'rules', 'Restart and checkpoint loop', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], [
     'restart_loop',
