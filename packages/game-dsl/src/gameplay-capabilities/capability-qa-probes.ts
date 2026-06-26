@@ -196,6 +196,11 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   patrolInfantryGrounded?: boolean;
   patrolInfantryMovementPatternId?: string;
   patrolInfantryRouteId?: string;
+  victoryDeclarationShown?: boolean;
+  victoryDeclarationText?: string;
+  victoryDeclarationTrigger?: string;
+  victoryDeclarationOutcome?: string;
+  victoryDeclarationObjectiveCompleted?: boolean;
   status?: string;
   sourceRef?: string;
 };
@@ -517,7 +522,12 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedStringField('patrolInfantrySegmentId', expected, observed.patrolInfantrySegmentId),
     ...compareExpectedBooleanField('patrolInfantryGrounded', expected, observed.patrolInfantryGrounded),
     ...compareExpectedStringField('patrolInfantryMovementPatternId', expected, observed.patrolInfantryMovementPatternId),
-    ...compareExpectedStringField('patrolInfantryRouteId', expected, observed.patrolInfantryRouteId)
+    ...compareExpectedStringField('patrolInfantryRouteId', expected, observed.patrolInfantryRouteId),
+    ...compareExpectedBooleanField('victoryDeclarationShown', expected, observed.victoryDeclarationShown),
+    ...compareExpectedStringField('victoryDeclarationText', expected, observed.victoryDeclarationText),
+    ...compareExpectedStringField('victoryDeclarationTrigger', expected, observed.victoryDeclarationTrigger),
+    ...compareExpectedStringField('victoryDeclarationOutcome', expected, observed.victoryDeclarationOutcome),
+    ...compareExpectedBooleanField('victoryDeclarationObjectiveCompleted', expected, observed.victoryDeclarationObjectiveCompleted)
   ];
 }
 

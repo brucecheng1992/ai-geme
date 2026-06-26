@@ -175,6 +175,18 @@ import {
   ENEMY_PATROL_INFANTRY_SEGMENT_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/enemy-patrol-infantry-runtime-module.js';
 import {
+  FEEDBACK_VICTORY_DECLARATION_PACKAGE_REQUIRED_EVIDENCE_ID,
+  FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID,
+  createFeedbackVictoryDeclarationPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/feedback-victory-declaration-package.js';
+import {
+  FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
+  FEEDBACK_VICTORY_DECLARATION_OUTCOME,
+  FEEDBACK_VICTORY_DECLARATION_RUNTIME_SYSTEM_ID,
+  FEEDBACK_VICTORY_DECLARATION_TEXT,
+  FEEDBACK_VICTORY_DECLARATION_TRIGGER
+} from '../../packages/game-dsl/src/gameplay-capabilities/feedback-victory-declaration-runtime-module.js';
+import {
   COLLISION_PLATFORM_PACKAGE_REQUIRED_EVIDENCE_ID,
   COLLISION_PLATFORM_REQUIRED_PROBE_ID,
   createCollisionPlatformPackageContract
@@ -1012,6 +1024,61 @@ describe('Gameplay capability package contract', () => {
             patrolInfantryGrounded: true,
             patrolInfantryMovementPatternId: ENEMY_PATROL_INFANTRY_MOVEMENT_PATTERN_ID,
             patrolInfantryRouteId: ENEMY_PATROL_INFANTRY_ROUTE_ID
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the feedback victory-declaration package-owned QA contract', () => {
+    const contract = createFeedbackVictoryDeclarationPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'feedback.victory_declaration.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([FEEDBACK_VICTORY_DECLARATION_RUNTIME_SYSTEM_ID]);
+    expect(contract.dependencies).toEqual([{ capabilityId: 'enemy.boss_lifecycle.v1', range: '^v1' }]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: FEEDBACK_VICTORY_DECLARATION_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'feedback.victory_declaration.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
+          parameters: expect.objectContaining({
+            trigger: FEEDBACK_VICTORY_DECLARATION_TRIGGER,
+            outcome: FEEDBACK_VICTORY_DECLARATION_OUTCOME,
+            declarationText: FEEDBACK_VICTORY_DECLARATION_TEXT
+          })
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: FEEDBACK_VICTORY_DECLARATION_RUNTIME_SYSTEM_ID,
+          ref: FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID}.assertion.victory_declaration_verified`,
+          expected: {
+            victoryDeclarationShown: true,
+            victoryDeclarationText: FEEDBACK_VICTORY_DECLARATION_TEXT,
+            victoryDeclarationTrigger: FEEDBACK_VICTORY_DECLARATION_TRIGGER,
+            victoryDeclarationOutcome: FEEDBACK_VICTORY_DECLARATION_OUTCOME,
+            victoryDeclarationObjectiveCompleted: true
           }
         })
       ]

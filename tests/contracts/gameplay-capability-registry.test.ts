@@ -24,6 +24,7 @@ import {
   ENEMY_FIXED_TURRET_REQUIRED_PROBE_ID,
   ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID,
   ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID,
+  FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID,
   MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
@@ -90,6 +91,10 @@ describe('Gameplay capability registry', () => {
       legacyRuntimeCapabilities: []
     });
     expect(findGameplayCapability('enemy.patrol_infantry.v1')).toMatchObject({
+      status: 'planned',
+      legacyRuntimeCapabilities: []
+    });
+    expect(findGameplayCapability('feedback.victory_declaration.v1')).toMatchObject({
       status: 'planned',
       legacyRuntimeCapabilities: []
     });
@@ -559,6 +564,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(patrolInfantry)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(patrolInfantry)).toBe(false);
+  });
+
+  it('scopes feedback victory declaration package-owned QA without static support promotion', () => {
+    const victoryDeclaration = findGameplayCapability('feedback.victory_declaration.v1');
+
+    if (victoryDeclaration === undefined) {
+      throw new Error('Expected feedback.victory_declaration.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(victoryDeclaration)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(victoryDeclaration.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(victoryDeclaration.qa).toEqual({
+      requiredProbeIds: [FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(victoryDeclaration)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(victoryDeclaration)).toBe(false);
   });
 
   it('scopes weapon rapid fire package-owned QA without static support promotion', () => {

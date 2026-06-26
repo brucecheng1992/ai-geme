@@ -88,6 +88,12 @@ import {
   ENEMY_PATROL_INFANTRY_ROUTE_ID,
   ENEMY_PATROL_INFANTRY_SEGMENT_ID,
   createEnemyPatrolInfantryPackageContract,
+  FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
+  FEEDBACK_VICTORY_DECLARATION_OUTCOME,
+  FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID,
+  FEEDBACK_VICTORY_DECLARATION_TEXT,
+  FEEDBACK_VICTORY_DECLARATION_TRIGGER,
+  createFeedbackVictoryDeclarationPackageContract,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
@@ -1995,6 +2001,105 @@ describe('Capability-owned runtime QA probes', () => {
       ])
     );
     expect(observedPatrolState.status).toBe('passed');
+  });
+
+  it('does not verify victory declaration when generic win evidence lacks declaration state fields', () => {
+    const capabilityId = 'feedback.victory_declaration.v1';
+    const probeId = FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID;
+    const packages = [createEnemyBossLifecyclePackageContract(), createFeedbackVictoryDeclarationPackageContract()];
+    const bossLifecycleEvidence = {
+      capabilityId: 'enemy.boss_lifecycle.v1',
+      probeId: ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID,
+      action: 'verify_boss_lifecycle',
+      eventType: ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
+      eventTypes: [ENEMY_BOSS_LIFECYCLE_EVENT_TYPE],
+      bossLifecycleStarted: true,
+      bossEntityId: ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID,
+      bossMaxHealth: ENEMY_BOSS_LIFECYCLE_MAX_HEALTH,
+      bossHealthInitialized: true,
+      bossDefeated: true,
+      sourceRef: 'runtime.enemy.boss_lifecycle',
+      status: 'observed' as const
+    };
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, ['enemy.boss_lifecycle.v1', capabilityId]),
+      packages
+    });
+    const genericWinOnly = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            bossLifecycleEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_victory_declaration',
+              eventType: 'game.won',
+              eventTypes: ['game.won', 'objective.completed'],
+              sourceRef: 'runtime.feedback.generic_win',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedDeclarationState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            bossLifecycleEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_victory_declaration',
+              eventType: FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
+              eventTypes: [FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE, 'game.won', 'objective.completed'],
+              victoryDeclarationShown: true,
+              victoryDeclarationText: FEEDBACK_VICTORY_DECLARATION_TEXT,
+              victoryDeclarationTrigger: FEEDBACK_VICTORY_DECLARATION_TRIGGER,
+              victoryDeclarationOutcome: FEEDBACK_VICTORY_DECLARATION_OUTCOME,
+              victoryDeclarationObjectiveCompleted: true,
+              sourceRef: 'runtime.feedback.victory_declaration',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericWinOnly.status).toBe('failed');
+    expect(genericWinOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericWinOnly.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.victory_declaration_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.victory_declaration_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected victoryDeclarationShown=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.victory_declaration_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`expected victoryDeclarationText=${FEEDBACK_VICTORY_DECLARATION_TEXT}, observed <missing>`)
+        })
+      ])
+    );
+    expect(observedDeclarationState.status).toBe('passed');
   });
 });
 

@@ -54,6 +54,10 @@ import {
   createEnemyPatrolInfantryPackageContract
 } from './enemy-patrol-infantry-package.js';
 import {
+  FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID,
+  createFeedbackVictoryDeclarationPackageContract
+} from './feedback-victory-declaration-package.js';
+import {
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   createCameraSideFollowPackageContract
 } from './camera-side-follow-package.js';
@@ -597,6 +601,19 @@ const enemyPatrolInfantryPackageEvidence: GameplayCapabilityEvidence = enemyPatr
 const enemyPatrolInfantryPackageQa: GameplayCapabilityQaEvidence = enemyPatrolInfantryPackageReport.supportEligible
   ? { requiredProbeIds: [ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const feedbackVictoryDeclarationPackageReport = validateGameplayCapabilityPackage(createFeedbackVictoryDeclarationPackageContract());
+const feedbackVictoryDeclarationPackageEvidence: GameplayCapabilityEvidence = feedbackVictoryDeclarationPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const feedbackVictoryDeclarationPackageQa: GameplayCapabilityQaEvidence = feedbackVictoryDeclarationPackageReport.supportEligible
+  ? { requiredProbeIds: [FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const cameraSideFollowPackageReport = validateGameplayCapabilityPackage(createCameraSideFollowPackageContract());
 const cameraSideFollowPackageEvidence: GameplayCapabilityEvidence = cameraSideFollowPackageReport.supportEligible
   ? {
@@ -927,6 +944,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     enemyPatrolInfantryPackageEvidence,
     enemyPatrolInfantryPackageQa
+  ),
+  planned(
+    'feedback.victory_declaration.v1',
+    'feedback',
+    'Victory declaration feedback',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    feedbackVictoryDeclarationPackageEvidence,
+    feedbackVictoryDeclarationPackageQa
   ),
   runtimeBacked('camera.top_down_follow.v1', 'camera', 'Top-down follow camera', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], ['top_down_camera']),
   runtimeBacked('movement.eight_direction.v1', 'movement', 'Eight-direction movement', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], [

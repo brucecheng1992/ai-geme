@@ -20,6 +20,7 @@ export const TelemetryEventTypeSchema = z.enum([
   'spawn.enemy_wave.ordered',
   'enemy.flying_right_entry.verified',
   'enemy.patrol_infantry.verified',
+  'feedback.victory_declaration.verified',
   'hazard.spawned',
   'player.damaged',
   'health.damage_invulnerability.activated',
