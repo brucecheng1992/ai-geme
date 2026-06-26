@@ -6187,7 +6187,7 @@ user_input_required=false
 next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
 reviewed_skill_revision_type=sha256_bundle
 reviewed_skill_bundle_format=step37_manifest_v1_path_size_sha
-reviewed_skill_revision=e9f08637d2d0b01bdf69f15c00d51cd4284eaf2569939c8e1882bf1d447684fb
+reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
 reviewed_skill_root_identity=/Users/dahufa/.agents/skills/review-gated-delivery
 reviewed_commit_sha=not_created
 oracle_submission_id=not_submitted
@@ -6300,7 +6300,7 @@ result=PASS: support registeredCapabilityCount=28; enemy.flying_right_entry.v1 c
 command=python3 - <<'PY' ... step37_manifest_v1_path_size_sha review-gated-delivery Skill bundle digest ... PY
 exitCode=0
 duration=<1s
-result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_size_sha; skill_file_count=7; skill_bundle_digest=e9f08637d2d0b01bdf69f15c00d51cd4284eaf2569939c8e1882bf1d447684fb.
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_size_sha; skill_file_count=7; skill_bundle_digest=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1.
 ```
 
 Count-change audit:
