@@ -253,6 +253,19 @@ import {
   RULES_CHECKPOINT_RESTORE_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/rules-checkpoint-restore-runtime-module.js';
 import {
+  RULES_ENCOUNTER_GATE_PACKAGE_REQUIRED_EVIDENCE_ID,
+  RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID,
+  createRulesEncounterGatePackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/rules-encounter-gate-package.js';
+import {
+  RULES_ENCOUNTER_GATE_ENTRANCE_ID,
+  RULES_ENCOUNTER_GATE_EVENT_TYPE,
+  RULES_ENCOUNTER_GATE_GATE_ID,
+  RULES_ENCOUNTER_GATE_RUNTIME_SYSTEM_ID,
+  RULES_ENCOUNTER_GATE_SEQUENCE_INDEX,
+  RULES_ENCOUNTER_GATE_WAVE_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/rules-encounter-gate-runtime-module.js';
+import {
   COLLISION_PLATFORM_PACKAGE_REQUIRED_EVIDENCE_ID,
   COLLISION_PLATFORM_REQUIRED_PROBE_ID,
   createCollisionPlatformPackageContract
@@ -1510,6 +1523,66 @@ describe('Gameplay capability package contract', () => {
           }
         })
       ])
+    });
+  });
+
+  it('accepts the rules encounter gate package-owned QA contract', () => {
+    const contract = createRulesEncounterGatePackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'rules.encounter_gate.v1'
+    });
+    expect(contract.runtime.systems).toEqual([
+      {
+        id: RULES_ENCOUNTER_GATE_RUNTIME_SYSTEM_ID,
+        version: 'v1',
+        phase: 'gameplay',
+        dependencies: ['spawn.enemy_wave']
+      }
+    ]);
+    expect(contract.dependencies).toEqual([{ capabilityId: 'spawn.enemy_wave.v1', range: '^v1' }]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: RULES_ENCOUNTER_GATE_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'rules.encounter_gate.v1',
+      severity: 'required',
+      observations: expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'state_probe',
+          runtimeSystemId: RULES_ENCOUNTER_GATE_RUNTIME_SYSTEM_ID,
+          ref: RULES_ENCOUNTER_GATE_EVENT_TYPE
+        }),
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: RULES_ENCOUNTER_GATE_RUNTIME_SYSTEM_ID,
+          ref: 'spawn.enemy_wave.ordered'
+        })
+      ]),
+      assertions: [
+        expect.objectContaining({
+          id: `${RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID}.assertion.closed_before_wave`,
+          expected: {
+            encounterGateClosedEntrance: true,
+            encounterGateGateId: RULES_ENCOUNTER_GATE_GATE_ID,
+            encounterGateEntranceId: RULES_ENCOUNTER_GATE_ENTRANCE_ID,
+            encounterGateClosedBeforeWaveSpawn: true,
+            encounterGateWaveSequenceBlockedUntilClosed: true,
+            encounterGateNextWaveId: RULES_ENCOUNTER_GATE_WAVE_ID,
+            encounterGateSequenceIndex: RULES_ENCOUNTER_GATE_SEQUENCE_INDEX,
+            encounterGatePlayerBacktrackingBlocked: true
+          }
+        })
+      ]
     });
   });
 

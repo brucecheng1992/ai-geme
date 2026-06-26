@@ -6167,6 +6167,163 @@ next_action=CONTINUE_PARENT_LOOP
 next_atomic_step=RUN_PARENT_LOOP_DRIVER_TO_SELECT_NEXT_UNMET_CHECKPOINT
 ```
 
+## Stage 4 Implementation: `rules.encounter_gate.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.rules_encounter_gate_v1.complete_supported_package_slice
+parent_stage_id=stage4
+capability_id=rules.encounter_gate.v1
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=not_closed
+global_exit_conditions_met=false
+user_input_required=false
+next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
+repo_pre_candidate_head=c938b37e77ce31a98e3051f6869c3f3275414aeb
+skill_revision_type=sha256_bundle
+skill_bundle_format=step37_manifest_v1_path_kind_size_sha_mode
+active_skill_paths=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery
+active_skill_bundle_digest=41dd98376a1442ea64bedc66640039faa487a793891a7a9b529c8db58118d9ec
+active_skill_file_count=8
+active_skill_manifest_protocol=root-relative path, file kind, raw byte length, SHA-256, executable bit; stable sort by root-relative path; symlink entries recorded explicitly
+```
+
+`rules.encounter_gate.v1` was selected by the Parent Loop Driver after the `rules.checkpoint_restore.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
+
+Minimum closure requirements:
+
+1. Add a package-owned encounter-gate contract with stable capability identity, runtime system identity, gate-closed telemetry event identity, required probe id, and required QA evidence id.
+2. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `rules.encounter_gate.v1` only when runtime evidence includes closed-entrance state, gate identity, entrance identity, next wave identity, sequence index, and closed-before-wave ordering.
+5. Require dependency evidence for `spawn.enemy_wave.v1` and `spawn.static.v1` to be complete before semantic negatives can attribute failure to `rules.encounter_gate.v1`.
+6. Add a negative regression proving generic wave/order evidence without `rules.encounter_gate.closed` and the closed-entrance state fields keeps the capability unverified.
+7. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/rules-encounter-gate-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/rules-encounter-gate-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `tests/contracts/contract-freeze.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createRulesEncounterGatePackageContract()`.
+- Runtime module identity: `RULES_ENCOUNTER_GATE_RUNTIME_SYSTEM_ID=rules.encounter_gate`.
+- Gate-closed event: `RULES_ENCOUNTER_GATE_EVENT_TYPE=rules.encounter_gate.closed`.
+- Required probe: `RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID=rules.encounter_gate.v1.close_entrance.browser_qa.v1`.
+- Required evidence id: `rules.encounter_gate.v1.evidence.capability_qa_report.v1`.
+- Required state fields: `encounterGateClosedEntrance`, `encounterGateGateId`, `encounterGateEntranceId`, `encounterGateClosedBeforeWaveSpawn`, `encounterGateWaveSequenceBlockedUntilClosed`, `encounterGateNextWaveId`, `encounterGateSequenceIndex`, and `encounterGatePlayerBacktrackingBlocked`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares the encounter-gate state fields and fails the required probe when generic wave/order evidence lacks the closed-entrance state payload.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for same-run package-owned QA evidence; it does not mutate static `completeSupported`.
+- Parent Loop inventory: `buildStep37RemainingCompleteSupportedInventory()` still selects `stage4.rules_encounter_gate_v1.complete_supported_package_slice` until this candidate is committed and receipted.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned encounter-gate capability contract, runtime system identity, `rules.encounter_gate.closed` telemetry event, required probe id, required evidence id, and runtime evidence fields for closed-before-wave gate state. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, Step37 remaining-inventory driver, telemetry/event freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves the closed entrance and ordering state fields. |
+| Authority | Package-owned QA evidence defines the capability authority: `spawn.enemy_wave.ordered`, generic wave/order evidence, or gate-triggered spawn evidence is insufficient unless `rules.encounter_gate.closed` evidence proves the closed-entrance state fields. |
+| Legacy strategy | Legacy wave order and generic spawn telemetry remain available only as dependency evidence; they cannot claim encounter-gate closure or production cutover authority. |
+| Failure policy | Missing package contract, missing `rules.encounter_gate.closed` event, missing or mismatched gate state fields, wrong capability/probe identity, or stale evidence keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, dependency-aware QA reader positive/negative behavior, registry support advancement without complete support, target-profile overlay positive/negative behavior, remaining-inventory selection, and event/schema freeze coverage. |
+| Rollback | Reverting this slice removes only the encounter-gate package/probe/reader wiring and returns `rules.encounter_gate.v1` to unsupported evidence without changing business runtime gameplay templates or entering Stage 5. |
+
+Focused validation:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=1
+duration=real 2.28s
+result=RED: initial target-profile fixture expected did not yet account for the causally added `rules.encounter_gate.v1` observed identity in the full damage-invulnerability fixture.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=1
+duration=real 2.08s
+result=RED: one count was adjusted too broadly; fixture without encounter-gate event correctly remained `34/59`.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 2.01s
+result=PASS: 8 files / 233 tests
+```
+
+Focused set selection:
+
+- `gameplay-capability-package-contract.test.ts`: validates the encounter-gate package identity, dependency edge, runtime system, required evidence id, gate-closed event, and required state fields.
+- `gameplay-capability-qa-probes.test.ts`: validates dependency probes pass before the encounter-gate semantic negative fails, generic wave/order evidence does not satisfy the capability, wrong order fails, and full closed-entrance evidence passes.
+- `generation-target-profile-runtime-support.test.ts`: validates same-run overlay positive/negative behavior and preservation of static `completeSupported=false`.
+- `gameplay-capability-registry.test.ts`: validates static registry evidence and required probe wiring without static support promotion.
+- `deepseek-authoritative-dsl-support.test.ts`: validates support dimensions and prerequisites for the target capability.
+- `dsl-consumption-report.test.ts`: validates the consumption report reads the updated package-backed support dimensions.
+- `step37-remaining-inventory-driver.test.ts`: validates parent-loop inventory consumption after the registry count advances to 39.
+- `contract-freeze.test.ts`: included because this diff introduces a telemetry/runtime event identity and QA evidence fields.
+
+Local validation before candidate commit:
+
+```text
+command=/usr/bin/time -p npm test
+exitCode=1
+duration=real 75.20s
+result=RED: contracts 98 files / 1259 tests passed; workspace smoke failed with `BUILD_FAILED` caused by `ENOTEMPTY` while removing existing generated-project `node_modules/phaser/scripts/tsgen`.
+
+command=/usr/bin/time -p npx vitest run tests/workspace/generation-pipeline.smoke.test.ts
+exitCode=0
+duration=real 8.07s
+result=PASS: 1 file / 1 test; isolated smoke passed, indicating the prior failure was suite-only generated-project cleanup/resource residue rather than this encounter-gate diff.
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 67.43s
+result=PASS: contracts 98 files / 1259 tests; workspace 34 files / 410 tests.
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 7.55s
+result=PASS
+
+command=git diff --check
+exitCode=0
+result=PASS
+
+command=/usr/bin/time -p node --input-type=module "<step37 root-relative Skill bundle digest script>"
+exitCode=0
+duration=real 0.06s
+result=PASS: active_skill_paths=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery; skill_bundle_format=step37_manifest_v1_path_kind_size_sha_mode; skill_file_count=8; skill_bundle_digest=41dd98376a1442ea64bedc66640039faa487a793891a7a9b529c8db58118d9ec.
+
+command=/usr/bin/time -p npx tsx - <<'TS' ... rules.encounter_gate.v1 support summary and remaining inventory ...
+exitCode=0
+duration=real 1.18s
+result=PASS: support registeredCapabilityCount=39; committedClosedCapabilityCount=38; rules.encounter_gate.v1 classification=DEFERRED; state=same_run_observed_only; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false; remaining next_checkpoint_id=stage4.rules_encounter_gate_v1.complete_supported_package_slice; selectionFailure=null.
+```
+
+Post-record validation requirement:
+
+- This closure record changes the final tree. Before creating the immutable candidate commit, focused closure contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, final diff range check, Skill freshness, and inventory alignment must be re-run or explicitly recorded as fresh for the final tree.
+- Candidate commit must not write its own SHA into this candidate record.
+- Oracle request must bind the candidate commit SHA plus `reviewed_skill_revision` values for both active external Skills.
+- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+
 ## Stage 4 Implementation: `provider.deepseek_authoritative_draft.v1` complete-supported package slice
 
 Checkpoint identity:

@@ -131,6 +131,13 @@ import {
   RULES_CHECKPOINT_RESTORE_RETRY_COUNT_AFTER,
   RULES_CHECKPOINT_RESTORE_RETRY_COUNT_BEFORE,
   createRulesCheckpointRestorePackageContract,
+  RULES_ENCOUNTER_GATE_ENTRANCE_ID,
+  RULES_ENCOUNTER_GATE_EVENT_TYPE,
+  RULES_ENCOUNTER_GATE_GATE_ID,
+  RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID,
+  RULES_ENCOUNTER_GATE_SEQUENCE_INDEX,
+  RULES_ENCOUNTER_GATE_WAVE_ID,
+  createRulesEncounterGatePackageContract,
   createCollisionPlatformPackageContract,
   DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
   createDefaultStraightSingleWeaponPackageContract,
@@ -3837,6 +3844,161 @@ describe('Capability-owned runtime QA probes', () => {
       ])
     );
     expect(observedCheckpointRestore.status).toBe('passed');
+  });
+
+  it('does not verify encounter gate from ordered wave evidence without closed-entrance state', () => {
+    const capabilityId = 'rules.encounter_gate.v1';
+    const probeId = RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID;
+    const packages = [createSpawnStaticPackageContract(), createSpawnEnemyWavePackageContract(), createRulesEncounterGatePackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const dependencyEvidence: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: 'spawn.static.v1',
+        probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
+        action: 'spawn',
+        eventType: 'spawn.static.triggered',
+        eventTypes: ['spawn.static.triggered'],
+        sourceRef: 'runtime.spawn.static',
+        status: 'observed'
+      },
+      {
+        capabilityId: 'spawn.enemy_wave.v1',
+        probeId: SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+        action: 'spawn',
+        eventType: 'spawn.enemy_wave.ordered',
+        eventTypes: ['spawn.enemy_wave.ordered'],
+        orderedWaveSequence: true,
+        gateTriggered: true,
+        waveSpawned: true,
+        sequenceIndex: RULES_ENCOUNTER_GATE_SEQUENCE_INDEX,
+        waveId: RULES_ENCOUNTER_GATE_WAVE_ID,
+        sourceRef: 'runtime.spawn.enemy_wave',
+        status: 'observed'
+      }
+    ];
+    const genericWaveEvidence = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'spawn_wave',
+              eventType: 'spawn.enemy_wave.ordered',
+              eventTypes: ['spawn.enemy_wave.ordered'],
+              orderedWaveSequence: true,
+              gateTriggered: true,
+              waveSpawned: true,
+              sequenceIndex: RULES_ENCOUNTER_GATE_SEQUENCE_INDEX,
+              waveId: RULES_ENCOUNTER_GATE_WAVE_ID,
+              sourceRef: 'runtime_plan.side_scrolling.waves.ordered_sequence',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const wrongOrderEvidence = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'close_gate',
+              eventType: RULES_ENCOUNTER_GATE_EVENT_TYPE,
+              eventTypes: [RULES_ENCOUNTER_GATE_EVENT_TYPE, 'spawn.enemy_wave.ordered'],
+              encounterGateClosedEntrance: true,
+              encounterGateGateId: RULES_ENCOUNTER_GATE_GATE_ID,
+              encounterGateEntranceId: RULES_ENCOUNTER_GATE_ENTRANCE_ID,
+              encounterGateClosedBeforeWaveSpawn: false,
+              encounterGateWaveSequenceBlockedUntilClosed: true,
+              encounterGateNextWaveId: RULES_ENCOUNTER_GATE_WAVE_ID,
+              encounterGateSequenceIndex: RULES_ENCOUNTER_GATE_SEQUENCE_INDEX,
+              encounterGatePlayerBacktrackingBlocked: true,
+              sourceRef: 'runtime.rules.encounter_gate',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedEncounterGate = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'close_gate',
+              eventType: RULES_ENCOUNTER_GATE_EVENT_TYPE,
+              eventTypes: [RULES_ENCOUNTER_GATE_EVENT_TYPE, 'spawn.enemy_wave.ordered'],
+              encounterGateClosedEntrance: true,
+              encounterGateGateId: RULES_ENCOUNTER_GATE_GATE_ID,
+              encounterGateEntranceId: RULES_ENCOUNTER_GATE_ENTRANCE_ID,
+              encounterGateClosedBeforeWaveSpawn: true,
+              encounterGateWaveSequenceBlockedUntilClosed: true,
+              encounterGateNextWaveId: RULES_ENCOUNTER_GATE_WAVE_ID,
+              encounterGateSequenceIndex: RULES_ENCOUNTER_GATE_SEQUENCE_INDEX,
+              encounterGatePlayerBacktrackingBlocked: true,
+              sourceRef: 'runtime.rules.encounter_gate',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericWaveEvidence.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericWaveEvidence.requiredResults.find((entry) => entry.probeId === SPAWN_STATIC_REQUIRED_PROBE_ID)).toMatchObject({ status: 'passed' });
+    expect(genericWaveEvidence.requiredResults.find((entry) => entry.probeId === SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID)).toMatchObject({ status: 'passed' });
+    expect(genericWaveEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.closed_before_wave`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${RULES_ENCOUNTER_GATE_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.closed_before_wave`,
+          status: 'failed',
+          message: expect.stringContaining('expected encounterGateClosedEntrance=true, observed <missing>')
+        })
+      ])
+    );
+    expect(wrongOrderEvidence.status).toBe('failed');
+    expect(wrongOrderEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.closed_before_wave`,
+          status: 'failed',
+          message: expect.stringContaining('expected encounterGateClosedBeforeWaveSpawn=true, observed false')
+        })
+      ])
+    );
+    expect(observedEncounterGate.status).toBe('passed');
   });
 });
 

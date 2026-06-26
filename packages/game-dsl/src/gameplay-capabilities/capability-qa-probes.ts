@@ -159,6 +159,14 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   checkpointRestorePositionMatched?: boolean;
   checkpointRestorePlayerRespawned?: boolean;
   checkpointRestoreFailureScreenShown?: boolean;
+  encounterGateClosedEntrance?: boolean;
+  encounterGateGateId?: string;
+  encounterGateEntranceId?: string;
+  encounterGateClosedBeforeWaveSpawn?: boolean;
+  encounterGateWaveSequenceBlockedUntilClosed?: boolean;
+  encounterGateNextWaveId?: string;
+  encounterGateSequenceIndex?: number;
+  encounterGatePlayerBacktrackingBlocked?: boolean;
   rapidFire?: boolean;
   cooldownMs?: number;
   burstShotCount?: number;
@@ -613,6 +621,14 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('checkpointRestorePositionMatched', expected, observed.checkpointRestorePositionMatched),
     ...compareExpectedBooleanField('checkpointRestorePlayerRespawned', expected, observed.checkpointRestorePlayerRespawned),
     ...compareExpectedBooleanField('checkpointRestoreFailureScreenShown', expected, observed.checkpointRestoreFailureScreenShown),
+    ...compareExpectedBooleanField('encounterGateClosedEntrance', expected, observed.encounterGateClosedEntrance),
+    ...compareExpectedStringField('encounterGateGateId', expected, observed.encounterGateGateId),
+    ...compareExpectedStringField('encounterGateEntranceId', expected, observed.encounterGateEntranceId),
+    ...compareExpectedBooleanField('encounterGateClosedBeforeWaveSpawn', expected, observed.encounterGateClosedBeforeWaveSpawn),
+    ...compareExpectedBooleanField('encounterGateWaveSequenceBlockedUntilClosed', expected, observed.encounterGateWaveSequenceBlockedUntilClosed),
+    ...compareExpectedStringField('encounterGateNextWaveId', expected, observed.encounterGateNextWaveId),
+    ...compareExpectedNumberField('encounterGateSequenceIndex', expected, observed.encounterGateSequenceIndex),
+    ...compareExpectedBooleanField('encounterGatePlayerBacktrackingBlocked', expected, observed.encounterGatePlayerBacktrackingBlocked),
     ...compareExpectedBooleanField('rapidFire', expected, observed.rapidFire),
     ...compareExpectedNumberField('cooldownMs', expected, observed.cooldownMs),
     ...compareExpectedNumberField('burstShotCount', expected, observed.burstShotCount),

@@ -22,6 +22,10 @@ import {
   createRulesCheckpointRestorePackageContract
 } from './rules-checkpoint-restore-package.js';
 import {
+  RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID,
+  createRulesEncounterGatePackageContract
+} from './rules-encounter-gate-package.js';
+import {
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
   createArtifactLineageNoManualPatchPackageContract
 } from './artifact-lineage-no-manual-patch-package.js';
@@ -531,6 +535,19 @@ const rulesCheckpointRestorePackageEvidence: GameplayCapabilityEvidence = rulesC
   : canonicalRuntimeLoaderEvidence;
 const rulesCheckpointRestorePackageQa: GameplayCapabilityQaEvidence = rulesCheckpointRestorePackageReport.supportEligible
   ? { requiredProbeIds: [RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
+const rulesEncounterGatePackageReport = validateGameplayCapabilityPackage(createRulesEncounterGatePackageContract());
+const rulesEncounterGatePackageEvidence: GameplayCapabilityEvidence = rulesEncounterGatePackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const rulesEncounterGatePackageQa: GameplayCapabilityQaEvidence = rulesEncounterGatePackageReport.supportEligible
+  ? { requiredProbeIds: [RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
 const artifactLineageNoManualPatchPackageReport = validateGameplayCapabilityPackage(createArtifactLineageNoManualPatchPackageContract());
 const artifactLineageNoManualPatchPackageEvidence: GameplayCapabilityEvidence = artifactLineageNoManualPatchPackageReport.supportEligible
@@ -1281,6 +1298,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     rulesCheckpointRestorePackageEvidence,
     rulesCheckpointRestorePackageQa
+  ),
+  planned(
+    'rules.encounter_gate.v1',
+    'rules',
+    'Enemy-core entrance gate closes before ordered waves',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    rulesEncounterGatePackageEvidence,
+    rulesEncounterGatePackageQa
   ),
   runtimeBacked('rules.restart_loop.v1', 'rules', 'Restart and checkpoint loop', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], [
     'restart_loop',

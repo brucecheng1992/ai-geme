@@ -177,9 +177,9 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     });
 
     expect(report.requiredCapabilityCount).toBe(59);
-    expect(report.registeredCapabilityCount).toBe(38);
+    expect(report.registeredCapabilityCount).toBe(39);
     expect(report.staticCompleteSupportedCount).toBe(0);
-    expect(report.stateCounts.unsupported_unregistered).toBe(21);
+    expect(report.stateCounts.unsupported_unregistered).toBe(20);
     expect(report.committedClosedCapabilityCount).toBe(37);
     expect(report.nextCheckpoint).not.toBeNull();
     expect(report.nextCheckpoint?.checkpoint_id).toBe('stage4.rules_checkpoint_restore_v1.complete_supported_package_slice');

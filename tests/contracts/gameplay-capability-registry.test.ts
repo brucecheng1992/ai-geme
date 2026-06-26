@@ -35,6 +35,7 @@ import {
   PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID,
   REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID,
   RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID,
+  RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   WEAPON_DEATH_RESET_REQUIRED_PROBE_ID,
   WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID,
@@ -154,6 +155,11 @@ describe('Gameplay capability registry', () => {
       legacyRuntimeCapabilities: []
     });
     expect(findGameplayCapability('rules.checkpoint_restore.v1')).toMatchObject({
+      status: 'planned',
+      domain: 'rules',
+      legacyRuntimeCapabilities: []
+    });
+    expect(findGameplayCapability('rules.encounter_gate.v1')).toMatchObject({
       status: 'planned',
       domain: 'rules',
       legacyRuntimeCapabilities: []
@@ -761,6 +767,34 @@ describe('Gameplay capability registry', () => {
     expect(checkpointRestore.legacyRuntimeCapabilities).toEqual([]);
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(checkpointRestore)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(checkpointRestore)).toBe(false);
+  });
+
+  it('scopes rules encounter gate package-owned QA without static support promotion', () => {
+    const encounterGate = findGameplayCapability('rules.encounter_gate.v1');
+
+    if (encounterGate === undefined) {
+      throw new Error('Expected rules.encounter_gate.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(encounterGate)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(encounterGate.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(encounterGate.qa).toEqual({
+      requiredProbeIds: [RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(encounterGate.legacyRuntimeCapabilities).toEqual([]);
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(encounterGate)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(encounterGate)).toBe(false);
   });
 
   it('scopes pickup weapon supply package-owned QA without static support promotion', () => {
