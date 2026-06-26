@@ -6178,21 +6178,32 @@ capability_id=scene.ordered_segments.v1
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
 review_required=true
-closure_status=not_closed
+closure_status=closed
 global_exit_conditions_met=false
 user_input_required=false
-next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
+next_action_after_receipt=CONTINUE_PARENT_LOOP
 repo_pre_candidate_head=25632d88cdf5ec35a257c560c987ef32f6ddf767
 repo_pre_candidate_tree=6e9fd60f02928ecbf13e0966d7efcee54837662f
+candidate_commit_sha=a63be61e86a7d31821a00a0d144cc4de37a6e3d1
+reviewed_commit_sha=a63be61e86a7d31821a00a0d144cc4de37a6e3d1
+reviewed_commit_tree=bc4a5f03970e12f0312651420eb1fd2a6aaf80fa
+oracle_agent_id=019f04c5-70ba-7241-afdf-03caa35e6f81
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_p0_findings=0
+oracle_p1_findings=0
+oracle_p2_findings=0
+oracle_p3_findings=0
 skill_revision_type=sha256_bundle
 skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
 active_skill_paths=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery
 active_skill_bundle_digest=bce13a9038d8c8d957f30c6ca90788f25dce8ab9442acf9312e37c994d284df9
+reviewed_skill_bundle_digest=bce13a9038d8c8d957f30c6ca90788f25dce8ab9442acf9312e37c994d284df9
 active_skill_file_count=8
 active_skill_manifest_protocol=root-relative path, file kind, raw byte length, POSIX mode, SHA-256, symlink target, symlink escape flag; stable sort by root-relative path
+freshness_status=aligned
 ```
 
 `scene.ordered_segments.v1` was selected by the Parent Loop Driver after the `runtime.plan_coverage.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
@@ -6318,6 +6329,42 @@ Candidate creation rules:
 - Candidate commit must not write its own SHA into this candidate record.
 - Oracle request must bind the candidate commit SHA and `reviewed_skill_bundle_digest=bce13a9038d8c8d957f30c6ca90788f25dce8ab9442acf9312e37c994d284df9`.
 - `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+
+Oracle receipt:
+
+```text
+reviewed_commit_sha=a63be61e86a7d31821a00a0d144cc4de37a6e3d1
+reviewed_commit_tree=bc4a5f03970e12f0312651420eb1fd2a6aaf80fa
+reviewed_skill_revision=bce13a9038d8c8d957f30c6ca90788f25dce8ab9442acf9312e37c994d284df9
+reviewed_skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
+oracle_submission_id=not_returned_by_spawn_agent
+oracle_agent_id=019f04c5-70ba-7241-afdf-03caa35e6f81
+oracle_agent_id_source=multi_agent_v1.spawn_agent.agent_id
+oracle_poll_id_type=agent_id
+oracle_status=approved
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 none
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for the immutable candidate only. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, Stage 5, production default cutover, or prior closed history.
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
+```
+
+Parent Loop Driver after receipt:
+
+```text
+closure_scope=atomic_step
+atomic_step_status=closed
+parent_stage_status=running
+loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage4.scene_visual_presentation_metadata_v1.complete_supported_package_slice
+next_atomic_step_label=Stage 4 scene.visual_presentation_metadata.v1 complete-supported package slice implementation atomic step
+selection_rule=first_unmet_checkpoint_in_authoritative_inventory
+source_plan_revision=post-receipt-candidate:a63be61e86a7d31821a00a0d144cc4de37a6e3d1
+remaining_inventory_result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=45; staticCompleteSupportedCount=0; committedClosedCapabilityCount=45; unsupported_unregistered=14; next_checkpoint_id=stage4.scene_visual_presentation_metadata_v1.complete_supported_package_slice; selectionFailure=null.
+```
 
 ## Stage 4 Implementation: `runtime.manifest_binding.v1` complete-supported package slice
 
