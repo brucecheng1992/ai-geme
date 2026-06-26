@@ -6377,24 +6377,33 @@ capability_id=rules.retry_count.v1
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
 review_required=true
-closure_status=not_closed
+closure_status=closed
 global_exit_conditions_met=false
 user_input_required=false
-next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
+next_action_after_receipt=CONTINUE_PARENT_LOOP
 repo_pre_candidate_head=0bc302d42d0676c93e94ac27cabb066f91357da2
+candidate_commit_sha=5f0acf750e19a4331fe4829135006698fc05eb52
+reviewed_commit_sha=5f0acf750e19a4331fe4829135006698fc05eb52
+oracle_agent_id=019f042e-6c5d-7c21-aa24-70709351fd5a
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_p0_findings=0
+oracle_p1_findings=0
+oracle_p2_findings=0
+oracle_p3_findings=0
 skill_revision_type=sha256_bundle
 skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
 active_skill_paths=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery
 active_skill_bundle_digest=13ab9b0b5e2e1c9c951fd1ea954781ea757bd44fcf40606054484b9fc94240e8
+reviewed_skill_bundle_digest=13ab9b0b5e2e1c9c951fd1ea954781ea757bd44fcf40606054484b9fc94240e8
 active_skill_file_count=8
 active_skill_manifest_protocol=root-relative path, file kind, raw byte length, POSIX mode, SHA-256, symlink target, symlink escape flag; stable sort by root-relative path
 previous_recorded_skill_digest=06fa14205c4a623e8808b1b701a45a9d1e74234ee0a52bea614e2652e6f99b61
 previous_wrong_request_skill_digest=27e8ffdc072b4247d6eb20dc79679ed8f24a81a77ed33b3712b56b61b3da7416
 freshness_status=changed
-freshness_interpretation=Historical session digests are treated as clues only. The current candidate must bind the digest reproduced from the declared root-relative rows command on the current HEAD; this run produced 13ab9b0b5e2e1c9c951fd1ea954781ea757bd44fcf40606054484b9fc94240e8, so stale 06fa/27e8/a41 values are not current evidence for this checkpoint.
+freshness_interpretation=Historical session digests are treated as clues only. The reviewed candidate binds the digest reproduced from the declared root-relative rows command on the candidate HEAD; that run produced 13ab9b0b5e2e1c9c951fd1ea954781ea757bd44fcf40606054484b9fc94240e8, so stale 06fa/27e8/a41 values are not current evidence for this checkpoint.
 ```
 
 Minimum closure requirements:
@@ -6508,7 +6517,32 @@ Post-record validation requirement:
 - This closure record changes the final tree. Before creating the immutable candidate commit, focused closure contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, final diff range check, Skill freshness, and inventory alignment must be re-run or explicitly recorded as fresh for the final tree.
 - Candidate commit must not write its own SHA into this candidate record.
 - Oracle request must bind the candidate commit SHA plus `reviewed_skill_revision=13ab9b0b5e2e1c9c951fd1ea954781ea757bd44fcf40606054484b9fc94240e8`.
-- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+- Candidate pre-review state kept `oracle_status=not_submitted`; receipt state advanced to `oracle_status=approved` only after Oracle accepted the request and returned `agent_id=019f042e-6c5d-7c21-aa24-70709351fd5a`.
+
+Oracle review after candidate:
+
+```text
+reviewed_commit_sha=5f0acf750e19a4331fe4829135006698fc05eb52
+reviewed_skill_bundle_digest=13ab9b0b5e2e1c9c951fd1ea954781ea757bd44fcf40606054484b9fc94240e8
+oracle_agent_id=019f042e-6c5d-7c21-aa24-70709351fd5a
+oracle_status=APPROVED_FOR_RECEIPT
+oracle_p0_findings=0
+oracle_p1_findings=0
+oracle_p2_findings=0
+oracle_p3_findings=0
+receipt_constraints=atomic_step_only; preserve static completeSupported=false, qa_observed=false, requiredProbesVerified=false; run Parent Loop Driver after receipt.
+```
+
+Parent Loop Driver after receipt:
+
+```text
+command=/usr/bin/time -p npx tsx - <<'TS' ... remaining inventory after rules.retry_count.v1 receipt ...
+exitCode=0
+duration=real 0.44s
+result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=40; staticCompleteSupportedCount=0; committedClosedCapabilityCount=40; sameRunObservedOnlyCount=40; next_checkpoint_id=stage4.rules_state_transition_graph_v1.complete_supported_package_slice; next_atomic_step="Stage 4 rules.state_transition_graph.v1 complete-supported package slice implementation atomic step"; selection_rule=first_unmet_checkpoint_in_authoritative_inventory; next_action=CONTINUE_PARENT_LOOP; global_exit_conditions_met=false; user_input_required=false; selectionFailure=null.
+```
+
+Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4.rules_retry_count_v1.complete_supported_package_slice` after candidate commit creation, full local validation, Oracle `APPROVED_FOR_RECEIPT`, and receipt-only metadata update. It does not close Stage 4, Step37, production default cutover, legacy authoritative path exit, Stage 5, or final global closure. Parent Loop Driver must continue with `stage4.rules_state_transition_graph_v1.complete_supported_package_slice` while global exits remain false and no verified user blocker exists.
 
 ## Stage 4 Implementation: `provider.deepseek_authoritative_draft.v1` complete-supported package slice
 
