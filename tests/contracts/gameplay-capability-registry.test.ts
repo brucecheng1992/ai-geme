@@ -33,6 +33,7 @@ import {
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
   PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID,
   PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID,
+  REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   WEAPON_DEATH_RESET_REQUIRED_PROBE_ID,
   WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID,
@@ -146,6 +147,11 @@ describe('Gameplay capability registry', () => {
       domain: 'provider',
       legacyRuntimeCapabilities: []
     });
+    expect(findGameplayCapability('review.oracle_final_gate.v1')).toMatchObject({
+      status: 'planned',
+      domain: 'review',
+      legacyRuntimeCapabilities: []
+    });
     expect(GameplayCapabilityRegistry.entries.some(isCompleteSupportedGameplayCapability)).toBe(false);
   });
 
@@ -171,10 +177,14 @@ describe('Gameplay capability registry', () => {
     const badId = validateGameplayCapabilityRegistry([{ ...base, id: 'movement.run_jump' }]);
     const badVersion = validateGameplayCapabilityRegistry([{ ...base, id: 'movement.run_jump.v2', version: 'v1' }]);
     const badDomain = validateGameplayCapabilityRegistry([{ ...base, domain: 'combat' }]);
+    const reviewLikeDomain = validateGameplayCapabilityRegistry([
+      { ...base, id: 'revue.oracle_final_gate.v1', domain: 'revue' } as unknown as GameplayCapabilityDescriptor
+    ]);
 
     expect(badId.ok).toBe(false);
     expect(badVersion.ok).toBe(false);
     expect(badDomain.ok).toBe(false);
+    expect(reviewLikeDomain.ok).toBe(false);
     if (!badId.ok) {
       expect(badId.issues.some((issue) => issue.code === 'CAPABILITY_SCHEMA_INVALID' && issue.path.endsWith('.id'))).toBe(true);
     }
@@ -183,6 +193,9 @@ describe('Gameplay capability registry', () => {
     }
     if (!badDomain.ok) {
       expect(badDomain.issues.some((issue) => issue.code === 'CAPABILITY_SCHEMA_INVALID' && issue.path.endsWith('.domain'))).toBe(true);
+    }
+    if (!reviewLikeDomain.ok) {
+      expect(reviewLikeDomain.issues.some((issue) => issue.code === 'CAPABILITY_SCHEMA_INVALID' && issue.path.endsWith('.domain'))).toBe(true);
     }
   });
 
@@ -768,6 +781,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(providerDraft)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(providerDraft)).toBe(false);
+  });
+
+  it('scopes final Oracle gate package-owned QA without static support promotion', () => {
+    const finalGate = findGameplayCapability('review.oracle_final_gate.v1');
+
+    if (finalGate === undefined) {
+      throw new Error('Expected review.oracle_final_gate.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(finalGate)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(finalGate.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(finalGate.qa).toEqual({
+      requiredProbeIds: [REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(finalGate)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(finalGate)).toBe(false);
   });
 
   it('scopes weapon rapid fire package-owned QA without static support promotion', () => {

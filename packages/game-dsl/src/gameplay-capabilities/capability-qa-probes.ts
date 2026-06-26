@@ -234,6 +234,26 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   deepSeekComposedSchemaHashMatched?: boolean;
   deepSeekCapabilityLockHashMatched?: boolean;
   deepSeekTrustedEvidenceRejected?: boolean;
+  finalOracleGateApproved?: boolean;
+  finalOracleReviewedCommitShaPresent?: boolean;
+  finalOracleReviewedSkillRevisionPresent?: boolean;
+  finalOracleResultMatchesReviewedCommit?: boolean;
+  finalOracleResultMatchesReviewedSkillRevision?: boolean;
+  finalOracleCheckpointMatched?: boolean;
+  finalOracleResultIdPresent?: boolean;
+  finalOracleReviewedCommitIsNotReceipt?: boolean;
+  finalOracleP0Count?: number;
+  finalOracleP1Count?: number;
+  finalOracleP2Count?: number;
+  finalOracleGateStatus?: string;
+  finalOracleCandidateCommitSha?: string;
+  finalOracleReviewedCommitSha?: string;
+  finalOracleCandidateSkillRevision?: string;
+  finalOracleReviewedSkillRevision?: string;
+  finalOracleResultId?: string;
+  finalOracleCheckpointId?: string;
+  finalOracleExpectedCheckpointId?: string;
+  finalOracleReceiptCommitSha?: string;
   wavesCleared?: boolean;
   clearedWaveCount?: number;
   requiredWaveCount?: number;
@@ -545,6 +565,7 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
   if (!isRecord(expected)) {
     return [];
   }
+  const finalOracleFacts = deriveFinalOracleGateFacts(observed);
 
   return [
     ...compareExpectedBooleanField('airborne', expected, observed.airborne),
@@ -657,6 +678,17 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('deepSeekComposedSchemaHashMatched', expected, observed.deepSeekComposedSchemaHashMatched),
     ...compareExpectedBooleanField('deepSeekCapabilityLockHashMatched', expected, observed.deepSeekCapabilityLockHashMatched),
     ...compareExpectedBooleanField('deepSeekTrustedEvidenceRejected', expected, observed.deepSeekTrustedEvidenceRejected),
+    ...compareExpectedBooleanField('finalOracleGateApproved', expected, finalOracleFacts.finalOracleGateApproved),
+    ...compareExpectedBooleanField('finalOracleReviewedCommitShaPresent', expected, finalOracleFacts.finalOracleReviewedCommitShaPresent),
+    ...compareExpectedBooleanField('finalOracleReviewedSkillRevisionPresent', expected, finalOracleFacts.finalOracleReviewedSkillRevisionPresent),
+    ...compareExpectedBooleanField('finalOracleResultMatchesReviewedCommit', expected, finalOracleFacts.finalOracleResultMatchesReviewedCommit),
+    ...compareExpectedBooleanField('finalOracleResultMatchesReviewedSkillRevision', expected, finalOracleFacts.finalOracleResultMatchesReviewedSkillRevision),
+    ...compareExpectedBooleanField('finalOracleCheckpointMatched', expected, finalOracleFacts.finalOracleCheckpointMatched),
+    ...compareExpectedBooleanField('finalOracleResultIdPresent', expected, finalOracleFacts.finalOracleResultIdPresent),
+    ...compareExpectedBooleanField('finalOracleReviewedCommitIsNotReceipt', expected, finalOracleFacts.finalOracleReviewedCommitIsNotReceipt),
+    ...compareExpectedNumberField('finalOracleP0Count', expected, observed.finalOracleP0Count),
+    ...compareExpectedNumberField('finalOracleP1Count', expected, observed.finalOracleP1Count),
+    ...compareExpectedNumberField('finalOracleP2Count', expected, observed.finalOracleP2Count),
     ...compareExpectedBooleanField('wavesCleared', expected, observed.wavesCleared),
     ...compareExpectedNumberField('clearedWaveCount', expected, observed.clearedWaveCount),
     ...compareExpectedNumberField('requiredWaveCount', expected, observed.requiredWaveCount),
@@ -686,6 +718,45 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedNumberField('timedExplosionDamage', expected, observed.timedExplosionDamage),
     ...compareExpectedNumberField('timedExplosionRadius', expected, observed.timedExplosionRadius)
   ];
+}
+
+type FinalOracleGateFacts = {
+  finalOracleGateApproved?: boolean;
+  finalOracleReviewedCommitShaPresent: boolean;
+  finalOracleReviewedSkillRevisionPresent: boolean;
+  finalOracleResultMatchesReviewedCommit: boolean;
+  finalOracleResultMatchesReviewedSkillRevision: boolean;
+  finalOracleCheckpointMatched: boolean;
+  finalOracleResultIdPresent: boolean;
+  finalOracleReviewedCommitIsNotReceipt: boolean;
+};
+
+function deriveFinalOracleGateFacts(observed: CapabilityRuntimeObservedProbeEvidence): FinalOracleGateFacts {
+  const candidateCommitSha = nonEmptyString(observed.finalOracleCandidateCommitSha);
+  const reviewedCommitSha = nonEmptyString(observed.finalOracleReviewedCommitSha);
+  const candidateSkillRevision = nonEmptyString(observed.finalOracleCandidateSkillRevision);
+  const reviewedSkillRevision = nonEmptyString(observed.finalOracleReviewedSkillRevision);
+  const checkpointId = nonEmptyString(observed.finalOracleCheckpointId);
+  const expectedCheckpointId = nonEmptyString(observed.finalOracleExpectedCheckpointId);
+  const oracleResultId = nonEmptyString(observed.finalOracleResultId);
+  const receiptCommitSha = nonEmptyString(observed.finalOracleReceiptCommitSha);
+
+  return {
+    finalOracleGateApproved: typeof observed.finalOracleGateStatus === 'string' ? observed.finalOracleGateStatus === 'approved' : undefined,
+    finalOracleReviewedCommitShaPresent: reviewedCommitSha !== undefined,
+    finalOracleReviewedSkillRevisionPresent: reviewedSkillRevision !== undefined,
+    finalOracleResultMatchesReviewedCommit:
+      candidateCommitSha !== undefined && reviewedCommitSha !== undefined && reviewedCommitSha === candidateCommitSha,
+    finalOracleResultMatchesReviewedSkillRevision:
+      candidateSkillRevision !== undefined && reviewedSkillRevision !== undefined && reviewedSkillRevision === candidateSkillRevision,
+    finalOracleCheckpointMatched: checkpointId !== undefined && expectedCheckpointId !== undefined && checkpointId === expectedCheckpointId,
+    finalOracleResultIdPresent: oracleResultId !== undefined,
+    finalOracleReviewedCommitIsNotReceipt: reviewedCommitSha !== undefined && (receiptCommitSha === undefined || reviewedCommitSha !== receiptCommitSha)
+  };
+}
+
+function nonEmptyString(value: string | undefined): string | undefined {
+  return value === undefined || value.trim().length === 0 ? undefined : value;
 }
 
 function compareExpectedBooleanField(field: string, expected: Readonly<Record<string, unknown>>, observed: boolean | undefined): string[] {

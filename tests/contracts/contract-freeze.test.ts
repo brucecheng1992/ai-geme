@@ -527,6 +527,11 @@ describe('Contract Freeze', () => {
     expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('provider.deepseek_authoritative_draft.validated');
   });
 
+  it('allows package-owned final Oracle gate telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'review.oracle_final_gate.approved', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('review.oracle_final_gate.approved');
+  });
+
   it('freezes QA gate all and any_groups evaluation semantics', () => {
     const shooterGate = qaGate.genre_required_events.shooter;
     const observedWithScore = [...shooterGate.all, 'score.changed'];

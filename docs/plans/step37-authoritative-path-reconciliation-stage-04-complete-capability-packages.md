@@ -6374,6 +6374,181 @@ next_checkpoint_source_plan_revision=HEAD:docs/plans/step37-authoritative-path-r
 remaining_inventory_summary=requiredCapabilityCount=59; registeredCapabilityCount=36; completeSupportedCount=0; committedClosedCapabilityCount=36; unsupported_unregistered=23; selectionFailure=null
 ```
 
+## Stage 4 Implementation: `review.oracle_final_gate.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.review_oracle_final_gate_v1.complete_supported_package_slice
+closure_record_id=stage4.review_oracle_final_gate_v1.complete_supported_package_slice.candidate_pending_receipt
+record_status=active
+current_active_record=true
+supersedes_record_id=none
+parent_stage_id=stage4
+capability_id=review.oracle_final_gate.v1
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=not_closed
+global_exit_conditions_met=false
+user_input_required=false
+next_action_after_receipt=CONTINUE_PARENT_LOOP
+reviewed_skill_revision_type=sha256_bundle
+reviewed_skill_revision=06fa14205c4a623e8808b1b701a45a9d1e74234ee0a52bea614e2652e6f99b61
+active_skill_path=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery
+active_skill_revision_type=sha256_bundle
+active_skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
+active_skill_file_count=8
+previous_recorded_skill_digest=27e8ffdc072b4247d6eb20dc79679ed8f24a81a77ed33b3712b56b61b3da7416
+current_active_skill_digest=06fa14205c4a623e8808b1b701a45a9d1e74234ee0a52bea614e2652e6f99b61
+freshness_status=aligned
+freshness_interpretation=Historical provider receipts keep their original digest as then-current evidence; this candidate binds the current active Skill bundle digest and cannot reuse older freshness evidence.
+candidate_commit_sha=not_created_yet
+candidate_commit_tree=not_created_yet
+reviewed_commit_sha=not_submitted
+reviewed_commit_tree=not_submitted
+```
+
+`review.oracle_final_gate.v1` was selected by the Parent Loop Driver after the `provider.deepseek_authoritative_draft.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
+
+Minimum closure requirements:
+
+1. Add a package-owned final Oracle gate capability contract with stable capability identity, runtime system identity, Oracle approval event identity, required probe id, and required QA evidence id.
+2. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `review.oracle_final_gate.v1` only when the runtime evidence includes an approved final Oracle gate bound to the expected checkpoint, reviewed candidate commit, reviewed Skill revision, and Oracle result id.
+5. Require raw final Oracle payload fields: `finalOracleGateStatus`, `finalOracleCandidateCommitSha`, `finalOracleReviewedCommitSha`, `finalOracleCandidateSkillRevision`, `finalOracleReviewedSkillRevision`, `finalOracleResultId`, `finalOracleCheckpointId`, and `finalOracleExpectedCheckpointId`. The QA reader must derive `finalOracleGateApproved=true`, `finalOracleReviewedCommitShaPresent=true`, `finalOracleReviewedSkillRevisionPresent=true`, `finalOracleResultMatchesReviewedCommit=true`, `finalOracleResultMatchesReviewedSkillRevision=true`, `finalOracleCheckpointMatched=true`, `finalOracleResultIdPresent=true`, and `finalOracleReviewedCommitIsNotReceipt=true` from those raw fields instead of trusting producer-supplied booleans.
+6. Keep review evidence plan-scoped: explicit wrong-plan final Oracle evidence must fail closed with structured `PLAN_MISMATCH`; legacy unscoped fixtures remain compatible only when plan affinity is not the contract under test.
+7. Add negative regressions proving provider events, receipt metadata, approved reviews missing reviewed commit, and old Skill digest evidence cannot satisfy the final Oracle gate.
+8. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/review-oracle-final-gate-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/review-oracle-final-gate-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `tests/contracts/contract-freeze.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createReviewOracleFinalGatePackageContract()`.
+- Runtime module identity: `REVIEW_ORACLE_FINAL_GATE_RUNTIME_SYSTEM_ID=review.oracle_final_gate`.
+- Final Oracle approval event: `REVIEW_ORACLE_FINAL_GATE_EVENT_TYPE=review.oracle_final_gate.approved`.
+- Required probe: `REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID=review.oracle_final_gate.v1.final_gate.browser_qa.v1`.
+- Required evidence id: `review.oracle_final_gate.v1.evidence.oracle_final_gate.v1`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` derives final Oracle approval, reviewed commit presence, reviewed Skill revision presence, result id presence, checkpoint match, candidate commit binding, Skill revision binding, and receipt self-reference rejection from raw payload fields, and fails the required probe when any derived fact is missing or mismatched. Producer-supplied diagnostic booleans are not trusted as authority.
+- Plan freshness guard: `CapabilityQaProbeResult.planHash` remains optional for legacy fixtures, but current builder output stamps `plan.planHash`; explicit final Oracle wrong-plan evidence fails closed with structured `PLAN_MISMATCH`.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for the same run; it does not mutate static `completeSupported`.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned final Oracle gate capability contract, runtime system identity, approval event, required probe id, required evidence id, and raw runtime evidence fields binding Oracle approval to candidate commit, Skill revision, checkpoint identity, and Oracle result id. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, telemetry/event freeze contract, DSL consumption report, and Step37 remaining-inventory driver. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves final Oracle approval bound to the expected candidate and Skill revision. |
+| Authority | Package-owned QA evidence defines the capability authority: provider success, receipt prose, request submitted, P0=0, generic Oracle status, or dependency success is insufficient unless `review.oracle_final_gate.approved` lets the reader derive an approved final gate, reviewed commit binding, Skill revision binding, checkpoint match, and Oracle result id presence from raw fields. |
+| Legacy strategy | Legacy review summaries and unscoped receipt metadata cannot overclaim this capability. Existing legacy fixtures without `planHash` remain compatible only when plan affinity is not the contract under test. |
+| Failure policy | Missing package contract, missing approval event, missing reviewed commit or Skill revision, missing Oracle result id, wrong checkpoint, stale Skill digest, reviewed commit pointing at receipt, wrong capability/probe identity, explicit wrong-plan evidence, or self-declared match booleans that contradict raw SHA/digest fields keeps `qa_observed=false` and fails closed as missing required probe evidence or `PLAN_MISMATCH`. |
+| Evidence | Focused contracts prove package validation, registry support advancement without complete support, QA reader positive/negative final Oracle state behavior, spoofed self-declared match rejection, wrong-plan rejection, target-profile overlay positive/negative behavior, remaining-inventory selection, and telemetry schema freeze coverage. |
+| Rollback | Reverting this slice removes only the final Oracle gate package/probe/reader wiring and returns `review.oracle_final_gate.v1` to unsupported evidence without changing business runtime gameplay templates or entering Stage 5. |
+
+Focused validation:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts
+exitCode=0
+duration=real 2.09s
+result=PASS: 8 files / 223 tests
+```
+
+Focused set selection:
+
+- `gameplay-capability-package-contract.test.ts`: validates the new final Oracle gate package contract, required evidence id, runtime system, approval event, final gate assertion fields, and required probe.
+- `gameplay-capability-qa-probes.test.ts`: validates provider-only evidence fails, receipt-only evidence fails, request-submitted evidence fails, missing reviewed commit fails, missing result id fails, wrong checkpoint fails, reviewed commit pointing at receipt fails, stale Skill digest fails, producer-supplied match booleans are ignored when raw SHA/digest fields mismatch, complete current final Oracle evidence passes, and explicit wrong-plan final Oracle evidence fails with structured `PLAN_MISMATCH`.
+- `generation-target-profile-runtime-support.test.ts`: validates same-run overlay positive/negative behavior, required final Oracle state fields, and preservation of static `completeSupported=false`.
+- `gameplay-capability-registry.test.ts`: validates static registry evidence, review domain registration, and required probe wiring without static support promotion.
+- `deepseek-authoritative-dsl-support.test.ts`: validates support dimensions and prerequisites for the target capability.
+- `dsl-consumption-report.test.ts`: validates the consumption report reads the updated package-backed support dimensions.
+- `step37-remaining-inventory-driver.test.ts`: validates parent-loop inventory consumption after the registry count advances to 37 and still selects this current review checkpoint before it is committed.
+- `contract-freeze.test.ts`: included because this diff introduces telemetry/runtime event identity `review.oracle_final_gate.approved` and QA evidence fields, so focused validation follows the actual schema and event-contract impact surface.
+
+Local validation before closure-record sync:
+
+```text
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 11.11s
+result=PASS: 98 files / 1249 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 61.98s
+result=PASS: contracts 98 files / 1249 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.32s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.03s
+result=PASS
+
+command=/usr/bin/time -p npx tsx -e "... review.oracle_final_gate.v1 support summary and remaining inventory ..."
+exitCode=0
+duration=real 0.75s
+result=PASS: currentCheckpointId=stage4.review_oracle_final_gate_v1.complete_supported_package_slice; committedClosedCapabilityCount=36; requiredCapabilityCount=59; registeredCapabilityCount=37; completeSupportedCount=0; review.oracle_final_gate.v1 classification=DEFERRED; state=registered_without_required_probe_verification; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; next_checkpoint_id=stage4.review_oracle_final_gate_v1.complete_supported_package_slice; selectionFailure=null.
+
+command=/usr/bin/time -p node - <<'NODE' ... step37 active Skill bundle digest ... NODE
+exitCode=0
+duration=real 0.06s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_roots=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery; skill_file_count=8; skill_bundle_digest=06fa14205c4a623e8808b1b701a45a9d1e74234ee0a52bea614e2652e6f99b61.
+```
+
+Validation isolation note:
+
+```text
+npm_test_initial_failure_command=/usr/bin/time -p npm test
+npm_test_initial_exitCode=1
+npm_test_initial_result=RED: workspace smoke hit fixed-path generated artifact residue under data/local-data/model-outputs/proj_20260609_191900_smoke; contracts had passed.
+workspace_isolation_command=/usr/bin/time -p npm run test:workspace
+workspace_isolation_exitCode=0
+workspace_isolation_duration=real 50.49s
+second_npm_test_failure_command=/usr/bin/time -p npm test
+second_npm_test_failure_exitCode=1
+second_npm_test_failure_result=RED: fixed test output residue plus missing local Playwright Chromium executable.
+environment_fix_commands=npx playwright install chromium; rm -rf fixed smoke/compiler test output directories under ignored data/
+environment_fix_scope=local Playwright browser cache and ignored test output directories only; no repository source file changed.
+workspace_recheck_command=/usr/bin/time -p npm run test:workspace
+workspace_recheck_exitCode=0
+workspace_recheck_duration=real 50.52s
+npm_test_recheck_exitCode=0
+interpretation=The failures were isolated as local test environment/output residue, not final Oracle gate contract regressions.
+```
+
+Post-record validation requirement:
+
+- This closure record changes the final tree. Before creating the immutable candidate commit, focused closure contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, final diff range check, capability/inventory alignment, and Skill freshness must be re-run or explicitly recorded as fresh for the final tree.
+- Candidate commit must not write its own SHA into this candidate record.
+- Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=06fa14205c4a623e8808b1b701a45a9d1e74234ee0a52bea614e2652e6f99b61`.
+- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+
 ## Stage 4 Implementation: `pickup.weapon_supply.v1` complete-supported package slice
 
 Checkpoint identity:

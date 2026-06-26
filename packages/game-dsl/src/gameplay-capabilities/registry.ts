@@ -14,6 +14,10 @@ import {
   createProviderDeepSeekAuthoritativeDraftPackageContract
 } from './provider-deepseek-authoritative-draft-package.js';
 import {
+  REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID,
+  createReviewOracleFinalGatePackageContract
+} from './review-oracle-final-gate-package.js';
+import {
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
   createArtifactLineageNoManualPatchPackageContract
 } from './artifact-lineage-no-manual-patch-package.js';
@@ -201,6 +205,7 @@ export const GAMEPLAY_CAPABILITY_DOMAINS = [
   'pickup',
   'profile',
   'provider',
+  'review',
   'rules',
   'scene',
   'spawn',
@@ -496,6 +501,19 @@ const providerDeepSeekAuthoritativeDraftPackageEvidence: GameplayCapabilityEvide
   : canonicalRuntimeLoaderEvidence;
 const providerDeepSeekAuthoritativeDraftPackageQa: GameplayCapabilityQaEvidence = providerDeepSeekAuthoritativeDraftPackageReport.supportEligible
   ? { requiredProbeIds: [PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
+const reviewOracleFinalGatePackageReport = validateGameplayCapabilityPackage(createReviewOracleFinalGatePackageContract());
+const reviewOracleFinalGatePackageEvidence: GameplayCapabilityEvidence = reviewOracleFinalGatePackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const reviewOracleFinalGatePackageQa: GameplayCapabilityQaEvidence = reviewOracleFinalGatePackageReport.supportEligible
+  ? { requiredProbeIds: [REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
 const artifactLineageNoManualPatchPackageReport = validateGameplayCapabilityPackage(createArtifactLineageNoManualPatchPackageContract());
 const artifactLineageNoManualPatchPackageEvidence: GameplayCapabilityEvidence = artifactLineageNoManualPatchPackageReport.supportEligible
@@ -1143,6 +1161,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     providerDeepSeekAuthoritativeDraftPackageEvidence,
     providerDeepSeekAuthoritativeDraftPackageQa
+  ),
+  planned(
+    'review.oracle_final_gate.v1',
+    'review',
+    'Final Oracle gate approval',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    reviewOracleFinalGatePackageEvidence,
+    reviewOracleFinalGatePackageQa
   ),
   planned(
     'combat.airborne_fire.v1',

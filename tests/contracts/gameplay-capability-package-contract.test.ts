@@ -367,6 +367,15 @@ import {
   PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_SCHEMA_VERSION
 } from '../../packages/game-dsl/src/gameplay-capabilities/provider-deepseek-authoritative-draft-runtime-module.js';
 import {
+  REVIEW_ORACLE_FINAL_GATE_PACKAGE_REQUIRED_EVIDENCE_ID,
+  REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID,
+  createReviewOracleFinalGatePackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/review-oracle-final-gate-package.js';
+import {
+  REVIEW_ORACLE_FINAL_GATE_EVENT_TYPE,
+  REVIEW_ORACLE_FINAL_GATE_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/review-oracle-final-gate-runtime-module.js';
+import {
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_PACKAGE_REQUIRED_EVIDENCE_ID,
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
   createArtifactLineageNoManualPatchPackageContract
@@ -1925,6 +1934,88 @@ describe('Gameplay capability package contract', () => {
         })
       ]
     });
+  });
+
+  it('accepts the final Oracle gate package only when approval is bound to reviewed candidate and Skill revisions', () => {
+    const contract = createReviewOracleFinalGatePackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'review.oracle_final_gate.v1'
+    });
+    expect(contract.dependencies).toEqual([]);
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([REVIEW_ORACLE_FINAL_GATE_RUNTIME_SYSTEM_ID]);
+    expect(contract.dsl.ownedPaths).toEqual(['/review/oracle_final_gate']);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: REVIEW_ORACLE_FINAL_GATE_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'oracle_final_gate',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'review.oracle_final_gate.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: REVIEW_ORACLE_FINAL_GATE_EVENT_TYPE,
+          parameters: {
+            evidenceKind: 'oracle_final_gate',
+            profileId: 'side_scrolling_run_and_gun.v1'
+          }
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: REVIEW_ORACLE_FINAL_GATE_RUNTIME_SYSTEM_ID,
+          ref: REVIEW_ORACLE_FINAL_GATE_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID}.assertion.final_gate_bound_to_candidate_and_skill`,
+          expected: {
+            finalOracleGateApproved: true,
+            finalOracleReviewedCommitShaPresent: true,
+            finalOracleReviewedSkillRevisionPresent: true,
+            finalOracleResultMatchesReviewedCommit: true,
+            finalOracleResultMatchesReviewedSkillRevision: true,
+            finalOracleCheckpointMatched: true,
+            finalOracleResultIdPresent: true,
+            finalOracleReviewedCommitIsNotReceipt: true,
+            finalOracleP0Count: 0,
+            finalOracleP1Count: 0,
+            finalOracleP2Count: 0
+          }
+        })
+      ]
+    });
+    expect(contract.defaults.requiredStateFields).toEqual([
+      'finalOracleGateApproved',
+      'finalOracleReviewedCommitShaPresent',
+      'finalOracleReviewedSkillRevisionPresent',
+      'finalOracleResultMatchesReviewedCommit',
+      'finalOracleResultMatchesReviewedSkillRevision',
+      'finalOracleCheckpointMatched',
+      'finalOracleResultIdPresent',
+      'finalOracleReviewedCommitIsNotReceipt',
+      'finalOracleP0Count',
+      'finalOracleP1Count',
+      'finalOracleP2Count',
+      'finalOracleGateStatus',
+      'finalOracleCandidateCommitSha',
+      'finalOracleReviewedCommitSha',
+      'finalOracleCandidateSkillRevision',
+      'finalOracleReviewedSkillRevision',
+      'finalOracleResultId',
+      'finalOracleCheckpointId',
+      'finalOracleExpectedCheckpointId'
+    ]);
   });
 
   it('accepts the artifact lineage no-manual-patch package-owned artifact QA contract', () => {

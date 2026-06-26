@@ -9,6 +9,8 @@ export * from './profile-deepseek-run-and-gun-validation-runtime-module.js';
 export * from './profile-deepseek-run-and-gun-validation-package.js';
 export * from './provider-deepseek-authoritative-draft-runtime-module.js';
 export * from './provider-deepseek-authoritative-draft-package.js';
+export * from './review-oracle-final-gate-runtime-module.js';
+export * from './review-oracle-final-gate-package.js';
 export * from './artifact-lineage-no-manual-patch-runtime-module.js';
 export * from './artifact-lineage-no-manual-patch-package.js';
 export * from './artifact-no-hidden-script-runtime-module.js';
