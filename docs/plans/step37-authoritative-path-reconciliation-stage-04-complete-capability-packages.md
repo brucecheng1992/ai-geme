@@ -6178,10 +6178,10 @@ capability_id=enemy.patrol_infantry.v1
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
 review_required=true
-closure_status=not_closed
+closure_status=closed
 global_exit_conditions_met=false
 user_input_required=false
 next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
@@ -6189,9 +6189,10 @@ reviewed_skill_revision_type=sha256_bundle
 reviewed_skill_bundle_format=step37_manifest_v1_path_size_sha
 reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
 reviewed_skill_root_identity=/Users/dahufa/.agents/skills/review-gated-delivery
-reviewed_commit_sha=not_created
-oracle_submission_id=not_submitted
-oracle_agent_id=not_submitted
+reviewed_commit_sha=5ff00ed89fbca14c9d623a08599f14b72a1e2141
+reviewed_commit_tree=adcd2d15d43e35b5b9dc67a2d0a30cf86d87c25e
+oracle_submission_id=019f0274-be7f-74d3-8568-f9448b328e4f
+oracle_agent_id=019effae-8aa2-7c22-b5ba-8c4b69f21d20
 ```
 
 `enemy.patrol_infantry.v1` was selected by the Parent Loop Driver after the `enemy.flying_right_entry.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
@@ -6311,22 +6312,51 @@ Count-change audit:
 - Single-capability and package-subset fixtures keep their previous counts because `enemy.patrol_infantry.v1` is not part of those expected package sets.
 - The canonical missing-probe assertion includes the concrete `ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID`; tests verify missing-probe identity, package identity, canonical order, and the final blocker count instead of relying on count-only expectations.
 
-Exit assessment before Oracle:
+Exit assessment after Oracle receipt:
 
 - implementation_status: `complete`.
 - local_validation_status: `passed`.
-- candidate_status: `ready_for_commit`.
-- oracle_status: `not_submitted`.
-- unresolved_items: `Oracle review not submitted`; `Stage 4 completeSupported still not met`; `Production Default Cutover remains inactive`; `legacy authoritative path remains active`; `Step37 final closure remains open`.
-- exit_assessment: `LOCALLY_VALIDATED_AWAITING_CANDIDATE_COMMIT_AND_ORACLE`.
-- parent_loop: `running`; `global_exit_conditions_met=false`; `user_input_required=false`; this atomic step is not closed until immutable candidate review and receipt-only closure complete.
+- candidate_status: `committed`.
+- oracle_status: `approved`.
+- unresolved_items: `Stage 4 completeSupported still not met`; `Production Default Cutover remains inactive`; `legacy authoritative path remains active`; `Step37 final closure remains open`.
+- exit_assessment: `CLOSED_ATOMIC_STEP_ONLY`.
+- parent_loop: `running`; `global_exit_conditions_met=false`; `user_input_required=false`; Parent Loop Driver selected `stage4.feedback_victory_declaration_v1.complete_supported_package_slice` as the next atomic step.
 
-Candidate creation requirement:
+Oracle review receipt:
 
-- This closure record changes the final tree. Before creating the immutable candidate commit, focused contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, final diff range check, and Skill freshness must be confirmed against the final tree.
-- Candidate commit must not write its own SHA into this candidate record.
-- Oracle request must bind the candidate commit SHA and `reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1`.
-- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+```text
+submission_id=019f0274-be7f-74d3-8568-f9448b328e4f
+submission_id_source=multi_agent_v1.send_input return field
+agent_id=019effae-8aa2-7c22-b5ba-8c4b69f21d20
+agent_id_source=existing Oracle agent id
+polling_id_type=agent_id
+reviewed_commit_sha=5ff00ed89fbca14c9d623a08599f14b72a1e2141
+reviewed_commit_tree=adcd2d15d43e35b5b9dc67a2d0a30cf86d87c25e
+reviewed_skill_revision=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
+oracle_status=approved
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0=0; P1=0; P2=0; P3=0
+receipt_scope=docs_only_closure_metadata
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
+```
+
+Receipt boundary:
+
+- This receipt records Oracle approval for immutable candidate commit `5ff00ed89fbca14c9d623a08599f14b72a1e2141` and Skill revision `58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1`.
+- It intentionally does not record its own receipt commit SHA to avoid self-reference churn.
+- Receipt diff is docs-only closure metadata and must not modify implementation, validator, contract semantics, Skill, AGENTS.md, tests, runtime, Stage 5, production default cutover, legacy exit, or prior closed history.
+- Stage 4 and Step37 remain running. This closes only `stage4.enemy_patrol_infantry_v1.complete_supported_package_slice`.
+
+Parent Loop Driver after receipt:
+
+```text
+command=/usr/bin/time -p npx tsx -e "<remaining inventory after enemy.patrol_infantry.v1 receipt>"
+exitCode=0
+duration=real 0.53s
+result=requiredCapabilityCount=59; registeredCapabilityCount=29; staticCompleteSupportedCount=0; committedClosedCapabilityCount=29; sameRunObservedOnlyCount=29; next_checkpoint_id=stage4.feedback_victory_declaration_v1.complete_supported_package_slice; next_atomic_step="Stage 4 feedback.victory_declaration.v1 complete-supported package slice implementation atomic step"; selection_rule=first_unmet_checkpoint_in_authoritative_inventory; next_action=CONTINUE_PARENT_LOOP; global_exit_conditions_met=false; user_input_required=false
+```
+
+Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4.enemy_patrol_infantry_v1.complete_supported_package_slice` after candidate commit creation, local validation, Oracle PASS, and receipt-only metadata update. It does not close Stage 4, Step37, production default cutover, legacy authoritative path exit, Stage 5, or final global closure. Parent Loop Driver must continue with `stage4.feedback_victory_declaration_v1.complete_supported_package_slice` while global exits remain false and no verified user blocker exists.
 
 ## Stage 4 Implementation: `enemy.flying_right_entry.v1` complete-supported package slice
 
