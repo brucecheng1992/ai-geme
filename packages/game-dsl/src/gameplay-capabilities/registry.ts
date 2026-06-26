@@ -14,6 +14,10 @@ import {
   createArtifactLineageNoManualPatchPackageContract
 } from './artifact-lineage-no-manual-patch-package.js';
 import {
+  ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID,
+  createArtifactNoHiddenScriptPackageContract
+} from './artifact-no-hidden-script-package.js';
+import {
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   createCameraSideFollowPackageContract
 } from './camera-side-follow-package.js';
@@ -426,6 +430,19 @@ const artifactLineageNoManualPatchPackageEvidence: GameplayCapabilityEvidence = 
 const artifactLineageNoManualPatchPackageQa: GameplayCapabilityQaEvidence = artifactLineageNoManualPatchPackageReport.supportEligible
   ? { requiredProbeIds: [ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const artifactNoHiddenScriptPackageReport = validateGameplayCapabilityPackage(createArtifactNoHiddenScriptPackageContract());
+const artifactNoHiddenScriptPackageEvidence: GameplayCapabilityEvidence = artifactNoHiddenScriptPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const artifactNoHiddenScriptPackageQa: GameplayCapabilityQaEvidence = artifactNoHiddenScriptPackageReport.supportEligible
+  ? { requiredProbeIds: [ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const cameraSideFollowPackageReport = validateGameplayCapabilityPackage(createCameraSideFollowPackageContract());
 const cameraSideFollowPackageEvidence: GameplayCapabilityEvidence = cameraSideFollowPackageReport.supportEligible
   ? {
@@ -656,6 +673,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     artifactLineageNoManualPatchPackageEvidence,
     artifactLineageNoManualPatchPackageQa
+  ),
+  planned(
+    'artifact.no_hidden_script.v1',
+    'artifact',
+    'Artifact runtime manifest without hidden script',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    artifactNoHiddenScriptPackageEvidence,
+    artifactNoHiddenScriptPackageQa
   ),
   runtimeBacked('camera.top_down_follow.v1', 'camera', 'Top-down follow camera', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], ['top_down_camera']),
   runtimeBacked('movement.eight_direction.v1', 'movement', 'Eight-direction movement', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], [

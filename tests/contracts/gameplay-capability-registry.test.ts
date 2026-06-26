@@ -14,6 +14,7 @@ import {
   RuntimeGenreRegistry,
   validateGameplayCapabilityRegistry,
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
+  ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID,
   MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
@@ -32,6 +33,10 @@ describe('Gameplay capability registry', () => {
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toEqual([...ids].sort());
     expect(findGameplayCapability('artifact.lineage_no_manual_patch.v1')).toMatchObject({
+      status: 'planned',
+      legacyRuntimeCapabilities: []
+    });
+    expect(findGameplayCapability('artifact.no_hidden_script.v1')).toMatchObject({
       status: 'planned',
       legacyRuntimeCapabilities: []
     });
@@ -239,6 +244,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(noManualPatch)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(noManualPatch)).toBe(false);
+  });
+
+  it('scopes artifact no-hidden-script package-owned QA without static support promotion', () => {
+    const noHiddenScript = findGameplayCapability('artifact.no_hidden_script.v1');
+
+    if (noHiddenScript === undefined) {
+      throw new Error('Expected artifact.no_hidden_script.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(noHiddenScript)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(noHiddenScript.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(noHiddenScript.qa).toEqual({
+      requiredProbeIds: [ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(noHiddenScript)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(noHiddenScript)).toBe(false);
   });
 
   it('scopes weapon rapid fire package-owned QA without static support promotion', () => {

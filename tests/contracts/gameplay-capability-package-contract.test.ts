@@ -180,6 +180,15 @@ import {
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/artifact-lineage-no-manual-patch-runtime-module.js';
+import {
+  ARTIFACT_NO_HIDDEN_SCRIPT_PACKAGE_REQUIRED_EVIDENCE_ID,
+  ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID,
+  createArtifactNoHiddenScriptPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/artifact-no-hidden-script-package.js';
+import {
+  ARTIFACT_NO_HIDDEN_SCRIPT_EVENT_TYPE,
+  ARTIFACT_NO_HIDDEN_SCRIPT_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/artifact-no-hidden-script-runtime-module.js';
 
 describe('Gameplay capability package contract', () => {
   it('accepts a complete supported package and keeps hashes deterministic', () => {
@@ -847,6 +856,57 @@ describe('Gameplay capability package contract', () => {
             pipelineProduced: true,
             manualPatchDetected: false,
             lineageVerified: true
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the artifact no-hidden-script package-owned manifest QA contract', () => {
+    const contract = createArtifactNoHiddenScriptPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'artifact.no_hidden_script.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([ARTIFACT_NO_HIDDEN_SCRIPT_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: ARTIFACT_NO_HIDDEN_SCRIPT_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'artifact.no_hidden_script.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: ARTIFACT_NO_HIDDEN_SCRIPT_EVENT_TYPE,
+          parameters: expect.objectContaining({
+            source: 'runtime_manifest_module_load_receipt',
+            hiddenScriptPolicy: 'forbidden'
+          })
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: ARTIFACT_NO_HIDDEN_SCRIPT_RUNTIME_SYSTEM_ID,
+          ref: ARTIFACT_NO_HIDDEN_SCRIPT_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID}.assertion.no_hidden_script`,
+          expected: {
+            declaredModulesOnly: true,
+            hiddenScriptDetected: false,
+            moduleLoadManifestVerified: true
           }
         })
       ]

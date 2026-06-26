@@ -34,6 +34,9 @@ import {
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
   createArtifactLineageNoManualPatchPackageContract,
+  ARTIFACT_NO_HIDDEN_SCRIPT_EVENT_TYPE,
+  ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID,
+  createArtifactNoHiddenScriptPackageContract,
   type CapabilityQaProbeDescriptor,
   type GameplayCapabilityPackageContract
 } from '../../packages/game-dsl/src/index.js';
@@ -959,6 +962,86 @@ describe('Capability-owned runtime QA probes', () => {
       })
     ]));
     expect(observedNoManualPatchState.status).toBe('passed');
+  });
+
+  it('does not verify artifact no-hidden-script when module-load evidence lacks manifest state fields', () => {
+    const capabilityId = 'artifact.no_hidden_script.v1';
+    const probeId = ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID;
+    const noHiddenScriptPackage = createArtifactNoHiddenScriptPackageContract();
+    const packages = [noHiddenScriptPackage];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingManifestState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_no_hidden_script',
+              eventType: ARTIFACT_NO_HIDDEN_SCRIPT_EVENT_TYPE,
+              eventTypes: [ARTIFACT_NO_HIDDEN_SCRIPT_EVENT_TYPE],
+              sourceRef: 'runtime.manifest.module_load_receipt',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedManifestState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_no_hidden_script',
+              eventType: ARTIFACT_NO_HIDDEN_SCRIPT_EVENT_TYPE,
+              eventTypes: [ARTIFACT_NO_HIDDEN_SCRIPT_EVENT_TYPE],
+              declaredModulesOnly: true,
+              hiddenScriptDetected: false,
+              moduleLoadManifestVerified: true,
+              sourceRef: 'runtime.manifest.module_load_receipt',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingManifestState.status).toBe('failed');
+    expect(missingManifestState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingManifestState.requiredResults[0]?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.no_hidden_script`,
+        status: 'failed',
+        message: expect.stringContaining('expected declaredModulesOnly=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.no_hidden_script`,
+        status: 'failed',
+        message: expect.stringContaining('expected hiddenScriptDetected=false, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.no_hidden_script`,
+        status: 'failed',
+        message: expect.stringContaining('expected moduleLoadManifestVerified=true, observed <missing>')
+      })
+    ]));
+    expect(observedManifestState.status).toBe('passed');
   });
 });
 

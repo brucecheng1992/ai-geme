@@ -152,9 +152,9 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     });
 
     expect(report.requiredCapabilityCount).toBe(59);
-    expect(report.registeredCapabilityCount).toBe(19);
+    expect(report.registeredCapabilityCount).toBe(20);
     expect(report.staticCompleteSupportedCount).toBe(0);
-    expect(report.stateCounts.unsupported_unregistered).toBe(40);
+    expect(report.stateCounts.unsupported_unregistered).toBe(39);
     expect(report.committedClosedCapabilityCount).toBe(12);
     expect(report.nextCheckpoint).not.toBeNull();
     expect(report.nextCheckpoint?.checkpoint_id).toBe('stage4.artifact_lineage_no_manual_patch_v1.complete_supported_package_slice');

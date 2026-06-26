@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
+  ARTIFACT_NO_HIDDEN_SCRIPT_EVENT_TYPE,
+  ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID,
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   COLLISION_PLATFORM_REQUIRED_PROBE_ID,
   COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID,
@@ -45,6 +47,7 @@ import {
   buildCapabilityRuntimeQaPlan,
   buildGenerationTargetProfileRuntimeSupportReport,
   createArtifactLineageNoManualPatchPackageContract,
+  createArtifactNoHiddenScriptPackageContract,
   createCameraSideFollowPackageContract,
   createCollisionPlatformPackageContract,
   createCombatAirborneFirePackageContract,
@@ -68,6 +71,7 @@ import {
 } from '../../packages/game-dsl/src/index.js';
 
 const artifactLineageNoManualPatchCapabilityId = 'artifact.lineage_no_manual_patch.v1';
+const artifactNoHiddenScriptCapabilityId = 'artifact.no_hidden_script.v1';
 const cameraCapabilityId = 'camera.side_follow.v1';
 const collisionCapabilityId = 'collision.platform.v1';
 const airborneFireCapabilityId = 'combat.airborne_fire.v1';
@@ -441,6 +445,83 @@ describe('Step 37 target profile runtime support overlay', () => {
       verifiedRequiredProbeIds: [],
       missingRequiredProbeIds: [ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID],
       observedEvidenceDimensions: { qa_observed: false }
+    });
+  });
+
+  it('observes artifact no-hidden-script only when module load evidence includes manifest state proof', () => {
+    const missingStateQaReport = buildSingleCapabilityQaReport({
+      capabilityId: artifactNoHiddenScriptCapabilityId,
+      packageContract: createArtifactNoHiddenScriptPackageContract(),
+      eventType: ARTIFACT_NO_HIDDEN_SCRIPT_EVENT_TYPE,
+      probeId: ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID,
+      action: 'verify_no_hidden_script',
+      sourceRef: 'runtime.manifest.module_load_receipt',
+      stateFields: undefined
+    });
+    const observedStateQaReport = buildSingleCapabilityQaReport({
+      capabilityId: artifactNoHiddenScriptCapabilityId,
+      packageContract: createArtifactNoHiddenScriptPackageContract(),
+      eventType: ARTIFACT_NO_HIDDEN_SCRIPT_EVENT_TYPE,
+      probeId: ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID,
+      action: 'verify_no_hidden_script',
+      sourceRef: 'runtime.manifest.module_load_receipt',
+      stateFields: {
+        declaredModulesOnly: true,
+        hiddenScriptDetected: false,
+        moduleLoadManifestVerified: true
+      }
+    });
+    const missingStateReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_no_hidden_script_missing_state',
+      capabilityQaReport: missingStateQaReport
+    });
+    const observedStateReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_no_hidden_script_observed_state',
+      capabilityQaReport: observedStateQaReport
+    });
+    const missingState = missingStateReport.capabilities.find((entry) => entry.capabilityId === artifactNoHiddenScriptCapabilityId);
+    const observedState = observedStateReport.capabilities.find((entry) => entry.capabilityId === artifactNoHiddenScriptCapabilityId);
+
+    expect(missingStateQaReport.requiredResults.find((entry) => entry.probeId === ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID}.assertion.no_hidden_script`,
+          status: 'failed',
+          message: expect.stringContaining('expected declaredModulesOnly=true, observed <missing>')
+        })
+      ])
+    });
+    expect(missingStateReport).toMatchObject({
+      observedCompleteSupportedCount: 0,
+      blockers: [
+        `capability_qa_report_missing_required_probe:${ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID}`,
+        'target_profile_runtime_support_incomplete:0/59'
+      ]
+    });
+    expect(missingState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedStateReport).toMatchObject({
+      observedCompleteSupportedCount: 1,
+      observedCapabilityIds: [artifactNoHiddenScriptCapabilityId],
+      blockers: ['target_profile_runtime_support_incomplete:1/59']
+    });
+    expect(observedState).toMatchObject({
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
     });
   });
 
@@ -1393,6 +1474,55 @@ function buildDefaultWeaponQaReport(
       evidence: {
         status: 'PASSED',
         observed,
+        missingProbeIds: [],
+        mismatches: []
+      }
+    })
+  });
+}
+
+function buildSingleCapabilityQaReport(input: {
+  capabilityId: string;
+  packageContract: ReturnType<typeof createArtifactNoHiddenScriptPackageContract>;
+  eventType: string;
+  probeId: string;
+  action: string;
+  sourceRef: string;
+  stateFields: Record<string, unknown> | undefined;
+}) {
+  const packages = [input.packageContract];
+  const lockReport = resolveGameplayCapabilityGraph({
+    requestedCapabilities: [input.capabilityId],
+    packages,
+    runtimeFamily: 'phaser_2d_action_arcade.v1'
+  });
+  if (lockReport.lock === undefined) {
+    throw new Error(`expected single capability lock, got diagnostics ${JSON.stringify(lockReport.diagnostics)}`);
+  }
+  const plan = buildCapabilityRuntimeQaPlan({
+    profileId: 'side_scrolling_run_and_gun.v1',
+    capabilityLock: lockReport.lock,
+    packages
+  });
+
+  return evaluateCapabilityQaReport({
+    plan,
+    probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+      plan,
+      evidence: {
+        status: 'PASSED',
+        observed: [
+          {
+            capabilityId: input.capabilityId,
+            probeId: input.probeId,
+            action: input.action,
+            eventType: input.eventType,
+            eventTypes: [input.eventType],
+            ...input.stateFields,
+            status: 'observed',
+            sourceRef: input.sourceRef
+          }
+        ],
         missingProbeIds: [],
         mismatches: []
       }

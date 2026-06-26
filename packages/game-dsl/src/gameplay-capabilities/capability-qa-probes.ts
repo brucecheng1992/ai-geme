@@ -143,6 +143,9 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   pipelineProduced?: boolean;
   manualPatchDetected?: boolean;
   lineageVerified?: boolean;
+  declaredModulesOnly?: boolean;
+  hiddenScriptDetected?: boolean;
+  moduleLoadManifestVerified?: boolean;
   status?: string;
   sourceRef?: string;
 };
@@ -411,7 +414,10 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedStringField('replacementWeaponId', expected, observed.replacementWeaponId),
     ...compareExpectedBooleanField('pipelineProduced', expected, observed.pipelineProduced),
     ...compareExpectedBooleanField('manualPatchDetected', expected, observed.manualPatchDetected),
-    ...compareExpectedBooleanField('lineageVerified', expected, observed.lineageVerified)
+    ...compareExpectedBooleanField('lineageVerified', expected, observed.lineageVerified),
+    ...compareExpectedBooleanField('declaredModulesOnly', expected, observed.declaredModulesOnly),
+    ...compareExpectedBooleanField('hiddenScriptDetected', expected, observed.hiddenScriptDetected),
+    ...compareExpectedBooleanField('moduleLoadManifestVerified', expected, observed.moduleLoadManifestVerified)
   ];
 }
 
