@@ -5616,38 +5616,38 @@ Local validation completed before candidate:
 ```text
 command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/step37-closure-implementation-trace.test.ts
 exitCode=0
-duration=real 1.85s
+duration=real 1.90s
 result=PASS: 9 files / 162 tests
 
 command=/usr/bin/time -p npm run test:contracts
 exitCode=0
-duration=real 8.54s
+duration=real 8.60s
 result=PASS: 98 files / 1154 tests
 
 command=/usr/bin/time -p npm test
 exitCode=0
-duration=real 58.20s
+duration=real 58.54s
 result=PASS: contracts 98 files / 1154 tests; workspace 34 files / 410 tests
 
 command=/usr/bin/time -p npm run typecheck
 exitCode=0
-duration=real 6.58s
+duration=real 6.94s
 result=PASS
 
 command=/usr/bin/time -p git diff --check
 exitCode=0
-duration=real 0.01s
+duration=real 0.03s
 result=PASS
 
 command=/usr/bin/time -p npx tsx -e "<weapon.replacement_rule.v1 support summary>"
 exitCode=0
-duration=real 0.43s
+duration=real 0.51s
 result=PASS: classification=DEFERRED; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false.
 
-command=/usr/bin/time -p node "<review-gated-delivery skill bundle digest script>"
+command=/usr/bin/time -p node "<review-gated-delivery skill bundle digest script: ASCII-sorted root-relative lines, relpath<TAB>byteLength<TAB>sha256, final newline>"
 exitCode=0
-duration=real 0.06s
-result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_size_sha; skill_root_identity=/Users/dahufa/.agents/skills/review-gated-delivery; skill_file_count=7; skill_bundle_digest=01a4b385af0f64311b6248d342dc2e6637645dbeb02e6fe6fb212f7afc5f3b61.
+duration=real 0.07s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_size_sha; skill_root_identity=/Users/dahufa/.agents/skills/review-gated-delivery; skill_file_count=7; skill_bundle_digest=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1.
 
 command=git status --short
 exitCode=0
@@ -5656,4 +5656,16 @@ result=PASS: expected replacement-rule implementation, tests, docs, and two new 
 command=git diff --stat
 exitCode=0
 result=PASS: diff is limited to the replacement-rule package slice, adjacent capability QA/registry exports, focused contracts, and the current closure record.
+```
+
+Oracle review round 1:
+
+```text
+reviewed_repo_commit_sha=e05368dc9c21bb63ea6cc37690df6b52f7d9736e
+reviewed_skill_revision=01a4b385af0f64311b6248d342dc2e6637645dbeb02e6fe6fb212f7afc5f3b61
+submission_id=019f0183-1a19-7253-9fb2-669397d9cecf
+agent_id=019effae-8aa2-7c22-b5ba-8c4b69f21d20
+result=CHANGES_REQUIRED
+blocking_finding=P2: external Skill revision was under-specified and not reproducible from the declared step37_manifest_v1_path_size_sha root-relative path/size/sha protocol.
+resolution=current candidate evidence now uses the reproducible root-relative ASCII manifest digest 58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1; the previous 01a4b385af0f64311b6248d342dc2e6637645dbeb02e6fe6fb212f7afc5f3b61 value is stale and must not be used for this checkpoint.
 ```
