@@ -6167,6 +6167,172 @@ next_action=CONTINUE_PARENT_LOOP
 next_atomic_step=RUN_PARENT_LOOP_DRIVER_TO_SELECT_NEXT_UNMET_CHECKPOINT
 ```
 
+## Stage 4 Implementation: `hazard.falling_area.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.hazard_falling_area_v1.complete_supported_package_slice
+parent_stage_id=stage4
+capability_id=hazard.falling_area.v1
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=committed
+oracle_status=approved
+review_required=true
+closure_status=closed
+global_exit_conditions_met=false
+user_input_required=false
+next_action_after_receipt=CONTINUE_PARENT_LOOP
+reviewed_skill_revision=d1be7d87dd3b80b32c13656074a761d586084e9e5937566f4b57b861cf16cc32
+reviewed_commit_sha=895815fea6c835c423270a373773677c8f83ce48
+reviewed_commit_tree=0c4973809e25c9c451c53f6cf69e9c7785992bf1
+oracle_agent_id=019f02d9-f4d6-71b0-916c-84d4b304eb27
+oracle_submission_id=not_available_local_subagent_review
+```
+
+`hazard.falling_area.v1` was selected by the Parent Loop Driver after the `goal.boss_unlock.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
+
+Minimum closure requirements:
+
+1. Add a package-owned falling-area hazard contract with stable capability identity, runtime system identity, verification event identity, required probe id, and required QA evidence id.
+2. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `hazard.falling_area.v1` only when falling-area evidence includes the required from-above, armed, damaging, boss-phase, pattern, damage, telegraph, and hazard identity state fields.
+5. Add a negative regression proving generic hazard spawn/order/wave evidence, without authoritative falling-area state payload, keeps the capability unverified.
+6. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/hazard-falling-area-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/hazard-falling-area-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`.
+- `tests/contracts/contract-freeze.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+
+Evidence/probe chain:
+
+- Package contract: `createHazardFallingAreaPackageContract()`.
+- Runtime module identity: `HAZARD_FALLING_AREA_RUNTIME_SYSTEM_ID=hazard.falling_area`.
+- Falling-area verification event: `HAZARD_FALLING_AREA_EVENT_TYPE=hazard.falling_area.verified`.
+- Required probe: `HAZARD_FALLING_AREA_REQUIRED_PROBE_ID=hazard.falling_area.v1.area.browser_qa.v1`.
+- Required evidence id: `HAZARD_FALLING_AREA_PACKAGE_REQUIRED_EVIDENCE_ID=hazard.falling_area.v1.evidence.capability_qa_report.v1`.
+- Required state fields: `fallingAreaActive`, `fallingAreaHazardId`, `fallingAreaBossPhaseId`, `fallingAreaPatternId`, `fallingAreaDropsFromAbove`, `fallingAreaArmed`, `fallingAreaDamagesPlayer`, `fallingAreaDamage`, and `fallingAreaTelegraphMs`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` accepts only same-run `hazard.falling_area.verified` evidence with the full falling-area state payload.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for the same run; it does not mutate static `completeSupported`.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned falling-area hazard capability contract, runtime system identity, falling-area verification event, required probe id, required evidence id, and runtime evidence fields for from-above falling-area hazard state. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, Step37 remaining-inventory driver, telemetry/event freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves the falling-area runtime state fields. |
+| Authority | Package-owned QA evidence defines the capability authority: generic hazard spawn, wave, order, or entry events are insufficient unless evidence also proves the full `hazard.falling_area.verified` state payload for the current run. |
+| Legacy strategy | Existing generic hazard events remain non-authoritative for this capability. They may coexist as unrelated evidence but cannot satisfy `hazard.falling_area.v1`. |
+| Failure policy | Missing package contract, missing falling-area event, missing state field, wrong capability/probe identity, generic hazard-only evidence, or stale evidence keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, registry support advancement without complete support, QA reader positive/negative falling-area field behavior, target-profile overlay positive/negative behavior, remaining-inventory selection, and event/schema freeze coverage. |
+| Rollback | Reverting this slice removes only the falling-area package/probe/reader/schema wiring and returns `hazard.falling_area.v1` to unsupported evidence without changing business runtime gameplay templates. |
+
+Focused validation:
+
+```text
+command=npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 1.34s
+result=PASS: 7 files / 189 tests
+```
+
+Focused set selection:
+
+- `gameplay-capability-package-contract.test.ts`: validates the new falling-area package contract, required evidence id, runtime system, verification event, required state fields, and required probe.
+- `gameplay-capability-qa-probes.test.ts`: validates that generic hazard evidence without falling-area state fields fails and that full falling-area state evidence passes.
+- `generation-target-profile-runtime-support.test.ts`: validates same-run overlay positive/negative behavior and preservation of static `completeSupported=false`.
+- `gameplay-capability-registry.test.ts`: validates static registry evidence and required probe wiring without static support promotion.
+- `deepseek-authoritative-dsl-support.test.ts`: validates support dimensions and prerequisites for the target capability.
+- `dsl-consumption-report.test.ts`: validates the consumption report reads the updated package-backed support dimensions.
+- `contract-freeze.test.ts`: included because this diff introduces a telemetry/runtime event identity and QA evidence fields, so the focused set follows the actual schema and event-contract impact surface.
+
+Local validation before candidate commit:
+
+```text
+command=npm run test:contracts
+exitCode=0
+duration=real 9.46s
+result=PASS: 98 files / 1221 tests
+
+command=npm test
+exitCode=0
+duration=real 57.60s
+result=PASS: contracts 98 files / 1221 tests; workspace 34 files / 410 tests
+
+command=npm run typecheck
+exitCode=0
+duration=real 6.60s
+result=PASS
+
+command=git diff --check
+exitCode=0
+duration=real 0.02s
+result=PASS
+
+command=git diff --cached --check
+exitCode=0
+duration=real 0.02s
+result=PASS
+
+command=node -e "<review-gated-delivery and code-change-discipline skill bundle digest script>"
+exitCode=0
+duration=real 0.00s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_size_sha; skill_file_count=7 review-gated assets plus two SKILL.md files; skill_bundle_digest=d1be7d87dd3b80b32c13656074a761d586084e9e5937566f4b57b861cf16cc32.
+```
+
+Oracle receipt:
+
+```text
+reviewed_commit_sha=895815fea6c835c423270a373773677c8f83ce48
+reviewed_commit_tree=0c4973809e25c9c451c53f6cf69e9c7785992bf1
+reviewed_skill_revision=d1be7d87dd3b80b32c13656074a761d586084e9e5937566f4b57b861cf16cc32
+oracle_agent_id=019f02d9-f4d6-71b0-916c-84d4b304eb27
+oracle_status=approved
+oracle_result=APPROVED_FOR_CANDIDATE
+oracle_findings=P0 none; P1 none; P2 none; P3 none
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for the immutable candidate only. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, Stage 5, production default cutover, or prior closed history.
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
+```
+
+Parent Loop Driver after receipt:
+
+```text
+closure_scope=atomic_step
+atomic_step_status=closed
+parent_stage_status=running
+loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_checkpoint_id=stage4.hazard_timed_explosion_v1.complete_supported_package_slice
+next_atomic_step=Stage 4 hazard.timed_explosion.v1 complete-supported package slice implementation atomic step
+selection_rule=first_unmet_checkpoint_in_authoritative_inventory
+unmet_reason=Stage 4 hazard.timed_explosion.v1 remains unsupported_unregistered; static completeSupported=false; missingEvidenceDimensions=[schema_expressible,normalized,compiled,runtime_consumed,qa_observed]; missingSupportEvidencePrerequisites=[dslSchema,normalizer,irCompiler,runtimeModule,amendmentOperations,capabilityOwnedQa,artifactEvidence,renderContract,requiredProbeIds,requiredProbesVerified].
+remaining_inventory_helper=buildStep37RemainingCompleteSupportedInventory
+requiredCapabilityCount=59
+registeredCapabilityCount=33
+staticCompleteSupportedCount=0
+committedClosedCapabilityCount=33
+```
+
 ## Stage 4 Implementation: `goal.boss_unlock.v1` complete-supported package slice
 
 Checkpoint identity:
