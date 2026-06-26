@@ -133,6 +133,15 @@ import {
   UI_HUD_PLAYER_HEALTH_RUNTIME_FAMILY,
   UI_HUD_PLAYER_HEALTH_SCHEMA_VERSION,
   createUiHudPlayerHealthPackageContract,
+  UI_HUD_RETRIES_EVENT_TYPE,
+  UI_HUD_RETRIES_INITIAL,
+  UI_HUD_RETRIES_LABEL_TEXT,
+  UI_HUD_RETRIES_PROFILE_ID,
+  UI_HUD_RETRIES_REMAINING,
+  UI_HUD_RETRIES_REQUIRED_PROBE_ID,
+  UI_HUD_RETRIES_RUNTIME_FAMILY,
+  UI_HUD_RETRIES_SCHEMA_VERSION,
+  createUiHudRetriesPackageContract,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_ERROR_CODE,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_POLICY,
@@ -5130,6 +5139,136 @@ describe('Capability-owned runtime QA probes', () => {
           assertionId: `${probeId}.assertion.player_health_hud_verified`,
           status: 'failed',
           message: expect.stringContaining('expected hudPlayerHealthBoundToPlayerHealth=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedHud.status).toBe('passed');
+  });
+
+  it('does not verify UI retries HUD from retry count evidence without HUD binding fields', () => {
+    const capabilityId = 'ui.hud_retries.v1';
+    const probeId = UI_HUD_RETRIES_REQUIRED_PROBE_ID;
+    const packages = [
+      createHealthPlayerHealthPointsPackageContract(),
+      createRulesRetryCountPackageContract(),
+      createUiHudRetriesPackageContract()
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const dependencyEvidence: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: 'health.player_health_points.v1',
+        probeId: HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+        action: 'observe_health_points',
+        eventType: HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE,
+        eventTypes: [HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE],
+        sourceRef: 'runtime.health.player_health_points',
+        status: 'observed'
+      },
+      {
+        capabilityId: 'rules.retry_count.v1',
+        probeId: RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
+        action: 'consume_retry',
+        eventType: RULES_RETRY_COUNT_EVENT_TYPE,
+        eventTypes: [RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE, RULES_RETRY_COUNT_EVENT_TYPE],
+        retryCountConfigured: true,
+        retryCountInitial: RULES_RETRY_COUNT_INITIAL_RETRIES,
+        retryCountBefore: RULES_RETRY_COUNT_BEFORE,
+        retryCountAfter: RULES_RETRY_COUNT_AFTER,
+        retryCountRemaining: RULES_RETRY_COUNT_REMAINING,
+        retryCountConsumed: true,
+        retryCountDecremented: true,
+        retryCountExhausted: false,
+        retryCountFailureScreenShown: false,
+        sourceRef: 'runtime.rules.retry_count',
+        status: 'observed'
+      }
+    ];
+    const retryCountOnly = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'show_retries_hud',
+              eventType: RULES_RETRY_COUNT_EVENT_TYPE,
+              eventTypes: [RULES_RETRY_COUNT_EVENT_TYPE],
+              retryCountRemaining: RULES_RETRY_COUNT_REMAINING,
+              sourceRef: 'runtime.rules.retry_count',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedHud = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'show_retries_hud',
+              eventType: UI_HUD_RETRIES_EVENT_TYPE,
+              eventTypes: [RULES_RETRY_COUNT_EVENT_TYPE, UI_HUD_RETRIES_EVENT_TYPE],
+              hudRetriesVisible: true,
+              hudRetriesSchemaVersion: UI_HUD_RETRIES_SCHEMA_VERSION,
+              hudRetriesProfileId: UI_HUD_RETRIES_PROFILE_ID,
+              hudRetriesRuntimeFamily: UI_HUD_RETRIES_RUNTIME_FAMILY,
+              hudRetriesInitial: UI_HUD_RETRIES_INITIAL,
+              hudRetriesRemaining: UI_HUD_RETRIES_REMAINING,
+              hudRetriesConsumed: true,
+              hudRetriesLabelVisible: true,
+              hudRetriesLabelText: UI_HUD_RETRIES_LABEL_TEXT,
+              hudRetriesCounterVisible: true,
+              hudRetriesCounterValueMatchesRetryCount: true,
+              hudRetriesBoundToRetryCount: true,
+              hudRetriesUpdatesOnRetryConsumption: true,
+              sourceRef: 'runtime.ui.hud_retries',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(retryCountOnly.status).toBe('failed');
+    expect(retryCountOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(retryCountOnly.requiredResults.find((entry) => entry.probeId === RULES_RETRY_COUNT_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(retryCountOnly.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.retries_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${UI_HUD_RETRIES_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.retries_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected hudRetriesVisible=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.retries_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected hudRetriesBoundToRetryCount=true, observed <missing>')
         })
       ])
     );

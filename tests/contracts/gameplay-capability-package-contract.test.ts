@@ -207,6 +207,11 @@ import {
   createUiHudPlayerHealthPackageContract
 } from '../../packages/game-dsl/src/gameplay-capabilities/ui-hud-player-health-package.js';
 import {
+  UI_HUD_RETRIES_PACKAGE_REQUIRED_EVIDENCE_ID,
+  UI_HUD_RETRIES_REQUIRED_PROBE_ID,
+  createUiHudRetriesPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/ui-hud-retries-package.js';
+import {
   UI_FAILURE_RESTART_EVENT_TYPE,
   UI_FAILURE_RESTART_FAILURE_TEXT,
   UI_FAILURE_RESTART_INPUT,
@@ -248,6 +253,16 @@ import {
   UI_HUD_PLAYER_HEALTH_RUNTIME_SYSTEM_ID,
   UI_HUD_PLAYER_HEALTH_SCHEMA_VERSION
 } from '../../packages/game-dsl/src/gameplay-capabilities/ui-hud-player-health-runtime-module.js';
+import {
+  UI_HUD_RETRIES_EVENT_TYPE,
+  UI_HUD_RETRIES_INITIAL,
+  UI_HUD_RETRIES_LABEL_TEXT,
+  UI_HUD_RETRIES_PROFILE_ID,
+  UI_HUD_RETRIES_REMAINING,
+  UI_HUD_RETRIES_RUNTIME_FAMILY,
+  UI_HUD_RETRIES_RUNTIME_SYSTEM_ID,
+  UI_HUD_RETRIES_SCHEMA_VERSION
+} from '../../packages/game-dsl/src/gameplay-capabilities/ui-hud-retries-runtime-module.js';
 import {
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_PACKAGE_REQUIRED_EVIDENCE_ID,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID,
@@ -1652,6 +1667,68 @@ describe('Gameplay capability package contract', () => {
             hudPlayerHealthBarValueMatchesPlayerHealth: true,
             hudPlayerHealthBoundToPlayerHealth: true,
             hudPlayerHealthUpdatesOnDamage: true
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the UI retries HUD package-owned QA contract with retry-count-bound HUD state evidence', () => {
+    const contract = createUiHudRetriesPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === UI_HUD_RETRIES_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'ui.hud_retries.v1'
+    });
+    expect(contract.dependencies).toEqual([{ capabilityId: 'rules.retry_count.v1', range: '^v1' }]);
+    expect(contract.runtime.systems).toEqual([
+      expect.objectContaining({
+        id: UI_HUD_RETRIES_RUNTIME_SYSTEM_ID,
+        phase: 'feedback',
+        dependencies: ['rules.retry_count']
+      })
+    ]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: UI_HUD_RETRIES_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'ui.hud_retries.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: UI_HUD_RETRIES_EVENT_TYPE,
+          parameters: expect.objectContaining({
+            labelText: UI_HUD_RETRIES_LABEL_TEXT,
+            initialRetries: UI_HUD_RETRIES_INITIAL,
+            remainingRetries: UI_HUD_RETRIES_REMAINING
+          })
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${UI_HUD_RETRIES_REQUIRED_PROBE_ID}.assertion.retries_hud_verified`,
+          expected: {
+            hudRetriesVisible: true,
+            hudRetriesSchemaVersion: UI_HUD_RETRIES_SCHEMA_VERSION,
+            hudRetriesProfileId: UI_HUD_RETRIES_PROFILE_ID,
+            hudRetriesRuntimeFamily: UI_HUD_RETRIES_RUNTIME_FAMILY,
+            hudRetriesInitial: UI_HUD_RETRIES_INITIAL,
+            hudRetriesRemaining: UI_HUD_RETRIES_REMAINING,
+            hudRetriesConsumed: true,
+            hudRetriesLabelVisible: true,
+            hudRetriesLabelText: UI_HUD_RETRIES_LABEL_TEXT,
+            hudRetriesCounterVisible: true,
+            hudRetriesCounterValueMatchesRetryCount: true,
+            hudRetriesBoundToRetryCount: true,
+            hudRetriesUpdatesOnRetryConsumption: true
           }
         })
       ]

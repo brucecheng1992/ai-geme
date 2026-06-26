@@ -943,6 +943,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       'ui.hud_boss_health.v1',
       'ui.hud_current_weapon.v1',
       'ui.hud_player_health.v1',
+      'ui.hud_retries.v1',
       'weapon.cooldown.v1',
       'weapon.death_reset.v1',
       'weapon.default_straight_single.v1',

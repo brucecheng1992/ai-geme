@@ -218,6 +218,19 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   hudPlayerHealthBarValueMatchesPlayerHealth?: boolean;
   hudPlayerHealthBoundToPlayerHealth?: boolean;
   hudPlayerHealthUpdatesOnDamage?: boolean;
+  hudRetriesVisible?: boolean;
+  hudRetriesSchemaVersion?: string;
+  hudRetriesProfileId?: string;
+  hudRetriesRuntimeFamily?: string;
+  hudRetriesInitial?: number;
+  hudRetriesRemaining?: number;
+  hudRetriesConsumed?: boolean;
+  hudRetriesLabelVisible?: boolean;
+  hudRetriesLabelText?: string;
+  hudRetriesCounterVisible?: boolean;
+  hudRetriesCounterValueMatchesRetryCount?: boolean;
+  hudRetriesBoundToRetryCount?: boolean;
+  hudRetriesUpdatesOnRetryConsumption?: boolean;
   hudBossHealthVisible?: boolean;
   hudBossHealthSchemaVersion?: string;
   hudBossHealthProfileId?: string;
@@ -849,6 +862,23 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ),
     ...compareExpectedBooleanField('hudPlayerHealthBoundToPlayerHealth', expected, observed.hudPlayerHealthBoundToPlayerHealth),
     ...compareExpectedBooleanField('hudPlayerHealthUpdatesOnDamage', expected, observed.hudPlayerHealthUpdatesOnDamage),
+    ...compareExpectedBooleanField('hudRetriesVisible', expected, observed.hudRetriesVisible),
+    ...compareExpectedStringField('hudRetriesSchemaVersion', expected, observed.hudRetriesSchemaVersion),
+    ...compareExpectedStringField('hudRetriesProfileId', expected, observed.hudRetriesProfileId),
+    ...compareExpectedStringField('hudRetriesRuntimeFamily', expected, observed.hudRetriesRuntimeFamily),
+    ...compareExpectedNumberField('hudRetriesInitial', expected, observed.hudRetriesInitial),
+    ...compareExpectedNumberField('hudRetriesRemaining', expected, observed.hudRetriesRemaining),
+    ...compareExpectedBooleanField('hudRetriesConsumed', expected, observed.hudRetriesConsumed),
+    ...compareExpectedBooleanField('hudRetriesLabelVisible', expected, observed.hudRetriesLabelVisible),
+    ...compareExpectedStringField('hudRetriesLabelText', expected, observed.hudRetriesLabelText),
+    ...compareExpectedBooleanField('hudRetriesCounterVisible', expected, observed.hudRetriesCounterVisible),
+    ...compareExpectedBooleanField(
+      'hudRetriesCounterValueMatchesRetryCount',
+      expected,
+      observed.hudRetriesCounterValueMatchesRetryCount
+    ),
+    ...compareExpectedBooleanField('hudRetriesBoundToRetryCount', expected, observed.hudRetriesBoundToRetryCount),
+    ...compareExpectedBooleanField('hudRetriesUpdatesOnRetryConsumption', expected, observed.hudRetriesUpdatesOnRetryConsumption),
     ...compareExpectedBooleanField('hudBossHealthVisible', expected, observed.hudBossHealthVisible),
     ...compareExpectedStringField('hudBossHealthSchemaVersion', expected, observed.hudBossHealthSchemaVersion),
     ...compareExpectedStringField('hudBossHealthProfileId', expected, observed.hudBossHealthProfileId),

@@ -97,6 +97,8 @@ export * from './ui-hud-current-weapon-runtime-module.js';
 export * from './ui-hud-current-weapon-package.js';
 export * from './ui-hud-player-health-runtime-module.js';
 export * from './ui-hud-player-health-package.js';
+export * from './ui-hud-retries-runtime-module.js';
+export * from './ui-hud-retries-package.js';
 export * from './ui-hud-boss-health-runtime-module.js';
 export * from './ui-hud-boss-health-package.js';
 export * from './health-damage-invulnerability-runtime-module.js';

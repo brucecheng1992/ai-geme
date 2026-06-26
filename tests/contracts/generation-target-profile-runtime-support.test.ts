@@ -91,6 +91,14 @@ import {
   UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID,
   UI_HUD_PLAYER_HEALTH_RUNTIME_FAMILY,
   UI_HUD_PLAYER_HEALTH_SCHEMA_VERSION,
+  UI_HUD_RETRIES_EVENT_TYPE,
+  UI_HUD_RETRIES_INITIAL,
+  UI_HUD_RETRIES_LABEL_TEXT,
+  UI_HUD_RETRIES_PROFILE_ID,
+  UI_HUD_RETRIES_REMAINING,
+  UI_HUD_RETRIES_REQUIRED_PROBE_ID,
+  UI_HUD_RETRIES_RUNTIME_FAMILY,
+  UI_HUD_RETRIES_SCHEMA_VERSION,
   FIXED_PROMPT_BINDING_EVENT_TYPE,
   FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
   GENERATION_FALLBACK_POLICY_FAIL_CLOSED_ERROR_CODE,
@@ -194,6 +202,7 @@ import {
   createRuntimePlanCoveragePackageContract,
   createUiHudCurrentWeaponPackageContract,
   createUiHudPlayerHealthPackageContract,
+  createUiHudRetriesPackageContract,
   SCENE_ORDERED_SEGMENTS_CAPABILITY_ID,
   SCENE_ORDERED_SEGMENTS_COUNT,
   SCENE_ORDERED_SEGMENTS_EVENT_TYPE,
@@ -324,6 +333,7 @@ const uiFailureRestartCapabilityId = 'ui.failure_restart.v1';
 const uiHudCurrentWeaponCapabilityId = 'ui.hud_current_weapon.v1';
 const uiHudBossHealthCapabilityId = 'ui.hud_boss_health.v1';
 const uiHudPlayerHealthCapabilityId = 'ui.hud_player_health.v1';
+const uiHudRetriesCapabilityId = 'ui.hud_retries.v1';
 const generationFallbackPolicyFailClosedCapabilityId = 'generation.fallback_policy_fail_closed.v1';
 const goalBossUnlockCapabilityId = 'goal.boss_unlock.v1';
 const hazardFallingAreaCapabilityId = 'hazard.falling_area.v1';
@@ -3589,6 +3599,161 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
   });
 
+  it('keeps retries HUD unverified when retry count evidence lacks HUD state fields', () => {
+    const dependencyEvidence: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: healthCapabilityId,
+        probeId: HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+        action: 'observe_health_points',
+        eventType: 'health.player_health.current',
+        eventTypes: ['health.player_health.current'],
+        sourceRef: 'runtime.health.player_health_points',
+        status: 'observed'
+      },
+      {
+        capabilityId: rulesRetryCountCapabilityId,
+        probeId: RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
+        action: 'consume_retry',
+        eventType: RULES_RETRY_COUNT_EVENT_TYPE,
+        eventTypes: [RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE, RULES_RETRY_COUNT_EVENT_TYPE],
+        retryCountConfigured: true,
+        retryCountInitial: RULES_RETRY_COUNT_INITIAL_RETRIES,
+        retryCountBefore: RULES_RETRY_COUNT_BEFORE,
+        retryCountAfter: RULES_RETRY_COUNT_AFTER,
+        retryCountRemaining: RULES_RETRY_COUNT_REMAINING,
+        retryCountConsumed: true,
+        retryCountDecremented: true,
+        retryCountExhausted: false,
+        retryCountFailureScreenShown: false,
+        sourceRef: 'runtime.rules.retry_count',
+        status: 'observed'
+      }
+    ];
+    const retryCountOnlyQaReport = buildSingleCapabilityQaReport({
+      capabilityId: uiHudRetriesCapabilityId,
+      packageContract: createUiHudRetriesPackageContract(),
+      dependencyPackages: [createHealthPlayerHealthPointsPackageContract(), createRulesRetryCountPackageContract()],
+      additionalObserved: dependencyEvidence,
+      eventType: RULES_RETRY_COUNT_EVENT_TYPE,
+      eventTypes: [RULES_RETRY_COUNT_EVENT_TYPE],
+      probeId: UI_HUD_RETRIES_REQUIRED_PROBE_ID,
+      action: 'show_retries_hud',
+      sourceRef: 'runtime.rules.retry_count',
+      stateFields: { retryCountRemaining: RULES_RETRY_COUNT_REMAINING }
+    });
+    const observedHudQaReport = buildSingleCapabilityQaReport({
+      capabilityId: uiHudRetriesCapabilityId,
+      packageContract: createUiHudRetriesPackageContract(),
+      dependencyPackages: [createHealthPlayerHealthPointsPackageContract(), createRulesRetryCountPackageContract()],
+      additionalObserved: dependencyEvidence,
+      eventType: UI_HUD_RETRIES_EVENT_TYPE,
+      eventTypes: [RULES_RETRY_COUNT_EVENT_TYPE, UI_HUD_RETRIES_EVENT_TYPE],
+      probeId: UI_HUD_RETRIES_REQUIRED_PROBE_ID,
+      action: 'show_retries_hud',
+      sourceRef: 'runtime.ui.hud_retries',
+      stateFields: hudRetriesStateFields()
+    });
+    const retryCountOnlyReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_ui_hud_retries_retry_only',
+      capabilityQaReport: retryCountOnlyQaReport
+    });
+    const observedHudReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_ui_hud_retries_observed_state',
+      capabilityQaReport: observedHudQaReport
+    });
+    const retryCountOnlyState = retryCountOnlyReport.capabilities.find((entry) => entry.capabilityId === uiHudRetriesCapabilityId);
+    const observedHudState = observedHudReport.capabilities.find((entry) => entry.capabilityId === uiHudRetriesCapabilityId);
+
+    expect(retryCountOnlyQaReport.requiredResults.find((entry) => entry.probeId === RULES_RETRY_COUNT_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(retryCountOnlyQaReport.requiredResults.find((entry) => entry.probeId === UI_HUD_RETRIES_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${UI_HUD_RETRIES_REQUIRED_PROBE_ID}.assertion.retries_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${UI_HUD_RETRIES_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${UI_HUD_RETRIES_REQUIRED_PROBE_ID}.assertion.retries_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected hudRetriesVisible=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${UI_HUD_RETRIES_REQUIRED_PROBE_ID}.assertion.retries_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected hudRetriesBoundToRetryCount=true, observed <missing>')
+        })
+      ])
+    });
+    expect(retryCountOnlyState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [UI_HUD_RETRIES_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedHudState).toMatchObject({
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [UI_HUD_RETRIES_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [UI_HUD_RETRIES_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+  });
+
+  it('keeps retries HUD unverified when its retry-count dependency probe is missing', () => {
+    const healthDependencyEvidence: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: healthCapabilityId,
+        probeId: HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+        action: 'observe_health_points',
+        eventType: 'health.player_health.current',
+        eventTypes: ['health.player_health.current'],
+        sourceRef: 'runtime.health.player_health_points',
+        status: 'observed'
+      }
+    ];
+    const missingDependencyQaReport = buildSingleCapabilityQaReport({
+      capabilityId: uiHudRetriesCapabilityId,
+      packageContract: createUiHudRetriesPackageContract(),
+      dependencyPackages: [createHealthPlayerHealthPointsPackageContract(), createRulesRetryCountPackageContract()],
+      additionalObserved: healthDependencyEvidence,
+      eventType: UI_HUD_RETRIES_EVENT_TYPE,
+      eventTypes: [RULES_RETRY_COUNT_EVENT_TYPE, UI_HUD_RETRIES_EVENT_TYPE],
+      probeId: UI_HUD_RETRIES_REQUIRED_PROBE_ID,
+      action: 'show_retries_hud',
+      sourceRef: 'runtime.ui.hud_retries',
+      stateFields: hudRetriesStateFields()
+    });
+    const report = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_ui_hud_retries_missing_dependency',
+      capabilityQaReport: missingDependencyQaReport
+    });
+    const retriesHudState = report.capabilities.find((entry) => entry.capabilityId === uiHudRetriesCapabilityId);
+
+    expect(missingDependencyQaReport.requiredResults.find((entry) => entry.probeId === UI_HUD_RETRIES_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(missingDependencyQaReport.missingRequiredProbeIds).toEqual([RULES_RETRY_COUNT_REQUIRED_PROBE_ID]);
+    expect(retriesHudState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [UI_HUD_RETRIES_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      dependencyRequiredProbeIds: [HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID, RULES_RETRY_COUNT_REQUIRED_PROBE_ID],
+      missingDependencyRequiredProbeIds: [RULES_RETRY_COUNT_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+  });
+
   it('keeps state transition graph unverified when win lose evidence lacks explicit graph fields', () => {
     const genericGraphQaReport = buildSingleCapabilityQaReport({
       capabilityId: rulesStateTransitionGraphCapabilityId,
@@ -6066,6 +6231,24 @@ function hudPlayerHealthStateFields(): Record<string, unknown> {
     hudPlayerHealthBarValueMatchesPlayerHealth: true,
     hudPlayerHealthBoundToPlayerHealth: true,
     hudPlayerHealthUpdatesOnDamage: true
+  };
+}
+
+function hudRetriesStateFields(): Record<string, unknown> {
+  return {
+    hudRetriesVisible: true,
+    hudRetriesSchemaVersion: UI_HUD_RETRIES_SCHEMA_VERSION,
+    hudRetriesProfileId: UI_HUD_RETRIES_PROFILE_ID,
+    hudRetriesRuntimeFamily: UI_HUD_RETRIES_RUNTIME_FAMILY,
+    hudRetriesInitial: UI_HUD_RETRIES_INITIAL,
+    hudRetriesRemaining: UI_HUD_RETRIES_REMAINING,
+    hudRetriesConsumed: true,
+    hudRetriesLabelVisible: true,
+    hudRetriesLabelText: UI_HUD_RETRIES_LABEL_TEXT,
+    hudRetriesCounterVisible: true,
+    hudRetriesCounterValueMatchesRetryCount: true,
+    hudRetriesBoundToRetryCount: true,
+    hudRetriesUpdatesOnRetryConsumption: true
   };
 }
 

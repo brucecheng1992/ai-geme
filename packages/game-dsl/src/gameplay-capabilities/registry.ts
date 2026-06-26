@@ -62,6 +62,10 @@ import {
   createUiHudPlayerHealthPackageContract
 } from './ui-hud-player-health-package.js';
 import {
+  UI_HUD_RETRIES_REQUIRED_PROBE_ID,
+  createUiHudRetriesPackageContract
+} from './ui-hud-retries-package.js';
+import {
   UI_HUD_BOSS_HEALTH_REQUIRED_PROBE_ID,
   createUiHudBossHealthPackageContract
 } from './ui-hud-boss-health-package.js';
@@ -718,6 +722,19 @@ const uiHudPlayerHealthPackageEvidence: GameplayCapabilityEvidence = uiHudPlayer
   : canonicalRuntimeLoaderEvidence;
 const uiHudPlayerHealthPackageQa: GameplayCapabilityQaEvidence = uiHudPlayerHealthPackageReport.supportEligible
   ? { requiredProbeIds: [UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
+const uiHudRetriesPackageReport = validateGameplayCapabilityPackage(createUiHudRetriesPackageContract());
+const uiHudRetriesPackageEvidence: GameplayCapabilityEvidence = uiHudRetriesPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const uiHudRetriesPackageQa: GameplayCapabilityQaEvidence = uiHudRetriesPackageReport.supportEligible
+  ? { requiredProbeIds: [UI_HUD_RETRIES_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
 const uiHudBossHealthPackageReport = validateGameplayCapabilityPackage(createUiHudBossHealthPackageContract());
 const uiHudBossHealthPackageEvidence: GameplayCapabilityEvidence = uiHudBossHealthPackageReport.supportEligible
@@ -1654,6 +1671,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     uiHudPlayerHealthPackageEvidence,
     uiHudPlayerHealthPackageQa
+  ),
+  planned(
+    'ui.hud_retries.v1',
+    'ui',
+    'Retries HUD',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    uiHudRetriesPackageEvidence,
+    uiHudRetriesPackageQa
   ),
   planned(
     'ui.hud_boss_health.v1',

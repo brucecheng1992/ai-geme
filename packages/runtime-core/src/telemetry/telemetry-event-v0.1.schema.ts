@@ -32,6 +32,7 @@ export const TelemetryEventTypeSchema = z.enum([
   'ui.hud_boss_health.verified',
   'ui.hud_current_weapon.verified',
   'ui.hud_player_health.verified',
+  'ui.hud_retries.verified',
   'enemy.flying_right_entry.verified',
   'enemy.patrol_infantry.verified',
   'feedback.victory_declaration.verified',
