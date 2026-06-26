@@ -237,9 +237,17 @@ import {
   createSceneVisualPresentationMetadataPackageContract,
   COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+  SPAWN_EXPLICIT_DECLARATIONS_CAPABILITY_ID,
+  SPAWN_EXPLICIT_DECLARATIONS_EVENT_TYPE,
+  SPAWN_EXPLICIT_DECLARATIONS_PROFILE_ID,
+  SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_DECLARATION_COUNT,
+  SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_PROBE_ID,
+  SPAWN_EXPLICIT_DECLARATIONS_RUNTIME_FAMILY,
+  SPAWN_EXPLICIT_DECLARATIONS_SCHEMA_VERSION,
   SPAWN_STATIC_REQUIRED_PROBE_ID,
   createCombatProjectilePackageContract,
   createSpawnEnemyWavePackageContract,
+  createSpawnExplicitDeclarationsPackageContract,
   createSpawnStaticPackageContract,
   type CapabilityQaProbeDescriptor,
   type CapabilityRuntimeObservedProbeEvidence,
@@ -855,6 +863,161 @@ describe('Capability-owned runtime QA probes', () => {
       })
     ]);
     expect(observedOrder.status).toBe('passed');
+  });
+
+  it('does not verify explicit spawn declarations from generic spawn events or incomplete manifest state', () => {
+    const capabilityId = SPAWN_EXPLICIT_DECLARATIONS_CAPABILITY_ID;
+    const probeId = SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_PROBE_ID;
+    const packages = [
+      createRuntimeManifestBindingPackageContract(),
+      createSpawnStaticPackageContract(),
+      createSpawnEnemyWavePackageContract(),
+      createSpawnExplicitDeclarationsPackageContract()
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [
+        RUNTIME_MANIFEST_BINDING_CAPABILITY_ID,
+        'spawn.static.v1',
+        'spawn.enemy_wave.v1',
+        capabilityId
+      ]),
+      packages
+    });
+    const dependencyEvidence: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: RUNTIME_MANIFEST_BINDING_CAPABILITY_ID,
+        probeId: RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID,
+        action: 'verify_binding',
+        eventType: RUNTIME_MANIFEST_BINDING_EVENT_TYPE,
+        eventTypes: [RUNTIME_MANIFEST_BINDING_EVENT_TYPE],
+        runtimeManifestBound: true,
+        runtimeManifestRuntimeFamily: RUNTIME_MANIFEST_BINDING_RUNTIME_FAMILY,
+        runtimeManifestProfileId: RUNTIME_MANIFEST_BINDING_PROFILE_ID,
+        runtimeManifestTemplateId: RUNTIME_MANIFEST_BINDING_TEMPLATE_ID,
+        runtimeManifestCapabilityLockBound: true,
+        runtimeManifestCapabilityId: RUNTIME_MANIFEST_BINDING_CAPABILITY_ID,
+        runtimeManifestSystemId: RUNTIME_MANIFEST_BINDING_RUNTIME_SYSTEM_ID,
+        runtimeManifestSystemVersion: RUNTIME_MANIFEST_BINDING_SYSTEM_VERSION,
+        runtimeManifestSystemPhase: RUNTIME_MANIFEST_BINDING_SYSTEM_PHASE,
+        runtimeManifestSystemDependencyCount: RUNTIME_MANIFEST_BINDING_SYSTEM_DEPENDENCY_COUNT,
+        runtimeManifestLoaderPlanBound: true,
+        sourceRef: 'runtime.manifest_binding',
+        status: 'observed'
+      },
+      {
+        capabilityId: 'spawn.static.v1',
+        probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
+        action: 'reach_spawn_trigger',
+        eventType: 'spawn.static.triggered',
+        eventTypes: ['spawn.static.triggered'],
+        sourceRef: 'runtime.spawn.static',
+        status: 'observed'
+      },
+      {
+        capabilityId: 'spawn.enemy_wave.v1',
+        probeId: SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+        action: 'spawn',
+        eventType: 'spawn.enemy_wave.ordered',
+        eventTypes: ['spawn.enemy_wave.ordered'],
+        orderedWaveSequence: true,
+        gateTriggered: true,
+        waveSpawned: true,
+        sequenceIndex: 0,
+        waveId: 'wave_approach',
+        sourceRef: 'runtime.spawn.enemy_wave',
+        status: 'observed'
+      }
+    ];
+    const explicitDeclarationState: CapabilityRuntimeObservedProbeEvidence = {
+      capabilityId,
+      probeId,
+      action: 'verify_declarations',
+      eventType: SPAWN_EXPLICIT_DECLARATIONS_EVENT_TYPE,
+      eventTypes: [SPAWN_EXPLICIT_DECLARATIONS_EVENT_TYPE],
+      spawnExplicitDeclarationsVerified: true,
+      spawnExplicitDeclarationsSchemaVersion: SPAWN_EXPLICIT_DECLARATIONS_SCHEMA_VERSION,
+      spawnExplicitDeclarationsProfileId: SPAWN_EXPLICIT_DECLARATIONS_PROFILE_ID,
+      spawnExplicitDeclarationsRuntimeFamily: SPAWN_EXPLICIT_DECLARATIONS_RUNTIME_FAMILY,
+      spawnExplicitDeclarationsRuntimeManifestBound: true,
+      spawnExplicitDeclarationsCapabilityLockBound: true,
+      spawnExplicitDeclarationsDeclarationCount: SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_DECLARATION_COUNT,
+      spawnExplicitDeclarationsStaticDeclared: true,
+      spawnExplicitDeclarationsEnemyWaveDeclared: true,
+      spawnExplicitDeclarationsNoImplicitFallback: true,
+      spawnExplicitDeclarationsHiddenSpawnDetected: false,
+      sourceRef: 'runtime.spawn.explicit_declarations',
+      status: 'observed'
+    };
+    const genericSpawnEvidence = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'spawn',
+              eventType: 'spawn.enemy_wave.ordered',
+              eventTypes: ['spawn.enemy_wave.ordered'],
+              sourceRef: 'runtime.spawn.generic',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const missingEnemyWaveDeclaration = { ...explicitDeclarationState };
+    delete missingEnemyWaveDeclaration.spawnExplicitDeclarationsEnemyWaveDeclared;
+    const missingDeclarationState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [...dependencyEvidence, missingEnemyWaveDeclaration],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedExplicitDeclarations = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [...dependencyEvidence, explicitDeclarationState],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericSpawnEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.explicit_declarations`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${SPAWN_EXPLICIT_DECLARATIONS_EVENT_TYPE} not observed`)
+        })
+      ])
+    );
+    expect(missingDeclarationState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.explicit_declarations`,
+          status: 'failed',
+          message: expect.stringContaining('expected spawnExplicitDeclarationsEnemyWaveDeclared=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedExplicitDeclarations.status).toBe('passed');
   });
 
   it('does not verify weapon death reset when restore evidence lacks reset state fields', () => {

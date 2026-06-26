@@ -353,6 +353,17 @@ import {
   SPAWN_ENEMY_WAVE_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/spawn-enemy-wave-runtime-module.js';
 import {
+  SPAWN_EXPLICIT_DECLARATIONS_PACKAGE_REQUIRED_EVIDENCE_ID,
+  SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_PROBE_ID,
+  createSpawnExplicitDeclarationsPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/spawn-explicit-declarations-package.js';
+import {
+  SPAWN_EXPLICIT_DECLARATIONS_EVENT_TYPE,
+  SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_DECLARATION_COUNT,
+  SPAWN_EXPLICIT_DECLARATIONS_RUNTIME_SYSTEM_ID,
+  SPAWN_EXPLICIT_DECLARATIONS_SCHEMA_VERSION
+} from '../../packages/game-dsl/src/gameplay-capabilities/spawn-explicit-declarations-runtime-module.js';
+import {
   HEALTH_PLAYER_HEALTH_POINTS_PACKAGE_REQUIRED_EVIDENCE_ID,
   HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
   createHealthPlayerHealthPointsPackageContract
@@ -2393,6 +2404,58 @@ describe('Gameplay capability package contract', () => {
         expect.objectContaining({
           id: `${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}.assertion.ordered_wave`,
           expected: { orderedWaveSequence: true, gateTriggered: true, waveSpawned: true, sequenceIndex: 0 }
+        })
+      ]
+    });
+  });
+
+  it('accepts the spawn explicit declarations package-owned QA contract', () => {
+    const contract = createSpawnExplicitDeclarationsPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'spawn.explicit_declarations.v1'
+    });
+    expect(contract.dependencies.map((dependency) => dependency.capabilityId)).toEqual([
+      'runtime.manifest_binding.v1',
+      'spawn.static.v1',
+      'spawn.enemy_wave.v1'
+    ]);
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([SPAWN_EXPLICIT_DECLARATIONS_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: SPAWN_EXPLICIT_DECLARATIONS_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'spawn.explicit_declarations.v1',
+      severity: 'required',
+      observations: [
+        expect.objectContaining({
+          kind: 'state_probe',
+          runtimeSystemId: SPAWN_EXPLICIT_DECLARATIONS_RUNTIME_SYSTEM_ID,
+          ref: SPAWN_EXPLICIT_DECLARATIONS_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_PROBE_ID}.assertion.explicit_declarations`,
+          expected: expect.objectContaining({
+            spawnExplicitDeclarationsVerified: true,
+            spawnExplicitDeclarationsSchemaVersion: SPAWN_EXPLICIT_DECLARATIONS_SCHEMA_VERSION,
+            spawnExplicitDeclarationsRuntimeManifestBound: true,
+            spawnExplicitDeclarationsDeclarationCount: SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_DECLARATION_COUNT,
+            spawnExplicitDeclarationsStaticDeclared: true,
+            spawnExplicitDeclarationsEnemyWaveDeclared: true,
+            spawnExplicitDeclarationsNoImplicitFallback: true,
+            spawnExplicitDeclarationsHiddenSpawnDetected: false
+          })
         })
       ]
     });

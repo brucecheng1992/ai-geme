@@ -935,6 +935,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       'scene.parallax_background.v1',
       'scene.visual_presentation_metadata.v1',
       'spawn.enemy_wave.v1',
+      'spawn.explicit_declarations.v1',
       'spawn.static.v1',
       'telemetry.gameplay_events.v1',
       'weapon.cooldown.v1',

@@ -6167,6 +6167,155 @@ next_action=CONTINUE_PARENT_LOOP
 next_atomic_step=RUN_PARENT_LOOP_DRIVER_TO_SELECT_NEXT_UNMET_CHECKPOINT
 ```
 
+## Stage 4 Implementation: `spawn.explicit_declarations.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.spawn_explicit_declarations_v1.complete_supported_package_slice
+parent_stage_id=stage4
+capability_id=spawn.explicit_declarations.v1
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=open
+global_exit_conditions_met=false
+user_input_required=false
+next_action_after_receipt=CONTINUE_PARENT_LOOP
+active_skill_revision_type=sha256_bundle
+active_skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
+active_skill_file_count=8
+active_skill_bundle_digest=d82dbb66383aa2d336666d360cafc1933e4ce317350ba97a73e44e91360d285d
+active_skill_freshness_command=node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
+active_skill_freshness_exit_code=0
+previous_checkpoint_skill_digest=97ddde4b80b3e2afcb5ffd93b45dc76b30065c644edec6bcea2df59cedd4eb70
+skill_freshness_status=current_checkpoint_requires_new_digest_binding
+```
+
+`spawn.explicit_declarations.v1` was selected by the Parent Loop Driver after the `scene.visual_presentation_metadata.v1` receipt. Baseline support summary at entry reported `registered=false`, `classification=UNSUPPORTED`, all five evidence dimensions false, and missing prerequisites `dslSchema`, `normalizer`, `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
+
+Minimum closure requirements:
+
+1. Add a package-owned explicit spawn declarations contract with stable capability identity, runtime system identity, verification event identity, required probe id, and required QA evidence id.
+2. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `spawn.explicit_declarations.v1` only when package-owned evidence proves runtime manifest binding, capability-lock binding, both `spawn.static` and `spawn.enemy_wave` declarations, and no implicit or hidden spawn fallback.
+5. Require state fields: `spawnExplicitDeclarationsVerified`, `spawnExplicitDeclarationsSchemaVersion`, `spawnExplicitDeclarationsProfileId`, `spawnExplicitDeclarationsRuntimeFamily`, `spawnExplicitDeclarationsRuntimeManifestBound`, `spawnExplicitDeclarationsCapabilityLockBound`, `spawnExplicitDeclarationsDeclarationCount`, `spawnExplicitDeclarationsStaticDeclared`, `spawnExplicitDeclarationsEnemyWaveDeclared`, `spawnExplicitDeclarationsNoImplicitFallback`, and `spawnExplicitDeclarationsHiddenSpawnDetected=false`.
+6. Add negative regressions proving generic spawn/wave evidence, missing declaration fields, wrong capability/probe identity, or stale/unscoped evidence keep the capability unverified and emit the required missing-probe blocker.
+7. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths so far:
+
+- `packages/game-dsl/src/gameplay-capabilities/spawn-explicit-declarations-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/spawn-explicit-declarations-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createSpawnExplicitDeclarationsPackageContract()`.
+- Runtime module identity: `SPAWN_EXPLICIT_DECLARATIONS_RUNTIME_SYSTEM_ID=spawn.explicit_declarations`.
+- Explicit declarations verification event: `SPAWN_EXPLICIT_DECLARATIONS_EVENT_TYPE=spawn.explicit_declarations.verified`.
+- Required probe: `SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_PROBE_ID=spawn.explicit_declarations.v1.verify_explicit_declarations.browser_qa.v1`.
+- Required dependencies: `runtime.manifest_binding.v1`, `spawn.static.v1`, and `spawn.enemy_wave.v1`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares the explicit-declarations state fields and fails the required probe when any field is missing or mismatched.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for same-run package-owned evidence; it does not mutate static `completeSupported`.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned explicit spawn declarations capability contract, runtime system identity, verification event, required probe id, required evidence id, and runtime evidence fields proving manifest-bound static and enemy-wave declarations. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, Step37 remaining-inventory driver, telemetry/event freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves explicit manifest declarations and no implicit fallback. |
+| Authority | Package-owned QA evidence defines the capability authority. Generic wave/spawn events, ordered wave evidence, or a runtime manifest load do not satisfy this capability unless the explicit declaration state fields are present and match the expected `spawn.static` and `spawn.enemy_wave` declarations. |
+| Legacy strategy | Existing generic spawn, wave, or profile events remain non-authoritative for this capability. They can support dependent capabilities, but cannot replace the explicit declarations probe. |
+| Failure policy | Missing package contract, missing explicit-declarations event, missing state fields, wrong capability/probe identity, generic spawn evidence, or stale evidence keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, registry support advancement without complete support, QA reader positive/negative declaration field behavior, target-profile overlay positive/negative behavior, remaining-inventory selection, and event/schema freeze coverage. |
+| Rollback | Reverting this slice removes only the explicit spawn declarations package/probe/reader wiring and returns `spawn.explicit_declarations.v1` to unsupported evidence without changing business runtime gameplay templates. |
+
+Focused validation before final document sync:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/generation-target-profile-runtime-support.test.ts
+exitCode=1
+duration=real 1.66s
+result=RED: target-profile fixture lacked explicit-declarations evidence and canonical missing-probe order had not yet included spawn.explicit_declarations.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/generation-target-profile-runtime-support.test.ts
+exitCode=0
+duration=real 1.58s
+result=PASS: 1 file / 37 tests
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=1
+duration=real 1.89s
+result=RED: registry/support/inventory assertions still expected registeredCapabilityCount=46 and the previous next checkpoint.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 1.88s
+result=PASS: 8 files / 271 tests
+```
+
+Post-record validation requirement:
+
+- This implementation record changed the final tree, so focused contracts, full related contracts, `npm test`, `npm run typecheck`, `git diff --check`, final diff range check, capability support / inventory alignment, Parent Loop inventory alignment, and Skill freshness were re-run against the updated tree before candidate creation.
+- Candidate commit must not write its own SHA into this candidate record.
+- Oracle request must bind the future candidate commit SHA and `reviewed_skill_revision=d82dbb66383aa2d336666d360cafc1933e4ce317350ba97a73e44e91360d285d`.
+- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+
+Final local validation before candidate commit:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-focused-validation.test.ts
+exitCode=0
+duration=real 2.15s
+result=PASS: focused package/QA/registry/target-profile/schema-freeze/closure/parent-loop set; 11 files / 332 tests
+
+command=/usr/bin/time -p npx vitest run tests/contracts
+exitCode=0
+duration=real 9.29s
+result=PASS: full contracts; 98 files / 1297 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 59.31s
+result=PASS: contracts 98 files / 1297 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.73s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.03s
+result=PASS
+
+command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
+exitCode=0
+duration=real 0.07s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_file_count=8; computed_skill_bundle_digest=d82dbb66383aa2d336666d360cafc1933e4ce317350ba97a73e44e91360d285d; aligned_with_record=true.
+
+command=/usr/bin/time -p npx tsx --eval "<spawn.explicit_declarations.v1 support summary and remaining inventory>"
+exitCode=0
+duration=real 0.63s
+result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=47; staticCompleteSupportedCount=0; committedClosedCapabilityCount=46; unsupported_unregistered=12; next_checkpoint_id=stage4.spawn_explicit_declarations_v1.complete_supported_package_slice; selectionFailure=null; spawn.explicit_declarations.v1 classification=DEFERRED; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false.
+```
+
 ## Stage 4 Implementation: `scene.visual_presentation_metadata.v1` complete-supported package slice
 
 Checkpoint identity:

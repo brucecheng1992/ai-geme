@@ -212,6 +212,17 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   runtimePlanCoverageMissingCapabilitiesReported?: boolean;
   runtimePlanCoverageNoUnclassifiedRequiredCapabilities?: boolean;
   runtimePlanCoverageReportHashPresent?: boolean;
+  spawnExplicitDeclarationsVerified?: boolean;
+  spawnExplicitDeclarationsSchemaVersion?: string;
+  spawnExplicitDeclarationsProfileId?: string;
+  spawnExplicitDeclarationsRuntimeFamily?: string;
+  spawnExplicitDeclarationsRuntimeManifestBound?: boolean;
+  spawnExplicitDeclarationsCapabilityLockBound?: boolean;
+  spawnExplicitDeclarationsDeclarationCount?: number;
+  spawnExplicitDeclarationsStaticDeclared?: boolean;
+  spawnExplicitDeclarationsEnemyWaveDeclared?: boolean;
+  spawnExplicitDeclarationsNoImplicitFallback?: boolean;
+  spawnExplicitDeclarationsHiddenSpawnDetected?: boolean;
   sceneOrderedSegmentsVerified?: boolean;
   sceneOrderedSegmentsSchemaVersion?: string;
   sceneOrderedSegmentsProfileId?: string;
@@ -785,6 +796,45 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
       observed.runtimePlanCoverageNoUnclassifiedRequiredCapabilities
     ),
     ...compareExpectedBooleanField('runtimePlanCoverageReportHashPresent', expected, observed.runtimePlanCoverageReportHashPresent),
+    ...compareExpectedBooleanField('spawnExplicitDeclarationsVerified', expected, observed.spawnExplicitDeclarationsVerified),
+    ...compareExpectedStringField('spawnExplicitDeclarationsSchemaVersion', expected, observed.spawnExplicitDeclarationsSchemaVersion),
+    ...compareExpectedStringField('spawnExplicitDeclarationsProfileId', expected, observed.spawnExplicitDeclarationsProfileId),
+    ...compareExpectedStringField('spawnExplicitDeclarationsRuntimeFamily', expected, observed.spawnExplicitDeclarationsRuntimeFamily),
+    ...compareExpectedBooleanField(
+      'spawnExplicitDeclarationsRuntimeManifestBound',
+      expected,
+      observed.spawnExplicitDeclarationsRuntimeManifestBound
+    ),
+    ...compareExpectedBooleanField(
+      'spawnExplicitDeclarationsCapabilityLockBound',
+      expected,
+      observed.spawnExplicitDeclarationsCapabilityLockBound
+    ),
+    ...compareExpectedNumberField(
+      'spawnExplicitDeclarationsDeclarationCount',
+      expected,
+      observed.spawnExplicitDeclarationsDeclarationCount
+    ),
+    ...compareExpectedBooleanField(
+      'spawnExplicitDeclarationsStaticDeclared',
+      expected,
+      observed.spawnExplicitDeclarationsStaticDeclared
+    ),
+    ...compareExpectedBooleanField(
+      'spawnExplicitDeclarationsEnemyWaveDeclared',
+      expected,
+      observed.spawnExplicitDeclarationsEnemyWaveDeclared
+    ),
+    ...compareExpectedBooleanField(
+      'spawnExplicitDeclarationsNoImplicitFallback',
+      expected,
+      observed.spawnExplicitDeclarationsNoImplicitFallback
+    ),
+    ...compareExpectedBooleanField(
+      'spawnExplicitDeclarationsHiddenSpawnDetected',
+      expected,
+      observed.spawnExplicitDeclarationsHiddenSpawnDetected
+    ),
     ...compareExpectedBooleanField('sceneOrderedSegmentsVerified', expected, observed.sceneOrderedSegmentsVerified),
     ...compareExpectedStringField('sceneOrderedSegmentsSchemaVersion', expected, observed.sceneOrderedSegmentsSchemaVersion),
     ...compareExpectedStringField('sceneOrderedSegmentsProfileId', expected, observed.sceneOrderedSegmentsProfileId),

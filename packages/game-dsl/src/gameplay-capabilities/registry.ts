@@ -170,6 +170,10 @@ import {
   createSpawnEnemyWavePackageContract
 } from './spawn-enemy-wave-package.js';
 import {
+  SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_PROBE_ID,
+  createSpawnExplicitDeclarationsPackageContract
+} from './spawn-explicit-declarations-package.js';
+import {
   HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
   createHealthPlayerHealthPointsPackageContract
 } from './health-player-health-points-package.js';
@@ -1046,6 +1050,19 @@ const spawnEnemyWavePackageEvidence: GameplayCapabilityEvidence = spawnEnemyWave
 const spawnEnemyWavePackageQa: GameplayCapabilityQaEvidence = spawnEnemyWavePackageReport.supportEligible
   ? { requiredProbeIds: [SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const spawnExplicitDeclarationsPackageReport = validateGameplayCapabilityPackage(createSpawnExplicitDeclarationsPackageContract());
+const spawnExplicitDeclarationsPackageEvidence: GameplayCapabilityEvidence = spawnExplicitDeclarationsPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const spawnExplicitDeclarationsPackageQa: GameplayCapabilityQaEvidence = spawnExplicitDeclarationsPackageReport.supportEligible
+  ? { requiredProbeIds: [SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const healthPlayerHealthPointsPackageReport = validateGameplayCapabilityPackage(createHealthPlayerHealthPointsPackageContract());
 const healthPlayerHealthPointsPackageEvidence: GameplayCapabilityEvidence = healthPlayerHealthPointsPackageReport.supportEligible
   ? {
@@ -1405,6 +1422,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     ['enemy_waves'],
     spawnEnemyWavePackageEvidence,
     spawnEnemyWavePackageQa
+  ),
+  planned(
+    'spawn.explicit_declarations.v1',
+    'spawn',
+    'Explicit spawn declarations',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    spawnExplicitDeclarationsPackageEvidence,
+    spawnExplicitDeclarationsPackageQa
   ),
   planned(
     'camera.side_follow.v1',

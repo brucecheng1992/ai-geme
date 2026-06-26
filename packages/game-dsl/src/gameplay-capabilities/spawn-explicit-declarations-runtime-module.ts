@@ -1,0 +1,9 @@
+export const SPAWN_EXPLICIT_DECLARATIONS_CAPABILITY_ID = 'spawn.explicit_declarations.v1';
+export const SPAWN_EXPLICIT_DECLARATIONS_RUNTIME_SYSTEM_ID = 'spawn.explicit_declarations';
+export const SPAWN_EXPLICIT_DECLARATIONS_EVENT_TYPE = 'spawn.explicit_declarations.verified';
+export const SPAWN_EXPLICIT_DECLARATIONS_PROFILE_ID = 'DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1';
+export const SPAWN_EXPLICIT_DECLARATIONS_RUNTIME_FAMILY = 'phaser_2d_action_arcade.v1';
+export const SPAWN_EXPLICIT_DECLARATIONS_SCHEMA_VERSION = 'spawn_explicit_declarations.v0.1';
+export const SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_DECLARATION_COUNT = 2;
+export const SPAWN_EXPLICIT_DECLARATIONS_STATIC_SYSTEM_ID = 'spawn.static';
+export const SPAWN_EXPLICIT_DECLARATIONS_ENEMY_WAVE_SYSTEM_ID = 'spawn.enemy_wave';
