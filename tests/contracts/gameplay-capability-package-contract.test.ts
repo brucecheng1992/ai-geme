@@ -266,6 +266,20 @@ import {
   RULES_ENCOUNTER_GATE_WAVE_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/rules-encounter-gate-runtime-module.js';
 import {
+  RULES_RETRY_COUNT_PACKAGE_REQUIRED_EVIDENCE_ID,
+  RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
+  createRulesRetryCountPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/rules-retry-count-package.js';
+import {
+  RULES_RETRY_COUNT_AFTER,
+  RULES_RETRY_COUNT_BEFORE,
+  RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE,
+  RULES_RETRY_COUNT_EVENT_TYPE,
+  RULES_RETRY_COUNT_INITIAL_RETRIES,
+  RULES_RETRY_COUNT_REMAINING,
+  RULES_RETRY_COUNT_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/rules-retry-count-runtime-module.js';
+import {
   COLLISION_PLATFORM_PACKAGE_REQUIRED_EVIDENCE_ID,
   COLLISION_PLATFORM_REQUIRED_PROBE_ID,
   createCollisionPlatformPackageContract
@@ -1586,6 +1600,77 @@ describe('Gameplay capability package contract', () => {
     });
   });
 
+  it('accepts the rules retry count package-owned QA contract', () => {
+    const contract = createRulesRetryCountPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === RULES_RETRY_COUNT_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'rules.retry_count.v1'
+    });
+    expect(contract.runtime.systems).toEqual([
+      {
+        id: RULES_RETRY_COUNT_RUNTIME_SYSTEM_ID,
+        version: 'v1',
+        phase: 'gameplay',
+        dependencies: ['health.player_health_points', 'checkpoint_or_lives_system']
+      }
+    ]);
+    expect(contract.dependencies).toEqual([{ capabilityId: 'health.player_health_points.v1', range: '^v1' }]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: RULES_RETRY_COUNT_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'rules.retry_count.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE,
+          parameters: {
+            damageEvent: RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE,
+            initialRetries: RULES_RETRY_COUNT_INITIAL_RETRIES,
+            retryCountBefore: RULES_RETRY_COUNT_BEFORE,
+            retryCountAfter: RULES_RETRY_COUNT_AFTER
+          }
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: RULES_RETRY_COUNT_RUNTIME_SYSTEM_ID,
+          ref: RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE
+        }),
+        expect.objectContaining({
+          kind: 'state_probe',
+          runtimeSystemId: RULES_RETRY_COUNT_RUNTIME_SYSTEM_ID,
+          ref: RULES_RETRY_COUNT_EVENT_TYPE
+        })
+      ],
+      assertions: expect.arrayContaining([
+        expect.objectContaining({
+          id: `${RULES_RETRY_COUNT_REQUIRED_PROBE_ID}.assertion.retry_consumed`,
+          expected: {
+            retryCountConfigured: true,
+            retryCountInitial: RULES_RETRY_COUNT_INITIAL_RETRIES,
+            retryCountBefore: RULES_RETRY_COUNT_BEFORE,
+            retryCountAfter: RULES_RETRY_COUNT_AFTER,
+            retryCountRemaining: RULES_RETRY_COUNT_REMAINING,
+            retryCountConsumed: true,
+            retryCountDecremented: true,
+            retryCountExhausted: false,
+            retryCountFailureScreenShown: false
+          }
+        })
+      ])
+    });
+  });
   it('accepts the collision platform package-owned QA contract', () => {
     const contract = createCollisionPlatformPackageContract();
     const report = validateGameplayCapabilityPackage(contract);

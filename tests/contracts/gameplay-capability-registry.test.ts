@@ -36,6 +36,7 @@ import {
   REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID,
   RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID,
   RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID,
+  RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   WEAPON_DEATH_RESET_REQUIRED_PROBE_ID,
   WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID,
@@ -160,6 +161,11 @@ describe('Gameplay capability registry', () => {
       legacyRuntimeCapabilities: []
     });
     expect(findGameplayCapability('rules.encounter_gate.v1')).toMatchObject({
+      status: 'planned',
+      domain: 'rules',
+      legacyRuntimeCapabilities: []
+    });
+    expect(findGameplayCapability('rules.retry_count.v1')).toMatchObject({
       status: 'planned',
       domain: 'rules',
       legacyRuntimeCapabilities: []
@@ -795,6 +801,34 @@ describe('Gameplay capability registry', () => {
     expect(encounterGate.legacyRuntimeCapabilities).toEqual([]);
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(encounterGate)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(encounterGate)).toBe(false);
+  });
+
+  it('scopes rules retry count package-owned QA without static support promotion', () => {
+    const retryCount = findGameplayCapability('rules.retry_count.v1');
+
+    if (retryCount === undefined) {
+      throw new Error('Expected rules.retry_count.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(retryCount)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(retryCount.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(retryCount.qa).toEqual({
+      requiredProbeIds: [RULES_RETRY_COUNT_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(retryCount.legacyRuntimeCapabilities).toEqual([]);
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(retryCount)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(retryCount)).toBe(false);
   });
 
   it('scopes pickup weapon supply package-owned QA without static support promotion', () => {

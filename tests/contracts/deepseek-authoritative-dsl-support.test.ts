@@ -604,6 +604,21 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       missingEvidenceDimensions: ['qa_observed'],
       missingSupportEvidencePrerequisites: ['requiredProbesVerified']
     });
+    expect(capabilities.get('rules.retry_count.v1')).toMatchObject({
+      registered: true,
+      classification: 'DEFERRED',
+      completeSupported: false,
+      legacyBacked: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
     expect(capabilities.get('pickup.weapon_supply.v1')).toMatchObject({
       registered: true,
       classification: 'DEFERRED',
@@ -821,6 +836,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       'rules.checkpoint_restore.v1',
       'rules.encounter_gate.v1',
       'rules.restart_loop.v1',
+      'rules.retry_count.v1',
       'scene.parallax_background.v1',
       'spawn.enemy_wave.v1',
       'spawn.static.v1',

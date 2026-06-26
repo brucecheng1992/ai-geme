@@ -26,6 +26,10 @@ import {
   createRulesEncounterGatePackageContract
 } from './rules-encounter-gate-package.js';
 import {
+  RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
+  createRulesRetryCountPackageContract
+} from './rules-retry-count-package.js';
+import {
   ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
   createArtifactLineageNoManualPatchPackageContract
 } from './artifact-lineage-no-manual-patch-package.js';
@@ -548,6 +552,19 @@ const rulesEncounterGatePackageEvidence: GameplayCapabilityEvidence = rulesEncou
   : canonicalRuntimeLoaderEvidence;
 const rulesEncounterGatePackageQa: GameplayCapabilityQaEvidence = rulesEncounterGatePackageReport.supportEligible
   ? { requiredProbeIds: [RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
+const rulesRetryCountPackageReport = validateGameplayCapabilityPackage(createRulesRetryCountPackageContract());
+const rulesRetryCountPackageEvidence: GameplayCapabilityEvidence = rulesRetryCountPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const rulesRetryCountPackageQa: GameplayCapabilityQaEvidence = rulesRetryCountPackageReport.supportEligible
+  ? { requiredProbeIds: [RULES_RETRY_COUNT_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
 const artifactLineageNoManualPatchPackageReport = validateGameplayCapabilityPackage(createArtifactLineageNoManualPatchPackageContract());
 const artifactLineageNoManualPatchPackageEvidence: GameplayCapabilityEvidence = artifactLineageNoManualPatchPackageReport.supportEligible
@@ -1308,6 +1325,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     rulesEncounterGatePackageEvidence,
     rulesEncounterGatePackageQa
+  ),
+  planned(
+    'rules.retry_count.v1',
+    'rules',
+    'Retry count budget and retry consumption',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    rulesRetryCountPackageEvidence,
+    rulesRetryCountPackageQa
   ),
   runtimeBacked('rules.restart_loop.v1', 'rules', 'Restart and checkpoint loop', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], [
     'restart_loop',

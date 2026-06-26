@@ -138,9 +138,20 @@ import {
   RULES_ENCOUNTER_GATE_SEQUENCE_INDEX,
   RULES_ENCOUNTER_GATE_WAVE_ID,
   createRulesEncounterGatePackageContract,
+  RULES_RETRY_COUNT_AFTER,
+  RULES_RETRY_COUNT_BEFORE,
+  RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE,
+  RULES_RETRY_COUNT_EVENT_TYPE,
+  RULES_RETRY_COUNT_INITIAL_RETRIES,
+  RULES_RETRY_COUNT_REMAINING,
+  RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
+  createRulesRetryCountPackageContract,
   createCollisionPlatformPackageContract,
   DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
   createDefaultStraightSingleWeaponPackageContract,
+  HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE,
+  HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+  createHealthPlayerHealthPointsPackageContract,
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
   createPickupCollectiblePackageContract,
   PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
@@ -3999,6 +4010,150 @@ describe('Capability-owned runtime QA probes', () => {
       ])
     );
     expect(observedEncounterGate.status).toBe('passed');
+  });
+
+  it('does not verify retry count from zero-health or checkpoint evidence without retry budget state', () => {
+    const capabilityId = 'rules.retry_count.v1';
+    const probeId = RULES_RETRY_COUNT_REQUIRED_PROBE_ID;
+    const packages = [createHealthPlayerHealthPointsPackageContract(), createRulesRetryCountPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const dependencyEvidence: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: 'health.player_health_points.v1',
+        probeId: HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+        action: 'observe_health_points',
+        eventType: HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE,
+        eventTypes: [HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE],
+        sourceRef: 'runtime.health.player_health_points',
+        status: 'observed'
+      }
+    ];
+    const genericRetryEvidence = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'zero_health_retry',
+              eventType: RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE,
+              eventTypes: [RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE, 'rules.checkpoint_restore.restored'],
+              sourceRef: 'runtime.rules.generic_checkpoint_retry',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const wrongRetryEvidence = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'consume_retry',
+              eventType: RULES_RETRY_COUNT_EVENT_TYPE,
+              eventTypes: [RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE, RULES_RETRY_COUNT_EVENT_TYPE],
+              retryCountConfigured: true,
+              retryCountInitial: RULES_RETRY_COUNT_INITIAL_RETRIES,
+              retryCountBefore: RULES_RETRY_COUNT_BEFORE,
+              retryCountAfter: RULES_RETRY_COUNT_BEFORE,
+              retryCountRemaining: RULES_RETRY_COUNT_BEFORE,
+              retryCountConsumed: true,
+              retryCountDecremented: false,
+              retryCountExhausted: false,
+              retryCountFailureScreenShown: false,
+              sourceRef: 'runtime.rules.retry_count',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedRetryCount = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'consume_retry',
+              eventType: RULES_RETRY_COUNT_EVENT_TYPE,
+              eventTypes: [RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE, RULES_RETRY_COUNT_EVENT_TYPE],
+              retryCountConfigured: true,
+              retryCountInitial: RULES_RETRY_COUNT_INITIAL_RETRIES,
+              retryCountBefore: RULES_RETRY_COUNT_BEFORE,
+              retryCountAfter: RULES_RETRY_COUNT_AFTER,
+              retryCountRemaining: RULES_RETRY_COUNT_REMAINING,
+              retryCountConsumed: true,
+              retryCountDecremented: true,
+              retryCountExhausted: false,
+              retryCountFailureScreenShown: false,
+              sourceRef: 'runtime.rules.retry_count',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericRetryEvidence.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericRetryEvidence.requiredResults.find((entry) => entry.probeId === HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericRetryEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.retry_consumed`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${RULES_RETRY_COUNT_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.retry_consumed`,
+          status: 'failed',
+          message: expect.stringContaining('expected retryCountConfigured=true, observed <missing>')
+        })
+      ])
+    );
+    expect(wrongRetryEvidence.status).toBe('failed');
+    expect(wrongRetryEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.retry_consumed`,
+          status: 'failed',
+          message: expect.stringContaining(`expected retryCountAfter=${RULES_RETRY_COUNT_AFTER}`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.retry_consumed`,
+          status: 'failed',
+          message: expect.stringContaining('expected retryCountDecremented=true, observed false')
+        })
+      ])
+    );
+    expect(observedRetryCount.status).toBe('passed');
   });
 });
 

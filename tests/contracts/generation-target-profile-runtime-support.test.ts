@@ -96,6 +96,13 @@ import {
   RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID,
   RULES_ENCOUNTER_GATE_SEQUENCE_INDEX,
   RULES_ENCOUNTER_GATE_WAVE_ID,
+  RULES_RETRY_COUNT_AFTER,
+  RULES_RETRY_COUNT_BEFORE,
+  RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE,
+  RULES_RETRY_COUNT_EVENT_TYPE,
+  RULES_RETRY_COUNT_INITIAL_RETRIES,
+  RULES_RETRY_COUNT_REMAINING,
+  RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
   GenerationTargetProfileRuntimeSupportReportSchema,
   HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID,
   HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
@@ -176,6 +183,7 @@ import {
   createReviewOracleFinalGatePackageContract,
   createRulesCheckpointRestorePackageContract,
   createRulesEncounterGatePackageContract,
+  createRulesRetryCountPackageContract,
   createSpawnEnemyWavePackageContract,
   createSpawnStaticPackageContract,
   createWeaponDeathResetPackageContract,
@@ -206,6 +214,7 @@ const hazardFallingAreaCapabilityId = 'hazard.falling_area.v1';
 const hazardTimedExplosionCapabilityId = 'hazard.timed_explosion.v1';
 const rulesCheckpointRestoreCapabilityId = 'rules.checkpoint_restore.v1';
 const rulesEncounterGateCapabilityId = 'rules.encounter_gate.v1';
+const rulesRetryCountCapabilityId = 'rules.retry_count.v1';
 const cameraCapabilityId = 'camera.side_follow.v1';
 const collisionCapabilityId = 'collision.platform.v1';
 const airborneFireCapabilityId = 'combat.airborne_fire.v1';
@@ -247,6 +256,8 @@ describe('Step 37 target profile runtime support overlay', () => {
       HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
       RULES_CHECKPOINT_RESTORE_DAMAGE_EVENT_TYPE,
       RULES_CHECKPOINT_RESTORE_EVENT_TYPE,
+      RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE,
+      RULES_RETRY_COUNT_EVENT_TYPE,
       'combat.airborne_fire.fired',
       'player.fired',
       'projectile.spawned',
@@ -290,6 +301,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     const hazardFallingArea = report.capabilities.find((entry) => entry.capabilityId === hazardFallingAreaCapabilityId);
     const hazardTimedExplosion = report.capabilities.find((entry) => entry.capabilityId === hazardTimedExplosionCapabilityId);
     const rulesCheckpointRestore = report.capabilities.find((entry) => entry.capabilityId === rulesCheckpointRestoreCapabilityId);
+    const rulesRetryCount = report.capabilities.find((entry) => entry.capabilityId === rulesRetryCountCapabilityId);
     const defaultWeapon = report.capabilities.find((entry) => entry.capabilityId === defaultWeaponCapabilityId);
     const projectile = report.capabilities.find((entry) => entry.capabilityId === projectileCapabilityId);
     const movement = report.capabilities.find((entry) => entry.capabilityId === movementCapabilityId);
@@ -318,7 +330,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       status: 'blocked_incomplete_target_profile',
       requiredCapabilityCount: 59,
       staticCompleteSupportedCount: 0,
-      observedCompleteSupportedCount: 35,
+      observedCompleteSupportedCount: 36,
       targetProfileCompleteSupported: false,
       capabilityQaReportHash: capabilityQaReport.reportHash,
       observedCapabilityIds: [
@@ -350,6 +362,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         reviewOracleFinalGateCapabilityId,
         rulesCheckpointRestoreCapabilityId,
         rulesEncounterGateCapabilityId,
+        rulesRetryCountCapabilityId,
         spawnEnemyWaveCapabilityId,
         spawnStaticCapabilityId,
         deathResetCapabilityId,
@@ -358,7 +371,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         replacementRuleCapabilityId,
         spreadShotCapabilityId
       ],
-      blockers: ['target_profile_runtime_support_incomplete:35/59']
+      blockers: ['target_profile_runtime_support_incomplete:36/59']
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
       capabilityId: artifactLineageNoManualPatchCapabilityId,
@@ -378,6 +391,17 @@ describe('Step 37 target profile runtime support overlay', () => {
       observedCompleteSupported: true,
       requiredProbeIds: [RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID],
       verifiedRequiredProbeIds: [RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+    expect(rulesRetryCount).toMatchObject({
+      capabilityId: rulesRetryCountCapabilityId,
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [RULES_RETRY_COUNT_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [RULES_RETRY_COUNT_REQUIRED_PROBE_ID],
       missingRequiredProbeIds: [],
       staticEvidenceDimensions: { qa_observed: false },
       observedEvidenceDimensions: { qa_observed: true }
@@ -809,11 +833,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 34,
+      observedCompleteSupportedCount: 35,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:34/59'
+        'target_profile_runtime_support_incomplete:35/59'
       ]
     });
     expect(artifactLineageNoManualPatch).toMatchObject({
@@ -1184,11 +1208,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 34,
+      observedCompleteSupportedCount: 35,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:34/59'
+        'target_profile_runtime_support_incomplete:35/59'
       ]
     });
     expect(fixedPromptBinding).toMatchObject({
@@ -1248,11 +1272,11 @@ describe('Step 37 target profile runtime support overlay', () => {
 
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 34,
+      observedCompleteSupportedCount: 35,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:34/59'
+        'target_profile_runtime_support_incomplete:35/59'
       ]
     });
     expect(profileBinding).toMatchObject({
@@ -1545,7 +1569,7 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 34,
+      observedCompleteSupportedCount: 35,
       targetProfileCompleteSupported: false,
       observedCapabilityIds: [
         artifactLineageNoManualPatchCapabilityId,
@@ -1575,6 +1599,7 @@ describe('Step 37 target profile runtime support overlay', () => {
         reviewOracleFinalGateCapabilityId,
         rulesCheckpointRestoreCapabilityId,
         rulesEncounterGateCapabilityId,
+        rulesRetryCountCapabilityId,
         spawnEnemyWaveCapabilityId,
         spawnStaticCapabilityId,
         deathResetCapabilityId,
@@ -1585,7 +1610,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       ],
       blockers: [
         `capability_qa_report_missing_required_probe:${HEALTH_DAMAGE_INVULNERABILITY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:34/59'
+        'target_profile_runtime_support_incomplete:35/59'
       ]
     });
     expect(damageInvulnerability).toMatchObject({
@@ -1662,11 +1687,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 34,
+      observedCompleteSupportedCount: 35,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:34/59'
+        'target_profile_runtime_support_incomplete:35/59'
       ]
     });
     expect(pickup).toMatchObject({
@@ -1867,11 +1892,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 34,
+      observedCompleteSupportedCount: 35,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:34/59'
+        'target_profile_runtime_support_incomplete:35/59'
       ]
     });
     expect(spawnEnemyWave).toMatchObject({
@@ -1950,11 +1975,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 34,
+      observedCompleteSupportedCount: 35,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:34/59'
+        'target_profile_runtime_support_incomplete:35/59'
       ]
     });
     expect(flyingRightEntry).toMatchObject({
@@ -2033,11 +2058,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 34,
+      observedCompleteSupportedCount: 35,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:34/59'
+        'target_profile_runtime_support_incomplete:35/59'
       ]
     });
     expect(patrolInfantry).toMatchObject({
@@ -2118,11 +2143,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 34,
+      observedCompleteSupportedCount: 35,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:34/59'
+        'target_profile_runtime_support_incomplete:35/59'
       ]
     });
     expect(victoryDeclaration).toMatchObject({
@@ -2737,6 +2762,102 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
   });
 
+  it('keeps retry count unverified when damage evidence lacks retry budget state', () => {
+    const dependencyEvidence: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: healthCapabilityId,
+        probeId: HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+        action: 'observe_health_points',
+        eventType: 'health.player_health.current',
+        eventTypes: ['health.player_health.current'],
+        sourceRef: 'runtime.health.player_health_points',
+        status: 'observed'
+      }
+    ];
+    const genericRetryQaReport = buildSingleCapabilityQaReport({
+      capabilityId: rulesRetryCountCapabilityId,
+      dependencyPackages: [createHealthPlayerHealthPointsPackageContract()],
+      packageContract: createRulesRetryCountPackageContract(),
+      additionalObserved: dependencyEvidence,
+      eventType: RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE,
+      eventTypes: [RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE, 'rules.checkpoint_restore.restored'],
+      probeId: RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
+      action: 'zero_health_retry',
+      sourceRef: 'runtime.rules.generic_checkpoint_retry',
+      stateFields: undefined
+    });
+    const observedRetryCountQaReport = buildSingleCapabilityQaReport({
+      capabilityId: rulesRetryCountCapabilityId,
+      dependencyPackages: [createHealthPlayerHealthPointsPackageContract()],
+      packageContract: createRulesRetryCountPackageContract(),
+      additionalObserved: dependencyEvidence,
+      eventType: RULES_RETRY_COUNT_EVENT_TYPE,
+      eventTypes: [RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE, RULES_RETRY_COUNT_EVENT_TYPE],
+      probeId: RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
+      action: 'consume_retry',
+      sourceRef: 'runtime.rules.retry_count',
+      stateFields: {
+        retryCountConfigured: true,
+        retryCountInitial: RULES_RETRY_COUNT_INITIAL_RETRIES,
+        retryCountBefore: RULES_RETRY_COUNT_BEFORE,
+        retryCountAfter: RULES_RETRY_COUNT_AFTER,
+        retryCountRemaining: RULES_RETRY_COUNT_REMAINING,
+        retryCountConsumed: true,
+        retryCountDecremented: true,
+        retryCountExhausted: false,
+        retryCountFailureScreenShown: false
+      }
+    });
+    const genericRetryReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_retry_count_missing_state',
+      capabilityQaReport: genericRetryQaReport
+    });
+    const observedRetryCountReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_retry_count_observed_state',
+      capabilityQaReport: observedRetryCountQaReport
+    });
+    const genericRetryState = genericRetryReport.capabilities.find((entry) => entry.capabilityId === rulesRetryCountCapabilityId);
+    const observedRetryCountState = observedRetryCountReport.capabilities.find((entry) => entry.capabilityId === rulesRetryCountCapabilityId);
+
+    expect(genericRetryQaReport.requiredResults.find((entry) => entry.probeId === HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericRetryQaReport.requiredResults.find((entry) => entry.probeId === RULES_RETRY_COUNT_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${RULES_RETRY_COUNT_REQUIRED_PROBE_ID}.assertion.retry_consumed`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${RULES_RETRY_COUNT_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${RULES_RETRY_COUNT_REQUIRED_PROBE_ID}.assertion.retry_consumed`,
+          status: 'failed',
+          message: expect.stringContaining('expected retryCountConfigured=true, observed <missing>')
+        })
+      ])
+    });
+    expect(genericRetryState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [RULES_RETRY_COUNT_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedRetryCountState).toMatchObject({
+      runtimeVerified: true,
+      staticCompleteSupported: false,
+      observedCompleteSupported: true,
+      requiredProbeIds: [RULES_RETRY_COUNT_REQUIRED_PROBE_ID],
+      verifiedRequiredProbeIds: [RULES_RETRY_COUNT_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+  });
+
   it('keeps weapon death reset unverified when restore evidence lacks reset state fields', () => {
     const capabilityQaReport = buildDefaultWeaponQaReport(
       [
@@ -2799,11 +2920,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 34,
+      observedCompleteSupportedCount: 35,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:34/59'
+        'target_profile_runtime_support_incomplete:35/59'
       ]
     });
     expect(deathReset).toMatchObject({
@@ -2877,11 +2998,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 34,
+      observedCompleteSupportedCount: 35,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:34/59'
+        'target_profile_runtime_support_incomplete:35/59'
       ]
     });
     expect(rapidFire).toMatchObject({
@@ -2955,11 +3076,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 34,
+      observedCompleteSupportedCount: 35,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:34/59'
+        'target_profile_runtime_support_incomplete:35/59'
       ]
     });
     expect(spreadShot).toMatchObject({
@@ -3033,11 +3154,11 @@ describe('Step 37 target profile runtime support overlay', () => {
     });
     expect(report).toMatchObject({
       status: 'blocked_incomplete_target_profile',
-      observedCompleteSupportedCount: 34,
+      observedCompleteSupportedCount: 35,
       targetProfileCompleteSupported: false,
       blockers: [
         `capability_qa_report_missing_required_probe:${WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID}`,
-        'target_profile_runtime_support_incomplete:34/59'
+        'target_profile_runtime_support_incomplete:35/59'
       ]
     });
     expect(replacementRule).toMatchObject({
@@ -3079,6 +3200,7 @@ describe('Step 37 target profile runtime support overlay', () => {
       `capability_qa_report_missing_required_probe:${REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID}`,
+      `capability_qa_report_missing_required_probe:${RULES_RETRY_COUNT_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${SPAWN_STATIC_REQUIRED_PROBE_ID}`,
       `capability_qa_report_missing_required_probe:${WEAPON_DEATH_RESET_REQUIRED_PROBE_ID}`,
@@ -3107,6 +3229,7 @@ function buildDefaultWeaponQaReport(
     hazardTimedExplosionStateFields?: boolean;
     rulesCheckpointRestoreStateFields?: boolean;
     rulesEncounterGateStateFields?: boolean;
+    rulesRetryCountStateFields?: boolean;
     pickupStateFields?: boolean;
     pickupWeaponSupplyStateFields?: boolean;
     providerDeepSeekAuthoritativeDraftStateFields?: boolean;
@@ -3457,6 +3580,34 @@ function buildDefaultWeaponQaReport(
                 }),
             status: 'observed' as const,
             sourceRef: 'runtime.rules.encounter_gate'
+          }
+        ]
+      : []),
+    ...(effectiveEventTypes.includes(RULES_RETRY_COUNT_EVENT_TYPE)
+      ? [
+          {
+            capabilityId: rulesRetryCountCapabilityId,
+            probeId: RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
+            action: 'consume_retry',
+            eventType: RULES_RETRY_COUNT_EVENT_TYPE,
+            eventTypes: effectiveEventTypes.includes(RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE)
+              ? effectiveEventTypes
+              : [...effectiveEventTypes, RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE],
+            ...(options.rulesRetryCountStateFields === false
+              ? {}
+              : {
+                  retryCountConfigured: true,
+                  retryCountInitial: RULES_RETRY_COUNT_INITIAL_RETRIES,
+                  retryCountBefore: RULES_RETRY_COUNT_BEFORE,
+                  retryCountAfter: RULES_RETRY_COUNT_AFTER,
+                  retryCountRemaining: RULES_RETRY_COUNT_REMAINING,
+                  retryCountConsumed: true,
+                  retryCountDecremented: true,
+                  retryCountExhausted: false,
+                  retryCountFailureScreenShown: false
+                }),
+            status: 'observed' as const,
+            sourceRef: 'runtime.rules.retry_count'
           }
         ]
       : []),
@@ -3829,7 +3980,7 @@ function withDefaultPackageOwnedEvents(eventTypes: readonly string[]): readonly 
     ...(eventTypes.includes(FIXED_PROMPT_BINDING_EVENT_TYPE) || eventTypes.includes(PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE)
       ? [PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE, REVIEW_ORACLE_FINAL_GATE_EVENT_TYPE]
       : []),
-    ...(eventTypes.includes(RULES_CHECKPOINT_RESTORE_EVENT_TYPE) ? [RULES_ENCOUNTER_GATE_EVENT_TYPE] : [])
+    ...(eventTypes.includes(RULES_CHECKPOINT_RESTORE_EVENT_TYPE) ? [RULES_ENCOUNTER_GATE_EVENT_TYPE, RULES_RETRY_COUNT_EVENT_TYPE] : [])
   ];
   return [...eventTypes, ...packageOwnedEvents.filter((eventType) => !eventTypes.includes(eventType))];
 }
@@ -3907,6 +4058,7 @@ function buildDefaultWeaponQaPlan() {
     createHazardTimedExplosionPackageContract(),
     createRulesCheckpointRestorePackageContract(),
     createRulesEncounterGatePackageContract(),
+    createRulesRetryCountPackageContract(),
     createCameraSideFollowPackageContract(),
     createCollisionPlatformPackageContract(),
     createCombatAirborneFirePackageContract(),
@@ -3945,6 +4097,7 @@ function buildDefaultWeaponQaPlan() {
       hazardTimedExplosionCapabilityId,
       rulesCheckpointRestoreCapabilityId,
       rulesEncounterGateCapabilityId,
+      rulesRetryCountCapabilityId,
       cameraCapabilityId,
       collisionCapabilityId,
       airborneFireCapabilityId,

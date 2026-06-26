@@ -159,6 +159,15 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   checkpointRestorePositionMatched?: boolean;
   checkpointRestorePlayerRespawned?: boolean;
   checkpointRestoreFailureScreenShown?: boolean;
+  retryCountConfigured?: boolean;
+  retryCountInitial?: number;
+  retryCountBefore?: number;
+  retryCountAfter?: number;
+  retryCountRemaining?: number;
+  retryCountConsumed?: boolean;
+  retryCountDecremented?: boolean;
+  retryCountExhausted?: boolean;
+  retryCountFailureScreenShown?: boolean;
   encounterGateClosedEntrance?: boolean;
   encounterGateGateId?: string;
   encounterGateEntranceId?: string;
@@ -621,6 +630,15 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('checkpointRestorePositionMatched', expected, observed.checkpointRestorePositionMatched),
     ...compareExpectedBooleanField('checkpointRestorePlayerRespawned', expected, observed.checkpointRestorePlayerRespawned),
     ...compareExpectedBooleanField('checkpointRestoreFailureScreenShown', expected, observed.checkpointRestoreFailureScreenShown),
+    ...compareExpectedBooleanField('retryCountConfigured', expected, observed.retryCountConfigured),
+    ...compareExpectedNumberField('retryCountInitial', expected, observed.retryCountInitial),
+    ...compareExpectedNumberField('retryCountBefore', expected, observed.retryCountBefore),
+    ...compareExpectedNumberField('retryCountAfter', expected, observed.retryCountAfter),
+    ...compareExpectedNumberField('retryCountRemaining', expected, observed.retryCountRemaining),
+    ...compareExpectedBooleanField('retryCountConsumed', expected, observed.retryCountConsumed),
+    ...compareExpectedBooleanField('retryCountDecremented', expected, observed.retryCountDecremented),
+    ...compareExpectedBooleanField('retryCountExhausted', expected, observed.retryCountExhausted),
+    ...compareExpectedBooleanField('retryCountFailureScreenShown', expected, observed.retryCountFailureScreenShown),
     ...compareExpectedBooleanField('encounterGateClosedEntrance', expected, observed.encounterGateClosedEntrance),
     ...compareExpectedStringField('encounterGateGateId', expected, observed.encounterGateGateId),
     ...compareExpectedStringField('encounterGateEntranceId', expected, observed.encounterGateEntranceId),

@@ -6366,6 +6366,150 @@ remaining_inventory_summary=requiredCapabilityCount=59; registeredCapabilityCoun
 
 Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4.rules_encounter_gate_v1.complete_supported_package_slice` after candidate commit creation, full local validation, Oracle `APPROVED_FOR_RECEIPT`, and receipt-only metadata update. It does not close Stage 4, Step37, production default cutover, legacy authoritative path exit, Stage 5, or final global closure. Parent Loop Driver must continue with `stage4.rules_retry_count_v1.complete_supported_package_slice` while global exits remain false and no verified user blocker exists.
 
+## Stage 4 Implementation: `rules.retry_count.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.rules_retry_count_v1.complete_supported_package_slice
+parent_stage_id=stage4
+capability_id=rules.retry_count.v1
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=not_closed
+global_exit_conditions_met=false
+user_input_required=false
+next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
+repo_pre_candidate_head=0bc302d42d0676c93e94ac27cabb066f91357da2
+skill_revision_type=sha256_bundle
+skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
+active_skill_paths=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery
+active_skill_bundle_digest=13ab9b0b5e2e1c9c951fd1ea954781ea757bd44fcf40606054484b9fc94240e8
+active_skill_file_count=8
+active_skill_manifest_protocol=root-relative path, file kind, raw byte length, POSIX mode, SHA-256, symlink target, symlink escape flag; stable sort by root-relative path
+previous_recorded_skill_digest=06fa14205c4a623e8808b1b701a45a9d1e74234ee0a52bea614e2652e6f99b61
+previous_wrong_request_skill_digest=27e8ffdc072b4247d6eb20dc79679ed8f24a81a77ed33b3712b56b61b3da7416
+freshness_status=changed
+freshness_interpretation=Historical session digests are treated as clues only. The current candidate must bind the digest reproduced from the declared root-relative rows command on the current HEAD; this run produced 13ab9b0b5e2e1c9c951fd1ea954781ea757bd44fcf40606054484b9fc94240e8, so stale 06fa/27e8/a41 values are not current evidence for this checkpoint.
+```
+
+Minimum closure requirements:
+
+1. Add a package-owned retry-count contract with stable capability identity, runtime system identity, retry-count telemetry event identity, required probe id, and required QA evidence id.
+2. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `rules.retry_count.v1` only when runtime evidence includes configured retry budget, before/after counts, remaining retries, consumed/decremented state, and non-exhausted failure-screen state.
+5. Require dependency evidence for `health.player_health_points.v1` to pass before semantic negatives can attribute failure to `rules.retry_count.v1`.
+6. Add a negative regression proving zero-health, checkpoint-restore, or generic damage evidence without `rules.retry_count.changed` and retry budget state fields keeps the capability unverified.
+7. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/rules-retry-count-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/rules-retry-count-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `tests/contracts/contract-freeze.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createRulesRetryCountPackageContract()`.
+- Runtime module identity: `RULES_RETRY_COUNT_RUNTIME_SYSTEM_ID=rules.retry_count`.
+- Retry-count event: `RULES_RETRY_COUNT_EVENT_TYPE=rules.retry_count.changed`.
+- Required probe: `RULES_RETRY_COUNT_REQUIRED_PROBE_ID=rules.retry_count.v1.consume_retry.browser_qa.v1`.
+- Required evidence id: `rules.retry_count.v1.evidence.capability_qa_report.v1`.
+- Required state fields: `retryCountConfigured`, `retryCountInitial`, `retryCountBefore`, `retryCountAfter`, `retryCountRemaining`, `retryCountConsumed`, `retryCountDecremented`, `retryCountExhausted`, and `retryCountFailureScreenShown`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares retry-count state fields and fails the required probe when generic zero-health, damage, or checkpoint evidence lacks the retry-count state payload.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for same-run package-owned QA evidence; it does not mutate static `completeSupported`.
+- Parent Loop inventory: `buildStep37RemainingCompleteSupportedInventory()` still selects `stage4.rules_retry_count_v1.complete_supported_package_slice` until this candidate is committed and receipted.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned retry-count capability contract, runtime system identity, `rules.retry_count.changed` telemetry event, required probe id, required evidence id, and runtime evidence fields for retry budget/decrement state. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, Step37 remaining-inventory driver, telemetry/event freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves retry budget initialization and retry consumption state fields. |
+| Authority | Package-owned QA evidence defines the capability authority: zero-health, generic damage, checkpoint restore, or health evidence is insufficient unless `rules.retry_count.changed` evidence proves the retry state fields. |
+| Legacy strategy | Legacy health/damage/checkpoint telemetry remains available only as dependency or trigger evidence; it cannot claim retry-count closure or production cutover authority. |
+| Failure policy | Missing package contract, missing `rules.retry_count.changed` event, missing or mismatched retry state fields, wrong capability/probe identity, or stale evidence keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, dependency-aware QA reader positive/negative behavior, registry support advancement without complete support, target-profile overlay positive/negative behavior, remaining-inventory selection, and event/schema freeze coverage. |
+| Rollback | Reverting this slice removes only the retry-count package/probe/reader wiring and returns `rules.retry_count.v1` to unsupported evidence without changing business runtime gameplay templates or entering Stage 5. |
+
+Focused validation:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=1
+duration=real 2.50s
+result=RED: support vocabulary ordering and target-profile expectations had not yet accounted for the causally added `rules.retry_count.v1` package and required probe.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=1
+duration=real 1.85s
+result=RED: support vocabulary ordering and target-profile expectations had not yet accounted for the causally added `rules.retry_count.v1` package and required probe.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/generation-target-profile-runtime-support.test.ts
+exitCode=0
+duration=real 1.48s
+result=PASS: target-profile overlay contract 1 file / 30 tests after explicit retry-count observed identity and canonical missing-probe updates.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 4.45s
+result=PASS: 8 files / 238 tests
+```
+
+Local validation before candidate commit:
+
+```text
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 72.91s
+result=PASS: contracts 98 files / 1264 tests; workspace 34 files / 410 tests.
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 8.46s
+result=PASS
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.02s
+result=PASS
+
+command=/usr/bin/time -p node --input-type=module "<step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle script>"
+exitCode=0
+duration=real 0.06s
+result=PASS: active_skill_paths=/Users/dahufa/.agents/skills/code-change-discipline,/Users/dahufa/.agents/skills/review-gated-delivery; skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink; skill_file_count=8; skill_bundle_digest=13ab9b0b5e2e1c9c951fd1ea954781ea757bd44fcf40606054484b9fc94240e8.
+
+command=/usr/bin/time -p npx tsx - <<'TS' ... rules.retry_count.v1 support summary and remaining inventory ...
+exitCode=0
+duration=real 0.59s
+result=PASS: support registeredCapabilityCount=40; committedClosedCapabilityCount=39; rules.retry_count.v1 classification=DEFERRED; state=registered_without_required_probe_verification; schema_expressible=true; normalized=true; compiled=true; runtime_consumed=true; qa_observed=false; missingEvidenceDimensions=[qa_observed]; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false; remaining next_checkpoint_id=stage4.rules_retry_count_v1.complete_supported_package_slice; selectionFailure=null.
+```
+
+Post-record validation requirement:
+
+- This closure record changes the final tree. Before creating the immutable candidate commit, focused closure contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, final diff range check, Skill freshness, and inventory alignment must be re-run or explicitly recorded as fresh for the final tree.
+- Candidate commit must not write its own SHA into this candidate record.
+- Oracle request must bind the candidate commit SHA plus `reviewed_skill_revision=13ab9b0b5e2e1c9c951fd1ea954781ea757bd44fcf40606054484b9fc94240e8`.
+- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+
 ## Stage 4 Implementation: `provider.deepseek_authoritative_draft.v1` complete-supported package slice
 
 Checkpoint identity:
