@@ -19,6 +19,7 @@ import {
   CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
   COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID,
   ENEMY_BOSS_ATTACK_PATTERN_REQUIRED_PROBE_ID,
+  ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID,
   MOVEMENT_CROUCH_REQUIRED_PROBE_ID,
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
@@ -65,6 +66,10 @@ describe('Gameplay capability registry', () => {
       legacyRuntimeCapabilities: []
     });
     expect(findGameplayCapability('enemy.boss_attack_pattern.v1')).toMatchObject({
+      status: 'planned',
+      legacyRuntimeCapabilities: []
+    });
+    expect(findGameplayCapability('enemy.boss_lifecycle.v1')).toMatchObject({
       status: 'planned',
       legacyRuntimeCapabilities: []
     });
@@ -399,6 +404,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(attackPattern)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(attackPattern)).toBe(false);
+  });
+
+  it('scopes enemy boss lifecycle package-owned QA without static support promotion', () => {
+    const lifecycle = findGameplayCapability('enemy.boss_lifecycle.v1');
+
+    if (lifecycle === undefined) {
+      throw new Error('Expected enemy.boss_lifecycle.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(lifecycle)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(lifecycle.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(lifecycle.qa).toEqual({
+      requiredProbeIds: [ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(lifecycle)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(lifecycle)).toBe(false);
   });
 
   it('scopes weapon rapid fire package-owned QA without static support promotion', () => {

@@ -34,6 +34,10 @@ import {
   createEnemyBossAttackPatternPackageContract
 } from './enemy-boss-attack-pattern-package.js';
 import {
+  ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID,
+  createEnemyBossLifecyclePackageContract
+} from './enemy-boss-lifecycle-package.js';
+import {
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   createCameraSideFollowPackageContract
 } from './camera-side-follow-package.js';
@@ -512,6 +516,19 @@ const enemyBossAttackPatternPackageEvidence: GameplayCapabilityEvidence = enemyB
 const enemyBossAttackPatternPackageQa: GameplayCapabilityQaEvidence = enemyBossAttackPatternPackageReport.supportEligible
   ? { requiredProbeIds: [ENEMY_BOSS_ATTACK_PATTERN_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const enemyBossLifecyclePackageReport = validateGameplayCapabilityPackage(createEnemyBossLifecyclePackageContract());
+const enemyBossLifecyclePackageEvidence: GameplayCapabilityEvidence = enemyBossLifecyclePackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const enemyBossLifecyclePackageQa: GameplayCapabilityQaEvidence = enemyBossLifecyclePackageReport.supportEligible
+  ? { requiredProbeIds: [ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const cameraSideFollowPackageReport = validateGameplayCapabilityPackage(createCameraSideFollowPackageContract());
 const cameraSideFollowPackageEvidence: GameplayCapabilityEvidence = cameraSideFollowPackageReport.supportEligible
   ? {
@@ -792,6 +809,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     enemyBossAttackPatternPackageEvidence,
     enemyBossAttackPatternPackageQa
+  ),
+  planned(
+    'enemy.boss_lifecycle.v1',
+    'enemy',
+    'Enemy boss lifecycle',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    enemyBossLifecyclePackageEvidence,
+    enemyBossLifecyclePackageQa
   ),
   runtimeBacked('camera.top_down_follow.v1', 'camera', 'Top-down follow camera', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], ['top_down_camera']),
   runtimeBacked('movement.eight_direction.v1', 'movement', 'Eight-direction movement', [topDownActionArcade], ['collector.v1', 'dodger.v1', 'shooter.v1'], [

@@ -52,6 +52,11 @@ import {
   ENEMY_BOSS_ATTACK_PATTERN_PATTERN_ID,
   ENEMY_BOSS_ATTACK_PATTERN_REQUIRED_PROBE_ID,
   createEnemyBossAttackPatternPackageContract,
+  ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID,
+  ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
+  ENEMY_BOSS_LIFECYCLE_MAX_HEALTH,
+  ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID,
+  createEnemyBossLifecyclePackageContract,
   type CapabilityQaProbeDescriptor,
   type GameplayCapabilityPackageContract
 } from '../../packages/game-dsl/src/index.js';
@@ -1392,6 +1397,93 @@ describe('Capability-owned runtime QA probes', () => {
       })
     ]));
     expect(observedPatternState.status).toBe('passed');
+  });
+
+  it('does not verify enemy boss lifecycle when evidence lacks runtime lifecycle state fields', () => {
+    const capabilityId = 'enemy.boss_lifecycle.v1';
+    const probeId = ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID;
+    const packageContract = createEnemyBossLifecyclePackageContract();
+    const packages = [packageContract];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingLifecycleState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_boss_lifecycle',
+              eventType: ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
+              eventTypes: [ENEMY_BOSS_LIFECYCLE_EVENT_TYPE],
+              sourceRef: 'runtime.boss.lifecycle',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedLifecycleState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_boss_lifecycle',
+              eventType: ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
+              eventTypes: [ENEMY_BOSS_LIFECYCLE_EVENT_TYPE],
+              bossLifecycleStarted: true,
+              bossEntityId: ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID,
+              bossMaxHealth: ENEMY_BOSS_LIFECYCLE_MAX_HEALTH,
+              bossHealthInitialized: true,
+              bossDefeated: true,
+              sourceRef: 'runtime.boss.lifecycle',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingLifecycleState.status).toBe('failed');
+    expect(missingLifecycleState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingLifecycleState.requiredResults[0]?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.lifecycle_verified`,
+        status: 'failed',
+        message: expect.stringContaining('expected bossLifecycleStarted=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.lifecycle_verified`,
+        status: 'failed',
+        message: expect.stringContaining(`expected bossEntityId=${ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID}, observed <missing>`)
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.lifecycle_verified`,
+        status: 'failed',
+        message: expect.stringContaining(`expected bossMaxHealth=${ENEMY_BOSS_LIFECYCLE_MAX_HEALTH}, observed <missing>`)
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.lifecycle_verified`,
+        status: 'failed',
+        message: expect.stringContaining('expected bossDefeated=true, observed <missing>')
+      })
+    ]));
+    expect(observedLifecycleState.status).toBe('passed');
   });
 });
 

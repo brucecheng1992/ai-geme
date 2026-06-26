@@ -163,6 +163,11 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   bossAttackPatternId?: string;
   bossAttackCadenceMs?: number;
   bossAttackTargetsPlayer?: boolean;
+  bossLifecycleStarted?: boolean;
+  bossEntityId?: string;
+  bossMaxHealth?: number;
+  bossHealthInitialized?: boolean;
+  bossDefeated?: boolean;
   status?: string;
   sourceRef?: string;
 };
@@ -451,7 +456,12 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedStringField('bossAttackPhaseId', expected, observed.bossAttackPhaseId),
     ...compareExpectedStringField('bossAttackPatternId', expected, observed.bossAttackPatternId),
     ...compareExpectedNumberField('bossAttackCadenceMs', expected, observed.bossAttackCadenceMs),
-    ...compareExpectedBooleanField('bossAttackTargetsPlayer', expected, observed.bossAttackTargetsPlayer)
+    ...compareExpectedBooleanField('bossAttackTargetsPlayer', expected, observed.bossAttackTargetsPlayer),
+    ...compareExpectedBooleanField('bossLifecycleStarted', expected, observed.bossLifecycleStarted),
+    ...compareExpectedStringField('bossEntityId', expected, observed.bossEntityId),
+    ...compareExpectedNumberField('bossMaxHealth', expected, observed.bossMaxHealth),
+    ...compareExpectedBooleanField('bossHealthInitialized', expected, observed.bossHealthInitialized),
+    ...compareExpectedBooleanField('bossDefeated', expected, observed.bossDefeated)
   ];
 }
 
