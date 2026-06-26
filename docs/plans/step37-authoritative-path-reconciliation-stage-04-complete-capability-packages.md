@@ -5295,12 +5295,15 @@ Checkpoint identity:
 closure_scope: atomic_step
 atomic_step:
   id: stage4.weapon_rapid_fire_v1.complete_supported_package_slice
-  status: locally_validated
+  status: closed
   implementation_status: complete
   local_validation_status: passed
-  candidate_status: ready_for_commit
-  oracle_status: not_submitted
-  closure_status: not_closed
+  candidate_status: committed
+  candidate_commit: 8d6cb770638ae47f24e0007e2d98ceaa28f0f18c
+  reviewed_commit_sha: 8d6cb770638ae47f24e0007e2d98ceaa28f0f18c
+  reviewed_skill_revision: c8f3bd0b9a7011886d3705bdfd2f0de0ce4042da20a1bdb164e36637fe02ab9c
+  oracle_status: approved
+  closure_status: closed
 parent_stage:
   id: stage4
   status: running
@@ -5311,7 +5314,7 @@ parent_loop:
   global_exit_conditions_met: false
   user_input_required: false
   next_action: CONTINUE_PARENT_LOOP
-  next_atomic_step: stage4.weapon_rapid_fire_v1.complete_supported_package_slice
+  next_atomic_step: stage4.weapon_replacement_rule_v1.complete_supported_package_slice
   next_atomic_step_scope: implementation
 ```
 
@@ -5440,12 +5443,54 @@ exitCode=0
 result=weapon.rapid_fire.v1 evidence={schema_expressible:true,normalized:true,compiled:true,runtime_consumed:true,qa_observed:false}; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false; completeSupportedCount=0
 ```
 
-Candidate readiness:
+Candidate post-commit checks:
 
 ```text
-implementation_status=complete
-local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
-unresolved_items=Candidate commit, Oracle review, receipt, and Parent Loop Driver rerun remain pending. Because this status update changed the final docs tree, focused closure contracts, related contracts, diff check, final range review, git status, and Skill freshness must be rerun before candidate commit.
+command=git rev-parse HEAD
+exitCode=0
+result=8d6cb770638ae47f24e0007e2d98ceaa28f0f18c
+
+command=git rev-parse HEAD^{tree}
+exitCode=0
+result=f406a5dfb43233ab0eb6a3da3134eb8dfc0e472e
+
+command=git status --short
+exitCode=0
+result=clean
+
+command=git show --check --oneline HEAD
+exitCode=0
+result=PASS
 ```
+
+Oracle approval receipt:
+
+```text
+submission_id=019f0174-2816-7163-92d1-a56c8c801747
+submission_id_source=multi_agent_v1.send_input return field
+agent_id=019effae-8aa2-7c22-b5ba-8c4b69f21d20
+agent_id_source=existing Oracle agent id
+polling_id_type=agent_id
+reviewed_commit_sha=8d6cb770638ae47f24e0007e2d98ceaa28f0f18c
+reviewed_commit_tree=f406a5dfb43233ab0eb6a3da3134eb8dfc0e472e
+reviewed_skill_revision=c8f3bd0b9a7011886d3705bdfd2f0de0ce4042da20a1bdb164e36637fe02ab9c
+oracle_verdict=PASS_NO_P0_P1_P2_BLOCKERS
+oracle_findings=P0=0; P1=0; P2=0; P3=0
+```
+
+Receipt boundary:
+
+- This receipt records Oracle approval for immutable candidate commit `8d6cb770638ae47f24e0007e2d98ceaa28f0f18c` and Skill revision `c8f3bd0b9a7011886d3705bdfd2f0de0ce4042da20a1bdb164e36637fe02ab9c`.
+- It intentionally does not record its own receipt commit SHA to avoid self-reference churn.
+- Receipt diff is docs-only closure metadata and must not modify implementation, validator, contract semantics, Skill, AGENTS.md, tests, or runtime.
+- Stage 4 and Step37 remain running. This closes only `stage4.weapon_rapid_fire_v1.complete_supported_package_slice`.
+
+Parent Loop Driver post-receipt projection:
+
+```text
+command=npx tsx --eval 'import { buildDeepSeekRunAndGunValidationProfileSupportSummary, buildStep37RemainingCompleteSupportedInventory, decideStep37ParentLoop } from "./packages/game-dsl/src/index.ts"; ...'
+exitCode=0
+result=requiredCapabilityCount=59; staticCompleteSupportedCount=0; committedClosedCapabilityCount=16; sameRunObservedOnlyCount=16; next_checkpoint_id=stage4.weapon_replacement_rule_v1.complete_supported_package_slice; next_atomic_step="Stage 4 weapon.replacement_rule.v1 complete-supported package slice implementation atomic step"; next_action=CONTINUE_PARENT_LOOP; global_exit_conditions_met=false; user_input_required=false
+```
+
+Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4.weapon_rapid_fire_v1.complete_supported_package_slice` after candidate commit creation, local validation, Oracle PASS, and receipt-only metadata update. It does not close Stage 4, Step37, production default cutover, legacy authoritative path exit, Stage 5, or final global closure. Parent Loop Driver must continue with `stage4.weapon_replacement_rule_v1.complete_supported_package_slice` while global exits remain false and no verified user blocker exists.
