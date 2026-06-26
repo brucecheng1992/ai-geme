@@ -2485,10 +2485,18 @@ describe('Gameplay capability package contract', () => {
       packageId: 'spawn.stop_on_boss_defeat.v1'
     });
     expect(contract.dependencies.map((dependency) => dependency.capabilityId)).toEqual([
+      'runtime.manifest_binding.v1',
       'spawn.static.v1',
       'spawn.enemy_wave.v1',
       'spawn.explicit_declarations.v1',
       'enemy.boss_lifecycle.v1'
+    ]);
+    expect(contract.runtime.systems[0]?.dependencies).toEqual([
+      'runtime_manifest',
+      'spawn.static',
+      'spawn.enemy_wave',
+      'spawn.explicit_declarations',
+      'enemy.boss_lifecycle'
     ]);
     expect(contract.runtime.systems.map((system) => system.id)).toEqual([SPAWN_STOP_ON_BOSS_DEFEAT_RUNTIME_SYSTEM_ID]);
     expect(contract.qa.requiredEvidence).toEqual([

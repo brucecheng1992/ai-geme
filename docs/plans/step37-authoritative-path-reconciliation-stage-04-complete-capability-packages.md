@@ -6310,6 +6310,20 @@ Post-record validation requirement:
 - Oracle request must bind the future candidate commit SHA and `reviewed_skill_revision=5cd4735569473824dd190e341908f155081443b4cc7b963fcac6007301eb8f6a`.
 - `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
 
+Superseded candidate review:
+
+```text
+superseded_candidate_commit_sha=18f45f93dcadbf0e084e059611b401a3dd9fa226
+superseded_candidate_tree=2b05ccd01b967cb8648de0f8febb72bf84e4c863
+superseded_oracle_submission_id=019f0537-eec8-7601-976e-226db633abc1
+superseded_oracle_agent_id=019f0488-39ff-7e33-a790-4caca4a838a3
+superseded_oracle_status=changes_required
+superseded_oracle_p1=package contract omitted runtime.manifest_binding.v1 while QA/dependency semantics required it
+p1_remediation_status=landed_pending_revalidation
+p1_remediation_paths=packages/game-dsl/src/gameplay-capabilities/spawn-stop-on-boss-defeat-package.ts; tests/contracts/gameplay-capability-package-contract.test.ts
+p1_remediation_summary=added runtime.manifest_binding.v1 to package dependencies, runtime_manifest to runtime system dependencies, and package-contract assertions proving both.
+```
+
 ## Stage 4 Implementation: `spawn.explicit_declarations.v1` complete-supported package slice
 
 Checkpoint identity:

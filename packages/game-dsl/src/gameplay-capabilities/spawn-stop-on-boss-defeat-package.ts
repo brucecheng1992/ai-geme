@@ -49,7 +49,7 @@ export function createSpawnStopOnBossDefeatPackageContract(): GameplayCapability
           id: SPAWN_STOP_ON_BOSS_DEFEAT_RUNTIME_SYSTEM_ID,
           version: 'v1',
           phase: 'gameplay',
-          dependencies: ['spawn.static', 'spawn.enemy_wave', 'spawn.explicit_declarations', 'enemy.boss_lifecycle']
+          dependencies: ['runtime_manifest', 'spawn.static', 'spawn.enemy_wave', 'spawn.explicit_declarations', 'enemy.boss_lifecycle']
         }
       ]
     },
@@ -72,6 +72,7 @@ export function createSpawnStopOnBossDefeatPackageContract(): GameplayCapability
           id: SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID,
           capabilityId: SPAWN_STOP_ON_BOSS_DEFEAT_CAPABILITY_ID,
           prerequisites: [
+            'runtime manifest binding package is registered',
             'spawn static package is registered',
             'spawn enemy-wave package is registered',
             'explicit spawn declarations package is registered',
@@ -138,6 +139,7 @@ export function createSpawnStopOnBossDefeatPackageContract(): GameplayCapability
       fallbackPolicy: 'not_applicable'
     },
     dependencies: [
+      { capabilityId: 'runtime.manifest_binding.v1', range: '^v1' },
       { capabilityId: 'spawn.static.v1', range: '^v1' },
       { capabilityId: 'spawn.enemy_wave.v1', range: '^v1' },
       { capabilityId: 'spawn.explicit_declarations.v1', range: '^v1' },
