@@ -5286,3 +5286,166 @@ Receipt boundary:
 - Stage 4 and Step37 remain running. This closes only `stage4.weapon_death_reset_v1.complete_supported_package_slice`.
 
 Exit assessment: `CLOSED_ATOMIC_STEP_ONLY`. This receipt closes only `stage4.weapon_death_reset_v1.complete_supported_package_slice` after candidate commit creation, local validation, Oracle PASS, and receipt-only metadata update. It does not close Stage 4, Step37, production default cutover, legacy authoritative path exit, Stage 5, or final global closure. Parent Loop Driver must continue with `stage4.weapon_rapid_fire_v1.complete_supported_package_slice` while global exits remain false and no verified user blocker exists.
+
+## Stage 4 Closure Implementation: weapon.rapid_fire.v1 Complete-Supported Package Slice
+
+Checkpoint identity:
+
+```yaml
+closure_scope: atomic_step
+atomic_step:
+  id: stage4.weapon_rapid_fire_v1.complete_supported_package_slice
+  status: locally_validated
+  implementation_status: complete
+  local_validation_status: passed
+  candidate_status: ready_for_commit
+  oracle_status: not_submitted
+  closure_status: not_closed
+parent_stage:
+  id: stage4
+  status: running
+  exit_conditions_met: false
+parent_loop:
+  id: step37
+  status: running
+  global_exit_conditions_met: false
+  user_input_required: false
+  next_action: CONTINUE_PARENT_LOOP
+  next_atomic_step: stage4.weapon_rapid_fire_v1.complete_supported_package_slice
+  next_atomic_step_scope: implementation
+```
+
+Current Stage review conclusion:
+
+`weapon.rapid_fire.v1` was selected by the Parent Loop Driver after the `weapon.death_reset.v1` receipt. Before this implementation, support summary reported `schema_expressible=true`, `normalized=true`, `compiled=false`, `runtime_consumed=false`, and `qa_observed=false`, with missing prerequisites `irCompiler`, `runtimeModule`, `amendmentOperations`, `capabilityOwnedQa`, `artifactEvidence`, `renderContract`, `requiredProbeIds`, and `requiredProbesVerified`.
+
+Minimum closure requirements:
+
+1. Add a package-owned rapid-fire contract with stable capability identity, runtime system identity, burst event identity, fire-rate constants, required probe id, and required QA evidence id.
+2. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+3. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+4. Prove same-run runtime overlay observes `weapon.rapid_fire.v1` only when the burst event and rate state fields are present.
+5. Require rapid-fire state fields: `rapidFire=true`, `cooldownMs=120`, `burstShotCount=3`, and `burstWindowMs=300`.
+6. Add a negative regression proving burst event evidence without rate state fields keeps the capability unverified and emits the required missing-probe blocker.
+7. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/weapon-rapid-fire-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/weapon-rapid-fire-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createWeaponRapidFirePackageContract()`.
+- Runtime module identity: `WEAPON_RAPID_FIRE_RUNTIME_SYSTEM_ID=weapon.rapid_fire`.
+- Burst event: `WEAPON_RAPID_FIRE_BURST_EVENT_TYPE=weapon.rapid_fire.burst`.
+- Required probe: `WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID=weapon.rapid_fire.v1.burst.browser_qa.v1`.
+- Required state fields: `rapidFire`, `cooldownMs`, `burstShotCount`, and `burstWindowMs`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares the rate state fields and fails the required probe when any field is missing or mismatched.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for the same run; it does not mutate static `completeSupported`.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned rapid-fire capability contract, runtime system identity, burst event, required probe id, required evidence id, and runtime evidence fields for fire-rate state. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, Step37 remaining-inventory driver, telemetry/event freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves both burst event and rate state. |
+| Authority | Canonical DSL `capability_configs.rapid_fire_weapon` and package-owned QA evidence define the semantic authority for rapid-fire behavior. |
+| Legacy strategy | Default weapon, spread-shot, replacement-rule, or pickup evidence cannot overclaim rapid-fire. Legacy weapon behavior remains non-authoritative for this capability. |
+| Failure policy | Missing package contract, missing burst event, missing rate state fields, or wrong capability/probe identity keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, registry support advancement without complete support, QA reader positive/negative rate-field behavior, target-profile overlay positive/negative behavior, canonical missing-probe ordering, and event/schema freeze coverage. |
+| Rollback | Reverting this slice removes only the rapid-fire package/probe/reader wiring and returns `weapon.rapid_fire.v1` to normalization-only deferred evidence without changing business runtime gameplay templates. |
+
+Focused validation completed so far:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=1
+duration=real 1.73s
+result=RED: weapon rapid-fire package/runtime module did not exist; index export and same-run overlay package plan could not resolve createWeaponRapidFirePackageContract().
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 1.75s
+result=PASS: 8 files / 124 tests
+```
+
+Focused set selection:
+
+- `gameplay-capability-package-contract.test.ts`: validates the new rapid-fire package contract, required evidence id, runtime system, burst event, rate constants, and required probe.
+- `gameplay-capability-qa-probes.test.ts`: validates that burst event evidence without rate state fields fails and that full rate state evidence passes.
+- `generation-target-profile-runtime-support.test.ts`: validates same-run overlay positive/negative behavior, canonical missing-probe order, and preservation of static `completeSupported=false`.
+- `deepseek-authoritative-dsl-support.test.ts`: validates support dimensions and prerequisites for the target capability.
+- `dsl-consumption-report.test.ts`: validates the consumption report reads the updated package-backed support dimensions.
+- `gameplay-capability-registry.test.ts`: validates static registry evidence and required probe wiring without static support promotion.
+- `step37-remaining-inventory-driver.test.ts`: validates parent-loop inventory consumption for same-run observed-only slices.
+- `contract-freeze.test.ts`: included because this diff introduces a telemetry/runtime event identity and QA evidence fields, so the focused set follows the actual schema and event-contract impact surface.
+
+External Skill freshness:
+
+```text
+command=tmp=$(mktemp); for f in /Users/dahufa/.agents/skills/code-change-discipline/SKILL.md /Users/dahufa/.agents/skills/review-gated-delivery/SKILL.md /Users/dahufa/.agents/skills/review-gated-delivery/assets/*.txt /Users/dahufa/.agents/skills/review-gated-delivery/assets/*.md; do if [ -f "$f" ]; then skill_path=$(realpath "$f"); bytes=$(wc -c < "$f" | tr -d ' '); sha=$(shasum -a 256 "$f" | awk '{print $1}'); printf '%s\t%s\t%s\n' "$skill_path" "$bytes" "$sha"; fi; done | LC_ALL=C sort > "$tmp"; wc -l "$tmp"; shasum -a 256 "$tmp"
+exitCode=0
+skill_bundle_format=step37_manifest_v1_path_size_sha
+skill_file_count=8
+skill_bundle_digest=c8f3bd0b9a7011886d3705bdfd2f0de0ce4042da20a1bdb164e36637fe02ab9c
+result=PASS: manifest records normalized absolute path, byte length, and SHA-256 for the active code-change-discipline Skill, review-gated-delivery Skill, and review-gated-delivery assets.
+```
+
+Local validation completed before candidate:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/step37-closure-implementation-trace.test.ts
+exitCode=0
+duration=real 1.77s
+result=PASS: 9 files / 158 tests
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 8.49s
+result=PASS: 98 files / 1150 tests
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 58.07s
+result=PASS: contracts 98 files / 1150 tests; workspace 34 files / 410 tests
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.12s
+result=PASS: root, maker-api, and maker-workbench TypeScript checks passed
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.02s
+result=PASS
+
+command=git status --short && git diff --stat && git diff --name-only
+exitCode=0
+result=only expected Stage 4 rapid-fire docs/package/helper/export/registry/contract files are modified or untracked before candidate commit; no business runtime, Stage 5, AGENTS.md, external Skill, or unrelated files are modified.
+
+command=npx tsx --eval 'import { buildDeepSeekRunAndGunValidationProfileSupportSummary, buildGameplayCapabilityInventoryReport } from "./packages/game-dsl/src/index.ts"; ...'
+exitCode=0
+result=weapon.rapid_fire.v1 evidence={schema_expressible:true,normalized:true,compiled:true,runtime_consumed:true,qa_observed:false}; missingSupportEvidencePrerequisites=[requiredProbesVerified]; completeSupported=false; completeSupportedCount=0
+```
+
+Candidate readiness:
+
+```text
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+unresolved_items=Candidate commit, Oracle review, receipt, and Parent Loop Driver rerun remain pending. Because this status update changed the final docs tree, focused closure contracts, related contracts, diff check, final range review, git status, and Skill freshness must be rerun before candidate commit.
+```

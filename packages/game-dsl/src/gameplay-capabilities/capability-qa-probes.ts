@@ -130,6 +130,10 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   currentWeaponId?: string;
   initialWeaponId?: string;
   previousWeaponId?: string;
+  rapidFire?: boolean;
+  cooldownMs?: number;
+  burstShotCount?: number;
+  burstWindowMs?: number;
   status?: string;
   sourceRef?: string;
 };
@@ -385,7 +389,11 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedBooleanField('weaponReset', expected, observed.weaponReset),
     ...compareExpectedStringField('currentWeaponId', expected, observed.currentWeaponId),
     ...compareExpectedStringField('initialWeaponId', expected, observed.initialWeaponId),
-    ...compareExpectedStringField('previousWeaponId', expected, observed.previousWeaponId)
+    ...compareExpectedStringField('previousWeaponId', expected, observed.previousWeaponId),
+    ...compareExpectedBooleanField('rapidFire', expected, observed.rapidFire),
+    ...compareExpectedNumberField('cooldownMs', expected, observed.cooldownMs),
+    ...compareExpectedNumberField('burstShotCount', expected, observed.burstShotCount),
+    ...compareExpectedNumberField('burstWindowMs', expected, observed.burstWindowMs)
   ];
 }
 

@@ -17,6 +17,7 @@ import {
   PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
   SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
   WEAPON_DEATH_RESET_REQUIRED_PROBE_ID,
+  WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID,
   type GameplayCapabilityDescriptor,
   type RuntimeGenreCapability
 } from '../../packages/game-dsl/src/index.js';
@@ -203,7 +204,7 @@ describe('Gameplay capability registry', () => {
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(defaultWeapon)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(defaultWeapon)).toBe(false);
 
-    for (const capabilityId of ['weapon.spread_shot.v1', 'weapon.rapid_fire.v1', 'weapon.replacement_rule.v1']) {
+    for (const capabilityId of ['weapon.spread_shot.v1', 'weapon.replacement_rule.v1']) {
       const capability = findGameplayCapability(capabilityId);
       if (capability === undefined) {
         throw new Error(`Expected ${capabilityId} in registry.`);
@@ -213,6 +214,33 @@ describe('Gameplay capability registry', () => {
         qa_observed: false
       });
     }
+  });
+
+  it('scopes weapon rapid fire package-owned QA without static support promotion', () => {
+    const rapidFire = findGameplayCapability('weapon.rapid_fire.v1');
+
+    if (rapidFire === undefined) {
+      throw new Error('Expected weapon.rapid_fire.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(rapidFire)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(rapidFire.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(rapidFire.qa).toEqual({
+      requiredProbeIds: [WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(rapidFire)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(rapidFire)).toBe(false);
   });
 
   it('scopes weapon death reset package-owned QA without static support promotion', () => {
@@ -457,7 +485,7 @@ describe('Gameplay capability registry', () => {
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(pickup)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(pickup)).toBe(false);
 
-    for (const capabilityId of ['weapon.spread_shot.v1', 'weapon.rapid_fire.v1', 'weapon.replacement_rule.v1']) {
+    for (const capabilityId of ['weapon.spread_shot.v1', 'weapon.replacement_rule.v1']) {
       const weapon = findGameplayCapability(capabilityId);
       if (weapon === undefined) {
         throw new Error(`Expected ${capabilityId} in registry.`);

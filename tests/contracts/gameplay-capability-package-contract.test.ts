@@ -26,6 +26,18 @@ import {
   WEAPON_DEATH_RESET_RUNTIME_SYSTEM_ID
 } from '../../packages/game-dsl/src/gameplay-capabilities/weapon-death-reset-runtime-module.js';
 import {
+  WEAPON_RAPID_FIRE_PACKAGE_REQUIRED_EVIDENCE_ID,
+  WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID,
+  createWeaponRapidFirePackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/weapon-rapid-fire-package.js';
+import {
+  WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
+  WEAPON_RAPID_FIRE_BURST_SHOT_COUNT,
+  WEAPON_RAPID_FIRE_BURST_WINDOW_MS,
+  WEAPON_RAPID_FIRE_COOLDOWN_MS,
+  WEAPON_RAPID_FIRE_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/weapon-rapid-fire-runtime-module.js';
+import {
   CAMERA_SIDE_FOLLOW_PACKAGE_REQUIRED_EVIDENCE_ID,
   CAMERA_SIDE_FOLLOW_REQUIRED_PROBE_ID,
   createCameraSideFollowPackageContract
@@ -216,6 +228,48 @@ describe('Gameplay capability package contract', () => {
           kind: 'state_probe',
           runtimeSystemId: WEAPON_DEATH_RESET_RUNTIME_SYSTEM_ID,
           ref: WEAPON_DEATH_RESET_EVENT_TYPE
+        })
+      ]
+    });
+  });
+
+  it('accepts the weapon rapid fire package-owned QA contract', () => {
+    const contract = createWeaponRapidFirePackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'weapon.rapid_fire.v1'
+    });
+    expect(contract.runtime.systems.map((system) => system.id)).toEqual([WEAPON_RAPID_FIRE_RUNTIME_SYSTEM_ID]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: WEAPON_RAPID_FIRE_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'weapon.rapid_fire.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
+          parameters: expect.objectContaining({
+            cooldownMs: WEAPON_RAPID_FIRE_COOLDOWN_MS,
+            burstShotCount: WEAPON_RAPID_FIRE_BURST_SHOT_COUNT,
+            burstWindowMs: WEAPON_RAPID_FIRE_BURST_WINDOW_MS
+          })
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'state_probe',
+          runtimeSystemId: WEAPON_RAPID_FIRE_RUNTIME_SYSTEM_ID,
+          ref: WEAPON_RAPID_FIRE_BURST_EVENT_TYPE
         })
       ]
     });

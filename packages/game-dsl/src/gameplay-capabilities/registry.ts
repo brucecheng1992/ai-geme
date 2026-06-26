@@ -26,6 +26,10 @@ import {
   createWeaponDeathResetPackageContract
 } from './weapon-death-reset-package.js';
 import {
+  WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID,
+  createWeaponRapidFirePackageContract
+} from './weapon-rapid-fire-package.js';
+import {
   COMBAT_AIRBORNE_FIRE_REQUIRED_PROBE_ID,
   createCombatAirborneFirePackageContract
 } from './combat-airborne-fire-package.js';
@@ -448,6 +452,19 @@ const weaponDeathResetPackageEvidence: GameplayCapabilityEvidence = weaponDeathR
 const weaponDeathResetPackageQa: GameplayCapabilityQaEvidence = weaponDeathResetPackageReport.supportEligible
   ? { requiredProbeIds: [WEAPON_DEATH_RESET_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const weaponRapidFirePackageReport = validateGameplayCapabilityPackage(createWeaponRapidFirePackageContract());
+const weaponRapidFirePackageEvidence: GameplayCapabilityEvidence = weaponRapidFirePackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const weaponRapidFirePackageQa: GameplayCapabilityQaEvidence = weaponRapidFirePackageReport.supportEligible
+  ? { requiredProbeIds: [WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const combatAirborneFirePackageReport = validateGameplayCapabilityPackage(createCombatAirborneFirePackageContract());
 const combatAirborneFirePackageEvidence: GameplayCapabilityEvidence = combatAirborneFirePackageReport.supportEligible
   ? {
@@ -738,7 +755,8 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [phaser2dActionArcade],
     ['side_scrolling_run_and_gun.v1'],
     [],
-    canonicalNormalizationEvidence
+    weaponRapidFirePackageEvidence,
+    weaponRapidFirePackageQa
   ),
   planned('weapon.replacement_rule.v1', 'weapon', 'Weapon pickup replacement rule', [phaser2dActionArcade], ['side_scrolling_run_and_gun.v1'], []),
   planned(

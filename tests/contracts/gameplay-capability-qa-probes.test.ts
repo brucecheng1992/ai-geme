@@ -13,6 +13,12 @@ import {
   WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE,
   WEAPON_DEATH_RESET_REQUIRED_PROBE_ID,
   createWeaponDeathResetPackageContract,
+  WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
+  WEAPON_RAPID_FIRE_BURST_SHOT_COUNT,
+  WEAPON_RAPID_FIRE_BURST_WINDOW_MS,
+  WEAPON_RAPID_FIRE_COOLDOWN_MS,
+  WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID,
+  createWeaponRapidFirePackageContract,
   type CapabilityQaProbeDescriptor,
   type GameplayCapabilityPackageContract
 } from '../../packages/game-dsl/src/index.js';
@@ -649,6 +655,75 @@ describe('Capability-owned runtime QA probes', () => {
       })
     ]));
     expect(observedResetState.status).toBe('passed');
+  });
+
+  it('does not verify weapon rapid fire when burst evidence lacks rate state fields', () => {
+    const capabilityId = 'weapon.rapid_fire.v1';
+    const probeId = WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID;
+    const rapidFirePackage = createWeaponRapidFirePackageContract();
+    const packages = [{ ...rapidFirePackage, dependencies: [] }];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingRateState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'fire_burst',
+              eventType: WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
+              eventTypes: [WEAPON_RAPID_FIRE_BURST_EVENT_TYPE],
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedRateState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'fire_burst',
+              eventType: WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
+              eventTypes: [WEAPON_RAPID_FIRE_BURST_EVENT_TYPE],
+              rapidFire: true,
+              cooldownMs: WEAPON_RAPID_FIRE_COOLDOWN_MS,
+              burstShotCount: WEAPON_RAPID_FIRE_BURST_SHOT_COUNT,
+              burstWindowMs: WEAPON_RAPID_FIRE_BURST_WINDOW_MS,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingRateState.status).toBe('failed');
+    expect(missingRateState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingRateState.requiredResults[0]?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.rapid_burst`,
+        status: 'failed',
+        message: expect.stringContaining('expected rapidFire=true, observed <missing>')
+      })
+    ]));
+    expect(observedRateState.status).toBe('passed');
   });
 });
 

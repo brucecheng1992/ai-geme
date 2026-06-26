@@ -15,6 +15,8 @@ export * from './default-straight-single-weapon-runtime-module.js';
 export * from './default-straight-single-weapon-package.js';
 export * from './weapon-death-reset-runtime-module.js';
 export * from './weapon-death-reset-package.js';
+export * from './weapon-rapid-fire-runtime-module.js';
+export * from './weapon-rapid-fire-package.js';
 export * from './combat-airborne-fire-runtime-module.js';
 export * from './combat-airborne-fire-package.js';
 export * from './combat-projectile-runtime-module.js';
