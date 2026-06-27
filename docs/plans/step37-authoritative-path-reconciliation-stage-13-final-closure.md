@@ -6,14 +6,14 @@ checkpoint_id: stage13.final_closure_not_blocked
 closure_scope: atomic_step
 implementation_status: complete
 local_validation_status: passed
-candidate_status: ready_for_oracle
-oracle_status: not_submitted
-parent_stage_status: running
-parent_loop_status: running
-global_exit_conditions_met: false
+candidate_status: committed
+oracle_status: approved
+parent_stage_status: complete
+parent_loop_status: complete
+global_exit_conditions_met: true
 user_input_required: false
-next_action: CONTINUE_PARENT_LOOP
-next_atomic_step: pending_final_oracle_receipt
+next_action: COMPLETE_GLOBAL_LOOP
+next_atomic_step: none
 
 ## Source Inputs
 
@@ -148,29 +148,31 @@ follow_up_items:
 
 ## Oracle Review
 
-oracle_status: not_submitted
-oracle_review_result: pending
-reviewed_commit_sha: pending
-reviewed_tree_sha: pending
-reviewed_skill_bundle_digest: pending
-oracle_submission_id: pending
-oracle_agent_id: pending
-oracle_p0_count: pending
-oracle_p1_count: pending
-oracle_p2_count: pending
-oracle_p3_count: pending
-receipt_scope: pending
+oracle_status: approved
+oracle_review_result: APPROVED_FOR_RECEIPT
+reviewed_commit_sha: afabbf4c46c4333e96e46599e6da619cbc880650
+reviewed_tree_sha: 941996e2cb20514c4745a2949d6f2d65900e4ffb
+reviewed_skill_bundle_digest: ed4e3ba1da435f24a527ca1a34f9374bfe1d7ca9e4d482a6d229c3518997dd72
+reviewed_skill_sha256: dd5abe3945818f6feefbe77e30c02432b014a76bacb7e39afe814103659100db
+oracle_submission_id: 019f093c-5d08-7483-9537-90e13882c4de
+oracle_agent_id: 019f0813-ed9a-7ad0-8341-50ababd44fea
+oracle_p0_count: 0
+oracle_p1_count: 0
+oracle_p2_count: 0
+oracle_p3_count: 0
+oracle_receipt_permission: receipt-only metadata commit is allowed without re-review if it only updates Stage13 docs/closure metadata with Oracle approval, reviewed SHA/tree/Skill digest, final_closure_not_blocked=true, and global_exit_conditions_met=true, and does not change helper/driver/contracts/tests/runtime/Skill/AGENTS.
+receipt_scope: docs_only_closure_metadata
 receipt_forbidden_changes: runtime,qa,package_registry,capability_registry,driver_semantics,validator,contracts,tests,Skill,AGENTS,stage12_receipt
 
 ## Exit Assessment
 
-atomic_step_status: ready_for_candidate
-closure_status: not_closed
-candidate_commit: pending
-receipt_commit: pending
-parent_stage_status: running
-loop_status: running
-global_exit_conditions_met: false
+atomic_step_status: closed
+closure_status: closed
+candidate_commit: afabbf4c46c4333e96e46599e6da619cbc880650
+receipt_commit: external_git_history_only_not_embedded
+parent_stage_status: complete
+loop_status: complete
+global_exit_conditions_met: true
 user_input_required: false
-next_action: CONTINUE_PARENT_LOOP
-next_atomic_step: pending_final_oracle_receipt
+next_action: COMPLETE_GLOBAL_LOOP
+next_atomic_step: none
