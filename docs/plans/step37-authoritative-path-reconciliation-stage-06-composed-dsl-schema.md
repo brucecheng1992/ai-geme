@@ -11,10 +11,10 @@ closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
 candidate_status=ready_for_commit
-oracle_status=not_submitted
+oracle_status=approved
 review_required=true
-closure_status=locally_validated
-atomic_step_status=validating
+closure_status=closed
+atomic_step_status=closed
 parent_stage_status=running
 parent_loop_status=running
 global_exit_conditions_met=false
@@ -137,15 +137,33 @@ skill_bundle_digest=dcc4974799ab970a337407bd90087eab2e278e14697fc511cb58dd544306
 inventory_alignment_command=/usr/bin/time -p npx tsx --eval "... exact lock plus Stage 6 composed schema plus remaining inventory alignment ..."
 inventory_alignment_exitCode=0
 inventory_alignment_result=PASS: inventoryHash=fnv1a_a883bf43; supportViewHash=fnv1a_37453024; stage4ExitAuditHash=fnv1a_be5c51cd; stage5EntryAuditHash=fnv1a_2a121281; exactLockAuditHash=fnv1a_20dd2264; exactLockHash=fnv1a_0c570c26; composedSchemaAuditHash=fnv1a_038b3e6b; composedSchemaHash=fnv1a_a732fea7; composedSchemaStatus=passed; missingDraftSelectionFailure=STAGE6_CAPABILITY_DSL_DRAFT_CHECKPOINT_REQUIRED; nextCheckpointId=stage6.capability_dsl_draft_from_composed_schema; nextAction=CONTINUE_PARENT_LOOP.
-oracle_status=not_submitted
+oracle_status=approved
+oracle_agent_id=019f0813-ed9a-7ad0-8341-50ababd44fea
+oracle_submission_id=019f084a-0710-7af3-a1a8-86b862503330
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 none.
 ```
 
 Exit assessment:
 
 ```text
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
-closure_status=locally_validated
-exit_assessment=locally_validated_oracle_not_submitted_candidate_not_created
+candidate_status=committed
+candidate_commit=479712c495e8626142077494e7492eab22017319
+oracle_status=approved
+closure_status=closed
+atomic_step_status=closed
+exit_assessment=closed
+reviewed_commit_sha=479712c495e8626142077494e7492eab22017319
+reviewed_skill_revision=dcc4974799ab970a337407bd90087eab2e278e14697fc511cb58dd544306f3ba
+reviewed_exact_lock_audit_hash=fnv1a_20dd2264
+reviewed_exact_lock_hash=fnv1a_0c570c26
+reviewed_composed_schema_audit_hash=fnv1a_038b3e6b
+reviewed_composed_schema_hash=fnv1a_a732fea7
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for candidate 479712c495e8626142077494e7492eab22017319 only. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, package QA, provider draft, normalization, compiler, production default cutover, legacy authoritative path exit, final closure, or prior closed history.
+parent_loop_after_receipt=running
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage6.capability_dsl_draft_from_composed_schema
+next_atomic_step_label=Stage 6 capability DSL draft from composed schema atomic step
 ```
