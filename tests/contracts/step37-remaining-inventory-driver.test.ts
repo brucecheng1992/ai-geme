@@ -15,8 +15,11 @@ import {
   STEP37_STAGE6_CAPABILITY_DSL_DRAFT_FROM_COMPOSED_SCHEMA_NEXT_ATOMIC_STEP,
   STEP37_STAGE6_COMPOSED_DSL_SCHEMA_FROM_EXACT_CAPABILITY_LOCK_CHECKPOINT_ID,
   STEP37_STAGE6_COMPOSED_DSL_SCHEMA_FROM_EXACT_CAPABILITY_LOCK_NEXT_ATOMIC_STEP,
+  STEP37_STAGE7_NORMALIZE_CAPABILITY_DSL_DRAFT_FROM_COMPOSED_SCHEMA_CHECKPOINT_ID,
+  STEP37_STAGE7_NORMALIZE_CAPABILITY_DSL_DRAFT_FROM_COMPOSED_SCHEMA_NEXT_ATOMIC_STEP,
   STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID,
   STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP,
+  buildStep37CapabilityDslDraftReport,
   buildStep37ComposedDslSchemaReport,
   buildStep37PromotedSupportSummary,
   buildDeepSeekRunAndGunValidationProfileSupportSummary,
@@ -36,6 +39,7 @@ import {
   type Step37Stage5EntryAuditReport,
   type Step37ComposedDslSchemaReport,
   type Step37ExactCapabilityLockReport,
+  type Step37CapabilityDslDraftReport,
   type Step37SupportPromotionApplicationReport
 } from '../../packages/game-dsl/src/index.js';
 
@@ -1083,6 +1087,118 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     });
   });
 
+  it('requires a normalization checkpoint after the Stage 6 capability DSL draft passes', () => {
+    const support = supportSummary([capability({ capabilityId: 'promoted.alpha.v1' })]);
+    const application = supportPromotionApplicationReport({
+      completeSupportedCount: 1,
+      completeSupportedCapabilityIds: ['promoted.alpha.v1']
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({
+      supportSummary: support,
+      promotionApplicationReport: application
+    });
+    const exitAudit = stage4ExitAuditReport({ supportSummary: promotedSupport, application });
+    const entryAudit = stage5EntryAuditReport({ supportSummary: promotedSupport, exitAudit });
+    const exactLock = exactCapabilityLockReport({ supportSummary: promotedSupport, entryAudit });
+    const composedSchema = composedDslSchemaReport({ exactLock });
+    const draftReport = capabilityDslDraftReport({ composedSchema });
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditReport: exitAudit,
+      stage5EntryAuditReport: entryAudit,
+      stage5ExactCapabilityLockReport: exactLock,
+      stage6ComposedDslSchemaReport: composedSchema,
+      stage6CapabilityDslDraftReport: draftReport,
+      sourcePlanRevision
+    });
+
+    expect(draftReport.draftStatus).toBe('passed');
+    expect(report.nextCheckpoint).toBeNull();
+    expect(report.selectionFailure).toMatchObject({
+      error_code: 'STAGE7_NORMALIZE_CAPABILITY_DSL_DRAFT_CHECKPOINT_REQUIRED',
+      parent_stage_status: 'running',
+      capability_dsl_draft_produced: true,
+      expected_checkpoint_id: STEP37_STAGE7_NORMALIZE_CAPABILITY_DSL_DRAFT_FROM_COMPOSED_SCHEMA_CHECKPOINT_ID,
+      actual_checkpoint_id: null,
+      invalid_fields: ['checkpoint_id']
+    });
+  });
+
+  it('continues to normalization only after draft evidence passes and supplies authoritative Stage 7 checkpoint', () => {
+    const support = supportSummary([capability({ capabilityId: 'promoted.alpha.v1' }), capability({ capabilityId: 'promoted.beta.v1' })]);
+    const application = supportPromotionApplicationReport({
+      completeSupportedCount: 2,
+      completeSupportedCapabilityIds: ['promoted.alpha.v1', 'promoted.beta.v1']
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({
+      supportSummary: support,
+      promotionApplicationReport: application
+    });
+    const exitAudit = stage4ExitAuditReport({ supportSummary: promotedSupport, application });
+    const entryAudit = stage5EntryAuditReport({ supportSummary: promotedSupport, exitAudit });
+    const exactLock = exactCapabilityLockReport({ supportSummary: promotedSupport, entryAudit });
+    const composedSchema = composedDslSchemaReport({ exactLock });
+    const draftReport = capabilityDslDraftReport({ composedSchema });
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditReport: exitAudit,
+      stage5EntryAuditReport: entryAudit,
+      stage5ExactCapabilityLockReport: exactLock,
+      stage6ComposedDslSchemaReport: composedSchema,
+      stage6CapabilityDslDraftReport: draftReport,
+      stage7NormalizeCapabilityDslDraftCheckpoint: stage7NormalizeCapabilityDslDraftCheckpoint(),
+      sourcePlanRevision
+    });
+
+    expect(report.selectionFailure).toBeNull();
+    expect(report.nextCheckpoint).toMatchObject({
+      checkpoint_id: STEP37_STAGE7_NORMALIZE_CAPABILITY_DSL_DRAFT_FROM_COMPOSED_SCHEMA_CHECKPOINT_ID,
+      parent_stage_id: 'stage7',
+      next_atomic_step: STEP37_STAGE7_NORMALIZE_CAPABILITY_DSL_DRAFT_FROM_COMPOSED_SCHEMA_NEXT_ATOMIC_STEP,
+      selection_rule: 'first_unmet_checkpoint_in_authoritative_inventory'
+    });
+  });
+
+  it('does not continue to normalization when capability draft evidence is stale', () => {
+    const support = supportSummary([capability({ capabilityId: 'promoted.alpha.v1' })]);
+    const application = supportPromotionApplicationReport({
+      completeSupportedCount: 1,
+      completeSupportedCapabilityIds: ['promoted.alpha.v1']
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({
+      supportSummary: support,
+      promotionApplicationReport: application
+    });
+    const exitAudit = stage4ExitAuditReport({ supportSummary: promotedSupport, application });
+    const entryAudit = stage5EntryAuditReport({ supportSummary: promotedSupport, exitAudit });
+    const exactLock = exactCapabilityLockReport({ supportSummary: promotedSupport, entryAudit });
+    const composedSchema = composedDslSchemaReport({ exactLock });
+    const staleDraftReport: Step37CapabilityDslDraftReport = {
+      ...capabilityDslDraftReport({ composedSchema }),
+      sourceComposedSchemaAuditHash: 'fnv1a_stale_composed_schema'
+    };
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditReport: exitAudit,
+      stage5EntryAuditReport: entryAudit,
+      stage5ExactCapabilityLockReport: exactLock,
+      stage6ComposedDslSchemaReport: composedSchema,
+      stage6CapabilityDslDraftReport: staleDraftReport,
+      stage6CapabilityDslDraftCheckpoint: stage6CapabilityDslDraftCheckpoint(),
+      stage7NormalizeCapabilityDslDraftCheckpoint: stage7NormalizeCapabilityDslDraftCheckpoint(),
+      sourcePlanRevision
+    });
+
+    expect(report.nextCheckpoint).toMatchObject({
+      checkpoint_id: STEP37_STAGE6_CAPABILITY_DSL_DRAFT_FROM_COMPOSED_SCHEMA_CHECKPOINT_ID
+    });
+    expect(report.nextCheckpoint?.checkpoint_id).not.toBe(STEP37_STAGE7_NORMALIZE_CAPABILITY_DSL_DRAFT_FROM_COMPOSED_SCHEMA_CHECKPOINT_ID);
+    expect(report.selectionFailure).toBeNull();
+  });
+
   it('requires committed closure history to have traceable source revisions instead of stale memory labels', () => {
     expect(() =>
       buildStep37RemainingCompleteSupportedInventory({
@@ -1249,6 +1365,19 @@ function stage6CapabilityDslDraftCheckpoint(overrides: Partial<Step37CheckpointI
   };
 }
 
+function stage7NormalizeCapabilityDslDraftCheckpoint(overrides: Partial<Step37CheckpointInventoryItem> = {}): Step37CheckpointInventoryItem {
+  return {
+    checkpoint_id: STEP37_STAGE7_NORMALIZE_CAPABILITY_DSL_DRAFT_FROM_COMPOSED_SCHEMA_CHECKPOINT_ID,
+    parent_stage_id: 'stage7',
+    next_atomic_step: STEP37_STAGE7_NORMALIZE_CAPABILITY_DSL_DRAFT_FROM_COMPOSED_SCHEMA_NEXT_ATOMIC_STEP,
+    status: 'unmet',
+    unmet_reason:
+      'Stage 6 capability DSL draft was produced from the composed schema; normalize the draft before compiler, runtime consumption, cutover, or legacy exit.',
+    source_plan_revision: sourcePlanRevision,
+    ...overrides
+  };
+}
+
 function stage4ExitAuditReport(input: {
   supportSummary: DeepSeekRunAndGunProfileSupportSummary;
   application: Step37SupportPromotionApplicationReport;
@@ -1346,6 +1475,15 @@ function composedDslSchemaReport(input: { exactLock: Step37ExactCapabilityLockRe
     sourceExactCapabilityLockPath: 'docs/plans/step37-exact-capability-lock-from-complete-supported-packages.v0.1.json',
     sourceExactCapabilityLockAuditHash: input.exactLock.auditHash,
     expectedExactCapabilityLockAuditHash: input.exactLock.auditHash
+  });
+}
+
+function capabilityDslDraftReport(input: { composedSchema: Step37ComposedDslSchemaReport }): Step37CapabilityDslDraftReport {
+  return buildStep37CapabilityDslDraftReport({
+    composedSchemaReport: input.composedSchema,
+    sourceComposedSchemaPath: 'docs/plans/step37-composed-dsl-schema-from-exact-capability-lock.v0.1.json',
+    sourceComposedSchemaAuditHash: input.composedSchema.auditHash,
+    expectedComposedSchemaAuditHash: input.composedSchema.auditHash
   });
 }
 

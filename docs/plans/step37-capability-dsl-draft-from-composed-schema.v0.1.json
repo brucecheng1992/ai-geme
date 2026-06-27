@@ -1,0 +1,1150 @@
+{
+  "artifact_kind": "step37_capability_dsl_draft_from_composed_schema",
+  "schema_version": "step37_capability_dsl_draft_from_composed_schema.v0.1",
+  "checkpoint_id": "stage6.capability_dsl_draft_from_composed_schema",
+  "parent_stage_id": "stage6",
+  "source_composed_schema_path": "docs/plans/step37-composed-dsl-schema-from-exact-capability-lock.v0.1.json",
+  "source_composed_schema_audit_hash": "fnv1a_038b3e6b",
+  "expected_composed_schema_audit_hash": "fnv1a_038b3e6b",
+  "composed_schema_audit_hash_matches": true,
+  "source_composed_schema_hash": "fnv1a_a732fea7",
+  "source_exact_capability_lock_audit_hash": "fnv1a_20dd2264",
+  "source_exact_capability_lock_hash": "fnv1a_0c570c26",
+  "source_stage5_entry_audit_hash": "fnv1a_2a121281",
+  "source_stage4_exit_audit_hash": "fnv1a_be5c51cd",
+  "source_support_view_hash": "fnv1a_37453024",
+  "source_inventory_hash": "fnv1a_a883bf43",
+  "profile_id": "DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1",
+  "draft_profile_id": "side_scrolling_run_and_gun.v1",
+  "profile_version": "v1",
+  "runtime_family": "phaser_2d_action_arcade.v1",
+  "composed_schema_status": "passed",
+  "composed_schema_produced": true,
+  "composed_schema_next_checkpoint_id": "stage6.capability_dsl_draft_from_composed_schema",
+  "required_capability_count": 59,
+  "complete_supported_count": 59,
+  "package_count": 59,
+  "complete_supported_capability_ids": [
+    "artifact.lineage_no_manual_patch.v1",
+    "artifact.no_hidden_script.v1",
+    "camera.bounds_clamp.v1",
+    "camera.side_follow.v1",
+    "canonical.semantic_preservation.v1",
+    "collision.damage_affinity_matrix.v1",
+    "collision.platform.v1",
+    "combat.airborne_fire.v1",
+    "combat.projectile.v1",
+    "enemy.boss_attack_pattern.v1",
+    "enemy.boss_lifecycle.v1",
+    "enemy.boss_phase_transition.v1",
+    "enemy.fixed_turret.v1",
+    "enemy.flying_right_entry.v1",
+    "enemy.patrol_infantry.v1",
+    "feedback.victory_declaration.v1",
+    "generation.fallback_policy_fail_closed.v1",
+    "goal.boss_unlock.v1",
+    "hazard.falling_area.v1",
+    "hazard.timed_explosion.v1",
+    "health.damage_invulnerability.v1",
+    "health.player_health_points.v1",
+    "metadata.fixed_prompt_binding.v1",
+    "movement.crouch.v1",
+    "movement.run_jump.v1",
+    "pickup.collectible.v1",
+    "pickup.weapon_supply.v1",
+    "profile.deepseek_run_and_gun_validation.v1",
+    "provider.deepseek_authoritative_draft.v1",
+    "review.oracle_final_gate.v1",
+    "rules.checkpoint_restore.v1",
+    "rules.encounter_gate.v1",
+    "rules.retry_count.v1",
+    "rules.state_transition_graph.v1",
+    "runtime.manifest_binding.v1",
+    "runtime.module_load_receipt.v1",
+    "runtime.plan_coverage.v1",
+    "scene.ordered_segments.v1",
+    "scene.visual_presentation_metadata.v1",
+    "spawn.enemy_wave.v1",
+    "spawn.explicit_declarations.v1",
+    "spawn.static.v1",
+    "spawn.stop_on_boss_defeat.v1",
+    "ui.failure_restart.v1",
+    "ui.hud_boss_health.v1",
+    "ui.hud_current_weapon.v1",
+    "ui.hud_player_health.v1",
+    "ui.hud_retries.v1",
+    "ui.win_failure_transitions.v1",
+    "validation.fail_closed_unknown_nodes.v1",
+    "validation.fixed_prompt_end_to_end.v1",
+    "validation.metamorphic_semantic_hash.v1",
+    "validation.replay_stability.v1",
+    "validation.user_acceptance_gate.v1",
+    "weapon.death_reset.v1",
+    "weapon.default_straight_single.v1",
+    "weapon.rapid_fire.v1",
+    "weapon.replacement_rule.v1",
+    "weapon.spread_shot.v1"
+  ],
+  "composed_schema_capability_ids": [
+    "artifact.lineage_no_manual_patch.v1",
+    "artifact.no_hidden_script.v1",
+    "camera.bounds_clamp.v1",
+    "camera.side_follow.v1",
+    "canonical.semantic_preservation.v1",
+    "collision.damage_affinity_matrix.v1",
+    "collision.platform.v1",
+    "combat.airborne_fire.v1",
+    "combat.projectile.v1",
+    "enemy.boss_attack_pattern.v1",
+    "enemy.boss_lifecycle.v1",
+    "enemy.boss_phase_transition.v1",
+    "enemy.fixed_turret.v1",
+    "enemy.flying_right_entry.v1",
+    "enemy.patrol_infantry.v1",
+    "feedback.victory_declaration.v1",
+    "generation.fallback_policy_fail_closed.v1",
+    "goal.boss_unlock.v1",
+    "hazard.falling_area.v1",
+    "hazard.timed_explosion.v1",
+    "health.damage_invulnerability.v1",
+    "health.player_health_points.v1",
+    "metadata.fixed_prompt_binding.v1",
+    "movement.crouch.v1",
+    "movement.run_jump.v1",
+    "pickup.collectible.v1",
+    "pickup.weapon_supply.v1",
+    "profile.deepseek_run_and_gun_validation.v1",
+    "provider.deepseek_authoritative_draft.v1",
+    "review.oracle_final_gate.v1",
+    "rules.checkpoint_restore.v1",
+    "rules.encounter_gate.v1",
+    "rules.retry_count.v1",
+    "rules.state_transition_graph.v1",
+    "runtime.manifest_binding.v1",
+    "runtime.module_load_receipt.v1",
+    "runtime.plan_coverage.v1",
+    "scene.ordered_segments.v1",
+    "scene.visual_presentation_metadata.v1",
+    "spawn.enemy_wave.v1",
+    "spawn.explicit_declarations.v1",
+    "spawn.static.v1",
+    "spawn.stop_on_boss_defeat.v1",
+    "ui.failure_restart.v1",
+    "ui.hud_boss_health.v1",
+    "ui.hud_current_weapon.v1",
+    "ui.hud_player_health.v1",
+    "ui.hud_retries.v1",
+    "ui.win_failure_transitions.v1",
+    "validation.fail_closed_unknown_nodes.v1",
+    "validation.fixed_prompt_end_to_end.v1",
+    "validation.metamorphic_semantic_hash.v1",
+    "validation.replay_stability.v1",
+    "validation.user_acceptance_gate.v1",
+    "weapon.death_reset.v1",
+    "weapon.default_straight_single.v1",
+    "weapon.rapid_fire.v1",
+    "weapon.replacement_rule.v1",
+    "weapon.spread_shot.v1"
+  ],
+  "draft_capability_ids": [
+    "artifact.lineage_no_manual_patch.v1",
+    "artifact.no_hidden_script.v1",
+    "camera.bounds_clamp.v1",
+    "camera.side_follow.v1",
+    "canonical.semantic_preservation.v1",
+    "collision.damage_affinity_matrix.v1",
+    "collision.platform.v1",
+    "combat.airborne_fire.v1",
+    "combat.projectile.v1",
+    "enemy.boss_attack_pattern.v1",
+    "enemy.boss_lifecycle.v1",
+    "enemy.boss_phase_transition.v1",
+    "enemy.fixed_turret.v1",
+    "enemy.flying_right_entry.v1",
+    "enemy.patrol_infantry.v1",
+    "feedback.victory_declaration.v1",
+    "generation.fallback_policy_fail_closed.v1",
+    "goal.boss_unlock.v1",
+    "hazard.falling_area.v1",
+    "hazard.timed_explosion.v1",
+    "health.damage_invulnerability.v1",
+    "health.player_health_points.v1",
+    "metadata.fixed_prompt_binding.v1",
+    "movement.crouch.v1",
+    "movement.run_jump.v1",
+    "pickup.collectible.v1",
+    "pickup.weapon_supply.v1",
+    "profile.deepseek_run_and_gun_validation.v1",
+    "provider.deepseek_authoritative_draft.v1",
+    "review.oracle_final_gate.v1",
+    "rules.checkpoint_restore.v1",
+    "rules.encounter_gate.v1",
+    "rules.retry_count.v1",
+    "rules.state_transition_graph.v1",
+    "runtime.manifest_binding.v1",
+    "runtime.module_load_receipt.v1",
+    "runtime.plan_coverage.v1",
+    "scene.ordered_segments.v1",
+    "scene.visual_presentation_metadata.v1",
+    "spawn.enemy_wave.v1",
+    "spawn.explicit_declarations.v1",
+    "spawn.static.v1",
+    "spawn.stop_on_boss_defeat.v1",
+    "ui.failure_restart.v1",
+    "ui.hud_boss_health.v1",
+    "ui.hud_current_weapon.v1",
+    "ui.hud_player_health.v1",
+    "ui.hud_retries.v1",
+    "ui.win_failure_transitions.v1",
+    "validation.fail_closed_unknown_nodes.v1",
+    "validation.fixed_prompt_end_to_end.v1",
+    "validation.metamorphic_semantic_hash.v1",
+    "validation.replay_stability.v1",
+    "validation.user_acceptance_gate.v1",
+    "weapon.death_reset.v1",
+    "weapon.default_straight_single.v1",
+    "weapon.rapid_fire.v1",
+    "weapon.replacement_rule.v1",
+    "weapon.spread_shot.v1"
+  ],
+  "capability_dsl_draft": {
+    "artifactKind": "capability_game_dsl_draft",
+    "schemaVersion": "capability-game-dsl-draft.v1",
+    "profile": {
+      "id": "side_scrolling_run_and_gun.v1"
+    },
+    "play_time_intent": {
+      "mode": "range",
+      "min_sec": 480,
+      "max_sec": 720
+    },
+    "capabilities": [
+      "artifact.lineage_no_manual_patch.v1",
+      "artifact.no_hidden_script.v1",
+      "camera.bounds_clamp.v1",
+      "camera.side_follow.v1",
+      "canonical.semantic_preservation.v1",
+      "collision.damage_affinity_matrix.v1",
+      "collision.platform.v1",
+      "combat.airborne_fire.v1",
+      "combat.projectile.v1",
+      "enemy.boss_attack_pattern.v1",
+      "enemy.boss_lifecycle.v1",
+      "enemy.boss_phase_transition.v1",
+      "enemy.fixed_turret.v1",
+      "enemy.flying_right_entry.v1",
+      "enemy.patrol_infantry.v1",
+      "feedback.victory_declaration.v1",
+      "generation.fallback_policy_fail_closed.v1",
+      "goal.boss_unlock.v1",
+      "hazard.falling_area.v1",
+      "hazard.timed_explosion.v1",
+      "health.damage_invulnerability.v1",
+      "health.player_health_points.v1",
+      "metadata.fixed_prompt_binding.v1",
+      "movement.crouch.v1",
+      "movement.run_jump.v1",
+      "pickup.collectible.v1",
+      "pickup.weapon_supply.v1",
+      "profile.deepseek_run_and_gun_validation.v1",
+      "provider.deepseek_authoritative_draft.v1",
+      "review.oracle_final_gate.v1",
+      "rules.checkpoint_restore.v1",
+      "rules.encounter_gate.v1",
+      "rules.retry_count.v1",
+      "rules.state_transition_graph.v1",
+      "runtime.manifest_binding.v1",
+      "runtime.module_load_receipt.v1",
+      "runtime.plan_coverage.v1",
+      "scene.ordered_segments.v1",
+      "scene.visual_presentation_metadata.v1",
+      "spawn.enemy_wave.v1",
+      "spawn.explicit_declarations.v1",
+      "spawn.static.v1",
+      "spawn.stop_on_boss_defeat.v1",
+      "ui.failure_restart.v1",
+      "ui.hud_boss_health.v1",
+      "ui.hud_current_weapon.v1",
+      "ui.hud_player_health.v1",
+      "ui.hud_retries.v1",
+      "ui.win_failure_transitions.v1",
+      "validation.fail_closed_unknown_nodes.v1",
+      "validation.fixed_prompt_end_to_end.v1",
+      "validation.metamorphic_semantic_hash.v1",
+      "validation.replay_stability.v1",
+      "validation.user_acceptance_gate.v1",
+      "weapon.death_reset.v1",
+      "weapon.default_straight_single.v1",
+      "weapon.rapid_fire.v1",
+      "weapon.replacement_rule.v1",
+      "weapon.spread_shot.v1"
+    ],
+    "progression": {
+      "estimated_total_sec": {
+        "min_sec": 480,
+        "max_sec": 720
+      },
+      "segments": [
+        {
+          "id": "approach",
+          "order": 0,
+          "label": "Capability approach",
+          "duration_target_sec": {
+            "min_sec": 160,
+            "max_sec": 240
+          },
+          "capability_refs": [
+            "artifact.lineage_no_manual_patch.v1",
+            "artifact.no_hidden_script.v1",
+            "camera.bounds_clamp.v1",
+            "camera.side_follow.v1",
+            "canonical.semantic_preservation.v1",
+            "collision.damage_affinity_matrix.v1",
+            "collision.platform.v1",
+            "combat.airborne_fire.v1",
+            "combat.projectile.v1",
+            "enemy.boss_attack_pattern.v1",
+            "enemy.boss_lifecycle.v1",
+            "enemy.boss_phase_transition.v1",
+            "enemy.fixed_turret.v1",
+            "enemy.flying_right_entry.v1",
+            "enemy.patrol_infantry.v1",
+            "feedback.victory_declaration.v1",
+            "generation.fallback_policy_fail_closed.v1",
+            "goal.boss_unlock.v1",
+            "hazard.falling_area.v1",
+            "hazard.timed_explosion.v1"
+          ]
+        },
+        {
+          "id": "escalation",
+          "order": 1,
+          "label": "Capability escalation",
+          "duration_target_sec": {
+            "min_sec": 160,
+            "max_sec": 240
+          },
+          "capability_refs": [
+            "health.damage_invulnerability.v1",
+            "health.player_health_points.v1",
+            "metadata.fixed_prompt_binding.v1",
+            "movement.crouch.v1",
+            "movement.run_jump.v1",
+            "pickup.collectible.v1",
+            "pickup.weapon_supply.v1",
+            "profile.deepseek_run_and_gun_validation.v1",
+            "provider.deepseek_authoritative_draft.v1",
+            "review.oracle_final_gate.v1",
+            "rules.checkpoint_restore.v1",
+            "rules.encounter_gate.v1",
+            "rules.retry_count.v1",
+            "rules.state_transition_graph.v1",
+            "runtime.manifest_binding.v1",
+            "runtime.module_load_receipt.v1",
+            "runtime.plan_coverage.v1",
+            "scene.ordered_segments.v1",
+            "scene.visual_presentation_metadata.v1",
+            "spawn.enemy_wave.v1"
+          ]
+        },
+        {
+          "id": "finale",
+          "order": 2,
+          "label": "Capability finale",
+          "duration_target_sec": {
+            "min_sec": 160,
+            "max_sec": 240
+          },
+          "capability_refs": [
+            "spawn.explicit_declarations.v1",
+            "spawn.static.v1",
+            "spawn.stop_on_boss_defeat.v1",
+            "ui.failure_restart.v1",
+            "ui.hud_boss_health.v1",
+            "ui.hud_current_weapon.v1",
+            "ui.hud_player_health.v1",
+            "ui.hud_retries.v1",
+            "ui.win_failure_transitions.v1",
+            "validation.fail_closed_unknown_nodes.v1",
+            "validation.fixed_prompt_end_to_end.v1",
+            "validation.metamorphic_semantic_hash.v1",
+            "validation.replay_stability.v1",
+            "validation.user_acceptance_gate.v1",
+            "weapon.death_reset.v1",
+            "weapon.default_straight_single.v1",
+            "weapon.rapid_fire.v1",
+            "weapon.replacement_rule.v1",
+            "weapon.spread_shot.v1"
+          ]
+        }
+      ]
+    },
+    "scenes": [
+      {
+        "id": "main_scene",
+        "segment_refs": [
+          "approach",
+          "escalation",
+          "finale"
+        ],
+        "entity_refs": [
+          "player",
+          "side_camera",
+          "ground",
+          "rifle_soldier",
+          "flying_enemy",
+          "turret_enemy",
+          "weapon_pickup",
+          "hazard_zone",
+          "boss_core",
+          "hud"
+        ]
+      }
+    ],
+    "entities": [
+      {
+        "id": "player",
+        "role": "player",
+        "label": "Player",
+        "capability_refs": [
+          "artifact.lineage_no_manual_patch.v1",
+          "artifact.no_hidden_script.v1",
+          "camera.bounds_clamp.v1",
+          "camera.side_follow.v1",
+          "canonical.semantic_preservation.v1",
+          "collision.damage_affinity_matrix.v1",
+          "collision.platform.v1",
+          "combat.airborne_fire.v1",
+          "combat.projectile.v1",
+          "enemy.boss_attack_pattern.v1",
+          "enemy.boss_lifecycle.v1",
+          "enemy.boss_phase_transition.v1",
+          "enemy.fixed_turret.v1",
+          "enemy.flying_right_entry.v1",
+          "enemy.patrol_infantry.v1",
+          "feedback.victory_declaration.v1",
+          "generation.fallback_policy_fail_closed.v1",
+          "goal.boss_unlock.v1",
+          "hazard.falling_area.v1",
+          "hazard.timed_explosion.v1"
+        ]
+      },
+      {
+        "id": "side_camera",
+        "role": "camera",
+        "label": "Side camera",
+        "capability_refs": [
+          "camera.side_follow.v1"
+        ]
+      },
+      {
+        "id": "ground",
+        "role": "terrain",
+        "label": "Ground",
+        "capability_refs": [
+          "collision.platform.v1"
+        ]
+      },
+      {
+        "id": "rifle_soldier",
+        "role": "enemy",
+        "label": "Rifle soldier",
+        "capability_refs": [
+          "enemy.patrol_infantry.v1",
+          "combat.projectile.v1"
+        ]
+      },
+      {
+        "id": "flying_enemy",
+        "role": "enemy",
+        "label": "Flying enemy",
+        "capability_refs": [
+          "enemy.flying_right_entry.v1"
+        ]
+      },
+      {
+        "id": "turret_enemy",
+        "role": "enemy",
+        "label": "Fixed turret",
+        "capability_refs": [
+          "enemy.fixed_turret.v1"
+        ]
+      },
+      {
+        "id": "weapon_pickup",
+        "role": "pickup",
+        "label": "Weapon pickup",
+        "capability_refs": [
+          "pickup.weapon_supply.v1"
+        ]
+      },
+      {
+        "id": "hazard_zone",
+        "role": "hazard",
+        "label": "Hazard zone",
+        "capability_refs": [
+          "hazard.falling_area.v1",
+          "hazard.timed_explosion.v1"
+        ]
+      },
+      {
+        "id": "boss_core",
+        "role": "boss",
+        "label": "Boss core",
+        "capability_refs": [
+          "enemy.boss_lifecycle.v1",
+          "goal.boss_unlock.v1"
+        ]
+      },
+      {
+        "id": "hud",
+        "role": "ui",
+        "label": "HUD",
+        "capability_refs": [
+          "ui.hud_player_health.v1",
+          "ui.hud_current_weapon.v1",
+          "ui.hud_boss_health.v1"
+        ]
+      }
+    ],
+    "behaviors": [
+      {
+        "id": "player_primary_fire",
+        "owner_entity_id": "player",
+        "capability_id": "combat.projectile.v1",
+        "trigger": {
+          "event": "input.fire",
+          "cadence_ms": 240
+        },
+        "config": {
+          "action": "spawn_projectile",
+          "projectile_style": "straight"
+        }
+      },
+      {
+        "id": "player_crouch_state",
+        "owner_entity_id": "player",
+        "capability_id": "movement.crouch.v1",
+        "trigger": {
+          "event": "input.down"
+        },
+        "config": {
+          "posture": "crouch",
+          "height_scale": 0.58
+        }
+      }
+    ],
+    "waves": [
+      {
+        "id": "wave_approach",
+        "segment_id": "approach",
+        "enemy_entity_id": "rifle_soldier",
+        "count": 4,
+        "spawn": {
+          "side": "right",
+          "lane": "ground"
+        },
+        "capability_refs": [
+          "spawn.enemy_wave.v1",
+          "enemy.patrol_infantry.v1"
+        ]
+      },
+      {
+        "id": "wave_flying",
+        "segment_id": "escalation",
+        "enemy_entity_id": "flying_enemy",
+        "count": 3,
+        "spawn": {
+          "side": "right",
+          "lane": "air"
+        },
+        "capability_refs": [
+          "enemy.flying_right_entry.v1"
+        ]
+      }
+    ],
+    "pickups": [
+      {
+        "id": "weapon_supply_pickup",
+        "segment_id": "escalation",
+        "pickup_entity_id": "weapon_pickup",
+        "count": 1,
+        "spawn": {
+          "lane": "ground",
+          "after_wave": "wave_approach"
+        },
+        "capability_refs": [
+          "pickup.weapon_supply.v1",
+          "weapon.spread_shot.v1"
+        ]
+      }
+    ],
+    "objectives": [
+      {
+        "id": "survive_goal",
+        "kind": "survive_duration",
+        "target": {
+          "min_sec": 480
+        },
+        "success_condition": {
+          "event": "timer.reached",
+          "min_sec": 480
+        },
+        "capability_refs": [
+          "validation.user_acceptance_gate.v1",
+          "feedback.victory_declaration.v1"
+        ]
+      },
+      {
+        "id": "boss_goal",
+        "kind": "boss_defeated",
+        "target": {
+          "boss_entity_id": "boss_core"
+        },
+        "success_condition": {
+          "event": "boss.defeated",
+          "boss_entity_id": "boss_core"
+        },
+        "capability_refs": [
+          "goal.boss_unlock.v1",
+          "spawn.stop_on_boss_defeat.v1"
+        ]
+      }
+    ],
+    "bosses": [
+      {
+        "id": "boss_core_plan",
+        "boss_entity_id": "boss_core",
+        "segment_refs": [
+          "finale"
+        ],
+        "phases": [
+          {
+            "id": "boss_phase_opening",
+            "order": 0,
+            "health_threshold_pct": 100,
+            "pattern": {
+              "attack": "projectile_burst",
+              "cadence_ms": 1400
+            },
+            "capability_refs": [
+              "enemy.boss_attack_pattern.v1"
+            ]
+          },
+          {
+            "id": "boss_phase_finale",
+            "order": 1,
+            "health_threshold_pct": 50,
+            "pattern": {
+              "attack": "projectile_burst_fast",
+              "cadence_ms": 850
+            },
+            "capability_refs": [
+              "enemy.boss_phase_transition.v1"
+            ]
+          }
+        ]
+      }
+    ],
+    "capability_configs": [
+      {
+        "id": "cfg_artifact_lineage_no_manual_patch_v1",
+        "capability_id": "artifact.lineage_no_manual_patch.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_artifact_no_hidden_script_v1",
+        "capability_id": "artifact.no_hidden_script.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_camera_bounds_clamp_v1",
+        "capability_id": "camera.bounds_clamp.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_camera_side_follow_v1",
+        "capability_id": "camera.side_follow.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_canonical_semantic_preservation_v1",
+        "capability_id": "canonical.semantic_preservation.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_collision_damage_affinity_matrix_v1",
+        "capability_id": "collision.damage_affinity_matrix.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_collision_platform_v1",
+        "capability_id": "collision.platform.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_combat_airborne_fire_v1",
+        "capability_id": "combat.airborne_fire.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_combat_projectile_v1",
+        "capability_id": "combat.projectile.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_enemy_boss_attack_pattern_v1",
+        "capability_id": "enemy.boss_attack_pattern.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_enemy_boss_lifecycle_v1",
+        "capability_id": "enemy.boss_lifecycle.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_enemy_boss_phase_transition_v1",
+        "capability_id": "enemy.boss_phase_transition.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_enemy_fixed_turret_v1",
+        "capability_id": "enemy.fixed_turret.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_enemy_flying_right_entry_v1",
+        "capability_id": "enemy.flying_right_entry.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_enemy_patrol_infantry_v1",
+        "capability_id": "enemy.patrol_infantry.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_feedback_victory_declaration_v1",
+        "capability_id": "feedback.victory_declaration.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_generation_fallback_policy_fail_closed_v1",
+        "capability_id": "generation.fallback_policy_fail_closed.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_goal_boss_unlock_v1",
+        "capability_id": "goal.boss_unlock.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_hazard_falling_area_v1",
+        "capability_id": "hazard.falling_area.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_hazard_timed_explosion_v1",
+        "capability_id": "hazard.timed_explosion.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_health_damage_invulnerability_v1",
+        "capability_id": "health.damage_invulnerability.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_health_player_health_points_v1",
+        "capability_id": "health.player_health_points.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_metadata_fixed_prompt_binding_v1",
+        "capability_id": "metadata.fixed_prompt_binding.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_movement_crouch_v1",
+        "capability_id": "movement.crouch.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_movement_run_jump_v1",
+        "capability_id": "movement.run_jump.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_pickup_collectible_v1",
+        "capability_id": "pickup.collectible.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_pickup_weapon_supply_v1",
+        "capability_id": "pickup.weapon_supply.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_profile_deepseek_run_and_gun_validation_v1",
+        "capability_id": "profile.deepseek_run_and_gun_validation.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_provider_deepseek_authoritative_draft_v1",
+        "capability_id": "provider.deepseek_authoritative_draft.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_review_oracle_final_gate_v1",
+        "capability_id": "review.oracle_final_gate.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_rules_checkpoint_restore_v1",
+        "capability_id": "rules.checkpoint_restore.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_rules_encounter_gate_v1",
+        "capability_id": "rules.encounter_gate.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_rules_retry_count_v1",
+        "capability_id": "rules.retry_count.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_rules_state_transition_graph_v1",
+        "capability_id": "rules.state_transition_graph.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_runtime_manifest_binding_v1",
+        "capability_id": "runtime.manifest_binding.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_runtime_module_load_receipt_v1",
+        "capability_id": "runtime.module_load_receipt.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_runtime_plan_coverage_v1",
+        "capability_id": "runtime.plan_coverage.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_scene_ordered_segments_v1",
+        "capability_id": "scene.ordered_segments.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_scene_visual_presentation_metadata_v1",
+        "capability_id": "scene.visual_presentation_metadata.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_spawn_enemy_wave_v1",
+        "capability_id": "spawn.enemy_wave.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_spawn_explicit_declarations_v1",
+        "capability_id": "spawn.explicit_declarations.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_spawn_static_v1",
+        "capability_id": "spawn.static.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_spawn_stop_on_boss_defeat_v1",
+        "capability_id": "spawn.stop_on_boss_defeat.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_ui_failure_restart_v1",
+        "capability_id": "ui.failure_restart.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_ui_hud_boss_health_v1",
+        "capability_id": "ui.hud_boss_health.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_ui_hud_current_weapon_v1",
+        "capability_id": "ui.hud_current_weapon.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_ui_hud_player_health_v1",
+        "capability_id": "ui.hud_player_health.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_ui_hud_retries_v1",
+        "capability_id": "ui.hud_retries.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_ui_win_failure_transitions_v1",
+        "capability_id": "ui.win_failure_transitions.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_validation_fail_closed_unknown_nodes_v1",
+        "capability_id": "validation.fail_closed_unknown_nodes.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_validation_fixed_prompt_end_to_end_v1",
+        "capability_id": "validation.fixed_prompt_end_to_end.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_validation_metamorphic_semantic_hash_v1",
+        "capability_id": "validation.metamorphic_semantic_hash.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_validation_replay_stability_v1",
+        "capability_id": "validation.replay_stability.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_validation_user_acceptance_gate_v1",
+        "capability_id": "validation.user_acceptance_gate.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_weapon_death_reset_v1",
+        "capability_id": "weapon.death_reset.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_weapon_default_straight_single_v1",
+        "capability_id": "weapon.default_straight_single.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_weapon_rapid_fire_v1",
+        "capability_id": "weapon.rapid_fire.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_weapon_replacement_rule_v1",
+        "capability_id": "weapon.replacement_rule.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      },
+      {
+        "id": "cfg_weapon_spread_shot_v1",
+        "capability_id": "weapon.spread_shot.v1",
+        "config": {
+          "enabled": true,
+          "design_note": "declared_by_stage6_capability_dsl_draft"
+        }
+      }
+    ],
+    "metadata": {
+      "title": "Step37 capability DSL draft",
+      "summary": "Deterministic draft artifact produced from the exact Step37 composed schema capability set.",
+      "language": "en-US",
+      "tags": [
+        "step37",
+        "capability_draft"
+      ]
+    }
+  },
+  "draft_hash": "fnv1a_20b25721",
+  "draft_status": "passed",
+  "capability_dsl_draft_produced": true,
+  "schema_expressible": true,
+  "provider_draft_produced": false,
+  "normalized": false,
+  "compiled": false,
+  "runtime_consumed": false,
+  "qa_observed": false,
+  "production_default_cutover_active": false,
+  "legacy_authoritative_path_exited": false,
+  "final_closure_not_blocked": false,
+  "global_exit_conditions_met": false,
+  "parent_stage_status_after_draft": "running",
+  "next_checkpoint_id": "stage7.normalize_capability_dsl_draft_from_composed_schema",
+  "blockers": [],
+  "audit_hash": "fnv1a_02de3f9c"
+}
