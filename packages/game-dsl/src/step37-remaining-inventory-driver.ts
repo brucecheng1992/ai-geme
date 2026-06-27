@@ -10,6 +10,7 @@ export const STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID =
   'stage4.support_promotion_from_same_run_observed_package_receipts';
 export const STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP =
   'Stage 4 support promotion from same-run observed package receipts atomic step';
+const STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_PARENT_STAGE_ID = 'stage4';
 
 export const STEP37_REMAINING_CAPABILITY_STATES = [
   'complete_supported',
@@ -306,7 +307,7 @@ function buildSelectionFailure(input: {
           ? 'observed inventory exhausted but static support promotion not consumed'
           : 'observed inventory exhausted but supplied support promotion checkpoint identity is not authoritative',
       expected_checkpoint_id: STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID,
-      expected_parent_stage_id: input.parentStageId,
+      expected_parent_stage_id: STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_PARENT_STAGE_ID,
       expected_next_atomic_step: STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP,
       actual_checkpoint_id: input.supportPromotionCheckpoint?.checkpoint_id ?? null,
       invalid_fields: [...input.supportPromotionCheckpointInvalidFields],
@@ -336,7 +337,10 @@ function getSupportPromotionCheckpointInvalidFields(
 
   return [
     ...(checkpoint.checkpoint_id.trim() !== STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID ? ['checkpoint_id'] : []),
-    ...(checkpoint.parent_stage_id.trim() !== parentStageId ? ['parent_stage_id'] : []),
+    ...(checkpoint.parent_stage_id.trim() !== STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_PARENT_STAGE_ID ||
+    parentStageId !== STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_PARENT_STAGE_ID
+      ? ['parent_stage_id']
+      : []),
     ...(checkpoint.next_atomic_step.trim() !== STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP ? ['next_atomic_step'] : []),
     ...(checkpoint.status !== 'unmet' ? ['status'] : []),
     ...(checkpoint.unmet_reason.trim().length === 0 ? ['unmet_reason'] : []),

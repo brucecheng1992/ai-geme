@@ -247,6 +247,40 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     });
   });
 
+  it('rejects support-promotion checkpoint authority when the caller tries to move the Stage 4 gate under Stage 5', () => {
+    const capabilities = [
+      capability({
+        capabilityId: 'observed.alpha.v1',
+        missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+      })
+    ];
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: supportSummary(capabilities),
+      observedCapabilityIds: ['observed.alpha.v1'],
+      committedCapabilityClosures: [
+        {
+          capabilityId: 'observed.alpha.v1',
+          checkpointId: 'stage4.observed_alpha_v1.complete_supported_package_slice',
+          sourceRevision: 'commit-a:docs/plans/stage4.md'
+        }
+      ],
+      supportPromotionCheckpoint: supportPromotionCheckpoint({
+        parent_stage_id: 'stage5'
+      }),
+      parentStageId: 'stage5',
+      sourcePlanRevision
+    });
+
+    expect(report.nextCheckpoint).toBeNull();
+    expect(report.selectionFailure).toMatchObject({
+      error_code: 'SUPPORT_PROMOTION_CHECKPOINT_REQUIRED',
+      stage5_entry_allowed: false,
+      expected_parent_stage_id: 'stage4',
+      actual_checkpoint_id: STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID,
+      invalid_fields: ['parent_stage_id']
+    });
+  });
+
   it('derives the current Stage 4 inventory from the real support summary and explicit committed closure history', () => {
     const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
     const closedCapabilityIds = new Set([
