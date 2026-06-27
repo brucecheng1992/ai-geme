@@ -10,6 +10,7 @@ import { type Step37ComposedDslSchemaReport } from './step37-composed-dsl-schema
 import { type Step37ConsumeCompiledRuntimeIrReport } from './step37-consume-compiled-runtime-ir.js';
 import { type Step37ExactCapabilityLockReport } from './step37-exact-capability-lock.js';
 import { type Step37NormalizeCapabilityDslDraftReport } from './step37-normalize-capability-dsl-draft.js';
+import { type Step37ObserveRuntimeConsumedIrWithQaReport } from './step37-observe-runtime-consumed-ir-with-qa.js';
 import { type Step37Stage4ExitAuditReport } from './step37-stage4-exit-audit.js';
 import { type Step37Stage5EntryAuditReport } from './step37-stage5-entry-audit.js';
 import { type Step37SupportPromotionApplicationReport } from './step37-support-promotion-inventory.js';
@@ -53,6 +54,10 @@ export const STEP37_STAGE10_OBSERVE_RUNTIME_CONSUMED_IR_WITH_QA_CHECKPOINT_ID =
   'stage10.observe_runtime_consumed_ir_with_qa';
 export const STEP37_STAGE10_OBSERVE_RUNTIME_CONSUMED_IR_WITH_QA_NEXT_ATOMIC_STEP =
   'Stage 10 observe runtime consumed IR with QA atomic step';
+export const STEP37_STAGE11_ACTIVATE_PRODUCTION_DEFAULT_CUTOVER_CHECKPOINT_ID =
+  'stage11.activate_production_default_cutover';
+export const STEP37_STAGE11_ACTIVATE_PRODUCTION_DEFAULT_CUTOVER_NEXT_ATOMIC_STEP =
+  'Stage 11 activate production default cutover atomic step';
 const STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_PARENT_STAGE_ID = 'stage4';
 const STEP37_STAGE5_ENTRY_AUDIT_PARENT_STAGE_ID = 'stage5';
 const STEP37_STAGE6_COMPOSED_DSL_SCHEMA_PARENT_STAGE_ID = 'stage6';
@@ -60,6 +65,7 @@ const STEP37_STAGE7_NORMALIZE_CAPABILITY_DSL_DRAFT_PARENT_STAGE_ID = 'stage7';
 const STEP37_STAGE8_COMPILE_NORMALIZED_CAPABILITY_DSL_PARENT_STAGE_ID = 'stage8';
 const STEP37_STAGE9_CONSUME_COMPILED_RUNTIME_IR_PARENT_STAGE_ID = 'stage9';
 const STEP37_STAGE10_OBSERVE_RUNTIME_QA_PARENT_STAGE_ID = 'stage10';
+const STEP37_STAGE11_PRODUCTION_DEFAULT_CUTOVER_PARENT_STAGE_ID = 'stage11';
 
 export const STEP37_REMAINING_CAPABILITY_STATES = [
   'complete_supported',
@@ -101,6 +107,8 @@ export type Step37RemainingInventoryDriverInput = {
   stage9ConsumeCompiledRuntimeIrCheckpoint?: Step37CheckpointInventoryItem | null;
   stage9ConsumeCompiledRuntimeIrReport?: Step37ConsumeCompiledRuntimeIrReport | null;
   stage10ObserveRuntimeConsumedIrWithQaCheckpoint?: Step37CheckpointInventoryItem | null;
+  stage10ObserveRuntimeConsumedIrWithQaReport?: Step37ObserveRuntimeConsumedIrWithQaReport | null;
+  stage11ActivateProductionDefaultCutoverCheckpoint?: Step37CheckpointInventoryItem | null;
   parentStageId?: string;
   sourcePlanRevision: string;
 };
@@ -309,6 +317,28 @@ export type Step37RemainingInventorySelectionFailure =
       actual_checkpoint_id: string | null;
       invalid_fields: string[];
       message: string;
+    }
+  | {
+      error_code: 'STAGE11_PRODUCTION_DEFAULT_CUTOVER_CHECKPOINT_REQUIRED';
+      global_exit_conditions_met: false;
+      user_input_required: false;
+      parent_stage_status: 'running';
+      stage5_entry_allowed: true;
+      stage5_exact_lock_implementation_allowed: true;
+      stage5_exact_lock_produced: true;
+      composed_schema_produced: true;
+      capability_dsl_draft_produced: true;
+      normalized: true;
+      compiled: true;
+      runtime_consumed: true;
+      qa_observed: true;
+      reason: string;
+      expected_checkpoint_id: typeof STEP37_STAGE11_ACTIVATE_PRODUCTION_DEFAULT_CUTOVER_CHECKPOINT_ID;
+      expected_parent_stage_id: typeof STEP37_STAGE11_PRODUCTION_DEFAULT_CUTOVER_PARENT_STAGE_ID;
+      expected_next_atomic_step: typeof STEP37_STAGE11_ACTIVATE_PRODUCTION_DEFAULT_CUTOVER_NEXT_ATOMIC_STEP;
+      actual_checkpoint_id: string | null;
+      invalid_fields: string[];
+      message: string;
     };
 
 export type Step37RemainingInventoryReport = {
@@ -437,6 +467,11 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
     input.stage8CompileNormalizedCapabilityDslReport ?? null,
     staticCompleteSupportedCapabilityIds
   );
+  const stage10ObserveRuntimeConsumedIrWithQaPassed = isStage10ObserveRuntimeConsumedIrWithQaPassed(
+    input.stage10ObserveRuntimeConsumedIrWithQaReport ?? null,
+    input.stage9ConsumeCompiledRuntimeIrReport ?? null,
+    staticCompleteSupportedCapabilityIds
+  );
   const stage5ExactLockCheckpointRequired =
     requiredCapabilityCount > 0 &&
     staticCompleteSupportedCount === requiredCapabilityCount &&
@@ -558,7 +593,8 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
     stage6CapabilityDslDraftPassed &&
     stage7NormalizeCapabilityDslDraftPassed &&
     stage8CompileNormalizedCapabilityDslPassed &&
-    stage9ConsumeCompiledRuntimeIrPassed;
+    stage9ConsumeCompiledRuntimeIrPassed &&
+    !stage10ObserveRuntimeConsumedIrWithQaPassed;
   const stage10ObserveRuntimeConsumedIrWithQaCheckpointInvalidFields = stage10ObserveRuntimeConsumedIrWithQaCheckpointRequired
     ? getStage10ObserveRuntimeConsumedIrWithQaCheckpointInvalidFields(input.stage10ObserveRuntimeConsumedIrWithQaCheckpoint ?? null)
     : [];
@@ -568,6 +604,28 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
     input.stage10ObserveRuntimeConsumedIrWithQaCheckpoint !== null &&
     stage10ObserveRuntimeConsumedIrWithQaCheckpointInvalidFields.length === 0
       ? [input.stage10ObserveRuntimeConsumedIrWithQaCheckpoint]
+      : [];
+  const stage11ActivateProductionDefaultCutoverCheckpointRequired =
+    requiredCapabilityCount > 0 &&
+    staticCompleteSupportedCount === requiredCapabilityCount &&
+    stage4ExitAuditPassed &&
+    stage5EntryAuditPassed &&
+    stage5ExactCapabilityLockPassed &&
+    stage6ComposedDslSchemaPassed &&
+    stage6CapabilityDslDraftPassed &&
+    stage7NormalizeCapabilityDslDraftPassed &&
+    stage8CompileNormalizedCapabilityDslPassed &&
+    stage9ConsumeCompiledRuntimeIrPassed &&
+    stage10ObserveRuntimeConsumedIrWithQaPassed;
+  const stage11ActivateProductionDefaultCutoverCheckpointInvalidFields = stage11ActivateProductionDefaultCutoverCheckpointRequired
+    ? getStage11ActivateProductionDefaultCutoverCheckpointInvalidFields(input.stage11ActivateProductionDefaultCutoverCheckpoint ?? null)
+    : [];
+  const stage11ActivateProductionDefaultCutoverCheckpoint =
+    stage11ActivateProductionDefaultCutoverCheckpointRequired &&
+    input.stage11ActivateProductionDefaultCutoverCheckpoint !== undefined &&
+    input.stage11ActivateProductionDefaultCutoverCheckpoint !== null &&
+    stage11ActivateProductionDefaultCutoverCheckpointInvalidFields.length === 0
+      ? [input.stage11ActivateProductionDefaultCutoverCheckpoint]
       : [];
   const checkpointInventory = [
     ...packageCheckpointInventory,
@@ -580,7 +638,8 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
     ...stage7NormalizeCapabilityDslDraftCheckpoint,
     ...stage8CompileNormalizedCapabilityDslCheckpoint,
     ...stage9ConsumeCompiledRuntimeIrCheckpoint,
-    ...stage10ObserveRuntimeConsumedIrWithQaCheckpoint
+    ...stage10ObserveRuntimeConsumedIrWithQaCheckpoint,
+    ...stage11ActivateProductionDefaultCutoverCheckpoint
   ];
   const nextCheckpoint = selectNextAtomicCheckpoint(checkpointInventory);
   const unmetStaticCompleteSupportedCount = requiredCapabilityCount - staticCompleteSupportedCount;
@@ -634,6 +693,9 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
       stage10ObserveRuntimeConsumedIrWithQaCheckpointRequired,
       stage10ObserveRuntimeConsumedIrWithQaCheckpoint: input.stage10ObserveRuntimeConsumedIrWithQaCheckpoint ?? null,
       stage10ObserveRuntimeConsumedIrWithQaCheckpointInvalidFields,
+      stage11ActivateProductionDefaultCutoverCheckpointRequired,
+      stage11ActivateProductionDefaultCutoverCheckpoint: input.stage11ActivateProductionDefaultCutoverCheckpoint ?? null,
+      stage11ActivateProductionDefaultCutoverCheckpointInvalidFields,
       parentStageId,
       unmetStaticCompleteSupportedCount
     })
@@ -783,6 +845,9 @@ function buildSelectionFailure(input: {
   stage10ObserveRuntimeConsumedIrWithQaCheckpointRequired: boolean;
   stage10ObserveRuntimeConsumedIrWithQaCheckpoint: Step37CheckpointInventoryItem | null;
   stage10ObserveRuntimeConsumedIrWithQaCheckpointInvalidFields: readonly string[];
+  stage11ActivateProductionDefaultCutoverCheckpointRequired: boolean;
+  stage11ActivateProductionDefaultCutoverCheckpoint: Step37CheckpointInventoryItem | null;
+  stage11ActivateProductionDefaultCutoverCheckpointInvalidFields: readonly string[];
   parentStageId: string;
   unmetStaticCompleteSupportedCount: number;
 }): Step37RemainingInventorySelectionFailure | null {
@@ -1004,6 +1069,35 @@ function buildSelectionFailure(input: {
       invalid_fields: [...input.stage10ObserveRuntimeConsumedIrWithQaCheckpointInvalidFields],
       message:
         'STAGE10_QA_OBSERVATION_CHECKPOINT_REQUIRED: Stage 9 runtime consumption passed, but QA observation checkpoint authority is missing or invalid'
+    };
+  }
+
+  if (input.stage11ActivateProductionDefaultCutoverCheckpointRequired && input.nextCheckpoint === null) {
+    return {
+      error_code: 'STAGE11_PRODUCTION_DEFAULT_CUTOVER_CHECKPOINT_REQUIRED',
+      global_exit_conditions_met: false,
+      user_input_required: false,
+      parent_stage_status: 'running',
+      stage5_entry_allowed: true,
+      stage5_exact_lock_implementation_allowed: true,
+      stage5_exact_lock_produced: true,
+      composed_schema_produced: true,
+      capability_dsl_draft_produced: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: true,
+      reason:
+        input.stage11ActivateProductionDefaultCutoverCheckpoint === null
+          ? 'Stage 10 QA observation passed but production default cutover checkpoint was not supplied'
+          : 'Stage 10 QA observation passed but supplied production default cutover checkpoint identity is not authoritative',
+      expected_checkpoint_id: STEP37_STAGE11_ACTIVATE_PRODUCTION_DEFAULT_CUTOVER_CHECKPOINT_ID,
+      expected_parent_stage_id: STEP37_STAGE11_PRODUCTION_DEFAULT_CUTOVER_PARENT_STAGE_ID,
+      expected_next_atomic_step: STEP37_STAGE11_ACTIVATE_PRODUCTION_DEFAULT_CUTOVER_NEXT_ATOMIC_STEP,
+      actual_checkpoint_id: input.stage11ActivateProductionDefaultCutoverCheckpoint?.checkpoint_id ?? null,
+      invalid_fields: [...input.stage11ActivateProductionDefaultCutoverCheckpointInvalidFields],
+      message:
+        'STAGE11_PRODUCTION_DEFAULT_CUTOVER_CHECKPOINT_REQUIRED: Stage 10 QA observation passed, but production default cutover checkpoint authority is missing or invalid'
     };
   }
 
@@ -1245,6 +1339,21 @@ function getStage10ObserveRuntimeConsumedIrWithQaCheckpointInvalidFields(checkpo
     ...(checkpoint.next_atomic_step.trim() !== STEP37_STAGE10_OBSERVE_RUNTIME_CONSUMED_IR_WITH_QA_NEXT_ATOMIC_STEP
       ? ['next_atomic_step']
       : []),
+    ...(checkpoint.status !== 'unmet' ? ['status'] : []),
+    ...(checkpoint.unmet_reason.trim().length === 0 ? ['unmet_reason'] : []),
+    ...(checkpoint.source_plan_revision.trim().length === 0 ? ['source_plan_revision'] : [])
+  ];
+}
+
+function getStage11ActivateProductionDefaultCutoverCheckpointInvalidFields(checkpoint: Step37CheckpointInventoryItem | null): string[] {
+  if (checkpoint === null) {
+    return ['checkpoint_id'];
+  }
+
+  return [
+    ...(checkpoint.checkpoint_id.trim() !== STEP37_STAGE11_ACTIVATE_PRODUCTION_DEFAULT_CUTOVER_CHECKPOINT_ID ? ['checkpoint_id'] : []),
+    ...(checkpoint.parent_stage_id.trim() !== STEP37_STAGE11_PRODUCTION_DEFAULT_CUTOVER_PARENT_STAGE_ID ? ['parent_stage_id'] : []),
+    ...(checkpoint.next_atomic_step.trim() !== STEP37_STAGE11_ACTIVATE_PRODUCTION_DEFAULT_CUTOVER_NEXT_ATOMIC_STEP ? ['next_atomic_step'] : []),
     ...(checkpoint.status !== 'unmet' ? ['status'] : []),
     ...(checkpoint.unmet_reason.trim().length === 0 ? ['unmet_reason'] : []),
     ...(checkpoint.source_plan_revision.trim().length === 0 ? ['source_plan_revision'] : [])
@@ -1500,6 +1609,49 @@ function isStage9ConsumeCompiledRuntimeIrPassed(
     !report.finalClosureNotBlocked &&
     !report.globalExitConditionsMet
   );
+}
+
+function isStage10ObserveRuntimeConsumedIrWithQaPassed(
+  report: Step37ObserveRuntimeConsumedIrWithQaReport | null,
+  runtimeConsumptionReport: Step37ConsumeCompiledRuntimeIrReport | null,
+  staticCompleteSupportedCapabilityIds: readonly string[]
+): boolean {
+  return (
+    report?.qaObservationStatus === 'passed' &&
+    report.auditHash === hashReportWithoutAuditHash(report) &&
+    report.normalized &&
+    report.compiled &&
+    report.runtimeConsumed &&
+    report.qaObserved &&
+    report.blockers.length === 0 &&
+    report.sourceRuntimeConsumptionAuditHash === report.expectedRuntimeConsumptionAuditHash &&
+    report.sourceRuntimeConsumptionAuditHash === runtimeConsumptionReport?.auditHash &&
+    report.sourceRuntimeLoaderReportHash === runtimeConsumptionReport?.runtimeLoaderReportHash &&
+    report.sourceRuntimeLoaderPlanHash === runtimeConsumptionReport?.runtimeLoaderPlanHash &&
+    report.sourceRuntimeBindingReportHash === runtimeConsumptionReport?.runtimeBindingReportHash &&
+    report.sourceRuntimeBindingStatus === 'bound_pending_qa' &&
+    report.qaObservedBindingReport !== null &&
+    report.qaObservedBindingReport.status === 'qa_observed' &&
+    report.qaObservedBindingReport.modules.every((module) => module.status === 'qa_observed') &&
+    report.qaObservedBindingReportHash === hashStableDraft(report.qaObservedBindingReport) &&
+    report.nextCheckpointId === STEP37_STAGE11_ACTIVATE_PRODUCTION_DEFAULT_CUTOVER_CHECKPOINT_ID &&
+    report.parentStageStatusAfterQaObservation === 'running' &&
+    report.requiredRuntimeModuleCount === staticCompleteSupportedCapabilityIds.length &&
+    report.observedRuntimeModuleCount === staticCompleteSupportedCapabilityIds.length &&
+    sameStringSet(report.observedCapabilityIds, staticCompleteSupportedCapabilityIds) &&
+    sameStringSet(runtimeConsumptionReport?.runtimeSystemCapabilityIds ?? [], staticCompleteSupportedCapabilityIds) &&
+    sameStringSet(report.requiredRuntimeSystemIds, runtimeConsumptionReport?.runtimeSystemIds ?? []) &&
+    sameStringSet(report.observedRuntimeSystemIds, runtimeConsumptionReport?.runtimeSystemIds ?? []) &&
+    !report.productionDefaultCutoverActive &&
+    !report.legacyAuthoritativePathExited &&
+    !report.finalClosureNotBlocked &&
+    !report.globalExitConditionsMet
+  );
+}
+
+function hashReportWithoutAuditHash<TReport extends { auditHash: string }>(report: TReport): string {
+  const { auditHash: _auditHash, ...payloadWithoutHash } = report;
+  return hashStableDraft(payloadWithoutHash);
 }
 
 function buildUnmetReason(capability: Step37RemainingCapabilityInventoryItem): string {
