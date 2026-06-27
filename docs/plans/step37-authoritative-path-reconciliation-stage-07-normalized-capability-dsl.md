@@ -10,11 +10,19 @@ parent_stage_id=stage7
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+candidate_commit=fc05b557fc68aeb7029a25b9b8bcd49c51cdd76c
+candidate_tree=5dece1b94c2eddf87ac552c79b8f3e28688a2b8e
+oracle_status=approved
+oracle_submission_id=019f0897-eca8-7500-8b6d-aa923d29a02c
+oracle_agent_id=019f0813-ed9a-7ad0-8341-50ababd44fea
+oracle_review_result=APPROVED_FOR_RECEIPT
+oracle_p0_count=0
+oracle_p1_count=0
+oracle_p2_count=0
 review_required=true
-closure_status=not_closed
-atomic_step_status=locally_validated
+closure_status=closed
+atomic_step_status=closed
 parent_stage_status=running
 parent_loop_status=running
 global_exit_conditions_met=false
@@ -136,7 +144,7 @@ code_change_discipline_skill_sha256=dd5abe3945818f6feefbe77e30c02432b014a76bacb7
 review_gated_delivery_skill_sha256=27303f4b666d053c6d08e93a4b6ba7a6dbb7041ab7a264425bfaaae0bebab167
 ```
 
-Exit assessment before candidate:
+Local validation assessment before candidate:
 
 ```text
 local_validation_status=passed
@@ -155,4 +163,37 @@ reviewed_normalization_report_hash=fnv1a_d9d4f570
 parent_loop_after_candidate=running
 next_action=CONTINUE_PARENT_LOOP
 next_atomic_step=stage8.compile_normalized_capability_dsl_to_runtime_ir
+```
+
+Receipt closure:
+
+```text
+closure_scope=atomic_step
+atomic_step_id=stage7.normalize_capability_dsl_draft_from_composed_schema
+atomic_step_status=closed
+candidate_commit=fc05b557fc68aeb7029a25b9b8bcd49c51cdd76c
+candidate_tree=5dece1b94c2eddf87ac552c79b8f3e28688a2b8e
+reviewed_commit_sha=fc05b557fc68aeb7029a25b9b8bcd49c51cdd76c
+reviewed_tree_sha=5dece1b94c2eddf87ac552c79b8f3e28688a2b8e
+reviewed_skill_revision_type=sha256_bundle
+reviewed_skill_revision=ed4e3ba1da435f24a527ca1a34f9374bfe1d7ca9e4d482a6d229c3518997dd72
+oracle_submission_id=019f0897-eca8-7500-8b6d-aa923d29a02c
+oracle_agent_id=019f0813-ed9a-7ad0-8341-50ababd44fea
+oracle_review_result=APPROVED_FOR_RECEIPT
+oracle_status=approved
+oracle_p0_count=0
+oracle_p1_count=0
+oracle_p2_count=0
+oracle_p3_count=1
+oracle_p3_summary=Non-blocking explicit wrong Stage8 checkpoint test suggestion; existing code path fails closed and this receipt does not change tested semantics.
+receipt_scope=docs_only_closure_metadata
+receipt_self_reference_policy=receipt_commit_sha_not_written_to_file; derive receipt commit from Git history to avoid self-reference loop.
+closure_status=closed
+parent_stage_status=running
+parent_loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage8.compile_normalized_capability_dsl_to_runtime_ir
+receipt_forbidden_changes=runtime,qa,package_registry,capability_registry,driver_semantics,validator,contracts,tests,Skill,AGENTS,production_cutover,legacy_exit,final_closure
 ```
