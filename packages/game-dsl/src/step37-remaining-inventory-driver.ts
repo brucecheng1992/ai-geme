@@ -6,6 +6,10 @@ import { selectNextAtomicCheckpoint, type Step37CheckpointInventoryItem, type St
 
 export const STEP37_REMAINING_INVENTORY_ARTIFACT_KIND = 'step37_remaining_complete_supported_inventory';
 export const STEP37_REMAINING_INVENTORY_SCHEMA_VERSION = 'step37_remaining_complete_supported_inventory.v0.1';
+export const STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID =
+  'stage4.support_promotion_from_same_run_observed_package_receipts';
+export const STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP =
+  'Stage 4 support promotion from same-run observed package receipts atomic step';
 
 export const STEP37_REMAINING_CAPABILITY_STATES = [
   'complete_supported',
@@ -93,12 +97,27 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
     .map((capability) => buildInventoryItem(capability, observedCapabilityIds, committedClosureMap))
     .sort((left, right) => left.capabilityId.localeCompare(right.capabilityId));
   const stateCounts = buildStateCounts(capabilities);
-  const checkpointInventory = capabilities
+  const packageCheckpointInventory = capabilities
     .filter((capability) => !capability.staticCompleteSupported && !capability.closedInCommittedHistory)
     .sort(compareInventoryItemsForNextCheckpoint)
     .map((capability) => toCheckpointInventoryItem(capability, parentStageId, sourcePlanRevision));
+  const staticCompleteSupportedCount = input.supportSummary.summary.completeSupportedCount;
+  const requiredCapabilityCount = input.supportSummary.summary.requiredCapabilityCount;
+  const sameRunObservedOnlyCount = capabilities.filter((capability) => capability.state === 'same_run_observed_only').length;
+  const committedClosedCapabilityCount = capabilities.filter((capability) => capability.closedInCommittedHistory).length;
+  const supportPromotionCheckpoint =
+    shouldEmitSupportPromotionCheckpoint({
+      packageCheckpointInventoryCount: packageCheckpointInventory.length,
+      requiredCapabilityCount,
+      staticCompleteSupportedCount,
+      sameRunObservedOnlyCount,
+      committedClosedCapabilityCount
+    })
+      ? [toSupportPromotionCheckpoint(parentStageId, sourcePlanRevision, requiredCapabilityCount, staticCompleteSupportedCount)]
+      : [];
+  const checkpointInventory = [...packageCheckpointInventory, ...supportPromotionCheckpoint];
   const nextCheckpoint = selectNextAtomicCheckpoint(checkpointInventory);
-  const unmetStaticCompleteSupportedCount = input.supportSummary.summary.requiredCapabilityCount - input.supportSummary.summary.completeSupportedCount;
+  const unmetStaticCompleteSupportedCount = requiredCapabilityCount - staticCompleteSupportedCount;
 
   return {
     artifactKind: STEP37_REMAINING_INVENTORY_ARTIFACT_KIND,
@@ -107,11 +126,11 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
     profileVersion: input.supportSummary.profileVersion,
     parentStageId,
     sourcePlanRevision,
-    requiredCapabilityCount: input.supportSummary.summary.requiredCapabilityCount,
+    requiredCapabilityCount,
     registeredCapabilityCount: input.supportSummary.summary.registeredCapabilityCount,
-    staticCompleteSupportedCount: input.supportSummary.summary.completeSupportedCount,
-    sameRunObservedOnlyCount: capabilities.filter((capability) => capability.state === 'same_run_observed_only').length,
-    committedClosedCapabilityCount: capabilities.filter((capability) => capability.closedInCommittedHistory).length,
+    staticCompleteSupportedCount,
+    sameRunObservedOnlyCount,
+    committedClosedCapabilityCount,
     stateCounts,
     capabilities,
     checkpointInventory,
@@ -219,6 +238,42 @@ function toCheckpointInventoryItem(
     next_atomic_step: `Stage 4 ${capability.capabilityId} complete-supported package slice implementation atomic step`,
     status: 'unmet',
     unmet_reason: buildUnmetReason(capability),
+    source_plan_revision: sourcePlanRevision
+  };
+}
+
+function shouldEmitSupportPromotionCheckpoint(input: {
+  packageCheckpointInventoryCount: number;
+  requiredCapabilityCount: number;
+  staticCompleteSupportedCount: number;
+  sameRunObservedOnlyCount: number;
+  committedClosedCapabilityCount: number;
+}): boolean {
+  const unmetStaticCompleteSupportedCount = input.requiredCapabilityCount - input.staticCompleteSupportedCount;
+  if (input.requiredCapabilityCount <= 0 || unmetStaticCompleteSupportedCount <= 0 || input.packageCheckpointInventoryCount > 0) {
+    return false;
+  }
+
+  return (
+    input.sameRunObservedOnlyCount + input.staticCompleteSupportedCount === input.requiredCapabilityCount &&
+    input.committedClosedCapabilityCount + input.staticCompleteSupportedCount === input.requiredCapabilityCount
+  );
+}
+
+function toSupportPromotionCheckpoint(
+  parentStageId: string,
+  sourcePlanRevision: string,
+  requiredCapabilityCount: number,
+  staticCompleteSupportedCount: number
+): Step37CheckpointInventoryItem {
+  return {
+    checkpoint_id: STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID,
+    parent_stage_id: parentStageId,
+    next_atomic_step: STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP,
+    status: 'unmet',
+    unmet_reason:
+      `Stage 4 package inventory is exhausted with same-run observed package receipts, but static completeSupported remains ` +
+      `${staticCompleteSupportedCount}/${requiredCapabilityCount}; support promotion must audit whether observed package evidence can become closure authority before Stage 5 entry.`,
     source_plan_revision: sourcePlanRevision
   };
 }

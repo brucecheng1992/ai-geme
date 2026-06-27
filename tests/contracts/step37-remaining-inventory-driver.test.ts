@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   STEP37_REMAINING_INVENTORY_ARTIFACT_KIND,
   STEP37_REMAINING_INVENTORY_SCHEMA_VERSION,
+  STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID,
+  STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP,
   buildDeepSeekRunAndGunValidationProfileSupportSummary,
   buildStep37RemainingCompleteSupportedInventory,
   deriveStep37RemainingCapabilityState,
@@ -124,6 +126,42 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     });
   });
 
+  it('selects the support promotion atom when package inventory is exhausted but static support is still unmet', () => {
+    const capabilities = [
+      capability({
+        capabilityId: 'observed.alpha.v1',
+        missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+      }),
+      capability({
+        capabilityId: 'observed.beta.v1',
+        missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+      })
+    ];
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: supportSummary(capabilities),
+      observedCapabilityIds: capabilities.map((item) => item.capabilityId),
+      committedCapabilityClosures: capabilities.map((item) => ({
+        capabilityId: item.capabilityId,
+        checkpointId: `stage4.${item.capabilityId.replaceAll('.', '_')}.complete_supported_package_slice`,
+        sourceRevision: 'commit-a:docs/plans/stage4.md'
+      })),
+      sourcePlanRevision
+    });
+
+    expect(report.staticCompleteSupportedCount).toBe(0);
+    expect(report.committedClosedCapabilityCount).toBe(2);
+    expect(report.sameRunObservedOnlyCount).toBe(2);
+    expect(report.selectionFailure).toBeNull();
+    expect(report.checkpointInventory).toHaveLength(1);
+    expect(report.nextCheckpoint).toMatchObject({
+      checkpoint_id: STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID,
+      parent_stage_id: 'stage4',
+      next_atomic_step: STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP,
+      selection_rule: 'first_unmet_checkpoint_in_authoritative_inventory'
+    });
+    expect(report.nextCheckpoint?.unmet_reason).toContain('support promotion must audit');
+  });
+
   it('derives the current Stage 4 inventory from the real support summary and explicit committed closure history', () => {
     const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
     const closedCapabilityIds = new Set([
@@ -210,6 +248,31 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     expect(report.checkpointInventory.map((checkpoint) => checkpoint.checkpoint_id)).not.toContain(
       'stage4.runtime_plan_coverage_v1.complete_supported_package_slice'
     );
+  });
+
+  it('routes the current exhausted Stage 4 package inventory to support promotion instead of running/null', () => {
+    const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
+    const closedCapabilityIds = support.capabilities.map((capability) => capability.capabilityId).sort();
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: support,
+      observedCapabilityIds: closedCapabilityIds,
+      committedCapabilityClosures: closedCapabilityIds.map((capabilityId) => ({
+        capabilityId,
+        checkpointId: `closed.${capabilityId}`,
+        sourceRevision: 'HEAD:docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md'
+      })),
+      sourcePlanRevision
+    });
+
+    expect(report.requiredCapabilityCount).toBe(59);
+    expect(report.registeredCapabilityCount).toBe(59);
+    expect(report.staticCompleteSupportedCount).toBe(0);
+    expect(report.committedClosedCapabilityCount).toBe(59);
+    expect(report.sameRunObservedOnlyCount).toBe(59);
+    expect(report.selectionFailure).toBeNull();
+    expect(report.nextCheckpoint?.checkpoint_id).toBe(STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID);
+    expect(report.nextCheckpoint?.next_atomic_step).toBe(STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP);
+    expect(report.nextCheckpoint?.unmet_reason).toContain('static completeSupported remains 0/59');
   });
 
   it('requires committed closure history to have traceable source revisions instead of stale memory labels', () => {

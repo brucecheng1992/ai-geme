@@ -6346,6 +6346,142 @@ driver_validation_message=Stage 4 static completeSupported is unmet, no user blo
 remaining_inventory_result=FAIL_CLOSED: requiredCapabilityCount=59; registeredCapabilityCount=59; staticCompleteSupportedCount=0; committedClosedCapabilityCount=59; sameRunObservedOnlyCount=59; unsupported_unregistered=0; registered_without_required_probe_verification=0; nextCheckpointId=null; selectionFailure=NEXT_ATOMIC_STEP_REQUIRED.
 ```
 
+## Stage 4 Control Plane Implementation — Support Promotion Transition After Package Inventory Exhaustion
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.support_promotion_transition_after_package_inventory_exhaustion
+parent_stage_id=stage4
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+closure_status=not_closed
+```
+
+Read-only audit conclusion:
+
+```text
+recommended_next_transition=SUPPORT_PROMOTION_ATOM
+classification=DRIVER_GAP
+secondary_gap=SUPPORT_SUMMARY_CONSUMER_GAP
+exact_next_atomic_checkpoint_id=stage4.support_promotion_from_same_run_observed_package_receipts
+stage5_may_be_entered_now=NO
+```
+
+Evidence summary:
+
+- Stage 4 entry policy still blocks Stage 5 until the package set proves complete support for the required package universe.
+- Current user acceptance receipt records `requiredCapabilityCount=59`, `registeredCapabilityCount=59`, `staticCompleteSupportedCount=0`, `committedClosedCapabilityCount=59`, `sameRunObservedOnlyCount=59`, and `nextCheckpointId=null`.
+- Current support summary recomputation confirms `requiredCapabilityCount=59`, `registeredCapabilityCount=59`, `completeSupportedCount=0`, and no statically complete-supported IDs.
+- Current remaining-inventory helper was missing a legal transition for the state where package inventory is exhausted but static complete support is still unmet.
+- `completeSupportedCount` remains `0/59` because `buildDeepSeekRunAndGunValidationProfileSupportSummary()` derives it only from static registry evidence dimensions; same-run observed package receipts intentionally do not mutate static `qa_observed` or `completeSupported`.
+
+Minimal implementation:
+
+- Add an explicit support-promotion checkpoint emitted only when package checkpoint inventory is exhausted, all required capabilities are same-run observed or statically complete, and all non-static-complete capabilities have committed closure records.
+- Preserve the existing `NEXT_ATOMIC_STEP_REQUIRED` failure when static complete support is unmet but the evidence is not fully observed/closed.
+- Do not promote `completeSupported`, do not modify package runtime/QA/registry/capability implementation, do not enter Stage 5, and do not activate production default cutover.
+
+Modified code paths:
+
+- `packages/game-dsl/src/step37-remaining-inventory-driver.ts`.
+- `packages/game-dsl/src/index.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Validation before closure-record sync:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/step37-remaining-inventory-driver.test.ts
+exitCode=0
+duration=1.80s
+result=PASS: 1 file / 8 tests.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-closure-implementation-trace.test.ts -t "remaining complete-supported inventory|Parent Loop|closure"
+exitCode=0
+duration=1.99s
+result=PASS: 3 files / 45 tests passed / 17 skipped.
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=11.92s
+result=PASS: 98 files / 1355 tests.
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=62.25s
+result=PASS: contracts 98 files / 1355 tests; workspace 34 files / 410 tests.
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=7.70s
+result=PASS.
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=0.02s
+result=PASS.
+
+command=/usr/bin/time -p bash <<'BASH' ... root-relative Skill bundle rows ... BASH
+exitCode=0
+duration=0.11s
+result=PASS: skill_bundle_format=v1-root-relative-rows; skill_file_count=8; skill_bundle_digest=5ee48b1b5a2ac2371a87d6bc37da3c53ca137a5daa2b6338eeccf8743b28538f.
+
+command=/usr/bin/time -p npx tsx - <<'TS' ... support summary plus exhausted remaining-inventory alignment ... TS
+exitCode=0
+duration=0.61s
+result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=59; staticCompleteSupportedCount=0; committedClosedCapabilityCount=59; sameRunObservedOnlyCount=59; nextCheckpointId=stage4.support_promotion_from_same_run_observed_package_receipts; selectionFailure=null.
+```
+
+Post-record validation requirement:
+
+- This closure record changed the final tree, so focused driver/closure contracts, full related contracts, `npm test`, `npm run typecheck`, `git diff --check`, Skill freshness, support/inventory alignment, and final diff scope review were rerun against the updated tree before candidate commit.
+- Candidate commit must not write its own SHA into this implementation record.
+- Oracle request must bind the candidate commit SHA and the final recomputed `reviewed_skill_revision=5ee48b1b5a2ac2371a87d6bc37da3c53ca137a5daa2b6338eeccf8743b28538f`.
+- Stage 5 remains not entered until a later support-promotion atom and Stage 4 exit audit prove complete support and parent-loop entry conditions.
+
+Post-record validation:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-closure-implementation-trace.test.ts -t "remaining complete-supported inventory|Parent Loop|closure"
+exitCode=0
+duration=1.80s
+result=PASS: 3 files / 45 tests passed / 17 skipped.
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=12.04s
+result=PASS: 98 files / 1355 tests.
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=62.29s
+result=PASS: contracts 98 files / 1355 tests; workspace 34 files / 410 tests.
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=7.46s
+result=PASS.
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=0.03s
+result=PASS.
+
+command=/usr/bin/time -p bash <<'BASH' ... root-relative Skill bundle rows ... BASH
+exitCode=0
+duration=0.13s
+result=PASS: skill_bundle_format=v1-root-relative-rows; skill_file_count=8; skill_bundle_digest=5ee48b1b5a2ac2371a87d6bc37da3c53ca137a5daa2b6338eeccf8743b28538f.
+
+command=/usr/bin/time -p npx tsx - <<'TS' ... support summary plus exhausted remaining-inventory alignment ... TS
+exitCode=0
+duration=0.62s
+result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=59; staticCompleteSupportedCount=0; committedClosedCapabilityCount=59; sameRunObservedOnlyCount=59; nextCheckpointId=stage4.support_promotion_from_same_run_observed_package_receipts; selectionFailure=null.
+```
+
 ## Stage 4 Implementation: `validation.fail_closed_unknown_nodes.v1` complete-supported package slice
 
 Checkpoint identity:
