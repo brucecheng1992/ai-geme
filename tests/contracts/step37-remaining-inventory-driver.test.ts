@@ -25,8 +25,11 @@ import {
   STEP37_STAGE10_OBSERVE_RUNTIME_CONSUMED_IR_WITH_QA_NEXT_ATOMIC_STEP,
   STEP37_STAGE11_ACTIVATE_PRODUCTION_DEFAULT_CUTOVER_CHECKPOINT_ID,
   STEP37_STAGE11_ACTIVATE_PRODUCTION_DEFAULT_CUTOVER_NEXT_ATOMIC_STEP,
+  STEP37_STAGE12_EXIT_LEGACY_AUTHORITATIVE_PATH_CHECKPOINT_ID,
+  STEP37_STAGE12_EXIT_LEGACY_AUTHORITATIVE_PATH_NEXT_ATOMIC_STEP,
   STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID,
   STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP,
+  buildStep37ActivateProductionDefaultCutoverReport,
   buildStep37CapabilityDslDraftReport,
   buildStep37ComposedDslSchemaReport,
   buildStep37NormalizeCapabilityDslDraftReport,
@@ -52,6 +55,7 @@ import {
   type Step37NormalizeCapabilityDslDraftReport,
   type Step37CompileNormalizedCapabilityDslReport,
   type Step37ConsumeCompiledRuntimeIrReport,
+  type Step37ActivateProductionDefaultCutoverReport,
   type Step37ObserveRuntimeConsumedIrWithQaReport,
   type Step37SupportPromotionApplicationReport
 } from '../../packages/game-dsl/src/index.js';
@@ -1821,6 +1825,251 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     });
   });
 
+  it('requires legacy authoritative path exit checkpoint after Stage 11 production default cutover passes', () => {
+    const support = supportSummary([capability({ capabilityId: 'promoted.alpha.v1' })]);
+    const application = supportPromotionApplicationReport({
+      completeSupportedCount: 1,
+      completeSupportedCapabilityIds: ['promoted.alpha.v1']
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({
+      supportSummary: support,
+      promotionApplicationReport: application
+    });
+    const exitAudit = stage4ExitAuditReport({ supportSummary: promotedSupport, application });
+    const entryAudit = stage5EntryAuditReport({ supportSummary: promotedSupport, exitAudit });
+    const exactLock = exactCapabilityLockReport({ supportSummary: promotedSupport, entryAudit });
+    const composedSchema = composedDslSchemaReport({ exactLock });
+    const draftReport = capabilityDslDraftReport({ composedSchema });
+    const normalizeReport = normalizeCapabilityDslDraftReport({ draftReport, composedSchema, exactLock });
+    const compileReport = compiledRuntimeIrReport({ normalizeReport, supportSummary: promotedSupport });
+    const runtimeConsumptionReport = consumedRuntimeIrReport({ compileReport, supportSummary: promotedSupport });
+    const qaObservationReport = observedRuntimeQaReport({ runtimeConsumptionReport });
+    const cutoverReport = productionDefaultCutoverReport({ qaObservationReport });
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditReport: exitAudit,
+      stage5EntryAuditReport: entryAudit,
+      stage5ExactCapabilityLockReport: exactLock,
+      stage6ComposedDslSchemaReport: composedSchema,
+      stage6CapabilityDslDraftReport: draftReport,
+      stage7NormalizeCapabilityDslDraftReport: normalizeReport,
+      stage8CompileNormalizedCapabilityDslReport: compileReport,
+      stage9ConsumeCompiledRuntimeIrReport: runtimeConsumptionReport,
+      stage10ObserveRuntimeConsumedIrWithQaReport: qaObservationReport,
+      stage11ActivateProductionDefaultCutoverReport: cutoverReport,
+      sourcePlanRevision
+    });
+
+    expect(cutoverReport.cutoverStatus).toBe('passed');
+    expect(cutoverReport.productionDefaultCutoverActive).toBe(true);
+    expect(cutoverReport.legacyAuthoritativePathExited).toBe(false);
+    expect(report.nextCheckpoint).toBeNull();
+    expect(report.selectionFailure).toMatchObject({
+      error_code: 'STAGE12_LEGACY_AUTHORITATIVE_PATH_EXIT_CHECKPOINT_REQUIRED',
+      parent_stage_status: 'running',
+      production_default_cutover_active: true,
+      legacy_authoritative_path_exited: false,
+      expected_checkpoint_id: STEP37_STAGE12_EXIT_LEGACY_AUTHORITATIVE_PATH_CHECKPOINT_ID,
+      actual_checkpoint_id: null,
+      invalid_fields: ['checkpoint_id']
+    });
+  });
+
+  it('continues to legacy authoritative path exit only after Stage 11 cutover passes and supplies authoritative Stage 12 checkpoint', () => {
+    const support = supportSummary([capability({ capabilityId: 'promoted.alpha.v1' }), capability({ capabilityId: 'promoted.beta.v1' })]);
+    const application = supportPromotionApplicationReport({
+      completeSupportedCount: 2,
+      completeSupportedCapabilityIds: ['promoted.alpha.v1', 'promoted.beta.v1']
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({
+      supportSummary: support,
+      promotionApplicationReport: application
+    });
+    const exitAudit = stage4ExitAuditReport({ supportSummary: promotedSupport, application });
+    const entryAudit = stage5EntryAuditReport({ supportSummary: promotedSupport, exitAudit });
+    const exactLock = exactCapabilityLockReport({ supportSummary: promotedSupport, entryAudit });
+    const composedSchema = composedDslSchemaReport({ exactLock });
+    const draftReport = capabilityDslDraftReport({ composedSchema });
+    const normalizeReport = normalizeCapabilityDslDraftReport({ draftReport, composedSchema, exactLock });
+    const compileReport = compiledRuntimeIrReport({ normalizeReport, supportSummary: promotedSupport });
+    const runtimeConsumptionReport = consumedRuntimeIrReport({ compileReport, supportSummary: promotedSupport });
+    const qaObservationReport = observedRuntimeQaReport({ runtimeConsumptionReport });
+    const cutoverReport = productionDefaultCutoverReport({ qaObservationReport });
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditReport: exitAudit,
+      stage5EntryAuditReport: entryAudit,
+      stage5ExactCapabilityLockReport: exactLock,
+      stage6ComposedDslSchemaReport: composedSchema,
+      stage6CapabilityDslDraftReport: draftReport,
+      stage7NormalizeCapabilityDslDraftReport: normalizeReport,
+      stage8CompileNormalizedCapabilityDslReport: compileReport,
+      stage9ConsumeCompiledRuntimeIrReport: runtimeConsumptionReport,
+      stage10ObserveRuntimeConsumedIrWithQaReport: qaObservationReport,
+      stage11ActivateProductionDefaultCutoverReport: cutoverReport,
+      stage12ExitLegacyAuthoritativePathCheckpoint: stage12ExitLegacyAuthoritativePathCheckpoint(),
+      sourcePlanRevision
+    });
+
+    expect(report.selectionFailure).toBeNull();
+    expect(report.nextCheckpoint).toMatchObject({
+      checkpoint_id: STEP37_STAGE12_EXIT_LEGACY_AUTHORITATIVE_PATH_CHECKPOINT_ID,
+      parent_stage_id: 'stage12',
+      next_atomic_step: STEP37_STAGE12_EXIT_LEGACY_AUTHORITATIVE_PATH_NEXT_ATOMIC_STEP,
+      selection_rule: 'first_unmet_checkpoint_in_authoritative_inventory'
+    });
+    expect(report.nextCheckpoint?.checkpoint_id).not.toBe(STEP37_STAGE11_ACTIVATE_PRODUCTION_DEFAULT_CUTOVER_CHECKPOINT_ID);
+  });
+
+  it('does not continue to legacy exit when Stage 11 cutover evidence is stale', () => {
+    const support = supportSummary([capability({ capabilityId: 'promoted.alpha.v1' })]);
+    const application = supportPromotionApplicationReport({
+      completeSupportedCount: 1,
+      completeSupportedCapabilityIds: ['promoted.alpha.v1']
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({
+      supportSummary: support,
+      promotionApplicationReport: application
+    });
+    const exitAudit = stage4ExitAuditReport({ supportSummary: promotedSupport, application });
+    const entryAudit = stage5EntryAuditReport({ supportSummary: promotedSupport, exitAudit });
+    const exactLock = exactCapabilityLockReport({ supportSummary: promotedSupport, entryAudit });
+    const composedSchema = composedDslSchemaReport({ exactLock });
+    const draftReport = capabilityDslDraftReport({ composedSchema });
+    const normalizeReport = normalizeCapabilityDslDraftReport({ draftReport, composedSchema, exactLock });
+    const compileReport = compiledRuntimeIrReport({ normalizeReport, supportSummary: promotedSupport });
+    const runtimeConsumptionReport = consumedRuntimeIrReport({ compileReport, supportSummary: promotedSupport });
+    const qaObservationReport = observedRuntimeQaReport({ runtimeConsumptionReport });
+    const staleCutoverReport: Step37ActivateProductionDefaultCutoverReport = {
+      ...productionDefaultCutoverReport({ qaObservationReport }),
+      sourceRuntimeQaObservationAuditHash: 'fnv1a_stale_stage10'
+    };
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditReport: exitAudit,
+      stage5EntryAuditReport: entryAudit,
+      stage5ExactCapabilityLockReport: exactLock,
+      stage6ComposedDslSchemaReport: composedSchema,
+      stage6CapabilityDslDraftReport: draftReport,
+      stage7NormalizeCapabilityDslDraftReport: normalizeReport,
+      stage8CompileNormalizedCapabilityDslReport: compileReport,
+      stage9ConsumeCompiledRuntimeIrReport: runtimeConsumptionReport,
+      stage10ObserveRuntimeConsumedIrWithQaReport: qaObservationReport,
+      stage11ActivateProductionDefaultCutoverReport: staleCutoverReport,
+      stage11ActivateProductionDefaultCutoverCheckpoint: stage11ActivateProductionDefaultCutoverCheckpoint(),
+      stage12ExitLegacyAuthoritativePathCheckpoint: stage12ExitLegacyAuthoritativePathCheckpoint(),
+      sourcePlanRevision
+    });
+
+    expect(staleCutoverReport.cutoverStatus).toBe('passed');
+    expect(report.nextCheckpoint).toMatchObject({
+      checkpoint_id: STEP37_STAGE11_ACTIVATE_PRODUCTION_DEFAULT_CUTOVER_CHECKPOINT_ID
+    });
+    expect(report.nextCheckpoint?.checkpoint_id).not.toBe(STEP37_STAGE12_EXIT_LEGACY_AUTHORITATIVE_PATH_CHECKPOINT_ID);
+    expect(report.selectionFailure).toBeNull();
+  });
+
+  it('does not continue to legacy exit when Stage 11 report content changes without refreshing its report hash', () => {
+    const support = supportSummary([capability({ capabilityId: 'promoted.alpha.v1' })]);
+    const application = supportPromotionApplicationReport({
+      completeSupportedCount: 1,
+      completeSupportedCapabilityIds: ['promoted.alpha.v1']
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({
+      supportSummary: support,
+      promotionApplicationReport: application
+    });
+    const exitAudit = stage4ExitAuditReport({ supportSummary: promotedSupport, application });
+    const entryAudit = stage5EntryAuditReport({ supportSummary: promotedSupport, exitAudit });
+    const exactLock = exactCapabilityLockReport({ supportSummary: promotedSupport, entryAudit });
+    const composedSchema = composedDslSchemaReport({ exactLock });
+    const draftReport = capabilityDslDraftReport({ composedSchema });
+    const normalizeReport = normalizeCapabilityDslDraftReport({ draftReport, composedSchema, exactLock });
+    const compileReport = compiledRuntimeIrReport({ normalizeReport, supportSummary: promotedSupport });
+    const runtimeConsumptionReport = consumedRuntimeIrReport({ compileReport, supportSummary: promotedSupport });
+    const qaObservationReport = observedRuntimeQaReport({ runtimeConsumptionReport });
+    const staleCutoverReport: Step37ActivateProductionDefaultCutoverReport = {
+      ...productionDefaultCutoverReport({ qaObservationReport }),
+      observedProbeIds: ['probe.promoted_alpha_v1', 'probe.unreviewed_extra']
+    };
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditReport: exitAudit,
+      stage5EntryAuditReport: entryAudit,
+      stage5ExactCapabilityLockReport: exactLock,
+      stage6ComposedDslSchemaReport: composedSchema,
+      stage6CapabilityDslDraftReport: draftReport,
+      stage7NormalizeCapabilityDslDraftReport: normalizeReport,
+      stage8CompileNormalizedCapabilityDslReport: compileReport,
+      stage9ConsumeCompiledRuntimeIrReport: runtimeConsumptionReport,
+      stage10ObserveRuntimeConsumedIrWithQaReport: qaObservationReport,
+      stage11ActivateProductionDefaultCutoverReport: staleCutoverReport,
+      stage11ActivateProductionDefaultCutoverCheckpoint: stage11ActivateProductionDefaultCutoverCheckpoint(),
+      stage12ExitLegacyAuthoritativePathCheckpoint: stage12ExitLegacyAuthoritativePathCheckpoint(),
+      sourcePlanRevision
+    });
+
+    expect(staleCutoverReport.cutoverStatus).toBe('passed');
+    expect(report.nextCheckpoint).toMatchObject({
+      checkpoint_id: STEP37_STAGE11_ACTIVATE_PRODUCTION_DEFAULT_CUTOVER_CHECKPOINT_ID
+    });
+    expect(report.nextCheckpoint?.checkpoint_id).not.toBe(STEP37_STAGE12_EXIT_LEGACY_AUTHORITATIVE_PATH_CHECKPOINT_ID);
+    expect(report.selectionFailure).toBeNull();
+  });
+
+  it('fails closed when Stage 12 checkpoint identity is present but not authoritative', () => {
+    const support = supportSummary([capability({ capabilityId: 'promoted.alpha.v1' })]);
+    const application = supportPromotionApplicationReport({
+      completeSupportedCount: 1,
+      completeSupportedCapabilityIds: ['promoted.alpha.v1']
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({
+      supportSummary: support,
+      promotionApplicationReport: application
+    });
+    const exitAudit = stage4ExitAuditReport({ supportSummary: promotedSupport, application });
+    const entryAudit = stage5EntryAuditReport({ supportSummary: promotedSupport, exitAudit });
+    const exactLock = exactCapabilityLockReport({ supportSummary: promotedSupport, entryAudit });
+    const composedSchema = composedDslSchemaReport({ exactLock });
+    const draftReport = capabilityDslDraftReport({ composedSchema });
+    const normalizeReport = normalizeCapabilityDslDraftReport({ draftReport, composedSchema, exactLock });
+    const compileReport = compiledRuntimeIrReport({ normalizeReport, supportSummary: promotedSupport });
+    const runtimeConsumptionReport = consumedRuntimeIrReport({ compileReport, supportSummary: promotedSupport });
+    const qaObservationReport = observedRuntimeQaReport({ runtimeConsumptionReport });
+    const cutoverReport = productionDefaultCutoverReport({ qaObservationReport });
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditReport: exitAudit,
+      stage5EntryAuditReport: entryAudit,
+      stage5ExactCapabilityLockReport: exactLock,
+      stage6ComposedDslSchemaReport: composedSchema,
+      stage6CapabilityDslDraftReport: draftReport,
+      stage7NormalizeCapabilityDslDraftReport: normalizeReport,
+      stage8CompileNormalizedCapabilityDslReport: compileReport,
+      stage9ConsumeCompiledRuntimeIrReport: runtimeConsumptionReport,
+      stage10ObserveRuntimeConsumedIrWithQaReport: qaObservationReport,
+      stage11ActivateProductionDefaultCutoverReport: cutoverReport,
+      stage12ExitLegacyAuthoritativePathCheckpoint: stage12ExitLegacyAuthoritativePathCheckpoint({
+        checkpoint_id: 'stage12.exit_legacy_path_typo',
+        parent_stage_id: 'stage11'
+      }),
+      sourcePlanRevision
+    });
+
+    expect(report.nextCheckpoint).toBeNull();
+    expect(report.selectionFailure).toMatchObject({
+      error_code: 'STAGE12_LEGACY_AUTHORITATIVE_PATH_EXIT_CHECKPOINT_REQUIRED',
+      expected_checkpoint_id: STEP37_STAGE12_EXIT_LEGACY_AUTHORITATIVE_PATH_CHECKPOINT_ID,
+      actual_checkpoint_id: 'stage12.exit_legacy_path_typo',
+      invalid_fields: expect.arrayContaining(['checkpoint_id', 'parent_stage_id'])
+    });
+  });
+
   it('requires committed closure history to have traceable source revisions instead of stale memory labels', () => {
     expect(() =>
       buildStep37RemainingCompleteSupportedInventory({
@@ -2050,6 +2299,19 @@ function stage11ActivateProductionDefaultCutoverCheckpoint(
     status: 'unmet',
     unmet_reason:
       'Stage 10 observed runtime-consumed IR with QA; activate production default cutover only after the QA-observed runtime path is authoritative.',
+    source_plan_revision: sourcePlanRevision,
+    ...overrides
+  };
+}
+
+function stage12ExitLegacyAuthoritativePathCheckpoint(overrides: Partial<Step37CheckpointInventoryItem> = {}): Step37CheckpointInventoryItem {
+  return {
+    checkpoint_id: STEP37_STAGE12_EXIT_LEGACY_AUTHORITATIVE_PATH_CHECKPOINT_ID,
+    parent_stage_id: 'stage12',
+    next_atomic_step: STEP37_STAGE12_EXIT_LEGACY_AUTHORITATIVE_PATH_NEXT_ATOMIC_STEP,
+    status: 'unmet',
+    unmet_reason:
+      'Stage 11 activated production default cutover; exit the legacy authoritative path only after the cutover report is fresh and authoritative.',
     source_plan_revision: sourcePlanRevision,
     ...overrides
   };
@@ -2435,6 +2697,17 @@ function observedRuntimeQaReport(input: {
     blockers: []
   };
   return { ...payloadWithoutHash, auditHash: hashStableJson(payloadWithoutHash) };
+}
+
+function productionDefaultCutoverReport(input: {
+  qaObservationReport: Step37ObserveRuntimeConsumedIrWithQaReport;
+}): Step37ActivateProductionDefaultCutoverReport {
+  return buildStep37ActivateProductionDefaultCutoverReport({
+    runtimeQaObservationReport: input.qaObservationReport,
+    sourceRuntimeQaObservationPath: 'docs/plans/step37-runtime-qa-observation-from-consumed-runtime-ir.v0.1.json',
+    sourceRuntimeQaObservationAuditHash: input.qaObservationReport.auditHash,
+    expectedRuntimeQaObservationAuditHash: input.qaObservationReport.auditHash
+  });
 }
 
 function supportPromotionApplicationReport(
