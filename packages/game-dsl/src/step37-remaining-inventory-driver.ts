@@ -32,6 +32,7 @@ export type Step37RemainingInventoryDriverInput = {
   supportSummary: DeepSeekRunAndGunProfileSupportSummary;
   observedCapabilityIds?: readonly string[];
   committedCapabilityClosures?: readonly Step37CommittedCapabilityClosure[];
+  supportPromotionCheckpoint?: Step37CheckpointInventoryItem | null;
   parentStageId?: string;
   sourcePlanRevision: string;
 };
@@ -51,14 +52,25 @@ export type Step37RemainingCapabilityInventoryItem = {
   missingSupportEvidencePrerequisites: DeepSeekRunAndGunProfileCapabilitySupport['missingSupportEvidencePrerequisites'];
 };
 
-export type Step37RemainingInventorySelectionFailure = {
-  error_code: 'NEXT_ATOMIC_STEP_REQUIRED';
-  global_exit_conditions_met: false;
-  user_input_required: false;
-  parent_stage_status: 'running';
-  unmet_static_complete_supported_count: number;
-  message: string;
-};
+export type Step37RemainingInventorySelectionFailure =
+  | {
+      error_code: 'NEXT_ATOMIC_STEP_REQUIRED';
+      global_exit_conditions_met: false;
+      user_input_required: false;
+      parent_stage_status: 'running';
+      unmet_static_complete_supported_count: number;
+      message: string;
+    }
+  | {
+      error_code: 'SUPPORT_PROMOTION_CHECKPOINT_REQUIRED';
+      global_exit_conditions_met: false;
+      user_input_required: false;
+      parent_stage_status: 'running';
+      stage5_entry_allowed: false;
+      unmet_static_complete_supported_count: number;
+      reason: string;
+      message: string;
+    };
 
 export type Step37RemainingInventoryReport = {
   artifactKind: typeof STEP37_REMAINING_INVENTORY_ARTIFACT_KIND;
@@ -105,15 +117,17 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
   const requiredCapabilityCount = input.supportSummary.summary.requiredCapabilityCount;
   const sameRunObservedOnlyCount = capabilities.filter((capability) => capability.state === 'same_run_observed_only').length;
   const committedClosedCapabilityCount = capabilities.filter((capability) => capability.closedInCommittedHistory).length;
-  const supportPromotionCheckpoint =
-    shouldEmitSupportPromotionCheckpoint({
+  const supportPromotionRequired =
+    shouldRequireSupportPromotionCheckpoint({
       packageCheckpointInventoryCount: packageCheckpointInventory.length,
       requiredCapabilityCount,
       staticCompleteSupportedCount,
       sameRunObservedOnlyCount,
       committedClosedCapabilityCount
-    })
-      ? [toSupportPromotionCheckpoint(parentStageId, sourcePlanRevision, requiredCapabilityCount, staticCompleteSupportedCount)]
+    });
+  const supportPromotionCheckpoint =
+    supportPromotionRequired && input.supportPromotionCheckpoint !== undefined && input.supportPromotionCheckpoint !== null
+      ? [input.supportPromotionCheckpoint]
       : [];
   const checkpointInventory = [...packageCheckpointInventory, ...supportPromotionCheckpoint];
   const nextCheckpoint = selectNextAtomicCheckpoint(checkpointInventory);
@@ -135,18 +149,12 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
     capabilities,
     checkpointInventory,
     nextCheckpoint,
-    selectionFailure:
-      nextCheckpoint === null && unmetStaticCompleteSupportedCount > 0
-        ? {
-            error_code: 'NEXT_ATOMIC_STEP_REQUIRED',
-            global_exit_conditions_met: false,
-            user_input_required: false,
-            parent_stage_status: 'running',
-            unmet_static_complete_supported_count: unmetStaticCompleteSupportedCount,
-            message:
-              'NEXT_ATOMIC_STEP_REQUIRED: Stage 4 static completeSupported is unmet, no user blocker exists, and remaining inventory has no executable unclosed checkpoint'
-          }
-        : null
+    selectionFailure: buildSelectionFailure({
+      nextCheckpoint,
+      supportPromotionRequired,
+      supportPromotionCheckpointProvided: input.supportPromotionCheckpoint !== undefined && input.supportPromotionCheckpoint !== null,
+      unmetStaticCompleteSupportedCount
+    })
   };
 }
 
@@ -242,7 +250,7 @@ function toCheckpointInventoryItem(
   };
 }
 
-function shouldEmitSupportPromotionCheckpoint(input: {
+function shouldRequireSupportPromotionCheckpoint(input: {
   packageCheckpointInventoryCount: number;
   requiredCapabilityCount: number;
   staticCompleteSupportedCount: number;
@@ -260,21 +268,38 @@ function shouldEmitSupportPromotionCheckpoint(input: {
   );
 }
 
-function toSupportPromotionCheckpoint(
-  parentStageId: string,
-  sourcePlanRevision: string,
-  requiredCapabilityCount: number,
-  staticCompleteSupportedCount: number
-): Step37CheckpointInventoryItem {
+function buildSelectionFailure(input: {
+  nextCheckpoint: Step37NextAtomicCheckpoint | null;
+  supportPromotionRequired: boolean;
+  supportPromotionCheckpointProvided: boolean;
+  unmetStaticCompleteSupportedCount: number;
+}): Step37RemainingInventorySelectionFailure | null {
+  if (input.nextCheckpoint !== null || input.unmetStaticCompleteSupportedCount <= 0) {
+    return null;
+  }
+
+  if (input.supportPromotionRequired && !input.supportPromotionCheckpointProvided) {
+    return {
+      error_code: 'SUPPORT_PROMOTION_CHECKPOINT_REQUIRED',
+      global_exit_conditions_met: false,
+      user_input_required: false,
+      parent_stage_status: 'running',
+      stage5_entry_allowed: false,
+      unmet_static_complete_supported_count: input.unmetStaticCompleteSupportedCount,
+      reason: 'observed inventory exhausted but static support promotion not consumed',
+      message:
+        'SUPPORT_PROMOTION_CHECKPOINT_REQUIRED: Stage 4 observed/closed inventory is exhausted, static completeSupported is still unmet, and no authoritative support-promotion checkpoint was provided'
+    };
+  }
+
   return {
-    checkpoint_id: STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID,
-    parent_stage_id: parentStageId,
-    next_atomic_step: STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP,
-    status: 'unmet',
-    unmet_reason:
-      `Stage 4 package inventory is exhausted with same-run observed package receipts, but static completeSupported remains ` +
-      `${staticCompleteSupportedCount}/${requiredCapabilityCount}; support promotion must audit whether observed package evidence can become closure authority before Stage 5 entry.`,
-    source_plan_revision: sourcePlanRevision
+    error_code: 'NEXT_ATOMIC_STEP_REQUIRED',
+    global_exit_conditions_met: false,
+    user_input_required: false,
+    parent_stage_status: 'running',
+    unmet_static_complete_supported_count: input.unmetStaticCompleteSupportedCount,
+    message:
+      'NEXT_ATOMIC_STEP_REQUIRED: Stage 4 static completeSupported is unmet, no user blocker exists, and remaining inventory has no executable unclosed checkpoint'
   };
 }
 

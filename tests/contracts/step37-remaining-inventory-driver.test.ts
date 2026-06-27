@@ -10,6 +10,7 @@ import {
   deriveStep37RemainingCapabilityState,
   type DeepSeekRunAndGunProfileCapabilitySupport,
   type DeepSeekRunAndGunProfileSupportSummary,
+  type Step37CheckpointInventoryItem,
   type Step37CommittedCapabilityClosure
 } from '../../packages/game-dsl/src/index.js';
 
@@ -145,6 +146,10 @@ describe('Step37 remaining complete-supported inventory driver', () => {
         checkpointId: `stage4.${item.capabilityId.replaceAll('.', '_')}.complete_supported_package_slice`,
         sourceRevision: 'commit-a:docs/plans/stage4.md'
       })),
+      supportPromotionCheckpoint: supportPromotionCheckpoint({
+        unmet_reason:
+          'Stage 4 package inventory is exhausted with same-run observed package receipts, but static completeSupported remains 0/2; support promotion must audit whether observed package evidence can become closure authority before Stage 5 entry.'
+      }),
       sourcePlanRevision
     });
 
@@ -160,6 +165,44 @@ describe('Step37 remaining complete-supported inventory driver', () => {
       selection_rule: 'first_unmet_checkpoint_in_authoritative_inventory'
     });
     expect(report.nextCheckpoint?.unmet_reason).toContain('support promotion must audit');
+  });
+
+  it('fails closed when observed package inventory is exhausted but the authoritative support-promotion checkpoint is missing', () => {
+    const capabilities = [
+      capability({
+        capabilityId: 'observed.alpha.v1',
+        missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+      }),
+      capability({
+        capabilityId: 'observed.beta.v1',
+        missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+      })
+    ];
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: supportSummary(capabilities),
+      observedCapabilityIds: capabilities.map((item) => item.capabilityId),
+      committedCapabilityClosures: capabilities.map((item) => ({
+        capabilityId: item.capabilityId,
+        checkpointId: `stage4.${item.capabilityId.replaceAll('.', '_')}.complete_supported_package_slice`,
+        sourceRevision: 'commit-a:docs/plans/stage4.md'
+      })),
+      sourcePlanRevision
+    });
+
+    expect(report.staticCompleteSupportedCount).toBe(0);
+    expect(report.committedClosedCapabilityCount).toBe(2);
+    expect(report.sameRunObservedOnlyCount).toBe(2);
+    expect(report.nextCheckpoint).toBeNull();
+    expect(report.selectionFailure).toMatchObject({
+      error_code: 'SUPPORT_PROMOTION_CHECKPOINT_REQUIRED',
+      global_exit_conditions_met: false,
+      user_input_required: false,
+      parent_stage_status: 'running',
+      stage5_entry_allowed: false,
+      unmet_static_complete_supported_count: 2,
+      reason: 'observed inventory exhausted but static support promotion not consumed'
+    });
+    expect(report.checkpointInventory).toEqual([]);
   });
 
   it('derives the current Stage 4 inventory from the real support summary and explicit committed closure history', () => {
@@ -261,6 +304,9 @@ describe('Step37 remaining complete-supported inventory driver', () => {
         checkpointId: `closed.${capabilityId}`,
         sourceRevision: 'HEAD:docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md'
       })),
+      supportPromotionCheckpoint: supportPromotionCheckpoint({
+        unmet_reason: 'Stage 4 package inventory is exhausted with same-run observed package receipts, but static completeSupported remains 0/59.'
+      }),
       sourcePlanRevision
     });
 
@@ -273,6 +319,33 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     expect(report.nextCheckpoint?.checkpoint_id).toBe(STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID);
     expect(report.nextCheckpoint?.next_atomic_step).toBe(STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP);
     expect(report.nextCheckpoint?.unmet_reason).toContain('static completeSupported remains 0/59');
+  });
+
+  it('rejects current 59/59 observed and closed exhaustion when the support-promotion checkpoint is not in authoritative inventory', () => {
+    const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
+    const closedCapabilityIds = support.capabilities.map((capability) => capability.capabilityId).sort();
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: support,
+      observedCapabilityIds: closedCapabilityIds,
+      committedCapabilityClosures: closedCapabilityIds.map((capabilityId) => ({
+        capabilityId,
+        checkpointId: `closed.${capabilityId}`,
+        sourceRevision: 'HEAD:docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md'
+      })),
+      sourcePlanRevision
+    });
+
+    expect(report.requiredCapabilityCount).toBe(59);
+    expect(report.registeredCapabilityCount).toBe(59);
+    expect(report.staticCompleteSupportedCount).toBe(0);
+    expect(report.committedClosedCapabilityCount).toBe(59);
+    expect(report.sameRunObservedOnlyCount).toBe(59);
+    expect(report.nextCheckpoint).toBeNull();
+    expect(report.selectionFailure).toMatchObject({
+      error_code: 'SUPPORT_PROMOTION_CHECKPOINT_REQUIRED',
+      stage5_entry_allowed: false,
+      reason: 'observed inventory exhausted but static support promotion not consumed'
+    });
   });
 
   it('requires committed closure history to have traceable source revisions instead of stale memory labels', () => {
@@ -361,4 +434,17 @@ function missingEvidence(
   return (['schema_expressible', 'normalized', 'compiled', 'runtime_consumed', 'qa_observed'] as const).filter(
     (dimension) => !evidence[dimension]
   );
+}
+
+function supportPromotionCheckpoint(overrides: Partial<Step37CheckpointInventoryItem> = {}): Step37CheckpointInventoryItem {
+  return {
+    checkpoint_id: STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID,
+    parent_stage_id: 'stage4',
+    next_atomic_step: STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP,
+    status: 'unmet',
+    unmet_reason:
+      'Stage 4 package inventory is exhausted with same-run observed package receipts, but static completeSupported remains 0/59; support promotion must audit whether observed package evidence can become closure authority before Stage 5 entry.',
+    source_plan_revision: sourcePlanRevision,
+    ...overrides
+  };
 }
