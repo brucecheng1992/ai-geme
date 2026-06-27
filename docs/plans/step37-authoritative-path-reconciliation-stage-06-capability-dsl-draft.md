@@ -10,11 +10,11 @@ parent_stage_id=stage6
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
 review_required=true
-closure_status=not_closed
-atomic_step_status=locally_validated
+closure_status=closed
+atomic_step_status=closed
 parent_stage_status=running
 parent_loop_status=running
 global_exit_conditions_met=false
@@ -139,22 +139,31 @@ code_change_discipline_skill_sha256=dd5abe3945818f6feefbe77e30c02432b014a76bacb7
 review_gated_delivery_skill_sha256=27303f4b666d053c6d08e93a4b6ba7a6dbb7041ab7a264425bfaaae0bebab167
 ```
 
-Exit assessment before candidate:
+Exit assessment:
 
 ```text
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
-closure_status=not_closed
-atomic_step_status=locally_validated
-exit_assessment=ready_for_candidate_commit
-reviewed_commit_sha=not_created_yet
+candidate_status=committed
+candidate_commit=ed2db08d91ab6d820182775ecdb7a5cf258ba277
+candidate_tree=02c0e3a2e3ee1e11765d57b9a422eac02d173cf3
+oracle_status=approved
+oracle_submission_id=019f087f-3a8d-7f40-828a-59f66f298891
+oracle_agent_id=019f0813-ed9a-7ad0-8341-50ababd44fea
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 non-blocking test/provenance hardening suggestions only.
+closure_status=closed
+atomic_step_status=closed
+exit_assessment=closed
+reviewed_commit_sha=ed2db08d91ab6d820182775ecdb7a5cf258ba277
+reviewed_commit_tree=02c0e3a2e3ee1e11765d57b9a422eac02d173cf3
 reviewed_skill_revision=4bcbfdc92cd3861171d2ea3424f57759ef37eebc9a4330abdc7438407c8cde9f
 reviewed_composed_schema_audit_hash=fnv1a_038b3e6b
 reviewed_composed_schema_hash=fnv1a_a732fea7
 reviewed_capability_dsl_draft_audit_hash=fnv1a_02de3f9c
 reviewed_capability_dsl_draft_hash=fnv1a_20b25721
-parent_loop_after_candidate=running
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for candidate ed2db08d91ab6d820182775ecdb7a5cf258ba277 only. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, package QA, provider draft, normalization, compiler, production default cutover, legacy authoritative path exit, final closure, or prior closed history.
+parent_loop_after_receipt=running
 next_action=CONTINUE_PARENT_LOOP
 next_atomic_step=stage7.normalize_capability_dsl_draft_from_composed_schema
 ```
