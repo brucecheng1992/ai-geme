@@ -8,13 +8,13 @@ Checkpoint identity:
 checkpoint_id=stage5.entry_audit_after_stage4_exit
 parent_stage_id=stage5
 closure_scope=atomic_step
-implementation_status=implementing
+implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
 review_required=true
-closure_status=locally_validated
-atomic_step_status=validating
+closure_status=closed
+atomic_step_status=closed
 parent_stage_status=running
 parent_loop_status=running
 global_exit_conditions_met=false
@@ -121,12 +121,38 @@ inventory_alignment_command=/usr/bin/time -p npx tsx --eval "... Stage 5 entry a
 inventory_alignment_exitCode=0
 inventory_alignment_result=PASS: inventoryHash=fnv1a_a883bf43; supportViewHash=fnv1a_37453024; stage4AuditHash=fnv1a_be5c51cd; stage5EntryAuditHash=fnv1a_2a121281; completeSupportedCount=59; stage5EntryStatus=passed; stage5ExactLockImplementationAllowed=true; exactCapabilityLockProduced=false; productionDefaultCutoverActive=false; legacyAuthoritativePathExited=false; globalExitConditionsMet=false; remainingNextCheckpointId=stage5.exact_capability_lock_from_complete_supported_packages; remainingSelectionFailure=null.
 
-oracle_status=not_submitted
+oracle_status=approved
 ```
 
-Candidate note:
+Candidate and Oracle receipt:
 
-- Complete local validation passed against the current tree; because this validation record changes the tree, final focused/full validation, typecheck, diff check, Skill freshness, and inventory alignment must be rerun before creating the immutable candidate commit.
-- Candidate commit must not write its own SHA into this candidate record.
-- Oracle request must bind the candidate commit SHA, `audit_hash=fnv1a_2a121281`, `source_stage4_exit_audit_hash=fnv1a_be5c51cd`, `source_support_view_hash=fnv1a_37453024`, `source_inventory_hash=fnv1a_a883bf43`, and `reviewed_skill_revision=b2a62571763682f86b18bbefd3864728b0c2e1500e129c35c3835c5c5d31b2bc`.
-- This entry audit only allows the next exact-lock atom; exact lock, composed schema, production cutover, legacy exit, and final closure remain unclosed.
+```text
+reviewed_commit_sha=19be82cc2b37c7e3f6e94528e3c9e9da9238316d
+reviewed_commit_tree=e2ae85ad9c95e094b58ebaef4c7b1ce88cb8692e
+reviewed_skill_revision=b2a62571763682f86b18bbefd3864728b0c2e1500e129c35c3835c5c5d31b2bc
+reviewed_stage5_entry_audit_hash=fnv1a_2a121281
+reviewed_stage4_exit_audit_hash=fnv1a_be5c51cd
+reviewed_support_view_hash=fnv1a_37453024
+reviewed_inventory_hash=fnv1a_a883bf43
+oracle_agent_id=019f0813-ed9a-7ad0-8341-50ababd44fea
+oracle_status=approved
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 none.
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for the immutable candidate only. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, package QA, exact-lock generation, composed schema, production default cutover, legacy authoritative path exit, final closure, or prior closed history.
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
+```
+
+Parent Loop Driver after receipt:
+
+```text
+closure_scope=atomic_step
+atomic_step_status=closed
+parent_stage_status=running
+loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage5.exact_capability_lock_from_complete_supported_packages
+next_atomic_step_label=Stage 5 exact capability lock from complete-supported packages atomic step
+```
