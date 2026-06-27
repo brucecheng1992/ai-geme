@@ -69,6 +69,11 @@ export type Step37RemainingInventorySelectionFailure =
       stage5_entry_allowed: false;
       unmet_static_complete_supported_count: number;
       reason: string;
+      expected_checkpoint_id: typeof STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID;
+      expected_parent_stage_id: string;
+      expected_next_atomic_step: typeof STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP;
+      actual_checkpoint_id: string | null;
+      invalid_fields: string[];
       message: string;
     };
 
@@ -125,8 +130,14 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
       sameRunObservedOnlyCount,
       committedClosedCapabilityCount
     });
+  const supportPromotionCheckpointInvalidFields = supportPromotionRequired
+    ? getSupportPromotionCheckpointInvalidFields(input.supportPromotionCheckpoint ?? null, parentStageId)
+    : [];
   const supportPromotionCheckpoint =
-    supportPromotionRequired && input.supportPromotionCheckpoint !== undefined && input.supportPromotionCheckpoint !== null
+    supportPromotionRequired &&
+    input.supportPromotionCheckpoint !== undefined &&
+    input.supportPromotionCheckpoint !== null &&
+    supportPromotionCheckpointInvalidFields.length === 0
       ? [input.supportPromotionCheckpoint]
       : [];
   const checkpointInventory = [...packageCheckpointInventory, ...supportPromotionCheckpoint];
@@ -152,7 +163,9 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
     selectionFailure: buildSelectionFailure({
       nextCheckpoint,
       supportPromotionRequired,
-      supportPromotionCheckpointProvided: input.supportPromotionCheckpoint !== undefined && input.supportPromotionCheckpoint !== null,
+      supportPromotionCheckpoint: input.supportPromotionCheckpoint ?? null,
+      supportPromotionCheckpointInvalidFields,
+      parentStageId,
       unmetStaticCompleteSupportedCount
     })
   };
@@ -271,14 +284,16 @@ function shouldRequireSupportPromotionCheckpoint(input: {
 function buildSelectionFailure(input: {
   nextCheckpoint: Step37NextAtomicCheckpoint | null;
   supportPromotionRequired: boolean;
-  supportPromotionCheckpointProvided: boolean;
+  supportPromotionCheckpoint: Step37CheckpointInventoryItem | null;
+  supportPromotionCheckpointInvalidFields: readonly string[];
+  parentStageId: string;
   unmetStaticCompleteSupportedCount: number;
 }): Step37RemainingInventorySelectionFailure | null {
   if (input.nextCheckpoint !== null || input.unmetStaticCompleteSupportedCount <= 0) {
     return null;
   }
 
-  if (input.supportPromotionRequired && !input.supportPromotionCheckpointProvided) {
+  if (input.supportPromotionRequired && input.supportPromotionCheckpointInvalidFields.length > 0) {
     return {
       error_code: 'SUPPORT_PROMOTION_CHECKPOINT_REQUIRED',
       global_exit_conditions_met: false,
@@ -286,7 +301,15 @@ function buildSelectionFailure(input: {
       parent_stage_status: 'running',
       stage5_entry_allowed: false,
       unmet_static_complete_supported_count: input.unmetStaticCompleteSupportedCount,
-      reason: 'observed inventory exhausted but static support promotion not consumed',
+      reason:
+        input.supportPromotionCheckpoint === null
+          ? 'observed inventory exhausted but static support promotion not consumed'
+          : 'observed inventory exhausted but supplied support promotion checkpoint identity is not authoritative',
+      expected_checkpoint_id: STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID,
+      expected_parent_stage_id: input.parentStageId,
+      expected_next_atomic_step: STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP,
+      actual_checkpoint_id: input.supportPromotionCheckpoint?.checkpoint_id ?? null,
+      invalid_fields: [...input.supportPromotionCheckpointInvalidFields],
       message:
         'SUPPORT_PROMOTION_CHECKPOINT_REQUIRED: Stage 4 observed/closed inventory is exhausted, static completeSupported is still unmet, and no authoritative support-promotion checkpoint was provided'
     };
@@ -301,6 +324,24 @@ function buildSelectionFailure(input: {
     message:
       'NEXT_ATOMIC_STEP_REQUIRED: Stage 4 static completeSupported is unmet, no user blocker exists, and remaining inventory has no executable unclosed checkpoint'
   };
+}
+
+function getSupportPromotionCheckpointInvalidFields(
+  checkpoint: Step37CheckpointInventoryItem | null,
+  parentStageId: string
+): string[] {
+  if (checkpoint === null) {
+    return ['checkpoint_id'];
+  }
+
+  return [
+    ...(checkpoint.checkpoint_id.trim() !== STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID ? ['checkpoint_id'] : []),
+    ...(checkpoint.parent_stage_id.trim() !== parentStageId ? ['parent_stage_id'] : []),
+    ...(checkpoint.next_atomic_step.trim() !== STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP ? ['next_atomic_step'] : []),
+    ...(checkpoint.status !== 'unmet' ? ['status'] : []),
+    ...(checkpoint.unmet_reason.trim().length === 0 ? ['unmet_reason'] : []),
+    ...(checkpoint.source_plan_revision.trim().length === 0 ? ['source_plan_revision'] : [])
+  ];
 }
 
 function buildUnmetReason(capability: Step37RemainingCapabilityInventoryItem): string {

@@ -200,9 +200,51 @@ describe('Step37 remaining complete-supported inventory driver', () => {
       parent_stage_status: 'running',
       stage5_entry_allowed: false,
       unmet_static_complete_supported_count: 2,
-      reason: 'observed inventory exhausted but static support promotion not consumed'
+      reason: 'observed inventory exhausted but static support promotion not consumed',
+      expected_checkpoint_id: STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID,
+      actual_checkpoint_id: null,
+      invalid_fields: ['checkpoint_id']
     });
     expect(report.checkpointInventory).toEqual([]);
+  });
+
+  it('rejects a structurally valid but wrong support-promotion checkpoint identity instead of selecting Stage 5', () => {
+    const capabilities = [
+      capability({
+        capabilityId: 'observed.alpha.v1',
+        missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+      })
+    ];
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: supportSummary(capabilities),
+      observedCapabilityIds: ['observed.alpha.v1'],
+      committedCapabilityClosures: [
+        {
+          capabilityId: 'observed.alpha.v1',
+          checkpointId: 'stage4.observed_alpha_v1.complete_supported_package_slice',
+          sourceRevision: 'commit-a:docs/plans/stage4.md'
+        }
+      ],
+      supportPromotionCheckpoint: supportPromotionCheckpoint({
+        checkpoint_id: 'stage5.exact_lock_entry_audit',
+        parent_stage_id: 'stage5',
+        next_atomic_step: 'Stage 5 exact lock entry audit'
+      }),
+      sourcePlanRevision
+    });
+
+    expect(report.nextCheckpoint).toBeNull();
+    expect(report.checkpointInventory).toEqual([]);
+    expect(report.selectionFailure).toMatchObject({
+      error_code: 'SUPPORT_PROMOTION_CHECKPOINT_REQUIRED',
+      stage5_entry_allowed: false,
+      reason: 'observed inventory exhausted but supplied support promotion checkpoint identity is not authoritative',
+      expected_checkpoint_id: STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID,
+      expected_parent_stage_id: 'stage4',
+      expected_next_atomic_step: STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP,
+      actual_checkpoint_id: 'stage5.exact_lock_entry_audit',
+      invalid_fields: ['checkpoint_id', 'parent_stage_id', 'next_atomic_step']
+    });
   });
 
   it('derives the current Stage 4 inventory from the real support summary and explicit committed closure history', () => {
@@ -344,7 +386,10 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     expect(report.selectionFailure).toMatchObject({
       error_code: 'SUPPORT_PROMOTION_CHECKPOINT_REQUIRED',
       stage5_entry_allowed: false,
-      reason: 'observed inventory exhausted but static support promotion not consumed'
+      reason: 'observed inventory exhausted but static support promotion not consumed',
+      expected_checkpoint_id: STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID,
+      actual_checkpoint_id: null,
+      invalid_fields: ['checkpoint_id']
     });
   });
 
