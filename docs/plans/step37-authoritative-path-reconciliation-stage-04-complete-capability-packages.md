@@ -6309,6 +6309,43 @@ Post-record validation requirement:
 - `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
 - Oracle PASS is required before any receipt may update `closure_status=closed`.
 
+Oracle receipt:
+
+```text
+reviewed_commit_sha=e3feefd0c346b215ca5b9d799cf4df4acbf13634
+reviewed_commit_tree=8bc79dddec031827aedd6710427ce807401834d0
+reviewed_skill_revision=ed4e3ba1da435f24a527ca1a34f9374bfe1d7ca9e4d482a6d229c3518997dd72
+oracle_submission_id=019f06a6-fe48-7831-9ecd-c88998050343
+oracle_agent_id=019f0488-39ff-7e33-a790-4caca4a838a3
+oracle_status=approved
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 none
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for the immutable candidate only. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, Stage 5, production default cutover, or prior closed history.
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
+closure_status=closed
+```
+
+Parent Loop Driver after receipt:
+
+```text
+closure_scope=atomic_step
+atomic_step_status=closed
+parent_stage_status=running
+parent_loop_status=blocked
+loop_status=blocked
+global_exit_conditions_met=false
+user_input_required=false
+normal_next_action=not_produced
+driver_decision_status=validation_failure
+driver_validation_error_code=NEXT_ATOMIC_STEP_REQUIRED
+next_atomic_step=null
+blocker_type=parent_loop_inventory_exhausted_static_complete_support_unmet
+blocker_is_user_decision=false
+driver_validation_message=Stage 4 static completeSupported is unmet, no user blocker exists, and remaining inventory has no executable unclosed checkpoint.
+remaining_inventory_result=FAIL_CLOSED: requiredCapabilityCount=59; registeredCapabilityCount=59; staticCompleteSupportedCount=0; committedClosedCapabilityCount=59; sameRunObservedOnlyCount=59; unsupported_unregistered=0; registered_without_required_probe_verification=0; nextCheckpointId=null; selectionFailure=NEXT_ATOMIC_STEP_REQUIRED.
+```
+
 ## Stage 4 Implementation: `validation.fail_closed_unknown_nodes.v1` complete-supported package slice
 
 Checkpoint identity:
