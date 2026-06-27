@@ -6,8 +6,8 @@ checkpoint_id: stage12.exit_legacy_authoritative_path
 closure_scope: atomic_step
 implementation_status: complete
 local_validation_status: passed
-candidate_status: ready_for_oracle
-oracle_status: not_submitted
+candidate_status: committed
+oracle_status: approved
 parent_stage_status: running
 parent_loop_status: running
 global_exit_conditions_met: false
@@ -158,26 +158,31 @@ follow_up_items:
 
 ## Oracle Review
 
-oracle_status: not_submitted
-oracle_review_result: pending
-reviewed_commit_sha: pending
-reviewed_tree_sha: pending
-reviewed_skill_bundle_digest: pending
-oracle_submission_id: pending
-oracle_agent_id: pending
-oracle_p0_count: pending
-oracle_p1_count: pending
-oracle_p2_count: pending
-oracle_p3_count: pending
-receipt_scope: pending
+oracle_status: approved
+oracle_review_result: APPROVED_FOR_RECEIPT
+reviewed_commit_sha: df5f08cc6460ccf10b8602d681dca209b9c9094f
+reviewed_tree_sha: 03ecac762a1d7d2427d0ef50080f156edfd28f49
+reviewed_skill_bundle_digest: ed4e3ba1da435f24a527ca1a34f9374bfe1d7ca9e4d482a6d229c3518997dd72
+oracle_submission_id: 019f0927-9d9e-7401-8a9f-b7750fbe8c2c
+oracle_agent_id: 019f0813-ed9a-7ad0-8341-50ababd44fea
+oracle_p0_count: 0
+oracle_p1_count: 0
+oracle_p2_count: 0
+oracle_p3_count: 1
+oracle_p3_findings:
+- finding: Add an explicit focused Stage12 helper test for inactive production default cutover in a future hardening atom. Non-blocking because the helper already emits structured blockers for inactive production cutover and current focused tests cover Stage11 hash drift, stale Stage11 report hash, legacy exit not activated, final-closure smuggling, persisted artifact consistency, and Driver Stage13 fail-closed handoff.
+  evidence:
+  - packages/game-dsl/src/step37-exit-legacy-authoritative-path.ts
+  - tests/contracts/step37-stage12-exit-legacy-authoritative-path.test.ts
+receipt_scope: docs_only_closure_metadata
 receipt_forbidden_changes: runtime,qa,package_registry,capability_registry,driver_semantics,validator,contracts,tests,Skill,AGENTS,final_closure
 
 ## Exit Assessment
 
-atomic_step_status: open
-closure_status: not_closed
-candidate_commit: pending
-receipt_commit: pending
+atomic_step_status: closed
+closure_status: closed
+candidate_commit: df5f08cc6460ccf10b8602d681dca209b9c9094f
+receipt_commit: external_git_history_only_not_embedded
 parent_stage_status: running
 loop_status: running
 global_exit_conditions_met: false
