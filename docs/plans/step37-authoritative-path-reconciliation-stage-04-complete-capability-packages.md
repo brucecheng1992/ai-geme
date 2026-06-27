@@ -6356,9 +6356,9 @@ parent_stage_id=stage4
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
-closure_status=not_closed
+candidate_status=committed
+oracle_status=approved
+closure_status=closed
 ```
 
 Read-only audit conclusion:
@@ -6480,6 +6480,43 @@ command=/usr/bin/time -p npx tsx - <<'TS' ... support summary plus exhausted rem
 exitCode=0
 duration=0.62s
 result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=59; staticCompleteSupportedCount=0; committedClosedCapabilityCount=59; sameRunObservedOnlyCount=59; nextCheckpointId=stage4.support_promotion_from_same_run_observed_package_receipts; selectionFailure=null.
+```
+
+Oracle receipt:
+
+```text
+reviewed_commit_sha=4add5a8ce228b7e7af7ea87fc090c93ba71d46a8
+reviewed_commit_tree=62e887dd62ee7298122b1a83026cb53ad793eda1
+reviewed_skill_revision=5ee48b1b5a2ac2371a87d6bc37da3c53ca137a5daa2b6338eeccf8743b28538f
+oracle_submission_id=019f0755-ef55-7022-a6ce-35f57e0908ef
+oracle_agent_id=019f0488-39ff-7e33-a790-4caca4a838a3
+oracle_status=approved
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 one nonblocking hardening suggestion: future guard may explicitly check registeredCapabilityCount equals requiredCapabilityCount before emitting support promotion.
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for the immutable candidate only. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, Stage 5, production default cutover, or prior closed history.
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
+closure_status=closed
+```
+
+Parent Loop Driver after receipt:
+
+```text
+closure_scope=atomic_step
+atomic_step_status=closed
+parent_stage_status=running
+parent_loop_status=running
+loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage4.support_promotion_from_same_run_observed_package_receipts
+next_atomic_step_label=Stage 4 support promotion from same-run observed package receipts atomic step
+next_atomic_step_parent_stage_id=stage4
+next_atomic_step_selection_rule=first_unmet_checkpoint_in_authoritative_inventory
+next_atomic_step_source_plan_revision=4add5a8ce228b7e7af7ea87fc090c93ba71d46a8:docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md
+next_atomic_step_unmet_reason=Stage 4 package inventory is exhausted with same-run observed package receipts, but static completeSupported remains 0/59; support promotion must audit whether observed package evidence can become closure authority before Stage 5 entry.
+remaining_inventory_result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=59; staticCompleteSupportedCount=0; committedClosedCapabilityCount=59; sameRunObservedOnlyCount=59; nextCheckpointId=stage4.support_promotion_from_same_run_observed_package_receipts; selectionFailure=null.
 ```
 
 ## Stage 4 Implementation: `validation.fail_closed_unknown_nodes.v1` complete-supported package slice
