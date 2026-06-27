@@ -6947,13 +6947,16 @@ parent_stage_id=stage4
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
+candidate_status=committed
+oracle_status=approved
 review_required=true
-closure_status=not_closed
+closure_status=closed
+atomic_step_status=closed
 stage4_exit_status=passed
 stage4_exit_conditions_met=true
 parent_stage_status_after_audit=complete
+parent_stage_status=complete
+parent_loop_status=running
 stage5_entry_audit_allowed=true
 stage5_exact_lock_allowed=false
 production_default_cutover_active=false
@@ -7064,7 +7067,39 @@ Candidate note:
 - Focused contracts, full related contracts, `npm test`, `npm run typecheck`, `git diff --check`, Skill freshness, inventory alignment, final diff scope review, and `git status --short` must pass against this final tree before creating the immutable candidate commit.
 - Candidate commit must not write its own SHA into this candidate record.
 - Oracle request must bind the candidate commit SHA, `audit_hash=fnv1a_be5c51cd`, `source_support_view_hash=fnv1a_37453024`, `source_inventory_hash=fnv1a_a883bf43`, and `reviewed_skill_revision=9000c515569664ab59b567f79604f018c805e862d22208162982d03003accdc3`.
-- Stage 5 remains `NOT_ENTERED` until this atomic step is receipt-closed and Parent Loop Driver selects the next Stage 5 entry audit checkpoint.
+- Stage 5 exact lock remains `NOT_ENTERED`; this receipt only allows Parent Loop Driver to select the Stage 5 entry audit checkpoint.
+
+Oracle receipt:
+
+```text
+reviewed_commit_sha=b69adc0174f638bb013f2b385ae607049418d3b8
+reviewed_commit_tree=042f837f3234e9c30e9a95e9059f4828e029e81d
+reviewed_skill_revision=9000c515569664ab59b567f79604f018c805e862d22208162982d03003accdc3
+reviewed_audit_hash=fnv1a_be5c51cd
+reviewed_support_view_hash=fnv1a_37453024
+reviewed_inventory_hash=fnv1a_a883bf43
+oracle_agent_id=019f07fb-d937-7011-a487-6057ad114e4d
+oracle_status=approved
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 non-blocking observation: inventory hash mismatch has builder blocker and support-promotion contract coverage, but no dedicated Stage 4 exit-audit negative case.
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for the immutable candidate only. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, package QA, Stage 5 exact lock, production default cutover, legacy authoritative path exit, final closure, or prior closed history.
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
+```
+
+Parent Loop Driver after receipt:
+
+```text
+closure_scope=atomic_step
+atomic_step_status=closed
+parent_stage_status=complete
+loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage5.entry_audit_after_stage4_exit
+next_atomic_step_label=Stage 5 entry audit after Stage 4 exit atomic step
+```
 
 ## Stage 4 Implementation: `validation.fail_closed_unknown_nodes.v1` complete-supported package slice
 
