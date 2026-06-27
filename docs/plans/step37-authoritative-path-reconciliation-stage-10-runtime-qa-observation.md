@@ -6,8 +6,8 @@ checkpoint_id: stage10.observe_runtime_consumed_ir_with_qa
 closure_scope: atomic_step
 implementation_status: complete
 local_validation_status: passed
-candidate_status: ready_for_commit
-oracle_status: not_submitted
+candidate_status: committed
+oracle_status: approved
 parent_stage_status: running
 parent_loop_status: running
 global_exit_conditions_met: false
@@ -122,23 +122,30 @@ remaining_inventory_summary:
 
 ## Oracle Review
 
-oracle_status: not_submitted
-oracle_review_result: pending
-reviewed_commit_sha: pending
-reviewed_skill_bundle_digest: pending
-oracle_submission_id: pending
-oracle_agent_id: pending
-oracle_p0_count: pending
-oracle_p1_count: pending
-oracle_p2_count: pending
-receipt_scope: pending
+oracle_status: approved
+oracle_review_result: APPROVED_FOR_RECEIPT
+reviewed_commit_sha: ea1e2023d03776e2e294b1bb0d8451c546b964fe
+reviewed_skill_bundle_digest: ed4e3ba1da435f24a527ca1a34f9374bfe1d7ca9e4d482a6d229c3518997dd72
+oracle_submission_id: 019f08f2-0aae-7212-b410-0c687de7912b
+oracle_agent_id: 019f0813-ed9a-7ad0-8341-50ababd44fea
+oracle_p0_count: 0
+oracle_p1_count: 0
+oracle_p2_count: 0
+oracle_p3_count: 1
+oracle_p3_findings:
+- finding: Add explicit wrong-capability and non-observed Stage10 helper contracts in a future atom; non-blocking because helper code fails closed for both paths and current Stage10 contracts cover missing observation, undeclared generic probe, source hash drift, and premature cutover/legacy/final.
+  evidence:
+  - packages/game-dsl/src/step37-observe-runtime-consumed-ir-with-qa.ts
+  - tests/contracts/step37-stage10-observe-runtime-consumed-ir-with-qa.test.ts
+receipt_scope: docs_only_closure_metadata
+receipt_forbidden_changes: runtime,qa,package_registry,capability_registry,driver_semantics,validator,contracts,tests,Skill,AGENTS,production_cutover,legacy_exit,final_closure
 
 ## Exit Assessment
 
-atomic_step_status: locally_validated
-closure_status: incomplete
-candidate_commit: pending
-receipt_commit: pending
+atomic_step_status: closed
+closure_status: closed
+candidate_commit: ea1e2023d03776e2e294b1bb0d8451c546b964fe
+receipt_commit: external_git_history_only_not_embedded
 parent_stage_status: running
 loop_status: running
 global_exit_conditions_met: false
