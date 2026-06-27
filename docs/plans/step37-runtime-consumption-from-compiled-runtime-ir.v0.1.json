@@ -1,0 +1,2533 @@
+{
+  "artifact_kind": "step37_runtime_consumption_from_compiled_runtime_ir",
+  "schema_version": "step37_runtime_consumption_from_compiled_runtime_ir.v0.1",
+  "checkpoint_id": "stage9.consume_compiled_runtime_ir_in_runtime",
+  "parent_stage_id": "stage9",
+  "source_compiled_runtime_ir_path": "docs/plans/step37-compiled-runtime-ir-from-normalized-capability-dsl.v0.1.json",
+  "source_compiled_runtime_ir_audit_hash": "fnv1a_2aaa4454",
+  "expected_compiled_runtime_ir_audit_hash": "fnv1a_2aaa4454",
+  "compiled_runtime_ir_audit_hash_matches": true,
+  "source_capability_ir_hash": "fnv1a_2f0f5dce",
+  "source_runtime_plan_hash": "fnv1a_eff71351",
+  "source_runtime_system_manifest_hash": "fnv1a_f406d9e3",
+  "source_scene_ir_authority_report_hash": "fnv1a_d5fff858",
+  "source_exact_capability_lock_hash": "fnv1a_0c570c26",
+  "source_exact_lock_profile_id": "resolved_capability_graph",
+  "compile_status": "passed",
+  "compile_next_checkpoint_id": "stage9.consume_compiled_runtime_ir_in_runtime",
+  "runtime_loader_report": {
+    "artifact_kind": "phaser_runtime_loader_report",
+    "schema_version": "phaser_runtime_loader_report.v0.1",
+    "status": "ready",
+    "runtime_family": "phaser_2d_action_arcade.v1",
+    "profile_id": "side_scrolling_run_and_gun.v1",
+    "capability_lock_ref": "gameplay_capability_lock.json",
+    "capability_lock_hash": "fnv1a_0c570c26",
+    "plan_hash": "fnv1a_f42bc825",
+    "binding_report_hash": "fnv1a_d31769f8",
+    "plan": {
+      "artifact_kind": "phaser_runtime_loader_plan",
+      "schema_version": "phaser_runtime_loader_plan.v0.1",
+      "runtime_family": "phaser_2d_action_arcade.v1",
+      "profile_id": "side_scrolling_run_and_gun.v1",
+      "capability_lock_ref": "gameplay_capability_lock.json",
+      "capability_lock_hash": "fnv1a_0c570c26",
+      "compatibility_mode": {
+        "selection": "universal_composition",
+        "selected_by": "profile_compiler_version",
+        "selector_value": "canonical-game-dsl.v0.2",
+        "universal_template_path": "templates/phaser/universal-2d-action"
+      },
+      "load_order": [
+        {
+          "system_id": "system.camera.bounds_clamp.v1",
+          "capability_id": "camera.bounds_clamp.v1",
+          "version": "v1",
+          "phase": "scene",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_camera_bounds_clamp_v1"
+            ],
+            "progression_segment_ids": [
+              "approach"
+            ]
+          },
+          "config_hash": "fnv1a_6fd744de",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.camera.bounds_clamp.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.camera.side_follow.v1",
+          "capability_id": "camera.side_follow.v1",
+          "version": "v1",
+          "phase": "scene",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_camera_side_follow_v1"
+            ],
+            "progression_segment_ids": [
+              "approach"
+            ]
+          },
+          "config_hash": "fnv1a_5f67a970",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.camera.side_follow.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.scene.ordered_segments.v1",
+          "capability_id": "scene.ordered_segments.v1",
+          "version": "v1",
+          "phase": "scene",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_scene_ordered_segments_v1"
+            ],
+            "progression_segment_ids": [
+              "escalation"
+            ]
+          },
+          "config_hash": "fnv1a_b8730411",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.scene.ordered_segments.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.scene.visual_presentation_metadata.v1",
+          "capability_id": "scene.visual_presentation_metadata.v1",
+          "version": "v1",
+          "phase": "scene",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_scene_visual_presentation_metadata_v1"
+            ],
+            "progression_segment_ids": [
+              "escalation"
+            ]
+          },
+          "config_hash": "fnv1a_a157983a",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.scene.visual_presentation_metadata.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.artifact.lineage_no_manual_patch.v1",
+          "capability_id": "artifact.lineage_no_manual_patch.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_artifact_lineage_no_manual_patch_v1"
+            ],
+            "progression_segment_ids": [
+              "approach"
+            ]
+          },
+          "config_hash": "fnv1a_16bc2dd9",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.artifact.lineage_no_manual_patch.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.artifact.no_hidden_script.v1",
+          "capability_id": "artifact.no_hidden_script.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_artifact_no_hidden_script_v1"
+            ],
+            "progression_segment_ids": [
+              "approach"
+            ]
+          },
+          "config_hash": "fnv1a_1b0142ae",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.artifact.no_hidden_script.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.canonical.semantic_preservation.v1",
+          "capability_id": "canonical.semantic_preservation.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_canonical_semantic_preservation_v1"
+            ],
+            "progression_segment_ids": [
+              "approach"
+            ]
+          },
+          "config_hash": "fnv1a_01bd14a1",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.canonical.semantic_preservation.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.collision.damage_affinity_matrix.v1",
+          "capability_id": "collision.damage_affinity_matrix.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_collision_damage_affinity_matrix_v1"
+            ],
+            "progression_segment_ids": [
+              "approach"
+            ]
+          },
+          "config_hash": "fnv1a_ab6e6fd6",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.collision.damage_affinity_matrix.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.collision.platform.v1",
+          "capability_id": "collision.platform.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_collision_platform_v1"
+            ],
+            "progression_segment_ids": [
+              "approach"
+            ]
+          },
+          "config_hash": "fnv1a_e1f7faab",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.collision.platform.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.combat.airborne_fire.v1",
+          "capability_id": "combat.airborne_fire.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "damage",
+            "event_bus",
+            "projectile"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_combat_airborne_fire_v1"
+            ],
+            "progression_segment_ids": [
+              "approach"
+            ]
+          },
+          "config_hash": "fnv1a_ade50ab5",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.combat.airborne_fire.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.combat.projectile.v1",
+          "capability_id": "combat.projectile.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "damage",
+            "event_bus",
+            "projectile"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "behavior_player_primary_fire",
+              "config_cfg_combat_projectile_v1"
+            ],
+            "progression_segment_ids": [
+              "approach"
+            ]
+          },
+          "config_hash": "fnv1a_70f17757",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.combat.projectile.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.enemy.boss_attack_pattern.v1",
+          "capability_id": "enemy.boss_attack_pattern.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_enemy_boss_attack_pattern_v1"
+            ],
+            "progression_segment_ids": [
+              "approach"
+            ]
+          },
+          "config_hash": "fnv1a_8ef6295f",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.enemy.boss_attack_pattern.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.enemy.boss_lifecycle.v1",
+          "capability_id": "enemy.boss_lifecycle.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_enemy_boss_lifecycle_v1"
+            ],
+            "progression_segment_ids": [
+              "approach"
+            ]
+          },
+          "config_hash": "fnv1a_65887b26",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.enemy.boss_lifecycle.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.enemy.boss_phase_transition.v1",
+          "capability_id": "enemy.boss_phase_transition.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_enemy_boss_phase_transition_v1"
+            ],
+            "progression_segment_ids": [
+              "approach"
+            ]
+          },
+          "config_hash": "fnv1a_ac017a71",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.enemy.boss_phase_transition.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.enemy.fixed_turret.v1",
+          "capability_id": "enemy.fixed_turret.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_enemy_fixed_turret_v1"
+            ],
+            "progression_segment_ids": [
+              "approach"
+            ]
+          },
+          "config_hash": "fnv1a_2f5069c1",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.enemy.fixed_turret.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.enemy.flying_right_entry.v1",
+          "capability_id": "enemy.flying_right_entry.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_enemy_flying_right_entry_v1"
+            ],
+            "progression_segment_ids": [
+              "approach"
+            ]
+          },
+          "config_hash": "fnv1a_556d64c1",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.enemy.flying_right_entry.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.enemy.patrol_infantry.v1",
+          "capability_id": "enemy.patrol_infantry.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_enemy_patrol_infantry_v1"
+            ],
+            "progression_segment_ids": [
+              "approach"
+            ]
+          },
+          "config_hash": "fnv1a_8b11c50e",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.enemy.patrol_infantry.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.feedback.victory_declaration.v1",
+          "capability_id": "feedback.victory_declaration.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_feedback_victory_declaration_v1"
+            ],
+            "progression_segment_ids": [
+              "approach"
+            ]
+          },
+          "config_hash": "fnv1a_826ef030",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.feedback.victory_declaration.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.generation.fallback_policy_fail_closed.v1",
+          "capability_id": "generation.fallback_policy_fail_closed.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_generation_fallback_policy_fail_closed_v1"
+            ],
+            "progression_segment_ids": [
+              "approach"
+            ]
+          },
+          "config_hash": "fnv1a_e59331bf",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.generation.fallback_policy_fail_closed.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.goal.boss_unlock.v1",
+          "capability_id": "goal.boss_unlock.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "event_bus",
+            "goal"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_goal_boss_unlock_v1"
+            ],
+            "progression_segment_ids": [
+              "approach"
+            ]
+          },
+          "config_hash": "fnv1a_ea1a56cf",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.goal.boss_unlock.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.hazard.falling_area.v1",
+          "capability_id": "hazard.falling_area.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_hazard_falling_area_v1"
+            ],
+            "progression_segment_ids": [
+              "approach"
+            ]
+          },
+          "config_hash": "fnv1a_a80c57c3",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.hazard.falling_area.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.hazard.timed_explosion.v1",
+          "capability_id": "hazard.timed_explosion.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_hazard_timed_explosion_v1"
+            ],
+            "progression_segment_ids": [
+              "approach"
+            ]
+          },
+          "config_hash": "fnv1a_08cb09b1",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.hazard.timed_explosion.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.health.damage_invulnerability.v1",
+          "capability_id": "health.damage_invulnerability.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_health_damage_invulnerability_v1"
+            ],
+            "progression_segment_ids": [
+              "escalation"
+            ]
+          },
+          "config_hash": "fnv1a_29d85592",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.health.damage_invulnerability.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.health.player_health_points.v1",
+          "capability_id": "health.player_health_points.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_health_player_health_points_v1"
+            ],
+            "progression_segment_ids": [
+              "escalation"
+            ]
+          },
+          "config_hash": "fnv1a_48030249",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.health.player_health_points.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.metadata.fixed_prompt_binding.v1",
+          "capability_id": "metadata.fixed_prompt_binding.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_metadata_fixed_prompt_binding_v1"
+            ],
+            "progression_segment_ids": [
+              "escalation"
+            ]
+          },
+          "config_hash": "fnv1a_f4079299",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.metadata.fixed_prompt_binding.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.movement.crouch.v1",
+          "capability_id": "movement.crouch.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "input",
+            "physics_body"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "behavior_player_crouch_state",
+              "config_cfg_movement_crouch_v1"
+            ],
+            "progression_segment_ids": [
+              "escalation"
+            ]
+          },
+          "config_hash": "fnv1a_ffc5b9b5",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.movement.crouch.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.movement.run_jump.v1",
+          "capability_id": "movement.run_jump.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "input",
+            "physics_body"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_movement_run_jump_v1"
+            ],
+            "progression_segment_ids": [
+              "escalation"
+            ]
+          },
+          "config_hash": "fnv1a_62d26ec4",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.movement.run_jump.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.pickup.collectible.v1",
+          "capability_id": "pickup.collectible.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_pickup_collectible_v1"
+            ],
+            "progression_segment_ids": [
+              "escalation"
+            ]
+          },
+          "config_hash": "fnv1a_e67bf321",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.pickup.collectible.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.pickup.weapon_supply.v1",
+          "capability_id": "pickup.weapon_supply.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_pickup_weapon_supply_v1"
+            ],
+            "progression_segment_ids": [
+              "escalation"
+            ]
+          },
+          "config_hash": "fnv1a_c0b19939",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.pickup.weapon_supply.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.profile.deepseek_run_and_gun_validation.v1",
+          "capability_id": "profile.deepseek_run_and_gun_validation.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_profile_deepseek_run_and_gun_validation_v1"
+            ],
+            "progression_segment_ids": [
+              "escalation"
+            ]
+          },
+          "config_hash": "fnv1a_f2ead2ad",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.profile.deepseek_run_and_gun_validation.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.provider.deepseek_authoritative_draft.v1",
+          "capability_id": "provider.deepseek_authoritative_draft.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_provider_deepseek_authoritative_draft_v1"
+            ],
+            "progression_segment_ids": [
+              "escalation"
+            ]
+          },
+          "config_hash": "fnv1a_c03753c4",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.provider.deepseek_authoritative_draft.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.review.oracle_final_gate.v1",
+          "capability_id": "review.oracle_final_gate.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_review_oracle_final_gate_v1"
+            ],
+            "progression_segment_ids": [
+              "escalation"
+            ]
+          },
+          "config_hash": "fnv1a_c2d57502",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.review.oracle_final_gate.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.rules.checkpoint_restore.v1",
+          "capability_id": "rules.checkpoint_restore.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_rules_checkpoint_restore_v1"
+            ],
+            "progression_segment_ids": [
+              "escalation"
+            ]
+          },
+          "config_hash": "fnv1a_61bb7b53",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.rules.checkpoint_restore.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.rules.encounter_gate.v1",
+          "capability_id": "rules.encounter_gate.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_rules_encounter_gate_v1"
+            ],
+            "progression_segment_ids": [
+              "escalation"
+            ]
+          },
+          "config_hash": "fnv1a_db08affd",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.rules.encounter_gate.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.rules.retry_count.v1",
+          "capability_id": "rules.retry_count.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_rules_retry_count_v1"
+            ],
+            "progression_segment_ids": [
+              "escalation"
+            ]
+          },
+          "config_hash": "fnv1a_1f4f2392",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.rules.retry_count.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.rules.state_transition_graph.v1",
+          "capability_id": "rules.state_transition_graph.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_rules_state_transition_graph_v1"
+            ],
+            "progression_segment_ids": [
+              "escalation"
+            ]
+          },
+          "config_hash": "fnv1a_a7ed8eb2",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.rules.state_transition_graph.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.runtime.manifest_binding.v1",
+          "capability_id": "runtime.manifest_binding.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_runtime_manifest_binding_v1"
+            ],
+            "progression_segment_ids": [
+              "escalation"
+            ]
+          },
+          "config_hash": "fnv1a_334cf1ce",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.runtime.manifest_binding.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.runtime.module_load_receipt.v1",
+          "capability_id": "runtime.module_load_receipt.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_runtime_module_load_receipt_v1"
+            ],
+            "progression_segment_ids": [
+              "escalation"
+            ]
+          },
+          "config_hash": "fnv1a_604e1965",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.runtime.module_load_receipt.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.runtime.plan_coverage.v1",
+          "capability_id": "runtime.plan_coverage.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_runtime_plan_coverage_v1"
+            ],
+            "progression_segment_ids": [
+              "escalation"
+            ]
+          },
+          "config_hash": "fnv1a_bb494c69",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.runtime.plan_coverage.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.spawn.enemy_wave.v1",
+          "capability_id": "spawn.enemy_wave.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_spawn_enemy_wave_v1"
+            ],
+            "progression_segment_ids": [
+              "escalation"
+            ]
+          },
+          "config_hash": "fnv1a_3bcc3c50",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.spawn.enemy_wave.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.spawn.explicit_declarations.v1",
+          "capability_id": "spawn.explicit_declarations.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_spawn_explicit_declarations_v1"
+            ],
+            "progression_segment_ids": [
+              "finale"
+            ]
+          },
+          "config_hash": "fnv1a_1427dc42",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.spawn.explicit_declarations.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.spawn.static.v1",
+          "capability_id": "spawn.static.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_spawn_static_v1"
+            ],
+            "progression_segment_ids": [
+              "finale"
+            ]
+          },
+          "config_hash": "fnv1a_4ca350e0",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.spawn.static.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.spawn.stop_on_boss_defeat.v1",
+          "capability_id": "spawn.stop_on_boss_defeat.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_spawn_stop_on_boss_defeat_v1"
+            ],
+            "progression_segment_ids": [
+              "finale"
+            ]
+          },
+          "config_hash": "fnv1a_bb795800",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.spawn.stop_on_boss_defeat.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.ui.failure_restart.v1",
+          "capability_id": "ui.failure_restart.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_ui_failure_restart_v1"
+            ],
+            "progression_segment_ids": [
+              "finale"
+            ]
+          },
+          "config_hash": "fnv1a_2530123d",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.ui.failure_restart.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.ui.hud_boss_health.v1",
+          "capability_id": "ui.hud_boss_health.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_ui_hud_boss_health_v1"
+            ],
+            "progression_segment_ids": [
+              "finale"
+            ]
+          },
+          "config_hash": "fnv1a_c8cfb129",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.ui.hud_boss_health.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.ui.hud_current_weapon.v1",
+          "capability_id": "ui.hud_current_weapon.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_ui_hud_current_weapon_v1"
+            ],
+            "progression_segment_ids": [
+              "finale"
+            ]
+          },
+          "config_hash": "fnv1a_c1f54b9d",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.ui.hud_current_weapon.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.ui.hud_player_health.v1",
+          "capability_id": "ui.hud_player_health.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_ui_hud_player_health_v1"
+            ],
+            "progression_segment_ids": [
+              "finale"
+            ]
+          },
+          "config_hash": "fnv1a_8e6f23d9",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.ui.hud_player_health.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.ui.hud_retries.v1",
+          "capability_id": "ui.hud_retries.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_ui_hud_retries_v1"
+            ],
+            "progression_segment_ids": [
+              "finale"
+            ]
+          },
+          "config_hash": "fnv1a_acfe5927",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.ui.hud_retries.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.ui.win_failure_transitions.v1",
+          "capability_id": "ui.win_failure_transitions.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_ui_win_failure_transitions_v1"
+            ],
+            "progression_segment_ids": [
+              "finale"
+            ]
+          },
+          "config_hash": "fnv1a_b680a49f",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.ui.win_failure_transitions.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.validation.fail_closed_unknown_nodes.v1",
+          "capability_id": "validation.fail_closed_unknown_nodes.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_validation_fail_closed_unknown_nodes_v1"
+            ],
+            "progression_segment_ids": [
+              "finale"
+            ]
+          },
+          "config_hash": "fnv1a_3b58e5b0",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.validation.fail_closed_unknown_nodes.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.validation.fixed_prompt_end_to_end.v1",
+          "capability_id": "validation.fixed_prompt_end_to_end.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_validation_fixed_prompt_end_to_end_v1"
+            ],
+            "progression_segment_ids": [
+              "finale"
+            ]
+          },
+          "config_hash": "fnv1a_fa4ed24d",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.validation.fixed_prompt_end_to_end.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.validation.metamorphic_semantic_hash.v1",
+          "capability_id": "validation.metamorphic_semantic_hash.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_validation_metamorphic_semantic_hash_v1"
+            ],
+            "progression_segment_ids": [
+              "finale"
+            ]
+          },
+          "config_hash": "fnv1a_2c7f96b1",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.validation.metamorphic_semantic_hash.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.validation.replay_stability.v1",
+          "capability_id": "validation.replay_stability.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_validation_replay_stability_v1"
+            ],
+            "progression_segment_ids": [
+              "finale"
+            ]
+          },
+          "config_hash": "fnv1a_8adac879",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.validation.replay_stability.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.validation.user_acceptance_gate.v1",
+          "capability_id": "validation.user_acceptance_gate.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "entity_registry",
+            "event_bus"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_validation_user_acceptance_gate_v1"
+            ],
+            "progression_segment_ids": [
+              "finale"
+            ]
+          },
+          "config_hash": "fnv1a_1021bef1",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.validation.user_acceptance_gate.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.weapon.death_reset.v1",
+          "capability_id": "weapon.death_reset.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "damage",
+            "event_bus",
+            "projectile"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_weapon_death_reset_v1"
+            ],
+            "progression_segment_ids": [
+              "finale"
+            ]
+          },
+          "config_hash": "fnv1a_980370bb",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.weapon.death_reset.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.weapon.default_straight_single.v1",
+          "capability_id": "weapon.default_straight_single.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "damage",
+            "event_bus",
+            "projectile"
+          ],
+          "config": {
+            "artifact_kind": "weapon.default_straight_single.compiled.v1",
+            "source": {
+              "canonical_system_id": "config_cfg_weapon_default_straight_single_v1",
+              "source_draft_id": "cfg_weapon_default_straight_single_v1"
+            },
+            "owner": {
+              "entity_id": "player",
+              "role": "player"
+            },
+            "loadout": {
+              "slot": "primary",
+              "equip_policy": "initial_spawn"
+            },
+            "projectile_pattern": {
+              "kind": "straight",
+              "projectile_count": 1
+            },
+            "fire_action": "shoot_projectile"
+          },
+          "config_hash": "fnv1a_3a10ba95",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.weapon.default_straight_single.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.weapon.rapid_fire.v1",
+          "capability_id": "weapon.rapid_fire.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "damage",
+            "event_bus",
+            "projectile"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_weapon_rapid_fire_v1"
+            ],
+            "progression_segment_ids": [
+              "finale"
+            ]
+          },
+          "config_hash": "fnv1a_0733f970",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.weapon.rapid_fire.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.weapon.replacement_rule.v1",
+          "capability_id": "weapon.replacement_rule.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "damage",
+            "event_bus",
+            "projectile"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_weapon_replacement_rule_v1"
+            ],
+            "progression_segment_ids": [
+              "finale"
+            ]
+          },
+          "config_hash": "fnv1a_38ab22f4",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.weapon.replacement_rule.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.weapon.spread_shot.v1",
+          "capability_id": "weapon.spread_shot.v1",
+          "version": "v1",
+          "phase": "gameplay",
+          "dependencies": [],
+          "services": [
+            "damage",
+            "event_bus",
+            "projectile"
+          ],
+          "config": {
+            "canonical_dsl_path": "canonical-game-dsl-v0.2.json",
+            "canonical_dsl_hash": "fnv1a_1e39ce48",
+            "system_source_ids": [
+              "config_cfg_weapon_spread_shot_v1"
+            ],
+            "progression_segment_ids": [
+              "finale"
+            ]
+          },
+          "config_hash": "fnv1a_c0d6eb41",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.weapon.spread_shot.v1.loaded"
+          ]
+        }
+      ],
+      "update_loop_system_ids": [
+        "system.camera.bounds_clamp.v1",
+        "system.camera.side_follow.v1",
+        "system.scene.ordered_segments.v1",
+        "system.scene.visual_presentation_metadata.v1",
+        "system.artifact.lineage_no_manual_patch.v1",
+        "system.artifact.no_hidden_script.v1",
+        "system.canonical.semantic_preservation.v1",
+        "system.collision.damage_affinity_matrix.v1",
+        "system.collision.platform.v1",
+        "system.combat.airborne_fire.v1",
+        "system.combat.projectile.v1",
+        "system.enemy.boss_attack_pattern.v1",
+        "system.enemy.boss_lifecycle.v1",
+        "system.enemy.boss_phase_transition.v1",
+        "system.enemy.fixed_turret.v1",
+        "system.enemy.flying_right_entry.v1",
+        "system.enemy.patrol_infantry.v1",
+        "system.feedback.victory_declaration.v1",
+        "system.generation.fallback_policy_fail_closed.v1",
+        "system.goal.boss_unlock.v1",
+        "system.hazard.falling_area.v1",
+        "system.hazard.timed_explosion.v1",
+        "system.health.damage_invulnerability.v1",
+        "system.health.player_health_points.v1",
+        "system.metadata.fixed_prompt_binding.v1",
+        "system.movement.crouch.v1",
+        "system.movement.run_jump.v1",
+        "system.pickup.collectible.v1",
+        "system.pickup.weapon_supply.v1",
+        "system.profile.deepseek_run_and_gun_validation.v1",
+        "system.provider.deepseek_authoritative_draft.v1",
+        "system.review.oracle_final_gate.v1",
+        "system.rules.checkpoint_restore.v1",
+        "system.rules.encounter_gate.v1",
+        "system.rules.retry_count.v1",
+        "system.rules.state_transition_graph.v1",
+        "system.runtime.manifest_binding.v1",
+        "system.runtime.module_load_receipt.v1",
+        "system.runtime.plan_coverage.v1",
+        "system.spawn.enemy_wave.v1",
+        "system.spawn.explicit_declarations.v1",
+        "system.spawn.static.v1",
+        "system.spawn.stop_on_boss_defeat.v1",
+        "system.ui.failure_restart.v1",
+        "system.ui.hud_boss_health.v1",
+        "system.ui.hud_current_weapon.v1",
+        "system.ui.hud_player_health.v1",
+        "system.ui.hud_retries.v1",
+        "system.ui.win_failure_transitions.v1",
+        "system.validation.fail_closed_unknown_nodes.v1",
+        "system.validation.fixed_prompt_end_to_end.v1",
+        "system.validation.metamorphic_semantic_hash.v1",
+        "system.validation.replay_stability.v1",
+        "system.validation.user_acceptance_gate.v1",
+        "system.weapon.death_reset.v1",
+        "system.weapon.default_straight_single.v1",
+        "system.weapon.rapid_fire.v1",
+        "system.weapon.replacement_rule.v1",
+        "system.weapon.spread_shot.v1"
+      ],
+      "plan_hash": "fnv1a_f42bc825"
+    },
+    "binding_report": {
+      "artifact_kind": "capability_runtime_binding_report",
+      "schema_version": "capability_runtime_binding_report.v0.1",
+      "runtime_family": "phaser_2d_action_arcade.v1",
+      "profile_id": "side_scrolling_run_and_gun.v1",
+      "capability_lock_ref": "gameplay_capability_lock.json",
+      "capability_lock_hash": "fnv1a_0c570c26",
+      "status": "bound_pending_qa",
+      "modules": [
+        {
+          "system_id": "system.camera.bounds_clamp.v1",
+          "capability_id": "camera.bounds_clamp.v1",
+          "phase": "scene",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_6fd744de",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.camera.bounds_clamp.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.camera.side_follow.v1",
+          "capability_id": "camera.side_follow.v1",
+          "phase": "scene",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_5f67a970",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.camera.side_follow.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.scene.ordered_segments.v1",
+          "capability_id": "scene.ordered_segments.v1",
+          "phase": "scene",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_b8730411",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.scene.ordered_segments.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.scene.visual_presentation_metadata.v1",
+          "capability_id": "scene.visual_presentation_metadata.v1",
+          "phase": "scene",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_a157983a",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.scene.visual_presentation_metadata.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.artifact.lineage_no_manual_patch.v1",
+          "capability_id": "artifact.lineage_no_manual_patch.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_16bc2dd9",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.artifact.lineage_no_manual_patch.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.artifact.no_hidden_script.v1",
+          "capability_id": "artifact.no_hidden_script.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_1b0142ae",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.artifact.no_hidden_script.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.canonical.semantic_preservation.v1",
+          "capability_id": "canonical.semantic_preservation.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_01bd14a1",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.canonical.semantic_preservation.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.collision.damage_affinity_matrix.v1",
+          "capability_id": "collision.damage_affinity_matrix.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_ab6e6fd6",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.collision.damage_affinity_matrix.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.collision.platform.v1",
+          "capability_id": "collision.platform.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_e1f7faab",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.collision.platform.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.combat.airborne_fire.v1",
+          "capability_id": "combat.airborne_fire.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_ade50ab5",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.combat.airborne_fire.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.combat.projectile.v1",
+          "capability_id": "combat.projectile.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_70f17757",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.combat.projectile.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.enemy.boss_attack_pattern.v1",
+          "capability_id": "enemy.boss_attack_pattern.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_8ef6295f",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.enemy.boss_attack_pattern.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.enemy.boss_lifecycle.v1",
+          "capability_id": "enemy.boss_lifecycle.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_65887b26",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.enemy.boss_lifecycle.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.enemy.boss_phase_transition.v1",
+          "capability_id": "enemy.boss_phase_transition.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_ac017a71",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.enemy.boss_phase_transition.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.enemy.fixed_turret.v1",
+          "capability_id": "enemy.fixed_turret.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_2f5069c1",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.enemy.fixed_turret.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.enemy.flying_right_entry.v1",
+          "capability_id": "enemy.flying_right_entry.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_556d64c1",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.enemy.flying_right_entry.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.enemy.patrol_infantry.v1",
+          "capability_id": "enemy.patrol_infantry.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_8b11c50e",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.enemy.patrol_infantry.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.feedback.victory_declaration.v1",
+          "capability_id": "feedback.victory_declaration.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_826ef030",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.feedback.victory_declaration.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.generation.fallback_policy_fail_closed.v1",
+          "capability_id": "generation.fallback_policy_fail_closed.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_e59331bf",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.generation.fallback_policy_fail_closed.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.goal.boss_unlock.v1",
+          "capability_id": "goal.boss_unlock.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_ea1a56cf",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.goal.boss_unlock.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.hazard.falling_area.v1",
+          "capability_id": "hazard.falling_area.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_a80c57c3",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.hazard.falling_area.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.hazard.timed_explosion.v1",
+          "capability_id": "hazard.timed_explosion.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_08cb09b1",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.hazard.timed_explosion.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.health.damage_invulnerability.v1",
+          "capability_id": "health.damage_invulnerability.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_29d85592",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.health.damage_invulnerability.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.health.player_health_points.v1",
+          "capability_id": "health.player_health_points.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_48030249",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.health.player_health_points.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.metadata.fixed_prompt_binding.v1",
+          "capability_id": "metadata.fixed_prompt_binding.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_f4079299",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.metadata.fixed_prompt_binding.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.movement.crouch.v1",
+          "capability_id": "movement.crouch.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_ffc5b9b5",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.movement.crouch.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.movement.run_jump.v1",
+          "capability_id": "movement.run_jump.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_62d26ec4",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.movement.run_jump.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.pickup.collectible.v1",
+          "capability_id": "pickup.collectible.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_e67bf321",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.pickup.collectible.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.pickup.weapon_supply.v1",
+          "capability_id": "pickup.weapon_supply.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_c0b19939",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.pickup.weapon_supply.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.profile.deepseek_run_and_gun_validation.v1",
+          "capability_id": "profile.deepseek_run_and_gun_validation.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_f2ead2ad",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.profile.deepseek_run_and_gun_validation.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.provider.deepseek_authoritative_draft.v1",
+          "capability_id": "provider.deepseek_authoritative_draft.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_c03753c4",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.provider.deepseek_authoritative_draft.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.review.oracle_final_gate.v1",
+          "capability_id": "review.oracle_final_gate.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_c2d57502",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.review.oracle_final_gate.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.rules.checkpoint_restore.v1",
+          "capability_id": "rules.checkpoint_restore.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_61bb7b53",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.rules.checkpoint_restore.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.rules.encounter_gate.v1",
+          "capability_id": "rules.encounter_gate.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_db08affd",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.rules.encounter_gate.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.rules.retry_count.v1",
+          "capability_id": "rules.retry_count.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_1f4f2392",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.rules.retry_count.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.rules.state_transition_graph.v1",
+          "capability_id": "rules.state_transition_graph.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_a7ed8eb2",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.rules.state_transition_graph.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.runtime.manifest_binding.v1",
+          "capability_id": "runtime.manifest_binding.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_334cf1ce",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.runtime.manifest_binding.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.runtime.module_load_receipt.v1",
+          "capability_id": "runtime.module_load_receipt.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_604e1965",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.runtime.module_load_receipt.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.runtime.plan_coverage.v1",
+          "capability_id": "runtime.plan_coverage.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_bb494c69",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.runtime.plan_coverage.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.spawn.enemy_wave.v1",
+          "capability_id": "spawn.enemy_wave.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_3bcc3c50",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.spawn.enemy_wave.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.spawn.explicit_declarations.v1",
+          "capability_id": "spawn.explicit_declarations.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_1427dc42",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.spawn.explicit_declarations.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.spawn.static.v1",
+          "capability_id": "spawn.static.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_4ca350e0",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.spawn.static.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.spawn.stop_on_boss_defeat.v1",
+          "capability_id": "spawn.stop_on_boss_defeat.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_bb795800",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.spawn.stop_on_boss_defeat.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.ui.failure_restart.v1",
+          "capability_id": "ui.failure_restart.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_2530123d",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.ui.failure_restart.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.ui.hud_boss_health.v1",
+          "capability_id": "ui.hud_boss_health.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_c8cfb129",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.ui.hud_boss_health.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.ui.hud_current_weapon.v1",
+          "capability_id": "ui.hud_current_weapon.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_c1f54b9d",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.ui.hud_current_weapon.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.ui.hud_player_health.v1",
+          "capability_id": "ui.hud_player_health.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_8e6f23d9",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.ui.hud_player_health.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.ui.hud_retries.v1",
+          "capability_id": "ui.hud_retries.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_acfe5927",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.ui.hud_retries.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.ui.win_failure_transitions.v1",
+          "capability_id": "ui.win_failure_transitions.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_b680a49f",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.ui.win_failure_transitions.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.validation.fail_closed_unknown_nodes.v1",
+          "capability_id": "validation.fail_closed_unknown_nodes.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_3b58e5b0",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.validation.fail_closed_unknown_nodes.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.validation.fixed_prompt_end_to_end.v1",
+          "capability_id": "validation.fixed_prompt_end_to_end.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_fa4ed24d",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.validation.fixed_prompt_end_to_end.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.validation.metamorphic_semantic_hash.v1",
+          "capability_id": "validation.metamorphic_semantic_hash.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_2c7f96b1",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.validation.metamorphic_semantic_hash.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.validation.replay_stability.v1",
+          "capability_id": "validation.replay_stability.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_8adac879",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.validation.replay_stability.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.validation.user_acceptance_gate.v1",
+          "capability_id": "validation.user_acceptance_gate.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_1021bef1",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.validation.user_acceptance_gate.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.weapon.death_reset.v1",
+          "capability_id": "weapon.death_reset.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_980370bb",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.weapon.death_reset.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.weapon.default_straight_single.v1",
+          "capability_id": "weapon.default_straight_single.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_3a10ba95",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.weapon.default_straight_single.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.weapon.rapid_fire.v1",
+          "capability_id": "weapon.rapid_fire.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_0733f970",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.weapon.rapid_fire.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.weapon.replacement_rule.v1",
+          "capability_id": "weapon.replacement_rule.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_38ab22f4",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.weapon.replacement_rule.v1.loaded"
+          ]
+        },
+        {
+          "system_id": "system.weapon.spread_shot.v1",
+          "capability_id": "weapon.spread_shot.v1",
+          "phase": "gameplay",
+          "status": "bound_pending_qa",
+          "config_hash": "fnv1a_c0d6eb41",
+          "patchable_properties": [],
+          "qa_probe_ids": [
+            "qa.system.weapon.spread_shot.v1.loaded"
+          ]
+        }
+      ],
+      "report_hash": "fnv1a_d31769f8"
+    },
+    "issues": []
+  },
+  "runtime_loader_report_hash": "fnv1a_e3c14be9",
+  "runtime_loader_status": "ready",
+  "runtime_loader_plan_hash": "fnv1a_f42bc825",
+  "runtime_binding_report_hash": "fnv1a_d31769f8",
+  "runtime_binding_status": "bound_pending_qa",
+  "output_refs": {
+    "capability_ir": "capability-ir.json",
+    "runtime_plan": "runtime-plan.generated.json",
+    "runtime_system_manifest": "runtime-system-manifest.json"
+  },
+  "required_capability_count": 59,
+  "complete_supported_count": 59,
+  "package_count": 59,
+  "complete_supported_capability_ids": [
+    "artifact.lineage_no_manual_patch.v1",
+    "artifact.no_hidden_script.v1",
+    "camera.bounds_clamp.v1",
+    "camera.side_follow.v1",
+    "canonical.semantic_preservation.v1",
+    "collision.damage_affinity_matrix.v1",
+    "collision.platform.v1",
+    "combat.airborne_fire.v1",
+    "combat.projectile.v1",
+    "enemy.boss_attack_pattern.v1",
+    "enemy.boss_lifecycle.v1",
+    "enemy.boss_phase_transition.v1",
+    "enemy.fixed_turret.v1",
+    "enemy.flying_right_entry.v1",
+    "enemy.patrol_infantry.v1",
+    "feedback.victory_declaration.v1",
+    "generation.fallback_policy_fail_closed.v1",
+    "goal.boss_unlock.v1",
+    "hazard.falling_area.v1",
+    "hazard.timed_explosion.v1",
+    "health.damage_invulnerability.v1",
+    "health.player_health_points.v1",
+    "metadata.fixed_prompt_binding.v1",
+    "movement.crouch.v1",
+    "movement.run_jump.v1",
+    "pickup.collectible.v1",
+    "pickup.weapon_supply.v1",
+    "profile.deepseek_run_and_gun_validation.v1",
+    "provider.deepseek_authoritative_draft.v1",
+    "review.oracle_final_gate.v1",
+    "rules.checkpoint_restore.v1",
+    "rules.encounter_gate.v1",
+    "rules.retry_count.v1",
+    "rules.state_transition_graph.v1",
+    "runtime.manifest_binding.v1",
+    "runtime.module_load_receipt.v1",
+    "runtime.plan_coverage.v1",
+    "scene.ordered_segments.v1",
+    "scene.visual_presentation_metadata.v1",
+    "spawn.enemy_wave.v1",
+    "spawn.explicit_declarations.v1",
+    "spawn.static.v1",
+    "spawn.stop_on_boss_defeat.v1",
+    "ui.failure_restart.v1",
+    "ui.hud_boss_health.v1",
+    "ui.hud_current_weapon.v1",
+    "ui.hud_player_health.v1",
+    "ui.hud_retries.v1",
+    "ui.win_failure_transitions.v1",
+    "validation.fail_closed_unknown_nodes.v1",
+    "validation.fixed_prompt_end_to_end.v1",
+    "validation.metamorphic_semantic_hash.v1",
+    "validation.replay_stability.v1",
+    "validation.user_acceptance_gate.v1",
+    "weapon.death_reset.v1",
+    "weapon.default_straight_single.v1",
+    "weapon.rapid_fire.v1",
+    "weapon.replacement_rule.v1",
+    "weapon.spread_shot.v1"
+  ],
+  "runtime_system_capability_ids": [
+    "artifact.lineage_no_manual_patch.v1",
+    "artifact.no_hidden_script.v1",
+    "camera.bounds_clamp.v1",
+    "camera.side_follow.v1",
+    "canonical.semantic_preservation.v1",
+    "collision.damage_affinity_matrix.v1",
+    "collision.platform.v1",
+    "combat.airborne_fire.v1",
+    "combat.projectile.v1",
+    "enemy.boss_attack_pattern.v1",
+    "enemy.boss_lifecycle.v1",
+    "enemy.boss_phase_transition.v1",
+    "enemy.fixed_turret.v1",
+    "enemy.flying_right_entry.v1",
+    "enemy.patrol_infantry.v1",
+    "feedback.victory_declaration.v1",
+    "generation.fallback_policy_fail_closed.v1",
+    "goal.boss_unlock.v1",
+    "hazard.falling_area.v1",
+    "hazard.timed_explosion.v1",
+    "health.damage_invulnerability.v1",
+    "health.player_health_points.v1",
+    "metadata.fixed_prompt_binding.v1",
+    "movement.crouch.v1",
+    "movement.run_jump.v1",
+    "pickup.collectible.v1",
+    "pickup.weapon_supply.v1",
+    "profile.deepseek_run_and_gun_validation.v1",
+    "provider.deepseek_authoritative_draft.v1",
+    "review.oracle_final_gate.v1",
+    "rules.checkpoint_restore.v1",
+    "rules.encounter_gate.v1",
+    "rules.retry_count.v1",
+    "rules.state_transition_graph.v1",
+    "runtime.manifest_binding.v1",
+    "runtime.module_load_receipt.v1",
+    "runtime.plan_coverage.v1",
+    "scene.ordered_segments.v1",
+    "scene.visual_presentation_metadata.v1",
+    "spawn.enemy_wave.v1",
+    "spawn.explicit_declarations.v1",
+    "spawn.static.v1",
+    "spawn.stop_on_boss_defeat.v1",
+    "ui.failure_restart.v1",
+    "ui.hud_boss_health.v1",
+    "ui.hud_current_weapon.v1",
+    "ui.hud_player_health.v1",
+    "ui.hud_retries.v1",
+    "ui.win_failure_transitions.v1",
+    "validation.fail_closed_unknown_nodes.v1",
+    "validation.fixed_prompt_end_to_end.v1",
+    "validation.metamorphic_semantic_hash.v1",
+    "validation.replay_stability.v1",
+    "validation.user_acceptance_gate.v1",
+    "weapon.death_reset.v1",
+    "weapon.default_straight_single.v1",
+    "weapon.rapid_fire.v1",
+    "weapon.replacement_rule.v1",
+    "weapon.spread_shot.v1"
+  ],
+  "runtime_system_ids": [
+    "system.artifact.lineage_no_manual_patch.v1",
+    "system.artifact.no_hidden_script.v1",
+    "system.camera.bounds_clamp.v1",
+    "system.camera.side_follow.v1",
+    "system.canonical.semantic_preservation.v1",
+    "system.collision.damage_affinity_matrix.v1",
+    "system.collision.platform.v1",
+    "system.combat.airborne_fire.v1",
+    "system.combat.projectile.v1",
+    "system.enemy.boss_attack_pattern.v1",
+    "system.enemy.boss_lifecycle.v1",
+    "system.enemy.boss_phase_transition.v1",
+    "system.enemy.fixed_turret.v1",
+    "system.enemy.flying_right_entry.v1",
+    "system.enemy.patrol_infantry.v1",
+    "system.feedback.victory_declaration.v1",
+    "system.generation.fallback_policy_fail_closed.v1",
+    "system.goal.boss_unlock.v1",
+    "system.hazard.falling_area.v1",
+    "system.hazard.timed_explosion.v1",
+    "system.health.damage_invulnerability.v1",
+    "system.health.player_health_points.v1",
+    "system.metadata.fixed_prompt_binding.v1",
+    "system.movement.crouch.v1",
+    "system.movement.run_jump.v1",
+    "system.pickup.collectible.v1",
+    "system.pickup.weapon_supply.v1",
+    "system.profile.deepseek_run_and_gun_validation.v1",
+    "system.provider.deepseek_authoritative_draft.v1",
+    "system.review.oracle_final_gate.v1",
+    "system.rules.checkpoint_restore.v1",
+    "system.rules.encounter_gate.v1",
+    "system.rules.retry_count.v1",
+    "system.rules.state_transition_graph.v1",
+    "system.runtime.manifest_binding.v1",
+    "system.runtime.module_load_receipt.v1",
+    "system.runtime.plan_coverage.v1",
+    "system.scene.ordered_segments.v1",
+    "system.scene.visual_presentation_metadata.v1",
+    "system.spawn.enemy_wave.v1",
+    "system.spawn.explicit_declarations.v1",
+    "system.spawn.static.v1",
+    "system.spawn.stop_on_boss_defeat.v1",
+    "system.ui.failure_restart.v1",
+    "system.ui.hud_boss_health.v1",
+    "system.ui.hud_current_weapon.v1",
+    "system.ui.hud_player_health.v1",
+    "system.ui.hud_retries.v1",
+    "system.ui.win_failure_transitions.v1",
+    "system.validation.fail_closed_unknown_nodes.v1",
+    "system.validation.fixed_prompt_end_to_end.v1",
+    "system.validation.metamorphic_semantic_hash.v1",
+    "system.validation.replay_stability.v1",
+    "system.validation.user_acceptance_gate.v1",
+    "system.weapon.death_reset.v1",
+    "system.weapon.default_straight_single.v1",
+    "system.weapon.rapid_fire.v1",
+    "system.weapon.replacement_rule.v1",
+    "system.weapon.spread_shot.v1"
+  ],
+  "runtime_consumption_status": "passed",
+  "normalized": true,
+  "compiled": true,
+  "runtime_consumed": true,
+  "qa_observed": false,
+  "production_default_cutover_active": false,
+  "legacy_authoritative_path_exited": false,
+  "final_closure_not_blocked": false,
+  "global_exit_conditions_met": false,
+  "parent_stage_status_after_runtime_consumption": "running",
+  "next_checkpoint_id": "stage10.observe_runtime_consumed_ir_with_qa",
+  "blockers": [],
+  "audit_hash": "fnv1a_ff57989e"
+}
