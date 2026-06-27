@@ -36,6 +36,7 @@ import {
   VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID,
   VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID,
   VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID,
+  VALIDATION_USER_ACCEPTANCE_GATE_REQUIRED_PROBE_ID,
   REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID,
   RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID,
   RUNTIME_MODULE_LOAD_RECEIPT_REQUIRED_PROBE_ID,
@@ -170,6 +171,11 @@ describe('Gameplay capability registry', () => {
       legacyRuntimeCapabilities: []
     });
     expect(findGameplayCapability('validation.replay_stability.v1')).toMatchObject({
+      status: 'planned',
+      domain: 'validation',
+      legacyRuntimeCapabilities: []
+    });
+    expect(findGameplayCapability('validation.user_acceptance_gate.v1')).toMatchObject({
       status: 'planned',
       domain: 'validation',
       legacyRuntimeCapabilities: []
@@ -1225,6 +1231,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(finalGate)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(finalGate)).toBe(false);
+  });
+
+  it('scopes user acceptance gate package-owned QA without static support promotion', () => {
+    const userAcceptanceGate = findGameplayCapability('validation.user_acceptance_gate.v1');
+
+    if (userAcceptanceGate === undefined) {
+      throw new Error('Expected validation.user_acceptance_gate.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(userAcceptanceGate)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(userAcceptanceGate.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(userAcceptanceGate.qa).toEqual({
+      requiredProbeIds: [VALIDATION_USER_ACCEPTANCE_GATE_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(userAcceptanceGate)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(userAcceptanceGate)).toBe(false);
   });
 
   it('scopes weapon rapid fire package-owned QA without static support promotion', () => {

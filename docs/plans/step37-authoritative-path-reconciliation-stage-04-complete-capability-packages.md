@@ -6167,6 +6167,148 @@ next_action=CONTINUE_PARENT_LOOP
 next_atomic_step=RUN_PARENT_LOOP_DRIVER_TO_SELECT_NEXT_UNMET_CHECKPOINT
 ```
 
+## Stage 4 Implementation: `validation.user_acceptance_gate.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.validation_user_acceptance_gate_v1.complete_supported_package_slice
+parent_stage_id=stage4
+capability_id=validation.user_acceptance_gate.v1
+closure_record_id=stage4.validation_user_acceptance_gate_v1.complete_supported_package_slice.candidate_record
+record_status=active
+current_active_record=true
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=not_closed
+candidate_commit_sha=not_created
+receipt_commit_sha=not_created
+repo_base_commit=d4c30b474af9f395f2f70005bf50bf5714effd30
+repo_head_at_validation=d4c30b474af9f395f2f70005bf50bf5714effd30
+source_plan_revision=HEAD:docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md
+```
+
+Implementation status:
+
+`validation.user_acceptance_gate.v1` was selected by the Parent Loop Driver after the `validation.replay_stability.v1` receipt. At entry, the target profile required user acceptance gate validation, but the registry had no package-owned `validation.user_acceptance_gate.v1` descriptor, runtime system identity, telemetry event, required probe, QA reader fields, or target-profile overlay evidence. This atomic step only implements the package slice and validation contracts. It does not modify product runtime gameplay templates, enter Stage 5, cut over production default, exit the legacy authoritative path, or close Step37 globally.
+
+Actual modified code paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/validation-user-acceptance-gate-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/validation-user-acceptance-gate-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `tests/contracts/contract-freeze.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createValidationUserAcceptanceGatePackageContract()`.
+- Runtime module identity: `VALIDATION_USER_ACCEPTANCE_GATE_RUNTIME_SYSTEM_ID=validation.user_acceptance_gate`.
+- Verification event: `VALIDATION_USER_ACCEPTANCE_GATE_EVENT_TYPE=validation.user_acceptance_gate.accepted`.
+- Required probe: `VALIDATION_USER_ACCEPTANCE_GATE_REQUIRED_PROBE_ID=validation.user_acceptance_gate.v1.acceptance.browser_qa.v1`.
+- Required evidence: `VALIDATION_USER_ACCEPTANCE_GATE_PACKAGE_REQUIRED_EVIDENCE_ID=validation.user_acceptance_gate.v1.evidence.user_acceptance_gate.v1`.
+- Dependency: `review.oracle_final_gate.v1` must resolve and pass first; ordinary receipt, request submitted, `P0=0`, `game.won`, or generic review/profile events cannot satisfy this user acceptance gate.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` derives user acceptance facts from raw `candidateCommitSha`, `acceptedCommitSha`, candidate Skill revision, accepted Skill revision, checkpoint id, receipt id, final Oracle status, and blocking finding count. Payload booleans such as `userAcceptanceResultMatchesAcceptedCommit=true` are diagnostics only and cannot override mismatched raw fields.
+- Target-profile runtime overlay: same-run observed evidence may advance only observed state; static `completeSupported` remains false until required probes are verified through the closure process.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned user acceptance gate capability contract, runtime system identity, acceptance telemetry event, required probe id, required evidence id, and runtime evidence fields binding acceptance to candidate commit, Skill revision, checkpoint, final Oracle status, receipt id, and blocking finding count. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, Step37 remaining-inventory driver, telemetry/event freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves accepted candidate/Skill/checkpoint binding. |
+| Authority | Package-owned QA evidence defines the capability authority: final Oracle approval is a prerequisite, but user acceptance requires its own accepted gate evidence bound to candidate commit and Skill revision. |
+| Legacy strategy | Legacy win events, ordinary Oracle receipts, request ids, P0 counts, generic approval text, or profile metadata cannot overclaim this capability. |
+| Failure policy | Missing package contract, missing acceptance event, missing accepted commit, missing Skill revision, checkpoint mismatch, receipt self-reference, non-approved final Oracle status, blocking findings, wrong capability/probe identity, or stale evidence keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, registry support advancement without complete support, QA reader positive/negative accepted candidate/Skill binding behavior, target-profile compatibility, remaining-inventory selection, and telemetry freeze coverage. |
+| Rollback | Reverting this slice removes only the validation user acceptance package/probe/reader/schema wiring and returns `validation.user_acceptance_gate.v1` to unsupported evidence without changing business runtime gameplay templates or Stage 5 policy. |
+
+Focused validation:
+
+```text
+command=npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts -t "user acceptance|replay|final Oracle|registeredCapabilityCount|remaining|package-owned|telemetry|frozen|runtime consumer evidence"
+exitCode=0
+duration=1.57s
+result=PASS: 7 files / 149 tests passed / 127 skipped.
+
+command=npx vitest run tests/contracts/generation-target-profile-runtime-support.test.ts
+exitCode=0
+duration=1.33s
+result=PASS: 1 file / 51 tests.
+```
+
+Focused set selection:
+
+- `gameplay-capability-package-contract.test.ts`: validates the new user acceptance gate package contract, final Oracle dependency, required evidence id, runtime system, acceptance event, and assertion fields.
+- `gameplay-capability-qa-probes.test.ts`: validates positive accepted candidate/Skill evidence and negative boundaries for ordinary receipt, request/P0-only evidence, generic `game.won`, missing accepted commit, commit mismatch, Skill mismatch, checkpoint mismatch, receipt self-reference, non-approved final Oracle status, blocking finding count, and spoofed boolean fields.
+- `gameplay-capability-registry.test.ts`: validates static registry evidence and required probe wiring without static support promotion.
+- `contract-freeze.test.ts`: included because this diff introduces telemetry event identity `validation.user_acceptance_gate.accepted`.
+- `deepseek-authoritative-dsl-support.test.ts`: validates the frozen target capability identity list.
+- `dsl-consumption-report.test.ts`: validates the consumption report reads the updated package-backed support dimensions.
+- `step37-remaining-inventory-driver.test.ts`: validates parent-loop inventory consumption after the registry count advances to 59.
+- `generation-target-profile-runtime-support.test.ts`: validates target-profile runtime support remains stable after registry/package changes.
+
+Local validation before closure-record sync:
+
+```text
+command=npm run test:contracts
+exitCode=0
+duration=11.33s
+result=PASS: 98 files / 1353 tests.
+
+command=npm test
+exitCode=0
+duration=contracts 11.55s + workspace 49.65s
+result=PASS: contracts 98 files / 1353 tests; workspace 34 files / 410 tests.
+
+command=npm run typecheck
+exitCode=0
+duration=7.81s
+result=PASS.
+
+command=git diff --check
+exitCode=0
+duration=<1s
+result=PASS.
+
+command=realpath /Users/dahufa/.agents/skills/code-change-discipline /Users/dahufa/.agents/skills/review-gated-delivery /Users/dahufa/.agents/skills/code-change-discipline/SKILL.md /Users/dahufa/.agents/skills/review-gated-delivery/SKILL.md
+exitCode=0
+duration=<1s
+result=PASS: active Skill roots resolved to /Users/dahufa/.agents/skills/code-change-discipline and /Users/dahufa/.agents/skills/review-gated-delivery; SKILL.md realpaths are inside those roots.
+
+command=tmp=$(mktemp); for f in /Users/dahufa/.agents/skills/code-change-discipline/SKILL.md /Users/dahufa/.agents/skills/review-gated-delivery/SKILL.md /Users/dahufa/.agents/skills/review-gated-delivery/assets/*.txt /Users/dahufa/.agents/skills/review-gated-delivery/assets/*.md; do ... root-relative path_size_sha rows ...; done | LC_ALL=C sort > "$tmp"; wc -l "$tmp"; shasum -a 256 "$tmp"; cat "$tmp"
+exitCode=0
+duration=<1s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_size_sha; skill_file_count=8; skill_bundle_digest=ed4e3ba1da435f24a527ca1a34f9374bfe1d7ca9e4d482a6d229c3518997dd72.
+
+command=npx tsx - <<'TS' ... current support summary plus remaining-inventory alignment for validation.user_acceptance_gate.v1 ... TS
+exitCode=0
+duration=0.45s
+result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=59; staticCompleteSupportedCount=0; committedClosedCapabilityCount=58; sameRunObservedOnlyCount=58; unsupported_unregistered=0; registered_without_required_probe_verification=1; computedNextCheckpointId=stage4.validation_user_acceptance_gate_v1.complete_supported_package_slice; currentCapabilityState=registered_without_required_probe_verification; selectionFailure=null.
+```
+
+Post-record validation requirement:
+
+- This implementation record and candidate-readiness status sync change the final tree. Before creating the immutable candidate commit, focused contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, Skill freshness, capability support alignment, Parent Loop inventory alignment, and final diff range check must be re-run against the updated final tree.
+- Candidate commit must not write its own SHA into this implementation record.
+- Oracle request must bind the candidate commit SHA and the final recomputed `reviewed_skill_revision=ed4e3ba1da435f24a527ca1a34f9374bfe1d7ca9e4d482a6d229c3518997dd72`.
+- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+- Oracle PASS is required before any receipt may update `closure_status=closed`.
+
 ## Stage 4 Implementation: `validation.fail_closed_unknown_nodes.v1` complete-supported package slice
 
 Checkpoint identity:

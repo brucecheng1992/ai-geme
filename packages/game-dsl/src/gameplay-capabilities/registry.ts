@@ -146,6 +146,10 @@ import {
   createValidationReplayStabilityPackageContract
 } from './validation-replay-stability-package.js';
 import {
+  VALIDATION_USER_ACCEPTANCE_GATE_REQUIRED_PROBE_ID,
+  createValidationUserAcceptanceGatePackageContract
+} from './validation-user-acceptance-gate-package.js';
+import {
   GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID,
   createGoalBossUnlockPackageContract
 } from './goal-boss-unlock-package.js';
@@ -1017,6 +1021,19 @@ const validationReplayStabilityPackageEvidence: GameplayCapabilityEvidence = val
 const validationReplayStabilityPackageQa: GameplayCapabilityQaEvidence = validationReplayStabilityPackageReport.supportEligible
   ? { requiredProbeIds: [VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const validationUserAcceptanceGatePackageReport = validateGameplayCapabilityPackage(createValidationUserAcceptanceGatePackageContract());
+const validationUserAcceptanceGatePackageEvidence: GameplayCapabilityEvidence = validationUserAcceptanceGatePackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const validationUserAcceptanceGatePackageQa: GameplayCapabilityQaEvidence = validationUserAcceptanceGatePackageReport.supportEligible
+  ? { requiredProbeIds: [VALIDATION_USER_ACCEPTANCE_GATE_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const goalBossUnlockPackageReport = validateGameplayCapabilityPackage(createGoalBossUnlockPackageContract());
 const goalBossUnlockPackageEvidence: GameplayCapabilityEvidence = goalBossUnlockPackageReport.supportEligible
   ? {
@@ -1485,6 +1502,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     validationReplayStabilityPackageEvidence,
     validationReplayStabilityPackageQa
+  ),
+  planned(
+    'validation.user_acceptance_gate.v1',
+    'validation',
+    'User acceptance gate validation',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    validationUserAcceptanceGatePackageEvidence,
+    validationUserAcceptanceGatePackageQa
   ),
   planned(
     'goal.boss_unlock.v1',

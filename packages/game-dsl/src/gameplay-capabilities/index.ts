@@ -65,6 +65,8 @@ export * from './validation-metamorphic-semantic-hash-runtime-module.js';
 export * from './validation-metamorphic-semantic-hash-package.js';
 export * from './validation-replay-stability-runtime-module.js';
 export * from './validation-replay-stability-package.js';
+export * from './validation-user-acceptance-gate-runtime-module.js';
+export * from './validation-user-acceptance-gate-package.js';
 export * from './goal-boss-unlock-runtime-module.js';
 export * from './goal-boss-unlock-package.js';
 export * from './hazard-falling-area-runtime-module.js';

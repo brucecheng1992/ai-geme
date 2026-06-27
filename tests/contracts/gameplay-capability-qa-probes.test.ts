@@ -192,6 +192,11 @@ import {
   VALIDATION_REPLAY_STABILITY_SCHEMA_VERSION,
   VALIDATION_REPLAY_STABILITY_SEED,
   createValidationReplayStabilityPackageContract,
+  VALIDATION_USER_ACCEPTANCE_GATE_DECISION,
+  VALIDATION_USER_ACCEPTANCE_GATE_EVENT_TYPE,
+  VALIDATION_USER_ACCEPTANCE_GATE_FINAL_ORACLE_STATUS,
+  VALIDATION_USER_ACCEPTANCE_GATE_REQUIRED_PROBE_ID,
+  createValidationUserAcceptanceGatePackageContract,
   GOAL_BOSS_UNLOCK_BOSS_ENTITY_ID,
   GOAL_BOSS_UNLOCK_EVENT_TYPE,
   GOAL_BOSS_UNLOCK_REASON,
@@ -2970,6 +2975,333 @@ describe('Capability-owned runtime QA probes', () => {
     );
     expect(approvedCurrentGate.status).toBe('passed');
     expect(approvedCurrentGate.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'passed',
+      planHash: plan.planHash
+    });
+  });
+
+  it('verifies user acceptance gate only from accepted evidence bound to candidate and Skill revisions', () => {
+    const capabilityId = 'validation.user_acceptance_gate.v1';
+    const probeId = VALIDATION_USER_ACCEPTANCE_GATE_REQUIRED_PROBE_ID;
+    const packages = [createReviewOracleFinalGatePackageContract(), createValidationUserAcceptanceGatePackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    expect(plan.status).toBe('ready');
+    expect(plan.requiredProbes.map((probe) => probe.id)).toEqual([REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID, probeId]);
+
+    const dependencyOnly = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [finalOracleGateObserved()],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const genericGameWonOnly = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            finalOracleGateObserved(),
+            {
+              capabilityId,
+              probeId,
+              action: 'game_won',
+              eventType: 'game.won',
+              eventTypes: ['game.won'],
+              userAcceptanceDecision: VALIDATION_USER_ACCEPTANCE_GATE_DECISION,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const ordinaryReceiptOnly = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            finalOracleGateObserved(),
+            {
+              capabilityId,
+              probeId,
+              action: 'receipt_recorded',
+              eventType: 'oracle.receipt.recorded',
+              eventTypes: ['oracle.receipt.recorded'],
+              userAcceptanceDecision: VALIDATION_USER_ACCEPTANCE_GATE_DECISION,
+              userAcceptanceBlockingFindingCount: 0,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const p0Only = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            finalOracleGateObserved(),
+            {
+              capabilityId,
+              probeId,
+              action: 'p0_count_only',
+              eventType: VALIDATION_USER_ACCEPTANCE_GATE_EVENT_TYPE,
+              eventTypes: [VALIDATION_USER_ACCEPTANCE_GATE_EVENT_TYPE],
+              finalOracleP0Count: 0,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const missingAcceptedCommit = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [finalOracleGateObserved(), userAcceptanceGateObserved({ userAcceptanceAcceptedCommitSha: undefined })],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const acceptedCommitMismatch = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            finalOracleGateObserved(),
+            userAcceptanceGateObserved({
+              userAcceptanceAcceptedCommitSha: 'def5678differentcandidate',
+              userAcceptanceResultMatchesAcceptedCommit: true
+            })
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const skillDigestMismatch = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            finalOracleGateObserved(),
+            userAcceptanceGateObserved({
+              userAcceptanceAcceptedSkillRevision: 'sha256:old-skill-digest',
+              userAcceptanceResultMatchesAcceptedSkillRevision: true
+            })
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const checkpointMismatch = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [finalOracleGateObserved(), userAcceptanceGateObserved({ userAcceptanceCheckpointId: 'stage4.other_checkpoint' })],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const acceptedCommitIsReceipt = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            finalOracleGateObserved(),
+            userAcceptanceGateObserved({ userAcceptanceReceiptCommitSha: 'abc1234acceptedcandidate' })
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const pendingFinalOracleGate = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            finalOracleGateObserved(),
+            userAcceptanceGateObserved({ userAcceptanceFinalOracleGateStatus: 'pending' })
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const blockingFindingPresent = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [finalOracleGateObserved(), userAcceptanceGateObserved({ userAcceptanceBlockingFindingCount: 1 })],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const acceptedCurrentGate = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [finalOracleGateObserved(), userAcceptanceGateObserved()],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(dependencyOnly.status).toBe('failed');
+    expect(dependencyOnly.requiredResults.find((entry) => entry.probeId === REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed',
+      planHash: plan.planHash
+    });
+    expect(dependencyOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericGameWonOnly.status).toBe('failed');
+    expect(genericGameWonOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(ordinaryReceiptOnly.status).toBe('failed');
+    expect(ordinaryReceiptOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(p0Only.status).toBe('failed');
+    expect(p0Only.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.user_acceptance_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected userAcceptanceGateAccepted=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.user_acceptance_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected userAcceptanceResultMatchesAcceptedCommit=true, observed false')
+        })
+      ])
+    );
+    expect(missingAcceptedCommit.status).toBe('failed');
+    expect(missingAcceptedCommit.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.user_acceptance_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected userAcceptanceAcceptedCommitShaPresent=true, observed false')
+        })
+      ])
+    );
+    expect(acceptedCommitMismatch.status).toBe('failed');
+    expect(acceptedCommitMismatch.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.user_acceptance_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected userAcceptanceResultMatchesAcceptedCommit=true, observed false')
+        })
+      ])
+    );
+    expect(skillDigestMismatch.status).toBe('failed');
+    expect(skillDigestMismatch.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.user_acceptance_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected userAcceptanceResultMatchesAcceptedSkillRevision=true, observed false')
+        })
+      ])
+    );
+    expect(checkpointMismatch.status).toBe('failed');
+    expect(checkpointMismatch.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.user_acceptance_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected userAcceptanceCheckpointMatched=true, observed false')
+        })
+      ])
+    );
+    expect(acceptedCommitIsReceipt.status).toBe('failed');
+    expect(acceptedCommitIsReceipt.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.user_acceptance_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected userAcceptanceAcceptedCommitIsNotReceipt=true, observed false')
+        })
+      ])
+    );
+    expect(pendingFinalOracleGate.status).toBe('failed');
+    expect(pendingFinalOracleGate.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.user_acceptance_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected userAcceptanceFinalOracleGateApproved=true, observed false')
+        })
+      ])
+    );
+    expect(blockingFindingPresent.status).toBe('failed');
+    expect(blockingFindingPresent.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.user_acceptance_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected userAcceptanceBlockingFindingCount=0, observed 1')
+        })
+      ])
+    );
+    expect(acceptedCurrentGate.status).toBe('passed');
+    expect(acceptedCurrentGate.requiredResults.find((entry) => entry.probeId === REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed',
+      planHash: plan.planHash
+    });
+    expect(acceptedCurrentGate.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
       status: 'passed',
       planHash: plan.planHash
     });
@@ -6840,6 +7172,31 @@ function finalOracleGateObserved(
     finalOracleP2Count: 0,
     status: 'observed',
     sourceRef: 'oracle.final_gate.approval',
+    ...overrides
+  };
+}
+
+function userAcceptanceGateObserved(
+  overrides: Partial<CapabilityRuntimeObservedProbeEvidence> = {}
+): CapabilityRuntimeObservedProbeEvidence {
+  return {
+    capabilityId: 'validation.user_acceptance_gate.v1',
+    probeId: VALIDATION_USER_ACCEPTANCE_GATE_REQUIRED_PROBE_ID,
+    action: 'verify_user_acceptance',
+    eventType: VALIDATION_USER_ACCEPTANCE_GATE_EVENT_TYPE,
+    eventTypes: [VALIDATION_USER_ACCEPTANCE_GATE_EVENT_TYPE],
+    userAcceptanceDecision: VALIDATION_USER_ACCEPTANCE_GATE_DECISION,
+    userAcceptanceCandidateCommitSha: 'abc1234acceptedcandidate',
+    userAcceptanceAcceptedCommitSha: 'abc1234acceptedcandidate',
+    userAcceptanceCandidateSkillRevision: 'sha256:current-skill-digest',
+    userAcceptanceAcceptedSkillRevision: 'sha256:current-skill-digest',
+    userAcceptanceCheckpointId: 'stage4.validation_user_acceptance_gate_v1.complete_supported_package_slice',
+    userAcceptanceExpectedCheckpointId: 'stage4.validation_user_acceptance_gate_v1.complete_supported_package_slice',
+    userAcceptanceReceiptId: 'user_acceptance_result_current_candidate',
+    userAcceptanceFinalOracleGateStatus: VALIDATION_USER_ACCEPTANCE_GATE_FINAL_ORACLE_STATUS,
+    userAcceptanceBlockingFindingCount: 0,
+    status: 'observed',
+    sourceRef: 'validation.user_acceptance_gate',
     ...overrides
   };
 }

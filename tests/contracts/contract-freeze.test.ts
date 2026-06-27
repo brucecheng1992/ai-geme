@@ -567,6 +567,11 @@ describe('Contract Freeze', () => {
     expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('validation.replay_stability.verified');
   });
 
+  it('allows package-owned user acceptance gate validation telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'validation.user_acceptance_gate.accepted', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('validation.user_acceptance_gate.accepted');
+  });
+
   it('allows package-owned final Oracle gate telemetry without making it a QA gate requirement', () => {
     expect(() => TelemetryEventSchema.parse({ type: 'review.oracle_final_gate.approved', timestamp_ms: 0, frame: 0 })).not.toThrow();
     expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('review.oracle_final_gate.approved');

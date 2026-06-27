@@ -509,6 +509,26 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   finalOracleCheckpointId?: string;
   finalOracleExpectedCheckpointId?: string;
   finalOracleReceiptCommitSha?: string;
+  userAcceptanceGateAccepted?: boolean;
+  userAcceptanceAcceptedCommitShaPresent?: boolean;
+  userAcceptanceAcceptedSkillRevisionPresent?: boolean;
+  userAcceptanceResultMatchesAcceptedCommit?: boolean;
+  userAcceptanceResultMatchesAcceptedSkillRevision?: boolean;
+  userAcceptanceCheckpointMatched?: boolean;
+  userAcceptanceReceiptIdPresent?: boolean;
+  userAcceptanceAcceptedCommitIsNotReceipt?: boolean;
+  userAcceptanceFinalOracleGateApproved?: boolean;
+  userAcceptanceDecision?: string;
+  userAcceptanceCandidateCommitSha?: string;
+  userAcceptanceAcceptedCommitSha?: string;
+  userAcceptanceCandidateSkillRevision?: string;
+  userAcceptanceAcceptedSkillRevision?: string;
+  userAcceptanceCheckpointId?: string;
+  userAcceptanceExpectedCheckpointId?: string;
+  userAcceptanceReceiptId?: string;
+  userAcceptanceReceiptCommitSha?: string;
+  userAcceptanceFinalOracleGateStatus?: string;
+  userAcceptanceBlockingFindingCount?: number;
   wavesCleared?: boolean;
   clearedWaveCount?: number;
   requiredWaveCount?: number;
@@ -827,6 +847,7 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     return [];
   }
   const finalOracleFacts = deriveFinalOracleGateFacts(observed);
+  const userAcceptanceFacts = deriveUserAcceptanceGateFacts(observed);
 
   return [
     ...compareExpectedBooleanField('airborne', expected, observed.airborne),
@@ -1294,6 +1315,41 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedNumberField('finalOracleP0Count', expected, observed.finalOracleP0Count),
     ...compareExpectedNumberField('finalOracleP1Count', expected, observed.finalOracleP1Count),
     ...compareExpectedNumberField('finalOracleP2Count', expected, observed.finalOracleP2Count),
+    ...compareExpectedBooleanField('userAcceptanceGateAccepted', expected, userAcceptanceFacts.userAcceptanceGateAccepted),
+    ...compareExpectedBooleanField(
+      'userAcceptanceAcceptedCommitShaPresent',
+      expected,
+      userAcceptanceFacts.userAcceptanceAcceptedCommitShaPresent
+    ),
+    ...compareExpectedBooleanField(
+      'userAcceptanceAcceptedSkillRevisionPresent',
+      expected,
+      userAcceptanceFacts.userAcceptanceAcceptedSkillRevisionPresent
+    ),
+    ...compareExpectedBooleanField(
+      'userAcceptanceResultMatchesAcceptedCommit',
+      expected,
+      userAcceptanceFacts.userAcceptanceResultMatchesAcceptedCommit
+    ),
+    ...compareExpectedBooleanField(
+      'userAcceptanceResultMatchesAcceptedSkillRevision',
+      expected,
+      userAcceptanceFacts.userAcceptanceResultMatchesAcceptedSkillRevision
+    ),
+    ...compareExpectedBooleanField('userAcceptanceCheckpointMatched', expected, userAcceptanceFacts.userAcceptanceCheckpointMatched),
+    ...compareExpectedBooleanField('userAcceptanceReceiptIdPresent', expected, userAcceptanceFacts.userAcceptanceReceiptIdPresent),
+    ...compareExpectedBooleanField(
+      'userAcceptanceAcceptedCommitIsNotReceipt',
+      expected,
+      userAcceptanceFacts.userAcceptanceAcceptedCommitIsNotReceipt
+    ),
+    ...compareExpectedBooleanField(
+      'userAcceptanceFinalOracleGateApproved',
+      expected,
+      userAcceptanceFacts.userAcceptanceFinalOracleGateApproved
+    ),
+    ...compareExpectedStringField('userAcceptanceDecision', expected, observed.userAcceptanceDecision),
+    ...compareExpectedNumberField('userAcceptanceBlockingFindingCount', expected, observed.userAcceptanceBlockingFindingCount),
     ...compareExpectedBooleanField('wavesCleared', expected, observed.wavesCleared),
     ...compareExpectedNumberField('clearedWaveCount', expected, observed.clearedWaveCount),
     ...compareExpectedNumberField('requiredWaveCount', expected, observed.requiredWaveCount),
@@ -1357,6 +1413,46 @@ function deriveFinalOracleGateFacts(observed: CapabilityRuntimeObservedProbeEvid
     finalOracleCheckpointMatched: checkpointId !== undefined && expectedCheckpointId !== undefined && checkpointId === expectedCheckpointId,
     finalOracleResultIdPresent: oracleResultId !== undefined,
     finalOracleReviewedCommitIsNotReceipt: reviewedCommitSha !== undefined && (receiptCommitSha === undefined || reviewedCommitSha !== receiptCommitSha)
+  };
+}
+
+type UserAcceptanceGateFacts = {
+  userAcceptanceGateAccepted?: boolean;
+  userAcceptanceAcceptedCommitShaPresent: boolean;
+  userAcceptanceAcceptedSkillRevisionPresent: boolean;
+  userAcceptanceResultMatchesAcceptedCommit: boolean;
+  userAcceptanceResultMatchesAcceptedSkillRevision: boolean;
+  userAcceptanceCheckpointMatched: boolean;
+  userAcceptanceReceiptIdPresent: boolean;
+  userAcceptanceAcceptedCommitIsNotReceipt: boolean;
+  userAcceptanceFinalOracleGateApproved?: boolean;
+};
+
+function deriveUserAcceptanceGateFacts(observed: CapabilityRuntimeObservedProbeEvidence): UserAcceptanceGateFacts {
+  const candidateCommitSha = nonEmptyString(observed.userAcceptanceCandidateCommitSha);
+  const acceptedCommitSha = nonEmptyString(observed.userAcceptanceAcceptedCommitSha);
+  const candidateSkillRevision = nonEmptyString(observed.userAcceptanceCandidateSkillRevision);
+  const acceptedSkillRevision = nonEmptyString(observed.userAcceptanceAcceptedSkillRevision);
+  const checkpointId = nonEmptyString(observed.userAcceptanceCheckpointId);
+  const expectedCheckpointId = nonEmptyString(observed.userAcceptanceExpectedCheckpointId);
+  const receiptId = nonEmptyString(observed.userAcceptanceReceiptId);
+  const receiptCommitSha = nonEmptyString(observed.userAcceptanceReceiptCommitSha);
+
+  return {
+    userAcceptanceGateAccepted:
+      typeof observed.userAcceptanceDecision === 'string' ? observed.userAcceptanceDecision === 'accepted' : undefined,
+    userAcceptanceAcceptedCommitShaPresent: acceptedCommitSha !== undefined,
+    userAcceptanceAcceptedSkillRevisionPresent: acceptedSkillRevision !== undefined,
+    userAcceptanceResultMatchesAcceptedCommit:
+      candidateCommitSha !== undefined && acceptedCommitSha !== undefined && acceptedCommitSha === candidateCommitSha,
+    userAcceptanceResultMatchesAcceptedSkillRevision:
+      candidateSkillRevision !== undefined && acceptedSkillRevision !== undefined && acceptedSkillRevision === candidateSkillRevision,
+    userAcceptanceCheckpointMatched: checkpointId !== undefined && expectedCheckpointId !== undefined && checkpointId === expectedCheckpointId,
+    userAcceptanceReceiptIdPresent: receiptId !== undefined,
+    userAcceptanceAcceptedCommitIsNotReceipt:
+      acceptedCommitSha !== undefined && (receiptCommitSha === undefined || acceptedCommitSha !== receiptCommitSha),
+    userAcceptanceFinalOracleGateApproved:
+      typeof observed.userAcceptanceFinalOracleGateStatus === 'string' ? observed.userAcceptanceFinalOracleGateStatus === 'approved' : undefined
   };
 }
 

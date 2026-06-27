@@ -338,6 +338,11 @@ import {
   createValidationReplayStabilityPackageContract
 } from '../../packages/game-dsl/src/gameplay-capabilities/validation-replay-stability-package.js';
 import {
+  VALIDATION_USER_ACCEPTANCE_GATE_PACKAGE_REQUIRED_EVIDENCE_ID,
+  VALIDATION_USER_ACCEPTANCE_GATE_REQUIRED_PROBE_ID,
+  createValidationUserAcceptanceGatePackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/validation-user-acceptance-gate-package.js';
+import {
   VALIDATION_REPLAY_STABILITY_BASELINE_TRACE_HASH,
   VALIDATION_REPLAY_STABILITY_EVENT_TYPE,
   VALIDATION_REPLAY_STABILITY_FRAME_COUNT,
@@ -349,6 +354,12 @@ import {
   VALIDATION_REPLAY_STABILITY_SCHEMA_VERSION,
   VALIDATION_REPLAY_STABILITY_SEED
 } from '../../packages/game-dsl/src/gameplay-capabilities/validation-replay-stability-runtime-module.js';
+import {
+  VALIDATION_USER_ACCEPTANCE_GATE_DECISION,
+  VALIDATION_USER_ACCEPTANCE_GATE_EVENT_TYPE,
+  VALIDATION_USER_ACCEPTANCE_GATE_FINAL_ORACLE_STATUS,
+  VALIDATION_USER_ACCEPTANCE_GATE_RUNTIME_SYSTEM_ID
+} from '../../packages/game-dsl/src/gameplay-capabilities/validation-user-acceptance-gate-runtime-module.js';
 import {
   GOAL_BOSS_UNLOCK_PACKAGE_REQUIRED_EVIDENCE_ID,
   GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID,
@@ -2199,6 +2210,85 @@ describe('Gameplay capability package contract', () => {
         })
       ]
     });
+  });
+
+  it('accepts the user acceptance gate package only with accepted candidate and Skill binding proof', () => {
+    const contract = createValidationUserAcceptanceGatePackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === VALIDATION_USER_ACCEPTANCE_GATE_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'validation.user_acceptance_gate.v1'
+    });
+    expect(contract.dependencies).toEqual([{ capabilityId: 'review.oracle_final_gate.v1', range: '^v1' }]);
+    expect(contract.runtime.systems).toEqual([
+      expect.objectContaining({
+        id: VALIDATION_USER_ACCEPTANCE_GATE_RUNTIME_SYSTEM_ID,
+        dependencies: [REVIEW_ORACLE_FINAL_GATE_RUNTIME_SYSTEM_ID]
+      })
+    ]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: VALIDATION_USER_ACCEPTANCE_GATE_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'user_acceptance_gate',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'validation.user_acceptance_gate.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: VALIDATION_USER_ACCEPTANCE_GATE_EVENT_TYPE,
+          parameters: {
+            evidenceKind: 'user_acceptance_gate',
+            expectedDecision: VALIDATION_USER_ACCEPTANCE_GATE_DECISION,
+            expectedFinalOracleGateStatus: VALIDATION_USER_ACCEPTANCE_GATE_FINAL_ORACLE_STATUS,
+            profileId: 'side_scrolling_run_and_gun.v1'
+          }
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: VALIDATION_USER_ACCEPTANCE_GATE_RUNTIME_SYSTEM_ID,
+          ref: VALIDATION_USER_ACCEPTANCE_GATE_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${VALIDATION_USER_ACCEPTANCE_GATE_REQUIRED_PROBE_ID}.assertion.user_acceptance_bound_to_candidate_and_skill`,
+          expected: {
+            userAcceptanceGateAccepted: true,
+            userAcceptanceAcceptedCommitShaPresent: true,
+            userAcceptanceAcceptedSkillRevisionPresent: true,
+            userAcceptanceResultMatchesAcceptedCommit: true,
+            userAcceptanceResultMatchesAcceptedSkillRevision: true,
+            userAcceptanceCheckpointMatched: true,
+            userAcceptanceReceiptIdPresent: true,
+            userAcceptanceAcceptedCommitIsNotReceipt: true,
+            userAcceptanceFinalOracleGateApproved: true,
+            userAcceptanceDecision: VALIDATION_USER_ACCEPTANCE_GATE_DECISION,
+            userAcceptanceBlockingFindingCount: 0
+          }
+        })
+      ]
+    });
+    expect(contract.defaults.requiredStateFields).toEqual([
+      'userAcceptanceDecision',
+      'userAcceptanceCandidateCommitSha',
+      'userAcceptanceAcceptedCommitSha',
+      'userAcceptanceCandidateSkillRevision',
+      'userAcceptanceAcceptedSkillRevision',
+      'userAcceptanceCheckpointId',
+      'userAcceptanceExpectedCheckpointId',
+      'userAcceptanceReceiptId',
+      'userAcceptanceFinalOracleGateStatus',
+      'userAcceptanceBlockingFindingCount'
+    ]);
   });
 
   it('accepts the goal boss unlock package-owned QA contract', () => {
