@@ -6900,6 +6900,43 @@ Candidate note:
 - Oracle request must bind the candidate commit SHA, `source_inventory_hash=fnv1a_a883bf43`, and `reviewed_skill_revision=2090465e73e2b4ddfc3756b925e5941290d3eb9b1b20f06b362d560300d6757b`.
 - Stage 5 remains `NOT_ENTERED`; this atom only routes the next checkpoint to Stage 4 exit audit.
 
+Oracle receipt:
+
+```text
+closure_scope=atomic_step
+atomic_step_boundary_reached=true
+atomic_step_status=closed
+checkpoint_id=stage4.support_promotion_from_same_run_observed_package_receipts
+reviewed_commit_sha=ca8bf87312afb939354f728ba84827139284f3ff
+reviewed_commit_tree=f15406ef418b7f922823576300ce5a59e0ac5fbc
+reviewed_skill_revision_type=sha256_bundle
+reviewed_skill_bundle_format=root-relative-rows-v1
+reviewed_skill_revision=2090465e73e2b4ddfc3756b925e5941290d3eb9b1b20f06b362d560300d6757b
+reviewed_source_inventory_hash=fnv1a_a883bf43
+oracle_agent_id=019f07df-bdeb-7823-9dae-fdb1029d6f7c
+oracle_agent_id_source=multi_agent_v1.spawn_agent returned agent_id for read-only Oracle review
+oracle_status=approved
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 none
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for the immutable candidate only. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, Stage 5, production default cutover, legacy authoritative path exit, or prior closed history.
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
+promotion_eligible_count=59
+completeSupportedCount=59
+stage5_entry_allowed=false
+parent_stage_status=running
+parent_loop_status=running
+loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage4.exit_audit_after_support_promotion
+next_atomic_step_label=Stage 4 exit audit after support promotion atomic step
+next_atomic_step_parent_stage_id=stage4
+next_atomic_step_selection_rule=first_unmet_checkpoint_in_authoritative_inventory
+closure_status=closed
+```
+
 ## Stage 4 Implementation: `validation.fail_closed_unknown_nodes.v1` complete-supported package slice
 
 Checkpoint identity:
