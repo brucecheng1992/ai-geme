@@ -1,20 +1,31 @@
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
 import {
   STEP37_REMAINING_INVENTORY_ARTIFACT_KIND,
   STEP37_REMAINING_INVENTORY_SCHEMA_VERSION,
+  STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_CHECKPOINT_ID,
+  STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_NEXT_ATOMIC_STEP,
   STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID,
   STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP,
+  buildStep37PromotedSupportSummary,
   buildDeepSeekRunAndGunValidationProfileSupportSummary,
   buildStep37RemainingCompleteSupportedInventory,
+  buildStep37SupportPromotionApplicationReport,
+  buildStep37SupportPromotionInventory,
   deriveStep37RemainingCapabilityState,
+  hashStep37SupportPromotionInventoryArtifact,
+  parseStep37SupportPromotionInventoryArtifact,
   type DeepSeekRunAndGunProfileCapabilitySupport,
   type DeepSeekRunAndGunProfileSupportSummary,
   type Step37CheckpointInventoryItem,
-  type Step37CommittedCapabilityClosure
+  type Step37CommittedCapabilityClosure,
+  type Step37SupportPromotionApplicationReport
 } from '../../packages/game-dsl/src/index.js';
 
 const sourcePlanRevision = 'HEAD:docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md';
+const supportPromotionInventoryPath = 'docs/plans/step37-support-promotion-per-capability-inventory.v0.1.json';
 
 describe('Step37 remaining complete-supported inventory driver', () => {
   it('distinguishes every required Stage 4 remaining-inventory state without promoting static completeSupported', () => {
@@ -427,6 +438,131 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     });
   });
 
+  it('fails closed when support promotion was applied but the support summary consumer did not consume it', () => {
+    const support = supportSummary([capability({ capabilityId: 'promoted.alpha.v1' }), capability({ capabilityId: 'promoted.beta.v1' })]);
+    const application = supportPromotionApplicationReport({
+      completeSupportedCount: 2,
+      completeSupportedCapabilityIds: ['promoted.alpha.v1', 'promoted.beta.v1']
+    });
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: support,
+      observedCapabilityIds: ['promoted.alpha.v1', 'promoted.beta.v1'],
+      committedCapabilityClosures: ['promoted.alpha.v1', 'promoted.beta.v1'].map((capabilityId) => ({
+        capabilityId,
+        checkpointId: `stage4.${capabilityId.replaceAll('.', '_')}.complete_supported_package_slice`,
+        sourceRevision: 'commit-a:docs/plans/stage4.md'
+      })),
+      supportPromotionApplicationReport: application,
+      sourcePlanRevision
+    });
+
+    expect(report.staticCompleteSupportedCount).toBe(0);
+    expect(report.nextCheckpoint).toBeNull();
+    expect(report.selectionFailure).toMatchObject({
+      error_code: 'SUPPORT_SUMMARY_CONSUMER_NOT_CONSUMED_PROMOTION_INVENTORY',
+      expected_complete_supported_count: 2,
+      actual_complete_supported_count: 0,
+      promotion_application_status: 'applied',
+      source_inventory_hash: 'fnv1a_inventory'
+    });
+  });
+
+  it('requires a Stage 4 exit audit checkpoint after support promotion is consumed', () => {
+    const support = supportSummary([capability({ capabilityId: 'promoted.alpha.v1' })]);
+    const application = supportPromotionApplicationReport({
+      completeSupportedCount: 1,
+      completeSupportedCapabilityIds: ['promoted.alpha.v1']
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({
+      supportSummary: support,
+      promotionApplicationReport: application
+    });
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      sourcePlanRevision
+    });
+
+    expect(report.staticCompleteSupportedCount).toBe(1);
+    expect(report.nextCheckpoint).toBeNull();
+    expect(report.selectionFailure).toMatchObject({
+      error_code: 'STAGE4_EXIT_AUDIT_CHECKPOINT_REQUIRED',
+      stage5_entry_allowed: false,
+      expected_checkpoint_id: STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_CHECKPOINT_ID,
+      actual_checkpoint_id: null,
+      invalid_fields: ['checkpoint_id']
+    });
+  });
+
+  it('continues to Stage 4 exit audit, not Stage 5, after support promotion is consumed', () => {
+    const support = supportSummary([capability({ capabilityId: 'promoted.alpha.v1' }), capability({ capabilityId: 'promoted.beta.v1' })]);
+    const application = supportPromotionApplicationReport({
+      completeSupportedCount: 2,
+      completeSupportedCapabilityIds: ['promoted.alpha.v1', 'promoted.beta.v1']
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({
+      supportSummary: support,
+      promotionApplicationReport: application
+    });
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditCheckpoint: stage4ExitAuditCheckpoint(),
+      sourcePlanRevision
+    });
+
+    expect(report.staticCompleteSupportedCount).toBe(2);
+    expect(report.stateCounts.complete_supported).toBe(2);
+    expect(report.selectionFailure).toBeNull();
+    expect(report.nextCheckpoint).toMatchObject({
+      checkpoint_id: STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_CHECKPOINT_ID,
+      parent_stage_id: 'stage4',
+      next_atomic_step: STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_NEXT_ATOMIC_STEP,
+      selection_rule: 'first_unmet_checkpoint_in_authoritative_inventory'
+    });
+    expect(report.nextCheckpoint?.checkpoint_id).not.toContain('stage5');
+  });
+
+  it('routes the current verified 59/59 promotion inventory to Stage 4 exit audit after support consumption', () => {
+    const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
+    const inventory = parseStep37SupportPromotionInventoryArtifact(JSON.parse(readFileSync(supportPromotionInventoryPath, 'utf8')));
+    const inventoryReport = buildStep37SupportPromotionInventory({
+      supportSummary: support,
+      aggregateObservedCapabilityIds: inventory.aggregateObservedCapabilityIds,
+      currentRunId: inventory.currentRunId,
+      sourcePlanRevision: inventory.sourcePlanRevision,
+      capabilityClosureRecords: inventory.capabilityClosureRecords
+    });
+    const inventoryHash = hashStep37SupportPromotionInventoryArtifact(inventory);
+    const application = buildStep37SupportPromotionApplicationReport({
+      supportSummary: support,
+      inventoryReport,
+      sourceInventoryPath: supportPromotionInventoryPath,
+      sourceInventoryHash: inventoryHash,
+      expectedInventoryHash: inventoryHash
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({ supportSummary: support, promotionApplicationReport: application });
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditCheckpoint: stage4ExitAuditCheckpoint({
+        unmet_reason:
+          'Current Stage 4 support promotion consumed 59/59 same-run observed package receipts; run Stage 4 exit audit before Stage 5 entry.'
+      }),
+      sourcePlanRevision
+    });
+
+    expect(application.applicationStatus).toBe('applied');
+    expect(report.requiredCapabilityCount).toBe(59);
+    expect(report.staticCompleteSupportedCount).toBe(59);
+    expect(report.stateCounts.complete_supported).toBe(59);
+    expect(report.sameRunObservedOnlyCount).toBe(0);
+    expect(report.committedClosedCapabilityCount).toBe(0);
+    expect(report.selectionFailure).toBeNull();
+    expect(report.nextCheckpoint?.checkpoint_id).toBe(STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_CHECKPOINT_ID);
+    expect(report.nextCheckpoint?.checkpoint_id).not.toBe(STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID);
+  });
+
   it('requires committed closure history to have traceable source revisions instead of stale memory labels', () => {
     expect(() =>
       buildStep37RemainingCompleteSupportedInventory({
@@ -524,6 +660,45 @@ function supportPromotionCheckpoint(overrides: Partial<Step37CheckpointInventory
     unmet_reason:
       'Stage 4 package inventory is exhausted with same-run observed package receipts, but static completeSupported remains 0/59; support promotion must audit whether observed package evidence can become closure authority before Stage 5 entry.',
     source_plan_revision: sourcePlanRevision,
+    ...overrides
+  };
+}
+
+function stage4ExitAuditCheckpoint(overrides: Partial<Step37CheckpointInventoryItem> = {}): Step37CheckpointInventoryItem {
+  return {
+    checkpoint_id: STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_CHECKPOINT_ID,
+    parent_stage_id: 'stage4',
+    next_atomic_step: STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_NEXT_ATOMIC_STEP,
+    status: 'unmet',
+    unmet_reason:
+      'Stage 4 complete support was promoted from same-run package receipts; audit Stage 4 exit before any Stage 5 entry.',
+    source_plan_revision: sourcePlanRevision,
+    ...overrides
+  };
+}
+
+function supportPromotionApplicationReport(
+  overrides: Partial<Step37SupportPromotionApplicationReport> = {}
+): Step37SupportPromotionApplicationReport {
+  return {
+    artifactKind: 'step37_support_promotion_complete_supported_view',
+    schemaVersion: 'step37_support_promotion_complete_supported_view.v0.1',
+    checkpointId: STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID,
+    sourceInventoryPath: 'docs/plans/step37-support-promotion-per-capability-inventory.v0.1.json',
+    sourceInventoryHash: 'fnv1a_inventory',
+    expectedInventoryHash: 'fnv1a_inventory',
+    inventoryHashMatches: true,
+    supportSummaryConsumer: 'buildStep37PromotedSupportSummary',
+    supportPromotionInputStatus: 'ready',
+    applicationStatus: 'applied',
+    requiredCapabilityCount: overrides.completeSupportedCapabilityIds?.length ?? 0,
+    registeredCapabilityCount: overrides.completeSupportedCapabilityIds?.length ?? 0,
+    promotionEligibleCount: overrides.completeSupportedCapabilityIds?.length ?? 0,
+    completeSupportedCount: overrides.completeSupportedCapabilityIds?.length ?? 0,
+    completeSupportedCapabilityIds: [],
+    blockedCapabilityIds: [],
+    blockers: [],
+    stage5EntryAllowed: false,
     ...overrides
   };
 }

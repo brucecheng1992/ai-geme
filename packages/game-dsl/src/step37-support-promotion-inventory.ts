@@ -1,14 +1,21 @@
 import { type DeepSeekRunAndGunProfileSupportSummary } from './deepseek-run-and-gun-validation-profile-v1.js';
+import { hashStableJson } from './gameplay-capabilities/stable-json.js';
 
 export const STEP37_SUPPORT_PROMOTION_INVENTORY_ARTIFACT_KIND = 'step37_support_promotion_per_capability_inventory';
 export const STEP37_SUPPORT_PROMOTION_INVENTORY_SCHEMA_VERSION = 'step37_support_promotion_per_capability_inventory.v0.1';
 export const STEP37_SUPPORT_PROMOTION_INVENTORY_CHECKPOINT_ID = 'stage4.support_promotion_from_same_run_observed_package_receipts';
+export const STEP37_SUPPORT_PROMOTION_COMPLETE_SUPPORTED_VIEW_ARTIFACT_KIND =
+  'step37_support_promotion_complete_supported_view';
+export const STEP37_SUPPORT_PROMOTION_COMPLETE_SUPPORTED_VIEW_SCHEMA_VERSION =
+  'step37_support_promotion_complete_supported_view.v0.1';
 const STEP37_SUPPORT_PROMOTION_PARENT_STAGE_ID = 'stage4' as const;
+const STEP37_SUPPORT_PROMOTION_CONSUMER = 'buildStep37PromotedSupportSummary' as const;
 
 export type Step37SupportPromotionEvidenceScope = 'capability_specific' | 'generic_only';
 export type Step37SupportPromotionEvidenceRunScope = 'same_run' | 'previous_run';
 export type Step37SupportPromotionClosureStatus = 'closed' | 'not_closed';
 export type Step37SupportPromotionReceiptStatus = 'receipt_closed' | 'missing_receipt';
+export type Step37SupportPromotionOracleStatus = 'approved' | 'not_approved';
 export type Step37SupportPromotionInputStatus = 'ready' | 'blocked';
 export type Step37SupportPromotionGapType =
   | 'parser_marker_issue'
@@ -25,6 +32,7 @@ export type Step37SupportPromotionCapabilityClosureRecord = {
   parentStageId: string;
   closureStatus: Step37SupportPromotionClosureStatus;
   receiptStatus: Step37SupportPromotionReceiptStatus;
+  oracleStatus: Step37SupportPromotionOracleStatus;
   receiptRef: string;
   sourceRevision: string;
   sourceSection: string;
@@ -115,9 +123,54 @@ export type Step37SupportPromotionInventoryReport = {
   wrongParentStageEntries: Step37SupportPromotionWrongParentStageEntry[];
   wrongCheckpointEntries: Step37SupportPromotionWrongCheckpointEntry[];
   missingReceiptEntries: Step37SupportPromotionEligibleEntry[];
+  missingOracleApprovalEntries: Step37SupportPromotionEligibleEntry[];
   unknownCapabilityEntries: Step37SupportPromotionEligibleEntry[];
   promotionEligibleEntries: Step37SupportPromotionEligibleEntry[];
   gapTypes: Step37SupportPromotionGapType[];
+};
+
+export type Step37SupportPromotionApplicationStatus = 'applied' | 'blocked';
+
+export type Step37SupportPromotionApplicationBlocker = {
+  errorCode:
+    | 'SUPPORT_PROMOTION_INVENTORY_HASH_MISMATCH'
+    | 'SUPPORT_PROMOTION_INPUT_NOT_READY'
+    | 'SUPPORT_PROMOTION_ELIGIBLE_COUNT_INCOMPLETE'
+    | 'SUPPORT_PROMOTION_CAPABILITY_MISSING'
+    | 'SUPPORT_PROMOTION_DUPLICATE_CAPABILITY'
+    | 'SUPPORT_PROMOTION_STALE_OR_WRONG_RUN'
+    | 'SUPPORT_PROMOTION_GENERIC_ONLY_EVIDENCE'
+    | 'SUPPORT_PROMOTION_WRONG_PACKAGE'
+    | 'SUPPORT_PROMOTION_WRONG_PARENT_STAGE'
+    | 'SUPPORT_PROMOTION_WRONG_CHECKPOINT'
+    | 'SUPPORT_PROMOTION_RECEIPT_MISSING'
+    | 'SUPPORT_PROMOTION_ORACLE_APPROVAL_MISSING'
+    | 'SUPPORT_PROMOTION_UNKNOWN_CAPABILITY'
+    | 'SUPPORT_PROMOTION_SUPPORT_SUMMARY_NOT_FULLY_REGISTERED';
+  capabilityIds: string[];
+  actual?: string | number | boolean;
+  expected?: string | number | boolean;
+};
+
+export type Step37SupportPromotionApplicationReport = {
+  artifactKind: typeof STEP37_SUPPORT_PROMOTION_COMPLETE_SUPPORTED_VIEW_ARTIFACT_KIND;
+  schemaVersion: typeof STEP37_SUPPORT_PROMOTION_COMPLETE_SUPPORTED_VIEW_SCHEMA_VERSION;
+  checkpointId: typeof STEP37_SUPPORT_PROMOTION_INVENTORY_CHECKPOINT_ID;
+  sourceInventoryPath: string;
+  sourceInventoryHash: string;
+  expectedInventoryHash: string;
+  inventoryHashMatches: boolean;
+  supportSummaryConsumer: typeof STEP37_SUPPORT_PROMOTION_CONSUMER;
+  supportPromotionInputStatus: Step37SupportPromotionInputStatus;
+  applicationStatus: Step37SupportPromotionApplicationStatus;
+  requiredCapabilityCount: number;
+  registeredCapabilityCount: number;
+  promotionEligibleCount: number;
+  completeSupportedCount: number;
+  completeSupportedCapabilityIds: string[];
+  blockedCapabilityIds: string[];
+  blockers: Step37SupportPromotionApplicationBlocker[];
+  stage5EntryAllowed: false;
 };
 
 export function buildStep37SupportPromotionInventory(
@@ -175,6 +228,9 @@ export function buildStep37SupportPromotionInventory(
   const missingReceiptEntries = closedRecords
     .filter((record) => record.receiptStatus !== 'receipt_closed')
     .map(toEligibleEntry);
+  const missingOracleApprovalEntries = closedRecords
+    .filter((record) => record.oracleStatus !== 'approved')
+    .map(toEligibleEntry);
   const unknownCapabilityEntries = closedRecords
     .filter((record) => !requiredCapabilitySet.has(record.capabilityId))
     .map(toEligibleEntry);
@@ -185,6 +241,7 @@ export function buildStep37SupportPromotionInventory(
   const wrongParentStageCapabilityIds = new Set(wrongParentStageEntries.map((entry) => entry.capabilityId));
   const wrongCheckpointCapabilityIds = new Set(wrongCheckpointEntries.map((entry) => entry.capabilityId));
   const missingReceiptCapabilityIds = new Set(missingReceiptEntries.map((entry) => entry.capabilityId));
+  const missingOracleApprovalCapabilityIds = new Set(missingOracleApprovalEntries.map((entry) => entry.capabilityId));
   const unknownCapabilityIds = new Set(unknownCapabilityEntries.map((entry) => entry.capabilityId));
   const promotionEligibleEntries = requiredCapabilityIds
     .map((capabilityId) => {
@@ -199,6 +256,7 @@ export function buildStep37SupportPromotionInventory(
     .filter((record) => !wrongParentStageCapabilityIds.has(record.capabilityId))
     .filter((record) => !wrongCheckpointCapabilityIds.has(record.capabilityId))
     .filter((record) => !missingReceiptCapabilityIds.has(record.capabilityId))
+    .filter((record) => !missingOracleApprovalCapabilityIds.has(record.capabilityId))
     .filter((record) => !unknownCapabilityIds.has(record.capabilityId))
     .map(toEligibleEntry);
 
@@ -213,6 +271,7 @@ export function buildStep37SupportPromotionInventory(
     wrongParentStageEntries.length === 0 &&
     wrongCheckpointEntries.length === 0 &&
     missingReceiptEntries.length === 0 &&
+    missingOracleApprovalEntries.length === 0 &&
     unknownCapabilityEntries.length === 0
       ? 'ready'
       : 'blocked';
@@ -237,6 +296,7 @@ export function buildStep37SupportPromotionInventory(
     wrongParentStageEntries,
     wrongCheckpointEntries,
     missingReceiptEntries,
+    missingOracleApprovalEntries,
     unknownCapabilityEntries,
     promotionEligibleEntries,
     gapTypes: deriveGapTypes({
@@ -251,9 +311,105 @@ export function buildStep37SupportPromotionInventory(
       wrongPackageEntries,
       wrongParentStageEntries,
       wrongCheckpointEntries,
+      missingOracleApprovalEntries,
       unknownCapabilityEntries,
       duplicateEntries
     })
+  };
+}
+
+export function hashStep37SupportPromotionInventoryArtifact(artifact: Step37SupportPromotionInventoryArtifact): string {
+  return hashStableJson(artifact);
+}
+
+export function buildStep37SupportPromotionApplicationReport(input: {
+  supportSummary: DeepSeekRunAndGunProfileSupportSummary;
+  inventoryReport: Step37SupportPromotionInventoryReport;
+  sourceInventoryPath: string;
+  sourceInventoryHash: string;
+  expectedInventoryHash: string;
+}): Step37SupportPromotionApplicationReport {
+  const sourceInventoryPath = requireNonEmpty(input.sourceInventoryPath, 'sourceInventoryPath');
+  const sourceInventoryHash = requireNonEmpty(input.sourceInventoryHash, 'sourceInventoryHash');
+  const expectedInventoryHash = requireNonEmpty(input.expectedInventoryHash, 'expectedInventoryHash');
+  const requiredCapabilityIds = input.supportSummary.capabilities.map((capability) => capability.capabilityId).sort();
+  const eligibleCapabilityIds = input.inventoryReport.promotionEligibleEntries.map((entry) => entry.capabilityId).sort();
+  const missingEligibleCapabilityIds = requiredCapabilityIds.filter((capabilityId) => !eligibleCapabilityIds.includes(capabilityId));
+  const blockerInput = {
+    inventoryReport: input.inventoryReport,
+    supportSummary: input.supportSummary,
+    sourceInventoryHash,
+    expectedInventoryHash,
+    missingEligibleCapabilityIds
+  };
+  const blockers = buildPromotionApplicationBlockers(blockerInput);
+  const applicationStatus = blockers.length === 0 ? 'applied' : 'blocked';
+
+  return {
+    artifactKind: STEP37_SUPPORT_PROMOTION_COMPLETE_SUPPORTED_VIEW_ARTIFACT_KIND,
+    schemaVersion: STEP37_SUPPORT_PROMOTION_COMPLETE_SUPPORTED_VIEW_SCHEMA_VERSION,
+    checkpointId: STEP37_SUPPORT_PROMOTION_INVENTORY_CHECKPOINT_ID,
+    sourceInventoryPath,
+    sourceInventoryHash,
+    expectedInventoryHash,
+    inventoryHashMatches: sourceInventoryHash === expectedInventoryHash,
+    supportSummaryConsumer: STEP37_SUPPORT_PROMOTION_CONSUMER,
+    supportPromotionInputStatus: input.inventoryReport.supportPromotionInputStatus,
+    applicationStatus,
+    requiredCapabilityCount: input.supportSummary.summary.requiredCapabilityCount,
+    registeredCapabilityCount: input.supportSummary.summary.registeredCapabilityCount,
+    promotionEligibleCount: input.inventoryReport.promotionEligibleCount,
+    completeSupportedCount: applicationStatus === 'applied' ? eligibleCapabilityIds.length : 0,
+    completeSupportedCapabilityIds: applicationStatus === 'applied' ? eligibleCapabilityIds : [],
+    blockedCapabilityIds: uniqueSorted(blockers.flatMap((blocker) => blocker.capabilityIds)),
+    blockers,
+    stage5EntryAllowed: false
+  };
+}
+
+export function buildStep37PromotedSupportSummary(input: {
+  supportSummary: DeepSeekRunAndGunProfileSupportSummary;
+  promotionApplicationReport: Step37SupportPromotionApplicationReport;
+}): DeepSeekRunAndGunProfileSupportSummary {
+  if (input.promotionApplicationReport.applicationStatus !== 'applied') {
+    throw new Error(
+      `STEP37_SUPPORT_PROMOTION_APPLICATION_BLOCKED blockers=${input.promotionApplicationReport.blockers
+        .map((blocker) => blocker.errorCode)
+        .join(',')}`
+    );
+  }
+
+  const completeSupportedCapabilityIds = new Set(input.promotionApplicationReport.completeSupportedCapabilityIds);
+  const capabilities = input.supportSummary.capabilities.map((capability) => {
+    if (!completeSupportedCapabilityIds.has(capability.capabilityId)) {
+      return capability;
+    }
+
+    return {
+      ...capability,
+      classification: 'COMPLETE_SUPPORTED' as const,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: true
+      },
+      missingEvidenceDimensions: [],
+      missingSupportEvidencePrerequisites: [],
+      completeSupported: true,
+      legacyBacked: false
+    };
+  });
+
+  return {
+    ...input.supportSummary,
+    summary: {
+      ...input.supportSummary.summary,
+      completeSupportedCount: capabilities.filter((capability) => capability.completeSupported).length,
+      legacyBackedCapabilityCount: capabilities.filter((capability) => capability.legacyBacked).length
+    },
+    capabilities
   };
 }
 
@@ -298,6 +454,7 @@ function parseCapabilityClosureRecord(value: unknown, index: number): Step37Supp
     parentStageId: requireStringField(object, 'parent_stage_id'),
     closureStatus: requireClosureStatus(requireStringField(object, 'closure_status'), index),
     receiptStatus: requireReceiptStatus(requireStringField(object, 'receipt_status'), index),
+    oracleStatus: requireOracleStatus(requireStringField(object, 'oracle_status'), index),
     receiptRef: requireStringField(object, 'receipt_ref'),
     sourceRevision: requireStringField(object, 'source_revision'),
     sourceSection: requireStringField(object, 'source_section'),
@@ -315,6 +472,7 @@ function normalizeRecord(record: Step37SupportPromotionCapabilityClosureRecord):
     parentStageId: requireNonEmpty(record.parentStageId, 'parentStageId'),
     closureStatus: record.closureStatus,
     receiptStatus: record.receiptStatus,
+    oracleStatus: record.oracleStatus,
     receiptRef: requireNonEmpty(record.receiptRef, 'receiptRef'),
     sourceRevision: requireNonEmpty(record.sourceRevision, 'sourceRevision'),
     sourceSection: requireNonEmpty(record.sourceSection, 'sourceSection'),
@@ -370,6 +528,7 @@ function deriveGapTypes(input: {
   wrongPackageEntries: readonly Step37SupportPromotionWrongPackageEntry[];
   wrongParentStageEntries: readonly Step37SupportPromotionWrongParentStageEntry[];
   wrongCheckpointEntries: readonly Step37SupportPromotionWrongCheckpointEntry[];
+  missingOracleApprovalEntries: readonly Step37SupportPromotionEligibleEntry[];
   unknownCapabilityEntries: readonly Step37SupportPromotionEligibleEntry[];
   duplicateEntries: readonly Step37SupportPromotionDuplicateEntry[];
 }): Step37SupportPromotionGapType[] {
@@ -396,11 +555,119 @@ function deriveGapTypes(input: {
     input.staleOrPreviousRunEntries.length > 0 ||
     input.genericOnlyEvidenceEntries.length > 0 ||
     input.wrongPackageEntries.length > 0 ||
+    input.missingOracleApprovalEntries.length > 0 ||
     input.duplicateEntries.length > 0
   ) {
     gapTypes.add('real_capability_gap');
   }
   return [...gapTypes].sort();
+}
+
+function buildPromotionApplicationBlockers(input: {
+  inventoryReport: Step37SupportPromotionInventoryReport;
+  supportSummary: DeepSeekRunAndGunProfileSupportSummary;
+  sourceInventoryHash: string;
+  expectedInventoryHash: string;
+  missingEligibleCapabilityIds: readonly string[];
+}): Step37SupportPromotionApplicationBlocker[] {
+  const blockers: Step37SupportPromotionApplicationBlocker[] = [];
+  if (input.sourceInventoryHash !== input.expectedInventoryHash) {
+    blockers.push({
+      errorCode: 'SUPPORT_PROMOTION_INVENTORY_HASH_MISMATCH',
+      capabilityIds: [],
+      actual: input.sourceInventoryHash,
+      expected: input.expectedInventoryHash
+    });
+  }
+  if (input.inventoryReport.supportPromotionInputStatus !== 'ready') {
+    blockers.push({
+      errorCode: 'SUPPORT_PROMOTION_INPUT_NOT_READY',
+      capabilityIds: [],
+      actual: input.inventoryReport.supportPromotionInputStatus,
+      expected: 'ready'
+    });
+  }
+  if (input.inventoryReport.promotionEligibleCount !== input.supportSummary.summary.requiredCapabilityCount) {
+    blockers.push({
+      errorCode: 'SUPPORT_PROMOTION_ELIGIBLE_COUNT_INCOMPLETE',
+      capabilityIds: [...input.missingEligibleCapabilityIds],
+      actual: input.inventoryReport.promotionEligibleCount,
+      expected: input.supportSummary.summary.requiredCapabilityCount
+    });
+  }
+  if (input.supportSummary.summary.registeredCapabilityCount !== input.supportSummary.summary.requiredCapabilityCount) {
+    blockers.push({
+      errorCode: 'SUPPORT_PROMOTION_SUPPORT_SUMMARY_NOT_FULLY_REGISTERED',
+      capabilityIds: input.supportSummary.capabilities.filter((capability) => !capability.registered).map((capability) => capability.capabilityId),
+      actual: input.supportSummary.summary.registeredCapabilityCount,
+      expected: input.supportSummary.summary.requiredCapabilityCount
+    });
+  }
+
+  pushEntryBlocker(blockers, 'SUPPORT_PROMOTION_CAPABILITY_MISSING', input.inventoryReport.missingClosureEntries);
+  pushEntryBlocker(
+    blockers,
+    'SUPPORT_PROMOTION_DUPLICATE_CAPABILITY',
+    input.inventoryReport.duplicateEntries.map((entry) => entry.capabilityId)
+  );
+  pushEntryBlocker(
+    blockers,
+    'SUPPORT_PROMOTION_STALE_OR_WRONG_RUN',
+    input.inventoryReport.staleOrPreviousRunEntries.map((entry) => entry.capabilityId)
+  );
+  pushEntryBlocker(
+    blockers,
+    'SUPPORT_PROMOTION_GENERIC_ONLY_EVIDENCE',
+    input.inventoryReport.genericOnlyEvidenceEntries.map((entry) => entry.capabilityId)
+  );
+  pushEntryBlocker(
+    blockers,
+    'SUPPORT_PROMOTION_WRONG_PACKAGE',
+    input.inventoryReport.wrongPackageEntries.map((entry) => entry.capabilityId)
+  );
+  pushEntryBlocker(
+    blockers,
+    'SUPPORT_PROMOTION_WRONG_PARENT_STAGE',
+    input.inventoryReport.wrongParentStageEntries.map((entry) => entry.capabilityId)
+  );
+  pushEntryBlocker(
+    blockers,
+    'SUPPORT_PROMOTION_WRONG_CHECKPOINT',
+    input.inventoryReport.wrongCheckpointEntries.map((entry) => entry.capabilityId)
+  );
+  pushEntryBlocker(
+    blockers,
+    'SUPPORT_PROMOTION_RECEIPT_MISSING',
+    input.inventoryReport.missingReceiptEntries.map((entry) => entry.capabilityId)
+  );
+  pushEntryBlocker(
+    blockers,
+    'SUPPORT_PROMOTION_ORACLE_APPROVAL_MISSING',
+    input.inventoryReport.missingOracleApprovalEntries.map((entry) => entry.capabilityId)
+  );
+  pushEntryBlocker(
+    blockers,
+    'SUPPORT_PROMOTION_UNKNOWN_CAPABILITY',
+    input.inventoryReport.unknownCapabilityEntries.map((entry) => entry.capabilityId)
+  );
+
+  return blockers;
+}
+
+function pushEntryBlocker(
+  blockers: Step37SupportPromotionApplicationBlocker[],
+  errorCode: Step37SupportPromotionApplicationBlocker['errorCode'],
+  capabilityIds: readonly string[]
+): void {
+  const uniqueCapabilityIds = uniqueSorted(capabilityIds);
+  if (uniqueCapabilityIds.length === 0) {
+    return;
+  }
+  blockers.push({ errorCode, capabilityIds: uniqueCapabilityIds });
+}
+
+function uniqueSorted(values: readonly string[]): string[] {
+  return [...new Set(values)].sort();
 }
 
 function requireNonEmpty(value: string, field: string): string {
@@ -459,6 +726,13 @@ function requireReceiptStatus(value: string, index: number): Step37SupportPromot
     return value;
   }
   throw new Error(`STEP37_SUPPORT_PROMOTION_INVENTORY_INVALID_RECEIPT_STATUS index="${index}" actual="${value}"`);
+}
+
+function requireOracleStatus(value: string, index: number): Step37SupportPromotionOracleStatus {
+  if (value === 'approved' || value === 'not_approved') {
+    return value;
+  }
+  throw new Error(`STEP37_SUPPORT_PROMOTION_INVENTORY_INVALID_ORACLE_STATUS index="${index}" actual="${value}"`);
 }
 
 function requireEvidenceRunScope(value: string, index: number): Step37SupportPromotionEvidenceRunScope {

@@ -3,6 +3,7 @@ import {
   type DeepSeekRunAndGunProfileSupportSummary
 } from './deepseek-run-and-gun-validation-profile-v1.js';
 import { selectNextAtomicCheckpoint, type Step37CheckpointInventoryItem, type Step37NextAtomicCheckpoint } from './step37-parent-loop-driver.js';
+import { type Step37SupportPromotionApplicationReport } from './step37-support-promotion-inventory.js';
 
 export const STEP37_REMAINING_INVENTORY_ARTIFACT_KIND = 'step37_remaining_complete_supported_inventory';
 export const STEP37_REMAINING_INVENTORY_SCHEMA_VERSION = 'step37_remaining_complete_supported_inventory.v0.1';
@@ -10,6 +11,9 @@ export const STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID =
   'stage4.support_promotion_from_same_run_observed_package_receipts';
 export const STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP =
   'Stage 4 support promotion from same-run observed package receipts atomic step';
+export const STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_CHECKPOINT_ID = 'stage4.exit_audit_after_support_promotion';
+export const STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_NEXT_ATOMIC_STEP =
+  'Stage 4 exit audit after support promotion atomic step';
 const STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_PARENT_STAGE_ID = 'stage4';
 
 export const STEP37_REMAINING_CAPABILITY_STATES = [
@@ -34,6 +38,8 @@ export type Step37RemainingInventoryDriverInput = {
   observedCapabilityIds?: readonly string[];
   committedCapabilityClosures?: readonly Step37CommittedCapabilityClosure[];
   supportPromotionCheckpoint?: Step37CheckpointInventoryItem | null;
+  supportPromotionApplicationReport?: Step37SupportPromotionApplicationReport | null;
+  stage4ExitAuditCheckpoint?: Step37CheckpointInventoryItem | null;
   parentStageId?: string;
   sourcePlanRevision: string;
 };
@@ -73,6 +79,32 @@ export type Step37RemainingInventorySelectionFailure =
       expected_checkpoint_id: typeof STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID;
       expected_parent_stage_id: string;
       expected_next_atomic_step: typeof STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP;
+      actual_checkpoint_id: string | null;
+      invalid_fields: string[];
+      message: string;
+    }
+  | {
+      error_code: 'SUPPORT_SUMMARY_CONSUMER_NOT_CONSUMED_PROMOTION_INVENTORY';
+      global_exit_conditions_met: false;
+      user_input_required: false;
+      parent_stage_status: 'running';
+      stage5_entry_allowed: false;
+      expected_complete_supported_count: number;
+      actual_complete_supported_count: number;
+      promotion_application_status: Step37SupportPromotionApplicationReport['applicationStatus'];
+      source_inventory_hash: string;
+      message: string;
+    }
+  | {
+      error_code: 'STAGE4_EXIT_AUDIT_CHECKPOINT_REQUIRED';
+      global_exit_conditions_met: false;
+      user_input_required: false;
+      parent_stage_status: 'running';
+      stage5_entry_allowed: false;
+      reason: string;
+      expected_checkpoint_id: typeof STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_CHECKPOINT_ID;
+      expected_parent_stage_id: string;
+      expected_next_atomic_step: typeof STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_NEXT_ATOMIC_STEP;
       actual_checkpoint_id: string | null;
       invalid_fields: string[];
       message: string;
@@ -141,7 +173,23 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
     supportPromotionCheckpointInvalidFields.length === 0
       ? [input.supportPromotionCheckpoint]
       : [];
-  const checkpointInventory = [...packageCheckpointInventory, ...supportPromotionCheckpoint];
+  const supportPromotionConsumerFailure = buildSupportPromotionConsumerFailure({
+    supportPromotionApplicationReport: input.supportPromotionApplicationReport ?? null,
+    requiredCapabilityCount,
+    staticCompleteSupportedCount
+  });
+  const stage4ExitAuditRequired = requiredCapabilityCount > 0 && staticCompleteSupportedCount === requiredCapabilityCount;
+  const stage4ExitAuditCheckpointInvalidFields = stage4ExitAuditRequired
+    ? getStage4ExitAuditCheckpointInvalidFields(input.stage4ExitAuditCheckpoint ?? null, parentStageId)
+    : [];
+  const stage4ExitAuditCheckpoint =
+    stage4ExitAuditRequired &&
+    input.stage4ExitAuditCheckpoint !== undefined &&
+    input.stage4ExitAuditCheckpoint !== null &&
+    stage4ExitAuditCheckpointInvalidFields.length === 0
+      ? [input.stage4ExitAuditCheckpoint]
+      : [];
+  const checkpointInventory = [...packageCheckpointInventory, ...supportPromotionCheckpoint, ...stage4ExitAuditCheckpoint];
   const nextCheckpoint = selectNextAtomicCheckpoint(checkpointInventory);
   const unmetStaticCompleteSupportedCount = requiredCapabilityCount - staticCompleteSupportedCount;
 
@@ -166,6 +214,10 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
       supportPromotionRequired,
       supportPromotionCheckpoint: input.supportPromotionCheckpoint ?? null,
       supportPromotionCheckpointInvalidFields,
+      supportPromotionConsumerFailure,
+      stage4ExitAuditRequired,
+      stage4ExitAuditCheckpoint: input.stage4ExitAuditCheckpoint ?? null,
+      stage4ExitAuditCheckpointInvalidFields,
       parentStageId,
       unmetStaticCompleteSupportedCount
     })
@@ -287,9 +339,38 @@ function buildSelectionFailure(input: {
   supportPromotionRequired: boolean;
   supportPromotionCheckpoint: Step37CheckpointInventoryItem | null;
   supportPromotionCheckpointInvalidFields: readonly string[];
+  supportPromotionConsumerFailure: Step37RemainingInventorySelectionFailure | null;
+  stage4ExitAuditRequired: boolean;
+  stage4ExitAuditCheckpoint: Step37CheckpointInventoryItem | null;
+  stage4ExitAuditCheckpointInvalidFields: readonly string[];
   parentStageId: string;
   unmetStaticCompleteSupportedCount: number;
 }): Step37RemainingInventorySelectionFailure | null {
+  if (input.supportPromotionConsumerFailure !== null) {
+    return input.supportPromotionConsumerFailure;
+  }
+
+  if (input.stage4ExitAuditRequired && input.nextCheckpoint === null) {
+    return {
+      error_code: 'STAGE4_EXIT_AUDIT_CHECKPOINT_REQUIRED',
+      global_exit_conditions_met: false,
+      user_input_required: false,
+      parent_stage_status: 'running',
+      stage5_entry_allowed: false,
+      reason:
+        input.stage4ExitAuditCheckpoint === null
+          ? 'complete support was promoted but Stage 4 exit audit checkpoint was not supplied'
+          : 'complete support was promoted but supplied Stage 4 exit audit checkpoint identity is not authoritative',
+      expected_checkpoint_id: STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_CHECKPOINT_ID,
+      expected_parent_stage_id: STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_PARENT_STAGE_ID,
+      expected_next_atomic_step: STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_NEXT_ATOMIC_STEP,
+      actual_checkpoint_id: input.stage4ExitAuditCheckpoint?.checkpoint_id ?? null,
+      invalid_fields: [...input.stage4ExitAuditCheckpointInvalidFields],
+      message:
+        'STAGE4_EXIT_AUDIT_CHECKPOINT_REQUIRED: Stage 4 complete support is promoted, but Stage 4 exit audit authority is missing or invalid'
+    };
+  }
+
   if (input.nextCheckpoint !== null || input.unmetStaticCompleteSupportedCount <= 0) {
     return null;
   }
@@ -327,6 +408,34 @@ function buildSelectionFailure(input: {
   };
 }
 
+function buildSupportPromotionConsumerFailure(input: {
+  supportPromotionApplicationReport: Step37SupportPromotionApplicationReport | null;
+  requiredCapabilityCount: number;
+  staticCompleteSupportedCount: number;
+}): Step37RemainingInventorySelectionFailure | null {
+  const report = input.supportPromotionApplicationReport;
+  if (report === null) {
+    return null;
+  }
+  if (report.applicationStatus !== 'applied' || input.staticCompleteSupportedCount === report.completeSupportedCount) {
+    return null;
+  }
+
+  return {
+    error_code: 'SUPPORT_SUMMARY_CONSUMER_NOT_CONSUMED_PROMOTION_INVENTORY',
+    global_exit_conditions_met: false,
+    user_input_required: false,
+    parent_stage_status: 'running',
+    stage5_entry_allowed: false,
+    expected_complete_supported_count: report.completeSupportedCount,
+    actual_complete_supported_count: input.staticCompleteSupportedCount,
+    promotion_application_status: report.applicationStatus,
+    source_inventory_hash: report.sourceInventoryHash,
+    message:
+      'SUPPORT_SUMMARY_CONSUMER_NOT_CONSUMED_PROMOTION_INVENTORY: promotion application succeeded, but the supplied support summary did not consume the promoted complete-supported view'
+  };
+}
+
 function getSupportPromotionCheckpointInvalidFields(
   checkpoint: Step37CheckpointInventoryItem | null,
   parentStageId: string
@@ -342,6 +451,24 @@ function getSupportPromotionCheckpointInvalidFields(
       ? ['parent_stage_id']
       : []),
     ...(checkpoint.next_atomic_step.trim() !== STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP ? ['next_atomic_step'] : []),
+    ...(checkpoint.status !== 'unmet' ? ['status'] : []),
+    ...(checkpoint.unmet_reason.trim().length === 0 ? ['unmet_reason'] : []),
+    ...(checkpoint.source_plan_revision.trim().length === 0 ? ['source_plan_revision'] : [])
+  ];
+}
+
+function getStage4ExitAuditCheckpointInvalidFields(checkpoint: Step37CheckpointInventoryItem | null, parentStageId: string): string[] {
+  if (checkpoint === null) {
+    return ['checkpoint_id'];
+  }
+
+  return [
+    ...(checkpoint.checkpoint_id.trim() !== STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_CHECKPOINT_ID ? ['checkpoint_id'] : []),
+    ...(checkpoint.parent_stage_id.trim() !== STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_PARENT_STAGE_ID ||
+    parentStageId !== STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_PARENT_STAGE_ID
+      ? ['parent_stage_id']
+      : []),
+    ...(checkpoint.next_atomic_step.trim() !== STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_NEXT_ATOMIC_STEP ? ['next_atomic_step'] : []),
     ...(checkpoint.status !== 'unmet' ? ['status'] : []),
     ...(checkpoint.unmet_reason.trim().length === 0 ? ['unmet_reason'] : []),
     ...(checkpoint.source_plan_revision.trim().length === 0 ? ['source_plan_revision'] : [])

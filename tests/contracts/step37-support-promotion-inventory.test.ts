@@ -7,8 +7,11 @@ import {
   STEP37_SUPPORT_PROMOTION_INVENTORY_ARTIFACT_KIND,
   STEP37_SUPPORT_PROMOTION_INVENTORY_CHECKPOINT_ID,
   STEP37_SUPPORT_PROMOTION_INVENTORY_SCHEMA_VERSION,
+  buildStep37PromotedSupportSummary,
+  buildStep37SupportPromotionApplicationReport,
   buildDeepSeekRunAndGunValidationProfileSupportSummary,
   buildStep37SupportPromotionInventory,
+  hashStep37SupportPromotionInventoryArtifact,
   parseStep37SupportPromotionInventoryArtifact,
   type DeepSeekRunAndGunProfileCapabilitySupport,
   type DeepSeekRunAndGunProfileSupportSummary,
@@ -17,6 +20,7 @@ import {
 } from '../../packages/game-dsl/src/index.js';
 
 const supportPromotionInventoryPath = 'docs/plans/step37-support-promotion-per-capability-inventory.v0.1.json';
+const supportPromotionCompleteSupportedViewPath = 'docs/plans/step37-support-promotion-complete-supported-view.v0.1.json';
 const currentRunId = 'run-step37-stage4-package-receipts';
 const sourcePlanRevision = '0171ce6ef5c9bb7d7a45e4f21596a8dba6425477:docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md';
 
@@ -118,6 +122,33 @@ describe('Step37 support-promotion per-capability inventory', () => {
     expect(report.stage5EntryAllowed).toBe(false);
   });
 
+  it('blocks promotion when a per-capability closure lacks Oracle approval', () => {
+    const support = supportSummary([capability('oracle.approved.v1'), capability('oracle.missing.v1')]);
+    const report = buildStep37SupportPromotionInventory({
+      supportSummary: support,
+      aggregateObservedCapabilityIds: support.capabilities.map((capabilityItem) => capabilityItem.capabilityId),
+      currentRunId,
+      sourcePlanRevision,
+      capabilityClosureRecords: [record('oracle.approved.v1'), record('oracle.missing.v1', { oracleStatus: 'not_approved' })]
+    });
+
+    expect(report.missingOracleApprovalEntries.map((entry) => entry.capabilityId)).toEqual(['oracle.missing.v1']);
+    expect(report.promotionEligibleEntries.map((entry) => entry.capabilityId)).toEqual(['oracle.approved.v1']);
+    expect(report.supportPromotionInputStatus).toBe('blocked');
+    const application = buildStep37SupportPromotionApplicationReport({
+      supportSummary: support,
+      inventoryReport: report,
+      sourceInventoryPath: supportPromotionInventoryPath,
+      sourceInventoryHash: 'fnv1a_test',
+      expectedInventoryHash: 'fnv1a_test'
+    });
+    expect(application.applicationStatus).toBe('blocked');
+    expect(application.blockers).toContainEqual({
+      errorCode: 'SUPPORT_PROMOTION_ORACLE_APPROVAL_MISSING',
+      capabilityIds: ['oracle.missing.v1']
+    });
+  });
+
   it('requires the current Stage 4 support-promotion inventory to machine-verify every required capability without promoting static support', () => {
     const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
     const inventory = readStage4SupportPromotionInventory();
@@ -144,6 +175,7 @@ describe('Step37 support-promotion per-capability inventory', () => {
     expect(report.wrongPackageEntries).toEqual([]);
     expect(report.wrongParentStageEntries).toEqual([]);
     expect(report.wrongCheckpointEntries).toEqual([]);
+    expect(report.missingOracleApprovalEntries).toEqual([]);
     expect(report.promotionEligibleCount).toBe(59);
     expect(report.supportPromotionInputStatus).toBe('ready');
     expect(report.stage5EntryAllowed).toBe(false);
@@ -151,6 +183,85 @@ describe('Step37 support-promotion per-capability inventory', () => {
       expect(record.receiptRef).toMatch(/^[0-9a-f]{40}$/);
       expect(gitObjectExists(record.receiptRef)).toBe(true);
     }
+  });
+
+  it('applies the current verified inventory into a promoted complete-supported support view without hardcoding the count', () => {
+    const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
+    const inventory = readStage4SupportPromotionInventory();
+    const report = buildStep37SupportPromotionInventory({
+      supportSummary: support,
+      aggregateObservedCapabilityIds: inventory.aggregateObservedCapabilityIds,
+      currentRunId: inventory.currentRunId,
+      sourcePlanRevision: inventory.sourcePlanRevision,
+      capabilityClosureRecords: inventory.capabilityClosureRecords
+    });
+    const inventoryHash = hashStep37SupportPromotionInventoryArtifact(inventory);
+    const application = buildStep37SupportPromotionApplicationReport({
+      supportSummary: support,
+      inventoryReport: report,
+      sourceInventoryPath: supportPromotionInventoryPath,
+      sourceInventoryHash: inventoryHash,
+      expectedInventoryHash: inventoryHash
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({ supportSummary: support, promotionApplicationReport: application });
+
+    expect(application.applicationStatus).toBe('applied');
+    expect(application.inventoryHashMatches).toBe(true);
+    expect(application.completeSupportedCount).toBe(application.completeSupportedCapabilityIds.length);
+    expect(application.completeSupportedCount).toBe(59);
+    expect(application.stage5EntryAllowed).toBe(false);
+    expect(promotedSupport.summary.completeSupportedCount).toBe(59);
+    expect(promotedSupport.capabilities).toHaveLength(59);
+    expect(promotedSupport.capabilities.every((capabilityItem) => capabilityItem.completeSupported)).toBe(true);
+    expect(promotedSupport.capabilities.every((capabilityItem) => capabilityItem.classification === 'COMPLETE_SUPPORTED')).toBe(true);
+
+    const persistedView = JSON.parse(readFileSync(supportPromotionCompleteSupportedViewPath, 'utf8')) as Record<string, unknown>;
+    expect(persistedView).toMatchObject({
+      artifact_kind: 'step37_support_promotion_complete_supported_view',
+      schema_version: 'step37_support_promotion_complete_supported_view.v0.1',
+      checkpoint_id: STEP37_SUPPORT_PROMOTION_INVENTORY_CHECKPOINT_ID,
+      source_inventory_hash: inventoryHash,
+      expected_inventory_hash: inventoryHash,
+      inventory_hash_matches: true,
+      support_summary_consumer: 'buildStep37PromotedSupportSummary',
+      support_promotion_input_status: 'ready',
+      application_status: 'applied',
+      promotion_eligible_count: 59,
+      complete_supported_count: 59,
+      stage5_entry_allowed: false
+    });
+    expect(persistedView.complete_supported_count).toBe((persistedView.complete_supported_capability_ids as string[]).length);
+  });
+
+  it('fails closed when the inventory hash no longer matches the reviewed promotion input', () => {
+    const support = supportSummary([capability('hash.alpha.v1')]);
+    const report = buildStep37SupportPromotionInventory({
+      supportSummary: support,
+      aggregateObservedCapabilityIds: ['hash.alpha.v1'],
+      currentRunId,
+      sourcePlanRevision,
+      capabilityClosureRecords: [record('hash.alpha.v1')]
+    });
+    const application = buildStep37SupportPromotionApplicationReport({
+      supportSummary: support,
+      inventoryReport: report,
+      sourceInventoryPath: supportPromotionInventoryPath,
+      sourceInventoryHash: 'fnv1a_current',
+      expectedInventoryHash: 'fnv1a_reviewed'
+    });
+
+    expect(application.applicationStatus).toBe('blocked');
+    expect(application.inventoryHashMatches).toBe(false);
+    expect(application.completeSupportedCount).toBe(0);
+    expect(application.blockers).toContainEqual({
+      errorCode: 'SUPPORT_PROMOTION_INVENTORY_HASH_MISMATCH',
+      capabilityIds: [],
+      actual: 'fnv1a_current',
+      expected: 'fnv1a_reviewed'
+    });
+    expect(() => buildStep37PromotedSupportSummary({ supportSummary: support, promotionApplicationReport: application })).toThrow(
+      /STEP37_SUPPORT_PROMOTION_APPLICATION_BLOCKED/
+    );
   });
 
   it('fails closed when the machine-readable artifact is missing required closure metadata', () => {
@@ -227,6 +338,7 @@ function record(
     parentStageId: 'stage4',
     closureStatus: 'closed',
     receiptStatus: 'receipt_closed',
+    oracleStatus: 'approved',
     receiptRef: `receipt.${capabilityId}`,
     sourceRevision: `commit.${capabilityId}:docs/plans/stage4.md`,
     sourceSection: `Stage 4 ${capabilityId} closure`,

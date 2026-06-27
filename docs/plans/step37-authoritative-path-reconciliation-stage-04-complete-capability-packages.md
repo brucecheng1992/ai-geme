@@ -6783,6 +6783,123 @@ next_atomic_step_unmet_reason=Stage 4 package inventory is exhausted with same-r
 remaining_inventory_result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=59; staticCompleteSupportedCount=0; committedClosedCapabilityCount=59; sameRunObservedOnlyCount=59; nextCheckpointId=stage4.support_promotion_from_same_run_observed_package_receipts; selectionFailure=null.
 ```
 
+## Stage 4 Control Plane Implementation — Support Promotion Application From Same-Run Observed Package Receipts
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.support_promotion_from_same_run_observed_package_receipts
+parent_stage_id=stage4
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+closure_status=not_closed
+```
+
+Current objective:
+
+- Consume the already verified `59/59` per-capability promotion inventory and compute a promoted complete-supported support view.
+- Keep the promotion evidence capability-specific and hash-bound to the durable inventory; do not trust aggregate `59/59` summaries.
+- Advance the support summary consumer to `completeSupportedCount=59/59` only through the promoted view consumer, not by hardcoding the count or changing package runtime/QA.
+- Keep Stage 5 not entered; a successful promotion routes the Parent Loop to a Stage 4 exit audit checkpoint before any Stage 5 entry audit.
+
+Promotion application artifact:
+
+```text
+artifact_path=docs/plans/step37-support-promotion-complete-supported-view.v0.1.json
+artifact_kind=step37_support_promotion_complete_supported_view
+schema_version=step37_support_promotion_complete_supported_view.v0.1
+source_inventory_path=docs/plans/step37-support-promotion-per-capability-inventory.v0.1.json
+source_inventory_hash=fnv1a_a883bf43
+support_summary_consumer=buildStep37PromotedSupportSummary
+application_status=applied
+promotion_eligible_count=59
+complete_supported_count=59
+stage5_entry_allowed=false
+```
+
+Fail-closed policy:
+
+- `inventory missing`, `capability missing`, `duplicate capability`, `stale receipt`, `wrong package`, `wrong run`, `missing Oracle approval`, `missing same-run observed evidence`, `generic-only evidence`, `promotion_eligible < 59`, `inventory hash mismatch`, or support summary consumer non-consumption keeps promotion blocked.
+- `buildStep37RemainingCompleteSupportedInventory()` now fails closed with `SUPPORT_SUMMARY_CONSUMER_NOT_CONSUMED_PROMOTION_INVENTORY` if a promotion application report is `applied` but the supplied support summary still reports the old static count.
+- After a consumed promotion, the driver requires `stage4.exit_audit_after_support_promotion`; missing or wrong exit-audit authority fails closed with `STAGE4_EXIT_AUDIT_CHECKPOINT_REQUIRED`.
+- Stage 5 entry remains disallowed in this atom.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds an applied support-promotion view artifact and support-promotion application report derived from the existing per-capability inventory. |
+| Consumer list | `buildStep37SupportPromotionApplicationReport`, `buildStep37PromotedSupportSummary`, `buildStep37RemainingCompleteSupportedInventory`, Parent Loop remaining-inventory consumer, and Stage 4 exit-audit checkpoint selector. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package receipts become complete-supported authority only when the support summary consumer consumes the hash-bound promotion view. |
+| Authority | The source authority is the per-capability inventory artifact plus its `source_inventory_hash`; the promoted view is derived from that inventory and records the consumer name. |
+| Legacy strategy | Static registry/package evidence remains unchanged. Promotion does not alter runtime, QA readers, package registry, production default cutover, or legacy authoritative path. |
+| Failure policy | Promotion application and remaining-inventory consumers fail closed on missing/duplicate/stale/generic/wrong-package/wrong-run/missing-Oracle/hash-mismatch/non-consumption conditions. |
+| Evidence | Focused contracts validate hash-bound application, missing Oracle approval, hash mismatch, summary consumer non-consumption, and Stage 4 exit-audit routing after 59/59 consumption. |
+| Rollback | Reverting this atom removes only the promoted support-view artifact, application helper, consumer guard, driver transition, tests, and this closure record; previous package receipts and inventory establishment remain intact. |
+
+Modified paths:
+
+- `packages/game-dsl/src/step37-support-promotion-inventory.ts`
+- `packages/game-dsl/src/step37-remaining-inventory-driver.ts`
+- `packages/game-dsl/src/index.ts`
+- `tests/contracts/step37-support-promotion-inventory.test.ts`
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`
+- `docs/plans/step37-support-promotion-per-capability-inventory.v0.1.json`
+- `docs/plans/step37-support-promotion-complete-supported-view.v0.1.json`
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`
+
+Validation summary before candidate:
+
+```text
+focused_support_promotion_contracts_command=/usr/bin/time -p npx vitest run tests/contracts/step37-support-promotion-inventory.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts
+focused_support_promotion_contracts_exitCode=0
+focused_support_promotion_contracts_result=PASS: 2 files / 24 tests.
+
+focused_driver_closure_contracts_command=/usr/bin/time -p npx vitest run tests/contracts/step37-support-promotion-inventory.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-closure-implementation-trace.test.ts -t "support-promotion|support promotion|remaining complete-supported inventory|Parent Loop|closure"
+focused_driver_closure_contracts_exitCode=0
+focused_driver_closure_contracts_result=PASS: 4 files / 61 tests passed / 17 skipped.
+
+full_contracts_command=/usr/bin/time -p npm run test:contracts
+full_contracts_exitCode=0
+full_contracts_result=PASS: 99 files / 1371 tests.
+
+npm_test_command=/usr/bin/time -p npm test
+npm_test_exitCode=0
+npm_test_result=PASS: contracts 99 files / 1371 tests; workspace 34 files / 410 tests.
+
+typecheck_command=/usr/bin/time -p npm run typecheck
+typecheck_exitCode=0
+typecheck_result=PASS: root, maker-api, and maker-workbench TypeScript checks passed.
+
+diff_check_command=/usr/bin/time -p git diff --check
+diff_check_exitCode=0
+diff_check_result=PASS.
+
+skill_freshness_command=/usr/bin/time -p bash -lc 'node - <<NODE ... root-relative Skill bundle rows ... NODE'
+skill_freshness_exitCode=0
+skill_revision_type=sha256_bundle
+skill_bundle_format=root-relative-rows-v1
+skill_file_count=8
+skill_bundle_digest=2090465e73e2b4ddfc3756b925e5941290d3eb9b1b20f06b362d560300d6757b
+
+inventory_alignment_command=/usr/bin/time -p npx tsx - <<'TS' ... support promotion application plus remaining inventory alignment ... TS
+inventory_alignment_exitCode=0
+inventory_alignment_result=PASS: inventoryHash=fnv1a_a883bf43; supportPromotionInputStatus=ready; applicationStatus=applied; promotionEligibleCount=59; completeSupportedCount=59; nextCheckpointId=stage4.exit_audit_after_support_promotion; nextAtomicStep="Stage 4 exit audit after support promotion atomic step"; selectionFailure=null; stage5EntryAllowed=false.
+
+oracle_review=pending
+```
+
+Candidate note:
+
+- This validation summary changed the final tree after the first local gate run.
+- Focused contracts, full contracts, `npm test`, `npm run typecheck`, `git diff --check`, Skill freshness, inventory alignment, final diff scope review, and `git status --short` must be rerun against this final tree before candidate commit.
+- Candidate commit must bind this final tree and must not write its own SHA back into this record.
+- Oracle request must bind the candidate commit SHA, `source_inventory_hash=fnv1a_a883bf43`, and `reviewed_skill_revision=2090465e73e2b4ddfc3756b925e5941290d3eb9b1b20f06b362d560300d6757b`.
+- Stage 5 remains `NOT_ENTERED`; this atom only routes the next checkpoint to Stage 4 exit audit.
+
 ## Stage 4 Implementation: `validation.fail_closed_unknown_nodes.v1` complete-supported package slice
 
 Checkpoint identity:

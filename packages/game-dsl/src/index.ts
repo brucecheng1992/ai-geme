@@ -258,6 +258,8 @@ export {
   STEP37_REMAINING_CAPABILITY_STATES,
   STEP37_REMAINING_INVENTORY_ARTIFACT_KIND,
   STEP37_REMAINING_INVENTORY_SCHEMA_VERSION,
+  STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_CHECKPOINT_ID,
+  STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_NEXT_ATOMIC_STEP,
   STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID,
   STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP,
   buildStep37RemainingCompleteSupportedInventory,
@@ -270,11 +272,19 @@ export {
   type Step37RemainingInventorySelectionFailure
 } from './step37-remaining-inventory-driver.js';
 export {
+  STEP37_SUPPORT_PROMOTION_COMPLETE_SUPPORTED_VIEW_ARTIFACT_KIND,
+  STEP37_SUPPORT_PROMOTION_COMPLETE_SUPPORTED_VIEW_SCHEMA_VERSION,
   STEP37_SUPPORT_PROMOTION_INVENTORY_ARTIFACT_KIND,
   STEP37_SUPPORT_PROMOTION_INVENTORY_CHECKPOINT_ID,
   STEP37_SUPPORT_PROMOTION_INVENTORY_SCHEMA_VERSION,
+  buildStep37PromotedSupportSummary,
+  buildStep37SupportPromotionApplicationReport,
   buildStep37SupportPromotionInventory,
+  hashStep37SupportPromotionInventoryArtifact,
   parseStep37SupportPromotionInventoryArtifact,
+  type Step37SupportPromotionApplicationBlocker,
+  type Step37SupportPromotionApplicationReport,
+  type Step37SupportPromotionApplicationStatus,
   type Step37SupportPromotionCapabilityClosureRecord,
   type Step37SupportPromotionClosureStatus,
   type Step37SupportPromotionDuplicateEntry,
