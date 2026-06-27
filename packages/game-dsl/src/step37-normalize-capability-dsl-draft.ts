@@ -128,7 +128,10 @@ export function buildStep37NormalizeCapabilityDslDraftReport(input: {
   const legacyAuthoritativePathExited = input.legacyAuthoritativePathExited ?? false;
   const finalClosureNotBlocked = input.finalClosureNotBlocked ?? false;
   const expectedCapabilityIds = [...input.capabilityDslDraftReport.completeSupportedCapabilityIds].sort();
-  const normalizationLock = buildNormalizationLock(input.exactCapabilityLockReport.capabilityLock, input.capabilityDslDraftReport.draftProfileId);
+  const normalizationLock = buildStep37NormalizationCapabilityLock(
+    input.exactCapabilityLockReport.capabilityLock,
+    input.capabilityDslDraftReport.draftProfileId
+  );
   const normalizationGameBriefHash = input.capabilityDslDraftReport.sourceSupportViewHash;
   const normalizationProfileResolutionHash = hashStableJson({
     draftProfileId: input.capabilityDslDraftReport.draftProfileId,
@@ -362,7 +365,7 @@ function buildNormalizeCapabilityDslDraftBlockers(input: {
   return blockers;
 }
 
-function buildNormalizationLock(lock: GameplayCapabilityLock | null, draftProfileId: string): GameplayCapabilityLock | null {
+export function buildStep37NormalizationCapabilityLock(lock: GameplayCapabilityLock | null, draftProfileId: string): GameplayCapabilityLock | null {
   if (lock === null) {
     return null;
   }

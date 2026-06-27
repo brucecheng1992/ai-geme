@@ -19,6 +19,8 @@ import {
   STEP37_STAGE7_NORMALIZE_CAPABILITY_DSL_DRAFT_FROM_COMPOSED_SCHEMA_NEXT_ATOMIC_STEP,
   STEP37_STAGE8_COMPILE_NORMALIZED_CAPABILITY_DSL_TO_RUNTIME_IR_CHECKPOINT_ID,
   STEP37_STAGE8_COMPILE_NORMALIZED_CAPABILITY_DSL_TO_RUNTIME_IR_NEXT_ATOMIC_STEP,
+  STEP37_STAGE9_CONSUME_COMPILED_RUNTIME_IR_IN_RUNTIME_CHECKPOINT_ID,
+  STEP37_STAGE9_CONSUME_COMPILED_RUNTIME_IR_IN_RUNTIME_NEXT_ATOMIC_STEP,
   STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID,
   STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP,
   buildStep37CapabilityDslDraftReport,
@@ -44,8 +46,10 @@ import {
   type Step37ExactCapabilityLockReport,
   type Step37CapabilityDslDraftReport,
   type Step37NormalizeCapabilityDslDraftReport,
+  type Step37CompileNormalizedCapabilityDslReport,
   type Step37SupportPromotionApplicationReport
 } from '../../packages/game-dsl/src/index.js';
+import { hashStableJson } from '../../packages/game-dsl/src/gameplay-capabilities/stable-json.js';
 
 const sourcePlanRevision = 'HEAD:docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md';
 const supportPromotionInventoryPath = 'docs/plans/step37-support-promotion-per-capability-inventory.v0.1.json';
@@ -1321,6 +1325,131 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     expect(report.selectionFailure).toBeNull();
   });
 
+  it('requires a runtime consumption checkpoint after Stage 8 compile passes', () => {
+    const support = supportSummary([capability({ capabilityId: 'promoted.alpha.v1' })]);
+    const application = supportPromotionApplicationReport({
+      completeSupportedCount: 1,
+      completeSupportedCapabilityIds: ['promoted.alpha.v1']
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({
+      supportSummary: support,
+      promotionApplicationReport: application
+    });
+    const exitAudit = stage4ExitAuditReport({ supportSummary: promotedSupport, application });
+    const entryAudit = stage5EntryAuditReport({ supportSummary: promotedSupport, exitAudit });
+    const exactLock = exactCapabilityLockReport({ supportSummary: promotedSupport, entryAudit });
+    const composedSchema = composedDslSchemaReport({ exactLock });
+    const draftReport = capabilityDslDraftReport({ composedSchema });
+    const normalizeReport = normalizeCapabilityDslDraftReport({ draftReport, composedSchema, exactLock });
+    const compileReport = compiledRuntimeIrReport({ normalizeReport, supportSummary: promotedSupport });
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditReport: exitAudit,
+      stage5EntryAuditReport: entryAudit,
+      stage5ExactCapabilityLockReport: exactLock,
+      stage6ComposedDslSchemaReport: composedSchema,
+      stage6CapabilityDslDraftReport: draftReport,
+      stage7NormalizeCapabilityDslDraftReport: normalizeReport,
+      stage8CompileNormalizedCapabilityDslReport: compileReport,
+      sourcePlanRevision
+    });
+
+    expect(compileReport.compileStatus).toBe('passed');
+    expect(report.nextCheckpoint).toBeNull();
+    expect(report.selectionFailure).toMatchObject({
+      error_code: 'STAGE9_CONSUME_COMPILED_RUNTIME_IR_CHECKPOINT_REQUIRED',
+      parent_stage_status: 'running',
+      compiled: true,
+      expected_checkpoint_id: STEP37_STAGE9_CONSUME_COMPILED_RUNTIME_IR_IN_RUNTIME_CHECKPOINT_ID,
+      actual_checkpoint_id: null,
+      invalid_fields: ['checkpoint_id']
+    });
+  });
+
+  it('continues to runtime consumption only after Stage 8 compile passes and supplies authoritative Stage 9 checkpoint', () => {
+    const support = supportSummary([capability({ capabilityId: 'promoted.alpha.v1' }), capability({ capabilityId: 'promoted.beta.v1' })]);
+    const application = supportPromotionApplicationReport({
+      completeSupportedCount: 2,
+      completeSupportedCapabilityIds: ['promoted.alpha.v1', 'promoted.beta.v1']
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({
+      supportSummary: support,
+      promotionApplicationReport: application
+    });
+    const exitAudit = stage4ExitAuditReport({ supportSummary: promotedSupport, application });
+    const entryAudit = stage5EntryAuditReport({ supportSummary: promotedSupport, exitAudit });
+    const exactLock = exactCapabilityLockReport({ supportSummary: promotedSupport, entryAudit });
+    const composedSchema = composedDslSchemaReport({ exactLock });
+    const draftReport = capabilityDslDraftReport({ composedSchema });
+    const normalizeReport = normalizeCapabilityDslDraftReport({ draftReport, composedSchema, exactLock });
+    const compileReport = compiledRuntimeIrReport({ normalizeReport, supportSummary: promotedSupport });
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditReport: exitAudit,
+      stage5EntryAuditReport: entryAudit,
+      stage5ExactCapabilityLockReport: exactLock,
+      stage6ComposedDslSchemaReport: composedSchema,
+      stage6CapabilityDslDraftReport: draftReport,
+      stage7NormalizeCapabilityDslDraftReport: normalizeReport,
+      stage8CompileNormalizedCapabilityDslReport: compileReport,
+      stage9ConsumeCompiledRuntimeIrCheckpoint: stage9ConsumeCompiledRuntimeIrCheckpoint(),
+      sourcePlanRevision
+    });
+
+    expect(report.selectionFailure).toBeNull();
+    expect(report.nextCheckpoint).toMatchObject({
+      checkpoint_id: STEP37_STAGE9_CONSUME_COMPILED_RUNTIME_IR_IN_RUNTIME_CHECKPOINT_ID,
+      parent_stage_id: 'stage9',
+      next_atomic_step: STEP37_STAGE9_CONSUME_COMPILED_RUNTIME_IR_IN_RUNTIME_NEXT_ATOMIC_STEP,
+      selection_rule: 'first_unmet_checkpoint_in_authoritative_inventory'
+    });
+    expect(report.nextCheckpoint?.checkpoint_id).not.toBe(STEP37_STAGE8_COMPILE_NORMALIZED_CAPABILITY_DSL_TO_RUNTIME_IR_CHECKPOINT_ID);
+  });
+
+  it('does not continue to runtime consumption when Stage 8 compile evidence is stale', () => {
+    const support = supportSummary([capability({ capabilityId: 'promoted.alpha.v1' })]);
+    const application = supportPromotionApplicationReport({
+      completeSupportedCount: 1,
+      completeSupportedCapabilityIds: ['promoted.alpha.v1']
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({
+      supportSummary: support,
+      promotionApplicationReport: application
+    });
+    const exitAudit = stage4ExitAuditReport({ supportSummary: promotedSupport, application });
+    const entryAudit = stage5EntryAuditReport({ supportSummary: promotedSupport, exitAudit });
+    const exactLock = exactCapabilityLockReport({ supportSummary: promotedSupport, entryAudit });
+    const composedSchema = composedDslSchemaReport({ exactLock });
+    const draftReport = capabilityDslDraftReport({ composedSchema });
+    const normalizeReport = normalizeCapabilityDslDraftReport({ draftReport, composedSchema, exactLock });
+    const staleCompileReport: Step37CompileNormalizedCapabilityDslReport = {
+      ...compiledRuntimeIrReport({ normalizeReport, supportSummary: promotedSupport }),
+      sourceNormalizedCapabilityDslAuditHash: 'fnv1a_stale_normalized_dsl'
+    };
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditReport: exitAudit,
+      stage5EntryAuditReport: entryAudit,
+      stage5ExactCapabilityLockReport: exactLock,
+      stage6ComposedDslSchemaReport: composedSchema,
+      stage6CapabilityDslDraftReport: draftReport,
+      stage7NormalizeCapabilityDslDraftReport: normalizeReport,
+      stage8CompileNormalizedCapabilityDslReport: staleCompileReport,
+      stage8CompileNormalizedCapabilityDslCheckpoint: stage8CompileNormalizedCapabilityDslCheckpoint(),
+      stage9ConsumeCompiledRuntimeIrCheckpoint: stage9ConsumeCompiledRuntimeIrCheckpoint(),
+      sourcePlanRevision
+    });
+
+    expect(report.nextCheckpoint).toMatchObject({
+      checkpoint_id: STEP37_STAGE8_COMPILE_NORMALIZED_CAPABILITY_DSL_TO_RUNTIME_IR_CHECKPOINT_ID
+    });
+    expect(report.nextCheckpoint?.checkpoint_id).not.toBe(STEP37_STAGE9_CONSUME_COMPILED_RUNTIME_IR_IN_RUNTIME_CHECKPOINT_ID);
+    expect(report.selectionFailure).toBeNull();
+  });
+
   it('requires committed closure history to have traceable source revisions instead of stale memory labels', () => {
     expect(() =>
       buildStep37RemainingCompleteSupportedInventory({
@@ -1512,6 +1641,19 @@ function stage8CompileNormalizedCapabilityDslCheckpoint(overrides: Partial<Step3
   };
 }
 
+function stage9ConsumeCompiledRuntimeIrCheckpoint(overrides: Partial<Step37CheckpointInventoryItem> = {}): Step37CheckpointInventoryItem {
+  return {
+    checkpoint_id: STEP37_STAGE9_CONSUME_COMPILED_RUNTIME_IR_IN_RUNTIME_CHECKPOINT_ID,
+    parent_stage_id: 'stage9',
+    next_atomic_step: STEP37_STAGE9_CONSUME_COMPILED_RUNTIME_IR_IN_RUNTIME_NEXT_ATOMIC_STEP,
+    status: 'unmet',
+    unmet_reason:
+      'Stage 8 compiled normalized capability DSL into runtime IR; consume the compiled runtime IR before QA, cutover, or legacy exit.',
+    source_plan_revision: sourcePlanRevision,
+    ...overrides
+  };
+}
+
 function stage4ExitAuditReport(input: {
   supportSummary: DeepSeekRunAndGunProfileSupportSummary;
   application: Step37SupportPromotionApplicationReport;
@@ -1634,6 +1776,90 @@ function normalizeCapabilityDslDraftReport(input: {
     sourceCapabilityDslDraftAuditHash: input.draftReport.auditHash,
     expectedCapabilityDslDraftAuditHash: input.draftReport.auditHash
   });
+}
+
+function compiledRuntimeIrReport(input: {
+  normalizeReport: Step37NormalizeCapabilityDslDraftReport;
+  supportSummary: DeepSeekRunAndGunProfileSupportSummary;
+}): Step37CompileNormalizedCapabilityDslReport {
+  const completeSupportedCapabilityIds = input.supportSummary.capabilities
+    .filter((capability) => capability.completeSupported)
+    .map((capability) => capability.capabilityId)
+    .sort();
+  const compileReadyCanonicalGameDsl = { stage: 'stage8', capabilityIds: completeSupportedCapabilityIds };
+  const compilationReport = { stage: 'compilation', status: 'compiled' };
+  const capabilityIr = { stage: 'capability_ir' };
+  const runtimePlan = { stage: 'runtime_plan' };
+  const runtimeSystemManifest = { stage: 'runtime_system_manifest' };
+  const sceneIrAuthorityReport = { stage: 'scene_ir_authority_report' };
+  const payloadWithoutHash: Omit<Step37CompileNormalizedCapabilityDslReport, 'auditHash'> = {
+    artifactKind: 'step37_compiled_runtime_ir_from_normalized_capability_dsl' as const,
+    schemaVersion: 'step37_compiled_runtime_ir_from_normalized_capability_dsl.v0.1' as const,
+    checkpointId: STEP37_STAGE8_COMPILE_NORMALIZED_CAPABILITY_DSL_TO_RUNTIME_IR_CHECKPOINT_ID,
+    parentStageId: 'stage8' as const,
+    sourceNormalizedCapabilityDslPath: 'docs/plans/step37-normalized-capability-dsl-from-draft.v0.1.json',
+    sourceNormalizedCapabilityDslAuditHash: input.normalizeReport.auditHash,
+    expectedNormalizedCapabilityDslAuditHash: input.normalizeReport.auditHash,
+    normalizedCapabilityDslAuditHashMatches: true,
+    sourceNormalizedCanonicalDslHash: input.normalizeReport.canonicalDslHash,
+    sourceNormalizationReportHash: input.normalizeReport.normalizationReportHash,
+    sourceNormalizationLockHash: input.normalizeReport.normalizationLockHash,
+    sourceNormalizationLockProfileId: input.normalizeReport.normalizationLockProfileId,
+    sourceCapabilityDslDraftAuditHash: input.normalizeReport.sourceCapabilityDslDraftAuditHash,
+    sourceCapabilityDslDraftHash: input.normalizeReport.sourceCapabilityDslDraftHash,
+    sourceComposedSchemaAuditHash: input.normalizeReport.sourceComposedSchemaAuditHash,
+    sourceComposedSchemaHash: input.normalizeReport.sourceComposedSchemaHash,
+    sourceExactCapabilityLockAuditHash: input.normalizeReport.sourceExactCapabilityLockAuditHash,
+    sourceExactCapabilityLockHash: input.normalizeReport.sourceExactCapabilityLockHash,
+    sourceExactLockProfileId: input.normalizeReport.sourceExactLockProfileId,
+    requiredCapabilityCount: input.supportSummary.summary.requiredCapabilityCount,
+    completeSupportedCount: completeSupportedCapabilityIds.length,
+    packageCount: completeSupportedCapabilityIds.length,
+    completeSupportedCapabilityIds,
+    normalizedCapabilityIds: completeSupportedCapabilityIds,
+    compileReadyCapabilityIds: completeSupportedCapabilityIds,
+    compileAdapterStatus: 'applied' as const,
+    compileAdapterActions: [
+      {
+        kind: 'weapon_default_straight_single_compile_contract_completed' as const,
+        capabilityIds: ['weapon.default_straight_single.v1'],
+        path: '/systems/config_cfg_weapon_default_straight_single_v1',
+        beforeHash: 'fnv1a_before',
+        afterHash: 'fnv1a_after',
+        reason: 'fixture compile adapter action'
+      }
+    ],
+    compileReadyCanonicalGameDsl: compileReadyCanonicalGameDsl as unknown as Step37CompileNormalizedCapabilityDslReport['compileReadyCanonicalGameDsl'],
+    compileReadyCanonicalDslHash: hashStableJson(compileReadyCanonicalGameDsl),
+    compilationReport: compilationReport as unknown as Step37CompileNormalizedCapabilityDslReport['compilationReport'],
+    compilationReportHash: hashStableJson(compilationReport),
+    capabilityIr: capabilityIr as unknown as Step37CompileNormalizedCapabilityDslReport['capabilityIr'],
+    capabilityIrHash: hashStableJson(capabilityIr),
+    runtimePlan: runtimePlan as unknown as Step37CompileNormalizedCapabilityDslReport['runtimePlan'],
+    runtimePlanHash: hashStableJson(runtimePlan),
+    runtimeSystemManifest: runtimeSystemManifest as unknown as Step37CompileNormalizedCapabilityDslReport['runtimeSystemManifest'],
+    runtimeSystemManifestHash: hashStableJson(runtimeSystemManifest),
+    sceneIrAuthorityReport: sceneIrAuthorityReport as unknown as Step37CompileNormalizedCapabilityDslReport['sceneIrAuthorityReport'],
+    sceneIrAuthorityReportHash: hashStableJson(sceneIrAuthorityReport),
+    compileStatus: 'passed' as const,
+    normalized: true,
+    compiled: true,
+    runtimeConsumed: false,
+    qaObserved: false,
+    productionDefaultCutoverActive: false,
+    legacyAuthoritativePathExited: false,
+    finalClosureNotBlocked: false,
+    globalExitConditionsMet: false as const,
+    parentStageStatusAfterCompile: 'running' as const,
+    nextCheckpointId: STEP37_STAGE9_CONSUME_COMPILED_RUNTIME_IR_IN_RUNTIME_CHECKPOINT_ID,
+    outputRefs: {
+      capabilityIr: 'capability-ir.json' as const,
+      runtimePlan: 'runtime-plan.generated.json' as const,
+      runtimeSystemManifest: 'runtime-system-manifest.json' as const
+    },
+    blockers: []
+  };
+  return { ...payloadWithoutHash, auditHash: hashStableJson(payloadWithoutHash) };
 }
 
 function supportPromotionApplicationReport(
