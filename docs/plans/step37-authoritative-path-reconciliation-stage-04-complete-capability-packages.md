@@ -6548,6 +6548,180 @@ next_atomic_step_selection_rule=first_unmet_checkpoint_in_authoritative_inventor
 remaining_inventory_result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=56; staticCompleteSupportedCount=0; committedClosedCapabilityCount=56; unsupported_unregistered=3; nextCheckpointId=stage4.validation_metamorphic_semantic_hash_v1.complete_supported_package_slice; selectionFailure=null.
 ```
 
+## Stage 4 Implementation: `validation.metamorphic_semantic_hash.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.validation_metamorphic_semantic_hash_v1.complete_supported_package_slice
+parent_stage_id=stage4
+capability_id=validation.metamorphic_semantic_hash.v1
+closure_record_id=stage4.validation_metamorphic_semantic_hash_v1.complete_supported_package_slice.implementation_record
+record_status=active
+current_active_record=true
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=open
+parent_stage_status=running
+parent_loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action_after_receipt=RUN_PARENT_LOOP_DRIVER
+skill_revision_type=sha256_bundle
+skill_bundle_format=step37_manifest_v1_path_size_sha
+skill_root_identity=/Users/dahufa/.agents/skills/review-gated-delivery
+skill_file_count=7
+previous_recorded_skill_digest=1993fc085fccd9a74744ba77f5d5bb8beaebfa273b52228bbdd3d1f41671715d
+current_active_skill_digest=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1
+freshness_status=changed
+freshness_command=/usr/bin/time -p node --input-type=module "<review-gated-delivery root-relative path_size_sha Skill bundle digest>"
+freshness_exit_code=0
+freshness_interpretation=previous 1993fc digest is historical evidence from the fixed-prompt checkpoint; the current metamorphic candidate must bind the freshly recomputed 58cf2505 digest.
+```
+
+`validation.metamorphic_semantic_hash.v1` was selected by the Parent Loop Driver after the `validation.fixed_prompt_end_to_end.v1` receipt. The previous receipt recorded `next_atomic_step=stage4.validation_metamorphic_semantic_hash_v1.complete_supported_package_slice`, `global_exit_conditions_met=false`, and `user_input_required=false`; this atomic step therefore continues Stage 4 and does not enter Stage 5.
+
+Minimum closure requirements:
+
+1. Add a package-owned metamorphic semantic hash validation capability contract with stable capability identity, runtime system identity, verification event identity, required probe id, and required QA evidence id.
+2. Depend on `canonical.semantic_preservation.v1` so ordinary canonical hash evidence cannot bypass the semantic hash foundation.
+3. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+4. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+5. Require the metamorphic semantic hash probe to prove equivalent variant execution: base hash, variant hash, transform suite id, hash match, transform count, semantic intent preservation, and no canonical drift.
+6. Preserve negative regressions proving canonical semantic preservation evidence alone, generic semantic hash events, or missing metamorphic state fields keep the capability unverified and emit the required missing-probe blocker.
+7. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Modified paths:
+
+- `packages/game-dsl/src/gameplay-capabilities/validation-metamorphic-semantic-hash-runtime-module.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/validation-metamorphic-semantic-hash-package.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/index.ts`.
+- `packages/game-dsl/src/gameplay-capabilities/registry.ts`.
+- `packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts`.
+- `tests/contracts/contract-freeze.test.ts`.
+- `tests/contracts/deepseek-authoritative-dsl-support.test.ts`.
+- `tests/contracts/dsl-consumption-report.test.ts`.
+- `tests/contracts/gameplay-capability-package-contract.test.ts`.
+- `tests/contracts/gameplay-capability-qa-probes.test.ts`.
+- `tests/contracts/gameplay-capability-registry.test.ts`.
+- `tests/contracts/generation-target-profile-runtime-support.test.ts`.
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`.
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`.
+
+Evidence/probe chain:
+
+- Package contract: `createValidationMetamorphicSemanticHashPackageContract()`.
+- Runtime module identity: `VALIDATION_METAMORPHIC_SEMANTIC_HASH_RUNTIME_SYSTEM_ID=validation.metamorphic_semantic_hash`.
+- Verification event: `VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE=validation.metamorphic_semantic_hash.verified`.
+- Required probe: `VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID=validation.metamorphic_semantic_hash.v1.semantic_hash.browser_qa.v1`.
+- Required evidence: `VALIDATION_METAMORPHIC_SEMANTIC_HASH_PACKAGE_REQUIRED_EVIDENCE_ID=validation.metamorphic_semantic_hash.v1.evidence.capability_qa_report.v1`.
+- Dependency capability: `canonical.semantic_preservation.v1`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares metamorphic semantic hash state fields and fails the required probe when ordinary canonical hash evidence omits those fields.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for same-run full metamorphic semantic hash evidence; it does not mutate static `completeSupported`.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned metamorphic semantic hash validation capability contract, runtime system identity, verification event, required probe id, required evidence id, dependency edge to canonical semantic preservation, and runtime evidence fields for equivalent-variant semantic hash validation. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, Step37 remaining-inventory driver, telemetry/event freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves the metamorphic variant suite produced matching semantic hashes without canonical drift. |
+| Authority | Package-owned QA evidence defines the capability authority: canonical hash proof is insufficient unless evidence also proves `metamorphicHashMatched=true`, the expected transform suite, matching base/variant hashes, semantic intent preservation, and no canonical drift. |
+| Legacy strategy | Generic semantic hash, canonical semantic preservation evidence, or natural-language receipt text cannot overclaim this capability without the package-owned metamorphic probe payload. |
+| Failure policy | Missing package contract, missing dependency proof, missing verification event, missing metamorphic state fields, wrong capability/probe identity, stale evidence, hash mismatch, or canonical drift keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, registry support advancement without complete support, QA reader positive/negative metamorphic state behavior, dependency probe isolation, target-profile overlay positive/negative behavior, remaining-inventory count changes, and event/schema freeze coverage. |
+| Rollback | Reverting this slice removes only the validation metamorphic semantic hash package/probe/reader/schema wiring and returns `validation.metamorphic_semantic_hash.v1` to unsupported evidence without changing business runtime gameplay templates or Stage 5 policy. |
+
+Validation performed before this record update:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts -t "metamorphic semantic|validation metamorphic|stable target profile support ordering|missing required probe blockers|remaining complete-supported inventory|Contract Freeze|surfaces default weapon runtime consumer evidence"
+exitCode=1
+result=RED: registry/support count fixtures still expected registeredCapabilityCount=56 and unsupported_unregistered=3 before the new package was accounted for.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts -t "metamorphic semantic|validation metamorphic|stable target profile support ordering|missing required probe blockers|remaining complete-supported inventory|Contract Freeze|surfaces default weapon runtime consumer evidence"
+exitCode=0
+duration=real 1.84s
+result=PASS: focused set 8 files; 60 passed / 258 skipped tests.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts
+exitCode=0
+duration=real 2.05s
+result=PASS: 8 files / 318 tests.
+```
+
+Candidate readiness validation evidence before this status sync:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/step37-parent-loop-driver.test.ts -t "metamorphic semantic|validation metamorphic|stable target profile support ordering|missing required probe blockers|remaining complete-supported inventory|Contract Freeze|surfaces default weapon runtime consumer evidence|closure|Parent Loop"
+exitCode=0
+duration=real 2.32s
+result=PASS: focused set 10 files; 97 passed / 275 skipped tests.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/step37-closure-implementation-trace.test.ts tests/contracts/step37-parent-loop-driver.test.ts
+exitCode=0
+duration=real 2.15s
+result=PASS: 10 files / 372 tests.
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=1
+duration=real 9.93s
+result=RED: `tests/contracts/phaser-templates.test.ts` failed once in the full contracts run at `uses dodger collectible runtime_plan count as the score target while keeping extra spawn budget`; isolated case and isolated file both passed without changing timeout, config, or code.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/phaser-templates.test.ts -t "uses dodger collectible runtime_plan count as the score target while keeping extra spawn budget"
+exitCode=0
+duration=real 0.79s
+result=PASS: 1 passed / 44 skipped tests.
+
+command=/usr/bin/time -p npx vitest run tests/contracts/phaser-templates.test.ts
+exitCode=0
+duration=real 0.84s
+result=PASS: 45 tests.
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 10.40s
+result=PASS: 98 files / 1344 tests.
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 61.54s
+result=PASS: contracts 98 files / 1344 tests; workspace 34 files / 410 tests.
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 7.87s
+result=PASS.
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.03s
+result=PASS.
+
+command=/usr/bin/time -p node --input-type=module "<review-gated-delivery root-relative path_size_sha Skill bundle digest>"
+exitCode=0
+duration=real 0.06s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_size_sha; skill_root_identity=/Users/dahufa/.agents/skills/review-gated-delivery; skill_file_count=7; skill_manifest_input_bytes=696; skill_bundle_digest=58cf2505cb2dc22f35ca97025590a4e60720464d0faf2265d727a9765d1923d1.
+
+command=/usr/bin/time -p npx tsx - <<'TS' ... current support summary plus remaining-inventory alignment ...
+exitCode=0
+duration=real 0.45s
+result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=57; staticCompleteSupportedCount=0; committedClosedCapabilityCount=56; unsupported_unregistered=2; computedNextCheckpointId=stage4.validation_metamorphic_semantic_hash_v1.complete_supported_package_slice; current capability state=registered_without_required_probe_verification; selectionFailure=null.
+```
+
+Post-record validation requirement:
+
+- This implementation record and candidate-readiness status sync change the final tree. Before creating the immutable candidate commit, focused contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, Skill freshness, capability support alignment, Parent Loop inventory alignment, and final diff range check must be re-run against the updated final tree.
+- Candidate commit must not write its own SHA into this implementation record.
+- Oracle request must bind the candidate commit SHA and the final recomputed `reviewed_skill_revision`.
+- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+- Oracle PASS is required before any receipt may update `closure_status=closed`.
+
 ## Stage 4 Implementation: `ui.win_failure_transitions.v1` complete-supported package slice
 
 Checkpoint identity:

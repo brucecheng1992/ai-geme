@@ -1,0 +1,9 @@
+export const VALIDATION_METAMORPHIC_SEMANTIC_HASH_CAPABILITY_ID = 'validation.metamorphic_semantic_hash.v1';
+export const VALIDATION_METAMORPHIC_SEMANTIC_HASH_RUNTIME_SYSTEM_ID = 'validation.metamorphic_semantic_hash';
+export const VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE = 'validation.metamorphic_semantic_hash.verified';
+export const VALIDATION_METAMORPHIC_SEMANTIC_HASH_PROFILE_ID = 'DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1';
+export const VALIDATION_METAMORPHIC_SEMANTIC_HASH_RUNTIME_FAMILY = 'phaser_2d_action_arcade.v1';
+export const VALIDATION_METAMORPHIC_SEMANTIC_HASH_SCHEMA_VERSION = 'validation_metamorphic_semantic_hash.v0.1';
+export const VALIDATION_METAMORPHIC_SEMANTIC_HASH_TRANSFORM_SUITE_ID = 'semantic_equivalence_metamorphic.v1';
+export const VALIDATION_METAMORPHIC_SEMANTIC_HASH_BASE_HASH = 'semantic_hash:base';
+export const VALIDATION_METAMORPHIC_SEMANTIC_HASH_VARIANT_HASH = 'semantic_hash:base';

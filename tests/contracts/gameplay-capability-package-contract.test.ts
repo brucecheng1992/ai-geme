@@ -318,6 +318,21 @@ import {
   VALIDATION_FIXED_PROMPT_END_TO_END_SCHEMA_VERSION
 } from '../../packages/game-dsl/src/gameplay-capabilities/validation-fixed-prompt-end-to-end-runtime-module.js';
 import {
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_PACKAGE_REQUIRED_EVIDENCE_ID,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID,
+  createValidationMetamorphicSemanticHashPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/validation-metamorphic-semantic-hash-package.js';
+import {
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_BASE_HASH,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_PROFILE_ID,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_RUNTIME_FAMILY,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_RUNTIME_SYSTEM_ID,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_SCHEMA_VERSION,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_TRANSFORM_SUITE_ID,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_VARIANT_HASH
+} from '../../packages/game-dsl/src/gameplay-capabilities/validation-metamorphic-semantic-hash-runtime-module.js';
+import {
   GOAL_BOSS_UNLOCK_PACKAGE_REQUIRED_EVIDENCE_ID,
   GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID,
   createGoalBossUnlockPackageContract
@@ -2028,6 +2043,72 @@ describe('Gameplay capability package contract', () => {
             fixedPromptCanonicalSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_CANONICAL_SCHEMA_VERSION,
             fixedPromptHashMatched: true,
             fixedPromptFallbackPromptUsed: false
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the metamorphic semantic-hash validation package only with equivalent variant hash proof', () => {
+    const contract = createValidationMetamorphicSemanticHashPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'validation.metamorphic_semantic_hash.v1'
+    });
+    expect(contract.dependencies).toEqual([{ capabilityId: 'canonical.semantic_preservation.v1', range: '^v1' }]);
+    expect(contract.runtime.systems).toEqual([
+      expect.objectContaining({
+        id: VALIDATION_METAMORPHIC_SEMANTIC_HASH_RUNTIME_SYSTEM_ID,
+        dependencies: [CANONICAL_SEMANTIC_PRESERVATION_RUNTIME_SYSTEM_ID]
+      })
+    ]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: VALIDATION_METAMORPHIC_SEMANTIC_HASH_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'validation.metamorphic_semantic_hash.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE,
+          parameters: {
+            transformSuiteId: VALIDATION_METAMORPHIC_SEMANTIC_HASH_TRANSFORM_SUITE_ID,
+            expectedBaseHash: VALIDATION_METAMORPHIC_SEMANTIC_HASH_BASE_HASH,
+            expectedVariantHash: VALIDATION_METAMORPHIC_SEMANTIC_HASH_VARIANT_HASH
+          }
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: VALIDATION_METAMORPHIC_SEMANTIC_HASH_RUNTIME_SYSTEM_ID,
+          ref: VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID}.assertion.metamorphic_semantic_hash`,
+          expected: {
+            metamorphicSemanticHashVerified: true,
+            metamorphicSemanticHashSchemaVersion: VALIDATION_METAMORPHIC_SEMANTIC_HASH_SCHEMA_VERSION,
+            metamorphicSemanticHashProfileId: VALIDATION_METAMORPHIC_SEMANTIC_HASH_PROFILE_ID,
+            metamorphicSemanticHashRuntimeFamily: VALIDATION_METAMORPHIC_SEMANTIC_HASH_RUNTIME_FAMILY,
+            metamorphicTransformSuiteId: VALIDATION_METAMORPHIC_SEMANTIC_HASH_TRANSFORM_SUITE_ID,
+            metamorphicBaseSemanticHash: VALIDATION_METAMORPHIC_SEMANTIC_HASH_BASE_HASH,
+            metamorphicVariantSemanticHash: VALIDATION_METAMORPHIC_SEMANTIC_HASH_VARIANT_HASH,
+            metamorphicHashMatched: true,
+            metamorphicTransformCount: 2,
+            metamorphicSemanticIntentPreserved: true,
+            metamorphicNoCanonicalDrift: true
           }
         })
       ]

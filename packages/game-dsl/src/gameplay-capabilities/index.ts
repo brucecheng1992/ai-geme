@@ -61,6 +61,8 @@ export * from './validation-fail-closed-unknown-nodes-runtime-module.js';
 export * from './validation-fail-closed-unknown-nodes-package.js';
 export * from './validation-fixed-prompt-end-to-end-runtime-module.js';
 export * from './validation-fixed-prompt-end-to-end-package.js';
+export * from './validation-metamorphic-semantic-hash-runtime-module.js';
+export * from './validation-metamorphic-semantic-hash-package.js';
 export * from './goal-boss-unlock-runtime-module.js';
 export * from './goal-boss-unlock-package.js';
 export * from './hazard-falling-area-runtime-module.js';

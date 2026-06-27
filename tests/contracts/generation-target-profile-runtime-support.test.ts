@@ -127,6 +127,14 @@ import {
   VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID,
   VALIDATION_FIXED_PROMPT_END_TO_END_RUNTIME_FAMILY,
   VALIDATION_FIXED_PROMPT_END_TO_END_SCHEMA_VERSION,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_BASE_HASH,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_PROFILE_ID,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_RUNTIME_FAMILY,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_SCHEMA_VERSION,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_TRANSFORM_SUITE_ID,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_VARIANT_HASH,
   GOAL_BOSS_UNLOCK_BOSS_ENTITY_ID,
   GOAL_BOSS_UNLOCK_EVENT_TYPE,
   GOAL_BOSS_UNLOCK_REASON,
@@ -310,6 +318,7 @@ import {
   createGenerationFallbackPolicyFailClosedPackageContract,
   createValidationFailClosedUnknownNodesPackageContract,
   createValidationFixedPromptEndToEndPackageContract,
+  createValidationMetamorphicSemanticHashPackageContract,
   createGoalBossUnlockPackageContract,
   createHazardFallingAreaPackageContract,
   createHazardTimedExplosionPackageContract,
@@ -363,6 +372,7 @@ const uiHudRetriesCapabilityId = 'ui.hud_retries.v1';
 const generationFallbackPolicyFailClosedCapabilityId = 'generation.fallback_policy_fail_closed.v1';
 const validationFailClosedUnknownNodesCapabilityId = 'validation.fail_closed_unknown_nodes.v1';
 const validationFixedPromptEndToEndCapabilityId = 'validation.fixed_prompt_end_to_end.v1';
+const validationMetamorphicSemanticHashCapabilityId = 'validation.metamorphic_semantic_hash.v1';
 const goalBossUnlockCapabilityId = 'goal.boss_unlock.v1';
 const hazardFallingAreaCapabilityId = 'hazard.falling_area.v1';
 const hazardTimedExplosionCapabilityId = 'hazard.timed_explosion.v1';
@@ -1367,6 +1377,107 @@ describe('Step 37 target profile runtime support overlay', () => {
       verifiedRequiredProbeIds: [CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID],
       missingRequiredProbeIds: [],
       staticEvidenceDimensions: { qa_observed: false },
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+  });
+
+  it('keeps metamorphic semantic hash unverified when canonical hash evidence lacks variant proof', () => {
+    const canonicalObserved: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: canonicalSemanticPreservationCapabilityId,
+        probeId: CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
+        action: 'verify_semantic_preservation',
+        eventType: CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE,
+        eventTypes: [CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE],
+        canonicalHashMatched: true,
+        semanticIntentPreserved: true,
+        droppedCanonicalNodes: false,
+        status: 'observed',
+        sourceRef: 'canonical.semantic.hash'
+      }
+    ];
+    const canonicalOnlyQaReport = buildSingleCapabilityQaReport({
+      capabilityId: validationMetamorphicSemanticHashCapabilityId,
+      dependencyPackages: [createCanonicalSemanticPreservationPackageContract()],
+      additionalObserved: canonicalObserved,
+      packageContract: createValidationMetamorphicSemanticHashPackageContract(),
+      eventType: CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE,
+      probeId: VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID,
+      action: 'canonical_hash_only',
+      sourceRef: 'canonical.semantic.hash',
+      stateFields: {
+        canonicalHashMatched: true,
+        semanticIntentPreserved: true
+      }
+    });
+    const observedMetamorphicQaReport = buildSingleCapabilityQaReport({
+      capabilityId: validationMetamorphicSemanticHashCapabilityId,
+      dependencyPackages: [createCanonicalSemanticPreservationPackageContract()],
+      additionalObserved: canonicalObserved,
+      packageContract: createValidationMetamorphicSemanticHashPackageContract(),
+      eventType: VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE,
+      probeId: VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID,
+      action: 'verify_metamorphic_semantic_hash',
+      sourceRef: 'validation.metamorphic_semantic_hash',
+      stateFields: validationMetamorphicSemanticHashStateFields()
+    });
+    const canonicalOnlyReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_metamorphic_canonical_only',
+      capabilityQaReport: canonicalOnlyQaReport
+    });
+    const observedMetamorphicReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_metamorphic_observed_state',
+      capabilityQaReport: observedMetamorphicQaReport
+    });
+    const canonicalOnlyState = canonicalOnlyReport.capabilities.find((entry) => entry.capabilityId === validationMetamorphicSemanticHashCapabilityId);
+    const observedMetamorphicState = observedMetamorphicReport.capabilities.find(
+      (entry) => entry.capabilityId === validationMetamorphicSemanticHashCapabilityId
+    );
+
+    expect(canonicalOnlyQaReport.requiredResults.find((entry) => entry.probeId === CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID))
+      .toMatchObject({ status: 'passed' });
+    expect(canonicalOnlyQaReport.requiredResults.find((entry) => entry.probeId === VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID))
+      .toMatchObject({
+        status: 'failed',
+        assertionResults: expect.arrayContaining([
+          expect.objectContaining({
+            assertionId: `${VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID}.assertion.metamorphic_semantic_hash`,
+            status: 'failed',
+            message: expect.stringContaining(`observation ${VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE} not observed`)
+          }),
+          expect.objectContaining({
+            assertionId: `${VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID}.assertion.metamorphic_semantic_hash`,
+            status: 'failed',
+            message: expect.stringContaining('expected metamorphicHashMatched=true, observed <missing>')
+          })
+        ])
+      });
+    expect(canonicalOnlyReport).toMatchObject({
+      observedCompleteSupportedCount: 1,
+      blockers: [
+        `capability_qa_report_missing_required_probe:${VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID}`,
+        'target_profile_runtime_support_incomplete:1/59'
+      ]
+    });
+    expect(canonicalOnlyState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedMetamorphicReport).toMatchObject({
+      observedCompleteSupportedCount: 2,
+      observedCapabilityIds: [canonicalSemanticPreservationCapabilityId, validationMetamorphicSemanticHashCapabilityId],
+      blockers: ['target_profile_runtime_support_incomplete:2/59']
+    });
+    expect(observedMetamorphicState).toMatchObject({
+      runtimeVerified: true,
+      observedCompleteSupported: true,
+      verifiedRequiredProbeIds: [VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
       observedEvidenceDimensions: { qa_observed: true }
     });
   });
@@ -5479,6 +5590,7 @@ function buildDefaultWeaponQaReport(
     pickupWeaponSupplyStateFields?: boolean;
     providerDeepSeekAuthoritativeDraftStateFields?: boolean;
     validationFixedPromptEndToEndStateFields?: boolean;
+    validationMetamorphicSemanticHashStateFields?: boolean;
     reviewOracleFinalGateStateFields?: boolean;
     spawnEnemyWaveOrderedFields?: boolean;
     weaponDeathResetStateFields?: boolean;
@@ -6190,6 +6302,20 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
+    ...(effectiveEventTypes.includes(VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE)
+      ? [
+          {
+            capabilityId: validationMetamorphicSemanticHashCapabilityId,
+            probeId: VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID,
+            action: 'verify_metamorphic_semantic_hash',
+            eventType: VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE,
+            eventTypes: effectiveEventTypes,
+            ...(options.validationMetamorphicSemanticHashStateFields === false ? {} : validationMetamorphicSemanticHashStateFields()),
+            status: 'observed' as const,
+            sourceRef: 'validation.metamorphic_semantic_hash'
+          }
+        ]
+      : []),
     ...(effectiveEventTypes.includes(REVIEW_ORACLE_FINAL_GATE_EVENT_TYPE)
       ? [
           {
@@ -6382,6 +6508,7 @@ function withDefaultPackageOwnedEvents(
     includeDefaultSpawnExplicitDeclarations?: boolean;
     includeDefaultSpawnStopOnBossDefeat?: boolean;
     includeDefaultValidationFailClosedUnknownNodes?: boolean;
+    includeDefaultValidationMetamorphicSemanticHash?: boolean;
   } = {}
 ): readonly string[] {
   const packageOwnedEvents = [
@@ -6401,6 +6528,10 @@ function withDefaultPackageOwnedEvents(
       : []),
     ...(eventTypes.includes(FIXED_PROMPT_BINDING_EVENT_TYPE) && eventTypes.includes(PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE)
       ? [VALIDATION_FIXED_PROMPT_END_TO_END_EVENT_TYPE]
+      : []),
+    ...(options.includeDefaultValidationMetamorphicSemanticHash !== false &&
+    eventTypes.includes(CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE)
+      ? [VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE]
       : []),
     ...(eventTypes.includes(RULES_CHECKPOINT_RESTORE_EVENT_TYPE)
       ? [RULES_ENCOUNTER_GATE_EVENT_TYPE, RULES_RETRY_COUNT_EVENT_TYPE, RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE]
@@ -6638,6 +6769,22 @@ function validationFixedPromptEndToEndStateFields(): Record<string, unknown> {
     fixedPromptCanonicalSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_CANONICAL_SCHEMA_VERSION,
     fixedPromptHashMatched: true,
     fixedPromptFallbackPromptUsed: false
+  };
+}
+
+function validationMetamorphicSemanticHashStateFields(): Record<string, unknown> {
+  return {
+    metamorphicSemanticHashVerified: true,
+    metamorphicSemanticHashSchemaVersion: VALIDATION_METAMORPHIC_SEMANTIC_HASH_SCHEMA_VERSION,
+    metamorphicSemanticHashProfileId: VALIDATION_METAMORPHIC_SEMANTIC_HASH_PROFILE_ID,
+    metamorphicSemanticHashRuntimeFamily: VALIDATION_METAMORPHIC_SEMANTIC_HASH_RUNTIME_FAMILY,
+    metamorphicTransformSuiteId: VALIDATION_METAMORPHIC_SEMANTIC_HASH_TRANSFORM_SUITE_ID,
+    metamorphicBaseSemanticHash: VALIDATION_METAMORPHIC_SEMANTIC_HASH_BASE_HASH,
+    metamorphicVariantSemanticHash: VALIDATION_METAMORPHIC_SEMANTIC_HASH_VARIANT_HASH,
+    metamorphicHashMatched: true,
+    metamorphicTransformCount: 2,
+    metamorphicSemanticIntentPreserved: true,
+    metamorphicNoCanonicalDrift: true
   };
 }
 

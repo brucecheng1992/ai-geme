@@ -466,6 +466,17 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   fixedPromptCanonicalSchemaVersion?: string;
   fixedPromptHashMatched?: boolean;
   fixedPromptFallbackPromptUsed?: boolean;
+  metamorphicSemanticHashVerified?: boolean;
+  metamorphicSemanticHashSchemaVersion?: string;
+  metamorphicSemanticHashProfileId?: string;
+  metamorphicSemanticHashRuntimeFamily?: string;
+  metamorphicTransformSuiteId?: string;
+  metamorphicBaseSemanticHash?: string;
+  metamorphicVariantSemanticHash?: string;
+  metamorphicHashMatched?: boolean;
+  metamorphicTransformCount?: number;
+  metamorphicSemanticIntentPreserved?: boolean;
+  metamorphicNoCanonicalDrift?: boolean;
   finalOracleGateApproved?: boolean;
   finalOracleReviewedCommitShaPresent?: boolean;
   finalOracleReviewedSkillRevisionPresent?: boolean;
@@ -1237,6 +1248,17 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedStringField('fixedPromptCanonicalSchemaVersion', expected, observed.fixedPromptCanonicalSchemaVersion),
     ...compareExpectedBooleanField('fixedPromptHashMatched', expected, observed.fixedPromptHashMatched),
     ...compareExpectedBooleanField('fixedPromptFallbackPromptUsed', expected, observed.fixedPromptFallbackPromptUsed),
+    ...compareExpectedBooleanField('metamorphicSemanticHashVerified', expected, observed.metamorphicSemanticHashVerified),
+    ...compareExpectedStringField('metamorphicSemanticHashSchemaVersion', expected, observed.metamorphicSemanticHashSchemaVersion),
+    ...compareExpectedStringField('metamorphicSemanticHashProfileId', expected, observed.metamorphicSemanticHashProfileId),
+    ...compareExpectedStringField('metamorphicSemanticHashRuntimeFamily', expected, observed.metamorphicSemanticHashRuntimeFamily),
+    ...compareExpectedStringField('metamorphicTransformSuiteId', expected, observed.metamorphicTransformSuiteId),
+    ...compareExpectedStringField('metamorphicBaseSemanticHash', expected, observed.metamorphicBaseSemanticHash),
+    ...compareExpectedStringField('metamorphicVariantSemanticHash', expected, observed.metamorphicVariantSemanticHash),
+    ...compareExpectedBooleanField('metamorphicHashMatched', expected, observed.metamorphicHashMatched),
+    ...compareExpectedNumberField('metamorphicTransformCount', expected, observed.metamorphicTransformCount),
+    ...compareExpectedBooleanField('metamorphicSemanticIntentPreserved', expected, observed.metamorphicSemanticIntentPreserved),
+    ...compareExpectedBooleanField('metamorphicNoCanonicalDrift', expected, observed.metamorphicNoCanonicalDrift),
     ...compareExpectedBooleanField('finalOracleGateApproved', expected, finalOracleFacts.finalOracleGateApproved),
     ...compareExpectedBooleanField('finalOracleReviewedCommitShaPresent', expected, finalOracleFacts.finalOracleReviewedCommitShaPresent),
     ...compareExpectedBooleanField('finalOracleReviewedSkillRevisionPresent', expected, finalOracleFacts.finalOracleReviewedSkillRevisionPresent),

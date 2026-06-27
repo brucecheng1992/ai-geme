@@ -557,6 +557,11 @@ describe('Contract Freeze', () => {
     expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('validation.fixed_prompt_end_to_end.verified');
   });
 
+  it('allows package-owned metamorphic semantic hash validation telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'validation.metamorphic_semantic_hash.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('validation.metamorphic_semantic_hash.verified');
+  });
+
   it('allows package-owned final Oracle gate telemetry without making it a QA gate requirement', () => {
     expect(() => TelemetryEventSchema.parse({ type: 'review.oracle_final_gate.approved', timestamp_ms: 0, frame: 0 })).not.toThrow();
     expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('review.oracle_final_gate.approved');

@@ -962,6 +962,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       'ui.win_failure_transitions.v1',
       'validation.fail_closed_unknown_nodes.v1',
       'validation.fixed_prompt_end_to_end.v1',
+      'validation.metamorphic_semantic_hash.v1',
       'weapon.cooldown.v1',
       'weapon.death_reset.v1',
       'weapon.default_straight_single.v1',

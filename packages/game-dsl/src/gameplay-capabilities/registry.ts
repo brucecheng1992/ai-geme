@@ -138,6 +138,10 @@ import {
   createValidationFixedPromptEndToEndPackageContract
 } from './validation-fixed-prompt-end-to-end-package.js';
 import {
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID,
+  createValidationMetamorphicSemanticHashPackageContract
+} from './validation-metamorphic-semantic-hash-package.js';
+import {
   GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID,
   createGoalBossUnlockPackageContract
 } from './goal-boss-unlock-package.js';
@@ -983,6 +987,19 @@ const validationFixedPromptEndToEndPackageEvidence: GameplayCapabilityEvidence =
 const validationFixedPromptEndToEndPackageQa: GameplayCapabilityQaEvidence = validationFixedPromptEndToEndPackageReport.supportEligible
   ? { requiredProbeIds: [VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const validationMetamorphicSemanticHashPackageReport = validateGameplayCapabilityPackage(createValidationMetamorphicSemanticHashPackageContract());
+const validationMetamorphicSemanticHashPackageEvidence: GameplayCapabilityEvidence = validationMetamorphicSemanticHashPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const validationMetamorphicSemanticHashPackageQa: GameplayCapabilityQaEvidence = validationMetamorphicSemanticHashPackageReport.supportEligible
+  ? { requiredProbeIds: [VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const goalBossUnlockPackageReport = validateGameplayCapabilityPackage(createGoalBossUnlockPackageContract());
 const goalBossUnlockPackageEvidence: GameplayCapabilityEvidence = goalBossUnlockPackageReport.supportEligible
   ? {
@@ -1431,6 +1448,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     validationFixedPromptEndToEndPackageEvidence,
     validationFixedPromptEndToEndPackageQa
+  ),
+  planned(
+    'validation.metamorphic_semantic_hash.v1',
+    'validation',
+    'Metamorphic semantic hash validation',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    validationMetamorphicSemanticHashPackageEvidence,
+    validationMetamorphicSemanticHashPackageQa
   ),
   planned(
     'goal.boss_unlock.v1',

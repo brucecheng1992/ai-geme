@@ -172,6 +172,15 @@ import {
   VALIDATION_FIXED_PROMPT_END_TO_END_RUNTIME_FAMILY,
   VALIDATION_FIXED_PROMPT_END_TO_END_SCHEMA_VERSION,
   createValidationFixedPromptEndToEndPackageContract,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_BASE_HASH,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_PROFILE_ID,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_RUNTIME_FAMILY,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_SCHEMA_VERSION,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_TRANSFORM_SUITE_ID,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_VARIANT_HASH,
+  createValidationMetamorphicSemanticHashPackageContract,
   GOAL_BOSS_UNLOCK_BOSS_ENTITY_ID,
   GOAL_BOSS_UNLOCK_EVENT_TYPE,
   GOAL_BOSS_UNLOCK_REASON,
@@ -2265,6 +2274,152 @@ describe('Capability-owned runtime QA probes', () => {
     );
     expect(observedFixedPromptChain.status).toBe('passed');
     expect(observedFixedPromptChain.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'passed',
+      planHash: plan.planHash
+    });
+  });
+
+  it('requires metamorphic semantic hash proof beyond ordinary canonical hash evidence', () => {
+    const capabilityId = 'validation.metamorphic_semantic_hash.v1';
+    const probeId = VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID;
+    const canonicalPackage = createCanonicalSemanticPreservationPackageContract();
+    const packageContract = createValidationMetamorphicSemanticHashPackageContract();
+    const packages = [canonicalPackage, packageContract];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const canonicalDependencyEvidence = [
+      {
+        capabilityId: 'canonical.semantic_preservation.v1',
+        probeId: CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
+        action: 'verify_semantic_preservation',
+        eventType: CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE,
+        eventTypes: [CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE],
+        canonicalHashMatched: true,
+        semanticIntentPreserved: true,
+        droppedCanonicalNodes: false,
+        status: 'observed' as const,
+        sourceRef: 'canonical.semantic.hash'
+      }
+    ];
+    const metamorphicState = {
+      metamorphicSemanticHashVerified: true,
+      metamorphicSemanticHashSchemaVersion: VALIDATION_METAMORPHIC_SEMANTIC_HASH_SCHEMA_VERSION,
+      metamorphicSemanticHashProfileId: VALIDATION_METAMORPHIC_SEMANTIC_HASH_PROFILE_ID,
+      metamorphicSemanticHashRuntimeFamily: VALIDATION_METAMORPHIC_SEMANTIC_HASH_RUNTIME_FAMILY,
+      metamorphicTransformSuiteId: VALIDATION_METAMORPHIC_SEMANTIC_HASH_TRANSFORM_SUITE_ID,
+      metamorphicBaseSemanticHash: VALIDATION_METAMORPHIC_SEMANTIC_HASH_BASE_HASH,
+      metamorphicVariantSemanticHash: VALIDATION_METAMORPHIC_SEMANTIC_HASH_VARIANT_HASH,
+      metamorphicHashMatched: true,
+      metamorphicTransformCount: 2,
+      metamorphicSemanticIntentPreserved: true,
+      metamorphicNoCanonicalDrift: true
+    };
+
+    expect(plan.status).toBe('ready');
+    expect(plan.requiredProbes.map((probe) => probe.id)).toEqual([
+      CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
+      VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID
+    ]);
+
+    const canonicalOnly = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: { status: 'PASSED', observed: canonicalDependencyEvidence, missingProbeIds: [], mismatches: [] }
+      })
+    });
+    const missingMetamorphicState = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...canonicalDependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_metamorphic_semantic_hash',
+              eventType: VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE,
+              eventTypes: [VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE],
+              canonicalHashMatched: true,
+              semanticIntentPreserved: true,
+              status: 'observed' as const,
+              sourceRef: 'validation.metamorphic_semantic_hash'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedMetamorphicState = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...canonicalDependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_metamorphic_semantic_hash',
+              eventType: VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE,
+              eventTypes: [VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE],
+              ...metamorphicState,
+              status: 'observed' as const,
+              sourceRef: 'validation.metamorphic_semantic_hash'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(canonicalOnly.status).toBe('failed');
+    expect(canonicalOnly.requiredResults.find((entry) => entry.probeId === CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed',
+      planHash: plan.planHash
+    });
+    expect(canonicalOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingMetamorphicState.status).toBe('failed');
+    expect(missingMetamorphicState.requiredResults.find((entry) => entry.probeId === CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID))
+      .toMatchObject({
+        status: 'passed',
+        planHash: plan.planHash
+      });
+    expect(missingMetamorphicState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingMetamorphicState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.metamorphic_semantic_hash`,
+          status: 'failed',
+          message: expect.stringContaining('expected metamorphicSemanticHashVerified=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.metamorphic_semantic_hash`,
+          status: 'failed',
+          message: expect.stringContaining(
+            `expected metamorphicTransformSuiteId=${VALIDATION_METAMORPHIC_SEMANTIC_HASH_TRANSFORM_SUITE_ID}, observed <missing>`
+          )
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.metamorphic_semantic_hash`,
+          status: 'failed',
+          message: expect.stringContaining('expected metamorphicHashMatched=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedMetamorphicState.status).toBe('passed');
+    expect(observedMetamorphicState.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
       status: 'passed',
       planHash: plan.planHash
     });
