@@ -3,6 +3,7 @@ import {
   type DeepSeekRunAndGunProfileSupportSummary
 } from './deepseek-run-and-gun-validation-profile-v1.js';
 import { selectNextAtomicCheckpoint, type Step37CheckpointInventoryItem, type Step37NextAtomicCheckpoint } from './step37-parent-loop-driver.js';
+import { type Step37ExactCapabilityLockReport } from './step37-exact-capability-lock.js';
 import { type Step37Stage4ExitAuditReport } from './step37-stage4-exit-audit.js';
 import { type Step37Stage5EntryAuditReport } from './step37-stage5-entry-audit.js';
 import { type Step37SupportPromotionApplicationReport } from './step37-support-promotion-inventory.js';
@@ -22,8 +23,13 @@ export const STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGE
   'stage5.exact_capability_lock_from_complete_supported_packages';
 export const STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_NEXT_ATOMIC_STEP =
   'Stage 5 exact capability lock from complete-supported packages atomic step';
+export const STEP37_STAGE6_COMPOSED_DSL_SCHEMA_FROM_EXACT_CAPABILITY_LOCK_CHECKPOINT_ID =
+  'stage6.composed_dsl_schema_from_exact_capability_lock';
+export const STEP37_STAGE6_COMPOSED_DSL_SCHEMA_FROM_EXACT_CAPABILITY_LOCK_NEXT_ATOMIC_STEP =
+  'Stage 6 composed DSL schema from exact capability lock atomic step';
 const STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_PARENT_STAGE_ID = 'stage4';
 const STEP37_STAGE5_ENTRY_AUDIT_PARENT_STAGE_ID = 'stage5';
+const STEP37_STAGE6_COMPOSED_DSL_SCHEMA_PARENT_STAGE_ID = 'stage6';
 
 export const STEP37_REMAINING_CAPABILITY_STATES = [
   'complete_supported',
@@ -53,6 +59,8 @@ export type Step37RemainingInventoryDriverInput = {
   stage5EntryAuditCheckpoint?: Step37CheckpointInventoryItem | null;
   stage5EntryAuditReport?: Step37Stage5EntryAuditReport | null;
   stage5ExactLockCheckpoint?: Step37CheckpointInventoryItem | null;
+  stage5ExactCapabilityLockReport?: Step37ExactCapabilityLockReport | null;
+  stage6ComposedDslSchemaCheckpoint?: Step37CheckpointInventoryItem | null;
   parentStageId?: string;
   sourcePlanRevision: string;
 };
@@ -150,6 +158,22 @@ export type Step37RemainingInventorySelectionFailure =
       actual_checkpoint_id: string | null;
       invalid_fields: string[];
       message: string;
+    }
+  | {
+      error_code: 'STAGE6_COMPOSED_DSL_SCHEMA_CHECKPOINT_REQUIRED';
+      global_exit_conditions_met: false;
+      user_input_required: false;
+      parent_stage_status: 'complete';
+      stage5_entry_allowed: true;
+      stage5_exact_lock_implementation_allowed: true;
+      stage5_exact_lock_produced: true;
+      reason: string;
+      expected_checkpoint_id: typeof STEP37_STAGE6_COMPOSED_DSL_SCHEMA_FROM_EXACT_CAPABILITY_LOCK_CHECKPOINT_ID;
+      expected_parent_stage_id: typeof STEP37_STAGE6_COMPOSED_DSL_SCHEMA_PARENT_STAGE_ID;
+      expected_next_atomic_step: typeof STEP37_STAGE6_COMPOSED_DSL_SCHEMA_FROM_EXACT_CAPABILITY_LOCK_NEXT_ATOMIC_STEP;
+      actual_checkpoint_id: string | null;
+      invalid_fields: string[];
+      message: string;
     };
 
 export type Step37RemainingInventoryReport = {
@@ -195,6 +219,10 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
     .map((capability) => toCheckpointInventoryItem(capability, parentStageId, sourcePlanRevision));
   const staticCompleteSupportedCount = input.supportSummary.summary.completeSupportedCount;
   const requiredCapabilityCount = input.supportSummary.summary.requiredCapabilityCount;
+  const staticCompleteSupportedCapabilityIds = capabilities
+    .filter((capability) => capability.staticCompleteSupported)
+    .map((capability) => capability.capabilityId)
+    .sort();
   const sameRunObservedOnlyCount = capabilities.filter((capability) => capability.state === 'same_run_observed_only').length;
   const committedClosedCapabilityCount = capabilities.filter((capability) => capability.closedInCommittedHistory).length;
   const supportPromotionRequired =
@@ -245,8 +273,16 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
     stage5EntryAuditCheckpointInvalidFields.length === 0
       ? [input.stage5EntryAuditCheckpoint]
       : [];
+  const stage5ExactCapabilityLockPassed = isStage5ExactCapabilityLockPassed(
+    input.stage5ExactCapabilityLockReport ?? null,
+    staticCompleteSupportedCapabilityIds
+  );
   const stage5ExactLockCheckpointRequired =
-    requiredCapabilityCount > 0 && staticCompleteSupportedCount === requiredCapabilityCount && stage4ExitAuditPassed && stage5EntryAuditPassed;
+    requiredCapabilityCount > 0 &&
+    staticCompleteSupportedCount === requiredCapabilityCount &&
+    stage4ExitAuditPassed &&
+    stage5EntryAuditPassed &&
+    !stage5ExactCapabilityLockPassed;
   const stage5ExactLockCheckpointInvalidFields = stage5ExactLockCheckpointRequired
     ? getStage5ExactLockCheckpointInvalidFields(input.stage5ExactLockCheckpoint ?? null)
     : [];
@@ -257,12 +293,29 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
     stage5ExactLockCheckpointInvalidFields.length === 0
       ? [input.stage5ExactLockCheckpoint]
       : [];
+  const stage6ComposedDslSchemaCheckpointRequired =
+    requiredCapabilityCount > 0 &&
+    staticCompleteSupportedCount === requiredCapabilityCount &&
+    stage4ExitAuditPassed &&
+    stage5EntryAuditPassed &&
+    stage5ExactCapabilityLockPassed;
+  const stage6ComposedDslSchemaCheckpointInvalidFields = stage6ComposedDslSchemaCheckpointRequired
+    ? getStage6ComposedDslSchemaCheckpointInvalidFields(input.stage6ComposedDslSchemaCheckpoint ?? null)
+    : [];
+  const stage6ComposedDslSchemaCheckpoint =
+    stage6ComposedDslSchemaCheckpointRequired &&
+    input.stage6ComposedDslSchemaCheckpoint !== undefined &&
+    input.stage6ComposedDslSchemaCheckpoint !== null &&
+    stage6ComposedDslSchemaCheckpointInvalidFields.length === 0
+      ? [input.stage6ComposedDslSchemaCheckpoint]
+      : [];
   const checkpointInventory = [
     ...packageCheckpointInventory,
     ...supportPromotionCheckpoint,
     ...stage4ExitAuditCheckpoint,
     ...stage5EntryAuditCheckpoint,
-    ...stage5ExactLockCheckpoint
+    ...stage5ExactLockCheckpoint,
+    ...stage6ComposedDslSchemaCheckpoint
   ];
   const nextCheckpoint = selectNextAtomicCheckpoint(checkpointInventory);
   const unmetStaticCompleteSupportedCount = requiredCapabilityCount - staticCompleteSupportedCount;
@@ -298,6 +351,9 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
       stage5ExactLockCheckpointRequired,
       stage5ExactLockCheckpoint: input.stage5ExactLockCheckpoint ?? null,
       stage5ExactLockCheckpointInvalidFields,
+      stage6ComposedDslSchemaCheckpointRequired,
+      stage6ComposedDslSchemaCheckpoint: input.stage6ComposedDslSchemaCheckpoint ?? null,
+      stage6ComposedDslSchemaCheckpointInvalidFields,
       parentStageId,
       unmetStaticCompleteSupportedCount
     })
@@ -429,6 +485,9 @@ function buildSelectionFailure(input: {
   stage5ExactLockCheckpointRequired: boolean;
   stage5ExactLockCheckpoint: Step37CheckpointInventoryItem | null;
   stage5ExactLockCheckpointInvalidFields: readonly string[];
+  stage6ComposedDslSchemaCheckpointRequired: boolean;
+  stage6ComposedDslSchemaCheckpoint: Step37CheckpointInventoryItem | null;
+  stage6ComposedDslSchemaCheckpointInvalidFields: readonly string[];
   parentStageId: string;
   unmetStaticCompleteSupportedCount: number;
 }): Step37RemainingInventorySelectionFailure | null {
@@ -497,6 +556,29 @@ function buildSelectionFailure(input: {
       invalid_fields: [...input.stage5ExactLockCheckpointInvalidFields],
       message:
         'STAGE5_EXACT_LOCK_CHECKPOINT_REQUIRED: Stage 5 entry audit passed, but exact capability lock checkpoint authority is missing or invalid'
+    };
+  }
+
+  if (input.stage6ComposedDslSchemaCheckpointRequired && input.nextCheckpoint === null) {
+    return {
+      error_code: 'STAGE6_COMPOSED_DSL_SCHEMA_CHECKPOINT_REQUIRED',
+      global_exit_conditions_met: false,
+      user_input_required: false,
+      parent_stage_status: 'complete',
+      stage5_entry_allowed: true,
+      stage5_exact_lock_implementation_allowed: true,
+      stage5_exact_lock_produced: true,
+      reason:
+        input.stage6ComposedDslSchemaCheckpoint === null
+          ? 'Stage 5 exact capability lock passed but composed DSL schema checkpoint was not supplied'
+          : 'Stage 5 exact capability lock passed but supplied composed DSL schema checkpoint identity is not authoritative',
+      expected_checkpoint_id: STEP37_STAGE6_COMPOSED_DSL_SCHEMA_FROM_EXACT_CAPABILITY_LOCK_CHECKPOINT_ID,
+      expected_parent_stage_id: STEP37_STAGE6_COMPOSED_DSL_SCHEMA_PARENT_STAGE_ID,
+      expected_next_atomic_step: STEP37_STAGE6_COMPOSED_DSL_SCHEMA_FROM_EXACT_CAPABILITY_LOCK_NEXT_ATOMIC_STEP,
+      actual_checkpoint_id: input.stage6ComposedDslSchemaCheckpoint?.checkpoint_id ?? null,
+      invalid_fields: [...input.stage6ComposedDslSchemaCheckpointInvalidFields],
+      message:
+        'STAGE6_COMPOSED_DSL_SCHEMA_CHECKPOINT_REQUIRED: Stage 5 exact capability lock passed, but composed DSL schema checkpoint authority is missing or invalid'
     };
   }
 
@@ -638,6 +720,25 @@ function getStage5ExactLockCheckpointInvalidFields(checkpoint: Step37CheckpointI
   ];
 }
 
+function getStage6ComposedDslSchemaCheckpointInvalidFields(checkpoint: Step37CheckpointInventoryItem | null): string[] {
+  if (checkpoint === null) {
+    return ['checkpoint_id'];
+  }
+
+  return [
+    ...(checkpoint.checkpoint_id.trim() !== STEP37_STAGE6_COMPOSED_DSL_SCHEMA_FROM_EXACT_CAPABILITY_LOCK_CHECKPOINT_ID
+      ? ['checkpoint_id']
+      : []),
+    ...(checkpoint.parent_stage_id.trim() !== STEP37_STAGE6_COMPOSED_DSL_SCHEMA_PARENT_STAGE_ID ? ['parent_stage_id'] : []),
+    ...(checkpoint.next_atomic_step.trim() !== STEP37_STAGE6_COMPOSED_DSL_SCHEMA_FROM_EXACT_CAPABILITY_LOCK_NEXT_ATOMIC_STEP
+      ? ['next_atomic_step']
+      : []),
+    ...(checkpoint.status !== 'unmet' ? ['status'] : []),
+    ...(checkpoint.unmet_reason.trim().length === 0 ? ['unmet_reason'] : []),
+    ...(checkpoint.source_plan_revision.trim().length === 0 ? ['source_plan_revision'] : [])
+  ];
+}
+
 function isStage4ExitAuditPassed(report: Step37Stage4ExitAuditReport | null): boolean {
   return report?.stage4ExitStatus === 'passed' && report.stage4ExitConditionsMet && report.parentStageStatusAfterAudit === 'complete';
 }
@@ -648,6 +749,36 @@ function isStage5EntryAuditPassed(report: Step37Stage5EntryAuditReport | null): 
     report.stage5EntryConditionsMet &&
     report.parentStageStatusAfterAudit === 'running' &&
     report.nextCheckpointId === STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_CHECKPOINT_ID
+  );
+}
+
+function isStage5ExactCapabilityLockPassed(
+  report: Step37ExactCapabilityLockReport | null,
+  staticCompleteSupportedCapabilityIds: readonly string[]
+): boolean {
+  const lockPackageCapabilityIds = report?.capabilityLock?.packages.map((entry) => entry.capabilityId).sort() ?? [];
+  return (
+    report?.exactLockStatus === 'passed' &&
+    report.exactLockProduced &&
+    report.blockers.length === 0 &&
+    report.resolutionStatus === 'resolved' &&
+    report.capabilityLock !== null &&
+    report.lockHash !== null &&
+    report.lockHash === report.capabilityLock.lockHash &&
+    report.parentStageStatusAfterLock === 'complete' &&
+    report.nextCheckpointId === STEP37_STAGE6_COMPOSED_DSL_SCHEMA_FROM_EXACT_CAPABILITY_LOCK_CHECKPOINT_ID &&
+    report.completeSupportedCount === staticCompleteSupportedCapabilityIds.length &&
+    report.packageCount === staticCompleteSupportedCapabilityIds.length &&
+    sameStringSet(report.completeSupportedCapabilityIds, staticCompleteSupportedCapabilityIds) &&
+    sameStringSet(report.packageCapabilityIds, staticCompleteSupportedCapabilityIds) &&
+    sameStringSet(report.selectedCapabilityIds, staticCompleteSupportedCapabilityIds) &&
+    sameStringSet(report.capabilityLock.capabilityIds, staticCompleteSupportedCapabilityIds) &&
+    sameStringSet(lockPackageCapabilityIds, staticCompleteSupportedCapabilityIds) &&
+    !report.composedSchemaProduced &&
+    !report.productionDefaultCutoverActive &&
+    !report.legacyAuthoritativePathExited &&
+    !report.finalClosureNotBlocked &&
+    !report.globalExitConditionsMet
   );
 }
 
@@ -664,6 +795,10 @@ function sanitizeCapabilityIdForCheckpoint(capabilityId: string): string {
     .replace(/[^A-Za-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
     .toLowerCase();
+}
+
+function sameStringSet(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function requireNonEmpty(value: string, field: string): string {

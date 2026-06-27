@@ -11,6 +11,8 @@ import {
   STEP37_STAGE5_ENTRY_AUDIT_AFTER_STAGE4_EXIT_NEXT_ATOMIC_STEP,
   STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_CHECKPOINT_ID,
   STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_NEXT_ATOMIC_STEP,
+  STEP37_STAGE6_COMPOSED_DSL_SCHEMA_FROM_EXACT_CAPABILITY_LOCK_CHECKPOINT_ID,
+  STEP37_STAGE6_COMPOSED_DSL_SCHEMA_FROM_EXACT_CAPABILITY_LOCK_NEXT_ATOMIC_STEP,
   STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID,
   STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP,
   buildStep37PromotedSupportSummary,
@@ -29,6 +31,7 @@ import {
   type Step37CommittedCapabilityClosure,
   type Step37Stage4ExitAuditReport,
   type Step37Stage5EntryAuditReport,
+  type Step37ExactCapabilityLockReport,
   type Step37SupportPromotionApplicationReport
 } from '../../packages/game-dsl/src/index.js';
 
@@ -767,6 +770,165 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     });
   });
 
+  it('requires a composed schema checkpoint after exact capability lock passes', () => {
+    const support = supportSummary([capability({ capabilityId: 'promoted.alpha.v1' })]);
+    const application = supportPromotionApplicationReport({
+      completeSupportedCount: 1,
+      completeSupportedCapabilityIds: ['promoted.alpha.v1']
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({
+      supportSummary: support,
+      promotionApplicationReport: application
+    });
+    const exitAudit = stage4ExitAuditReport({ supportSummary: promotedSupport, application });
+    const entryAudit = stage5EntryAuditReport({ supportSummary: promotedSupport, exitAudit });
+    const exactLock = exactCapabilityLockReport({ supportSummary: promotedSupport, entryAudit });
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditReport: exitAudit,
+      stage5EntryAuditReport: entryAudit,
+      stage5ExactCapabilityLockReport: exactLock,
+      sourcePlanRevision
+    });
+
+    expect(exactLock.exactLockStatus).toBe('passed');
+    expect(report.nextCheckpoint).toBeNull();
+    expect(report.selectionFailure).toMatchObject({
+      error_code: 'STAGE6_COMPOSED_DSL_SCHEMA_CHECKPOINT_REQUIRED',
+      parent_stage_status: 'complete',
+      stage5_exact_lock_produced: true,
+      expected_checkpoint_id: STEP37_STAGE6_COMPOSED_DSL_SCHEMA_FROM_EXACT_CAPABILITY_LOCK_CHECKPOINT_ID,
+      actual_checkpoint_id: null,
+      invalid_fields: ['checkpoint_id']
+    });
+  });
+
+  it('continues to composed DSL schema only after exact capability lock passes and supplies authoritative next checkpoint', () => {
+    const support = supportSummary([capability({ capabilityId: 'promoted.alpha.v1' }), capability({ capabilityId: 'promoted.beta.v1' })]);
+    const application = supportPromotionApplicationReport({
+      completeSupportedCount: 2,
+      completeSupportedCapabilityIds: ['promoted.alpha.v1', 'promoted.beta.v1']
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({
+      supportSummary: support,
+      promotionApplicationReport: application
+    });
+    const exitAudit = stage4ExitAuditReport({ supportSummary: promotedSupport, application });
+    const entryAudit = stage5EntryAuditReport({ supportSummary: promotedSupport, exitAudit });
+    const exactLock = exactCapabilityLockReport({ supportSummary: promotedSupport, entryAudit });
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditReport: exitAudit,
+      stage5EntryAuditReport: entryAudit,
+      stage5ExactCapabilityLockReport: exactLock,
+      stage6ComposedDslSchemaCheckpoint: stage6ComposedDslSchemaCheckpoint(),
+      sourcePlanRevision
+    });
+
+    expect(report.staticCompleteSupportedCount).toBe(2);
+    expect(report.selectionFailure).toBeNull();
+    expect(report.nextCheckpoint).toMatchObject({
+      checkpoint_id: STEP37_STAGE6_COMPOSED_DSL_SCHEMA_FROM_EXACT_CAPABILITY_LOCK_CHECKPOINT_ID,
+      parent_stage_id: 'stage6',
+      next_atomic_step: STEP37_STAGE6_COMPOSED_DSL_SCHEMA_FROM_EXACT_CAPABILITY_LOCK_NEXT_ATOMIC_STEP,
+      selection_rule: 'first_unmet_checkpoint_in_authoritative_inventory'
+    });
+    expect(report.nextCheckpoint?.checkpoint_id).not.toBe(STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_CHECKPOINT_ID);
+  });
+
+  it('does not continue to composed DSL schema when the exact lock does not match current complete-supported identities', () => {
+    const support = supportSummary([capability({ capabilityId: 'promoted.alpha.v1' })]);
+    const application = supportPromotionApplicationReport({
+      completeSupportedCount: 1,
+      completeSupportedCapabilityIds: ['promoted.alpha.v1']
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({
+      supportSummary: support,
+      promotionApplicationReport: application
+    });
+    const exitAudit = stage4ExitAuditReport({ supportSummary: promotedSupport, application });
+    const entryAudit = stage5EntryAuditReport({ supportSummary: promotedSupport, exitAudit });
+    const exactLock = exactCapabilityLockReport({ supportSummary: promotedSupport, entryAudit });
+    const capabilityLock = exactLock.capabilityLock;
+    if (capabilityLock === null) {
+      throw new Error('expected driver fixture exact capability lock to be produced');
+    }
+    const staleExactLock: Step37ExactCapabilityLockReport = {
+      ...exactLock,
+      completeSupportedCapabilityIds: ['promoted.old.v1'],
+      packageCapabilityIds: ['promoted.old.v1'],
+      selectedCapabilityIds: ['promoted.old.v1'],
+      capabilityLock: {
+        ...capabilityLock,
+        capabilityIds: ['promoted.old.v1'],
+        packages: [
+          {
+            capabilityId: 'promoted.old.v1',
+            packageVersion: '1.0.0',
+            packageHash: 'fnv1a_promoted_old_v1'
+          }
+        ]
+      }
+    };
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditReport: exitAudit,
+      stage5EntryAuditReport: entryAudit,
+      stage5ExactCapabilityLockReport: staleExactLock,
+      stage6ComposedDslSchemaCheckpoint: stage6ComposedDslSchemaCheckpoint(),
+      sourcePlanRevision
+    });
+
+    expect(report.nextCheckpoint).toBeNull();
+    expect(report.selectionFailure).toMatchObject({
+      error_code: 'STAGE5_EXACT_LOCK_CHECKPOINT_REQUIRED',
+      expected_checkpoint_id: STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_CHECKPOINT_ID,
+      actual_checkpoint_id: null,
+      invalid_fields: ['checkpoint_id']
+    });
+  });
+
+  it('rejects wrong composed-schema checkpoint identity instead of completing Step37 after exact lock', () => {
+    const support = supportSummary([capability({ capabilityId: 'promoted.alpha.v1' })]);
+    const application = supportPromotionApplicationReport({
+      completeSupportedCount: 1,
+      completeSupportedCapabilityIds: ['promoted.alpha.v1']
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({
+      supportSummary: support,
+      promotionApplicationReport: application
+    });
+    const exitAudit = stage4ExitAuditReport({ supportSummary: promotedSupport, application });
+    const entryAudit = stage5EntryAuditReport({ supportSummary: promotedSupport, exitAudit });
+    const exactLock = exactCapabilityLockReport({ supportSummary: promotedSupport, entryAudit });
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditReport: exitAudit,
+      stage5EntryAuditReport: entryAudit,
+      stage5ExactCapabilityLockReport: exactLock,
+      stage6ComposedDslSchemaCheckpoint: stage6ComposedDslSchemaCheckpoint({
+        checkpoint_id: 'stage5.production_default_cutover',
+        parent_stage_id: 'stage5',
+        next_atomic_step: 'Stage 5 production default cutover'
+      }),
+      sourcePlanRevision
+    });
+
+    expect(report.nextCheckpoint).toBeNull();
+    expect(report.selectionFailure).toMatchObject({
+      error_code: 'STAGE6_COMPOSED_DSL_SCHEMA_CHECKPOINT_REQUIRED',
+      reason: 'Stage 5 exact capability lock passed but supplied composed DSL schema checkpoint identity is not authoritative',
+      expected_checkpoint_id: STEP37_STAGE6_COMPOSED_DSL_SCHEMA_FROM_EXACT_CAPABILITY_LOCK_CHECKPOINT_ID,
+      expected_next_atomic_step: STEP37_STAGE6_COMPOSED_DSL_SCHEMA_FROM_EXACT_CAPABILITY_LOCK_NEXT_ATOMIC_STEP,
+      actual_checkpoint_id: 'stage5.production_default_cutover',
+      invalid_fields: ['checkpoint_id', 'parent_stage_id', 'next_atomic_step']
+    });
+  });
+
   it('requires committed closure history to have traceable source revisions instead of stale memory labels', () => {
     expect(() =>
       buildStep37RemainingCompleteSupportedInventory({
@@ -907,6 +1069,19 @@ function stage5ExactLockCheckpoint(overrides: Partial<Step37CheckpointInventoryI
   };
 }
 
+function stage6ComposedDslSchemaCheckpoint(overrides: Partial<Step37CheckpointInventoryItem> = {}): Step37CheckpointInventoryItem {
+  return {
+    checkpoint_id: STEP37_STAGE6_COMPOSED_DSL_SCHEMA_FROM_EXACT_CAPABILITY_LOCK_CHECKPOINT_ID,
+    parent_stage_id: 'stage6',
+    next_atomic_step: STEP37_STAGE6_COMPOSED_DSL_SCHEMA_FROM_EXACT_CAPABILITY_LOCK_NEXT_ATOMIC_STEP,
+    status: 'unmet',
+    unmet_reason:
+      'Stage 5 exact capability lock passed; compose the DSL schema from that lock before model request, runtime consumption, cutover, or legacy exit.',
+    source_plan_revision: sourcePlanRevision,
+    ...overrides
+  };
+}
+
 function stage4ExitAuditReport(input: {
   supportSummary: DeepSeekRunAndGunProfileSupportSummary;
   application: Step37SupportPromotionApplicationReport;
@@ -931,6 +1106,71 @@ function stage5EntryAuditReport(input: {
     sourceStage4ExitAuditHash: input.exitAudit.auditHash,
     expectedStage4ExitAuditHash: input.exitAudit.auditHash
   });
+}
+
+function exactCapabilityLockReport(input: {
+  supportSummary: DeepSeekRunAndGunProfileSupportSummary;
+  entryAudit: Step37Stage5EntryAuditReport;
+}): Step37ExactCapabilityLockReport {
+  const completeSupportedCapabilityIds = input.supportSummary.capabilities
+    .filter((capability) => capability.completeSupported)
+    .map((capability) => capability.capabilityId)
+    .sort();
+  const capabilityLock = {
+    artifactKind: 'gameplay_capability_lock' as const,
+    schemaVersion: 'gameplay_capability_lock.v0.1' as const,
+    profileId: input.supportSummary.profileId,
+    runtimeFamily: 'phaser_2d_action_arcade.v1',
+    capabilityIds: completeSupportedCapabilityIds,
+    packages: completeSupportedCapabilityIds.map((capabilityId) => ({
+      capabilityId,
+      packageVersion: '1.0.0',
+      packageHash: `fnv1a_${capabilityId.replace(/[^A-Za-z0-9]+/g, '_')}`
+    })),
+    lockHash: 'fnv1a_driver_fixture_exact_lock'
+  };
+
+  return {
+    artifactKind: 'step37_exact_capability_lock_from_complete_supported_packages',
+    schemaVersion: 'step37_exact_capability_lock_from_complete_supported_packages.v0.1',
+    checkpointId: STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_CHECKPOINT_ID,
+    parentStageId: 'stage5',
+    sourceStage5EntryAuditPath: 'docs/plans/step37-stage5-entry-audit-after-stage4-exit.v0.1.json',
+    sourceStage5EntryAuditHash: input.entryAudit.auditHash,
+    expectedStage5EntryAuditHash: input.entryAudit.auditHash,
+    stage5EntryAuditHashMatches: true,
+    sourceStage4ExitAuditHash: input.entryAudit.sourceStage4ExitAuditHash,
+    sourceSupportViewHash: input.entryAudit.sourceSupportViewHash,
+    sourceInventoryHash: input.entryAudit.sourceInventoryHash,
+    profileId: input.supportSummary.profileId,
+    profileVersion: input.supportSummary.profileVersion,
+    runtimeFamily: 'phaser_2d_action_arcade.v1',
+    stage5EntryStatus: input.entryAudit.stage5EntryStatus,
+    stage5EntryConditionsMet: input.entryAudit.stage5EntryConditionsMet,
+    stage5EntryNextCheckpointId: input.entryAudit.nextCheckpointId,
+    requiredCapabilityCount: input.supportSummary.summary.requiredCapabilityCount,
+    registeredCapabilityCount: input.supportSummary.summary.registeredCapabilityCount,
+    completeSupportedCount: input.supportSummary.summary.completeSupportedCount,
+    completeSupportedCapabilityIds,
+    packageCount: completeSupportedCapabilityIds.length,
+    packageCapabilityIds: completeSupportedCapabilityIds,
+    selectedCapabilityIds: completeSupportedCapabilityIds,
+    resolutionStatus: 'resolved',
+    resolutionDiagnostics: [],
+    capabilityLock,
+    lockHash: capabilityLock.lockHash,
+    exactLockStatus: 'passed',
+    exactLockProduced: true,
+    parentStageStatusAfterLock: 'complete',
+    composedSchemaProduced: false,
+    productionDefaultCutoverActive: false,
+    legacyAuthoritativePathExited: false,
+    finalClosureNotBlocked: false,
+    globalExitConditionsMet: false,
+    nextCheckpointId: STEP37_STAGE6_COMPOSED_DSL_SCHEMA_FROM_EXACT_CAPABILITY_LOCK_CHECKPOINT_ID,
+    blockers: [],
+    auditHash: 'fnv1a_driver_fixture_stage5_exact_lock'
+  };
 }
 
 function supportPromotionApplicationReport(
