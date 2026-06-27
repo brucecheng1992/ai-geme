@@ -7,11 +7,14 @@ import {
   STEP37_REMAINING_INVENTORY_SCHEMA_VERSION,
   STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_CHECKPOINT_ID,
   STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_NEXT_ATOMIC_STEP,
+  STEP37_STAGE5_ENTRY_AUDIT_AFTER_STAGE4_EXIT_CHECKPOINT_ID,
+  STEP37_STAGE5_ENTRY_AUDIT_AFTER_STAGE4_EXIT_NEXT_ATOMIC_STEP,
   STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID,
   STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP,
   buildStep37PromotedSupportSummary,
   buildDeepSeekRunAndGunValidationProfileSupportSummary,
   buildStep37RemainingCompleteSupportedInventory,
+  buildStep37Stage4ExitAuditReport,
   buildStep37SupportPromotionApplicationReport,
   buildStep37SupportPromotionInventory,
   deriveStep37RemainingCapabilityState,
@@ -21,6 +24,7 @@ import {
   type DeepSeekRunAndGunProfileSupportSummary,
   type Step37CheckpointInventoryItem,
   type Step37CommittedCapabilityClosure,
+  type Step37Stage4ExitAuditReport,
   type Step37SupportPromotionApplicationReport
 } from '../../packages/game-dsl/src/index.js';
 
@@ -523,6 +527,63 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     expect(report.nextCheckpoint?.checkpoint_id).not.toContain('stage5');
   });
 
+  it('requires a Stage 5 entry-audit checkpoint after Stage 4 exit audit passes', () => {
+    const support = supportSummary([capability({ capabilityId: 'promoted.alpha.v1' })]);
+    const application = supportPromotionApplicationReport({
+      completeSupportedCount: 1,
+      completeSupportedCapabilityIds: ['promoted.alpha.v1']
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({
+      supportSummary: support,
+      promotionApplicationReport: application
+    });
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditReport: stage4ExitAuditReport({ supportSummary: promotedSupport, application }),
+      sourcePlanRevision
+    });
+
+    expect(report.staticCompleteSupportedCount).toBe(1);
+    expect(report.nextCheckpoint).toBeNull();
+    expect(report.selectionFailure).toMatchObject({
+      error_code: 'STAGE5_ENTRY_AUDIT_CHECKPOINT_REQUIRED',
+      parent_stage_status: 'complete',
+      stage5_entry_allowed: true,
+      expected_checkpoint_id: STEP37_STAGE5_ENTRY_AUDIT_AFTER_STAGE4_EXIT_CHECKPOINT_ID,
+      actual_checkpoint_id: null,
+      invalid_fields: ['checkpoint_id']
+    });
+  });
+
+  it('continues to Stage 5 entry audit only after Stage 4 exit audit passes and supplies authoritative next checkpoint', () => {
+    const support = supportSummary([capability({ capabilityId: 'promoted.alpha.v1' }), capability({ capabilityId: 'promoted.beta.v1' })]);
+    const application = supportPromotionApplicationReport({
+      completeSupportedCount: 2,
+      completeSupportedCapabilityIds: ['promoted.alpha.v1', 'promoted.beta.v1']
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({
+      supportSummary: support,
+      promotionApplicationReport: application
+    });
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditReport: stage4ExitAuditReport({ supportSummary: promotedSupport, application }),
+      stage5EntryAuditCheckpoint: stage5EntryAuditCheckpoint(),
+      sourcePlanRevision
+    });
+
+    expect(report.staticCompleteSupportedCount).toBe(2);
+    expect(report.selectionFailure).toBeNull();
+    expect(report.nextCheckpoint).toMatchObject({
+      checkpoint_id: STEP37_STAGE5_ENTRY_AUDIT_AFTER_STAGE4_EXIT_CHECKPOINT_ID,
+      parent_stage_id: 'stage5',
+      next_atomic_step: STEP37_STAGE5_ENTRY_AUDIT_AFTER_STAGE4_EXIT_NEXT_ATOMIC_STEP,
+      selection_rule: 'first_unmet_checkpoint_in_authoritative_inventory'
+    });
+  });
+
   it('routes the current verified 59/59 promotion inventory to Stage 4 exit audit after support consumption', () => {
     const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
     const inventory = parseStep37SupportPromotionInventoryArtifact(JSON.parse(readFileSync(supportPromotionInventoryPath, 'utf8')));
@@ -561,6 +622,44 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     expect(report.selectionFailure).toBeNull();
     expect(report.nextCheckpoint?.checkpoint_id).toBe(STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_CHECKPOINT_ID);
     expect(report.nextCheckpoint?.checkpoint_id).not.toBe(STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID);
+  });
+
+  it('routes the current verified 59/59 Stage 4 exit audit to Stage 5 entry audit after support promotion', () => {
+    const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
+    const inventory = parseStep37SupportPromotionInventoryArtifact(JSON.parse(readFileSync(supportPromotionInventoryPath, 'utf8')));
+    const inventoryReport = buildStep37SupportPromotionInventory({
+      supportSummary: support,
+      aggregateObservedCapabilityIds: inventory.aggregateObservedCapabilityIds,
+      currentRunId: inventory.currentRunId,
+      sourcePlanRevision: inventory.sourcePlanRevision,
+      capabilityClosureRecords: inventory.capabilityClosureRecords
+    });
+    const inventoryHash = hashStep37SupportPromotionInventoryArtifact(inventory);
+    const application = buildStep37SupportPromotionApplicationReport({
+      supportSummary: support,
+      inventoryReport,
+      sourceInventoryPath: supportPromotionInventoryPath,
+      sourceInventoryHash: inventoryHash,
+      expectedInventoryHash: inventoryHash
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({ supportSummary: support, promotionApplicationReport: application });
+    const exitAudit = stage4ExitAuditReport({ supportSummary: promotedSupport, application });
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditReport: exitAudit,
+      stage5EntryAuditCheckpoint: stage5EntryAuditCheckpoint({
+        unmet_reason: 'Stage 4 exit audit passed after 59/59 support promotion; audit Stage 5 entry before exact lock or cutover.'
+      }),
+      sourcePlanRevision
+    });
+
+    expect(exitAudit.stage4ExitStatus).toBe('passed');
+    expect(report.requiredCapabilityCount).toBe(59);
+    expect(report.staticCompleteSupportedCount).toBe(59);
+    expect(report.selectionFailure).toBeNull();
+    expect(report.nextCheckpoint?.checkpoint_id).toBe(STEP37_STAGE5_ENTRY_AUDIT_AFTER_STAGE4_EXIT_CHECKPOINT_ID);
+    expect(report.nextCheckpoint?.checkpoint_id).not.toBe(STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_CHECKPOINT_ID);
   });
 
   it('requires committed closure history to have traceable source revisions instead of stale memory labels', () => {
@@ -675,6 +774,32 @@ function stage4ExitAuditCheckpoint(overrides: Partial<Step37CheckpointInventoryI
     source_plan_revision: sourcePlanRevision,
     ...overrides
   };
+}
+
+function stage5EntryAuditCheckpoint(overrides: Partial<Step37CheckpointInventoryItem> = {}): Step37CheckpointInventoryItem {
+  return {
+    checkpoint_id: STEP37_STAGE5_ENTRY_AUDIT_AFTER_STAGE4_EXIT_CHECKPOINT_ID,
+    parent_stage_id: 'stage5',
+    next_atomic_step: STEP37_STAGE5_ENTRY_AUDIT_AFTER_STAGE4_EXIT_NEXT_ATOMIC_STEP,
+    status: 'unmet',
+    unmet_reason:
+      'Stage 4 exit audit passed after complete support promotion; audit Stage 5 entry before exact lock, production cutover, or legacy exit.',
+    source_plan_revision: sourcePlanRevision,
+    ...overrides
+  };
+}
+
+function stage4ExitAuditReport(input: {
+  supportSummary: DeepSeekRunAndGunProfileSupportSummary;
+  application: Step37SupportPromotionApplicationReport;
+}): Step37Stage4ExitAuditReport {
+  return buildStep37Stage4ExitAuditReport({
+    supportSummary: input.supportSummary,
+    promotionApplicationReport: input.application,
+    sourceSupportViewPath: 'docs/plans/step37-support-promotion-complete-supported-view.v0.1.json',
+    sourceSupportViewHash: 'fnv1a_support_view',
+    expectedSupportViewHash: 'fnv1a_support_view'
+  });
 }
 
 function supportPromotionApplicationReport(

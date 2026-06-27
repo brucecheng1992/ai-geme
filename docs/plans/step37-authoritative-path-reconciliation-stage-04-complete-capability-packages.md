@@ -6937,6 +6937,135 @@ next_atomic_step_selection_rule=first_unmet_checkpoint_in_authoritative_inventor
 closure_status=closed
 ```
 
+## Stage 4 Exit Audit — After Support Promotion
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.exit_audit_after_support_promotion
+parent_stage_id=stage4
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=not_closed
+stage4_exit_status=passed
+stage4_exit_conditions_met=true
+parent_stage_status_after_audit=complete
+stage5_entry_audit_allowed=true
+stage5_exact_lock_allowed=false
+production_default_cutover_active=false
+legacy_authoritative_path_exited=false
+final_closure_not_blocked=false
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage5.entry_audit_after_stage4_exit
+next_atomic_step_label=Stage 5 entry audit after Stage 4 exit atomic step
+```
+
+Current audit conclusion:
+
+- Stage 4 support promotion has been consumed by `buildStep37PromotedSupportSummary`.
+- The promoted support view is hash-bound: `source_support_view_hash=fnv1a_37453024`.
+- The support-promotion inventory remains hash-bound: `source_inventory_hash=fnv1a_a883bf43`.
+- `completeSupportedCount=59/59` is computed from the promoted support view consumer, not hardcoded.
+- Stage 4 exit conditions are met for the complete-supported package stage.
+- This audit does not enter Stage 5; it only makes the next executable checkpoint `stage5.entry_audit_after_stage4_exit`.
+- Stage 5 exact lock, Production Default Cutover, legacy authoritative path exit, and final closure remain explicitly false.
+
+Machine-readable audit artifact:
+
+```text
+artifact_path=docs/plans/step37-stage4-exit-audit-after-support-promotion.v0.1.json
+artifact_kind=step37_stage4_exit_audit_after_support_promotion
+schema_version=step37_stage4_exit_audit_after_support_promotion.v0.1
+audit_hash=fnv1a_be5c51cd
+source_support_view_path=docs/plans/step37-support-promotion-complete-supported-view.v0.1.json
+source_support_view_hash=fnv1a_37453024
+expected_support_view_hash=fnv1a_37453024
+support_view_hash_matches=true
+source_inventory_hash=fnv1a_a883bf43
+support_promotion_application_status=applied
+support_summary_consumer=buildStep37PromotedSupportSummary
+required_capability_count=59
+registered_capability_count=59
+promotion_eligible_count=59
+complete_supported_count=59
+blockers=[]
+```
+
+Modified paths:
+
+- `packages/game-dsl/src/step37-stage4-exit-audit.ts`
+- `packages/game-dsl/src/step37-remaining-inventory-driver.ts`
+- `packages/game-dsl/src/index.ts`
+- `tests/contracts/step37-stage4-exit-audit.test.ts`
+- `tests/contracts/step37-remaining-inventory-driver.test.ts`
+- `docs/plans/step37-stage4-exit-audit-after-support-promotion.v0.1.json`
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a machine-readable Stage 4 exit-audit artifact and helper, plus remaining-inventory Driver transition from passed Stage 4 exit audit to Stage 5 entry audit. |
+| Consumer list | `buildStep37Stage4ExitAuditReport`, `buildStep37RemainingCompleteSupportedInventory`, Stage 4 exit-audit contract, remaining-inventory Driver contract, Parent Loop Driver input. |
+| Compatibility type | `LOSSLESS_COMPATIBLE`: the new audit consumes the promoted support view and support summary without changing package runtime, QA, registry, or gameplay capability semantics. |
+| Authority | The hash-bound support-promotion complete-supported view remains the authority for complete support; the Stage 4 exit audit only records that Stage 4 may exit to the next audit checkpoint. |
+| Legacy strategy | Legacy authoritative path remains active; no production default cutover or legacy exit is performed in this atom. |
+| Failure policy | Missing support view, hash mismatch, incomplete promoted support, blocked promotion application, premature Stage 5 exact lock, production cutover, legacy exit, or final closure keeps Stage 4 exit audit blocked. |
+| Evidence | Focused contracts prove positive Stage 4 exit, hash drift failure, unconsumed support failure, premature downstream-transition failure, persisted artifact shape, and Driver routing to Stage 5 entry audit only after audit pass. |
+| Rollback | Reverting this atom removes only the Stage 4 exit-audit helper, artifact, Driver transition, tests, and this record; support promotion and package receipts remain intact. |
+
+Validation for candidate tree:
+
+```text
+focused_stage4_exit_contracts_command=/usr/bin/time -p npx vitest run tests/contracts/step37-stage4-exit-audit.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts
+focused_stage4_exit_contracts_exitCode=0
+focused_stage4_exit_contracts_result=PASS: 2 files / 24 tests.
+
+focused_driver_contracts_command=/usr/bin/time -p npx vitest run tests/contracts/step37-stage4-exit-audit.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/step37-parent-loop-driver.test.ts
+focused_driver_contracts_exitCode=0
+focused_driver_contracts_result=PASS: 3 files / 44 tests.
+
+full_contracts_command=/usr/bin/time -p npm run test:contracts
+full_contracts_exitCode=0
+full_contracts_result=PASS: 100 files / 1379 tests.
+
+npm_test_command=/usr/bin/time -p npm test
+npm_test_exitCode=0
+npm_test_result=PASS: contracts 100 files / 1379 tests; workspace 34 files / 410 tests.
+
+typecheck_command=/usr/bin/time -p npm run typecheck
+typecheck_exitCode=0
+typecheck_result=PASS: root, maker-api, and maker-workbench TypeScript checks passed.
+
+diff_check_command=/usr/bin/time -p git diff --check
+diff_check_exitCode=0
+diff_check_result=PASS.
+
+skill_freshness_command=/usr/bin/time -p bash -lc 'node - <<NODE ... step37_manifest_v1_path_type_size_mode_sha_symlink Skill bundle ... NODE'
+skill_freshness_exitCode=0
+skill_revision_type=sha256_bundle
+skill_bundle_format=step37_manifest_v1_path_type_size_mode_sha_symlink
+skill_file_count=8
+skill_bundle_digest=9000c515569664ab59b567f79604f018c805e862d22208162982d03003accdc3
+
+inventory_alignment_command=/usr/bin/time -p npx tsx - <<'TS' ... Stage 4 exit audit plus remaining inventory alignment ... TS
+inventory_alignment_exitCode=0
+inventory_alignment_result=PASS: inventoryHash=fnv1a_a883bf43; supportViewHash=fnv1a_37453024; stage4ExitStatus=passed; stage4ExitConditionsMet=true; promotionEligibleCount=59; completeSupportedCount=59; stage5EntryAuditAllowed=true; stage5ExactLockAllowed=false; productionDefaultCutoverActive=false; legacyAuthoritativePathExited=false; globalExitConditionsMet=false; remainingNextCheckpointId=stage5.entry_audit_after_stage4_exit; remainingSelectionFailure=null.
+```
+
+Candidate note:
+
+- Focused contracts, full related contracts, `npm test`, `npm run typecheck`, `git diff --check`, Skill freshness, inventory alignment, final diff scope review, and `git status --short` must pass against this final tree before creating the immutable candidate commit.
+- Candidate commit must not write its own SHA into this candidate record.
+- Oracle request must bind the candidate commit SHA, `audit_hash=fnv1a_be5c51cd`, `source_support_view_hash=fnv1a_37453024`, `source_inventory_hash=fnv1a_a883bf43`, and `reviewed_skill_revision=9000c515569664ab59b567f79604f018c805e862d22208162982d03003accdc3`.
+- Stage 5 remains `NOT_ENTERED` until this atomic step is receipt-closed and Parent Loop Driver selects the next Stage 5 entry audit checkpoint.
+
 ## Stage 4 Implementation: `validation.fail_closed_unknown_nodes.v1` complete-supported package slice
 
 Checkpoint identity:
