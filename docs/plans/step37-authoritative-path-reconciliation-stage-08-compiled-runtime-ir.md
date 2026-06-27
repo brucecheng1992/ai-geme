@@ -22,7 +22,7 @@ source_normalized_capability_dsl_audit_hash: fnv1a_4c046453
 source_normalized_canonical_dsl_hash: fnv1a_4f9c3411
 source_normalization_report_hash: fnv1a_d9d4f570
 source_normalization_lock_hash: fnv1a_bc2dcb21
-source_exact_capability_lock_hash: fnv1a_bc2dcb21
+source_exact_capability_lock_hash: fnv1a_0c570c26
 required_capability_count: 59
 complete_supported_count: 59
 package_count: 59
@@ -88,7 +88,7 @@ repo_tree_identity: pending_candidate_commit
 active_skill_revision_type: sha256_bundle
 active_skill_bundle_format: step37_manifest_v1_path_size_sha
 active_skill_file_count: 8
-active_skill_bundle_digest: b6a2c91949d9945e74c1c1b2a5e3dd1b99937f461af4ad84c5202f959ddd308a
+active_skill_bundle_digest: ed4e3ba1da435f24a527ca1a34f9374bfe1d7ca9e4d482a6d229c3518997dd72
 validation_commands:
 - command: /usr/bin/time -p npx vitest run tests/contracts/step37-stage8-compile-normalized-runtime-ir.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts
   exit_code: 0
@@ -117,7 +117,7 @@ validation_commands:
 - command: Skill freshness manifest digest
   exit_code: 0
   duration: <1s
-  result: active_skill_bundle_digest b6a2c91949d9945e74c1c1b2a5e3dd1b99937f461af4ad84c5202f959ddd308a
+  result: active_skill_bundle_digest ed4e3ba1da435f24a527ca1a34f9374bfe1d7ca9e4d482a6d229c3518997dd72
 - command: Stage8 inventory alignment recompute
   exit_code: 0
   duration: <1s
@@ -144,7 +144,7 @@ remaining_inventory_summary:
 
 oracle_status: not_submitted
 reviewed_commit_sha: not_created
-reviewed_skill_bundle_digest: b6a2c91949d9945e74c1c1b2a5e3dd1b99937f461af4ad84c5202f959ddd308a
+reviewed_skill_bundle_digest: ed4e3ba1da435f24a527ca1a34f9374bfe1d7ca9e4d482a6d229c3518997dd72
 
 ## Exit Assessment
 
