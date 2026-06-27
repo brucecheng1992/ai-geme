@@ -270,6 +270,26 @@ export {
   type Step37RemainingInventorySelectionFailure
 } from './step37-remaining-inventory-driver.js';
 export {
+  STEP37_SUPPORT_PROMOTION_INVENTORY_ARTIFACT_KIND,
+  STEP37_SUPPORT_PROMOTION_INVENTORY_SCHEMA_VERSION,
+  buildStep37SupportPromotionInventory,
+  parseStep37SupportPromotionInventoryArtifact,
+  type Step37SupportPromotionCapabilityClosureRecord,
+  type Step37SupportPromotionClosureStatus,
+  type Step37SupportPromotionDuplicateEntry,
+  type Step37SupportPromotionEligibleEntry,
+  type Step37SupportPromotionEvidenceRunScope,
+  type Step37SupportPromotionEvidenceScope,
+  type Step37SupportPromotionGapType,
+  type Step37SupportPromotionInputStatus,
+  type Step37SupportPromotionInventoryArtifact,
+  type Step37SupportPromotionInventoryInput,
+  type Step37SupportPromotionInventoryReport,
+  type Step37SupportPromotionReceiptStatus,
+  type Step37SupportPromotionStaleEntry,
+  type Step37SupportPromotionWrongPackageEntry
+} from './step37-support-promotion-inventory.js';
+export {
   GENERATION_TARGET_PROFILE_RUNTIME_SUPPORT_REPORT_KIND,
   GENERATION_TARGET_PROFILE_RUNTIME_SUPPORT_REPORT_PATH,
   GENERATION_TARGET_PROFILE_RUNTIME_SUPPORT_REPORT_SCHEMA_VERSION,

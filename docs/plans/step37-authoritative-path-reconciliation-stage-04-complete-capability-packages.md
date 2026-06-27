@@ -6167,6 +6167,129 @@ next_action=CONTINUE_PARENT_LOOP
 next_atomic_step=RUN_PARENT_LOOP_DRIVER_TO_SELECT_NEXT_UNMET_CHECKPOINT
 ```
 
+## Stage 4 Control Plane Implementation — Support Promotion From Same-Run Observed Package Receipts
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.support_promotion_from_same_run_observed_package_receipts
+parent_stage_id=stage4
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+closure_status=not_closed
+```
+
+Current objective:
+
+- Build a machine-readable per-capability support-promotion inventory for all 59 required Stage 4 capabilities.
+- Keep static `completeSupportedCount=0/59`; this step does not promote support, does not enter Stage 5, does not activate production default cutover, and does not exit the legacy authoritative path.
+- Aggregate `59/59` observed/closed summaries remain insufficient unless every required capability has its own traceable closure record and capability-specific same-run promotion input.
+
+Reconciliation baseline:
+
+```text
+required_capability_count=59
+registered_capability_count=59
+aggregate_observed_count=59
+static_completeSupportedCount=0
+existing_machine_parseable_closure_count=strict_consumer_reported_40; line-normalized probe found 42 unique closed capability ids and one duplicate hazard.timed_explosion.v1 record
+promotion_allowed=false
+stage5_entry_allowed=false
+gap_classification=parser_marker_issue + missing_per_capability_metadata
+```
+
+Durable inventory artifact:
+
+```text
+artifact_path=docs/plans/step37-support-promotion-per-capability-inventory.v0.1.json
+artifact_kind=step37_support_promotion_per_capability_inventory
+schema_version=step37_support_promotion_per_capability_inventory.v0.1
+capability_closure_record_count=59
+current_run_id=run-step37-stage4-package-receipts
+evidence_scope_required=capability_specific
+evidence_run_scope_required=same_run
+receipt_ref_policy=each receipt_ref must resolve to a real Git commit
+```
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a control-plane support-promotion inventory helper, artifact parser, and a docs JSON artifact of per-capability closure/promotion-input records. |
+| Consumer list | Step37 support-promotion contract, `parseStep37SupportPromotionInventoryArtifact`, Parent Loop support-promotion consumer, Stage 4 closure/receipt readers, future support-promotion audit/implementation atom. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: aggregate observed counts are not sufficient; the new consumer must validate per-capability records before any support-promotion decision. |
+| Authority | Current authority is `buildDeepSeekRunAndGunValidationProfileSupportSummary()` plus `docs/plans/step37-support-promotion-per-capability-inventory.v0.1.json` and the referenced Git commits. |
+| Legacy strategy | Legacy/static support remains unchanged; same-run observed closure records are promotion inputs only, not static complete support. |
+| Failure policy | Missing, duplicate, stale, generic-only, wrong-package, missing-receipt, unknown-capability, or non-resolving Git receipt records keep `supportPromotionInputStatus=blocked` and `stage5EntryAllowed=false`. |
+| Evidence | Focused contract validates aggregate-only failure, negative issue classification, snake_case artifact parser fail-closed behavior, 59 machine-verified records, real Git receipt refs, static `completeSupportedCount=0`, and Stage 5 blocked. |
+| Rollback | Reverting this atom removes only the support-promotion inventory helper, contract, docs artifact, and current control-plane record; it does not alter runtime, registry, package QA, production cutover, or historical receipt content. |
+
+Modified paths:
+
+- `packages/game-dsl/src/step37-support-promotion-inventory.ts`
+- `packages/game-dsl/src/index.ts`
+- `tests/contracts/step37-support-promotion-inventory.test.ts`
+- `docs/plans/step37-support-promotion-per-capability-inventory.v0.1.json`
+- `docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md`
+
+Validation summary before candidate:
+
+```text
+focused_red_command=/usr/bin/time -p npx vitest run tests/contracts/step37-support-promotion-inventory.test.ts
+focused_red_exitCode=1
+focused_red_result=RED: helper/export missing and support-promotion inventory artifact missing.
+
+focused_green_command=/usr/bin/time -p npx vitest run tests/contracts/step37-support-promotion-inventory.test.ts
+focused_green_exitCode=0
+focused_green_result=PASS: 1 file / 4 tests; aggregate-only evidence fails, issue classification is structured, artifact parsing fails closed on missing receipt metadata, and 59 per-capability records machine-verify without static support promotion.
+
+parser_contract_command=/usr/bin/time -p npx vitest run tests/contracts/step37-support-promotion-inventory.test.ts
+parser_contract_exitCode=0
+parser_contract_result=PASS: 1 file / 4 tests; artifact parser consumes snake_case docs JSON, rejects missing receipt_ref metadata, and prevents consumer-side undefined-field runtime failures.
+
+related_contract_command=/usr/bin/time -p npx vitest run tests/contracts/step37-support-promotion-inventory.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-closure-implementation-trace.test.ts -t "support-promotion|remaining complete-supported inventory|Parent Loop|closure"
+related_contract_exitCode=0
+related_contract_result=PASS: 4 files / 53 tests passed / 17 skipped.
+
+full_contract_command=/usr/bin/time -p npm run test:contracts
+full_contract_exitCode=0
+full_contract_result=PASS: 99 files / 1363 tests.
+
+npm_test_command=/usr/bin/time -p npm test
+npm_test_exitCode=0
+npm_test_result=PASS: contracts 99 files / 1363 tests; workspace 34 files / 410 tests.
+
+typecheck_command=/usr/bin/time -p npm run typecheck
+typecheck_exitCode=0
+typecheck_result=PASS: root, maker-api, and maker-workbench TypeScript checks passed.
+
+diff_check_command=/usr/bin/time -p git diff --check
+diff_check_exitCode=0
+diff_check_result=PASS.
+
+reconciliation_command=/usr/bin/time -p npx tsx - <<'TS' ... parseStep37SupportPromotionInventoryArtifact, buildStep37SupportPromotionInventory, buildStep37RemainingCompleteSupportedInventory ... TS
+reconciliation_exitCode=0
+reconciliation_result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=59; aggregateObservedCount=59; machineParseableClosureCount=59; promotionEligibleCount=59; completeSupportedCount=0; supportPromotionInputStatus=ready; stage5EntryAllowed=false.
+
+parent_loop_alignment_result=PASS: remaining inventory selects checkpoint_id=stage4.support_promotion_from_same_run_observed_package_receipts; staticCompleteSupportedCount=0; sameRunObservedOnlyCount=59; committedClosedCapabilityCount=59; selectionFailure=null.
+
+current_skill_revision_type=sha256_bundle
+current_skill_bundle_format=root-relative-rows-v1
+current_skill_file_count=8
+current_skill_bundle_digest=cb65864574974286307cfa5c0fc8d3bbf4b311bd324fda4e4e47d0ef06dac59d
+current_skill_freshness_exitCode=0
+current_skill_freshness_status=current active Skill digest changed from earlier in-thread expectation; all pre-change validation evidence is stale until rerun on this final tree.
+```
+
+Final gate note:
+
+- This candidate-ready status sync is a docs change. Focused contracts, full contracts, `npm test`, `npm run typecheck`, `git diff --check`, Skill freshness, inventory alignment, and final diff scope review must be rerun after this record before candidate commit.
+- Candidate commit must not write its own SHA into this record.
+- Oracle request must bind the immutable candidate SHA and current Skill digest.
+
 ## Stage 4 Implementation: `validation.user_acceptance_gate.v1` complete-supported package slice
 
 Checkpoint identity:
