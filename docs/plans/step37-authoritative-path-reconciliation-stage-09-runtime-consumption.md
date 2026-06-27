@@ -6,8 +6,8 @@ checkpoint_id: stage9.consume_compiled_runtime_ir_in_runtime
 closure_scope: atomic_step
 implementation_status: complete
 local_validation_status: passed
-candidate_status: ready_for_commit
-oracle_status: not_submitted
+candidate_status: committed
+oracle_status: approved
 parent_stage_status: running
 parent_loop_status: running
 global_exit_conditions_met: false
@@ -122,24 +122,30 @@ remaining_inventory_summary:
 
 ## Oracle Review
 
-oracle_status: not_submitted
-oracle_review_result: not_submitted
-reviewed_commit_sha: not_created
-reviewed_skill_bundle_digest: not_submitted
-oracle_agent_id: not_submitted
-oracle_p0_count: pending
-oracle_p1_count: pending
-oracle_p2_count: pending
-oracle_p3_count: pending
-receipt_scope: not_created
+oracle_status: approved
+oracle_review_result: APPROVED_FOR_RECEIPT
+reviewed_commit_sha: 79b290878ec53f93aa1bfe063a1480e56ea13682
+reviewed_skill_bundle_digest: ed4e3ba1da435f24a527ca1a34f9374bfe1d7ca9e4d482a6d229c3518997dd72
+oracle_submission_id: 019f08d8-be0f-7f52-ae58-c9671956fade
+oracle_agent_id: 019f0813-ed9a-7ad0-8341-50ababd44fea
+oracle_p0_count: 0
+oracle_p1_count: 0
+oracle_p2_count: 0
+oracle_p3_count: 1
+oracle_p3_findings:
+- finding: Future direct wrong Stage10 checkpoint contract would improve regression coverage; non-blocking because current driver validates Stage10 identity fields and existing contracts cover missing, valid, and stale Stage9 paths.
+  evidence:
+  - packages/game-dsl/src/step37-remaining-inventory-driver.ts
+  - tests/contracts/step37-remaining-inventory-driver.test.ts
+receipt_scope: docs_only_closure_metadata
 receipt_forbidden_changes: runtime,qa,package_registry,capability_registry,driver_semantics,validator,contracts,tests,Skill,AGENTS,production_cutover,legacy_exit,final_closure
 
 ## Exit Assessment
 
-atomic_step_status: locally_validated
-closure_status: incomplete
-candidate_commit: ready_for_commit
-receipt_commit: not_created
+atomic_step_status: closed
+closure_status: closed
+candidate_commit: 79b290878ec53f93aa1bfe063a1480e56ea13682
+receipt_commit: external_git_history_only_not_embedded
 parent_stage_status: running
 loop_status: running
 global_exit_conditions_met: false
