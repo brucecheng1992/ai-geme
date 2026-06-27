@@ -35,6 +35,7 @@ import {
   PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID,
   VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID,
   VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID,
+  VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID,
   REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID,
   RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID,
   RUNTIME_MODULE_LOAD_RECEIPT_REQUIRED_PROBE_ID,
@@ -164,6 +165,11 @@ describe('Gameplay capability registry', () => {
       legacyRuntimeCapabilities: []
     });
     expect(findGameplayCapability('validation.metamorphic_semantic_hash.v1')).toMatchObject({
+      status: 'planned',
+      domain: 'validation',
+      legacyRuntimeCapabilities: []
+    });
+    expect(findGameplayCapability('validation.replay_stability.v1')).toMatchObject({
       status: 'planned',
       domain: 'validation',
       legacyRuntimeCapabilities: []
@@ -1165,6 +1171,33 @@ describe('Gameplay capability registry', () => {
     });
     expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(metamorphicSemanticHash)).toEqual(['requiredProbesVerified']);
     expect(isCompleteSupportedGameplayCapability(metamorphicSemanticHash)).toBe(false);
+  });
+
+  it('scopes replay stability validation package-owned QA without static support promotion', () => {
+    const replayStability = findGameplayCapability('validation.replay_stability.v1');
+
+    if (replayStability === undefined) {
+      throw new Error('Expected validation.replay_stability.v1 in registry.');
+    }
+    expect(deriveGameplayCapabilitySupportEvidenceDimensions(replayStability)).toEqual({
+      schema_expressible: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: false
+    });
+    expect(replayStability.evidence).toMatchObject({
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    });
+    expect(replayStability.qa).toEqual({
+      requiredProbeIds: [VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID],
+      requiredProbesVerified: false
+    });
+    expect(getMissingGameplayCapabilitySupportEvidencePrerequisites(replayStability)).toEqual(['requiredProbesVerified']);
+    expect(isCompleteSupportedGameplayCapability(replayStability)).toBe(false);
   });
 
   it('scopes final Oracle gate package-owned QA without static support promotion', () => {

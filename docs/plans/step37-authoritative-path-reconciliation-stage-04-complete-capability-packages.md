@@ -6757,6 +6757,146 @@ next_atomic_step_unmet_reason=Stage 4 validation.replay_stability.v1 remains uns
 remaining_inventory_result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=57; staticCompleteSupportedCount=0; committedClosedCapabilityCount=57; unsupported_unregistered=2; nextCheckpointId=stage4.validation_replay_stability_v1.complete_supported_package_slice; selectionFailure=null.
 ```
 
+## Stage 4 Implementation: `validation.replay_stability.v1` complete-supported package slice
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.validation_replay_stability_v1.complete_supported_package_slice
+parent_stage_id=stage4
+capability_id=validation.replay_stability.v1
+closure_record_id=stage4.validation_replay_stability_v1.complete_supported_package_slice.candidate_record
+record_status=active
+current_active_record=true
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=ready_for_commit
+oracle_status=not_submitted
+review_required=true
+closure_status=open
+parent_stage_status=running
+parent_loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage4.validation_replay_stability_v1.complete_supported_package_slice
+next_atomic_step_label=Stage 4 validation.replay_stability.v1 complete-supported package slice implementation atomic step
+next_atomic_step_parent_stage_id=stage4
+next_atomic_step_selection_rule=first_unmet_checkpoint_in_authoritative_inventory
+active_skill_revision_type=sha256_bundle
+active_skill_bundle_format=step37_manifest_v1_path_size_sha
+active_skill_roots=code-change-discipline@/Users/dahufa/.agents/skills/code-change-discipline,review-gated-delivery@/Users/dahufa/.agents/skills/review-gated-delivery
+active_skill_file_count=8
+active_skill_bundle_digest=ed4e3ba1da435f24a527ca1a34f9374bfe1d7ca9e4d482a6d229c3518997dd72
+repo_base_commit=ecb048575e89609838014c70c718b318645f282d
+repo_base_tree=73916231375afc7bda15054bb619e088803e53b4
+post_record_validation_status=passed
+```
+
+`validation.replay_stability.v1` was selected by the Parent Loop Driver after the `validation.metamorphic_semantic_hash.v1` receipt. At entry, the target profile required replay stability validation, but the registry had no package-owned `validation.replay_stability.v1` descriptor, runtime system identity, telemetry event, required probe, QA reader fields, or target-profile overlay evidence. This atomic step only implements the package slice and validation contracts. It does not modify product runtime gameplay templates, enter Stage 5, cut over production default, exit the legacy authoritative path, or close Step37 globally.
+
+Minimum closure requirements:
+
+1. Add a package-owned replay stability validation capability contract with stable capability identity, runtime system identity, verification event identity, required probe id, and required QA evidence id.
+2. Depend on `validation.metamorphic_semantic_hash.v1` so single-run semantic hash or ordinary canonical/metamorphic evidence cannot bypass repeated replay proof.
+3. Prove the package validates as `COMPLETE_SUPPORTED` at package-contract level without promoting static target-profile `completeSupported`.
+4. Wire registry evidence so static support advances to `schema_expressible=true`, `normalized=true`, `compiled=true`, and `runtime_consumed=true`, while preserving `qa_observed=false`, `requiredProbesVerified=false`, and `completeSupported=false`.
+5. Require the replay stability probe to prove deterministic same-plan replay state: replay seed, input timeline hash, baseline trace hash, replay trace hash, trace match, frame count, no nondeterministic drift, same-plan binding, schema/profile/runtime identity, and explicit verified status.
+6. Preserve negative regressions proving dependency evidence alone, generic semantic hash events, or missing replay state fields keep the capability unverified and emit the required missing-probe blocker.
+7. Preserve Stage 4 failure policy: static `completeSupportedCount` remains `0/59`; same-run observed overlay may advance only the current report; production default cutover, Stage 5 exact lock, legacy authoritative path exit, and final closure remain blocked.
+
+Implementation paths:
+
+```text
+packages/game-dsl/src/gameplay-capabilities/validation-replay-stability-runtime-module.ts
+packages/game-dsl/src/gameplay-capabilities/validation-replay-stability-package.ts
+packages/game-dsl/src/gameplay-capabilities/capability-qa-probes.ts
+packages/game-dsl/src/gameplay-capabilities/index.ts
+packages/game-dsl/src/gameplay-capabilities/registry.ts
+packages/runtime-core/src/telemetry/telemetry-event-v0.1.schema.ts
+tests/contracts/contract-freeze.test.ts
+tests/contracts/deepseek-authoritative-dsl-support.test.ts
+tests/contracts/dsl-consumption-report.test.ts
+tests/contracts/gameplay-capability-package-contract.test.ts
+tests/contracts/gameplay-capability-qa-probes.test.ts
+tests/contracts/gameplay-capability-registry.test.ts
+tests/contracts/generation-target-profile-runtime-support.test.ts
+tests/contracts/step37-remaining-inventory-driver.test.ts
+docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md
+```
+
+Evidence/probe chain:
+
+- Package contract: `createValidationReplayStabilityPackageContract()`.
+- Runtime module identity: `VALIDATION_REPLAY_STABILITY_RUNTIME_SYSTEM_ID=validation.replay_stability`.
+- Verification event: `VALIDATION_REPLAY_STABILITY_EVENT_TYPE=validation.replay_stability.verified`.
+- Required probe: `VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID=validation.replay_stability.v1.replay.browser_qa.v1`.
+- Required evidence: `VALIDATION_REPLAY_STABILITY_PACKAGE_REQUIRED_EVIDENCE_ID=validation.replay_stability.v1.evidence.capability_qa_report.v1`.
+- Dependency capability: `validation.metamorphic_semantic_hash.v1`.
+- QA evidence reader: `buildCapabilityQaProbeResultsFromRuntimeEvidence()` compares replay stability state fields and fails the required probe when single-run hash evidence omits deterministic replay proof.
+- Target-profile runtime overlay: `buildGenerationTargetProfileRuntimeSupportReport()` may advance observed support only for same-run full replay stability evidence; it does not mutate static `completeSupported`.
+
+Compatibility & Cutover:
+
+| Check | Required answer |
+| --- | --- |
+| Producer change | Adds a package-owned replay stability validation capability contract, runtime system identity, verification event, required probe id, required evidence id, dependency edge to metamorphic semantic hash validation, and runtime evidence fields for deterministic same-plan replay trace validation. |
+| Consumer list | Package validator, package set resolver, registry support summary, capability QA plan/report, runtime evidence reader, target-profile runtime support overlay, Step37 remaining-inventory driver, telemetry/event freeze contract. |
+| Compatibility type | `NEW_CONSUMER_REQUIRED`: package-level contract is present, but static target-profile support remains incomplete until same-run QA evidence proves repeated replay traces match without nondeterministic drift. |
+| Authority | Package-owned QA evidence defines the capability authority: metamorphic semantic hash proof is insufficient unless evidence also proves replay seed, input timeline hash, baseline/replay trace hash equality, expected frame count, same-plan binding, and no nondeterministic drift. |
+| Legacy strategy | Generic semantic hash, canonical/metamorphic evidence, ordinary QA receipt text, or single-run validation events cannot overclaim this capability without the package-owned replay stability probe payload. |
+| Failure policy | Missing package contract, missing dependency proof, missing replay event, missing replay state fields, wrong capability/probe identity, stale evidence, trace mismatch, wrong frame count, or nondeterministic drift keeps `qa_observed=false` and fails closed as missing required probe evidence. |
+| Evidence | Focused contracts prove package validation, registry support advancement without complete support, QA reader positive/negative replay state behavior, dependency probe isolation, target-profile overlay positive/negative behavior, remaining-inventory count changes, and event/schema freeze coverage. |
+| Rollback | Reverting this slice removes only the validation replay stability package/probe/reader/schema wiring and returns `validation.replay_stability.v1` to unsupported evidence without changing business runtime gameplay templates or Stage 5 policy. |
+
+Validation performed before this record update:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/gameplay-capability-package-contract.test.ts tests/contracts/gameplay-capability-qa-probes.test.ts tests/contracts/generation-target-profile-runtime-support.test.ts tests/contracts/gameplay-capability-registry.test.ts tests/contracts/contract-freeze.test.ts tests/contracts/deepseek-authoritative-dsl-support.test.ts tests/contracts/dsl-consumption-report.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts -t "replay|metamorphic|remaining|runtime consumer evidence|package-owned|telemetry"
+exitCode=0
+duration=real 2.03s
+result=PASS: focused set 8 files; 146 passed / 177 skipped tests.
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=real 10.41s
+result=PASS: 98 files / 1349 tests.
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=real 60.33s
+result=PASS: contracts 98 files / 1349 tests; workspace 34 files / 410 tests.
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=real 6.65s
+result=PASS.
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=real 0.02s
+result=PASS.
+
+command=/usr/bin/time -p node --input-type=module "<code-change-discipline + review-gated-delivery root-relative path_size_sha Skill bundle digest>"
+exitCode=0
+duration=real 0.06s
+result=PASS: skill_revision_type=sha256_bundle; skill_bundle_format=step37_manifest_v1_path_size_sha; skill_file_count=8; skill_bundle_digest=ed4e3ba1da435f24a527ca1a34f9374bfe1d7ca9e4d482a6d229c3518997dd72.
+
+command=/usr/bin/time -p npx tsx --eval "<current support summary plus remaining-inventory alignment>"
+exitCode=0
+duration=real 0.48s
+result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=58; staticCompleteSupportedCount=0; committedClosedCapabilityCount=57; unsupported_unregistered=1; computedNextCheckpointId=stage4.validation_replay_stability_v1.complete_supported_package_slice; current capability state=registered_without_required_probe_verification; selectionFailure=null.
+```
+
+Post-record validation requirement:
+
+- This implementation record and candidate-readiness status sync change the final tree. Before creating the immutable candidate commit, focused contracts, full related contracts, `npm test`, `typecheck`, `diff --check`, Skill freshness, capability support alignment, Parent Loop inventory alignment, and final diff range check must be re-run against the updated final tree.
+- Candidate commit must not write its own SHA into this implementation record.
+- Oracle request must bind the candidate commit SHA and the final recomputed `reviewed_skill_revision`.
+- `oracle_status` remains `not_submitted` until the Oracle request is actually accepted and an `agent_id` is recorded outside the frozen candidate.
+- Oracle PASS is required before any receipt may update `closure_status=closed`.
+
 ## Stage 4 Implementation: `ui.win_failure_transitions.v1` complete-supported package slice
 
 Checkpoint identity:

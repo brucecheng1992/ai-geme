@@ -135,6 +135,16 @@ import {
   VALIDATION_METAMORPHIC_SEMANTIC_HASH_SCHEMA_VERSION,
   VALIDATION_METAMORPHIC_SEMANTIC_HASH_TRANSFORM_SUITE_ID,
   VALIDATION_METAMORPHIC_SEMANTIC_HASH_VARIANT_HASH,
+  VALIDATION_REPLAY_STABILITY_BASELINE_TRACE_HASH,
+  VALIDATION_REPLAY_STABILITY_EVENT_TYPE,
+  VALIDATION_REPLAY_STABILITY_FRAME_COUNT,
+  VALIDATION_REPLAY_STABILITY_INPUT_TIMELINE_HASH,
+  VALIDATION_REPLAY_STABILITY_PROFILE_ID,
+  VALIDATION_REPLAY_STABILITY_REPLAY_TRACE_HASH,
+  VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID,
+  VALIDATION_REPLAY_STABILITY_RUNTIME_FAMILY,
+  VALIDATION_REPLAY_STABILITY_SCHEMA_VERSION,
+  VALIDATION_REPLAY_STABILITY_SEED,
   GOAL_BOSS_UNLOCK_BOSS_ENTITY_ID,
   GOAL_BOSS_UNLOCK_EVENT_TYPE,
   GOAL_BOSS_UNLOCK_REASON,
@@ -319,6 +329,7 @@ import {
   createValidationFailClosedUnknownNodesPackageContract,
   createValidationFixedPromptEndToEndPackageContract,
   createValidationMetamorphicSemanticHashPackageContract,
+  createValidationReplayStabilityPackageContract,
   createGoalBossUnlockPackageContract,
   createHazardFallingAreaPackageContract,
   createHazardTimedExplosionPackageContract,
@@ -373,6 +384,7 @@ const generationFallbackPolicyFailClosedCapabilityId = 'generation.fallback_poli
 const validationFailClosedUnknownNodesCapabilityId = 'validation.fail_closed_unknown_nodes.v1';
 const validationFixedPromptEndToEndCapabilityId = 'validation.fixed_prompt_end_to_end.v1';
 const validationMetamorphicSemanticHashCapabilityId = 'validation.metamorphic_semantic_hash.v1';
+const validationReplayStabilityCapabilityId = 'validation.replay_stability.v1';
 const goalBossUnlockCapabilityId = 'goal.boss_unlock.v1';
 const hazardFallingAreaCapabilityId = 'hazard.falling_area.v1';
 const hazardTimedExplosionCapabilityId = 'hazard.timed_explosion.v1';
@@ -1477,6 +1489,127 @@ describe('Step 37 target profile runtime support overlay', () => {
       runtimeVerified: true,
       observedCompleteSupported: true,
       verifiedRequiredProbeIds: [VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID],
+      missingRequiredProbeIds: [],
+      observedEvidenceDimensions: { qa_observed: true }
+    });
+  });
+
+  it('keeps replay stability unverified when evidence lacks deterministic same-plan replay trace proof', () => {
+    const canonicalObserved: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: canonicalSemanticPreservationCapabilityId,
+        probeId: CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
+        action: 'verify_semantic_preservation',
+        eventType: CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE,
+        eventTypes: [CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE],
+        canonicalHashMatched: true,
+        semanticIntentPreserved: true,
+        droppedCanonicalNodes: false,
+        status: 'observed',
+        sourceRef: 'canonical.semantic.hash'
+      }
+    ];
+    const metamorphicObserved: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: validationMetamorphicSemanticHashCapabilityId,
+        probeId: VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID,
+        action: 'verify_metamorphic_semantic_hash',
+        eventType: VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE,
+        eventTypes: [VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE],
+        ...validationMetamorphicSemanticHashStateFields(),
+        status: 'observed',
+        sourceRef: 'validation.metamorphic_semantic_hash'
+      }
+    ];
+    const dependencyPackages = [
+      createCanonicalSemanticPreservationPackageContract(),
+      createValidationMetamorphicSemanticHashPackageContract()
+    ];
+    const dependencyObserved = [...canonicalObserved, ...metamorphicObserved];
+    const missingReplayStateQaReport = buildSingleCapabilityQaReport({
+      capabilityId: validationReplayStabilityCapabilityId,
+      dependencyPackages,
+      additionalObserved: dependencyObserved,
+      packageContract: createValidationReplayStabilityPackageContract(),
+      eventType: VALIDATION_REPLAY_STABILITY_EVENT_TYPE,
+      probeId: VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID,
+      action: 'verify_replay_stability',
+      sourceRef: 'validation.replay_stability',
+      stateFields: {
+        replayStabilityTraceMatched: true
+      }
+    });
+    const observedReplayStateQaReport = buildSingleCapabilityQaReport({
+      capabilityId: validationReplayStabilityCapabilityId,
+      dependencyPackages,
+      additionalObserved: dependencyObserved,
+      packageContract: createValidationReplayStabilityPackageContract(),
+      eventType: VALIDATION_REPLAY_STABILITY_EVENT_TYPE,
+      probeId: VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID,
+      action: 'verify_replay_stability',
+      sourceRef: 'validation.replay_stability',
+      stateFields: validationReplayStabilityStateFields()
+    });
+    const missingReplayStateReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_replay_stability_trace_missing',
+      capabilityQaReport: missingReplayStateQaReport
+    });
+    const observedReplayStateReport = buildGenerationTargetProfileRuntimeSupportReport({
+      projectId: 'proj_20260626_target_runtime_support',
+      runId: 'run_20260626_replay_stability_observed_state',
+      capabilityQaReport: observedReplayStateQaReport
+    });
+    const missingReplayState = missingReplayStateReport.capabilities.find((entry) => entry.capabilityId === validationReplayStabilityCapabilityId);
+    const observedReplayState = observedReplayStateReport.capabilities.find((entry) => entry.capabilityId === validationReplayStabilityCapabilityId);
+
+    expect(missingReplayStateQaReport.requiredResults.find((entry) => entry.probeId === CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID))
+      .toMatchObject({ status: 'passed' });
+    expect(missingReplayStateQaReport.requiredResults.find((entry) => entry.probeId === VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID))
+      .toMatchObject({ status: 'passed' });
+    expect(missingReplayStateQaReport.requiredResults.find((entry) => entry.probeId === VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID))
+      .toMatchObject({
+        status: 'failed',
+        assertionResults: expect.arrayContaining([
+          expect.objectContaining({
+            assertionId: `${VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID}.assertion.replay_stability`,
+            status: 'failed',
+            message: expect.stringContaining('expected replayStabilityVerified=true, observed <missing>')
+          }),
+          expect.objectContaining({
+            assertionId: `${VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID}.assertion.replay_stability`,
+            status: 'failed',
+            message: expect.stringContaining(`expected replayStabilitySeed=${VALIDATION_REPLAY_STABILITY_SEED}, observed <missing>`)
+          })
+        ])
+      });
+    expect(missingReplayStateReport).toMatchObject({
+      observedCompleteSupportedCount: 2,
+      blockers: [
+        `capability_qa_report_missing_required_probe:${VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID}`,
+        'target_profile_runtime_support_incomplete:2/59'
+      ]
+    });
+    expect(missingReplayState).toMatchObject({
+      runtimeVerified: false,
+      observedCompleteSupported: false,
+      verifiedRequiredProbeIds: [],
+      missingRequiredProbeIds: [VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID],
+      observedEvidenceDimensions: { qa_observed: false }
+    });
+    expect(observedReplayStateReport).toMatchObject({
+      observedCompleteSupportedCount: 3,
+      observedCapabilityIds: [
+        canonicalSemanticPreservationCapabilityId,
+        validationMetamorphicSemanticHashCapabilityId,
+        validationReplayStabilityCapabilityId
+      ],
+      blockers: ['target_profile_runtime_support_incomplete:3/59']
+    });
+    expect(observedReplayState).toMatchObject({
+      runtimeVerified: true,
+      observedCompleteSupported: true,
+      verifiedRequiredProbeIds: [VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID],
       missingRequiredProbeIds: [],
       observedEvidenceDimensions: { qa_observed: true }
     });
@@ -5591,6 +5724,7 @@ function buildDefaultWeaponQaReport(
     providerDeepSeekAuthoritativeDraftStateFields?: boolean;
     validationFixedPromptEndToEndStateFields?: boolean;
     validationMetamorphicSemanticHashStateFields?: boolean;
+    validationReplayStabilityStateFields?: boolean;
     reviewOracleFinalGateStateFields?: boolean;
     spawnEnemyWaveOrderedFields?: boolean;
     weaponDeathResetStateFields?: boolean;
@@ -6316,6 +6450,20 @@ function buildDefaultWeaponQaReport(
           }
         ]
       : []),
+    ...(effectiveEventTypes.includes(VALIDATION_REPLAY_STABILITY_EVENT_TYPE)
+      ? [
+          {
+            capabilityId: validationReplayStabilityCapabilityId,
+            probeId: VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID,
+            action: 'verify_replay_stability',
+            eventType: VALIDATION_REPLAY_STABILITY_EVENT_TYPE,
+            eventTypes: effectiveEventTypes,
+            ...(options.validationReplayStabilityStateFields === false ? {} : validationReplayStabilityStateFields()),
+            status: 'observed' as const,
+            sourceRef: 'validation.replay_stability'
+          }
+        ]
+      : []),
     ...(effectiveEventTypes.includes(REVIEW_ORACLE_FINAL_GATE_EVENT_TYPE)
       ? [
           {
@@ -6532,6 +6680,9 @@ function withDefaultPackageOwnedEvents(
     ...(options.includeDefaultValidationMetamorphicSemanticHash !== false &&
     eventTypes.includes(CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE)
       ? [VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE]
+      : []),
+    ...(eventTypes.includes(VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE)
+      ? [VALIDATION_REPLAY_STABILITY_EVENT_TYPE]
       : []),
     ...(eventTypes.includes(RULES_CHECKPOINT_RESTORE_EVENT_TYPE)
       ? [RULES_ENCOUNTER_GATE_EVENT_TYPE, RULES_RETRY_COUNT_EVENT_TYPE, RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE]
@@ -6785,6 +6936,23 @@ function validationMetamorphicSemanticHashStateFields(): Record<string, unknown>
     metamorphicTransformCount: 2,
     metamorphicSemanticIntentPreserved: true,
     metamorphicNoCanonicalDrift: true
+  };
+}
+
+function validationReplayStabilityStateFields(): Record<string, unknown> {
+  return {
+    replayStabilityVerified: true,
+    replayStabilitySchemaVersion: VALIDATION_REPLAY_STABILITY_SCHEMA_VERSION,
+    replayStabilityProfileId: VALIDATION_REPLAY_STABILITY_PROFILE_ID,
+    replayStabilityRuntimeFamily: VALIDATION_REPLAY_STABILITY_RUNTIME_FAMILY,
+    replayStabilitySeed: VALIDATION_REPLAY_STABILITY_SEED,
+    replayStabilityInputTimelineHash: VALIDATION_REPLAY_STABILITY_INPUT_TIMELINE_HASH,
+    replayStabilityBaselineTraceHash: VALIDATION_REPLAY_STABILITY_BASELINE_TRACE_HASH,
+    replayStabilityReplayTraceHash: VALIDATION_REPLAY_STABILITY_REPLAY_TRACE_HASH,
+    replayStabilityTraceMatched: true,
+    replayStabilityFrameCount: VALIDATION_REPLAY_STABILITY_FRAME_COUNT,
+    replayStabilityNoNondeterministicDrift: true,
+    replayStabilitySamePlan: true
   };
 }
 

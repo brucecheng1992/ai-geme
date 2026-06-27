@@ -166,7 +166,7 @@ describe('Step 33 DSL consumption report', () => {
 
     expect(report.targetProfileSupport).toMatchObject({
       requiredCapabilityCount: 59,
-      registeredCapabilityCount: 57,
+      registeredCapabilityCount: 58,
       completeSupportedCount: 0,
       completePackageClosure: {
         status: 'blocked_incomplete_target_profile',
@@ -193,6 +193,19 @@ describe('Step 33 DSL consumption report', () => {
       missingSupportEvidencePrerequisites: ['requiredProbesVerified']
     });
     expect(capabilities.get('validation.metamorphic_semantic_hash.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('validation.replay_stability.v1')).toMatchObject({
       classification: 'DEFERRED',
       completeSupported: false,
       evidenceDimensions: {

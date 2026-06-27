@@ -333,6 +333,23 @@ import {
   VALIDATION_METAMORPHIC_SEMANTIC_HASH_VARIANT_HASH
 } from '../../packages/game-dsl/src/gameplay-capabilities/validation-metamorphic-semantic-hash-runtime-module.js';
 import {
+  VALIDATION_REPLAY_STABILITY_PACKAGE_REQUIRED_EVIDENCE_ID,
+  VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID,
+  createValidationReplayStabilityPackageContract
+} from '../../packages/game-dsl/src/gameplay-capabilities/validation-replay-stability-package.js';
+import {
+  VALIDATION_REPLAY_STABILITY_BASELINE_TRACE_HASH,
+  VALIDATION_REPLAY_STABILITY_EVENT_TYPE,
+  VALIDATION_REPLAY_STABILITY_FRAME_COUNT,
+  VALIDATION_REPLAY_STABILITY_INPUT_TIMELINE_HASH,
+  VALIDATION_REPLAY_STABILITY_PROFILE_ID,
+  VALIDATION_REPLAY_STABILITY_REPLAY_TRACE_HASH,
+  VALIDATION_REPLAY_STABILITY_RUNTIME_FAMILY,
+  VALIDATION_REPLAY_STABILITY_RUNTIME_SYSTEM_ID,
+  VALIDATION_REPLAY_STABILITY_SCHEMA_VERSION,
+  VALIDATION_REPLAY_STABILITY_SEED
+} from '../../packages/game-dsl/src/gameplay-capabilities/validation-replay-stability-runtime-module.js';
+import {
   GOAL_BOSS_UNLOCK_PACKAGE_REQUIRED_EVIDENCE_ID,
   GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID,
   createGoalBossUnlockPackageContract
@@ -2109,6 +2126,75 @@ describe('Gameplay capability package contract', () => {
             metamorphicTransformCount: 2,
             metamorphicSemanticIntentPreserved: true,
             metamorphicNoCanonicalDrift: true
+          }
+        })
+      ]
+    });
+  });
+
+  it('accepts the replay stability validation package only with deterministic same-plan trace proof', () => {
+    const contract = createValidationReplayStabilityPackageContract();
+    const report = validateGameplayCapabilityPackage(contract);
+    const requiredProbe = contract.qa.probes.find((probe) => probe.id === VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID);
+
+    expect(report).toMatchObject({
+      status: 'valid',
+      completeness: 'COMPLETE_SUPPORTED',
+      supportEligible: true,
+      packageId: 'validation.replay_stability.v1'
+    });
+    expect(contract.dependencies).toEqual([{ capabilityId: 'validation.metamorphic_semantic_hash.v1', range: '^v1' }]);
+    expect(contract.runtime.systems).toEqual([
+      expect.objectContaining({
+        id: VALIDATION_REPLAY_STABILITY_RUNTIME_SYSTEM_ID,
+        dependencies: [VALIDATION_METAMORPHIC_SEMANTIC_HASH_RUNTIME_SYSTEM_ID]
+      })
+    ]);
+    expect(contract.qa.requiredEvidence).toEqual([
+      {
+        id: VALIDATION_REPLAY_STABILITY_PACKAGE_REQUIRED_EVIDENCE_ID,
+        artifactKind: 'capability_qa_report',
+        required: true
+      }
+    ]);
+    expect(requiredProbe).toMatchObject({
+      capabilityId: 'validation.replay_stability.v1',
+      severity: 'required',
+      actions: [
+        expect.objectContaining({
+          target: VALIDATION_REPLAY_STABILITY_EVENT_TYPE,
+          parameters: {
+            replaySeed: VALIDATION_REPLAY_STABILITY_SEED,
+            inputTimelineHash: VALIDATION_REPLAY_STABILITY_INPUT_TIMELINE_HASH,
+            expectedBaselineTraceHash: VALIDATION_REPLAY_STABILITY_BASELINE_TRACE_HASH,
+            expectedReplayTraceHash: VALIDATION_REPLAY_STABILITY_REPLAY_TRACE_HASH,
+            expectedFrameCount: VALIDATION_REPLAY_STABILITY_FRAME_COUNT
+          }
+        })
+      ],
+      observations: [
+        expect.objectContaining({
+          kind: 'runtime_event',
+          runtimeSystemId: VALIDATION_REPLAY_STABILITY_RUNTIME_SYSTEM_ID,
+          ref: VALIDATION_REPLAY_STABILITY_EVENT_TYPE
+        })
+      ],
+      assertions: [
+        expect.objectContaining({
+          id: `${VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID}.assertion.replay_stability`,
+          expected: {
+            replayStabilityVerified: true,
+            replayStabilitySchemaVersion: VALIDATION_REPLAY_STABILITY_SCHEMA_VERSION,
+            replayStabilityProfileId: VALIDATION_REPLAY_STABILITY_PROFILE_ID,
+            replayStabilityRuntimeFamily: VALIDATION_REPLAY_STABILITY_RUNTIME_FAMILY,
+            replayStabilitySeed: VALIDATION_REPLAY_STABILITY_SEED,
+            replayStabilityInputTimelineHash: VALIDATION_REPLAY_STABILITY_INPUT_TIMELINE_HASH,
+            replayStabilityBaselineTraceHash: VALIDATION_REPLAY_STABILITY_BASELINE_TRACE_HASH,
+            replayStabilityReplayTraceHash: VALIDATION_REPLAY_STABILITY_REPLAY_TRACE_HASH,
+            replayStabilityTraceMatched: true,
+            replayStabilityFrameCount: VALIDATION_REPLAY_STABILITY_FRAME_COUNT,
+            replayStabilityNoNondeterministicDrift: true,
+            replayStabilitySamePlan: true
           }
         })
       ]

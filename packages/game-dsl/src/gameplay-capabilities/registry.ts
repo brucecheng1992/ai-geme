@@ -142,6 +142,10 @@ import {
   createValidationMetamorphicSemanticHashPackageContract
 } from './validation-metamorphic-semantic-hash-package.js';
 import {
+  VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID,
+  createValidationReplayStabilityPackageContract
+} from './validation-replay-stability-package.js';
+import {
   GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID,
   createGoalBossUnlockPackageContract
 } from './goal-boss-unlock-package.js';
@@ -1000,6 +1004,19 @@ const validationMetamorphicSemanticHashPackageEvidence: GameplayCapabilityEviden
 const validationMetamorphicSemanticHashPackageQa: GameplayCapabilityQaEvidence = validationMetamorphicSemanticHashPackageReport.supportEligible
   ? { requiredProbeIds: [VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID], requiredProbesVerified: false }
   : noVerifiedQa;
+const validationReplayStabilityPackageReport = validateGameplayCapabilityPackage(createValidationReplayStabilityPackageContract());
+const validationReplayStabilityPackageEvidence: GameplayCapabilityEvidence = validationReplayStabilityPackageReport.supportEligible
+  ? {
+      ...canonicalRuntimeLoaderEvidence,
+      amendmentOperations: true,
+      capabilityOwnedQa: true,
+      artifactEvidence: true,
+      renderContract: true
+    }
+  : canonicalRuntimeLoaderEvidence;
+const validationReplayStabilityPackageQa: GameplayCapabilityQaEvidence = validationReplayStabilityPackageReport.supportEligible
+  ? { requiredProbeIds: [VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID], requiredProbesVerified: false }
+  : noVerifiedQa;
 const goalBossUnlockPackageReport = validateGameplayCapabilityPackage(createGoalBossUnlockPackageContract());
 const goalBossUnlockPackageEvidence: GameplayCapabilityEvidence = goalBossUnlockPackageReport.supportEligible
   ? {
@@ -1458,6 +1475,16 @@ const defaultGameplayCapabilityDescriptors: GameplayCapabilityDescriptor[] = [
     [],
     validationMetamorphicSemanticHashPackageEvidence,
     validationMetamorphicSemanticHashPackageQa
+  ),
+  planned(
+    'validation.replay_stability.v1',
+    'validation',
+    'Replay stability validation',
+    [phaser2dActionArcade],
+    ['side_scrolling_run_and_gun.v1'],
+    [],
+    validationReplayStabilityPackageEvidence,
+    validationReplayStabilityPackageQa
   ),
   planned(
     'goal.boss_unlock.v1',

@@ -963,6 +963,7 @@ describe('DeepSeek authoritative DSL support vocabulary', () => {
       'validation.fail_closed_unknown_nodes.v1',
       'validation.fixed_prompt_end_to_end.v1',
       'validation.metamorphic_semantic_hash.v1',
+      'validation.replay_stability.v1',
       'weapon.cooldown.v1',
       'weapon.death_reset.v1',
       'weapon.default_straight_single.v1',

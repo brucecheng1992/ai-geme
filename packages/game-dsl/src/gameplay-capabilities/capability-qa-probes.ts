@@ -477,6 +477,18 @@ export type CapabilityRuntimeObservedProbeEvidence = {
   metamorphicTransformCount?: number;
   metamorphicSemanticIntentPreserved?: boolean;
   metamorphicNoCanonicalDrift?: boolean;
+  replayStabilityVerified?: boolean;
+  replayStabilitySchemaVersion?: string;
+  replayStabilityProfileId?: string;
+  replayStabilityRuntimeFamily?: string;
+  replayStabilitySeed?: string;
+  replayStabilityInputTimelineHash?: string;
+  replayStabilityBaselineTraceHash?: string;
+  replayStabilityReplayTraceHash?: string;
+  replayStabilityTraceMatched?: boolean;
+  replayStabilityFrameCount?: number;
+  replayStabilityNoNondeterministicDrift?: boolean;
+  replayStabilitySamePlan?: boolean;
   finalOracleGateApproved?: boolean;
   finalOracleReviewedCommitShaPresent?: boolean;
   finalOracleReviewedSkillRevisionPresent?: boolean;
@@ -1259,6 +1271,18 @@ function compareRuntimeEvidenceExpectedFields(expected: unknown, observed: Capab
     ...compareExpectedNumberField('metamorphicTransformCount', expected, observed.metamorphicTransformCount),
     ...compareExpectedBooleanField('metamorphicSemanticIntentPreserved', expected, observed.metamorphicSemanticIntentPreserved),
     ...compareExpectedBooleanField('metamorphicNoCanonicalDrift', expected, observed.metamorphicNoCanonicalDrift),
+    ...compareExpectedBooleanField('replayStabilityVerified', expected, observed.replayStabilityVerified),
+    ...compareExpectedStringField('replayStabilitySchemaVersion', expected, observed.replayStabilitySchemaVersion),
+    ...compareExpectedStringField('replayStabilityProfileId', expected, observed.replayStabilityProfileId),
+    ...compareExpectedStringField('replayStabilityRuntimeFamily', expected, observed.replayStabilityRuntimeFamily),
+    ...compareExpectedStringField('replayStabilitySeed', expected, observed.replayStabilitySeed),
+    ...compareExpectedStringField('replayStabilityInputTimelineHash', expected, observed.replayStabilityInputTimelineHash),
+    ...compareExpectedStringField('replayStabilityBaselineTraceHash', expected, observed.replayStabilityBaselineTraceHash),
+    ...compareExpectedStringField('replayStabilityReplayTraceHash', expected, observed.replayStabilityReplayTraceHash),
+    ...compareExpectedBooleanField('replayStabilityTraceMatched', expected, observed.replayStabilityTraceMatched),
+    ...compareExpectedNumberField('replayStabilityFrameCount', expected, observed.replayStabilityFrameCount),
+    ...compareExpectedBooleanField('replayStabilityNoNondeterministicDrift', expected, observed.replayStabilityNoNondeterministicDrift),
+    ...compareExpectedBooleanField('replayStabilitySamePlan', expected, observed.replayStabilitySamePlan),
     ...compareExpectedBooleanField('finalOracleGateApproved', expected, finalOracleFacts.finalOracleGateApproved),
     ...compareExpectedBooleanField('finalOracleReviewedCommitShaPresent', expected, finalOracleFacts.finalOracleReviewedCommitShaPresent),
     ...compareExpectedBooleanField('finalOracleReviewedSkillRevisionPresent', expected, finalOracleFacts.finalOracleReviewedSkillRevisionPresent),

@@ -181,6 +181,17 @@ import {
   VALIDATION_METAMORPHIC_SEMANTIC_HASH_TRANSFORM_SUITE_ID,
   VALIDATION_METAMORPHIC_SEMANTIC_HASH_VARIANT_HASH,
   createValidationMetamorphicSemanticHashPackageContract,
+  VALIDATION_REPLAY_STABILITY_BASELINE_TRACE_HASH,
+  VALIDATION_REPLAY_STABILITY_EVENT_TYPE,
+  VALIDATION_REPLAY_STABILITY_FRAME_COUNT,
+  VALIDATION_REPLAY_STABILITY_INPUT_TIMELINE_HASH,
+  VALIDATION_REPLAY_STABILITY_PROFILE_ID,
+  VALIDATION_REPLAY_STABILITY_REPLAY_TRACE_HASH,
+  VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID,
+  VALIDATION_REPLAY_STABILITY_RUNTIME_FAMILY,
+  VALIDATION_REPLAY_STABILITY_SCHEMA_VERSION,
+  VALIDATION_REPLAY_STABILITY_SEED,
+  createValidationReplayStabilityPackageContract,
   GOAL_BOSS_UNLOCK_BOSS_ENTITY_ID,
   GOAL_BOSS_UNLOCK_EVENT_TYPE,
   GOAL_BOSS_UNLOCK_REASON,
@@ -2420,6 +2431,175 @@ describe('Capability-owned runtime QA probes', () => {
     );
     expect(observedMetamorphicState.status).toBe('passed');
     expect(observedMetamorphicState.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'passed',
+      planHash: plan.planHash
+    });
+  });
+
+  it('requires replay stability proof beyond single-run semantic hash evidence', () => {
+    const capabilityId = 'validation.replay_stability.v1';
+    const probeId = VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID;
+    const canonicalPackage = createCanonicalSemanticPreservationPackageContract();
+    const metamorphicPackage = createValidationMetamorphicSemanticHashPackageContract();
+    const packageContract = createValidationReplayStabilityPackageContract();
+    const packages = [canonicalPackage, metamorphicPackage, packageContract];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const canonicalDependencyEvidence = {
+      capabilityId: 'canonical.semantic_preservation.v1',
+      probeId: CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
+      action: 'verify_semantic_preservation',
+      eventType: CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE,
+      eventTypes: [CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE],
+      canonicalHashMatched: true,
+      semanticIntentPreserved: true,
+      droppedCanonicalNodes: false,
+      status: 'observed' as const,
+      sourceRef: 'canonical.semantic.hash'
+    };
+    const metamorphicDependencyEvidence = {
+      capabilityId: 'validation.metamorphic_semantic_hash.v1',
+      probeId: VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID,
+      action: 'verify_metamorphic_semantic_hash',
+      eventType: VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE,
+      eventTypes: [VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE],
+      metamorphicSemanticHashVerified: true,
+      metamorphicSemanticHashSchemaVersion: VALIDATION_METAMORPHIC_SEMANTIC_HASH_SCHEMA_VERSION,
+      metamorphicSemanticHashProfileId: VALIDATION_METAMORPHIC_SEMANTIC_HASH_PROFILE_ID,
+      metamorphicSemanticHashRuntimeFamily: VALIDATION_METAMORPHIC_SEMANTIC_HASH_RUNTIME_FAMILY,
+      metamorphicTransformSuiteId: VALIDATION_METAMORPHIC_SEMANTIC_HASH_TRANSFORM_SUITE_ID,
+      metamorphicBaseSemanticHash: VALIDATION_METAMORPHIC_SEMANTIC_HASH_BASE_HASH,
+      metamorphicVariantSemanticHash: VALIDATION_METAMORPHIC_SEMANTIC_HASH_VARIANT_HASH,
+      metamorphicHashMatched: true,
+      metamorphicTransformCount: 2,
+      metamorphicSemanticIntentPreserved: true,
+      metamorphicNoCanonicalDrift: true,
+      status: 'observed' as const,
+      sourceRef: 'validation.metamorphic_semantic_hash'
+    };
+    const replayState = {
+      replayStabilityVerified: true,
+      replayStabilitySchemaVersion: VALIDATION_REPLAY_STABILITY_SCHEMA_VERSION,
+      replayStabilityProfileId: VALIDATION_REPLAY_STABILITY_PROFILE_ID,
+      replayStabilityRuntimeFamily: VALIDATION_REPLAY_STABILITY_RUNTIME_FAMILY,
+      replayStabilitySeed: VALIDATION_REPLAY_STABILITY_SEED,
+      replayStabilityInputTimelineHash: VALIDATION_REPLAY_STABILITY_INPUT_TIMELINE_HASH,
+      replayStabilityBaselineTraceHash: VALIDATION_REPLAY_STABILITY_BASELINE_TRACE_HASH,
+      replayStabilityReplayTraceHash: VALIDATION_REPLAY_STABILITY_REPLAY_TRACE_HASH,
+      replayStabilityTraceMatched: true,
+      replayStabilityFrameCount: VALIDATION_REPLAY_STABILITY_FRAME_COUNT,
+      replayStabilityNoNondeterministicDrift: true,
+      replayStabilitySamePlan: true
+    };
+
+    expect(plan.status).toBe('ready');
+    expect(plan.requiredProbes.map((probe) => probe.id)).toEqual([
+      CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
+      VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID,
+      VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID
+    ]);
+
+    const dependencyOnly = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [canonicalDependencyEvidence, metamorphicDependencyEvidence],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const missingReplayState = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            canonicalDependencyEvidence,
+            metamorphicDependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_replay_stability',
+              eventType: VALIDATION_REPLAY_STABILITY_EVENT_TYPE,
+              eventTypes: [VALIDATION_REPLAY_STABILITY_EVENT_TYPE],
+              canonicalHashMatched: true,
+              metamorphicHashMatched: true,
+              status: 'observed' as const,
+              sourceRef: 'validation.replay_stability'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedReplayState = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            canonicalDependencyEvidence,
+            metamorphicDependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_replay_stability',
+              eventType: VALIDATION_REPLAY_STABILITY_EVENT_TYPE,
+              eventTypes: [VALIDATION_REPLAY_STABILITY_EVENT_TYPE],
+              ...replayState,
+              status: 'observed' as const,
+              sourceRef: 'validation.replay_stability'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(dependencyOnly.status).toBe('failed');
+    expect(dependencyOnly.requiredResults.find((entry) => entry.probeId === CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID))
+      .toMatchObject({ status: 'passed', planHash: plan.planHash });
+    expect(dependencyOnly.requiredResults.find((entry) => entry.probeId === VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID))
+      .toMatchObject({ status: 'passed', planHash: plan.planHash });
+    expect(dependencyOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingReplayState.status).toBe('failed');
+    expect(missingReplayState.requiredResults.find((entry) => entry.probeId === VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID))
+      .toMatchObject({ status: 'passed', planHash: plan.planHash });
+    expect(missingReplayState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingReplayState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.replay_stability`,
+          status: 'failed',
+          message: expect.stringContaining('expected replayStabilityVerified=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.replay_stability`,
+          status: 'failed',
+          message: expect.stringContaining(`expected replayStabilitySeed=${VALIDATION_REPLAY_STABILITY_SEED}, observed <missing>`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.replay_stability`,
+          status: 'failed',
+          message: expect.stringContaining('expected replayStabilityTraceMatched=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedReplayState.status).toBe('passed');
+    expect(observedReplayState.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
       status: 'passed',
       planHash: plan.planHash
     });
