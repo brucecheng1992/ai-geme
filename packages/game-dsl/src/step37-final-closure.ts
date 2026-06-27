@@ -39,13 +39,14 @@ export const STEP37_FINAL_REQUIRED_EVIDENCE_KINDS = [
 
 export const STEP37_FINAL_REQUIRED_VALIDATION_COMMANDS = [
   'npx vitest run tests/contracts/step37-final-closure.test.ts',
-  'npx vitest run tests/contracts/generation-capability-cutover.test.ts tests/contracts/generation-capability-gap.test.ts tests/contracts/generation-capability-runtime.test.ts tests/contracts/generation-capability-resolution.test.ts tests/contracts/generation-capability-readiness.test.ts tests/contracts/generation-path-receipt.test.ts tests/contracts/game-brief-v0.2.test.ts tests/contracts/game-brief-ingress.test.ts tests/contracts/generation-scope-plan.test.ts tests/workspace/game-dsl-provider.test.ts tests/contracts/scene-ir.test.ts tests/contracts/asset-intent-manifest.test.ts tests/contracts/phaser-templates.test.ts tests/workspace/runtime-scene-binding-report.test.ts tests/workspace/compiler-service.test.ts tests/workspace/pipeline-artifact-index.test.ts tests/workspace/pipeline-acceptance-report.test.ts tests/workspace/workbench-pipeline-evidence-client.test.ts tests/workspace/pipeline-golden-trace.test.ts tests/workspace/generation-pipeline.service.test.ts',
+  'npm run test:contracts',
+  'npm test',
   'npx vitest run tests/contracts/capability-synthesis-policy.test.ts tests/contracts/capability-synthesis-scaffold.test.ts tests/contracts/capability-synthesis-lifecycle.test.ts tests/contracts/capability-synthesis-verification.test.ts',
-  'npm run typecheck:root',
+  'npm run typecheck',
   'git diff --check',
-  'git diff --no-index --check -- /dev/null packages/game-dsl/src/step37-final-closure.ts',
-  'git diff --no-index --check -- /dev/null tests/contracts/step37-final-closure.test.ts',
-  'git diff --no-index --check -- /dev/null docs/refactor-log/step37-capability-first-authoritative-generation-pipeline-cutover.md'
+  'git diff --check -- packages/game-dsl/src/step37-final-closure.ts',
+  'git diff --check -- tests/contracts/step37-final-closure.test.ts',
+  'git diff --check -- docs/refactor-log/step37-capability-first-authoritative-generation-pipeline-cutover.md'
 ] as const;
 
 export type Step37FinalAcceptanceId = (typeof STEP37_FINAL_ACCEPTANCE_IDS)[number];

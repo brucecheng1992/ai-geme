@@ -11,6 +11,7 @@ import { type Step37ComposedDslSchemaReport } from './step37-composed-dsl-schema
 import { type Step37ConsumeCompiledRuntimeIrReport } from './step37-consume-compiled-runtime-ir.js';
 import { type Step37ExactCapabilityLockReport } from './step37-exact-capability-lock.js';
 import { type Step37ExitLegacyAuthoritativePathReport } from './step37-exit-legacy-authoritative-path.js';
+import { type Step37FinalClosureReport } from './step37-final-closure.js';
 import { type Step37NormalizeCapabilityDslDraftReport } from './step37-normalize-capability-dsl-draft.js';
 import { type Step37ObserveRuntimeConsumedIrWithQaReport } from './step37-observe-runtime-consumed-ir-with-qa.js';
 import { type Step37Stage4ExitAuditReport } from './step37-stage4-exit-audit.js';
@@ -122,6 +123,7 @@ export type Step37RemainingInventoryDriverInput = {
   stage12ExitLegacyAuthoritativePathCheckpoint?: Step37CheckpointInventoryItem | null;
   stage12ExitLegacyAuthoritativePathReport?: Step37ExitLegacyAuthoritativePathReport | null;
   stage13FinalClosureCheckpoint?: Step37CheckpointInventoryItem | null;
+  stage13FinalClosureReport?: Step37FinalClosureReport | null;
   parentStageId?: string;
   sourcePlanRevision: string;
 };
@@ -544,6 +546,7 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
     input.stage11ActivateProductionDefaultCutoverReport ?? null,
     staticCompleteSupportedCapabilityIds
   );
+  const stage13FinalClosurePassed = isStage13FinalClosurePassed(input.stage13FinalClosureReport ?? null);
   const stage5ExactLockCheckpointRequired =
     requiredCapabilityCount > 0 &&
     staticCompleteSupportedCount === requiredCapabilityCount &&
@@ -737,7 +740,8 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
     stage9ConsumeCompiledRuntimeIrPassed &&
     stage10ObserveRuntimeConsumedIrWithQaPassed &&
     stage11ActivateProductionDefaultCutoverPassed &&
-    stage12ExitLegacyAuthoritativePathPassed;
+    stage12ExitLegacyAuthoritativePathPassed &&
+    !stage13FinalClosurePassed;
   const stage13FinalClosureCheckpointInvalidFields = stage13FinalClosureCheckpointRequired
     ? getStage13FinalClosureCheckpointInvalidFields(input.stage13FinalClosureCheckpoint ?? null)
     : [];
@@ -1946,6 +1950,30 @@ function isStage12ExitLegacyAuthoritativePathPassed(
     !report.finalClosureNotBlocked &&
     !report.globalExitConditionsMet
   );
+}
+
+function isStage13FinalClosurePassed(report: Step37FinalClosureReport | null): boolean {
+  return (
+    report?.status === 'closed' &&
+    report.reportHash === hashFinalClosureReportWithoutReportHash(report) &&
+    report.issues.length === 0 &&
+    report.missingAcceptanceIds.length === 0 &&
+    report.failedAcceptanceIds.length === 0 &&
+    report.duplicateAcceptanceIds.length === 0 &&
+    report.missingEvidenceKinds.length === 0 &&
+    report.duplicateEvidenceKinds.length === 0 &&
+    report.invalidEvidenceKinds.length === 0 &&
+    report.missingValidationCommands.length === 0 &&
+    report.failedValidationCommands.length === 0 &&
+    report.duplicateValidationCommands.length === 0 &&
+    report.referenceRegressionPassed &&
+    report.oracleGatePassed
+  );
+}
+
+function hashFinalClosureReportWithoutReportHash(report: Step37FinalClosureReport): string {
+  const { reportHash: _reportHash, ...payloadWithoutHash } = report;
+  return hashStableDraft(payloadWithoutHash);
 }
 
 function hashReportWithoutAuditHash<TReport extends { auditHash: string }>(report: TReport): string {

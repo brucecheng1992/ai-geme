@@ -31,10 +31,18 @@ import {
   STEP37_STAGE13_FINAL_CLOSURE_NEXT_ATOMIC_STEP,
   STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID,
   STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP,
+  STEP37_FINAL_ACCEPTANCE_EVIDENCE_REQUIREMENTS,
+  STEP37_FINAL_ACCEPTANCE_IDS,
+  STEP37_FINAL_MAX_VALIDATION_AGE_MS,
+  STEP37_FINAL_REQUIRED_EVIDENCE_KINDS,
+  STEP37_FINAL_REQUIRED_VALIDATION_COMMANDS,
   buildStep37ActivateProductionDefaultCutoverReport,
   buildStep37CapabilityDslDraftReport,
   buildStep37ComposedDslSchemaReport,
   buildStep37ExitLegacyAuthoritativePathReport,
+  buildStep37FinalClosureReport,
+  buildStep37FinalOracleGate,
+  buildStep37FinalValidationReceipt,
   buildStep37NormalizeCapabilityDslDraftReport,
   buildStep37PromotedSupportSummary,
   buildDeepSeekRunAndGunValidationProfileSupportSummary,
@@ -60,6 +68,7 @@ import {
   type Step37ConsumeCompiledRuntimeIrReport,
   type Step37ActivateProductionDefaultCutoverReport,
   type Step37ExitLegacyAuthoritativePathReport,
+  type Step37FinalClosureReport,
   type Step37ObserveRuntimeConsumedIrWithQaReport,
   type Step37SupportPromotionApplicationReport
 } from '../../packages/game-dsl/src/index.js';
@@ -2227,6 +2236,57 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     });
   });
 
+  it('stops requiring a Stage 13 checkpoint only after final closure report is closed and hash-bound', () => {
+    const chain = completeStage12Chain(['promoted.alpha.v1', 'promoted.beta.v1']);
+    const finalClosure = finalClosureReport();
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      ...chain.driverInput,
+      stage13FinalClosureCheckpoint: stage13FinalClosureCheckpoint(),
+      stage13FinalClosureReport: finalClosure,
+      sourcePlanRevision
+    });
+
+    expect(finalClosure.status).toBe('closed');
+    expect(finalClosure.reportHash).toBe(hashReportWithoutReportHash(finalClosure));
+    expect(report.nextCheckpoint).toBeNull();
+    expect(report.selectionFailure).toBeNull();
+    expect(report.checkpointInventory).toEqual([]);
+  });
+
+  it('keeps Stage 13 fail-closed when final closure report content drifts after hashing', () => {
+    const chain = completeStage12Chain(['promoted.alpha.v1']);
+    const finalClosure = finalClosureReport();
+    const staleFinalClosure: Step37FinalClosureReport = {
+      ...finalClosure,
+      evidenceRefs: [
+        ...finalClosure.evidenceRefs,
+        {
+          evidenceKind: 'oracle_final_gate',
+          artifactKind: 'oracle_final_gate',
+          path: 'docs/plans/duplicate-oracle-final-gate.json',
+          reportHash: 'fnv1a_duplicate_oracle_final_gate',
+          producer: 'oracle',
+          parentHashes: ['fnv1a_parent_duplicate_oracle_final_gate']
+        }
+      ]
+    };
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      ...chain.driverInput,
+      stage13FinalClosureReport: staleFinalClosure,
+      sourcePlanRevision
+    });
+
+    expect(staleFinalClosure.status).toBe('closed');
+    expect(staleFinalClosure.reportHash).not.toBe(hashReportWithoutReportHash(staleFinalClosure));
+    expect(report.nextCheckpoint).toBeNull();
+    expect(report.selectionFailure).toMatchObject({
+      error_code: 'STAGE13_FINAL_CLOSURE_CHECKPOINT_REQUIRED',
+      expected_checkpoint_id: STEP37_STAGE13_FINAL_CLOSURE_CHECKPOINT_ID,
+      actual_checkpoint_id: null,
+      invalid_fields: ['checkpoint_id']
+    });
+  });
+
   it('requires committed closure history to have traceable source revisions instead of stale memory labels', () => {
     expect(() =>
       buildStep37RemainingCompleteSupportedInventory({
@@ -2485,6 +2545,106 @@ function stage13FinalClosureCheckpoint(overrides: Partial<Step37CheckpointInvent
     source_plan_revision: sourcePlanRevision,
     ...overrides
   };
+}
+
+function completeStage12Chain(capabilityIds: readonly string[]): {
+  driverInput: Parameters<typeof buildStep37RemainingCompleteSupportedInventory>[0];
+} {
+  const support = supportSummary(capabilityIds.map((capabilityId) => capability({ capabilityId })));
+  const application = supportPromotionApplicationReport({
+    completeSupportedCount: capabilityIds.length,
+    completeSupportedCapabilityIds: [...capabilityIds]
+  });
+  const promotedSupport = buildStep37PromotedSupportSummary({
+    supportSummary: support,
+    promotionApplicationReport: application
+  });
+  const exitAudit = stage4ExitAuditReport({ supportSummary: promotedSupport, application });
+  const entryAudit = stage5EntryAuditReport({ supportSummary: promotedSupport, exitAudit });
+  const exactLock = exactCapabilityLockReport({ supportSummary: promotedSupport, entryAudit });
+  const composedSchema = composedDslSchemaReport({ exactLock });
+  const draftReport = capabilityDslDraftReport({ composedSchema });
+  const normalizeReport = normalizeCapabilityDslDraftReport({ draftReport, composedSchema, exactLock });
+  const compileReport = compiledRuntimeIrReport({ normalizeReport, supportSummary: promotedSupport });
+  const runtimeConsumptionReport = consumedRuntimeIrReport({ compileReport, supportSummary: promotedSupport });
+  const qaObservationReport = observedRuntimeQaReport({ runtimeConsumptionReport });
+  const cutoverReport = productionDefaultCutoverReport({ qaObservationReport });
+  const legacyExitReport = legacyAuthoritativePathExitReport({ cutoverReport });
+
+  return {
+    driverInput: {
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditReport: exitAudit,
+      stage5EntryAuditReport: entryAudit,
+      stage5ExactCapabilityLockReport: exactLock,
+      stage6ComposedDslSchemaReport: composedSchema,
+      stage6CapabilityDslDraftReport: draftReport,
+      stage7NormalizeCapabilityDslDraftReport: normalizeReport,
+      stage8CompileNormalizedCapabilityDslReport: compileReport,
+      stage9ConsumeCompiledRuntimeIrReport: runtimeConsumptionReport,
+      stage10ObserveRuntimeConsumedIrWithQaReport: qaObservationReport,
+      stage11ActivateProductionDefaultCutoverReport: cutoverReport,
+      stage12ExitLegacyAuthoritativePathReport: legacyExitReport,
+      sourcePlanRevision
+    }
+  };
+}
+
+function finalClosureReport(): Step37FinalClosureReport {
+  return buildStep37FinalClosureReport({
+    acceptanceChecks: STEP37_FINAL_ACCEPTANCE_IDS.map((acceptanceId) => {
+      const evidenceKind = STEP37_FINAL_ACCEPTANCE_EVIDENCE_REQUIREMENTS[acceptanceId][0];
+      return {
+        acceptanceId,
+        status: 'passed',
+        evidenceRef: evidencePathFor(evidenceKind),
+        summary: `${acceptanceId} passed`
+      };
+    }),
+    evidenceRefs: STEP37_FINAL_REQUIRED_EVIDENCE_KINDS.map((evidenceKind) => ({
+      evidenceKind,
+      artifactKind: evidenceKind,
+      path: evidencePathFor(evidenceKind),
+      reportHash: `fnv1a_${evidenceKind}`,
+      producer: evidenceKind === 'oracle_final_gate' ? 'oracle' : 'maker-api.step37-final-closure',
+      parentHashes: [`fnv1a_parent_${evidenceKind}`]
+    })),
+    validationReceipts: STEP37_FINAL_REQUIRED_VALIDATION_COMMANDS.map((command) =>
+      buildStep37FinalValidationReceipt({
+        command,
+        status: 'passed',
+        completedAt: '2026-06-27T00:00:00.000Z'
+      })
+    ),
+    evaluatedAt: '2026-06-27T00:30:00.000Z',
+    maxValidationAgeMs: STEP37_FINAL_MAX_VALIDATION_AGE_MS,
+    referenceRegression: {
+      platformsMapped: 5,
+      wavesMapped: 3,
+      pickupsMapped: 1,
+      winTarget: 3800,
+      enemyFiredObserved: true,
+      buildStatus: 'passed',
+      capabilityOwnedQaStatus: 'passed',
+      qaReportHash: 'fnv1a_reference_qa_report'
+    },
+    oracleFinalGate: buildStep37FinalOracleGate({
+      status: 'passed',
+      reviewHash: 'fnv1a_step37_final_oracle_review',
+      p0Count: 0,
+      unresolvedP1Count: 0
+    })
+  });
+}
+
+function evidencePathFor(evidenceKind: string): string {
+  return `docs/plans/step37-final-evidence/${evidenceKind}.json`;
+}
+
+function hashReportWithoutReportHash(report: Step37FinalClosureReport): string {
+  const { reportHash: _reportHash, ...payloadWithoutHash } = report;
+  return hashStableJson(payloadWithoutHash);
 }
 
 function stage4ExitAuditReport(input: {
