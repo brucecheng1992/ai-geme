@@ -9,12 +9,15 @@ import {
   STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_NEXT_ATOMIC_STEP,
   STEP37_STAGE5_ENTRY_AUDIT_AFTER_STAGE4_EXIT_CHECKPOINT_ID,
   STEP37_STAGE5_ENTRY_AUDIT_AFTER_STAGE4_EXIT_NEXT_ATOMIC_STEP,
+  STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_CHECKPOINT_ID,
+  STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_NEXT_ATOMIC_STEP,
   STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID,
   STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP,
   buildStep37PromotedSupportSummary,
   buildDeepSeekRunAndGunValidationProfileSupportSummary,
   buildStep37RemainingCompleteSupportedInventory,
   buildStep37Stage4ExitAuditReport,
+  buildStep37Stage5EntryAuditReport,
   buildStep37SupportPromotionApplicationReport,
   buildStep37SupportPromotionInventory,
   deriveStep37RemainingCapabilityState,
@@ -25,6 +28,7 @@ import {
   type Step37CheckpointInventoryItem,
   type Step37CommittedCapabilityClosure,
   type Step37Stage4ExitAuditReport,
+  type Step37Stage5EntryAuditReport,
   type Step37SupportPromotionApplicationReport
 } from '../../packages/game-dsl/src/index.js';
 
@@ -662,6 +666,107 @@ describe('Step37 remaining complete-supported inventory driver', () => {
     expect(report.nextCheckpoint?.checkpoint_id).not.toBe(STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_CHECKPOINT_ID);
   });
 
+  it('requires the exact capability lock checkpoint after Stage 5 entry audit passes', () => {
+    const support = supportSummary([capability({ capabilityId: 'promoted.alpha.v1' })]);
+    const application = supportPromotionApplicationReport({
+      completeSupportedCount: 1,
+      completeSupportedCapabilityIds: ['promoted.alpha.v1']
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({
+      supportSummary: support,
+      promotionApplicationReport: application
+    });
+    const exitAudit = stage4ExitAuditReport({ supportSummary: promotedSupport, application });
+    const entryAudit = stage5EntryAuditReport({ supportSummary: promotedSupport, exitAudit });
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditReport: exitAudit,
+      stage5EntryAuditReport: entryAudit,
+      sourcePlanRevision
+    });
+
+    expect(entryAudit.stage5EntryStatus).toBe('passed');
+    expect(report.staticCompleteSupportedCount).toBe(1);
+    expect(report.nextCheckpoint).toBeNull();
+    expect(report.selectionFailure).toMatchObject({
+      error_code: 'STAGE5_EXACT_LOCK_CHECKPOINT_REQUIRED',
+      parent_stage_status: 'running',
+      stage5_entry_allowed: true,
+      stage5_exact_lock_implementation_allowed: true,
+      expected_checkpoint_id: STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_CHECKPOINT_ID,
+      actual_checkpoint_id: null,
+      invalid_fields: ['checkpoint_id']
+    });
+  });
+
+  it('continues to exact capability lock only after Stage 5 entry audit passes and supplies authoritative next checkpoint', () => {
+    const support = supportSummary([capability({ capabilityId: 'promoted.alpha.v1' }), capability({ capabilityId: 'promoted.beta.v1' })]);
+    const application = supportPromotionApplicationReport({
+      completeSupportedCount: 2,
+      completeSupportedCapabilityIds: ['promoted.alpha.v1', 'promoted.beta.v1']
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({
+      supportSummary: support,
+      promotionApplicationReport: application
+    });
+    const exitAudit = stage4ExitAuditReport({ supportSummary: promotedSupport, application });
+    const entryAudit = stage5EntryAuditReport({ supportSummary: promotedSupport, exitAudit });
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditReport: exitAudit,
+      stage5EntryAuditReport: entryAudit,
+      stage5ExactLockCheckpoint: stage5ExactLockCheckpoint(),
+      sourcePlanRevision
+    });
+
+    expect(report.staticCompleteSupportedCount).toBe(2);
+    expect(report.selectionFailure).toBeNull();
+    expect(report.nextCheckpoint).toMatchObject({
+      checkpoint_id: STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_CHECKPOINT_ID,
+      parent_stage_id: 'stage5',
+      next_atomic_step: STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_NEXT_ATOMIC_STEP,
+      selection_rule: 'first_unmet_checkpoint_in_authoritative_inventory'
+    });
+    expect(report.nextCheckpoint?.checkpoint_id).not.toBe(STEP37_STAGE5_ENTRY_AUDIT_AFTER_STAGE4_EXIT_CHECKPOINT_ID);
+  });
+
+  it('rejects wrong exact-lock checkpoint identity instead of completing Step37 after Stage 5 entry audit', () => {
+    const support = supportSummary([capability({ capabilityId: 'promoted.alpha.v1' })]);
+    const application = supportPromotionApplicationReport({
+      completeSupportedCount: 1,
+      completeSupportedCapabilityIds: ['promoted.alpha.v1']
+    });
+    const promotedSupport = buildStep37PromotedSupportSummary({
+      supportSummary: support,
+      promotionApplicationReport: application
+    });
+    const exitAudit = stage4ExitAuditReport({ supportSummary: promotedSupport, application });
+    const entryAudit = stage5EntryAuditReport({ supportSummary: promotedSupport, exitAudit });
+    const report = buildStep37RemainingCompleteSupportedInventory({
+      supportSummary: promotedSupport,
+      supportPromotionApplicationReport: application,
+      stage4ExitAuditReport: exitAudit,
+      stage5EntryAuditReport: entryAudit,
+      stage5ExactLockCheckpoint: stage5ExactLockCheckpoint({
+        checkpoint_id: 'stage5.composed_schema_after_exact_lock',
+        next_atomic_step: 'Stage 6 composed schema after exact lock atomic step'
+      }),
+      sourcePlanRevision
+    });
+
+    expect(report.nextCheckpoint).toBeNull();
+    expect(report.selectionFailure).toMatchObject({
+      error_code: 'STAGE5_EXACT_LOCK_CHECKPOINT_REQUIRED',
+      reason: 'Stage 5 entry audit passed but supplied exact capability lock checkpoint identity is not authoritative',
+      expected_checkpoint_id: STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_CHECKPOINT_ID,
+      expected_next_atomic_step: STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_NEXT_ATOMIC_STEP,
+      actual_checkpoint_id: 'stage5.composed_schema_after_exact_lock',
+      invalid_fields: ['checkpoint_id', 'next_atomic_step']
+    });
+  });
+
   it('requires committed closure history to have traceable source revisions instead of stale memory labels', () => {
     expect(() =>
       buildStep37RemainingCompleteSupportedInventory({
@@ -789,6 +894,19 @@ function stage5EntryAuditCheckpoint(overrides: Partial<Step37CheckpointInventory
   };
 }
 
+function stage5ExactLockCheckpoint(overrides: Partial<Step37CheckpointInventoryItem> = {}): Step37CheckpointInventoryItem {
+  return {
+    checkpoint_id: STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_CHECKPOINT_ID,
+    parent_stage_id: 'stage5',
+    next_atomic_step: STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_NEXT_ATOMIC_STEP,
+    status: 'unmet',
+    unmet_reason:
+      'Stage 5 entry audit passed after complete support promotion; build the exact capability lock from complete-supported packages before composed schema or cutover.',
+    source_plan_revision: sourcePlanRevision,
+    ...overrides
+  };
+}
+
 function stage4ExitAuditReport(input: {
   supportSummary: DeepSeekRunAndGunProfileSupportSummary;
   application: Step37SupportPromotionApplicationReport;
@@ -799,6 +917,19 @@ function stage4ExitAuditReport(input: {
     sourceSupportViewPath: 'docs/plans/step37-support-promotion-complete-supported-view.v0.1.json',
     sourceSupportViewHash: 'fnv1a_support_view',
     expectedSupportViewHash: 'fnv1a_support_view'
+  });
+}
+
+function stage5EntryAuditReport(input: {
+  supportSummary: DeepSeekRunAndGunProfileSupportSummary;
+  exitAudit: Step37Stage4ExitAuditReport;
+}): Step37Stage5EntryAuditReport {
+  return buildStep37Stage5EntryAuditReport({
+    supportSummary: input.supportSummary,
+    stage4ExitAuditReport: input.exitAudit,
+    sourceStage4ExitAuditPath: 'docs/plans/step37-stage4-exit-audit-after-support-promotion.v0.1.json',
+    sourceStage4ExitAuditHash: input.exitAudit.auditHash,
+    expectedStage4ExitAuditHash: input.exitAudit.auditHash
   });
 }
 

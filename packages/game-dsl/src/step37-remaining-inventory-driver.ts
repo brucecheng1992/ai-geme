@@ -4,6 +4,7 @@ import {
 } from './deepseek-run-and-gun-validation-profile-v1.js';
 import { selectNextAtomicCheckpoint, type Step37CheckpointInventoryItem, type Step37NextAtomicCheckpoint } from './step37-parent-loop-driver.js';
 import { type Step37Stage4ExitAuditReport } from './step37-stage4-exit-audit.js';
+import { type Step37Stage5EntryAuditReport } from './step37-stage5-entry-audit.js';
 import { type Step37SupportPromotionApplicationReport } from './step37-support-promotion-inventory.js';
 
 export const STEP37_REMAINING_INVENTORY_ARTIFACT_KIND = 'step37_remaining_complete_supported_inventory';
@@ -17,6 +18,10 @@ export const STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_NEXT_ATOMIC_STEP =
   'Stage 4 exit audit after support promotion atomic step';
 export const STEP37_STAGE5_ENTRY_AUDIT_AFTER_STAGE4_EXIT_CHECKPOINT_ID = 'stage5.entry_audit_after_stage4_exit';
 export const STEP37_STAGE5_ENTRY_AUDIT_AFTER_STAGE4_EXIT_NEXT_ATOMIC_STEP = 'Stage 5 entry audit after Stage 4 exit atomic step';
+export const STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_CHECKPOINT_ID =
+  'stage5.exact_capability_lock_from_complete_supported_packages';
+export const STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_NEXT_ATOMIC_STEP =
+  'Stage 5 exact capability lock from complete-supported packages atomic step';
 const STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_PARENT_STAGE_ID = 'stage4';
 const STEP37_STAGE5_ENTRY_AUDIT_PARENT_STAGE_ID = 'stage5';
 
@@ -46,6 +51,8 @@ export type Step37RemainingInventoryDriverInput = {
   stage4ExitAuditCheckpoint?: Step37CheckpointInventoryItem | null;
   stage4ExitAuditReport?: Step37Stage4ExitAuditReport | null;
   stage5EntryAuditCheckpoint?: Step37CheckpointInventoryItem | null;
+  stage5EntryAuditReport?: Step37Stage5EntryAuditReport | null;
+  stage5ExactLockCheckpoint?: Step37CheckpointInventoryItem | null;
   parentStageId?: string;
   sourcePlanRevision: string;
 };
@@ -125,6 +132,21 @@ export type Step37RemainingInventorySelectionFailure =
       expected_checkpoint_id: typeof STEP37_STAGE5_ENTRY_AUDIT_AFTER_STAGE4_EXIT_CHECKPOINT_ID;
       expected_parent_stage_id: typeof STEP37_STAGE5_ENTRY_AUDIT_PARENT_STAGE_ID;
       expected_next_atomic_step: typeof STEP37_STAGE5_ENTRY_AUDIT_AFTER_STAGE4_EXIT_NEXT_ATOMIC_STEP;
+      actual_checkpoint_id: string | null;
+      invalid_fields: string[];
+      message: string;
+    }
+  | {
+      error_code: 'STAGE5_EXACT_LOCK_CHECKPOINT_REQUIRED';
+      global_exit_conditions_met: false;
+      user_input_required: false;
+      parent_stage_status: 'running';
+      stage5_entry_allowed: true;
+      stage5_exact_lock_implementation_allowed: true;
+      reason: string;
+      expected_checkpoint_id: typeof STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_CHECKPOINT_ID;
+      expected_parent_stage_id: typeof STEP37_STAGE5_ENTRY_AUDIT_PARENT_STAGE_ID;
+      expected_next_atomic_step: typeof STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_NEXT_ATOMIC_STEP;
       actual_checkpoint_id: string | null;
       invalid_fields: string[];
       message: string;
@@ -210,7 +232,9 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
     stage4ExitAuditCheckpointInvalidFields.length === 0
       ? [input.stage4ExitAuditCheckpoint]
       : [];
-  const stage5EntryAuditRequired = requiredCapabilityCount > 0 && staticCompleteSupportedCount === requiredCapabilityCount && stage4ExitAuditPassed;
+  const stage5EntryAuditPassed = isStage5EntryAuditPassed(input.stage5EntryAuditReport ?? null);
+  const stage5EntryAuditRequired =
+    requiredCapabilityCount > 0 && staticCompleteSupportedCount === requiredCapabilityCount && stage4ExitAuditPassed && !stage5EntryAuditPassed;
   const stage5EntryAuditCheckpointInvalidFields = stage5EntryAuditRequired
     ? getStage5EntryAuditCheckpointInvalidFields(input.stage5EntryAuditCheckpoint ?? null)
     : [];
@@ -221,11 +245,24 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
     stage5EntryAuditCheckpointInvalidFields.length === 0
       ? [input.stage5EntryAuditCheckpoint]
       : [];
+  const stage5ExactLockCheckpointRequired =
+    requiredCapabilityCount > 0 && staticCompleteSupportedCount === requiredCapabilityCount && stage4ExitAuditPassed && stage5EntryAuditPassed;
+  const stage5ExactLockCheckpointInvalidFields = stage5ExactLockCheckpointRequired
+    ? getStage5ExactLockCheckpointInvalidFields(input.stage5ExactLockCheckpoint ?? null)
+    : [];
+  const stage5ExactLockCheckpoint =
+    stage5ExactLockCheckpointRequired &&
+    input.stage5ExactLockCheckpoint !== undefined &&
+    input.stage5ExactLockCheckpoint !== null &&
+    stage5ExactLockCheckpointInvalidFields.length === 0
+      ? [input.stage5ExactLockCheckpoint]
+      : [];
   const checkpointInventory = [
     ...packageCheckpointInventory,
     ...supportPromotionCheckpoint,
     ...stage4ExitAuditCheckpoint,
-    ...stage5EntryAuditCheckpoint
+    ...stage5EntryAuditCheckpoint,
+    ...stage5ExactLockCheckpoint
   ];
   const nextCheckpoint = selectNextAtomicCheckpoint(checkpointInventory);
   const unmetStaticCompleteSupportedCount = requiredCapabilityCount - staticCompleteSupportedCount;
@@ -258,6 +295,9 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
       stage5EntryAuditRequired,
       stage5EntryAuditCheckpoint: input.stage5EntryAuditCheckpoint ?? null,
       stage5EntryAuditCheckpointInvalidFields,
+      stage5ExactLockCheckpointRequired,
+      stage5ExactLockCheckpoint: input.stage5ExactLockCheckpoint ?? null,
+      stage5ExactLockCheckpointInvalidFields,
       parentStageId,
       unmetStaticCompleteSupportedCount
     })
@@ -386,6 +426,9 @@ function buildSelectionFailure(input: {
   stage5EntryAuditRequired: boolean;
   stage5EntryAuditCheckpoint: Step37CheckpointInventoryItem | null;
   stage5EntryAuditCheckpointInvalidFields: readonly string[];
+  stage5ExactLockCheckpointRequired: boolean;
+  stage5ExactLockCheckpoint: Step37CheckpointInventoryItem | null;
+  stage5ExactLockCheckpointInvalidFields: readonly string[];
   parentStageId: string;
   unmetStaticCompleteSupportedCount: number;
 }): Step37RemainingInventorySelectionFailure | null {
@@ -432,6 +475,28 @@ function buildSelectionFailure(input: {
       invalid_fields: [...input.stage5EntryAuditCheckpointInvalidFields],
       message:
         'STAGE5_ENTRY_AUDIT_CHECKPOINT_REQUIRED: Stage 4 exit audit passed, but Stage 5 entry audit authority is missing or invalid'
+    };
+  }
+
+  if (input.stage5ExactLockCheckpointRequired && input.nextCheckpoint === null) {
+    return {
+      error_code: 'STAGE5_EXACT_LOCK_CHECKPOINT_REQUIRED',
+      global_exit_conditions_met: false,
+      user_input_required: false,
+      parent_stage_status: 'running',
+      stage5_entry_allowed: true,
+      stage5_exact_lock_implementation_allowed: true,
+      reason:
+        input.stage5ExactLockCheckpoint === null
+          ? 'Stage 5 entry audit passed but exact capability lock checkpoint was not supplied'
+          : 'Stage 5 entry audit passed but supplied exact capability lock checkpoint identity is not authoritative',
+      expected_checkpoint_id: STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_CHECKPOINT_ID,
+      expected_parent_stage_id: STEP37_STAGE5_ENTRY_AUDIT_PARENT_STAGE_ID,
+      expected_next_atomic_step: STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_NEXT_ATOMIC_STEP,
+      actual_checkpoint_id: input.stage5ExactLockCheckpoint?.checkpoint_id ?? null,
+      invalid_fields: [...input.stage5ExactLockCheckpointInvalidFields],
+      message:
+        'STAGE5_EXACT_LOCK_CHECKPOINT_REQUIRED: Stage 5 entry audit passed, but exact capability lock checkpoint authority is missing or invalid'
     };
   }
 
@@ -554,8 +619,36 @@ function getStage5EntryAuditCheckpointInvalidFields(checkpoint: Step37Checkpoint
   ];
 }
 
+function getStage5ExactLockCheckpointInvalidFields(checkpoint: Step37CheckpointInventoryItem | null): string[] {
+  if (checkpoint === null) {
+    return ['checkpoint_id'];
+  }
+
+  return [
+    ...(checkpoint.checkpoint_id.trim() !== STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_CHECKPOINT_ID
+      ? ['checkpoint_id']
+      : []),
+    ...(checkpoint.parent_stage_id.trim() !== STEP37_STAGE5_ENTRY_AUDIT_PARENT_STAGE_ID ? ['parent_stage_id'] : []),
+    ...(checkpoint.next_atomic_step.trim() !== STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_NEXT_ATOMIC_STEP
+      ? ['next_atomic_step']
+      : []),
+    ...(checkpoint.status !== 'unmet' ? ['status'] : []),
+    ...(checkpoint.unmet_reason.trim().length === 0 ? ['unmet_reason'] : []),
+    ...(checkpoint.source_plan_revision.trim().length === 0 ? ['source_plan_revision'] : [])
+  ];
+}
+
 function isStage4ExitAuditPassed(report: Step37Stage4ExitAuditReport | null): boolean {
   return report?.stage4ExitStatus === 'passed' && report.stage4ExitConditionsMet && report.parentStageStatusAfterAudit === 'complete';
+}
+
+function isStage5EntryAuditPassed(report: Step37Stage5EntryAuditReport | null): boolean {
+  return (
+    report?.stage5EntryStatus === 'passed' &&
+    report.stage5EntryConditionsMet &&
+    report.parentStageStatusAfterAudit === 'running' &&
+    report.nextCheckpointId === STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_CHECKPOINT_ID
+  );
 }
 
 function buildUnmetReason(capability: Step37RemainingCapabilityInventoryItem): string {
