@@ -4,10 +4,10 @@
 
 checkpoint_id: stage8.compile_normalized_capability_dsl_to_runtime_ir
 closure_scope: atomic_step
-implementation_status: implementing
+implementation_status: complete
 local_validation_status: passed
-candidate_status: ready_for_commit
-oracle_status: not_submitted
+candidate_status: committed
+oracle_status: approved
 parent_stage_status: running
 parent_loop_status: running
 global_exit_conditions_met: false
@@ -142,13 +142,25 @@ remaining_inventory_summary:
 
 ## Oracle Review
 
-oracle_status: not_submitted
-reviewed_commit_sha: not_created
+oracle_status: approved
+oracle_review_result: APPROVED_FOR_RECEIPT
+reviewed_commit_sha: 52766feab23c5ad22033fafbbae346c1a0e8e81d
 reviewed_skill_bundle_digest: ed4e3ba1da435f24a527ca1a34f9374bfe1d7ca9e4d482a6d229c3518997dd72
+oracle_agent_id: 019f0813-ed9a-7ad0-8341-50ababd44fea
+oracle_p0_count: 0
+oracle_p1_count: 0
+oracle_p2_count: 0
+oracle_p3_count: 0
+receipt_scope: docs_only_closure_metadata
+receipt_self_reference_policy: receipt_commit_sha_not_written_to_file; derive receipt commit from Git history to avoid self-reference loop.
+receipt_forbidden_changes: runtime,qa,package_registry,capability_registry,driver_semantics,validator,contracts,tests,Skill,AGENTS,production_cutover,legacy_exit,final_closure
 
 ## Exit Assessment
 
-atomic_step_status: locally_validated
+atomic_step_status: closed
+closure_status: closed
+candidate_commit: 52766feab23c5ad22033fafbbae346c1a0e8e81d
+receipt_commit: external_git_history_only_not_embedded
 parent_stage_status: running
 loop_status: running
 global_exit_conditions_met: false
