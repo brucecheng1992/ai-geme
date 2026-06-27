@@ -6244,23 +6244,28 @@ focused_red_result=RED: helper/export missing and support-promotion inventory ar
 
 focused_green_command=/usr/bin/time -p npx vitest run tests/contracts/step37-support-promotion-inventory.test.ts
 focused_green_exitCode=0
-focused_green_result=PASS: 1 file / 4 tests; aggregate-only evidence fails, issue classification is structured, artifact parsing fails closed on missing receipt metadata, and 59 per-capability records machine-verify without static support promotion.
+focused_green_result=PASS: 1 file / 5 tests; aggregate-only evidence fails, issue classification is structured, artifact parsing fails closed on missing receipt metadata and wrong checkpoint id, Stage 4 parent/checkpoint identity is enforced, and 59 per-capability records machine-verify without static support promotion.
 
 parser_contract_command=/usr/bin/time -p npx vitest run tests/contracts/step37-support-promotion-inventory.test.ts
 parser_contract_exitCode=0
-parser_contract_result=PASS: 1 file / 4 tests; artifact parser consumes snake_case docs JSON, rejects missing receipt_ref metadata, and prevents consumer-side undefined-field runtime failures.
+parser_contract_result=PASS: 1 file / 5 tests; artifact parser consumes snake_case docs JSON, rejects missing receipt_ref metadata, rejects wrong artifact checkpoint id, and prevents consumer-side undefined-field runtime failures.
+
+first_candidate_commit=800bd22ff3d910d3da83e50dff67e581f255c920
+first_candidate_oracle_result=CHANGES_REQUIRED
+first_candidate_oracle_p2=Stage 4 closure identity constraints were insufficient: helper did not reject wrong parentStageId or mismatched package-slice checkpointId, and artifact parser did not reject a wrong support-promotion checkpoint_id.
+oracle_p2_remediation=Added wrongParentStageEntries and wrongCheckpointEntries, blocked promotion eligibility on those entries, validated artifact checkpoint_id against stage4.support_promotion_from_same_run_observed_package_receipts, and added focused negative tests.
 
 related_contract_command=/usr/bin/time -p npx vitest run tests/contracts/step37-support-promotion-inventory.test.ts tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-closure-implementation-trace.test.ts -t "support-promotion|remaining complete-supported inventory|Parent Loop|closure"
 related_contract_exitCode=0
-related_contract_result=PASS: 4 files / 53 tests passed / 17 skipped.
+related_contract_result=PASS: 4 files / 54 tests passed / 17 skipped.
 
 full_contract_command=/usr/bin/time -p npm run test:contracts
 full_contract_exitCode=0
-full_contract_result=PASS: 99 files / 1363 tests.
+full_contract_result=PASS: 99 files / 1364 tests.
 
 npm_test_command=/usr/bin/time -p npm test
 npm_test_exitCode=0
-npm_test_result=PASS: contracts 99 files / 1363 tests; workspace 34 files / 410 tests.
+npm_test_result=PASS: contracts 99 files / 1364 tests; workspace 34 files / 410 tests.
 
 typecheck_command=/usr/bin/time -p npm run typecheck
 typecheck_exitCode=0

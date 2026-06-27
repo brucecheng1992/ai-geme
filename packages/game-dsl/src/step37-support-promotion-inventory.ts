@@ -2,6 +2,8 @@ import { type DeepSeekRunAndGunProfileSupportSummary } from './deepseek-run-and-
 
 export const STEP37_SUPPORT_PROMOTION_INVENTORY_ARTIFACT_KIND = 'step37_support_promotion_per_capability_inventory';
 export const STEP37_SUPPORT_PROMOTION_INVENTORY_SCHEMA_VERSION = 'step37_support_promotion_per_capability_inventory.v0.1';
+export const STEP37_SUPPORT_PROMOTION_INVENTORY_CHECKPOINT_ID = 'stage4.support_promotion_from_same_run_observed_package_receipts';
+const STEP37_SUPPORT_PROMOTION_PARENT_STAGE_ID = 'stage4' as const;
 
 export type Step37SupportPromotionEvidenceScope = 'capability_specific' | 'generic_only';
 export type Step37SupportPromotionEvidenceRunScope = 'same_run' | 'previous_run';
@@ -70,6 +72,20 @@ export type Step37SupportPromotionWrongPackageEntry = {
   checkpointId: string;
 };
 
+export type Step37SupportPromotionWrongParentStageEntry = {
+  capabilityId: string;
+  checkpointId: string;
+  parentStageId: string;
+  expectedParentStageId: typeof STEP37_SUPPORT_PROMOTION_PARENT_STAGE_ID;
+};
+
+export type Step37SupportPromotionWrongCheckpointEntry = {
+  capabilityId: string;
+  checkpointId: string;
+  expectedCheckpointId: string;
+  parentStageId: string;
+};
+
 export type Step37SupportPromotionEligibleEntry = {
   capabilityId: string;
   packageId: string;
@@ -96,6 +112,8 @@ export type Step37SupportPromotionInventoryReport = {
   staleOrPreviousRunEntries: Step37SupportPromotionStaleEntry[];
   genericOnlyEvidenceEntries: Step37SupportPromotionEligibleEntry[];
   wrongPackageEntries: Step37SupportPromotionWrongPackageEntry[];
+  wrongParentStageEntries: Step37SupportPromotionWrongParentStageEntry[];
+  wrongCheckpointEntries: Step37SupportPromotionWrongCheckpointEntry[];
   missingReceiptEntries: Step37SupportPromotionEligibleEntry[];
   unknownCapabilityEntries: Step37SupportPromotionEligibleEntry[];
   promotionEligibleEntries: Step37SupportPromotionEligibleEntry[];
@@ -138,6 +156,22 @@ export function buildStep37SupportPromotionInventory(
       expectedPackageId: record.capabilityId,
       checkpointId: record.checkpointId
     }));
+  const wrongParentStageEntries = closedRecords
+    .filter((record) => record.parentStageId !== STEP37_SUPPORT_PROMOTION_PARENT_STAGE_ID)
+    .map((record) => ({
+      capabilityId: record.capabilityId,
+      checkpointId: record.checkpointId,
+      parentStageId: record.parentStageId,
+      expectedParentStageId: STEP37_SUPPORT_PROMOTION_PARENT_STAGE_ID
+    }));
+  const wrongCheckpointEntries = closedRecords
+    .filter((record) => record.checkpointId !== buildExpectedStage4PackageCheckpointId(record.capabilityId))
+    .map((record) => ({
+      capabilityId: record.capabilityId,
+      checkpointId: record.checkpointId,
+      expectedCheckpointId: buildExpectedStage4PackageCheckpointId(record.capabilityId),
+      parentStageId: record.parentStageId
+    }));
   const missingReceiptEntries = closedRecords
     .filter((record) => record.receiptStatus !== 'receipt_closed')
     .map(toEligibleEntry);
@@ -148,6 +182,8 @@ export function buildStep37SupportPromotionInventory(
   const staleCapabilityIds = new Set(staleOrPreviousRunEntries.map((entry) => entry.capabilityId));
   const genericCapabilityIds = new Set(genericOnlyEvidenceEntries.map((entry) => entry.capabilityId));
   const wrongPackageCapabilityIds = new Set(wrongPackageEntries.map((entry) => entry.capabilityId));
+  const wrongParentStageCapabilityIds = new Set(wrongParentStageEntries.map((entry) => entry.capabilityId));
+  const wrongCheckpointCapabilityIds = new Set(wrongCheckpointEntries.map((entry) => entry.capabilityId));
   const missingReceiptCapabilityIds = new Set(missingReceiptEntries.map((entry) => entry.capabilityId));
   const unknownCapabilityIds = new Set(unknownCapabilityEntries.map((entry) => entry.capabilityId));
   const promotionEligibleEntries = requiredCapabilityIds
@@ -160,6 +196,8 @@ export function buildStep37SupportPromotionInventory(
     .filter((record) => !staleCapabilityIds.has(record.capabilityId))
     .filter((record) => !genericCapabilityIds.has(record.capabilityId))
     .filter((record) => !wrongPackageCapabilityIds.has(record.capabilityId))
+    .filter((record) => !wrongParentStageCapabilityIds.has(record.capabilityId))
+    .filter((record) => !wrongCheckpointCapabilityIds.has(record.capabilityId))
     .filter((record) => !missingReceiptCapabilityIds.has(record.capabilityId))
     .filter((record) => !unknownCapabilityIds.has(record.capabilityId))
     .map(toEligibleEntry);
@@ -172,6 +210,8 @@ export function buildStep37SupportPromotionInventory(
     staleOrPreviousRunEntries.length === 0 &&
     genericOnlyEvidenceEntries.length === 0 &&
     wrongPackageEntries.length === 0 &&
+    wrongParentStageEntries.length === 0 &&
+    wrongCheckpointEntries.length === 0 &&
     missingReceiptEntries.length === 0 &&
     unknownCapabilityEntries.length === 0
       ? 'ready'
@@ -194,6 +234,8 @@ export function buildStep37SupportPromotionInventory(
     staleOrPreviousRunEntries,
     genericOnlyEvidenceEntries,
     wrongPackageEntries,
+    wrongParentStageEntries,
+    wrongCheckpointEntries,
     missingReceiptEntries,
     unknownCapabilityEntries,
     promotionEligibleEntries,
@@ -207,6 +249,8 @@ export function buildStep37SupportPromotionInventory(
       staleOrPreviousRunEntries,
       genericOnlyEvidenceEntries,
       wrongPackageEntries,
+      wrongParentStageEntries,
+      wrongCheckpointEntries,
       unknownCapabilityEntries,
       duplicateEntries
     })
@@ -227,11 +271,17 @@ export function parseStep37SupportPromotionInventoryArtifact(value: unknown): St
       `STEP37_SUPPORT_PROMOTION_INVENTORY_INVALID_SCHEMA_VERSION actual="${schemaVersion}" expected="${STEP37_SUPPORT_PROMOTION_INVENTORY_SCHEMA_VERSION}"`
     );
   }
+  const checkpointId = requireStringField(object, 'checkpoint_id');
+  if (checkpointId !== STEP37_SUPPORT_PROMOTION_INVENTORY_CHECKPOINT_ID) {
+    throw new Error(
+      `STEP37_SUPPORT_PROMOTION_INVENTORY_INVALID_CHECKPOINT_ID actual="${checkpointId}" expected="${STEP37_SUPPORT_PROMOTION_INVENTORY_CHECKPOINT_ID}"`
+    );
+  }
   const rawRecords = requireArrayField(object, 'capability_closure_records');
   return {
     artifactKind: STEP37_SUPPORT_PROMOTION_INVENTORY_ARTIFACT_KIND,
     schemaVersion: STEP37_SUPPORT_PROMOTION_INVENTORY_SCHEMA_VERSION,
-    checkpointId: requireStringField(object, 'checkpoint_id'),
+    checkpointId,
     sourcePlanRevision: requireStringField(object, 'source_plan_revision'),
     currentRunId: requireStringField(object, 'current_run_id'),
     aggregateObservedCapabilityIds: requireStringArrayField(object, 'aggregate_observed_capability_ids'),
@@ -318,6 +368,8 @@ function deriveGapTypes(input: {
   staleOrPreviousRunEntries: readonly Step37SupportPromotionStaleEntry[];
   genericOnlyEvidenceEntries: readonly Step37SupportPromotionEligibleEntry[];
   wrongPackageEntries: readonly Step37SupportPromotionWrongPackageEntry[];
+  wrongParentStageEntries: readonly Step37SupportPromotionWrongParentStageEntry[];
+  wrongCheckpointEntries: readonly Step37SupportPromotionWrongCheckpointEntry[];
   unknownCapabilityEntries: readonly Step37SupportPromotionEligibleEntry[];
   duplicateEntries: readonly Step37SupportPromotionDuplicateEntry[];
 }): Step37SupportPromotionGapType[] {
@@ -332,7 +384,12 @@ function deriveGapTypes(input: {
   if (input.missingReceiptEntries.length > 0) {
     gapTypes.add('missing_receipt');
   }
-  if (input.registeredCapabilityCount < input.requiredCapabilityCount || input.unknownCapabilityEntries.length > 0) {
+  if (
+    input.registeredCapabilityCount < input.requiredCapabilityCount ||
+    input.unknownCapabilityEntries.length > 0 ||
+    input.wrongParentStageEntries.length > 0 ||
+    input.wrongCheckpointEntries.length > 0
+  ) {
     gapTypes.add('plan_inventory_identity_drift');
   }
   if (
@@ -352,6 +409,10 @@ function requireNonEmpty(value: string, field: string): string {
     throw new Error(`STEP37_SUPPORT_PROMOTION_INVENTORY_FIELD_REQUIRED field="${field}"`);
   }
   return trimmed;
+}
+
+function buildExpectedStage4PackageCheckpointId(capabilityId: string): string {
+  return `stage4.${capabilityId.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase()}.complete_supported_package_slice`;
 }
 
 function requireObject(value: unknown, field: string): Record<string, unknown> {

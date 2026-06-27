@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   STEP37_SUPPORT_PROMOTION_INVENTORY_ARTIFACT_KIND,
+  STEP37_SUPPORT_PROMOTION_INVENTORY_CHECKPOINT_ID,
   STEP37_SUPPORT_PROMOTION_INVENTORY_SCHEMA_VERSION,
   buildDeepSeekRunAndGunValidationProfileSupportSummary,
   buildStep37SupportPromotionInventory,
@@ -52,7 +53,9 @@ describe('Step37 support-promotion per-capability inventory', () => {
       capability('stale.gamma.v1'),
       capability('generic.delta.v1'),
       capability('wrong.epsilon.v1'),
-      capability('missing.zeta.v1')
+      capability('missing.zeta.v1'),
+      capability('wrong_stage.eta.v1'),
+      capability('wrong_checkpoint.theta.v1')
     ]);
     const report = buildStep37SupportPromotionInventory({
       supportSummary: support,
@@ -61,11 +64,15 @@ describe('Step37 support-promotion per-capability inventory', () => {
       sourcePlanRevision,
       capabilityClosureRecords: [
         record('ready.alpha.v1'),
-        record('duplicate.beta.v1', { checkpointId: 'stage4.duplicate_beta_v1.first' }),
-        record('duplicate.beta.v1', { checkpointId: 'stage4.duplicate_beta_v1.second' }),
+        record('duplicate.beta.v1'),
+        record('duplicate.beta.v1'),
         record('stale.gamma.v1', { evidenceRunId: 'previous-run', evidenceRunScope: 'previous_run' }),
         record('generic.delta.v1', { evidenceScope: 'generic_only' }),
-        record('wrong.epsilon.v1', { packageId: 'wrong.other_package.v1' })
+        record('wrong.epsilon.v1', { packageId: 'wrong.other_package.v1' }),
+        record('wrong_stage.eta.v1', { parentStageId: 'stage5' }),
+        record('wrong_checkpoint.theta.v1', {
+          checkpointId: 'stage4.other_checkpoint.complete_supported_package_slice'
+        })
       ]
     });
 
@@ -74,7 +81,10 @@ describe('Step37 support-promotion per-capability inventory', () => {
       {
         capabilityId: 'duplicate.beta.v1',
         recordCount: 2,
-        checkpointIds: ['stage4.duplicate_beta_v1.first', 'stage4.duplicate_beta_v1.second']
+        checkpointIds: [
+          'stage4.duplicate_beta_v1.complete_supported_package_slice',
+          'stage4.duplicate_beta_v1.complete_supported_package_slice'
+        ]
       }
     ]);
     expect(report.staleOrPreviousRunEntries.map((entry) => entry.capabilityId)).toEqual(['stale.gamma.v1']);
@@ -85,6 +95,22 @@ describe('Step37 support-promotion per-capability inventory', () => {
         packageId: 'wrong.other_package.v1',
         expectedPackageId: 'wrong.epsilon.v1',
         checkpointId: 'stage4.wrong_epsilon_v1.complete_supported_package_slice'
+      }
+    ]);
+    expect(report.wrongParentStageEntries).toEqual([
+      {
+        capabilityId: 'wrong_stage.eta.v1',
+        checkpointId: 'stage4.wrong_stage_eta_v1.complete_supported_package_slice',
+        parentStageId: 'stage5',
+        expectedParentStageId: 'stage4'
+      }
+    ]);
+    expect(report.wrongCheckpointEntries).toEqual([
+      {
+        capabilityId: 'wrong_checkpoint.theta.v1',
+        checkpointId: 'stage4.other_checkpoint.complete_supported_package_slice',
+        expectedCheckpointId: 'stage4.wrong_checkpoint_theta_v1.complete_supported_package_slice',
+        parentStageId: 'stage4'
       }
     ]);
     expect(report.missingClosureEntries).toEqual(['missing.zeta.v1']);
@@ -105,6 +131,7 @@ describe('Step37 support-promotion per-capability inventory', () => {
 
     expect(inventory.artifactKind).toBe(STEP37_SUPPORT_PROMOTION_INVENTORY_ARTIFACT_KIND);
     expect(inventory.schemaVersion).toBe(STEP37_SUPPORT_PROMOTION_INVENTORY_SCHEMA_VERSION);
+    expect(inventory.checkpointId).toBe(STEP37_SUPPORT_PROMOTION_INVENTORY_CHECKPOINT_ID);
     expect(report.requiredCapabilityCount).toBe(59);
     expect(report.registeredCapabilityCount).toBe(59);
     expect(report.completeSupportedCount).toBe(0);
@@ -115,6 +142,8 @@ describe('Step37 support-promotion per-capability inventory', () => {
     expect(report.staleOrPreviousRunEntries).toEqual([]);
     expect(report.genericOnlyEvidenceEntries).toEqual([]);
     expect(report.wrongPackageEntries).toEqual([]);
+    expect(report.wrongParentStageEntries).toEqual([]);
+    expect(report.wrongCheckpointEntries).toEqual([]);
     expect(report.promotionEligibleCount).toBe(59);
     expect(report.supportPromotionInputStatus).toBe('ready');
     expect(report.stage5EntryAllowed).toBe(false);
@@ -137,6 +166,17 @@ describe('Step37 support-promotion per-capability inventory', () => {
         capability_closure_records: [recordWithoutReceiptRef, ...remainingRecords]
       })
     ).toThrow(/STEP37_SUPPORT_PROMOTION_INVENTORY_STRING_REQUIRED field="receipt_ref"/);
+  });
+
+  it('fails closed when the artifact checkpoint identity does not match the support-promotion atom', () => {
+    const parsed = JSON.parse(readFileSync(supportPromotionInventoryPath, 'utf8')) as Record<string, unknown>;
+
+    expect(() =>
+      parseStep37SupportPromotionInventoryArtifact({
+        ...parsed,
+        checkpoint_id: 'stage5.entry_audit.v1'
+      })
+    ).toThrow(/STEP37_SUPPORT_PROMOTION_INVENTORY_INVALID_CHECKPOINT_ID/);
   });
 });
 

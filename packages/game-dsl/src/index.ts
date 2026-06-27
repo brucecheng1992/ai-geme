@@ -271,6 +271,7 @@ export {
 } from './step37-remaining-inventory-driver.js';
 export {
   STEP37_SUPPORT_PROMOTION_INVENTORY_ARTIFACT_KIND,
+  STEP37_SUPPORT_PROMOTION_INVENTORY_CHECKPOINT_ID,
   STEP37_SUPPORT_PROMOTION_INVENTORY_SCHEMA_VERSION,
   buildStep37SupportPromotionInventory,
   parseStep37SupportPromotionInventoryArtifact,
@@ -287,7 +288,9 @@ export {
   type Step37SupportPromotionInventoryReport,
   type Step37SupportPromotionReceiptStatus,
   type Step37SupportPromotionStaleEntry,
-  type Step37SupportPromotionWrongPackageEntry
+  type Step37SupportPromotionWrongCheckpointEntry,
+  type Step37SupportPromotionWrongPackageEntry,
+  type Step37SupportPromotionWrongParentStageEntry
 } from './step37-support-promotion-inventory.js';
 export {
   GENERATION_TARGET_PROFILE_RUNTIME_SUPPORT_REPORT_KIND,
