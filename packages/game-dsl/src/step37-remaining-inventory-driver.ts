@@ -10,6 +10,7 @@ import { type Step37CompileNormalizedCapabilityDslReport } from './step37-compil
 import { type Step37ComposedDslSchemaReport } from './step37-composed-dsl-schema.js';
 import { type Step37ConsumeCompiledRuntimeIrReport } from './step37-consume-compiled-runtime-ir.js';
 import { type Step37ExactCapabilityLockReport } from './step37-exact-capability-lock.js';
+import { type Step37ExitLegacyAuthoritativePathReport } from './step37-exit-legacy-authoritative-path.js';
 import { type Step37NormalizeCapabilityDslDraftReport } from './step37-normalize-capability-dsl-draft.js';
 import { type Step37ObserveRuntimeConsumedIrWithQaReport } from './step37-observe-runtime-consumed-ir-with-qa.js';
 import { type Step37Stage4ExitAuditReport } from './step37-stage4-exit-audit.js';
@@ -62,6 +63,8 @@ export const STEP37_STAGE11_ACTIVATE_PRODUCTION_DEFAULT_CUTOVER_NEXT_ATOMIC_STEP
 export const STEP37_STAGE12_EXIT_LEGACY_AUTHORITATIVE_PATH_CHECKPOINT_ID = 'stage12.exit_legacy_authoritative_path';
 export const STEP37_STAGE12_EXIT_LEGACY_AUTHORITATIVE_PATH_NEXT_ATOMIC_STEP =
   'Stage 12 exit legacy authoritative path atomic step';
+export const STEP37_STAGE13_FINAL_CLOSURE_CHECKPOINT_ID = 'stage13.final_closure_not_blocked';
+export const STEP37_STAGE13_FINAL_CLOSURE_NEXT_ATOMIC_STEP = 'Stage 13 final closure not blocked atomic step';
 const STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_PARENT_STAGE_ID = 'stage4';
 const STEP37_STAGE5_ENTRY_AUDIT_PARENT_STAGE_ID = 'stage5';
 const STEP37_STAGE6_COMPOSED_DSL_SCHEMA_PARENT_STAGE_ID = 'stage6';
@@ -71,6 +74,7 @@ const STEP37_STAGE9_CONSUME_COMPILED_RUNTIME_IR_PARENT_STAGE_ID = 'stage9';
 const STEP37_STAGE10_OBSERVE_RUNTIME_QA_PARENT_STAGE_ID = 'stage10';
 const STEP37_STAGE11_PRODUCTION_DEFAULT_CUTOVER_PARENT_STAGE_ID = 'stage11';
 const STEP37_STAGE12_EXIT_LEGACY_AUTHORITATIVE_PATH_PARENT_STAGE_ID = 'stage12';
+const STEP37_STAGE13_FINAL_CLOSURE_PARENT_STAGE_ID = 'stage13';
 
 export const STEP37_REMAINING_CAPABILITY_STATES = [
   'complete_supported',
@@ -116,6 +120,8 @@ export type Step37RemainingInventoryDriverInput = {
   stage11ActivateProductionDefaultCutoverCheckpoint?: Step37CheckpointInventoryItem | null;
   stage11ActivateProductionDefaultCutoverReport?: Step37ActivateProductionDefaultCutoverReport | null;
   stage12ExitLegacyAuthoritativePathCheckpoint?: Step37CheckpointInventoryItem | null;
+  stage12ExitLegacyAuthoritativePathReport?: Step37ExitLegacyAuthoritativePathReport | null;
+  stage13FinalClosureCheckpoint?: Step37CheckpointInventoryItem | null;
   parentStageId?: string;
   sourcePlanRevision: string;
 };
@@ -370,6 +376,31 @@ export type Step37RemainingInventorySelectionFailure =
       actual_checkpoint_id: string | null;
       invalid_fields: string[];
       message: string;
+    }
+  | {
+      error_code: 'STAGE13_FINAL_CLOSURE_CHECKPOINT_REQUIRED';
+      global_exit_conditions_met: false;
+      user_input_required: false;
+      parent_stage_status: 'running';
+      stage5_entry_allowed: true;
+      stage5_exact_lock_implementation_allowed: true;
+      stage5_exact_lock_produced: true;
+      composed_schema_produced: true;
+      capability_dsl_draft_produced: true;
+      normalized: true;
+      compiled: true;
+      runtime_consumed: true;
+      qa_observed: true;
+      production_default_cutover_active: true;
+      legacy_authoritative_path_exited: true;
+      final_closure_not_blocked: false;
+      reason: string;
+      expected_checkpoint_id: typeof STEP37_STAGE13_FINAL_CLOSURE_CHECKPOINT_ID;
+      expected_parent_stage_id: typeof STEP37_STAGE13_FINAL_CLOSURE_PARENT_STAGE_ID;
+      expected_next_atomic_step: typeof STEP37_STAGE13_FINAL_CLOSURE_NEXT_ATOMIC_STEP;
+      actual_checkpoint_id: string | null;
+      invalid_fields: string[];
+      message: string;
     };
 
 export type Step37RemainingInventoryReport = {
@@ -506,6 +537,11 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
   const stage11ActivateProductionDefaultCutoverPassed = isStage11ActivateProductionDefaultCutoverPassed(
     input.stage11ActivateProductionDefaultCutoverReport ?? null,
     input.stage10ObserveRuntimeConsumedIrWithQaReport ?? null,
+    staticCompleteSupportedCapabilityIds
+  );
+  const stage12ExitLegacyAuthoritativePathPassed = isStage12ExitLegacyAuthoritativePathPassed(
+    input.stage12ExitLegacyAuthoritativePathReport ?? null,
+    input.stage11ActivateProductionDefaultCutoverReport ?? null,
     staticCompleteSupportedCapabilityIds
   );
   const stage5ExactLockCheckpointRequired =
@@ -676,7 +712,8 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
     stage8CompileNormalizedCapabilityDslPassed &&
     stage9ConsumeCompiledRuntimeIrPassed &&
     stage10ObserveRuntimeConsumedIrWithQaPassed &&
-    stage11ActivateProductionDefaultCutoverPassed;
+    stage11ActivateProductionDefaultCutoverPassed &&
+    !stage12ExitLegacyAuthoritativePathPassed;
   const stage12ExitLegacyAuthoritativePathCheckpointInvalidFields = stage12ExitLegacyAuthoritativePathCheckpointRequired
     ? getStage12ExitLegacyAuthoritativePathCheckpointInvalidFields(input.stage12ExitLegacyAuthoritativePathCheckpoint ?? null)
     : [];
@@ -686,6 +723,30 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
     input.stage12ExitLegacyAuthoritativePathCheckpoint !== null &&
     stage12ExitLegacyAuthoritativePathCheckpointInvalidFields.length === 0
       ? [input.stage12ExitLegacyAuthoritativePathCheckpoint]
+      : [];
+  const stage13FinalClosureCheckpointRequired =
+    requiredCapabilityCount > 0 &&
+    staticCompleteSupportedCount === requiredCapabilityCount &&
+    stage4ExitAuditPassed &&
+    stage5EntryAuditPassed &&
+    stage5ExactCapabilityLockPassed &&
+    stage6ComposedDslSchemaPassed &&
+    stage6CapabilityDslDraftPassed &&
+    stage7NormalizeCapabilityDslDraftPassed &&
+    stage8CompileNormalizedCapabilityDslPassed &&
+    stage9ConsumeCompiledRuntimeIrPassed &&
+    stage10ObserveRuntimeConsumedIrWithQaPassed &&
+    stage11ActivateProductionDefaultCutoverPassed &&
+    stage12ExitLegacyAuthoritativePathPassed;
+  const stage13FinalClosureCheckpointInvalidFields = stage13FinalClosureCheckpointRequired
+    ? getStage13FinalClosureCheckpointInvalidFields(input.stage13FinalClosureCheckpoint ?? null)
+    : [];
+  const stage13FinalClosureCheckpoint =
+    stage13FinalClosureCheckpointRequired &&
+    input.stage13FinalClosureCheckpoint !== undefined &&
+    input.stage13FinalClosureCheckpoint !== null &&
+    stage13FinalClosureCheckpointInvalidFields.length === 0
+      ? [input.stage13FinalClosureCheckpoint]
       : [];
   const checkpointInventory = [
     ...packageCheckpointInventory,
@@ -700,7 +761,8 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
     ...stage9ConsumeCompiledRuntimeIrCheckpoint,
     ...stage10ObserveRuntimeConsumedIrWithQaCheckpoint,
     ...stage11ActivateProductionDefaultCutoverCheckpoint,
-    ...stage12ExitLegacyAuthoritativePathCheckpoint
+    ...stage12ExitLegacyAuthoritativePathCheckpoint,
+    ...stage13FinalClosureCheckpoint
   ];
   const nextCheckpoint = selectNextAtomicCheckpoint(checkpointInventory);
   const unmetStaticCompleteSupportedCount = requiredCapabilityCount - staticCompleteSupportedCount;
@@ -760,6 +822,9 @@ export function buildStep37RemainingCompleteSupportedInventory(input: Step37Rema
       stage12ExitLegacyAuthoritativePathCheckpointRequired,
       stage12ExitLegacyAuthoritativePathCheckpoint: input.stage12ExitLegacyAuthoritativePathCheckpoint ?? null,
       stage12ExitLegacyAuthoritativePathCheckpointInvalidFields,
+      stage13FinalClosureCheckpointRequired,
+      stage13FinalClosureCheckpoint: input.stage13FinalClosureCheckpoint ?? null,
+      stage13FinalClosureCheckpointInvalidFields,
       parentStageId,
       unmetStaticCompleteSupportedCount
     })
@@ -915,6 +980,9 @@ function buildSelectionFailure(input: {
   stage12ExitLegacyAuthoritativePathCheckpointRequired: boolean;
   stage12ExitLegacyAuthoritativePathCheckpoint: Step37CheckpointInventoryItem | null;
   stage12ExitLegacyAuthoritativePathCheckpointInvalidFields: readonly string[];
+  stage13FinalClosureCheckpointRequired: boolean;
+  stage13FinalClosureCheckpoint: Step37CheckpointInventoryItem | null;
+  stage13FinalClosureCheckpointInvalidFields: readonly string[];
   parentStageId: string;
   unmetStaticCompleteSupportedCount: number;
 }): Step37RemainingInventorySelectionFailure | null {
@@ -1199,6 +1267,38 @@ function buildSelectionFailure(input: {
     };
   }
 
+  if (input.stage13FinalClosureCheckpointRequired && input.nextCheckpoint === null) {
+    return {
+      error_code: 'STAGE13_FINAL_CLOSURE_CHECKPOINT_REQUIRED',
+      global_exit_conditions_met: false,
+      user_input_required: false,
+      parent_stage_status: 'running',
+      stage5_entry_allowed: true,
+      stage5_exact_lock_implementation_allowed: true,
+      stage5_exact_lock_produced: true,
+      composed_schema_produced: true,
+      capability_dsl_draft_produced: true,
+      normalized: true,
+      compiled: true,
+      runtime_consumed: true,
+      qa_observed: true,
+      production_default_cutover_active: true,
+      legacy_authoritative_path_exited: true,
+      final_closure_not_blocked: false,
+      reason:
+        input.stage13FinalClosureCheckpoint === null
+          ? 'Stage 12 legacy authoritative path exit passed but final closure checkpoint was not supplied'
+          : 'Stage 12 legacy authoritative path exit passed but supplied final closure checkpoint identity is not authoritative',
+      expected_checkpoint_id: STEP37_STAGE13_FINAL_CLOSURE_CHECKPOINT_ID,
+      expected_parent_stage_id: STEP37_STAGE13_FINAL_CLOSURE_PARENT_STAGE_ID,
+      expected_next_atomic_step: STEP37_STAGE13_FINAL_CLOSURE_NEXT_ATOMIC_STEP,
+      actual_checkpoint_id: input.stage13FinalClosureCheckpoint?.checkpoint_id ?? null,
+      invalid_fields: [...input.stage13FinalClosureCheckpointInvalidFields],
+      message:
+        'STAGE13_FINAL_CLOSURE_CHECKPOINT_REQUIRED: Stage 12 legacy path exit passed, but final closure checkpoint authority is missing or invalid'
+    };
+  }
+
   if (input.nextCheckpoint !== null || input.unmetStaticCompleteSupportedCount <= 0) {
     return null;
   }
@@ -1467,6 +1567,21 @@ function getStage12ExitLegacyAuthoritativePathCheckpointInvalidFields(checkpoint
     ...(checkpoint.checkpoint_id.trim() !== STEP37_STAGE12_EXIT_LEGACY_AUTHORITATIVE_PATH_CHECKPOINT_ID ? ['checkpoint_id'] : []),
     ...(checkpoint.parent_stage_id.trim() !== STEP37_STAGE12_EXIT_LEGACY_AUTHORITATIVE_PATH_PARENT_STAGE_ID ? ['parent_stage_id'] : []),
     ...(checkpoint.next_atomic_step.trim() !== STEP37_STAGE12_EXIT_LEGACY_AUTHORITATIVE_PATH_NEXT_ATOMIC_STEP ? ['next_atomic_step'] : []),
+    ...(checkpoint.status !== 'unmet' ? ['status'] : []),
+    ...(checkpoint.unmet_reason.trim().length === 0 ? ['unmet_reason'] : []),
+    ...(checkpoint.source_plan_revision.trim().length === 0 ? ['source_plan_revision'] : [])
+  ];
+}
+
+function getStage13FinalClosureCheckpointInvalidFields(checkpoint: Step37CheckpointInventoryItem | null): string[] {
+  if (checkpoint === null) {
+    return ['checkpoint_id'];
+  }
+
+  return [
+    ...(checkpoint.checkpoint_id.trim() !== STEP37_STAGE13_FINAL_CLOSURE_CHECKPOINT_ID ? ['checkpoint_id'] : []),
+    ...(checkpoint.parent_stage_id.trim() !== STEP37_STAGE13_FINAL_CLOSURE_PARENT_STAGE_ID ? ['parent_stage_id'] : []),
+    ...(checkpoint.next_atomic_step.trim() !== STEP37_STAGE13_FINAL_CLOSURE_NEXT_ATOMIC_STEP ? ['next_atomic_step'] : []),
     ...(checkpoint.status !== 'unmet' ? ['status'] : []),
     ...(checkpoint.unmet_reason.trim().length === 0 ? ['unmet_reason'] : []),
     ...(checkpoint.source_plan_revision.trim().length === 0 ? ['source_plan_revision'] : [])
@@ -1792,6 +1907,42 @@ function isStage11ActivateProductionDefaultCutoverPassed(
     sameStringSet(report.observedRuntimeSystemIds, runtimeQaObservationReport?.observedRuntimeSystemIds ?? []) &&
     sameStringSet(report.observedProbeIds, runtimeQaObservationReport?.observedProbeIds ?? []) &&
     !report.legacyAuthoritativePathExited &&
+    !report.finalClosureNotBlocked &&
+    !report.globalExitConditionsMet
+  );
+}
+
+function isStage12ExitLegacyAuthoritativePathPassed(
+  report: Step37ExitLegacyAuthoritativePathReport | null,
+  productionDefaultCutoverReport: Step37ActivateProductionDefaultCutoverReport | null,
+  staticCompleteSupportedCapabilityIds: readonly string[]
+): boolean {
+  return (
+    report?.exitStatus === 'passed' &&
+    report.auditHash === hashReportWithoutAuditHash(report) &&
+    report.normalized &&
+    report.compiled &&
+    report.runtimeConsumed &&
+    report.qaObserved &&
+    report.productionDefaultCutoverActive &&
+    report.legacyAuthoritativePathExited &&
+    report.blockers.length === 0 &&
+    report.sourceProductionDefaultCutoverAuditHash === report.expectedProductionDefaultCutoverAuditHash &&
+    report.sourceProductionDefaultCutoverAuditHash === productionDefaultCutoverReport?.auditHash &&
+    report.sourceRuntimeQaObservationAuditHash === productionDefaultCutoverReport?.sourceRuntimeQaObservationAuditHash &&
+    report.sourceRuntimeConsumptionAuditHash === productionDefaultCutoverReport?.sourceRuntimeConsumptionAuditHash &&
+    report.sourceRuntimeLoaderReportHash === productionDefaultCutoverReport?.sourceRuntimeLoaderReportHash &&
+    report.sourceRuntimeLoaderPlanHash === productionDefaultCutoverReport?.sourceRuntimeLoaderPlanHash &&
+    report.sourceRuntimeBindingReportHash === productionDefaultCutoverReport?.sourceRuntimeBindingReportHash &&
+    report.sourceQaObservedBindingReportHash === productionDefaultCutoverReport?.sourceQaObservedBindingReportHash &&
+    report.sourceCutoverStatus === 'passed' &&
+    report.nextCheckpointId === STEP37_STAGE13_FINAL_CLOSURE_CHECKPOINT_ID &&
+    report.parentStageStatusAfterExit === 'running' &&
+    report.requiredRuntimeModuleCount === staticCompleteSupportedCapabilityIds.length &&
+    report.observedRuntimeModuleCount === staticCompleteSupportedCapabilityIds.length &&
+    sameStringSet(report.observedCapabilityIds, staticCompleteSupportedCapabilityIds) &&
+    sameStringSet(report.observedRuntimeSystemIds, productionDefaultCutoverReport?.observedRuntimeSystemIds ?? []) &&
+    sameStringSet(report.observedProbeIds, productionDefaultCutoverReport?.observedProbeIds ?? []) &&
     !report.finalClosureNotBlocked &&
     !report.globalExitConditionsMet
   );
