@@ -80,6 +80,32 @@ describe('Step37 parent loop driver', () => {
     expect(skill).toContain('只有全部全局退出条件均为 true 才允许 `COMPLETE_GLOBAL_LOOP`');
   });
 
+  it('keeps the durable Step37 execution log reconciled with the Stage13 final closure receipt', async () => {
+    const durableLog = await readFile('docs/refactor-log/step37-capability-first-authoritative-generation-pipeline-cutover.md', 'utf8');
+    const stage13Receipt = await readFile('docs/plans/step37-authoritative-path-reconciliation-stage-13-final-closure.md', 'utf8');
+    const currentStatusBlock = durableLog.slice(0, durableLog.indexOf('## Closure Definition'));
+
+    expect(stage13Receipt).toContain('global_exit_conditions_met: true');
+    expect(stage13Receipt).toContain('next_action: COMPLETE_GLOBAL_LOOP');
+    expect(stage13Receipt).toContain('oracle_review_result: APPROVED_FOR_RECEIPT');
+    expect(stage13Receipt).toContain('candidate_commit: afabbf4c46c4333e96e46599e6da619cbc880650');
+
+    expect(currentStatusBlock).toContain('Status: COMPLETE — GLOBAL EXIT CONDITIONS MET');
+    expect(currentStatusBlock).toContain('Production Default Cutover: ACTIVE');
+    expect(currentStatusBlock).toContain('Legacy Authoritative Path: EXITED');
+    expect(currentStatusBlock).toContain('Final Closure: NOT BLOCKED');
+    expect(currentStatusBlock).toContain('Workspace Documentation: RECONCILED');
+    expect(currentStatusBlock).toContain('`closure-attempt-001`: HISTORICAL_BLOCKED');
+    expect(currentStatusBlock).toContain('`closure-attempt-002`: CLOSED');
+    expect(currentStatusBlock).toContain('Stage13 final closure receipt: `82972f4d51545fd9b708eaf4f64edd0d515506fd`');
+    expect(currentStatusBlock).toContain('Stage13 reviewed candidate: `afabbf4c46c4333e96e46599e6da619cbc880650`');
+    expect(currentStatusBlock).toContain('Parent Loop Driver receipt result: `COMPLETE_GLOBAL_LOOP`');
+    expect(currentStatusBlock).not.toContain('Status: IMPLEMENTED — FINAL CLOSURE BLOCKED');
+    expect(currentStatusBlock).not.toContain('Production Default Cutover: NOT ACTIVE');
+    expect(currentStatusBlock).not.toContain('Final Closure: BLOCKED');
+    expect(currentStatusBlock).not.toContain('`closure-attempt-002`: RESERVED');
+  });
+
   it('binds the current guardrail record to the active external Skill bundle revision', async () => {
     const plan = await readFile('docs/plans/step37-authoritative-path-reconciliation-stage-04-complete-capability-packages.md', 'utf8');
     const skillBytes = await readFile('/Users/dahufa/.agents/skills/code-change-discipline/SKILL.md');
