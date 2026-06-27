@@ -6519,6 +6519,104 @@ next_atomic_step_unmet_reason=Stage 4 package inventory is exhausted with same-r
 remaining_inventory_result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=59; staticCompleteSupportedCount=0; committedClosedCapabilityCount=59; sameRunObservedOnlyCount=59; nextCheckpointId=stage4.support_promotion_from_same_run_observed_package_receipts; selectionFailure=null.
 ```
 
+## Stage 4 Control Plane Implementation — Support Promotion Checkpoint Identity Guardrail
+
+Checkpoint identity:
+
+```text
+checkpoint_id=stage4.support_promotion_checkpoint_identity_guardrail
+parent_stage_id=stage4
+closure_scope=atomic_step
+implementation_status=complete
+local_validation_status=passed
+candidate_status=committed
+oracle_status=approved
+closure_status=closed
+```
+
+Implementation summary:
+
+- The remaining-inventory driver no longer treats observed/closed inventory exhaustion as authority to invent a support-promotion checkpoint.
+- When Stage 4 package inventory is exhausted but static `completeSupported` remains unmet, the driver requires an explicit authoritative support-promotion checkpoint.
+- Missing or invalid support-promotion checkpoint identity fails closed with `SUPPORT_PROMOTION_CHECKPOINT_REQUIRED`, `stage5_entry_allowed=false`, structured expected/actual identity fields, and `nextCheckpoint=null`.
+- Valid support-promotion authority is fixed to `checkpoint_id=stage4.support_promotion_from_same_run_observed_package_receipts`, `parent_stage_id=stage4`, `next_atomic_step=Stage 4 support promotion from same-run observed package receipts atomic step`, `status=unmet`, and non-empty source/reason fields.
+- This guardrail preserves static `completeSupportedCount=0/59`, does not consume the support report, does not enter Stage 5, and does not modify runtime, registry, QA reader, package implementation, Skill, AGENTS.md, or historical receipts.
+
+Validation:
+
+```text
+command=/usr/bin/time -p npx vitest run tests/contracts/step37-remaining-inventory-driver.test.ts tests/contracts/step37-parent-loop-driver.test.ts tests/contracts/step37-closure-implementation-trace.test.ts -t "remaining complete-supported inventory|Parent Loop|closure"
+exitCode=0
+duration=1.65s before candidate; 1.81s after candidate commit
+result=PASS: 3 files; 49 tests passed; 17 skipped.
+
+command=/usr/bin/time -p npm run test:contracts
+exitCode=0
+duration=11.19s
+result=PASS: 98 files; 1359 tests.
+
+command=/usr/bin/time -p npm test
+exitCode=0
+duration=61.12s
+result=PASS: contracts 98 files / 1359 tests; workspace 34 files / 410 tests.
+
+command=/usr/bin/time -p npm run typecheck
+exitCode=0
+duration=7.33s
+result=PASS.
+
+command=/usr/bin/time -p git diff --check
+exitCode=0
+duration=0.02s
+result=PASS.
+
+command=/usr/bin/time -p bash <<'BASH' ... v1-root-relative-rows Skill bundle ... BASH
+exitCode=0
+duration=0.20s
+result=PASS: skill_file_count=8; skill_bundle_digest=5ee48b1b5a2ac2371a87d6bc37da3c53ca137a5daa2b6338eeccf8743b28538f.
+
+command=/usr/bin/time -p npx tsx - <<'TS' ... support-promotion identity alignment ... TS
+exitCode=0
+duration=0.76s
+result=PASS: valid Stage 4 support-promotion checkpoint selects stage4.support_promotion_from_same_run_observed_package_receipts; caller-provided Stage 5 parent fails with SUPPORT_PROMOTION_CHECKPOINT_REQUIRED and invalid_fields=[parent_stage_id].
+```
+
+Oracle receipt:
+
+```text
+reviewed_commit_sha=9de86b113ae9aebae5c929ed3625bf17ecdb0771
+reviewed_commit_tree=2d79462c08af5910263aae08750e94ad236048a6
+reviewed_skill_revision=5ee48b1b5a2ac2371a87d6bc37da3c53ca137a5daa2b6338eeccf8743b28538f
+oracle_submission_id=019f076c-d271-7c90-95af-fb19594a9b3c
+oracle_agent_id=019f0488-39ff-7e33-a790-4caca4a838a3
+oracle_status=approved
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_findings=P0 none; P1 none; P2 none; P3 none.
+receipt_scope=docs_only_closure_metadata
+receipt_boundary=This receipt records Oracle approval for the immutable candidate only. It does not alter implementation, validator, contracts, Skill, AGENTS.md, tests, runtime, Stage 5, production default cutover, or prior closed history.
+state_transition=implementing -> locally_validated -> candidate_committed -> oracle_approved -> receipt_ready_for_commit -> closed
+closure_status=closed
+```
+
+Parent Loop Driver after receipt:
+
+```text
+closure_scope=atomic_step
+atomic_step_status=closed
+parent_stage_status=running
+parent_loop_status=running
+loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage4.support_promotion_from_same_run_observed_package_receipts
+next_atomic_step_label=Stage 4 support promotion from same-run observed package receipts atomic step
+next_atomic_step_parent_stage_id=stage4
+next_atomic_step_selection_rule=first_unmet_checkpoint_in_authoritative_inventory
+next_atomic_step_unmet_reason=Stage 4 package inventory is exhausted with same-run observed package receipts, but static completeSupported remains 0/59; support promotion must audit whether observed package evidence can become closure authority before Stage 5 entry.
+remaining_inventory_result=PASS: requiredCapabilityCount=59; registeredCapabilityCount=59; staticCompleteSupportedCount=0; committedClosedCapabilityCount=59; sameRunObservedOnlyCount=59; nextCheckpointId=stage4.support_promotion_from_same_run_observed_package_receipts; selectionFailure=null.
+```
+
 ## Stage 4 Implementation: `validation.fail_closed_unknown_nodes.v1` complete-supported package slice
 
 Checkpoint identity:
