@@ -6177,9 +6177,9 @@ parent_stage_id=stage4
 closure_scope=atomic_step
 implementation_status=complete
 local_validation_status=passed
-candidate_status=ready_for_commit
-oracle_status=not_submitted
-closure_status=not_closed
+candidate_status=committed
+oracle_status=approved
+closure_status=closed
 ```
 
 Current objective:
@@ -6294,6 +6294,44 @@ Final gate note:
 - This candidate-ready status sync is a docs change. Focused contracts, full contracts, `npm test`, `npm run typecheck`, `git diff --check`, Skill freshness, inventory alignment, and final diff scope review must be rerun after this record before candidate commit.
 - Candidate commit must not write its own SHA into this record.
 - Oracle request must bind the immutable candidate SHA and current Skill digest.
+
+Receipt after Oracle approval:
+
+```text
+closure_scope=atomic_step
+atomic_step_boundary_reached=true
+atomic_step_status=closed
+checkpoint_id=stage4.support_promotion_from_same_run_observed_package_receipts
+candidate_commit=800bd22ff3d910d3da83e50dff67e581f255c920
+candidate_commit_status=changes_required_superseded
+reviewed_commit_sha=b3f473599f66425290256da29368c1eb15393caa
+reviewed_commit_tree=2af4090255da8ddc3f1c43caf33c847238849db7
+reviewed_skill_revision_type=sha256_bundle
+reviewed_skill_bundle_format=root-relative-rows-v1
+reviewed_skill_revision=cb65864574974286307cfa5c0fc8d3bbf4b311bd324fda4e4e47d0ef06dac59d
+oracle_submission_id=019f079e-5f04-7652-add0-d63caf2211f7
+oracle_agent_id=019f0488-39ff-7e33-a790-4caca4a838a3
+oracle_status=approved
+oracle_result=APPROVED_FOR_RECEIPT
+oracle_p0=none
+oracle_p1=none
+oracle_p2=none
+oracle_p3=docs Failure policy prose omits wrongParentStageEntries/wrongCheckpointEntries, but code/tests and remediation record enforce them; accepted as nonblocking documentation completeness note for this receipt.
+receipt_boundary=docs-only closure metadata; does not modify implementation, validator, contract semantics, Skill, AGENTS.md, tests, runtime, Stage 5, production default cutover, legacy exit, or historical package receipts.
+
+promotion_eligible_count=59
+completeSupportedCount=0
+stage5_entry_allowed=false
+parent_stage_status=running
+loop_status=running
+global_exit_conditions_met=false
+user_input_required=false
+next_action=CONTINUE_PARENT_LOOP
+next_atomic_step=stage4.support_promotion_from_same_run_observed_package_receipts
+next_atomic_step_label=Stage 4 support promotion from same-run observed package receipts atomic step
+parent_loop_driver_source=buildStep37RemainingCompleteSupportedInventory using current support-promotion artifact and support promotion checkpoint authority.
+remaining_inventory_summary=requiredCapabilityCount=59; registeredCapabilityCount=59; staticCompleteSupportedCount=0; sameRunObservedOnlyCount=59; committedClosedCapabilityCount=59; selectionFailure=null.
+```
 
 ## Stage 4 Implementation: `validation.user_acceptance_gate.v1` complete-supported package slice
 
