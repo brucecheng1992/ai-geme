@@ -53,7 +53,7 @@ type Language = 'zh' | 'en';
 
 const genreAliases: ReadonlyArray<{ genre: Normalized2dGenre; aliases: readonly string[] }> = [
   { genre: 'top_down_shooter', aliases: ['小猫大战坦克', 'tank shooter', 'top down shooter', '俯视角射击'] },
-  { genre: 'side_scrolling_run_and_gun', aliases: ['魂斗罗', '魂斗罗式', '横版跑枪', '横版射击', 'run and gun', 'contra-like'] },
+  { genre: 'side_scrolling_run_and_gun', aliases: ['魂斗罗', '魂斗罗式', '横版跑枪', '横版跑射', '横版射击', 'run and gun', 'run-and-gun', 'contra-like'] },
   { genre: 'vertical_shooter', aliases: ['飞机大战', 'vertical shooter'] },
   { genre: 'side_scrolling_platformer', aliases: ['马里奥式', '平台跳跃', 'platformer'] },
   { genre: 'breakout', aliases: ['打砖块', 'breakout'] },
@@ -150,6 +150,10 @@ function defaultGenreForPrompt(idea: string): IntentNormalizedGenre {
 
   if (normalizedIdea.includes('collect') || normalizedIdea.includes('收集') || normalizedIdea.includes('躲')) {
     return 'dodger_collector';
+  }
+
+  if ((normalizedIdea.includes('横版') || normalizedIdea.includes('side-scrolling')) && (normalizedIdea.includes('跑射') || normalizedIdea.includes('run-and-gun'))) {
+    return 'side_scrolling_run_and_gun';
   }
 
   if (normalizedIdea.includes('shooter') || normalizedIdea.includes('射击') || normalizedIdea.includes('坦克') || normalizedIdea.includes('tank')) {

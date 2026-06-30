@@ -869,6 +869,14 @@ describe('GenerationPipelineService failure states', () => {
     expect(generationScopePlan).toMatchObject({
       schemaVersion: 'step37.generation-scope-plan.v1',
       requestedPlayTime: briefV02.play_time_intent,
+      duration_resolution_gate: {
+        verdict: 'PASS',
+        explicit_duration_present: true,
+        duration_defaulted: false,
+        duration_source: 'explicit_user_prompt',
+        missing_duration_was_fatal: false,
+        generation_failed_due_to_missing_duration: false
+      },
       deliveryMode: 'single_pass',
       qaProbeWindowSec: 90,
       preservesRequestedPlayTime: true
@@ -1661,6 +1669,78 @@ describe('GenerationPipelineService failure states', () => {
     const events = await runStore.readEvents(runId);
     expect(events).toEqual(expect.arrayContaining([expect.objectContaining({ type: 'dsl.blocked_precondition' })]));
     expect(events).not.toEqual(expect.arrayContaining([expect.objectContaining({ type: 'model.failed' })]));
+  });
+
+  it('does not fail the default Workbench prompt when v0.2 play-time intent is unspecified', async () => {
+    const shooterDsl = createShooterRawDsl();
+    const rawDsl = RawGameDslSchema.parse({
+      ...shooterDsl,
+      game: {
+        ...shooterDsl.game,
+        target_play_time_sec: 60
+      }
+    });
+    const unspecifiedBrief: GameBriefV02 = {
+      brief_version: 'game-brief-v0.1',
+      schema_version: '0.2',
+      title: rawDsl.metadata.title,
+      genre: rawDsl.game.genre,
+      camera: rawDsl.game.camera,
+      core_loop: ['Move through the arena.', 'Shoot enemies.', 'Clear the short playable loop.'],
+      difficulty: rawDsl.game.difficulty,
+      play_time_intent: { mode: 'unspecified' }
+    };
+    const pipeline = createPipeline({
+      modelProvider: {
+        async generateGameBrief() {
+          return {
+            ok: true,
+            value: unspecifiedBrief,
+            rawText: '{}',
+            rawOutputPath: workspace.getModelOutputPath(projectId, runId, 'game-brief.raw.json')
+          };
+        },
+        async generateRawGameDsl() {
+          return {
+            ok: true,
+            value: rawDsl,
+            rawText: JSON.stringify(rawDsl),
+            rawOutputPath: workspace.getModelOutputPath(projectId, runId, 'raw-game-dsl.raw.json')
+          };
+        }
+      },
+      compiler: { compile: compileWithDist },
+      buildRunner: {
+        async build() {
+          return { ok: true, projectId, distDir: workspace.getGeneratedProjectDistDir(projectId), logPath: workspace.getBuildLogPath(projectId, runId) };
+        }
+      }
+    });
+
+    await expect(runPipeline(pipeline, { idea: '做一个小猫射击外星人的小游戏', language: 'zh' })).resolves.toBe('PLAYABLE');
+    await expect(projectStore.readProject(projectId)).resolves.toMatchObject({ status: 'PLAYABLE' });
+    const generationScopePlan = JSON.parse(await readFile(workspace.getModelOutputPath(projectId, runId, 'generation_scope_plan.json'), 'utf8'));
+    expect(generationScopePlan).toMatchObject({
+      requestedPlayTime: { mode: 'unspecified' },
+      duration_resolution_gate: {
+        verdict: 'PASS',
+        duration_intent_resolved: true,
+        explicit_duration_present: false,
+        duration_defaulted: true,
+        duration_source: 'product_default',
+        resolution_status: 'product_default',
+        requested_mode: 'unspecified',
+        resolved_target_sec: 60,
+        default_target_sec: 60,
+        missing_duration_was_fatal: false,
+        duration_missing_was_fatal: false,
+        generation_failed_due_to_missing_duration: false,
+        unsupported_required_capabilities: []
+      },
+      qaProbeWindowSec: 60
+    });
+    await expect(readFile(workspace.getModelOutputPath(projectId, runId, 'game_dsl.json'), 'utf8')).resolves.toContain('"target_play_time_sec": 60');
+    await expect(runStore.readEvents(runId)).resolves.toEqual(expect.not.arrayContaining([expect.objectContaining({ type: 'dsl.blocked_precondition' })]));
   });
 
   it('maps missing dist/index.html to PREVIEW_ARTIFACT_MISSING', async () => {

@@ -77,8 +77,7 @@ describe('Legacy Raw Game DSL representability', () => {
   it.each([
     ['long target', { mode: 'target', target_sec: 600 }, 'TARGET_PLAY_TIME_OUT_OF_RANGE'],
     ['range', { mode: 'range', min_sec: 480, max_sec: 720 }, 'RANGE_PLAY_TIME_NOT_REPRESENTABLE'],
-    ['endless', { mode: 'endless' }, 'ENDLESS_PLAY_TIME_NOT_REPRESENTABLE'],
-    ['unspecified', { mode: 'unspecified' }, 'UNSPECIFIED_PLAY_TIME_NOT_REPRESENTABLE']
+    ['endless', { mode: 'endless' }, 'ENDLESS_PLAY_TIME_NOT_REPRESENTABLE']
   ] as const)('classifies %s v0.2 play-time intent as nonrepresentable', (_label, playTimeIntent, reason) => {
     expect(classifyLegacyRawGameDslRepresentability({ ...v02Brief, play_time_intent: playTimeIntent })).toMatchObject({
       representable: false,
@@ -87,6 +86,19 @@ describe('Legacy Raw Game DSL representability', () => {
       reason,
       legacyDialect: 'game-dsl-v0.1',
       contractStatus: 'legacy'
+    });
+  });
+
+  it('projects unspecified v0.2 duration to the normal legacy target instead of blocking the default Workbench prompt', () => {
+    expect(classifyLegacyRawGameDslRepresentability({ ...v02Brief, play_time_intent: { mode: 'unspecified' } })).toMatchObject({
+      representable: true,
+      disposition: 'ADAPTER_REQUIRED',
+      reason: 'UNSPECIFIED_PLAY_TIME_DEFAULTED',
+      projectedBrief: {
+        target_play_time_sec: 60
+      },
+      projectedTargetPlayTimeSec: 60,
+      issues: []
     });
   });
 });

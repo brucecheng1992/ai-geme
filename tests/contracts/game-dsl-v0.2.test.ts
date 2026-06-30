@@ -67,6 +67,38 @@ describe('Canonical Game DSL v0.2 normalization', () => {
     });
   });
 
+  it('preserves authored wave spawn capabilities without inventing missing wave refs', () => {
+    const fixture = createFixture();
+    const capabilityIds = [...createCapabilityIds(), 'enemy.fixed_turret.v1', 'spawn.enemy_wave.v1', 'spawn.static.v1'].sort();
+    const draft = {
+      ...fixture.draft,
+      capabilities: capabilityIds,
+      waves: [
+        { ...fixture.draft.waves[0], capability_refs: ['combat.projectile.v1', 'spawn.enemy_wave.v1'] },
+        { ...fixture.draft.waves[1], capability_refs: ['enemy.fixed_turret.v1', 'spawn.static.v1'], spawn: { placement: 'fixed elevated platform' } },
+        { ...fixture.draft.waves[2], capability_refs: ['enemy.fixed_turret.v1'], spawn: { placement: 'fixed elevated platform' } }
+      ]
+    };
+    const result = normalizeCapabilityGameDslDraftToCanonicalV02({
+      ...fixture,
+      draft,
+      capabilityLock: createCapabilityLock({ capabilityIds }),
+      composedSchemaIdentity: buildCapabilityGameDslDraftComposedSchemaIdentity({
+        profileId: draft.profile.id,
+        capabilityIds
+      })
+    });
+
+    expect(result.status).toBe('normalized');
+    if (result.status !== 'normalized') {
+      throw new Error('expected wave spawn capability normalization to pass');
+    }
+
+    expect(result.canonicalDsl.waves[0].capability_ids).toEqual(['combat.projectile.v1', 'spawn.enemy_wave.v1']);
+    expect(result.canonicalDsl.waves[1].capability_ids).toEqual(['enemy.fixed_turret.v1', 'spawn.static.v1']);
+    expect(result.canonicalDsl.waves[2].capability_ids).toEqual(['enemy.fixed_turret.v1']);
+  });
+
   it('normalizes M2 action-state capability configs into canonical systems', () => {
     const fixture = createFixture();
     const actionStateCapabilityIds = ['combat.airborne_fire.v1', 'movement.crouch.v1'];
