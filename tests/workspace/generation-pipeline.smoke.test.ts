@@ -19,6 +19,8 @@ import { RunStoreService } from '../../apps/maker-api/src/projects/run-store.ser
 import { PlayableQaGateService } from '../../apps/maker-api/src/qa/playable-qa-gate.service.js';
 import { PlaywrightQaRunnerService } from '../../apps/maker-api/src/qa/playwright-qa-runner.service.js';
 import { LocalWorkspaceService } from '../../apps/maker-api/src/workspace/local-workspace.service.js';
+import { RawGameDslSchema, type GameBriefV02 } from '../../packages/game-dsl/src/index.js';
+import { createShooterRawDsl } from '../contracts/fixtures.js';
 
 const projectId = 'proj_20260609_191900_smoke';
 const runId = 'run_20260609_191900_smoke';
@@ -139,10 +141,32 @@ function createProjectsService(): ProjectsService {
     workspace,
     {
       async generateGameBrief() {
-        return { ok: false, code: 'MODEL_NOT_AVAILABLE', message: 'Smoke test uses deterministic local DSL.' };
+        const brief: GameBriefV02 = {
+          brief_version: 'game-brief-v0.1',
+          schema_version: '0.2',
+          title: 'Cat Shooter',
+          genre: 'shooter',
+          camera: 'top_down',
+          core_loop: ['Move around the arena.', 'Fire projectiles at enemies.', 'Clear enemies to win.'],
+          difficulty: 'normal',
+          play_time_intent: { mode: 'target', target_sec: 60 }
+        };
+        return {
+          ok: true,
+          value: brief,
+          rawText: JSON.stringify(brief),
+          rawOutputPath: workspace.getModelOutputPath(projectId, runId, 'game-brief.raw.json'),
+          sourceFormat: 'v0.2' as const
+        };
       },
       async generateRawGameDsl() {
-        return { ok: false, code: 'MODEL_NOT_AVAILABLE', message: 'Smoke test uses deterministic local DSL.' };
+        const rawDsl = RawGameDslSchema.parse(createShooterRawDsl());
+        return {
+          ok: true,
+          value: rawDsl,
+          rawText: JSON.stringify(rawDsl),
+          rawOutputPath: workspace.getModelOutputPath(projectId, runId, 'raw-game-dsl.raw.json')
+        };
       }
     },
     new TemplateCompilerService(workspace),

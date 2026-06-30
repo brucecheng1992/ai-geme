@@ -1,0 +1,5 @@
+export const GENERATION_FALLBACK_POLICY_FAIL_CLOSED_CAPABILITY_ID = 'generation.fallback_policy_fail_closed.v1';
+export const GENERATION_FALLBACK_POLICY_FAIL_CLOSED_RUNTIME_SYSTEM_ID = 'generation.fallback_policy_fail_closed';
+export const GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE = 'generation.fallback_policy_fail_closed.verified';
+export const GENERATION_FALLBACK_POLICY_FAIL_CLOSED_POLICY = 'fail_closed';
+export const GENERATION_FALLBACK_POLICY_FAIL_CLOSED_ERROR_CODE = 'FALLBACK_UNSUPPORTED';

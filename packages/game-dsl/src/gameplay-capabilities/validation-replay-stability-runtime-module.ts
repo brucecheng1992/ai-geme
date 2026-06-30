@@ -1,0 +1,11 @@
+export const VALIDATION_REPLAY_STABILITY_CAPABILITY_ID = 'validation.replay_stability.v1';
+export const VALIDATION_REPLAY_STABILITY_RUNTIME_SYSTEM_ID = 'validation.replay_stability';
+export const VALIDATION_REPLAY_STABILITY_EVENT_TYPE = 'validation.replay_stability.verified';
+export const VALIDATION_REPLAY_STABILITY_PROFILE_ID = 'DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1';
+export const VALIDATION_REPLAY_STABILITY_RUNTIME_FAMILY = 'phaser_2d_action_arcade.v1';
+export const VALIDATION_REPLAY_STABILITY_SCHEMA_VERSION = 'validation_replay_stability.v0.1';
+export const VALIDATION_REPLAY_STABILITY_SEED = 'replay_seed:deepseek_run_and_gun';
+export const VALIDATION_REPLAY_STABILITY_INPUT_TIMELINE_HASH = 'input_timeline_hash:canonical';
+export const VALIDATION_REPLAY_STABILITY_BASELINE_TRACE_HASH = 'replay_trace_hash:stable';
+export const VALIDATION_REPLAY_STABILITY_REPLAY_TRACE_HASH = 'replay_trace_hash:stable';
+export const VALIDATION_REPLAY_STABILITY_FRAME_COUNT = 600;

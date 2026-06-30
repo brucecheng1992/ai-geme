@@ -2,11 +2,361 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildAmendmentVerificationReport,
+  buildCapabilityQaProbeResultsFromRuntimeEvidence,
   buildCapabilityRuntimeQaPlan,
   evaluateCapabilityQaReport,
   resolveGameplayCapabilityGraph,
   validateGameplayCapabilityPackage,
+  WEAPON_DEATH_RESET_EVENT_TYPE,
+  WEAPON_DEATH_RESET_INITIAL_WEAPON_ID,
+  WEAPON_DEATH_RESET_NON_INITIAL_WEAPON_ID,
+  WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE,
+  WEAPON_DEATH_RESET_REQUIRED_PROBE_ID,
+  createWeaponDeathResetPackageContract,
+  WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
+  WEAPON_RAPID_FIRE_BURST_SHOT_COUNT,
+  WEAPON_RAPID_FIRE_BURST_WINDOW_MS,
+  WEAPON_RAPID_FIRE_COOLDOWN_MS,
+  WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID,
+  createWeaponRapidFirePackageContract,
+  WEAPON_SPREAD_SHOT_EVENT_TYPE,
+  WEAPON_SPREAD_SHOT_PROJECTILE_COUNT,
+  WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID,
+  WEAPON_SPREAD_SHOT_SPREAD_ARC_DEGREES,
+  WEAPON_SPREAD_SHOT_SPREAD_ANGLES_DEGREES,
+  createWeaponSpreadShotPackageContract,
+  WEAPON_REPLACEMENT_RULE_EVENT_TYPE,
+  WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE,
+  WEAPON_REPLACEMENT_RULE_PREVIOUS_WEAPON_ID,
+  WEAPON_REPLACEMENT_RULE_REPLACEMENT_WEAPON_ID,
+  WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID,
+  createWeaponReplacementRulePackageContract,
+  ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
+  ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID,
+  createArtifactLineageNoManualPatchPackageContract,
+  ARTIFACT_NO_HIDDEN_SCRIPT_EVENT_TYPE,
+  ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID,
+  createArtifactNoHiddenScriptPackageContract,
+  CAMERA_BOUNDS_CLAMP_EVENT_TYPE,
+  CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID,
+  createCameraBoundsClampPackageContract,
+  COLLISION_PLATFORM_REQUIRED_PROBE_ID,
+  CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE,
+  CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
+  createCanonicalSemanticPreservationPackageContract,
+  COLLISION_DAMAGE_AFFINITY_MATRIX_EVENT_TYPE,
+  COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID,
+  createCollisionDamageAffinityMatrixPackageContract,
+  ENEMY_BOSS_ATTACK_PATTERN_CADENCE_MS,
+  ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE,
+  ENEMY_BOSS_ATTACK_PATTERN_PHASE_ID,
+  ENEMY_BOSS_ATTACK_PATTERN_PATTERN_ID,
+  ENEMY_BOSS_ATTACK_PATTERN_REQUIRED_PROBE_ID,
+  createEnemyBossAttackPatternPackageContract,
+  ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID,
+  ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
+  ENEMY_BOSS_LIFECYCLE_MAX_HEALTH,
+  ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID,
+  createEnemyBossLifecyclePackageContract,
+  ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE,
+  ENEMY_BOSS_PHASE_TRANSITION_FROM_PHASE_ID,
+  ENEMY_BOSS_PHASE_TRANSITION_HEALTH_THRESHOLD_RATIO,
+  ENEMY_BOSS_PHASE_TRANSITION_REQUIRED_PROBE_ID,
+  ENEMY_BOSS_PHASE_TRANSITION_SPEED_MULTIPLIER,
+  ENEMY_BOSS_PHASE_TRANSITION_TO_PHASE_ID,
+  createEnemyBossPhaseTransitionPackageContract,
+  ENEMY_FIXED_TURRET_ARCHETYPE_ID,
+  ENEMY_FIXED_TURRET_ENTITY_ID,
+  ENEMY_FIXED_TURRET_EVENT_TYPE,
+  ENEMY_FIXED_TURRET_FIRE_CADENCE_MS,
+  ENEMY_FIXED_TURRET_PROJECTILE_PATTERN_ID,
+  ENEMY_FIXED_TURRET_REQUIRED_PROBE_ID,
+  createEnemyFixedTurretPackageContract,
+  ENEMY_FLYING_RIGHT_ENTRY_ARCHETYPE_ID,
+  ENEMY_FLYING_RIGHT_ENTRY_ENEMY_ID,
+  ENEMY_FLYING_RIGHT_ENTRY_ENTRY_SIDE,
+  ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE,
+  ENEMY_FLYING_RIGHT_ENTRY_MOVEMENT_PATTERN_ID,
+  ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID,
+  ENEMY_FLYING_RIGHT_ENTRY_SEGMENT_ID,
+  ENEMY_FLYING_RIGHT_ENTRY_WAVE_ID,
+  createEnemyFlyingRightEntryPackageContract,
+  ENEMY_PATROL_INFANTRY_ARCHETYPE_ID,
+  ENEMY_PATROL_INFANTRY_ENEMY_ID,
+  ENEMY_PATROL_INFANTRY_EVENT_TYPE,
+  ENEMY_PATROL_INFANTRY_MOVEMENT_PATTERN_ID,
+  ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID,
+  ENEMY_PATROL_INFANTRY_ROUTE_ID,
+  ENEMY_PATROL_INFANTRY_SEGMENT_ID,
+  createEnemyPatrolInfantryPackageContract,
+  FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
+  FEEDBACK_VICTORY_DECLARATION_OUTCOME,
+  FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID,
+  FEEDBACK_VICTORY_DECLARATION_TEXT,
+  FEEDBACK_VICTORY_DECLARATION_TRIGGER,
+  createFeedbackVictoryDeclarationPackageContract,
+  UI_FAILURE_RESTART_EVENT_TYPE,
+  UI_FAILURE_RESTART_FAILURE_TEXT,
+  UI_FAILURE_RESTART_INPUT,
+  UI_FAILURE_RESTART_PROFILE_ID,
+  UI_FAILURE_RESTART_PROMPT_TEXT,
+  UI_FAILURE_RESTART_REQUIRED_PROBE_ID,
+  UI_FAILURE_RESTART_RESTART_EVENT_TYPE,
+  UI_FAILURE_RESTART_RUNTIME_FAMILY,
+  UI_FAILURE_RESTART_SCHEMA_VERSION,
+  createUiFailureRestartPackageContract,
+  UI_WIN_FAILURE_TRANSITIONS_EVENT_TYPE,
+  UI_WIN_FAILURE_TRANSITIONS_FAILURE_TEXT,
+  UI_WIN_FAILURE_TRANSITIONS_FAILURE_TRIGGER,
+  UI_WIN_FAILURE_TRANSITIONS_PROFILE_ID,
+  UI_WIN_FAILURE_TRANSITIONS_REQUIRED_PROBE_ID,
+  UI_WIN_FAILURE_TRANSITIONS_RUNTIME_FAMILY,
+  UI_WIN_FAILURE_TRANSITIONS_SCHEMA_VERSION,
+  UI_WIN_FAILURE_TRANSITIONS_WIN_TEXT,
+  UI_WIN_FAILURE_TRANSITIONS_WIN_TRIGGER,
+  createUiWinFailureTransitionsPackageContract,
+  UI_HUD_BOSS_HEALTH_CURRENT,
+  UI_HUD_BOSS_HEALTH_EVENT_TYPE,
+  UI_HUD_BOSS_HEALTH_LABEL_TEXT,
+  UI_HUD_BOSS_HEALTH_PROFILE_ID,
+  UI_HUD_BOSS_HEALTH_RATIO,
+  UI_HUD_BOSS_HEALTH_REQUIRED_PROBE_ID,
+  UI_HUD_BOSS_HEALTH_RUNTIME_FAMILY,
+  UI_HUD_BOSS_HEALTH_SCHEMA_VERSION,
+  createUiHudBossHealthPackageContract,
+  UI_HUD_CURRENT_WEAPON_EVENT_TYPE,
+  UI_HUD_CURRENT_WEAPON_LABEL_TEXT,
+  UI_HUD_CURRENT_WEAPON_PROFILE_ID,
+  UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID,
+  UI_HUD_CURRENT_WEAPON_RUNTIME_FAMILY,
+  UI_HUD_CURRENT_WEAPON_SCHEMA_VERSION,
+  UI_HUD_CURRENT_WEAPON_SLOT,
+  UI_HUD_CURRENT_WEAPON_WEAPON_ID,
+  createUiHudCurrentWeaponPackageContract,
+  UI_HUD_PLAYER_HEALTH_CURRENT,
+  UI_HUD_PLAYER_HEALTH_EVENT_TYPE,
+  UI_HUD_PLAYER_HEALTH_LABEL_TEXT,
+  UI_HUD_PLAYER_HEALTH_MAX,
+  UI_HUD_PLAYER_HEALTH_PROFILE_ID,
+  UI_HUD_PLAYER_HEALTH_RATIO,
+  UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID,
+  UI_HUD_PLAYER_HEALTH_RUNTIME_FAMILY,
+  UI_HUD_PLAYER_HEALTH_SCHEMA_VERSION,
+  createUiHudPlayerHealthPackageContract,
+  UI_HUD_RETRIES_EVENT_TYPE,
+  UI_HUD_RETRIES_INITIAL,
+  UI_HUD_RETRIES_LABEL_TEXT,
+  UI_HUD_RETRIES_PROFILE_ID,
+  UI_HUD_RETRIES_REMAINING,
+  UI_HUD_RETRIES_REQUIRED_PROBE_ID,
+  UI_HUD_RETRIES_RUNTIME_FAMILY,
+  UI_HUD_RETRIES_SCHEMA_VERSION,
+  createUiHudRetriesPackageContract,
+  GENERATION_FALLBACK_POLICY_FAIL_CLOSED_ERROR_CODE,
+  GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
+  GENERATION_FALLBACK_POLICY_FAIL_CLOSED_POLICY,
+  GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID,
+  createGenerationFallbackPolicyFailClosedPackageContract,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_ERROR_CODE,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_EVENT_TYPE,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_KIND,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PATH,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PROFILE_ID,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID,
+  VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_SCHEMA_VERSION,
+  createValidationFailClosedUnknownNodesPackageContract,
+  VALIDATION_FIXED_PROMPT_END_TO_END_EVENT_TYPE,
+  VALIDATION_FIXED_PROMPT_END_TO_END_PROFILE_ID,
+  VALIDATION_FIXED_PROMPT_END_TO_END_PROMPT_SOURCE,
+  VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID,
+  VALIDATION_FIXED_PROMPT_END_TO_END_RUNTIME_FAMILY,
+  VALIDATION_FIXED_PROMPT_END_TO_END_SCHEMA_VERSION,
+  createValidationFixedPromptEndToEndPackageContract,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_BASE_HASH,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_PROFILE_ID,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_RUNTIME_FAMILY,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_SCHEMA_VERSION,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_TRANSFORM_SUITE_ID,
+  VALIDATION_METAMORPHIC_SEMANTIC_HASH_VARIANT_HASH,
+  createValidationMetamorphicSemanticHashPackageContract,
+  VALIDATION_REPLAY_STABILITY_BASELINE_TRACE_HASH,
+  VALIDATION_REPLAY_STABILITY_EVENT_TYPE,
+  VALIDATION_REPLAY_STABILITY_FRAME_COUNT,
+  VALIDATION_REPLAY_STABILITY_INPUT_TIMELINE_HASH,
+  VALIDATION_REPLAY_STABILITY_PROFILE_ID,
+  VALIDATION_REPLAY_STABILITY_REPLAY_TRACE_HASH,
+  VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID,
+  VALIDATION_REPLAY_STABILITY_RUNTIME_FAMILY,
+  VALIDATION_REPLAY_STABILITY_SCHEMA_VERSION,
+  VALIDATION_REPLAY_STABILITY_SEED,
+  createValidationReplayStabilityPackageContract,
+  VALIDATION_USER_ACCEPTANCE_GATE_DECISION,
+  VALIDATION_USER_ACCEPTANCE_GATE_EVENT_TYPE,
+  VALIDATION_USER_ACCEPTANCE_GATE_FINAL_ORACLE_STATUS,
+  VALIDATION_USER_ACCEPTANCE_GATE_REQUIRED_PROBE_ID,
+  createValidationUserAcceptanceGatePackageContract,
+  GOAL_BOSS_UNLOCK_BOSS_ENTITY_ID,
+  GOAL_BOSS_UNLOCK_EVENT_TYPE,
+  GOAL_BOSS_UNLOCK_REASON,
+  GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID,
+  GOAL_BOSS_UNLOCK_REQUIRED_WAVE_COUNT,
+  GOAL_BOSS_UNLOCK_WAVE_ID,
+  createGoalBossUnlockPackageContract,
+  HAZARD_FALLING_AREA_BOSS_PHASE_ID,
+  HAZARD_FALLING_AREA_DAMAGE,
+  HAZARD_FALLING_AREA_EVENT_TYPE,
+  HAZARD_FALLING_AREA_HAZARD_ID,
+  HAZARD_FALLING_AREA_PATTERN_ID,
+  HAZARD_FALLING_AREA_REQUIRED_PROBE_ID,
+  HAZARD_FALLING_AREA_TELEGRAPH_MS,
+  createHazardFallingAreaPackageContract,
+  HAZARD_TIMED_EXPLOSION_COUNTDOWN_MS,
+  HAZARD_TIMED_EXPLOSION_DAMAGE,
+  HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
+  HAZARD_TIMED_EXPLOSION_HAZARD_ID,
+  HAZARD_TIMED_EXPLOSION_RADIUS,
+  HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID,
+  HAZARD_TIMED_EXPLOSION_TIMER_ID,
+  HAZARD_TIMED_EXPLOSION_TRIGGER_CONDITION,
+  createHazardTimedExplosionPackageContract,
+  RULES_CHECKPOINT_RESTORE_CHECKPOINT_ID,
+  RULES_CHECKPOINT_RESTORE_DAMAGE_EVENT_TYPE,
+  RULES_CHECKPOINT_RESTORE_EVENT_TYPE,
+  RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID,
+  RULES_CHECKPOINT_RESTORE_RETRY_COUNT_AFTER,
+  RULES_CHECKPOINT_RESTORE_RETRY_COUNT_BEFORE,
+  createRulesCheckpointRestorePackageContract,
+  RULES_ENCOUNTER_GATE_ENTRANCE_ID,
+  RULES_ENCOUNTER_GATE_EVENT_TYPE,
+  RULES_ENCOUNTER_GATE_GATE_ID,
+  RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID,
+  RULES_ENCOUNTER_GATE_SEQUENCE_INDEX,
+  RULES_ENCOUNTER_GATE_WAVE_ID,
+  createRulesEncounterGatePackageContract,
+  RULES_RETRY_COUNT_AFTER,
+  RULES_RETRY_COUNT_BEFORE,
+  RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE,
+  RULES_RETRY_COUNT_EVENT_TYPE,
+  RULES_RETRY_COUNT_INITIAL_RETRIES,
+  RULES_RETRY_COUNT_REMAINING,
+  RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
+  createRulesRetryCountPackageContract,
+  RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE,
+  RULES_STATE_TRANSITION_GRAPH_FROM_STATE,
+  RULES_STATE_TRANSITION_GRAPH_ID,
+  RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID,
+  RULES_STATE_TRANSITION_GRAPH_STATE_COUNT,
+  RULES_STATE_TRANSITION_GRAPH_TO_STATE,
+  RULES_STATE_TRANSITION_GRAPH_TRANSITION_COUNT,
+  RULES_STATE_TRANSITION_GRAPH_TRIGGER,
+  createRulesStateTransitionGraphPackageContract,
+  createCollisionPlatformPackageContract,
+  DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
+  createDefaultStraightSingleWeaponPackageContract,
+  HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE,
+  HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+  createHealthPlayerHealthPointsPackageContract,
+  PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+  createPickupCollectiblePackageContract,
+  PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
+  PICKUP_WEAPON_SUPPLY_NODE_ID,
+  PICKUP_WEAPON_SUPPLY_PICKUP_ID,
+  PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID,
+  PICKUP_WEAPON_SUPPLY_WEAPON_ID,
+  createPickupWeaponSupplyPackageContract,
+  FIXED_PROMPT_BINDING_EVENT_TYPE,
+  FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
+  createFixedPromptBindingPackageContract,
+  PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE,
+  PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID,
+  createProfileDeepSeekRunAndGunValidationPackageContract,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_ARTIFACT_KIND,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_CANONICAL_SCHEMA_VERSION,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PROVIDER_ID,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID,
+  PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_SCHEMA_VERSION,
+  createProviderDeepSeekAuthoritativeDraftPackageContract,
+  REVIEW_ORACLE_FINAL_GATE_EVENT_TYPE,
+  REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID,
+  createReviewOracleFinalGatePackageContract,
+  RUNTIME_MANIFEST_BINDING_CAPABILITY_ID,
+  RUNTIME_MANIFEST_BINDING_EVENT_TYPE,
+  RUNTIME_MANIFEST_BINDING_PROFILE_ID,
+  RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID,
+  RUNTIME_MANIFEST_BINDING_RUNTIME_FAMILY,
+  RUNTIME_MANIFEST_BINDING_RUNTIME_SYSTEM_ID,
+  RUNTIME_MANIFEST_BINDING_SYSTEM_DEPENDENCY_COUNT,
+  RUNTIME_MANIFEST_BINDING_SYSTEM_PHASE,
+  RUNTIME_MANIFEST_BINDING_SYSTEM_VERSION,
+  RUNTIME_MANIFEST_BINDING_TEMPLATE_ID,
+  createRuntimeManifestBindingPackageContract,
+  RUNTIME_MODULE_LOAD_RECEIPT_CAPABILITY_ID,
+  RUNTIME_MODULE_LOAD_RECEIPT_EVENT_TYPE,
+  RUNTIME_MODULE_LOAD_RECEIPT_KIND,
+  RUNTIME_MODULE_LOAD_RECEIPT_MIN_LIFECYCLE_EVENT_COUNT,
+  RUNTIME_MODULE_LOAD_RECEIPT_MIN_LOAD_ORDER_COUNT,
+  RUNTIME_MODULE_LOAD_RECEIPT_REQUIRED_PROBE_ID,
+  RUNTIME_MODULE_LOAD_RECEIPT_SCHEMA_VERSION,
+  createRuntimeModuleLoadReceiptPackageContract,
+  RUNTIME_PLAN_COVERAGE_CAPABILITY_ID,
+  RUNTIME_PLAN_COVERAGE_EVENT_TYPE,
+  RUNTIME_PLAN_COVERAGE_KIND,
+  RUNTIME_PLAN_COVERAGE_PROFILE_ID,
+  RUNTIME_PLAN_COVERAGE_REQUIRED_PROBE_ID,
+  RUNTIME_PLAN_COVERAGE_RUNTIME_FAMILY,
+  RUNTIME_PLAN_COVERAGE_SCHEMA_VERSION,
+  createRuntimePlanCoveragePackageContract,
+  SCENE_ORDERED_SEGMENTS_CAPABILITY_ID,
+  SCENE_ORDERED_SEGMENTS_COUNT,
+  SCENE_ORDERED_SEGMENTS_EVENT_TYPE,
+  SCENE_ORDERED_SEGMENTS_FIRST_ID,
+  SCENE_ORDERED_SEGMENTS_PROFILE_ID,
+  SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID,
+  SCENE_ORDERED_SEGMENTS_RUNTIME_FAMILY,
+  SCENE_ORDERED_SEGMENTS_SCENE_ID,
+  SCENE_ORDERED_SEGMENTS_SCHEMA_VERSION,
+  SCENE_ORDERED_SEGMENTS_SECOND_ID,
+  SCENE_ORDERED_SEGMENTS_THIRD_ID,
+  createSceneOrderedSegmentsPackageContract,
+  SCENE_VISUAL_PRESENTATION_METADATA_CAPABILITY_ID,
+  SCENE_VISUAL_PRESENTATION_METADATA_COLOR_DEPTH_BITS,
+  SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE,
+  SCENE_VISUAL_PRESENTATION_METADATA_ORIGINALITY_POLICY,
+  SCENE_VISUAL_PRESENTATION_METADATA_PROFILE_ID,
+  SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID,
+  SCENE_VISUAL_PRESENTATION_METADATA_RUNTIME_FAMILY,
+  SCENE_VISUAL_PRESENTATION_METADATA_SCHEMA_VERSION,
+  SCENE_VISUAL_PRESENTATION_METADATA_STYLE_ID,
+  SCENE_VISUAL_PRESENTATION_METADATA_STYLE_LABEL,
+  createSceneVisualPresentationMetadataPackageContract,
+  COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
+  SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+  SPAWN_EXPLICIT_DECLARATIONS_CAPABILITY_ID,
+  SPAWN_EXPLICIT_DECLARATIONS_EVENT_TYPE,
+  SPAWN_EXPLICIT_DECLARATIONS_PROFILE_ID,
+  SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_DECLARATION_COUNT,
+  SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_PROBE_ID,
+  SPAWN_EXPLICIT_DECLARATIONS_RUNTIME_FAMILY,
+  SPAWN_EXPLICIT_DECLARATIONS_SCHEMA_VERSION,
+  SPAWN_STOP_ON_BOSS_DEFEAT_CAPABILITY_ID,
+  SPAWN_STOP_ON_BOSS_DEFEAT_EVENT_TYPE,
+  SPAWN_STOP_ON_BOSS_DEFEAT_POST_DEFEAT_SPAWN_COUNT,
+  SPAWN_STOP_ON_BOSS_DEFEAT_PROFILE_ID,
+  SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID,
+  SPAWN_STOP_ON_BOSS_DEFEAT_RUNTIME_FAMILY,
+  SPAWN_STOP_ON_BOSS_DEFEAT_SCHEMA_VERSION,
+  SPAWN_STOP_ON_BOSS_DEFEAT_STOP_REASON,
+  SPAWN_STATIC_REQUIRED_PROBE_ID,
+  createCombatProjectilePackageContract,
+  createSpawnEnemyWavePackageContract,
+  createSpawnExplicitDeclarationsPackageContract,
+  createSpawnStopOnBossDefeatPackageContract,
+  createSpawnStaticPackageContract,
   type CapabilityQaProbeDescriptor,
+  type CapabilityRuntimeObservedProbeEvidence,
   type GameplayCapabilityPackageContract
 } from '../../packages/game-dsl/src/index.js';
 
@@ -72,6 +422,37 @@ describe('Capability-owned runtime QA probes', () => {
     expect(first.profileScenarioProbes.map((probe) => probe.id)).toEqual(['side_scrolling_run_and_gun.v1.qa.destroy_target']);
     expect(first.step33RenderFidelityEvidenceRefs).toEqual(['render_fidelity_report.json']);
     expect(first.step34AmendmentVerificationRefs).toEqual(['amendment_verification_report.json']);
+  });
+
+  it('preserves plan dependency metadata and probe capability identity for downstream runtime overlays', () => {
+    const camera = createPackage('camera.side_follow.v1');
+    const movement = createPackage('movement.run_jump.v1', {
+      dependencies: [{ capabilityId: 'camera.side_follow.v1', range: '^v1' }]
+    });
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock([movement, camera], ['movement.run_jump.v1']),
+      packages: [movement, camera]
+    });
+    const report = evaluateCapabilityQaReport({
+      plan,
+      probeResults: plan.requiredProbes.map((probe) => ({
+        probeId: probe.id,
+        status: 'passed' as const,
+        assertionResults: passedAssertionsFor(plan, probe.id)
+      }))
+    });
+
+    expect(plan.status).toBe('ready');
+    expect(plan.capabilityDependencies).toEqual([
+      { capabilityId: 'camera.side_follow.v1', dependencyCapabilityIds: [] },
+      { capabilityId: 'movement.run_jump.v1', dependencyCapabilityIds: ['camera.side_follow.v1'] }
+    ]);
+    expect(report.capabilityDependencies).toEqual(plan.capabilityDependencies);
+    expect(report.requiredResults.map((result) => ({ probeId: result.probeId, capabilityId: result.capabilityId }))).toEqual([
+      { probeId: 'camera.side_follow.v1.qa.required', capabilityId: 'camera.side_follow.v1' },
+      { probeId: 'movement.run_jump.v1.qa.required', capabilityId: 'movement.run_jump.v1' }
+    ]);
   });
 
   it('detects duplicate conflicting QA actions across composed probes', () => {
@@ -183,6 +564,52 @@ describe('Capability-owned runtime QA probes', () => {
     expect(plan.status).toBe('ready');
     expect(report.status).toBe('failed');
     expect(report.missingRequiredProbeIds).toEqual(['side_scrolling_run_and_gun.v1.qa.destroy_target']);
+  });
+
+  it('keeps legacy unscoped probe results compatible unless current-plan evidence is required', () => {
+    const movement = createPackage('movement.run_jump.v1');
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock([movement], ['movement.run_jump.v1']),
+      packages: [movement]
+    });
+    const unscopedProbeResult = {
+      probeId: 'movement.run_jump.v1.qa.required',
+      status: 'passed' as const,
+      assertionResults: passedAssertionsFor(plan, 'movement.run_jump.v1.qa.required')
+    };
+    const legacyReport = evaluateCapabilityQaReport({
+      plan,
+      probeResults: [unscopedProbeResult]
+    });
+    const planScopedReport = evaluateCapabilityQaReport({
+      plan,
+      probeResults: [unscopedProbeResult],
+      requirePlanScopedResults: true
+    });
+
+    expect(legacyReport.status).toBe('passed');
+    expect(legacyReport.requiredResults[0]).toMatchObject({
+      probeId: 'movement.run_jump.v1.qa.required',
+      status: 'passed'
+    });
+    expect(legacyReport.requiredResults[0]?.planHash).toBeUndefined();
+    expect(planScopedReport.status).toBe('failed');
+    expect(planScopedReport.missingRequiredProbeIds).toEqual(['movement.run_jump.v1.qa.required']);
+    expect(planScopedReport.requiredResults[0]).toMatchObject({
+      probeId: 'movement.run_jump.v1.qa.required',
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: 'movement.run_jump.v1.qa.required.plan_hash',
+          failureKind: 'PLAN_SCOPE_REQUIRED',
+          capabilityId: 'movement.run_jump.v1',
+          expectedPlanHash: plan.planHash,
+          actualPlanHash: '<missing>',
+          resultSource: 'probe_result'
+        })
+      ])
+    });
   });
 
   it('blocks malformed profile scenarios before external results can mark them passed', () => {
@@ -319,7 +746,6561 @@ describe('Capability-owned runtime QA probes', () => {
     expect(requiredFailure.missingRequiredProbeIds).toEqual(['movement.run_jump.v1.qa.required']);
     expect(missingAssertionResults.status).toBe('failed');
   });
+
+  it('derives package QA probe results from observed runtime event evidence without skipping assertion events', () => {
+    const capabilityId = 'weapon.default_straight_single.v1';
+    const probeId = 'weapon.default_straight_single.v1.fire.browser_qa.v1';
+    const packages = [
+      createPackage(capabilityId, {
+        probes: [createRuntimeEventProbe(probeId, capabilityId, `${capabilityId}.system`, ['player.fired', 'projectile.spawned'])]
+      })
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+
+    const passedReport = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'fire',
+              eventType: 'player.fired',
+              eventTypes: ['player.fired', 'projectile.spawned'],
+              status: 'observed',
+              sourceRef: 'qa_report.capability_runtime'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const failedReport = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'fire',
+              eventType: 'player.fired',
+              eventTypes: ['player.fired'],
+              status: 'observed',
+              sourceRef: 'qa_report.capability_runtime'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(passedReport.status).toBe('passed');
+    expect(passedReport.requiredResults[0]?.assertionResults).toEqual([
+      { assertionId: `${probeId}.assertion.player_fired`, status: 'passed' },
+      { assertionId: `${probeId}.assertion.projectile_spawned`, status: 'passed' }
+    ]);
+    expect(failedReport.status).toBe('failed');
+    expect(failedReport.missingRequiredProbeIds).toEqual([probeId]);
+    expect(failedReport.requiredResults[0]?.assertionResults).toEqual([
+      { assertionId: `${probeId}.assertion.player_fired`, status: 'passed' },
+      expect.objectContaining({ assertionId: `${probeId}.assertion.projectile_spawned`, status: 'failed' })
+    ]);
+  });
+
+  it('does not verify pickup collectible when event evidence lacks collection state fields', () => {
+    const capabilityId = 'pickup.collectible.v1';
+    const probeId = 'pickup.collectible.v1.collection.browser_qa.v1';
+    const packages = [
+      createPackage(capabilityId, {
+        probes: [
+          {
+            ...createRuntimeEventProbe(probeId, capabilityId, `${capabilityId}.system`, ['pickup.collectible.collected', 'pickup.collectible.state_changed']),
+            assertions: [
+              {
+                id: `${probeId}.assertion.collected`,
+                observationId: `${probeId}.observation.pickup_collectible_collected`,
+                comparator: 'exists',
+                expected: { pickupCollected: true },
+                message: 'pickup collected'
+              },
+              {
+                id: `${probeId}.assertion.state_changed`,
+                observationId: `${probeId}.observation.pickup_collectible_state_changed`,
+                comparator: 'exists',
+                expected: { pickupConsumed: true, pickupStateChanged: true },
+                message: 'pickup consumed and state changed'
+              }
+            ]
+          }
+        ]
+      })
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'collect',
+              eventType: 'pickup.collectible.collected',
+              eventTypes: ['pickup.collectible.collected', 'pickup.collectible.state_changed'],
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'collect',
+              eventType: 'pickup.collectible.collected',
+              eventTypes: ['pickup.collectible.collected', 'pickup.collectible.state_changed'],
+              pickupCollected: true,
+              pickupConsumed: true,
+              pickupStateChanged: true,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingState.status).toBe('failed');
+    expect(missingState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingState.requiredResults[0]?.assertionResults).toEqual([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.collected`,
+        status: 'failed',
+        message: expect.stringContaining('expected pickupCollected=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.state_changed`,
+        status: 'failed',
+        message: expect.stringContaining('expected pickupConsumed=true, observed <missing>')
+      })
+    ]);
+    expect(observedState.status).toBe('passed');
+  });
+
+  it('does not verify spawn enemy wave when ordered event evidence lacks gate and sequence fields', () => {
+    const capabilityId = 'spawn.enemy_wave.v1';
+    const probeId = 'spawn.enemy_wave.v1.ordered.browser_qa.v1';
+    const packages = [
+      createPackage(capabilityId, {
+        probes: [
+          {
+            ...createRuntimeEventProbe(probeId, capabilityId, `${capabilityId}.system`, ['spawn.enemy_wave.ordered']),
+            assertions: [
+              {
+                id: `${probeId}.assertion.ordered_wave`,
+                observationId: `${probeId}.observation.spawn_enemy_wave_ordered`,
+                comparator: 'exists',
+                expected: { orderedWaveSequence: true, gateTriggered: true, waveSpawned: true, sequenceIndex: 0 },
+                message: 'ordered enemy wave observed after gate trigger'
+              }
+            ]
+          }
+        ]
+      })
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingOrder = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'spawn',
+              eventType: 'spawn.enemy_wave.ordered',
+              eventTypes: ['spawn.enemy_wave.ordered'],
+              waveId: 'wave_approach',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedOrder = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'spawn',
+              eventType: 'spawn.enemy_wave.ordered',
+              eventTypes: ['spawn.enemy_wave.ordered'],
+              orderedWaveSequence: true,
+              gateTriggered: true,
+              waveSpawned: true,
+              sequenceIndex: 0,
+              waveId: 'wave_approach',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingOrder.status).toBe('failed');
+    expect(missingOrder.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingOrder.requiredResults[0]?.assertionResults).toEqual([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.ordered_wave`,
+        status: 'failed',
+        message: expect.stringContaining('expected orderedWaveSequence=true, observed <missing>')
+      })
+    ]);
+    expect(observedOrder.status).toBe('passed');
+  });
+
+  it('does not verify explicit spawn declarations from generic spawn events or incomplete manifest state', () => {
+    const capabilityId = SPAWN_EXPLICIT_DECLARATIONS_CAPABILITY_ID;
+    const probeId = SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_PROBE_ID;
+    const packages = [
+      createRuntimeManifestBindingPackageContract(),
+      createSpawnStaticPackageContract(),
+      createSpawnEnemyWavePackageContract(),
+      createSpawnExplicitDeclarationsPackageContract()
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [
+        RUNTIME_MANIFEST_BINDING_CAPABILITY_ID,
+        'spawn.static.v1',
+        'spawn.enemy_wave.v1',
+        capabilityId
+      ]),
+      packages
+    });
+    const dependencyEvidence: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: RUNTIME_MANIFEST_BINDING_CAPABILITY_ID,
+        probeId: RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID,
+        action: 'verify_binding',
+        eventType: RUNTIME_MANIFEST_BINDING_EVENT_TYPE,
+        eventTypes: [RUNTIME_MANIFEST_BINDING_EVENT_TYPE],
+        runtimeManifestBound: true,
+        runtimeManifestRuntimeFamily: RUNTIME_MANIFEST_BINDING_RUNTIME_FAMILY,
+        runtimeManifestProfileId: RUNTIME_MANIFEST_BINDING_PROFILE_ID,
+        runtimeManifestTemplateId: RUNTIME_MANIFEST_BINDING_TEMPLATE_ID,
+        runtimeManifestCapabilityLockBound: true,
+        runtimeManifestCapabilityId: RUNTIME_MANIFEST_BINDING_CAPABILITY_ID,
+        runtimeManifestSystemId: RUNTIME_MANIFEST_BINDING_RUNTIME_SYSTEM_ID,
+        runtimeManifestSystemVersion: RUNTIME_MANIFEST_BINDING_SYSTEM_VERSION,
+        runtimeManifestSystemPhase: RUNTIME_MANIFEST_BINDING_SYSTEM_PHASE,
+        runtimeManifestSystemDependencyCount: RUNTIME_MANIFEST_BINDING_SYSTEM_DEPENDENCY_COUNT,
+        runtimeManifestLoaderPlanBound: true,
+        sourceRef: 'runtime.manifest_binding',
+        status: 'observed'
+      },
+      {
+        capabilityId: 'spawn.static.v1',
+        probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
+        action: 'reach_spawn_trigger',
+        eventType: 'spawn.static.triggered',
+        eventTypes: ['spawn.static.triggered'],
+        sourceRef: 'runtime.spawn.static',
+        status: 'observed'
+      },
+      {
+        capabilityId: 'spawn.enemy_wave.v1',
+        probeId: SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+        action: 'spawn',
+        eventType: 'spawn.enemy_wave.ordered',
+        eventTypes: ['spawn.enemy_wave.ordered'],
+        orderedWaveSequence: true,
+        gateTriggered: true,
+        waveSpawned: true,
+        sequenceIndex: 0,
+        waveId: 'wave_approach',
+        sourceRef: 'runtime.spawn.enemy_wave',
+        status: 'observed'
+      }
+    ];
+    const explicitDeclarationState: CapabilityRuntimeObservedProbeEvidence = {
+      capabilityId,
+      probeId,
+      action: 'verify_declarations',
+      eventType: SPAWN_EXPLICIT_DECLARATIONS_EVENT_TYPE,
+      eventTypes: [SPAWN_EXPLICIT_DECLARATIONS_EVENT_TYPE],
+      spawnExplicitDeclarationsVerified: true,
+      spawnExplicitDeclarationsSchemaVersion: SPAWN_EXPLICIT_DECLARATIONS_SCHEMA_VERSION,
+      spawnExplicitDeclarationsProfileId: SPAWN_EXPLICIT_DECLARATIONS_PROFILE_ID,
+      spawnExplicitDeclarationsRuntimeFamily: SPAWN_EXPLICIT_DECLARATIONS_RUNTIME_FAMILY,
+      spawnExplicitDeclarationsRuntimeManifestBound: true,
+      spawnExplicitDeclarationsCapabilityLockBound: true,
+      spawnExplicitDeclarationsDeclarationCount: SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_DECLARATION_COUNT,
+      spawnExplicitDeclarationsStaticDeclared: true,
+      spawnExplicitDeclarationsEnemyWaveDeclared: true,
+      spawnExplicitDeclarationsNoImplicitFallback: true,
+      spawnExplicitDeclarationsHiddenSpawnDetected: false,
+      sourceRef: 'runtime.spawn.explicit_declarations',
+      status: 'observed'
+    };
+    const genericSpawnEvidence = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'spawn',
+              eventType: 'spawn.enemy_wave.ordered',
+              eventTypes: ['spawn.enemy_wave.ordered'],
+              sourceRef: 'runtime.spawn.generic',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const missingEnemyWaveDeclaration = { ...explicitDeclarationState };
+    delete missingEnemyWaveDeclaration.spawnExplicitDeclarationsEnemyWaveDeclared;
+    const missingDeclarationState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [...dependencyEvidence, missingEnemyWaveDeclaration],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedExplicitDeclarations = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [...dependencyEvidence, explicitDeclarationState],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericSpawnEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.explicit_declarations`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${SPAWN_EXPLICIT_DECLARATIONS_EVENT_TYPE} not observed`)
+        })
+      ])
+    );
+    expect(missingDeclarationState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.explicit_declarations`,
+          status: 'failed',
+          message: expect.stringContaining('expected spawnExplicitDeclarationsEnemyWaveDeclared=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedExplicitDeclarations.status).toBe('passed');
+  });
+
+  it('does not verify spawn stop-on-boss-defeat from boss defeat or generic spawn events without shutdown state', () => {
+    const capabilityId = SPAWN_STOP_ON_BOSS_DEFEAT_CAPABILITY_ID;
+    const probeId = SPAWN_STOP_ON_BOSS_DEFEAT_REQUIRED_PROBE_ID;
+    const packages = [
+      createRuntimeManifestBindingPackageContract(),
+      createSpawnStaticPackageContract(),
+      createSpawnEnemyWavePackageContract(),
+      createSpawnExplicitDeclarationsPackageContract(),
+      createEnemyBossLifecyclePackageContract(),
+      createSpawnStopOnBossDefeatPackageContract()
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [
+        RUNTIME_MANIFEST_BINDING_CAPABILITY_ID,
+        'spawn.static.v1',
+        'spawn.enemy_wave.v1',
+        SPAWN_EXPLICIT_DECLARATIONS_CAPABILITY_ID,
+        'enemy.boss_lifecycle.v1',
+        capabilityId
+      ]),
+      packages
+    });
+    const dependencyEvidence: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: RUNTIME_MANIFEST_BINDING_CAPABILITY_ID,
+        probeId: RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID,
+        action: 'verify_binding',
+        eventType: RUNTIME_MANIFEST_BINDING_EVENT_TYPE,
+        eventTypes: [RUNTIME_MANIFEST_BINDING_EVENT_TYPE],
+        runtimeManifestBound: true,
+        runtimeManifestRuntimeFamily: RUNTIME_MANIFEST_BINDING_RUNTIME_FAMILY,
+        runtimeManifestProfileId: RUNTIME_MANIFEST_BINDING_PROFILE_ID,
+        runtimeManifestTemplateId: RUNTIME_MANIFEST_BINDING_TEMPLATE_ID,
+        runtimeManifestCapabilityLockBound: true,
+        runtimeManifestCapabilityId: RUNTIME_MANIFEST_BINDING_CAPABILITY_ID,
+        runtimeManifestSystemId: RUNTIME_MANIFEST_BINDING_RUNTIME_SYSTEM_ID,
+        runtimeManifestSystemVersion: RUNTIME_MANIFEST_BINDING_SYSTEM_VERSION,
+        runtimeManifestSystemPhase: RUNTIME_MANIFEST_BINDING_SYSTEM_PHASE,
+        runtimeManifestSystemDependencyCount: RUNTIME_MANIFEST_BINDING_SYSTEM_DEPENDENCY_COUNT,
+        runtimeManifestLoaderPlanBound: true,
+        sourceRef: 'runtime.manifest_binding',
+        status: 'observed'
+      },
+      {
+        capabilityId: 'spawn.static.v1',
+        probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
+        action: 'reach_spawn_trigger',
+        eventType: 'spawn.static.triggered',
+        eventTypes: ['spawn.static.triggered'],
+        sourceRef: 'runtime.spawn.static',
+        status: 'observed'
+      },
+      {
+        capabilityId: 'spawn.enemy_wave.v1',
+        probeId: SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+        action: 'spawn',
+        eventType: 'spawn.enemy_wave.ordered',
+        eventTypes: ['spawn.enemy_wave.ordered'],
+        orderedWaveSequence: true,
+        gateTriggered: true,
+        waveSpawned: true,
+        sequenceIndex: 0,
+        waveId: 'wave_approach',
+        sourceRef: 'runtime.spawn.enemy_wave',
+        status: 'observed'
+      },
+      {
+        capabilityId: SPAWN_EXPLICIT_DECLARATIONS_CAPABILITY_ID,
+        probeId: SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_PROBE_ID,
+        action: 'verify_declarations',
+        eventType: SPAWN_EXPLICIT_DECLARATIONS_EVENT_TYPE,
+        eventTypes: [SPAWN_EXPLICIT_DECLARATIONS_EVENT_TYPE],
+        spawnExplicitDeclarationsVerified: true,
+        spawnExplicitDeclarationsSchemaVersion: SPAWN_EXPLICIT_DECLARATIONS_SCHEMA_VERSION,
+        spawnExplicitDeclarationsProfileId: SPAWN_EXPLICIT_DECLARATIONS_PROFILE_ID,
+        spawnExplicitDeclarationsRuntimeFamily: SPAWN_EXPLICIT_DECLARATIONS_RUNTIME_FAMILY,
+        spawnExplicitDeclarationsRuntimeManifestBound: true,
+        spawnExplicitDeclarationsCapabilityLockBound: true,
+        spawnExplicitDeclarationsDeclarationCount: SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_DECLARATION_COUNT,
+        spawnExplicitDeclarationsStaticDeclared: true,
+        spawnExplicitDeclarationsEnemyWaveDeclared: true,
+        spawnExplicitDeclarationsNoImplicitFallback: true,
+        spawnExplicitDeclarationsHiddenSpawnDetected: false,
+        sourceRef: 'runtime.spawn.explicit_declarations',
+        status: 'observed'
+      },
+      {
+        capabilityId: 'enemy.boss_lifecycle.v1',
+        probeId: ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID,
+        action: 'verify_boss_lifecycle',
+        eventType: ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
+        eventTypes: [ENEMY_BOSS_LIFECYCLE_EVENT_TYPE],
+        bossLifecycleStarted: true,
+        bossEntityId: ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID,
+        bossMaxHealth: ENEMY_BOSS_LIFECYCLE_MAX_HEALTH,
+        bossHealthInitialized: true,
+        bossDefeated: true,
+        sourceRef: 'runtime.enemy.boss_lifecycle',
+        status: 'observed'
+      }
+    ];
+    const stopState: CapabilityRuntimeObservedProbeEvidence = {
+      capabilityId,
+      probeId,
+      action: 'verify_stop_condition',
+      eventType: SPAWN_STOP_ON_BOSS_DEFEAT_EVENT_TYPE,
+      eventTypes: [SPAWN_STOP_ON_BOSS_DEFEAT_EVENT_TYPE],
+      spawnStopOnBossDefeatVerified: true,
+      spawnStopOnBossDefeatSchemaVersion: SPAWN_STOP_ON_BOSS_DEFEAT_SCHEMA_VERSION,
+      spawnStopOnBossDefeatProfileId: SPAWN_STOP_ON_BOSS_DEFEAT_PROFILE_ID,
+      spawnStopOnBossDefeatRuntimeFamily: SPAWN_STOP_ON_BOSS_DEFEAT_RUNTIME_FAMILY,
+      spawnStopOnBossDefeatBossDefeated: true,
+      spawnStopOnBossDefeatBossEntityId: ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID,
+      spawnStopOnBossDefeatStopReason: SPAWN_STOP_ON_BOSS_DEFEAT_STOP_REASON,
+      spawnStopOnBossDefeatSpawnPipelineStopped: true,
+      spawnStopOnBossDefeatPendingWavesCancelled: true,
+      spawnStopOnBossDefeatPostDefeatSpawnAttemptBlocked: true,
+      spawnStopOnBossDefeatPostDefeatSpawnCount: SPAWN_STOP_ON_BOSS_DEFEAT_POST_DEFEAT_SPAWN_COUNT,
+      spawnStopOnBossDefeatNoHiddenSpawnDetected: true,
+      sourceRef: 'runtime.spawn.stop_on_boss_defeat',
+      status: 'observed'
+    };
+    const genericBossDefeat = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_boss_lifecycle',
+              eventType: ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
+              eventTypes: [ENEMY_BOSS_LIFECYCLE_EVENT_TYPE, 'spawn.enemy_wave.ordered'],
+              bossDefeated: true,
+              sourceRef: 'runtime.enemy.boss_lifecycle.generic_defeat',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const missingShutdownField = { ...stopState };
+    delete missingShutdownField.spawnStopOnBossDefeatPostDefeatSpawnAttemptBlocked;
+    const incompleteStopState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [...dependencyEvidence, missingShutdownField],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedStopState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [...dependencyEvidence, stopState],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    for (const dependencyProbeId of [
+      RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID,
+      SPAWN_STATIC_REQUIRED_PROBE_ID,
+      SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+      SPAWN_EXPLICIT_DECLARATIONS_REQUIRED_PROBE_ID,
+      ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID
+    ]) {
+      expect(genericBossDefeat.requiredResults.find((entry) => entry.probeId === dependencyProbeId)).toMatchObject({ status: 'passed' });
+    }
+    expect(genericBossDefeat.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.stop_after_boss_defeat`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${SPAWN_STOP_ON_BOSS_DEFEAT_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.stop_after_boss_defeat`,
+          status: 'failed',
+          message: expect.stringContaining('expected spawnStopOnBossDefeatSpawnPipelineStopped=true, observed <missing>')
+        })
+      ])
+    });
+    expect(genericBossDefeat.missingRequiredProbeIds).toEqual([probeId]);
+    expect(incompleteStopState.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.stop_after_boss_defeat`,
+          status: 'failed',
+          message: expect.stringContaining('expected spawnStopOnBossDefeatPostDefeatSpawnAttemptBlocked=true, observed <missing>')
+        })
+      ])
+    });
+    expect(incompleteStopState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(observedStopState.status).toBe('passed');
+  });
+
+  it('does not verify weapon death reset when restore evidence lacks reset state fields', () => {
+    const capabilityId = 'weapon.death_reset.v1';
+    const probeId = WEAPON_DEATH_RESET_REQUIRED_PROBE_ID;
+    const deathResetPackage = createWeaponDeathResetPackageContract();
+    const packages = [{ ...deathResetPackage, dependencies: [] }];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingResetState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'restore_initial_weapon',
+              eventType: WEAPON_DEATH_RESET_EVENT_TYPE,
+              eventTypes: [WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE, WEAPON_DEATH_RESET_EVENT_TYPE],
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedResetState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'restore_initial_weapon',
+              eventType: WEAPON_DEATH_RESET_EVENT_TYPE,
+              eventTypes: [WEAPON_DEATH_RESET_PLAYER_DEFEATED_EVENT_TYPE, WEAPON_DEATH_RESET_EVENT_TYPE],
+              weaponReset: true,
+              currentWeaponId: WEAPON_DEATH_RESET_INITIAL_WEAPON_ID,
+              initialWeaponId: WEAPON_DEATH_RESET_INITIAL_WEAPON_ID,
+              previousWeaponId: WEAPON_DEATH_RESET_NON_INITIAL_WEAPON_ID,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingResetState.status).toBe('failed');
+    expect(missingResetState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingResetState.requiredResults[0]?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.restored_initial_weapon`,
+        status: 'failed',
+        message: expect.stringContaining('expected weaponReset=true, observed <missing>')
+      })
+    ]));
+    expect(observedResetState.status).toBe('passed');
+  });
+
+  it('does not verify weapon rapid fire when burst evidence lacks rate state fields', () => {
+    const capabilityId = 'weapon.rapid_fire.v1';
+    const probeId = WEAPON_RAPID_FIRE_REQUIRED_PROBE_ID;
+    const rapidFirePackage = createWeaponRapidFirePackageContract();
+    const packages = [{ ...rapidFirePackage, dependencies: [] }];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingRateState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'fire_burst',
+              eventType: WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
+              eventTypes: [WEAPON_RAPID_FIRE_BURST_EVENT_TYPE],
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedRateState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'fire_burst',
+              eventType: WEAPON_RAPID_FIRE_BURST_EVENT_TYPE,
+              eventTypes: [WEAPON_RAPID_FIRE_BURST_EVENT_TYPE],
+              rapidFire: true,
+              cooldownMs: WEAPON_RAPID_FIRE_COOLDOWN_MS,
+              burstShotCount: WEAPON_RAPID_FIRE_BURST_SHOT_COUNT,
+              burstWindowMs: WEAPON_RAPID_FIRE_BURST_WINDOW_MS,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingRateState.status).toBe('failed');
+    expect(missingRateState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingRateState.requiredResults[0]?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.rapid_burst`,
+        status: 'failed',
+        message: expect.stringContaining('expected rapidFire=true, observed <missing>')
+      })
+    ]));
+    expect(observedRateState.status).toBe('passed');
+  });
+
+  it('does not verify weapon spread shot when fire evidence lacks spread state fields', () => {
+    const capabilityId = 'weapon.spread_shot.v1';
+    const probeId = WEAPON_SPREAD_SHOT_REQUIRED_PROBE_ID;
+    const spreadShotPackage = createWeaponSpreadShotPackageContract();
+    const packages = [{ ...spreadShotPackage, dependencies: [] }];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingSpreadState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'fire_spread',
+              eventType: WEAPON_SPREAD_SHOT_EVENT_TYPE,
+              eventTypes: [WEAPON_SPREAD_SHOT_EVENT_TYPE],
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedSpreadState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'fire_spread',
+              eventType: WEAPON_SPREAD_SHOT_EVENT_TYPE,
+              eventTypes: [WEAPON_SPREAD_SHOT_EVENT_TYPE],
+              spreadShot: true,
+              projectileCount: WEAPON_SPREAD_SHOT_PROJECTILE_COUNT,
+              spreadArcDeg: WEAPON_SPREAD_SHOT_SPREAD_ARC_DEGREES,
+              spreadAnglesDeg: WEAPON_SPREAD_SHOT_SPREAD_ANGLES_DEGREES,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingSpreadState.status).toBe('failed');
+    expect(missingSpreadState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingSpreadState.requiredResults[0]?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.spread_projectiles`,
+        status: 'failed',
+        message: expect.stringContaining('expected spreadShot=true, observed <missing>')
+      })
+    ]));
+    expect(observedSpreadState.status).toBe('passed');
+  });
+
+  it('does not verify weapon replacement rule when pickup evidence lacks replacement state fields', () => {
+    const capabilityId = 'weapon.replacement_rule.v1';
+    const probeId = WEAPON_REPLACEMENT_RULE_REQUIRED_PROBE_ID;
+    const replacementPackage = createWeaponReplacementRulePackageContract();
+    const packages = [{ ...replacementPackage, dependencies: [] }];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingReplacementState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'collect_weapon_pickup',
+              eventType: WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE,
+              eventTypes: [WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE, WEAPON_REPLACEMENT_RULE_EVENT_TYPE],
+              pickupCollected: true,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedReplacementState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'collect_weapon_pickup',
+              eventType: WEAPON_REPLACEMENT_RULE_EVENT_TYPE,
+              eventTypes: [WEAPON_REPLACEMENT_RULE_PICKUP_EVENT_TYPE, WEAPON_REPLACEMENT_RULE_EVENT_TYPE],
+              pickupCollected: true,
+              weaponReplaced: true,
+              previousWeaponId: WEAPON_REPLACEMENT_RULE_PREVIOUS_WEAPON_ID,
+              currentWeaponId: WEAPON_REPLACEMENT_RULE_REPLACEMENT_WEAPON_ID,
+              replacementWeaponId: WEAPON_REPLACEMENT_RULE_REPLACEMENT_WEAPON_ID,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingReplacementState.status).toBe('failed');
+    expect(missingReplacementState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingReplacementState.requiredResults[0]?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.replaced_weapon`,
+        status: 'failed',
+        message: expect.stringContaining('expected weaponReplaced=true, observed <missing>')
+      })
+    ]));
+    expect(observedReplacementState.status).toBe('passed');
+  });
+
+  it('resolves weapon supply only when the full dependency chain is present', () => {
+    const report = resolveGameplayCapabilityGraph({
+      requestedCapabilities: ['pickup.weapon_supply.v1'],
+      packages: [
+        createCollisionPlatformPackageContract(),
+        createPickupCollectiblePackageContract(),
+        createDefaultStraightSingleWeaponPackageContract(),
+        createPickupWeaponSupplyPackageContract()
+      ],
+      runtimeFamily: 'phaser_2d_action_arcade.v1'
+    });
+
+    expect(report.status).toBe('resolved');
+    expect(report.diagnostics).toEqual([]);
+    expect(report.selectedCapabilityIds).toEqual([
+      'collision.platform.v1',
+      'pickup.collectible.v1',
+      'pickup.weapon_supply.v1',
+      'weapon.default_straight_single.v1'
+    ]);
+  });
+
+  it('fails closed when weapon supply is missing the transitive collision dependency', () => {
+    const report = resolveGameplayCapabilityGraph({
+      requestedCapabilities: ['pickup.weapon_supply.v1'],
+      packages: [
+        createPickupCollectiblePackageContract(),
+        createDefaultStraightSingleWeaponPackageContract(),
+        createPickupWeaponSupplyPackageContract()
+      ],
+      runtimeFamily: 'phaser_2d_action_arcade.v1'
+    });
+
+    expect(report.status).toBe('blocked');
+    expect(report.lock).toBeUndefined();
+    expect(report.selectedCapabilityIds).toEqual([
+      'pickup.collectible.v1',
+      'pickup.weapon_supply.v1',
+      'weapon.default_straight_single.v1'
+    ]);
+    expect(report.diagnostics.map((diagnostic) => diagnostic.capabilityId)).toEqual(['collision.platform.v1']);
+    expect(report.diagnostics).not.toEqual(expect.arrayContaining([expect.objectContaining({ capabilityId: 'pickup.weapon_supply.v1' })]));
+    expect(report.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'MISSING_CAPABILITY',
+          capabilityId: 'collision.platform.v1',
+          requestedBy: ['pickup.collectible.v1']
+        })
+      ])
+    );
+    expect(report.diagnostics.find((diagnostic) => diagnostic.capabilityId === 'collision.platform.v1')?.explanation).toContain(
+      'No package candidate exists'
+    );
+  });
+
+  it('fails closed when pickup collectible declares package semver for a capability dependency range', () => {
+    const packageSemverCollectible: GameplayCapabilityPackageContract = {
+      ...createPickupCollectiblePackageContract(),
+      dependencies: [{ capabilityId: 'collision.platform.v1', range: '^1.0.0' }]
+    };
+    const report = resolveGameplayCapabilityGraph({
+      requestedCapabilities: ['pickup.weapon_supply.v1'],
+      packages: [
+        createCollisionPlatformPackageContract(),
+        packageSemverCollectible,
+        createDefaultStraightSingleWeaponPackageContract(),
+        createPickupWeaponSupplyPackageContract()
+      ],
+      runtimeFamily: 'phaser_2d_action_arcade.v1'
+    });
+
+    expect(report.status).toBe('blocked');
+    expect(report.lock).toBeUndefined();
+    expect(report.selectedCapabilityIds).toEqual([
+      'pickup.collectible.v1',
+      'pickup.weapon_supply.v1',
+      'weapon.default_straight_single.v1'
+    ]);
+    expect(report.diagnostics.map((diagnostic) => diagnostic.capabilityId)).toEqual(['collision.platform.v1']);
+    expect(report.diagnostics).not.toEqual(expect.arrayContaining([expect.objectContaining({ capabilityId: 'pickup.weapon_supply.v1' })]));
+    expect(report.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'VERSION_CONFLICT',
+          capabilityId: 'collision.platform.v1',
+          requestedBy: ['pickup.collectible.v1']
+        })
+      ])
+    );
+    expect(report.diagnostics.find((diagnostic) => diagnostic.capabilityId === 'collision.platform.v1')?.explanation).toContain(
+      'version range ^1.0.0'
+    );
+  });
+
+  it('does not verify weapon supply from generic pickup or replacement evidence without supply grant state', () => {
+    const capabilityId = 'pickup.weapon_supply.v1';
+    const probeId = PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID;
+    const packages = [
+      createCollisionPlatformPackageContract(),
+      createPickupCollectiblePackageContract(),
+      createDefaultStraightSingleWeaponPackageContract(),
+      createPickupWeaponSupplyPackageContract()
+    ];
+    const dependencyEvidence = [
+      {
+        capabilityId: 'collision.platform.v1',
+        probeId: COLLISION_PLATFORM_REQUIRED_PROBE_ID,
+        action: 'collide',
+        eventType: 'collision.platform.grounded',
+        eventTypes: ['collision.platform.grounded'],
+        status: 'observed' as const
+      },
+      {
+        capabilityId: 'pickup.collectible.v1',
+        probeId: PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+        action: 'collect',
+        eventType: 'pickup.collectible.collected',
+        eventTypes: ['pickup.collectible.collected', 'pickup.collectible.state_changed'],
+        pickupCollected: true,
+        pickupConsumed: true,
+        pickupStateChanged: true,
+        status: 'observed' as const
+      },
+      {
+        capabilityId: 'weapon.default_straight_single.v1',
+        probeId: DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
+        action: 'fire',
+        eventType: 'player.fired',
+        eventTypes: ['player.fired', 'projectile.spawned'],
+        status: 'observed' as const
+      }
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    expect(plan.status).toBe('ready');
+    expect(plan.requiredProbes.map((probe) => probe.id)).toEqual([
+      COLLISION_PLATFORM_REQUIRED_PROBE_ID,
+      PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+      PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID,
+      DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID
+    ]);
+    const genericPickupEvidence = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'collect',
+              eventType: 'pickup.collectible.collected',
+              eventTypes: ['pickup.collectible.collected', WEAPON_REPLACEMENT_RULE_EVENT_TYPE],
+              pickupCollected: true,
+              pickupConsumed: true,
+              pickupStateChanged: true,
+              weaponReplaced: true,
+              replacementWeaponId: WEAPON_REPLACEMENT_RULE_REPLACEMENT_WEAPON_ID,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedWeaponSupply = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'collect_weapon_supply',
+              eventType: PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
+              eventTypes: [PICKUP_WEAPON_SUPPLY_EVENT_TYPE, 'pickup.collectible.collected'],
+              weaponSupplyAvailable: true,
+              weaponSupplyNodeId: PICKUP_WEAPON_SUPPLY_NODE_ID,
+              weaponSupplyPickupId: PICKUP_WEAPON_SUPPLY_PICKUP_ID,
+              weaponSupplyWeaponId: PICKUP_WEAPON_SUPPLY_WEAPON_ID,
+              weaponSupplyCollected: true,
+              weaponSupplyConsumed: true,
+              weaponSupplyGranted: true,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericPickupEvidence.status).toBe('failed');
+    expect(genericPickupEvidence.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericPickupEvidence.requiredResults.filter((entry) => entry.status === 'failed').map((entry) => entry.probeId)).toEqual([probeId]);
+    for (const dependencyProbeId of [
+      COLLISION_PLATFORM_REQUIRED_PROBE_ID,
+      PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+      DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID
+    ]) {
+      expect(genericPickupEvidence.requiredResults.find((entry) => entry.probeId === dependencyProbeId)).toMatchObject({
+        status: 'passed',
+        planHash: plan.planHash
+      });
+    }
+    expect(genericPickupEvidence.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'failed',
+      planHash: plan.planHash
+    });
+    expect(genericPickupEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.weapon_supply_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${PICKUP_WEAPON_SUPPLY_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.weapon_supply_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected weaponSupplyGranted=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.weapon_supply_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`expected weaponSupplyNodeId=${PICKUP_WEAPON_SUPPLY_NODE_ID}, observed <missing>`)
+        })
+      ])
+    );
+    expect(observedWeaponSupply.status).toBe('passed');
+    for (const dependencyProbeId of [
+      COLLISION_PLATFORM_REQUIRED_PROBE_ID,
+      PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+      DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID
+    ]) {
+      expect(observedWeaponSupply.requiredResults.find((entry) => entry.probeId === dependencyProbeId)).toMatchObject({
+        status: 'passed',
+        planHash: plan.planHash
+      });
+    }
+    expect(observedWeaponSupply.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'passed',
+      planHash: plan.planHash
+    });
+  });
+
+  it('verifies DeepSeek authoritative draft only from provider draft and canonical normalization state', () => {
+    const capabilityId = 'provider.deepseek_authoritative_draft.v1';
+    const probeId = PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID;
+    const packages = [
+      createFixedPromptBindingPackageContract(),
+      createProfileDeepSeekRunAndGunValidationPackageContract(),
+      createProviderDeepSeekAuthoritativeDraftPackageContract()
+    ];
+    const dependencyEvidence = [
+      {
+        capabilityId: 'metadata.fixed_prompt_binding.v1',
+        probeId: FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
+        action: 'observe',
+        eventType: FIXED_PROMPT_BINDING_EVENT_TYPE,
+        eventTypes: [FIXED_PROMPT_BINDING_EVENT_TYPE],
+        status: 'observed' as const
+      },
+      {
+        capabilityId: 'profile.deepseek_run_and_gun_validation.v1',
+        probeId: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID,
+        action: 'observe',
+        eventType: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE,
+        eventTypes: [PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE],
+        status: 'observed' as const
+      }
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    expect(plan.status).toBe('ready');
+    expect(plan.requiredProbes.map((probe) => probe.id)).toEqual([
+      FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
+      PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID,
+      PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID
+    ]);
+    const genericModelOutput = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'model_output',
+              eventType: 'provider.model_output.generated',
+              eventTypes: ['provider.model_output.generated'],
+              deepSeekAuthoritativeDraftProduced: true,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedAuthoritativeDraft = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_authoritative_draft',
+              eventType: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE,
+              eventTypes: [PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE],
+              deepSeekAuthoritativeDraftProduced: true,
+              deepSeekProviderId: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PROVIDER_ID,
+              deepSeekDraftArtifactKind: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_ARTIFACT_KIND,
+              deepSeekDraftSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_SCHEMA_VERSION,
+              deepSeekDraftNormalized: true,
+              deepSeekCanonicalSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_CANONICAL_SCHEMA_VERSION,
+              deepSeekComposedSchemaHashMatched: true,
+              deepSeekCapabilityLockHashMatched: true,
+              deepSeekTrustedEvidenceRejected: true,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericModelOutput.status).toBe('failed');
+    expect(genericModelOutput.missingRequiredProbeIds).toEqual([probeId]);
+    for (const dependencyProbeId of [FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID, PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID]) {
+      expect(genericModelOutput.requiredResults.find((entry) => entry.probeId === dependencyProbeId)).toMatchObject({
+        status: 'passed',
+        planHash: plan.planHash
+      });
+    }
+    expect(genericModelOutput.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'failed',
+      planHash: plan.planHash
+    });
+    expect(genericModelOutput.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.authoritative_draft_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.authoritative_draft_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`expected deepSeekProviderId=${PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PROVIDER_ID}, observed <missing>`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.authoritative_draft_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected deepSeekDraftNormalized=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedAuthoritativeDraft.status).toBe('passed');
+    expect(observedAuthoritativeDraft.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'passed',
+      planHash: plan.planHash
+    });
+  });
+
+  it('keeps wrong-plan DeepSeek authoritative draft evidence from satisfying the current QA plan', () => {
+    const capabilityId = 'provider.deepseek_authoritative_draft.v1';
+    const probeId = PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID;
+    const packages = [
+      createFixedPromptBindingPackageContract(),
+      createProfileDeepSeekRunAndGunValidationPackageContract(),
+      createProviderDeepSeekAuthoritativeDraftPackageContract()
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const currentPlanProbeResults = buildCapabilityQaProbeResultsFromRuntimeEvidence({
+      plan,
+      evidence: {
+        status: 'PASSED',
+        observed: [
+          {
+            capabilityId: 'metadata.fixed_prompt_binding.v1',
+            probeId: FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
+            action: 'observe',
+            eventType: FIXED_PROMPT_BINDING_EVENT_TYPE,
+            eventTypes: [FIXED_PROMPT_BINDING_EVENT_TYPE],
+            status: 'observed'
+          },
+          {
+            capabilityId: 'profile.deepseek_run_and_gun_validation.v1',
+            probeId: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID,
+            action: 'observe',
+            eventType: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE,
+            eventTypes: [PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE],
+            status: 'observed'
+          },
+          {
+            capabilityId,
+            probeId,
+            action: 'verify_authoritative_draft',
+            eventType: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE,
+            eventTypes: [PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE],
+            deepSeekAuthoritativeDraftProduced: true,
+            deepSeekProviderId: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PROVIDER_ID,
+            deepSeekDraftArtifactKind: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_ARTIFACT_KIND,
+            deepSeekDraftSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_SCHEMA_VERSION,
+            deepSeekDraftNormalized: true,
+            deepSeekCanonicalSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_CANONICAL_SCHEMA_VERSION,
+            deepSeekComposedSchemaHashMatched: true,
+            deepSeekCapabilityLockHashMatched: true,
+            deepSeekTrustedEvidenceRejected: true,
+            status: 'observed'
+          }
+        ],
+        missingProbeIds: [],
+        mismatches: []
+      }
+    });
+    const report = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: currentPlanProbeResults.map((result) =>
+        result.probeId === probeId ? { ...result, planHash: 'wrong_deepseek_provider_plan_hash' } : result
+      )
+    });
+
+    expect(report.status).toBe('failed');
+    expect(report.missingRequiredProbeIds).toEqual([probeId]);
+    expect(report.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.plan_hash`,
+          failureKind: 'PLAN_MISMATCH',
+          capabilityId,
+          expectedPlanHash: plan.planHash,
+          actualPlanHash: 'wrong_deepseek_provider_plan_hash',
+          resultSource: 'probe_result',
+          status: 'failed'
+        })
+      ])
+    });
+  });
+
+  it('requires fixed prompt end-to-end evidence in addition to provider/profile dependency probes', () => {
+    const capabilityId = 'validation.fixed_prompt_end_to_end.v1';
+    const probeId = VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID;
+    const packages = [
+      createFixedPromptBindingPackageContract(),
+      createProfileDeepSeekRunAndGunValidationPackageContract(),
+      createProviderDeepSeekAuthoritativeDraftPackageContract(),
+      createValidationFixedPromptEndToEndPackageContract()
+    ];
+    const dependencyEvidence = [
+      {
+        capabilityId: 'metadata.fixed_prompt_binding.v1',
+        probeId: FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
+        action: 'observe',
+        eventType: FIXED_PROMPT_BINDING_EVENT_TYPE,
+        eventTypes: [FIXED_PROMPT_BINDING_EVENT_TYPE],
+        status: 'observed' as const
+      },
+      {
+        capabilityId: 'profile.deepseek_run_and_gun_validation.v1',
+        probeId: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID,
+        action: 'observe',
+        eventType: PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE,
+        eventTypes: [PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_EVENT_TYPE],
+        status: 'observed' as const
+      },
+      {
+        capabilityId: 'provider.deepseek_authoritative_draft.v1',
+        probeId: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID,
+        action: 'verify_authoritative_draft',
+        eventType: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE,
+        eventTypes: [PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE],
+        deepSeekAuthoritativeDraftProduced: true,
+        deepSeekProviderId: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PROVIDER_ID,
+        deepSeekDraftArtifactKind: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_ARTIFACT_KIND,
+        deepSeekDraftSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_SCHEMA_VERSION,
+        deepSeekDraftNormalized: true,
+        deepSeekCanonicalSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_CANONICAL_SCHEMA_VERSION,
+        deepSeekComposedSchemaHashMatched: true,
+        deepSeekCapabilityLockHashMatched: true,
+        deepSeekTrustedEvidenceRejected: true,
+        status: 'observed' as const
+      }
+    ];
+    const fixedPromptEndToEndState = {
+      fixedPromptEndToEndVerified: true,
+      fixedPromptSchemaVersion: VALIDATION_FIXED_PROMPT_END_TO_END_SCHEMA_VERSION,
+      fixedPromptSource: VALIDATION_FIXED_PROMPT_END_TO_END_PROMPT_SOURCE,
+      fixedPromptProfileId: VALIDATION_FIXED_PROMPT_END_TO_END_PROFILE_ID,
+      fixedPromptRuntimeFamily: VALIDATION_FIXED_PROMPT_END_TO_END_RUNTIME_FAMILY,
+      fixedPromptBindingObserved: true,
+      fixedPromptProfileBindingObserved: true,
+      fixedPromptProviderDraftValidated: true,
+      fixedPromptProviderId: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_PROVIDER_ID,
+      fixedPromptDraftSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_SCHEMA_VERSION,
+      fixedPromptCanonicalSchemaVersion: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_CANONICAL_SCHEMA_VERSION,
+      fixedPromptHashMatched: true,
+      fixedPromptFallbackPromptUsed: false
+    };
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    expect(plan.status).toBe('ready');
+    expect(plan.requiredProbes.map((probe) => probe.id)).toEqual([
+      FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
+      PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID,
+      PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID,
+      VALIDATION_FIXED_PROMPT_END_TO_END_REQUIRED_PROBE_ID
+    ]);
+
+    const providerOnly = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: dependencyEvidence,
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const missingCompositeState = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_fixed_prompt_chain',
+              eventType: VALIDATION_FIXED_PROMPT_END_TO_END_EVENT_TYPE,
+              eventTypes: [VALIDATION_FIXED_PROMPT_END_TO_END_EVENT_TYPE],
+              fixedPromptBindingObserved: true,
+              fixedPromptProfileBindingObserved: true,
+              fixedPromptProviderDraftValidated: true,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedFixedPromptChain = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_fixed_prompt_chain',
+              eventType: VALIDATION_FIXED_PROMPT_END_TO_END_EVENT_TYPE,
+              eventTypes: [VALIDATION_FIXED_PROMPT_END_TO_END_EVENT_TYPE],
+              ...fixedPromptEndToEndState,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(providerOnly.status).toBe('failed');
+    expect(providerOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingCompositeState.status).toBe('failed');
+    expect(missingCompositeState.missingRequiredProbeIds).toEqual([probeId]);
+    for (const dependencyProbeId of [
+      FIXED_PROMPT_BINDING_REQUIRED_PROBE_ID,
+      PROFILE_DEEPSEEK_RUN_AND_GUN_VALIDATION_REQUIRED_PROBE_ID,
+      PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_REQUIRED_PROBE_ID
+    ]) {
+      expect(missingCompositeState.requiredResults.find((entry) => entry.probeId === dependencyProbeId)).toMatchObject({
+        status: 'passed',
+        planHash: plan.planHash
+      });
+    }
+    expect(missingCompositeState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.fixed_prompt_end_to_end`,
+          status: 'failed',
+          message: expect.stringContaining('expected fixedPromptEndToEndVerified=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.fixed_prompt_end_to_end`,
+          status: 'failed',
+          message: expect.stringContaining(`expected fixedPromptSource=${VALIDATION_FIXED_PROMPT_END_TO_END_PROMPT_SOURCE}, observed <missing>`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.fixed_prompt_end_to_end`,
+          status: 'failed',
+          message: expect.stringContaining('expected fixedPromptHashMatched=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedFixedPromptChain.status).toBe('passed');
+    expect(observedFixedPromptChain.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'passed',
+      planHash: plan.planHash
+    });
+  });
+
+  it('requires metamorphic semantic hash proof beyond ordinary canonical hash evidence', () => {
+    const capabilityId = 'validation.metamorphic_semantic_hash.v1';
+    const probeId = VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID;
+    const canonicalPackage = createCanonicalSemanticPreservationPackageContract();
+    const packageContract = createValidationMetamorphicSemanticHashPackageContract();
+    const packages = [canonicalPackage, packageContract];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const canonicalDependencyEvidence = [
+      {
+        capabilityId: 'canonical.semantic_preservation.v1',
+        probeId: CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
+        action: 'verify_semantic_preservation',
+        eventType: CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE,
+        eventTypes: [CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE],
+        canonicalHashMatched: true,
+        semanticIntentPreserved: true,
+        droppedCanonicalNodes: false,
+        status: 'observed' as const,
+        sourceRef: 'canonical.semantic.hash'
+      }
+    ];
+    const metamorphicState = {
+      metamorphicSemanticHashVerified: true,
+      metamorphicSemanticHashSchemaVersion: VALIDATION_METAMORPHIC_SEMANTIC_HASH_SCHEMA_VERSION,
+      metamorphicSemanticHashProfileId: VALIDATION_METAMORPHIC_SEMANTIC_HASH_PROFILE_ID,
+      metamorphicSemanticHashRuntimeFamily: VALIDATION_METAMORPHIC_SEMANTIC_HASH_RUNTIME_FAMILY,
+      metamorphicTransformSuiteId: VALIDATION_METAMORPHIC_SEMANTIC_HASH_TRANSFORM_SUITE_ID,
+      metamorphicBaseSemanticHash: VALIDATION_METAMORPHIC_SEMANTIC_HASH_BASE_HASH,
+      metamorphicVariantSemanticHash: VALIDATION_METAMORPHIC_SEMANTIC_HASH_VARIANT_HASH,
+      metamorphicHashMatched: true,
+      metamorphicTransformCount: 2,
+      metamorphicSemanticIntentPreserved: true,
+      metamorphicNoCanonicalDrift: true
+    };
+
+    expect(plan.status).toBe('ready');
+    expect(plan.requiredProbes.map((probe) => probe.id)).toEqual([
+      CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
+      VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID
+    ]);
+
+    const canonicalOnly = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: { status: 'PASSED', observed: canonicalDependencyEvidence, missingProbeIds: [], mismatches: [] }
+      })
+    });
+    const missingMetamorphicState = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...canonicalDependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_metamorphic_semantic_hash',
+              eventType: VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE,
+              eventTypes: [VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE],
+              canonicalHashMatched: true,
+              semanticIntentPreserved: true,
+              status: 'observed' as const,
+              sourceRef: 'validation.metamorphic_semantic_hash'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedMetamorphicState = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...canonicalDependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_metamorphic_semantic_hash',
+              eventType: VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE,
+              eventTypes: [VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE],
+              ...metamorphicState,
+              status: 'observed' as const,
+              sourceRef: 'validation.metamorphic_semantic_hash'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(canonicalOnly.status).toBe('failed');
+    expect(canonicalOnly.requiredResults.find((entry) => entry.probeId === CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed',
+      planHash: plan.planHash
+    });
+    expect(canonicalOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingMetamorphicState.status).toBe('failed');
+    expect(missingMetamorphicState.requiredResults.find((entry) => entry.probeId === CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID))
+      .toMatchObject({
+        status: 'passed',
+        planHash: plan.planHash
+      });
+    expect(missingMetamorphicState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingMetamorphicState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.metamorphic_semantic_hash`,
+          status: 'failed',
+          message: expect.stringContaining('expected metamorphicSemanticHashVerified=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.metamorphic_semantic_hash`,
+          status: 'failed',
+          message: expect.stringContaining(
+            `expected metamorphicTransformSuiteId=${VALIDATION_METAMORPHIC_SEMANTIC_HASH_TRANSFORM_SUITE_ID}, observed <missing>`
+          )
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.metamorphic_semantic_hash`,
+          status: 'failed',
+          message: expect.stringContaining('expected metamorphicHashMatched=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedMetamorphicState.status).toBe('passed');
+    expect(observedMetamorphicState.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'passed',
+      planHash: plan.planHash
+    });
+  });
+
+  it('requires replay stability proof beyond single-run semantic hash evidence', () => {
+    const capabilityId = 'validation.replay_stability.v1';
+    const probeId = VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID;
+    const canonicalPackage = createCanonicalSemanticPreservationPackageContract();
+    const metamorphicPackage = createValidationMetamorphicSemanticHashPackageContract();
+    const packageContract = createValidationReplayStabilityPackageContract();
+    const packages = [canonicalPackage, metamorphicPackage, packageContract];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const canonicalDependencyEvidence = {
+      capabilityId: 'canonical.semantic_preservation.v1',
+      probeId: CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
+      action: 'verify_semantic_preservation',
+      eventType: CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE,
+      eventTypes: [CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE],
+      canonicalHashMatched: true,
+      semanticIntentPreserved: true,
+      droppedCanonicalNodes: false,
+      status: 'observed' as const,
+      sourceRef: 'canonical.semantic.hash'
+    };
+    const metamorphicDependencyEvidence = {
+      capabilityId: 'validation.metamorphic_semantic_hash.v1',
+      probeId: VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID,
+      action: 'verify_metamorphic_semantic_hash',
+      eventType: VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE,
+      eventTypes: [VALIDATION_METAMORPHIC_SEMANTIC_HASH_EVENT_TYPE],
+      metamorphicSemanticHashVerified: true,
+      metamorphicSemanticHashSchemaVersion: VALIDATION_METAMORPHIC_SEMANTIC_HASH_SCHEMA_VERSION,
+      metamorphicSemanticHashProfileId: VALIDATION_METAMORPHIC_SEMANTIC_HASH_PROFILE_ID,
+      metamorphicSemanticHashRuntimeFamily: VALIDATION_METAMORPHIC_SEMANTIC_HASH_RUNTIME_FAMILY,
+      metamorphicTransformSuiteId: VALIDATION_METAMORPHIC_SEMANTIC_HASH_TRANSFORM_SUITE_ID,
+      metamorphicBaseSemanticHash: VALIDATION_METAMORPHIC_SEMANTIC_HASH_BASE_HASH,
+      metamorphicVariantSemanticHash: VALIDATION_METAMORPHIC_SEMANTIC_HASH_VARIANT_HASH,
+      metamorphicHashMatched: true,
+      metamorphicTransformCount: 2,
+      metamorphicSemanticIntentPreserved: true,
+      metamorphicNoCanonicalDrift: true,
+      status: 'observed' as const,
+      sourceRef: 'validation.metamorphic_semantic_hash'
+    };
+    const replayState = {
+      replayStabilityVerified: true,
+      replayStabilitySchemaVersion: VALIDATION_REPLAY_STABILITY_SCHEMA_VERSION,
+      replayStabilityProfileId: VALIDATION_REPLAY_STABILITY_PROFILE_ID,
+      replayStabilityRuntimeFamily: VALIDATION_REPLAY_STABILITY_RUNTIME_FAMILY,
+      replayStabilitySeed: VALIDATION_REPLAY_STABILITY_SEED,
+      replayStabilityInputTimelineHash: VALIDATION_REPLAY_STABILITY_INPUT_TIMELINE_HASH,
+      replayStabilityBaselineTraceHash: VALIDATION_REPLAY_STABILITY_BASELINE_TRACE_HASH,
+      replayStabilityReplayTraceHash: VALIDATION_REPLAY_STABILITY_REPLAY_TRACE_HASH,
+      replayStabilityTraceMatched: true,
+      replayStabilityFrameCount: VALIDATION_REPLAY_STABILITY_FRAME_COUNT,
+      replayStabilityNoNondeterministicDrift: true,
+      replayStabilitySamePlan: true
+    };
+
+    expect(plan.status).toBe('ready');
+    expect(plan.requiredProbes.map((probe) => probe.id)).toEqual([
+      CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID,
+      VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID,
+      VALIDATION_REPLAY_STABILITY_REQUIRED_PROBE_ID
+    ]);
+
+    const dependencyOnly = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [canonicalDependencyEvidence, metamorphicDependencyEvidence],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const missingReplayState = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            canonicalDependencyEvidence,
+            metamorphicDependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_replay_stability',
+              eventType: VALIDATION_REPLAY_STABILITY_EVENT_TYPE,
+              eventTypes: [VALIDATION_REPLAY_STABILITY_EVENT_TYPE],
+              canonicalHashMatched: true,
+              metamorphicHashMatched: true,
+              status: 'observed' as const,
+              sourceRef: 'validation.replay_stability'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedReplayState = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            canonicalDependencyEvidence,
+            metamorphicDependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_replay_stability',
+              eventType: VALIDATION_REPLAY_STABILITY_EVENT_TYPE,
+              eventTypes: [VALIDATION_REPLAY_STABILITY_EVENT_TYPE],
+              ...replayState,
+              status: 'observed' as const,
+              sourceRef: 'validation.replay_stability'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(dependencyOnly.status).toBe('failed');
+    expect(dependencyOnly.requiredResults.find((entry) => entry.probeId === CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID))
+      .toMatchObject({ status: 'passed', planHash: plan.planHash });
+    expect(dependencyOnly.requiredResults.find((entry) => entry.probeId === VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID))
+      .toMatchObject({ status: 'passed', planHash: plan.planHash });
+    expect(dependencyOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingReplayState.status).toBe('failed');
+    expect(missingReplayState.requiredResults.find((entry) => entry.probeId === VALIDATION_METAMORPHIC_SEMANTIC_HASH_REQUIRED_PROBE_ID))
+      .toMatchObject({ status: 'passed', planHash: plan.planHash });
+    expect(missingReplayState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingReplayState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.replay_stability`,
+          status: 'failed',
+          message: expect.stringContaining('expected replayStabilityVerified=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.replay_stability`,
+          status: 'failed',
+          message: expect.stringContaining(`expected replayStabilitySeed=${VALIDATION_REPLAY_STABILITY_SEED}, observed <missing>`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.replay_stability`,
+          status: 'failed',
+          message: expect.stringContaining('expected replayStabilityTraceMatched=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedReplayState.status).toBe('passed');
+    expect(observedReplayState.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'passed',
+      planHash: plan.planHash
+    });
+  });
+
+  it('verifies final Oracle gate only from approved evidence bound to reviewed candidate and Skill revisions', () => {
+    const capabilityId = 'review.oracle_final_gate.v1';
+    const probeId = REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID;
+    const packages = [createReviewOracleFinalGatePackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    expect(plan.status).toBe('ready');
+    expect(plan.requiredProbes.map((probe) => probe.id)).toEqual([probeId]);
+
+    const providerEventOnly = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'generic_provider_event',
+              eventType: PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE,
+              eventTypes: [PROVIDER_DEEPSEEK_AUTHORITATIVE_DRAFT_EVENT_TYPE],
+              finalOracleP0Count: 0,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const receiptOnly = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'receipt_recorded',
+              eventType: 'oracle.receipt.recorded',
+              eventTypes: ['oracle.receipt.recorded'],
+              finalOracleP0Count: 0,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const requestSubmittedOnly = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'oracle_request_submitted',
+              eventType: 'oracle.request.submitted',
+              eventTypes: ['oracle.request.submitted'],
+              finalOracleResultId: 'agent_id_is_not_final_result',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const approvedMissingReviewedCommit = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            finalOracleGateObserved({
+              finalOracleReviewedCommitSha: undefined
+            })
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const approvedWithOldSkillDigest = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            finalOracleGateObserved({
+              finalOracleReviewedSkillRevision: 'sha256:old-skill-digest'
+            })
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const approvedMissingResultId = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [finalOracleGateObserved({ finalOracleResultId: undefined })],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const approvedCheckpointMismatch = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [finalOracleGateObserved({ finalOracleCheckpointId: 'stage4.other_checkpoint' })],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const approvedReviewedCommitIsReceipt = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [finalOracleGateObserved({ finalOracleReceiptCommitSha: 'abc1234reviewedcandidate' })],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const pendingFinalGate = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [finalOracleGateObserved({ finalOracleGateStatus: 'pending' })],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const approvedWithBlockingFinding = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [finalOracleGateObserved({ finalOracleP1Count: 1 })],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const spoofedCommitMatch = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            finalOracleGateObserved({
+              finalOracleReviewedCommitSha: 'def5678differentcandidate',
+              finalOracleResultMatchesReviewedCommit: true
+            })
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const spoofedSkillMatch = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            finalOracleGateObserved({
+              finalOracleReviewedSkillRevision: 'sha256:old-skill-digest',
+              finalOracleResultMatchesReviewedSkillRevision: true
+            })
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const approvedCurrentGate = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [finalOracleGateObserved()],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(providerEventOnly.status).toBe('failed');
+    expect(providerEventOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(providerEventOnly.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.final_gate_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${REVIEW_ORACLE_FINAL_GATE_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.final_gate_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected finalOracleGateApproved=true, observed <missing>')
+        })
+      ])
+    );
+    expect(receiptOnly.status).toBe('failed');
+    expect(receiptOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(receiptOnly.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.final_gate_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${REVIEW_ORACLE_FINAL_GATE_EVENT_TYPE} not observed`)
+        })
+      ])
+    );
+    expect(requestSubmittedOnly.status).toBe('failed');
+    expect(requestSubmittedOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(requestSubmittedOnly.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.final_gate_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${REVIEW_ORACLE_FINAL_GATE_EVENT_TYPE} not observed`)
+        })
+      ])
+    );
+    expect(approvedMissingReviewedCommit.status).toBe('failed');
+    expect(approvedMissingReviewedCommit.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.final_gate_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected finalOracleReviewedCommitShaPresent=true, observed false')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.final_gate_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected finalOracleResultMatchesReviewedCommit=true, observed false')
+        })
+      ])
+    );
+    expect(approvedMissingResultId.status).toBe('failed');
+    expect(approvedMissingResultId.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.final_gate_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected finalOracleResultIdPresent=true, observed false')
+        })
+      ])
+    );
+    expect(approvedCheckpointMismatch.status).toBe('failed');
+    expect(approvedCheckpointMismatch.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.final_gate_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected finalOracleCheckpointMatched=true, observed false')
+        })
+      ])
+    );
+    expect(approvedReviewedCommitIsReceipt.status).toBe('failed');
+    expect(approvedReviewedCommitIsReceipt.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.final_gate_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected finalOracleReviewedCommitIsNotReceipt=true, observed false')
+        })
+      ])
+    );
+    expect(pendingFinalGate.status).toBe('failed');
+    expect(pendingFinalGate.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.final_gate_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected finalOracleGateApproved=true, observed false')
+        })
+      ])
+    );
+    expect(approvedWithBlockingFinding.status).toBe('failed');
+    expect(approvedWithBlockingFinding.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.final_gate_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected finalOracleP1Count=0, observed 1')
+        })
+      ])
+    );
+    expect(spoofedCommitMatch.status).toBe('failed');
+    expect(spoofedCommitMatch.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.final_gate_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected finalOracleResultMatchesReviewedCommit=true, observed false')
+        })
+      ])
+    );
+    expect(spoofedSkillMatch.status).toBe('failed');
+    expect(spoofedSkillMatch.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.final_gate_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected finalOracleResultMatchesReviewedSkillRevision=true, observed false')
+        })
+      ])
+    );
+    expect(approvedWithOldSkillDigest.status).toBe('failed');
+    expect(approvedWithOldSkillDigest.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.final_gate_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected finalOracleResultMatchesReviewedSkillRevision=true, observed false')
+        })
+      ])
+    );
+    expect(approvedCurrentGate.status).toBe('passed');
+    expect(approvedCurrentGate.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'passed',
+      planHash: plan.planHash
+    });
+  });
+
+  it('verifies user acceptance gate only from accepted evidence bound to candidate and Skill revisions', () => {
+    const capabilityId = 'validation.user_acceptance_gate.v1';
+    const probeId = VALIDATION_USER_ACCEPTANCE_GATE_REQUIRED_PROBE_ID;
+    const packages = [createReviewOracleFinalGatePackageContract(), createValidationUserAcceptanceGatePackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    expect(plan.status).toBe('ready');
+    expect(plan.requiredProbes.map((probe) => probe.id)).toEqual([REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID, probeId]);
+
+    const dependencyOnly = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [finalOracleGateObserved()],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const genericGameWonOnly = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            finalOracleGateObserved(),
+            {
+              capabilityId,
+              probeId,
+              action: 'game_won',
+              eventType: 'game.won',
+              eventTypes: ['game.won'],
+              userAcceptanceDecision: VALIDATION_USER_ACCEPTANCE_GATE_DECISION,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const ordinaryReceiptOnly = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            finalOracleGateObserved(),
+            {
+              capabilityId,
+              probeId,
+              action: 'receipt_recorded',
+              eventType: 'oracle.receipt.recorded',
+              eventTypes: ['oracle.receipt.recorded'],
+              userAcceptanceDecision: VALIDATION_USER_ACCEPTANCE_GATE_DECISION,
+              userAcceptanceBlockingFindingCount: 0,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const p0Only = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            finalOracleGateObserved(),
+            {
+              capabilityId,
+              probeId,
+              action: 'p0_count_only',
+              eventType: VALIDATION_USER_ACCEPTANCE_GATE_EVENT_TYPE,
+              eventTypes: [VALIDATION_USER_ACCEPTANCE_GATE_EVENT_TYPE],
+              finalOracleP0Count: 0,
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const missingAcceptedCommit = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [finalOracleGateObserved(), userAcceptanceGateObserved({ userAcceptanceAcceptedCommitSha: undefined })],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const acceptedCommitMismatch = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            finalOracleGateObserved(),
+            userAcceptanceGateObserved({
+              userAcceptanceAcceptedCommitSha: 'def5678differentcandidate',
+              userAcceptanceResultMatchesAcceptedCommit: true
+            })
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const skillDigestMismatch = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            finalOracleGateObserved(),
+            userAcceptanceGateObserved({
+              userAcceptanceAcceptedSkillRevision: 'sha256:old-skill-digest',
+              userAcceptanceResultMatchesAcceptedSkillRevision: true
+            })
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const checkpointMismatch = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [finalOracleGateObserved(), userAcceptanceGateObserved({ userAcceptanceCheckpointId: 'stage4.other_checkpoint' })],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const acceptedCommitIsReceipt = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            finalOracleGateObserved(),
+            userAcceptanceGateObserved({ userAcceptanceReceiptCommitSha: 'abc1234acceptedcandidate' })
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const pendingFinalOracleGate = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            finalOracleGateObserved(),
+            userAcceptanceGateObserved({ userAcceptanceFinalOracleGateStatus: 'pending' })
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const blockingFindingPresent = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [finalOracleGateObserved(), userAcceptanceGateObserved({ userAcceptanceBlockingFindingCount: 1 })],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const acceptedCurrentGate = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [finalOracleGateObserved(), userAcceptanceGateObserved()],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(dependencyOnly.status).toBe('failed');
+    expect(dependencyOnly.requiredResults.find((entry) => entry.probeId === REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed',
+      planHash: plan.planHash
+    });
+    expect(dependencyOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericGameWonOnly.status).toBe('failed');
+    expect(genericGameWonOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(ordinaryReceiptOnly.status).toBe('failed');
+    expect(ordinaryReceiptOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(p0Only.status).toBe('failed');
+    expect(p0Only.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.user_acceptance_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected userAcceptanceGateAccepted=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.user_acceptance_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected userAcceptanceResultMatchesAcceptedCommit=true, observed false')
+        })
+      ])
+    );
+    expect(missingAcceptedCommit.status).toBe('failed');
+    expect(missingAcceptedCommit.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.user_acceptance_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected userAcceptanceAcceptedCommitShaPresent=true, observed false')
+        })
+      ])
+    );
+    expect(acceptedCommitMismatch.status).toBe('failed');
+    expect(acceptedCommitMismatch.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.user_acceptance_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected userAcceptanceResultMatchesAcceptedCommit=true, observed false')
+        })
+      ])
+    );
+    expect(skillDigestMismatch.status).toBe('failed');
+    expect(skillDigestMismatch.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.user_acceptance_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected userAcceptanceResultMatchesAcceptedSkillRevision=true, observed false')
+        })
+      ])
+    );
+    expect(checkpointMismatch.status).toBe('failed');
+    expect(checkpointMismatch.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.user_acceptance_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected userAcceptanceCheckpointMatched=true, observed false')
+        })
+      ])
+    );
+    expect(acceptedCommitIsReceipt.status).toBe('failed');
+    expect(acceptedCommitIsReceipt.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.user_acceptance_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected userAcceptanceAcceptedCommitIsNotReceipt=true, observed false')
+        })
+      ])
+    );
+    expect(pendingFinalOracleGate.status).toBe('failed');
+    expect(pendingFinalOracleGate.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.user_acceptance_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected userAcceptanceFinalOracleGateApproved=true, observed false')
+        })
+      ])
+    );
+    expect(blockingFindingPresent.status).toBe('failed');
+    expect(blockingFindingPresent.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.user_acceptance_bound_to_candidate_and_skill`,
+          status: 'failed',
+          message: expect.stringContaining('expected userAcceptanceBlockingFindingCount=0, observed 1')
+        })
+      ])
+    );
+    expect(acceptedCurrentGate.status).toBe('passed');
+    expect(acceptedCurrentGate.requiredResults.find((entry) => entry.probeId === REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed',
+      planHash: plan.planHash
+    });
+    expect(acceptedCurrentGate.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'passed',
+      planHash: plan.planHash
+    });
+  });
+
+  it('keeps wrong-plan final Oracle gate evidence from satisfying the current QA plan', () => {
+    const capabilityId = 'review.oracle_final_gate.v1';
+    const probeId = REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID;
+    const packages = [createReviewOracleFinalGatePackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const currentPlanProbeResults = buildCapabilityQaProbeResultsFromRuntimeEvidence({
+      plan,
+      evidence: {
+        status: 'PASSED',
+        observed: [finalOracleGateObserved()],
+        missingProbeIds: [],
+        mismatches: []
+      }
+    });
+    const report = evaluateCapabilityQaReport({
+      plan,
+      requirePlanScopedResults: true,
+      probeResults: currentPlanProbeResults.map((result) => (result.probeId === probeId ? { ...result, planHash: 'wrong_final_oracle_plan_hash' } : result))
+    });
+
+    expect(report.status).toBe('failed');
+    expect(report.missingRequiredProbeIds).toEqual([probeId]);
+    expect(report.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.plan_hash`,
+          failureKind: 'PLAN_MISMATCH',
+          capabilityId,
+          expectedPlanHash: plan.planHash,
+          actualPlanHash: 'wrong_final_oracle_plan_hash',
+          resultSource: 'probe_result',
+          status: 'failed'
+        })
+      ])
+    });
+  });
+
+  it('keeps stale weapon supply probe evidence from satisfying the current QA plan', () => {
+    const capabilityId = 'pickup.weapon_supply.v1';
+    const probeId = PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID;
+    const packages = [
+      createCollisionPlatformPackageContract(),
+      createPickupCollectiblePackageContract(),
+      createDefaultStraightSingleWeaponPackageContract(),
+      createPickupWeaponSupplyPackageContract()
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const currentPlanProbeResults = buildCapabilityQaProbeResultsFromRuntimeEvidence({
+      plan,
+      evidence: {
+        status: 'PASSED',
+        observed: [
+          {
+            capabilityId: 'collision.platform.v1',
+            probeId: COLLISION_PLATFORM_REQUIRED_PROBE_ID,
+            action: 'collide',
+            eventType: 'collision.platform.grounded',
+            eventTypes: ['collision.platform.grounded'],
+            status: 'observed'
+          },
+          {
+            capabilityId: 'pickup.collectible.v1',
+            probeId: PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+            action: 'collect',
+            eventType: 'pickup.collectible.collected',
+            eventTypes: ['pickup.collectible.collected', 'pickup.collectible.state_changed'],
+            pickupCollected: true,
+            pickupConsumed: true,
+            pickupStateChanged: true,
+            status: 'observed'
+          },
+          {
+            capabilityId: 'weapon.default_straight_single.v1',
+            probeId: DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
+            action: 'fire',
+            eventType: 'player.fired',
+            eventTypes: ['player.fired', 'projectile.spawned'],
+            status: 'observed'
+          },
+          {
+            capabilityId,
+            probeId,
+            action: 'collect_weapon_supply',
+            eventType: PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
+            eventTypes: [PICKUP_WEAPON_SUPPLY_EVENT_TYPE, 'pickup.collectible.collected'],
+            weaponSupplyAvailable: true,
+            weaponSupplyNodeId: PICKUP_WEAPON_SUPPLY_NODE_ID,
+            weaponSupplyPickupId: PICKUP_WEAPON_SUPPLY_PICKUP_ID,
+            weaponSupplyWeaponId: PICKUP_WEAPON_SUPPLY_WEAPON_ID,
+            weaponSupplyCollected: true,
+            weaponSupplyConsumed: true,
+            weaponSupplyGranted: true,
+            status: 'observed'
+          }
+        ],
+        missingProbeIds: [],
+        mismatches: []
+      }
+    });
+    expect(currentPlanProbeResults.every((result) => result.planHash === plan.planHash)).toBe(true);
+    const unscopedProbeResults = currentPlanProbeResults.map((result) => {
+      if (result.probeId !== probeId) {
+        return result;
+      }
+      const { planHash: _planHash, ...unscopedResult } = result;
+      return unscopedResult;
+    });
+    const probeResults = currentPlanProbeResults.map((result) => (result.probeId === probeId ? { ...result, planHash: 'stale_plan_hash' } : result));
+    const unscopedReport = evaluateCapabilityQaReport({ plan, probeResults: unscopedProbeResults, requirePlanScopedResults: true });
+    const report = evaluateCapabilityQaReport({ plan, probeResults, requirePlanScopedResults: true });
+
+    expect(unscopedReport.status).toBe('failed');
+    expect(unscopedReport.missingRequiredProbeIds).toEqual([probeId]);
+    expect(unscopedReport.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.plan_hash`,
+          failureKind: 'PLAN_SCOPE_REQUIRED',
+          capabilityId,
+          expectedPlanHash: plan.planHash,
+          actualPlanHash: '<missing>',
+          resultSource: 'probe_result',
+          status: 'failed'
+        })
+      ])
+    });
+    expect(report.status).toBe('failed');
+    expect(report.missingRequiredProbeIds).toEqual([probeId]);
+    for (const dependencyProbeId of [
+      COLLISION_PLATFORM_REQUIRED_PROBE_ID,
+      PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+      DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID
+    ]) {
+      expect(report.requiredResults.find((entry) => entry.probeId === dependencyProbeId)).toMatchObject({
+        status: 'passed',
+        planHash: plan.planHash
+      });
+    }
+    expect(report.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.plan_hash`,
+          failureKind: 'PLAN_MISMATCH',
+          capabilityId,
+          expectedPlanHash: plan.planHash,
+          actualPlanHash: 'stale_plan_hash',
+          resultSource: 'probe_result',
+          status: 'failed',
+          message: expect.stringContaining('expected')
+        })
+      ])
+    });
+  });
+
+  it('does not treat stale dependency probe evidence as current weapon supply dependency success', () => {
+    const capabilityId = 'pickup.weapon_supply.v1';
+    const probeId = PICKUP_WEAPON_SUPPLY_REQUIRED_PROBE_ID;
+    const packages = [
+      createCollisionPlatformPackageContract(),
+      createPickupCollectiblePackageContract(),
+      createDefaultStraightSingleWeaponPackageContract(),
+      createPickupWeaponSupplyPackageContract()
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const currentPlanProbeResults = buildCapabilityQaProbeResultsFromRuntimeEvidence({
+      plan,
+      evidence: {
+        status: 'PASSED',
+        observed: [
+          {
+            capabilityId: 'collision.platform.v1',
+            probeId: COLLISION_PLATFORM_REQUIRED_PROBE_ID,
+            action: 'collide',
+            eventType: 'collision.platform.grounded',
+            eventTypes: ['collision.platform.grounded'],
+            status: 'observed'
+          },
+          {
+            capabilityId: 'pickup.collectible.v1',
+            probeId: PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID,
+            action: 'collect',
+            eventType: 'pickup.collectible.collected',
+            eventTypes: ['pickup.collectible.collected', 'pickup.collectible.state_changed'],
+            pickupCollected: true,
+            pickupConsumed: true,
+            pickupStateChanged: true,
+            status: 'observed'
+          },
+          {
+            capabilityId: 'weapon.default_straight_single.v1',
+            probeId: DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
+            action: 'fire',
+            eventType: 'player.fired',
+            eventTypes: ['player.fired', 'projectile.spawned'],
+            status: 'observed'
+          },
+          {
+            capabilityId,
+            probeId,
+            action: 'collect_weapon_supply',
+            eventType: PICKUP_WEAPON_SUPPLY_EVENT_TYPE,
+            eventTypes: [PICKUP_WEAPON_SUPPLY_EVENT_TYPE, 'pickup.collectible.collected'],
+            weaponSupplyAvailable: true,
+            weaponSupplyNodeId: PICKUP_WEAPON_SUPPLY_NODE_ID,
+            weaponSupplyPickupId: PICKUP_WEAPON_SUPPLY_PICKUP_ID,
+            weaponSupplyWeaponId: PICKUP_WEAPON_SUPPLY_WEAPON_ID,
+            weaponSupplyCollected: true,
+            weaponSupplyConsumed: true,
+            weaponSupplyGranted: true,
+            status: 'observed'
+          }
+        ],
+        missingProbeIds: [],
+        mismatches: []
+      }
+    });
+    expect(currentPlanProbeResults.every((result) => result.planHash === plan.planHash)).toBe(true);
+    const probeResults = currentPlanProbeResults.map((result) =>
+      result.probeId === PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID ? { ...result, planHash: 'stale_dependency_plan_hash' } : result
+    );
+    const report = evaluateCapabilityQaReport({ plan, probeResults, requirePlanScopedResults: true });
+
+    expect(report.status).toBe('failed');
+    expect(report.missingRequiredProbeIds).toEqual([PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID]);
+    expect(report.requiredResults.find((entry) => entry.probeId === PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'failed',
+      assertionResults: expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${PICKUP_COLLECTIBLE_REQUIRED_PROBE_ID}.plan_hash`,
+          failureKind: 'PLAN_MISMATCH',
+          capabilityId: 'pickup.collectible.v1',
+          expectedPlanHash: plan.planHash,
+          actualPlanHash: 'stale_dependency_plan_hash',
+          resultSource: 'probe_result',
+          status: 'failed',
+          message: expect.stringContaining('stale_dependency_plan_hash')
+        })
+      ])
+    });
+    expect(report.requiredResults.find((entry) => entry.probeId === probeId)).toMatchObject({
+      status: 'passed',
+      planHash: plan.planHash
+    });
+  });
+
+  it('does not verify artifact lineage no-manual-patch when lineage evidence lacks no-manual-patch state fields', () => {
+    const capabilityId = 'artifact.lineage_no_manual_patch.v1';
+    const probeId = ARTIFACT_LINEAGE_NO_MANUAL_PATCH_REQUIRED_PROBE_ID;
+    const lineagePackage = createArtifactLineageNoManualPatchPackageContract();
+    const packages = [lineagePackage];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingNoManualPatchState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_lineage',
+              eventType: ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
+              eventTypes: [ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE],
+              sourceRef: 'artifact.lineage.hash',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedNoManualPatchState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_lineage',
+              eventType: ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE,
+              eventTypes: [ARTIFACT_LINEAGE_NO_MANUAL_PATCH_EVENT_TYPE],
+              pipelineProduced: true,
+              manualPatchDetected: false,
+              lineageVerified: true,
+              sourceRef: 'artifact.lineage.hash',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingNoManualPatchState.status).toBe('failed');
+    expect(missingNoManualPatchState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingNoManualPatchState.requiredResults[0]?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.no_manual_patch`,
+        status: 'failed',
+        message: expect.stringContaining('expected pipelineProduced=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.no_manual_patch`,
+        status: 'failed',
+        message: expect.stringContaining('expected manualPatchDetected=false, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.no_manual_patch`,
+        status: 'failed',
+        message: expect.stringContaining('expected lineageVerified=true, observed <missing>')
+      })
+    ]));
+    expect(observedNoManualPatchState.status).toBe('passed');
+  });
+
+  it('does not verify artifact no-hidden-script when module-load evidence lacks manifest state fields', () => {
+    const capabilityId = 'artifact.no_hidden_script.v1';
+    const probeId = ARTIFACT_NO_HIDDEN_SCRIPT_REQUIRED_PROBE_ID;
+    const noHiddenScriptPackage = createArtifactNoHiddenScriptPackageContract();
+    const packages = [noHiddenScriptPackage];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingManifestState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_no_hidden_script',
+              eventType: ARTIFACT_NO_HIDDEN_SCRIPT_EVENT_TYPE,
+              eventTypes: [ARTIFACT_NO_HIDDEN_SCRIPT_EVENT_TYPE],
+              sourceRef: 'runtime.manifest.module_load_receipt',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedManifestState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_no_hidden_script',
+              eventType: ARTIFACT_NO_HIDDEN_SCRIPT_EVENT_TYPE,
+              eventTypes: [ARTIFACT_NO_HIDDEN_SCRIPT_EVENT_TYPE],
+              declaredModulesOnly: true,
+              hiddenScriptDetected: false,
+              moduleLoadManifestVerified: true,
+              sourceRef: 'runtime.manifest.module_load_receipt',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingManifestState.status).toBe('failed');
+    expect(missingManifestState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingManifestState.requiredResults[0]?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.no_hidden_script`,
+        status: 'failed',
+        message: expect.stringContaining('expected declaredModulesOnly=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.no_hidden_script`,
+        status: 'failed',
+        message: expect.stringContaining('expected hiddenScriptDetected=false, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.no_hidden_script`,
+        status: 'failed',
+        message: expect.stringContaining('expected moduleLoadManifestVerified=true, observed <missing>')
+      })
+    ]));
+    expect(observedManifestState.status).toBe('passed');
+  });
+
+  it('does not verify camera bounds clamp when scroll evidence lacks boundary state fields', () => {
+    const capabilityId = 'camera.bounds_clamp.v1';
+    const probeId = CAMERA_BOUNDS_CLAMP_REQUIRED_PROBE_ID;
+    const packageContract = createCameraBoundsClampPackageContract();
+    const packages = [packageContract];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingBoundaryState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_camera_bounds',
+              eventType: CAMERA_BOUNDS_CLAMP_EVENT_TYPE,
+              eventTypes: [CAMERA_BOUNDS_CLAMP_EVENT_TYPE, 'camera.side_follow.active'],
+              sourceRef: 'runtime.camera.bounds',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedBoundaryState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_camera_bounds',
+              eventType: CAMERA_BOUNDS_CLAMP_EVENT_TYPE,
+              eventTypes: [CAMERA_BOUNDS_CLAMP_EVENT_TYPE, 'camera.side_follow.active'],
+              cameraWithinWorldBounds: true,
+              leftBoundaryClamped: true,
+              rightBoundaryClamped: true,
+              sourceRef: 'runtime.camera.bounds',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingBoundaryState.status).toBe('failed');
+    expect(missingBoundaryState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingBoundaryState.requiredResults[0]?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.bounds_clamped`,
+        status: 'failed',
+        message: expect.stringContaining('expected cameraWithinWorldBounds=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.bounds_clamped`,
+        status: 'failed',
+        message: expect.stringContaining('expected leftBoundaryClamped=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.bounds_clamped`,
+        status: 'failed',
+        message: expect.stringContaining('expected rightBoundaryClamped=true, observed <missing>')
+      })
+    ]));
+    expect(observedBoundaryState.status).toBe('passed');
+  });
+
+  it('does not verify canonical semantic preservation when evidence lacks semantic state fields', () => {
+    const capabilityId = 'canonical.semantic_preservation.v1';
+    const probeId = CANONICAL_SEMANTIC_PRESERVATION_REQUIRED_PROBE_ID;
+    const packageContract = createCanonicalSemanticPreservationPackageContract();
+    const packages = [packageContract];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingSemanticState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_semantic_preservation',
+              eventType: CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE,
+              eventTypes: [CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE],
+              sourceRef: 'canonical.semantic.hash',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedSemanticState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_semantic_preservation',
+              eventType: CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE,
+              eventTypes: [CANONICAL_SEMANTIC_PRESERVATION_EVENT_TYPE],
+              canonicalHashMatched: true,
+              semanticIntentPreserved: true,
+              droppedCanonicalNodes: false,
+              sourceRef: 'canonical.semantic.hash',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingSemanticState.status).toBe('failed');
+    expect(missingSemanticState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingSemanticState.requiredResults[0]?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.semantic_preserved`,
+        status: 'failed',
+        message: expect.stringContaining('expected canonicalHashMatched=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.semantic_preserved`,
+        status: 'failed',
+        message: expect.stringContaining('expected semanticIntentPreserved=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.semantic_preserved`,
+        status: 'failed',
+        message: expect.stringContaining('expected droppedCanonicalNodes=false, observed <missing>')
+      })
+    ]));
+    expect(observedSemanticState.status).toBe('passed');
+  });
+
+  it('does not verify collision damage affinity when evidence lacks matrix state fields', () => {
+    const capabilityId = 'collision.damage_affinity_matrix.v1';
+    const probeId = COLLISION_DAMAGE_AFFINITY_MATRIX_REQUIRED_PROBE_ID;
+    const packageContract = createCollisionDamageAffinityMatrixPackageContract();
+    const packages = [packageContract];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingAffinityState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_damage_affinity_matrix',
+              eventType: COLLISION_DAMAGE_AFFINITY_MATRIX_EVENT_TYPE,
+              eventTypes: [COLLISION_DAMAGE_AFFINITY_MATRIX_EVENT_TYPE],
+              sourceRef: 'runtime.damage_affinity.matrix',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedAffinityState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_damage_affinity_matrix',
+              eventType: COLLISION_DAMAGE_AFFINITY_MATRIX_EVENT_TYPE,
+              eventTypes: [COLLISION_DAMAGE_AFFINITY_MATRIX_EVENT_TYPE],
+              playerProjectilesDamageEnemies: true,
+              playerProjectilesDamagePlayer: false,
+              enemyProjectilesDamagePlayer: true,
+              enemyProjectilesDamageEnemies: false,
+              hazardsDamagePlayer: true,
+              hazardsDamageEnemies: false,
+              sourceRef: 'runtime.damage_affinity.matrix',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingAffinityState.status).toBe('failed');
+    expect(missingAffinityState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingAffinityState.requiredResults[0]?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.affinity_matrix_enforced`,
+        status: 'failed',
+        message: expect.stringContaining('expected playerProjectilesDamageEnemies=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.affinity_matrix_enforced`,
+        status: 'failed',
+        message: expect.stringContaining('expected playerProjectilesDamagePlayer=false, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.affinity_matrix_enforced`,
+        status: 'failed',
+        message: expect.stringContaining('expected enemyProjectilesDamagePlayer=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.affinity_matrix_enforced`,
+        status: 'failed',
+        message: expect.stringContaining('expected hazardsDamageEnemies=false, observed <missing>')
+      })
+    ]));
+    expect(observedAffinityState.status).toBe('passed');
+  });
+
+  it('does not verify enemy boss attack pattern when evidence lacks runtime pattern state fields', () => {
+    const capabilityId = 'enemy.boss_attack_pattern.v1';
+    const probeId = ENEMY_BOSS_ATTACK_PATTERN_REQUIRED_PROBE_ID;
+    const packageContract = createEnemyBossAttackPatternPackageContract();
+    const packages = [packageContract];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingPatternState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_boss_attack_pattern',
+              eventType: ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE,
+              eventTypes: [ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE],
+              sourceRef: 'runtime.boss.attack_pattern',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedPatternState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_boss_attack_pattern',
+              eventType: ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE,
+              eventTypes: [ENEMY_BOSS_ATTACK_PATTERN_EVENT_TYPE],
+              bossAttackPatternActive: true,
+              bossAttackPhaseId: ENEMY_BOSS_ATTACK_PATTERN_PHASE_ID,
+              bossAttackPatternId: ENEMY_BOSS_ATTACK_PATTERN_PATTERN_ID,
+              bossAttackCadenceMs: ENEMY_BOSS_ATTACK_PATTERN_CADENCE_MS,
+              bossAttackTargetsPlayer: true,
+              sourceRef: 'runtime.boss.attack_pattern',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingPatternState.status).toBe('failed');
+    expect(missingPatternState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingPatternState.requiredResults[0]?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.pattern_state_verified`,
+        status: 'failed',
+        message: expect.stringContaining('expected bossAttackPatternActive=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.pattern_state_verified`,
+        status: 'failed',
+        message: expect.stringContaining(`expected bossAttackPhaseId=${ENEMY_BOSS_ATTACK_PATTERN_PHASE_ID}, observed <missing>`)
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.pattern_state_verified`,
+        status: 'failed',
+        message: expect.stringContaining(`expected bossAttackPatternId=${ENEMY_BOSS_ATTACK_PATTERN_PATTERN_ID}, observed <missing>`)
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.pattern_state_verified`,
+        status: 'failed',
+        message: expect.stringContaining('expected bossAttackTargetsPlayer=true, observed <missing>')
+      })
+    ]));
+    expect(observedPatternState.status).toBe('passed');
+  });
+
+  it('does not verify enemy boss lifecycle when evidence lacks runtime lifecycle state fields', () => {
+    const capabilityId = 'enemy.boss_lifecycle.v1';
+    const probeId = ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID;
+    const packageContract = createEnemyBossLifecyclePackageContract();
+    const packages = [packageContract];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingLifecycleState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_boss_lifecycle',
+              eventType: ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
+              eventTypes: [ENEMY_BOSS_LIFECYCLE_EVENT_TYPE],
+              sourceRef: 'runtime.boss.lifecycle',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedLifecycleState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_boss_lifecycle',
+              eventType: ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
+              eventTypes: [ENEMY_BOSS_LIFECYCLE_EVENT_TYPE],
+              bossLifecycleStarted: true,
+              bossEntityId: ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID,
+              bossMaxHealth: ENEMY_BOSS_LIFECYCLE_MAX_HEALTH,
+              bossHealthInitialized: true,
+              bossDefeated: true,
+              sourceRef: 'runtime.boss.lifecycle',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingLifecycleState.status).toBe('failed');
+    expect(missingLifecycleState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingLifecycleState.requiredResults[0]?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.lifecycle_verified`,
+        status: 'failed',
+        message: expect.stringContaining('expected bossLifecycleStarted=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.lifecycle_verified`,
+        status: 'failed',
+        message: expect.stringContaining(`expected bossEntityId=${ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID}, observed <missing>`)
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.lifecycle_verified`,
+        status: 'failed',
+        message: expect.stringContaining(`expected bossMaxHealth=${ENEMY_BOSS_LIFECYCLE_MAX_HEALTH}, observed <missing>`)
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.lifecycle_verified`,
+        status: 'failed',
+        message: expect.stringContaining('expected bossDefeated=true, observed <missing>')
+      })
+    ]));
+    expect(observedLifecycleState.status).toBe('passed');
+  });
+
+  it('does not verify enemy boss phase transition when evidence lacks runtime phase state fields', () => {
+    const capabilityId = 'enemy.boss_phase_transition.v1';
+    const probeId = ENEMY_BOSS_PHASE_TRANSITION_REQUIRED_PROBE_ID;
+    const packages = [createEnemyBossLifecyclePackageContract(), createEnemyBossPhaseTransitionPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingPhaseState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_boss_phase_transition',
+              eventType: ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE,
+              eventTypes: [ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE],
+              sourceRef: 'runtime.boss.phase_transition',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedPhaseState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_boss_phase_transition',
+              eventType: ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE,
+              eventTypes: [ENEMY_BOSS_PHASE_TRANSITION_EVENT_TYPE],
+              bossPhaseTransitioned: true,
+              bossPreviousPhaseId: ENEMY_BOSS_PHASE_TRANSITION_FROM_PHASE_ID,
+              bossCurrentPhaseId: ENEMY_BOSS_PHASE_TRANSITION_TO_PHASE_ID,
+              bossHealthThresholdRatio: ENEMY_BOSS_PHASE_TRANSITION_HEALTH_THRESHOLD_RATIO,
+              bossSpeedMultiplier: ENEMY_BOSS_PHASE_TRANSITION_SPEED_MULTIPLIER,
+              bossSpeedMultiplierApplied: true,
+              sourceRef: 'runtime.boss.phase_transition',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingPhaseState.status).toBe('failed');
+    expect(missingPhaseState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingPhaseState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.phase_transition_verified`,
+        status: 'failed',
+        message: expect.stringContaining('expected bossPhaseTransitioned=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.phase_transition_verified`,
+        status: 'failed',
+        message: expect.stringContaining(`expected bossPreviousPhaseId=${ENEMY_BOSS_PHASE_TRANSITION_FROM_PHASE_ID}, observed <missing>`)
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.phase_transition_verified`,
+        status: 'failed',
+        message: expect.stringContaining(`expected bossCurrentPhaseId=${ENEMY_BOSS_PHASE_TRANSITION_TO_PHASE_ID}, observed <missing>`)
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.phase_transition_verified`,
+        status: 'failed',
+        message: expect.stringContaining(`expected bossSpeedMultiplier=${ENEMY_BOSS_PHASE_TRANSITION_SPEED_MULTIPLIER}, observed <missing>`)
+      })
+    ]));
+    expect(observedPhaseState.status).toBe('passed');
+  });
+
+  it('does not verify enemy fixed turret when evidence lacks stationary turret state fields', () => {
+    const capabilityId = 'enemy.fixed_turret.v1';
+    const probeId = ENEMY_FIXED_TURRET_REQUIRED_PROBE_ID;
+    const packages = [createSpawnStaticPackageContract(), createCombatProjectilePackageContract(), createEnemyFixedTurretPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const missingTurretState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId: 'combat.projectile.v1',
+              probeId: COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
+              action: 'fire',
+              eventType: 'projectile.spawned',
+              eventTypes: ['projectile.spawned'],
+              sourceRef: 'runtime.projectile.spawn',
+              status: 'observed'
+            },
+            {
+              capabilityId: 'spawn.static.v1',
+              probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
+              action: 'reach_trigger',
+              eventType: 'spawn.static.triggered',
+              eventTypes: ['spawn.static.triggered'],
+              sourceRef: 'runtime.spawn.static',
+              status: 'observed'
+            },
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_fixed_turret',
+              eventType: ENEMY_FIXED_TURRET_EVENT_TYPE,
+              eventTypes: [ENEMY_FIXED_TURRET_EVENT_TYPE],
+              sourceRef: 'runtime.enemy.fixed_turret',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedTurretState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId: 'combat.projectile.v1',
+              probeId: COMBAT_PROJECTILE_REQUIRED_PROBE_ID,
+              action: 'fire',
+              eventType: 'projectile.spawned',
+              eventTypes: ['projectile.spawned'],
+              sourceRef: 'runtime.projectile.spawn',
+              status: 'observed'
+            },
+            {
+              capabilityId: 'spawn.static.v1',
+              probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
+              action: 'reach_trigger',
+              eventType: 'spawn.static.triggered',
+              eventTypes: ['spawn.static.triggered'],
+              sourceRef: 'runtime.spawn.static',
+              status: 'observed'
+            },
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_fixed_turret',
+              eventType: ENEMY_FIXED_TURRET_EVENT_TYPE,
+              eventTypes: [ENEMY_FIXED_TURRET_EVENT_TYPE],
+              fixedTurretSpawned: true,
+              fixedTurretEntityId: ENEMY_FIXED_TURRET_ENTITY_ID,
+              fixedTurretArchetypeId: ENEMY_FIXED_TURRET_ARCHETYPE_ID,
+              fixedTurretStationary: true,
+              fixedTurretTargetsPlayer: true,
+              fixedTurretProjectilePatternId: ENEMY_FIXED_TURRET_PROJECTILE_PATTERN_ID,
+              fixedTurretFireCadenceMs: ENEMY_FIXED_TURRET_FIRE_CADENCE_MS,
+              sourceRef: 'runtime.enemy.fixed_turret',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingTurretState.status).toBe('failed');
+    expect(missingTurretState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingTurretState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.fixed_turret_verified`,
+        status: 'failed',
+        message: expect.stringContaining('expected fixedTurretSpawned=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.fixed_turret_verified`,
+        status: 'failed',
+        message: expect.stringContaining(`expected fixedTurretEntityId=${ENEMY_FIXED_TURRET_ENTITY_ID}, observed <missing>`)
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.fixed_turret_verified`,
+        status: 'failed',
+        message: expect.stringContaining('expected fixedTurretStationary=true, observed <missing>')
+      }),
+      expect.objectContaining({
+        assertionId: `${probeId}.assertion.fixed_turret_verified`,
+        status: 'failed',
+        message: expect.stringContaining(`expected fixedTurretProjectilePatternId=${ENEMY_FIXED_TURRET_PROJECTILE_PATTERN_ID}, observed <missing>`)
+      })
+    ]));
+    expect(observedTurretState.status).toBe('passed');
+  });
+
+  it('does not verify enemy flying right entry when wave evidence lacks right-entry state fields', () => {
+    const capabilityId = 'enemy.flying_right_entry.v1';
+    const probeId = ENEMY_FLYING_RIGHT_ENTRY_REQUIRED_PROBE_ID;
+    const packages = [createSpawnStaticPackageContract(), createSpawnEnemyWavePackageContract(), createEnemyFlyingRightEntryPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, ['spawn.static.v1', 'spawn.enemy_wave.v1', capabilityId]),
+      packages
+    });
+    const missingRightEntryState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId: 'spawn.static.v1',
+              probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
+              action: 'spawn',
+              eventType: 'spawn.static.triggered',
+              eventTypes: ['spawn.static.triggered'],
+              sourceRef: 'runtime.spawn.static',
+              status: 'observed'
+            },
+            {
+              capabilityId: 'spawn.enemy_wave.v1',
+              probeId: SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+              action: 'spawn',
+              eventType: 'spawn.enemy_wave.ordered',
+              eventTypes: ['spawn.enemy_wave.ordered'],
+              orderedWaveSequence: true,
+              gateTriggered: true,
+              waveSpawned: true,
+              sequenceIndex: 0,
+              waveId: ENEMY_FLYING_RIGHT_ENTRY_WAVE_ID,
+              sourceRef: 'runtime.spawn.enemy_wave',
+              status: 'observed'
+            },
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_right_entry',
+              eventType: ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE,
+              eventTypes: [ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE],
+              sourceRef: 'runtime.enemy.flying_right_entry',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedRightEntryState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId: 'spawn.static.v1',
+              probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
+              action: 'spawn',
+              eventType: 'spawn.static.triggered',
+              eventTypes: ['spawn.static.triggered'],
+              sourceRef: 'runtime.spawn.static',
+              status: 'observed'
+            },
+            {
+              capabilityId: 'spawn.enemy_wave.v1',
+              probeId: SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+              action: 'spawn',
+              eventType: 'spawn.enemy_wave.ordered',
+              eventTypes: ['spawn.enemy_wave.ordered'],
+              orderedWaveSequence: true,
+              gateTriggered: true,
+              waveSpawned: true,
+              sequenceIndex: 0,
+              waveId: ENEMY_FLYING_RIGHT_ENTRY_WAVE_ID,
+              sourceRef: 'runtime.spawn.enemy_wave',
+              status: 'observed'
+            },
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_right_entry',
+              eventType: ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE,
+              eventTypes: [ENEMY_FLYING_RIGHT_ENTRY_EVENT_TYPE],
+              flyingRightEntrySpawned: true,
+              flyingRightEntryEnemyId: ENEMY_FLYING_RIGHT_ENTRY_ENEMY_ID,
+              flyingRightEntryArchetypeId: ENEMY_FLYING_RIGHT_ENTRY_ARCHETYPE_ID,
+              flyingRightEntrySegmentId: ENEMY_FLYING_RIGHT_ENTRY_SEGMENT_ID,
+              flyingRightEntryEnteredFromRight: true,
+              flyingRightEntryEntrySide: ENEMY_FLYING_RIGHT_ENTRY_ENTRY_SIDE,
+              flyingRightEntryMovementPatternId: ENEMY_FLYING_RIGHT_ENTRY_MOVEMENT_PATTERN_ID,
+              flyingRightEntryWaveId: ENEMY_FLYING_RIGHT_ENTRY_WAVE_ID,
+              sourceRef: 'runtime.enemy.flying_right_entry',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingRightEntryState.status).toBe('failed');
+    expect(missingRightEntryState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingRightEntryState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.right_entry_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected flyingRightEntrySpawned=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.right_entry_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`expected flyingRightEntryEntrySide=${ENEMY_FLYING_RIGHT_ENTRY_ENTRY_SIDE}, observed <missing>`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.right_entry_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`expected flyingRightEntryMovementPatternId=${ENEMY_FLYING_RIGHT_ENTRY_MOVEMENT_PATTERN_ID}, observed <missing>`)
+        })
+      ])
+    );
+    expect(observedRightEntryState.status).toBe('passed');
+  });
+
+  it('does not verify enemy patrol infantry when wave evidence lacks patrol state fields', () => {
+    const capabilityId = 'enemy.patrol_infantry.v1';
+    const probeId = ENEMY_PATROL_INFANTRY_REQUIRED_PROBE_ID;
+    const packages = [createSpawnStaticPackageContract(), createSpawnEnemyWavePackageContract(), createEnemyPatrolInfantryPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, ['spawn.static.v1', 'spawn.enemy_wave.v1', capabilityId]),
+      packages
+    });
+    const missingPatrolState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId: 'spawn.static.v1',
+              probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
+              action: 'spawn',
+              eventType: 'spawn.static.triggered',
+              eventTypes: ['spawn.static.triggered'],
+              sourceRef: 'runtime.spawn.static',
+              status: 'observed'
+            },
+            {
+              capabilityId: 'spawn.enemy_wave.v1',
+              probeId: SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+              action: 'spawn',
+              eventType: 'spawn.enemy_wave.ordered',
+              eventTypes: ['spawn.enemy_wave.ordered'],
+              orderedWaveSequence: true,
+              gateTriggered: true,
+              waveSpawned: true,
+              sequenceIndex: 0,
+              waveId: 'jungle_entrance_patrol_wave',
+              sourceRef: 'runtime.spawn.enemy_wave',
+              status: 'observed'
+            },
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_patrol_infantry',
+              eventType: ENEMY_PATROL_INFANTRY_EVENT_TYPE,
+              eventTypes: [ENEMY_PATROL_INFANTRY_EVENT_TYPE],
+              sourceRef: 'runtime.enemy.patrol_infantry',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedPatrolState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId: 'spawn.static.v1',
+              probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
+              action: 'spawn',
+              eventType: 'spawn.static.triggered',
+              eventTypes: ['spawn.static.triggered'],
+              sourceRef: 'runtime.spawn.static',
+              status: 'observed'
+            },
+            {
+              capabilityId: 'spawn.enemy_wave.v1',
+              probeId: SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+              action: 'spawn',
+              eventType: 'spawn.enemy_wave.ordered',
+              eventTypes: ['spawn.enemy_wave.ordered'],
+              orderedWaveSequence: true,
+              gateTriggered: true,
+              waveSpawned: true,
+              sequenceIndex: 0,
+              waveId: 'jungle_entrance_patrol_wave',
+              sourceRef: 'runtime.spawn.enemy_wave',
+              status: 'observed'
+            },
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_patrol_infantry',
+              eventType: ENEMY_PATROL_INFANTRY_EVENT_TYPE,
+              eventTypes: [ENEMY_PATROL_INFANTRY_EVENT_TYPE],
+              patrolInfantrySpawned: true,
+              patrolInfantryEnemyId: ENEMY_PATROL_INFANTRY_ENEMY_ID,
+              patrolInfantryArchetypeId: ENEMY_PATROL_INFANTRY_ARCHETYPE_ID,
+              patrolInfantrySegmentId: ENEMY_PATROL_INFANTRY_SEGMENT_ID,
+              patrolInfantryGrounded: true,
+              patrolInfantryMovementPatternId: ENEMY_PATROL_INFANTRY_MOVEMENT_PATTERN_ID,
+              patrolInfantryRouteId: ENEMY_PATROL_INFANTRY_ROUTE_ID,
+              sourceRef: 'runtime.enemy.patrol_infantry',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(missingPatrolState.status).toBe('failed');
+    expect(missingPatrolState.missingRequiredProbeIds).toEqual([probeId]);
+    expect(missingPatrolState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.patrol_infantry_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected patrolInfantrySpawned=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.patrol_infantry_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`expected patrolInfantrySegmentId=${ENEMY_PATROL_INFANTRY_SEGMENT_ID}, observed <missing>`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.patrol_infantry_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`expected patrolInfantryMovementPatternId=${ENEMY_PATROL_INFANTRY_MOVEMENT_PATTERN_ID}, observed <missing>`)
+        })
+      ])
+    );
+    expect(observedPatrolState.status).toBe('passed');
+  });
+
+  it('does not verify victory declaration when generic win evidence lacks declaration state fields', () => {
+    const capabilityId = 'feedback.victory_declaration.v1';
+    const probeId = FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID;
+    const packages = [createEnemyBossLifecyclePackageContract(), createFeedbackVictoryDeclarationPackageContract()];
+    const bossLifecycleEvidence = {
+      capabilityId: 'enemy.boss_lifecycle.v1',
+      probeId: ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID,
+      action: 'verify_boss_lifecycle',
+      eventType: ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
+      eventTypes: [ENEMY_BOSS_LIFECYCLE_EVENT_TYPE],
+      bossLifecycleStarted: true,
+      bossEntityId: ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID,
+      bossMaxHealth: ENEMY_BOSS_LIFECYCLE_MAX_HEALTH,
+      bossHealthInitialized: true,
+      bossDefeated: true,
+      sourceRef: 'runtime.enemy.boss_lifecycle',
+      status: 'observed' as const
+    };
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, ['enemy.boss_lifecycle.v1', capabilityId]),
+      packages
+    });
+    const genericWinOnly = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            bossLifecycleEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_victory_declaration',
+              eventType: 'game.won',
+              eventTypes: ['game.won', 'objective.completed'],
+              sourceRef: 'runtime.feedback.generic_win',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedDeclarationState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            bossLifecycleEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_victory_declaration',
+              eventType: FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
+              eventTypes: [FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE, 'game.won', 'objective.completed'],
+              victoryDeclarationShown: true,
+              victoryDeclarationText: FEEDBACK_VICTORY_DECLARATION_TEXT,
+              victoryDeclarationTrigger: FEEDBACK_VICTORY_DECLARATION_TRIGGER,
+              victoryDeclarationOutcome: FEEDBACK_VICTORY_DECLARATION_OUTCOME,
+              victoryDeclarationObjectiveCompleted: true,
+              sourceRef: 'runtime.feedback.victory_declaration',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericWinOnly.status).toBe('failed');
+    expect(genericWinOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericWinOnly.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.victory_declaration_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.victory_declaration_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected victoryDeclarationShown=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.victory_declaration_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`expected victoryDeclarationText=${FEEDBACK_VICTORY_DECLARATION_TEXT}, observed <missing>`)
+        })
+      ])
+    );
+    expect(observedDeclarationState.status).toBe('passed');
+  });
+
+  it('does not verify generation fallback fail-closed when generic generation receipt lacks policy state fields', () => {
+    const capabilityId = 'generation.fallback_policy_fail_closed.v1';
+    const probeId = GENERATION_FALLBACK_POLICY_FAIL_CLOSED_REQUIRED_PROBE_ID;
+    const packages = [createGenerationFallbackPolicyFailClosedPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const genericGenerationReceipt = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_fail_closed_policy',
+              eventType: 'generation.completed',
+              eventTypes: ['generation.completed', 'model.unavailable'],
+              sourceRef: 'generation.path.generic_receipt',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedFailClosedPolicy = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_fail_closed_policy',
+              eventType: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE,
+              eventTypes: [GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE, 'model.unavailable'],
+              fallbackPolicy: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_POLICY,
+              fallbackPolicyVerified: true,
+              undeclaredFallbackDetected: false,
+              fallbackOutputGenerated: false,
+              fallbackFailureCode: GENERATION_FALLBACK_POLICY_FAIL_CLOSED_ERROR_CODE,
+              sourceRef: 'generation.path.fail_closed_policy',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericGenerationReceipt.status).toBe('failed');
+    expect(genericGenerationReceipt.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericGenerationReceipt.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.fail_closed_policy`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${GENERATION_FALLBACK_POLICY_FAIL_CLOSED_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.fail_closed_policy`,
+          status: 'failed',
+          message: expect.stringContaining(`expected fallbackPolicy=${GENERATION_FALLBACK_POLICY_FAIL_CLOSED_POLICY}, observed <missing>`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.fail_closed_policy`,
+          status: 'failed',
+          message: expect.stringContaining('expected undeclaredFallbackDetected=false, observed <missing>')
+        })
+      ])
+    );
+    expect(observedFailClosedPolicy.status).toBe('passed');
+  });
+
+  it('does not verify validation fail-closed unknown nodes from generic validation errors without rejection state', () => {
+    const capabilityId = 'validation.fail_closed_unknown_nodes.v1';
+    const probeId = VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_REQUIRED_PROBE_ID;
+    const packages = [createValidationFailClosedUnknownNodesPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const genericValidationError = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_unknown_node_rejection',
+              eventType: 'dsl.validation.failed',
+              eventTypes: ['dsl.validation.failed', 'runtime.plan.invalid'],
+              sourceRef: 'dsl.validation.generic_error',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedUnknownNodeRejection = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_unknown_node_rejection',
+              eventType: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_EVENT_TYPE,
+              eventTypes: [VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_EVENT_TYPE, 'dsl.validation.failed'],
+              unknownNodesRejected: true,
+              unknownNodeValidationSchemaVersion: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_SCHEMA_VERSION,
+              unknownNodeFailureCode: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_ERROR_CODE,
+              unknownNodeAccepted: false,
+              fallbackRuntimeGenerated: false,
+              validatorFailedClosed: true,
+              unknownNodeKind: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_KIND,
+              unknownNodePath: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PATH,
+              unknownNodeProfileId: VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PROFILE_ID,
+              sourceRef: 'dsl.validation.fail_closed_unknown_nodes',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericValidationError.status).toBe('failed');
+    expect(genericValidationError.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericValidationError.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.fail_closed_unknown_nodes`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.fail_closed_unknown_nodes`,
+          status: 'failed',
+          message: expect.stringContaining('expected unknownNodesRejected=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.fail_closed_unknown_nodes`,
+          status: 'failed',
+          message: expect.stringContaining('expected fallbackRuntimeGenerated=false, observed <missing>')
+        })
+      ])
+    );
+    expect(observedUnknownNodeRejection.status).toBe('passed');
+  });
+
+  it('does not verify boss unlock when wave and boss evidence lacks unlock state fields', () => {
+    const capabilityId = 'goal.boss_unlock.v1';
+    const probeId = GOAL_BOSS_UNLOCK_REQUIRED_PROBE_ID;
+    const packages = [
+      createSpawnStaticPackageContract(),
+      createSpawnEnemyWavePackageContract(),
+      createEnemyBossLifecyclePackageContract(),
+      createGoalBossUnlockPackageContract()
+    ];
+    const spawnStaticEvidence = {
+      capabilityId: 'spawn.static.v1',
+      probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
+      action: 'spawn',
+      eventType: 'spawn.static.triggered',
+      eventTypes: ['spawn.static.triggered'],
+      sourceRef: 'runtime.spawn.static',
+      status: 'observed' as const
+    };
+    const spawnEnemyWaveEvidence = {
+      capabilityId: 'spawn.enemy_wave.v1',
+      probeId: SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+      action: 'spawn',
+      eventType: 'spawn.enemy_wave.ordered',
+      eventTypes: ['spawn.enemy_wave.ordered'],
+      orderedWaveSequence: true,
+      gateTriggered: true,
+      waveSpawned: true,
+      sequenceIndex: 0,
+      waveId: GOAL_BOSS_UNLOCK_WAVE_ID,
+      sourceRef: 'runtime.spawn.enemy_wave',
+      status: 'observed' as const
+    };
+    const bossLifecycleEvidence = {
+      capabilityId: 'enemy.boss_lifecycle.v1',
+      probeId: ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID,
+      action: 'verify_boss_lifecycle',
+      eventType: ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
+      eventTypes: [ENEMY_BOSS_LIFECYCLE_EVENT_TYPE],
+      bossLifecycleStarted: true,
+      bossEntityId: ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID,
+      bossMaxHealth: ENEMY_BOSS_LIFECYCLE_MAX_HEALTH,
+      bossHealthInitialized: true,
+      bossDefeated: true,
+      sourceRef: 'runtime.enemy.boss_lifecycle',
+      status: 'observed' as const
+    };
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const genericWaveAndBossEvidence = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            spawnStaticEvidence,
+            spawnEnemyWaveEvidence,
+            bossLifecycleEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'spawn',
+              eventType: 'spawn.enemy_wave.ordered',
+              eventTypes: ['spawn.enemy_wave.ordered', 'enemy.boss_lifecycle.verified'],
+              waveSpawned: true,
+              orderedWaveSequence: true,
+              sourceRef: 'runtime_plan.side_scrolling.waves.ordered_sequence',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedBossUnlock = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            spawnStaticEvidence,
+            spawnEnemyWaveEvidence,
+            bossLifecycleEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'unlock_boss',
+              eventType: GOAL_BOSS_UNLOCK_EVENT_TYPE,
+              eventTypes: [GOAL_BOSS_UNLOCK_EVENT_TYPE, 'spawn.enemy_wave.ordered', 'enemy.boss_lifecycle.verified'],
+              wavesCleared: true,
+              clearedWaveCount: GOAL_BOSS_UNLOCK_REQUIRED_WAVE_COUNT,
+              requiredWaveCount: GOAL_BOSS_UNLOCK_REQUIRED_WAVE_COUNT,
+              bossUnlockTriggered: true,
+              bossUnlockReason: GOAL_BOSS_UNLOCK_REASON,
+              bossEncounterUnlocked: true,
+              bossUnlockWaveId: GOAL_BOSS_UNLOCK_WAVE_ID,
+              bossUnlockBossEntityId: GOAL_BOSS_UNLOCK_BOSS_ENTITY_ID,
+              sourceRef: 'runtime.goal.boss_unlock',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericWaveAndBossEvidence.status).toBe('failed');
+    expect(genericWaveAndBossEvidence.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericWaveAndBossEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.boss_unlock_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${GOAL_BOSS_UNLOCK_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.boss_unlock_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected bossUnlockTriggered=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.boss_unlock_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`expected bossUnlockReason=${GOAL_BOSS_UNLOCK_REASON}, observed <missing>`)
+        })
+      ])
+    );
+    expect(observedBossUnlock.status).toBe('passed');
+  });
+
+  it('does not verify falling hazard area when generic hazard evidence lacks from-above state fields', () => {
+    const capabilityId = 'hazard.falling_area.v1';
+    const probeId = HAZARD_FALLING_AREA_REQUIRED_PROBE_ID;
+    const packages = [createHazardFallingAreaPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const genericHazardEvidence = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'spawn',
+              eventType: 'hazard.spawned',
+              eventTypes: ['hazard.spawned', 'collision.detected'],
+              sourceRef: 'runtime.hazard.generic_spawn',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedFallingArea = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_falling_area',
+              eventType: HAZARD_FALLING_AREA_EVENT_TYPE,
+              eventTypes: [HAZARD_FALLING_AREA_EVENT_TYPE, 'hazard.spawned'],
+              fallingAreaActive: true,
+              fallingAreaHazardId: HAZARD_FALLING_AREA_HAZARD_ID,
+              fallingAreaBossPhaseId: HAZARD_FALLING_AREA_BOSS_PHASE_ID,
+              fallingAreaPatternId: HAZARD_FALLING_AREA_PATTERN_ID,
+              fallingAreaDropsFromAbove: true,
+              fallingAreaArmed: true,
+              fallingAreaDamagesPlayer: true,
+              fallingAreaDamage: HAZARD_FALLING_AREA_DAMAGE,
+              fallingAreaTelegraphMs: HAZARD_FALLING_AREA_TELEGRAPH_MS,
+              sourceRef: 'runtime.hazard.falling_area',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericHazardEvidence.status).toBe('failed');
+    expect(genericHazardEvidence.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericHazardEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.falling_area_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${HAZARD_FALLING_AREA_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.falling_area_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected fallingAreaDropsFromAbove=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.falling_area_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`expected fallingAreaBossPhaseId=${HAZARD_FALLING_AREA_BOSS_PHASE_ID}, observed <missing>`)
+        })
+      ])
+    );
+    expect(observedFallingArea.status).toBe('passed');
+  });
+
+  it('does not verify timed explosion hazards from generic hazard or explosion evidence without timer causality state', () => {
+    const capabilityId = 'hazard.timed_explosion.v1';
+    const probeId = HAZARD_TIMED_EXPLOSION_REQUIRED_PROBE_ID;
+    const packages = [createHazardTimedExplosionPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const genericExplosionEvidence = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'explode',
+              eventType: 'explosion.triggered',
+              eventTypes: ['hazard.spawned', 'explosion.triggered'],
+              sourceRef: 'runtime.hazard.generic_explosion',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedTimedExplosion = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_timed_explosion',
+              eventType: HAZARD_TIMED_EXPLOSION_EVENT_TYPE,
+              eventTypes: [HAZARD_TIMED_EXPLOSION_EVENT_TYPE, 'explosion.triggered'],
+              timedExplosionActive: true,
+              timedExplosionHazardId: HAZARD_TIMED_EXPLOSION_HAZARD_ID,
+              timedExplosionTimerId: HAZARD_TIMED_EXPLOSION_TIMER_ID,
+              timedExplosionCountdownMs: HAZARD_TIMED_EXPLOSION_COUNTDOWN_MS,
+              timedExplosionElapsedMs: HAZARD_TIMED_EXPLOSION_COUNTDOWN_MS,
+              timedExplosionTriggerCondition: HAZARD_TIMED_EXPLOSION_TRIGGER_CONDITION,
+              timedExplosionTriggeredByTimer: true,
+              timedExplosionOccurred: true,
+              timedExplosionDamagesPlayer: true,
+              timedExplosionDamage: HAZARD_TIMED_EXPLOSION_DAMAGE,
+              timedExplosionRadius: HAZARD_TIMED_EXPLOSION_RADIUS,
+              sourceRef: 'runtime.hazard.timed_explosion',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericExplosionEvidence.status).toBe('failed');
+    expect(genericExplosionEvidence.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericExplosionEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.timed_explosion_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${HAZARD_TIMED_EXPLOSION_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.timed_explosion_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected timedExplosionTriggeredByTimer=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.timed_explosion_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`expected timedExplosionTriggerCondition=${HAZARD_TIMED_EXPLOSION_TRIGGER_CONDITION}, observed <missing>`)
+        })
+      ])
+    );
+    expect(observedTimedExplosion.status).toBe('passed');
+  });
+
+  it('does not verify checkpoint restore from checkpoint reached or restart events without retry restore state', () => {
+    const capabilityId = 'rules.checkpoint_restore.v1';
+    const probeId = RULES_CHECKPOINT_RESTORE_REQUIRED_PROBE_ID;
+    const packages = [createRulesCheckpointRestorePackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const genericCheckpointEvidence = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'reach_checkpoint',
+              eventType: 'checkpoint.reached',
+              eventTypes: ['checkpoint.reached', 'game.restarted'],
+              sourceRef: 'runtime.rules.generic_checkpoint',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedCheckpointRestore = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'restore_checkpoint',
+              eventType: RULES_CHECKPOINT_RESTORE_EVENT_TYPE,
+              eventTypes: [RULES_CHECKPOINT_RESTORE_DAMAGE_EVENT_TYPE, RULES_CHECKPOINT_RESTORE_EVENT_TYPE],
+              checkpointRestoreTriggeredByZeroHealth: true,
+              checkpointRestoreRetryConsumed: true,
+              checkpointRestoreRetryCountBefore: RULES_CHECKPOINT_RESTORE_RETRY_COUNT_BEFORE,
+              checkpointRestoreRetryCountAfter: RULES_CHECKPOINT_RESTORE_RETRY_COUNT_AFTER,
+              checkpointRestoreNearestCheckpointSelected: true,
+              checkpointRestoreCheckpointId: RULES_CHECKPOINT_RESTORE_CHECKPOINT_ID,
+              checkpointRestoreExpectedCheckpointId: RULES_CHECKPOINT_RESTORE_CHECKPOINT_ID,
+              checkpointRestorePositionMatched: true,
+              checkpointRestorePlayerRespawned: true,
+              checkpointRestoreFailureScreenShown: false,
+              sourceRef: 'runtime.rules.checkpoint_restore',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const wrongCheckpointRestore = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'restore_checkpoint',
+              eventType: RULES_CHECKPOINT_RESTORE_EVENT_TYPE,
+              eventTypes: [RULES_CHECKPOINT_RESTORE_DAMAGE_EVENT_TYPE, RULES_CHECKPOINT_RESTORE_EVENT_TYPE],
+              checkpointRestoreTriggeredByZeroHealth: true,
+              checkpointRestoreRetryConsumed: true,
+              checkpointRestoreRetryCountBefore: RULES_CHECKPOINT_RESTORE_RETRY_COUNT_BEFORE,
+              checkpointRestoreRetryCountAfter: RULES_CHECKPOINT_RESTORE_RETRY_COUNT_AFTER,
+              checkpointRestoreNearestCheckpointSelected: true,
+              checkpointRestoreCheckpointId: 'checkpoint_wrong_previous_area',
+              checkpointRestoreExpectedCheckpointId: RULES_CHECKPOINT_RESTORE_CHECKPOINT_ID,
+              checkpointRestorePositionMatched: true,
+              checkpointRestorePlayerRespawned: true,
+              checkpointRestoreFailureScreenShown: false,
+              sourceRef: 'runtime.rules.checkpoint_restore',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericCheckpointEvidence.status).toBe('failed');
+    expect(genericCheckpointEvidence.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericCheckpointEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.restored_checkpoint`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${RULES_CHECKPOINT_RESTORE_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.restored_checkpoint`,
+          status: 'failed',
+          message: expect.stringContaining('expected checkpointRestoreRetryConsumed=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.restored_checkpoint`,
+          status: 'failed',
+          message: expect.stringContaining(`expected checkpointRestoreCheckpointId=${RULES_CHECKPOINT_RESTORE_CHECKPOINT_ID}, observed <missing>`)
+        })
+      ])
+    );
+    expect(wrongCheckpointRestore.status).toBe('failed');
+    expect(wrongCheckpointRestore.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.restored_checkpoint`,
+          status: 'failed',
+          message: expect.stringContaining(`expected checkpointRestoreCheckpointId=${RULES_CHECKPOINT_RESTORE_CHECKPOINT_ID}`)
+        })
+      ])
+    );
+    expect(observedCheckpointRestore.status).toBe('passed');
+  });
+
+  it('does not verify encounter gate from ordered wave evidence without closed-entrance state', () => {
+    const capabilityId = 'rules.encounter_gate.v1';
+    const probeId = RULES_ENCOUNTER_GATE_REQUIRED_PROBE_ID;
+    const packages = [createSpawnStaticPackageContract(), createSpawnEnemyWavePackageContract(), createRulesEncounterGatePackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const dependencyEvidence: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: 'spawn.static.v1',
+        probeId: SPAWN_STATIC_REQUIRED_PROBE_ID,
+        action: 'spawn',
+        eventType: 'spawn.static.triggered',
+        eventTypes: ['spawn.static.triggered'],
+        sourceRef: 'runtime.spawn.static',
+        status: 'observed'
+      },
+      {
+        capabilityId: 'spawn.enemy_wave.v1',
+        probeId: SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID,
+        action: 'spawn',
+        eventType: 'spawn.enemy_wave.ordered',
+        eventTypes: ['spawn.enemy_wave.ordered'],
+        orderedWaveSequence: true,
+        gateTriggered: true,
+        waveSpawned: true,
+        sequenceIndex: RULES_ENCOUNTER_GATE_SEQUENCE_INDEX,
+        waveId: RULES_ENCOUNTER_GATE_WAVE_ID,
+        sourceRef: 'runtime.spawn.enemy_wave',
+        status: 'observed'
+      }
+    ];
+    const genericWaveEvidence = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'spawn_wave',
+              eventType: 'spawn.enemy_wave.ordered',
+              eventTypes: ['spawn.enemy_wave.ordered'],
+              orderedWaveSequence: true,
+              gateTriggered: true,
+              waveSpawned: true,
+              sequenceIndex: RULES_ENCOUNTER_GATE_SEQUENCE_INDEX,
+              waveId: RULES_ENCOUNTER_GATE_WAVE_ID,
+              sourceRef: 'runtime_plan.side_scrolling.waves.ordered_sequence',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const wrongOrderEvidence = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'close_gate',
+              eventType: RULES_ENCOUNTER_GATE_EVENT_TYPE,
+              eventTypes: [RULES_ENCOUNTER_GATE_EVENT_TYPE, 'spawn.enemy_wave.ordered'],
+              encounterGateClosedEntrance: true,
+              encounterGateGateId: RULES_ENCOUNTER_GATE_GATE_ID,
+              encounterGateEntranceId: RULES_ENCOUNTER_GATE_ENTRANCE_ID,
+              encounterGateClosedBeforeWaveSpawn: false,
+              encounterGateWaveSequenceBlockedUntilClosed: true,
+              encounterGateNextWaveId: RULES_ENCOUNTER_GATE_WAVE_ID,
+              encounterGateSequenceIndex: RULES_ENCOUNTER_GATE_SEQUENCE_INDEX,
+              encounterGatePlayerBacktrackingBlocked: true,
+              sourceRef: 'runtime.rules.encounter_gate',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedEncounterGate = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'close_gate',
+              eventType: RULES_ENCOUNTER_GATE_EVENT_TYPE,
+              eventTypes: [RULES_ENCOUNTER_GATE_EVENT_TYPE, 'spawn.enemy_wave.ordered'],
+              encounterGateClosedEntrance: true,
+              encounterGateGateId: RULES_ENCOUNTER_GATE_GATE_ID,
+              encounterGateEntranceId: RULES_ENCOUNTER_GATE_ENTRANCE_ID,
+              encounterGateClosedBeforeWaveSpawn: true,
+              encounterGateWaveSequenceBlockedUntilClosed: true,
+              encounterGateNextWaveId: RULES_ENCOUNTER_GATE_WAVE_ID,
+              encounterGateSequenceIndex: RULES_ENCOUNTER_GATE_SEQUENCE_INDEX,
+              encounterGatePlayerBacktrackingBlocked: true,
+              sourceRef: 'runtime.rules.encounter_gate',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericWaveEvidence.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericWaveEvidence.requiredResults.find((entry) => entry.probeId === SPAWN_STATIC_REQUIRED_PROBE_ID)).toMatchObject({ status: 'passed' });
+    expect(genericWaveEvidence.requiredResults.find((entry) => entry.probeId === SPAWN_ENEMY_WAVE_REQUIRED_PROBE_ID)).toMatchObject({ status: 'passed' });
+    expect(genericWaveEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.closed_before_wave`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${RULES_ENCOUNTER_GATE_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.closed_before_wave`,
+          status: 'failed',
+          message: expect.stringContaining('expected encounterGateClosedEntrance=true, observed <missing>')
+        })
+      ])
+    );
+    expect(wrongOrderEvidence.status).toBe('failed');
+    expect(wrongOrderEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.closed_before_wave`,
+          status: 'failed',
+          message: expect.stringContaining('expected encounterGateClosedBeforeWaveSpawn=true, observed false')
+        })
+      ])
+    );
+    expect(observedEncounterGate.status).toBe('passed');
+  });
+
+  it('does not verify retry count from zero-health or checkpoint evidence without retry budget state', () => {
+    const capabilityId = 'rules.retry_count.v1';
+    const probeId = RULES_RETRY_COUNT_REQUIRED_PROBE_ID;
+    const packages = [createHealthPlayerHealthPointsPackageContract(), createRulesRetryCountPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const dependencyEvidence: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: 'health.player_health_points.v1',
+        probeId: HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+        action: 'observe_health_points',
+        eventType: HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE,
+        eventTypes: [HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE],
+        sourceRef: 'runtime.health.player_health_points',
+        status: 'observed'
+      }
+    ];
+    const genericRetryEvidence = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'zero_health_retry',
+              eventType: RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE,
+              eventTypes: [RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE, 'rules.checkpoint_restore.restored'],
+              sourceRef: 'runtime.rules.generic_checkpoint_retry',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const wrongRetryEvidence = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'consume_retry',
+              eventType: RULES_RETRY_COUNT_EVENT_TYPE,
+              eventTypes: [RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE, RULES_RETRY_COUNT_EVENT_TYPE],
+              retryCountConfigured: true,
+              retryCountInitial: RULES_RETRY_COUNT_INITIAL_RETRIES,
+              retryCountBefore: RULES_RETRY_COUNT_BEFORE,
+              retryCountAfter: RULES_RETRY_COUNT_BEFORE,
+              retryCountRemaining: RULES_RETRY_COUNT_BEFORE,
+              retryCountConsumed: true,
+              retryCountDecremented: false,
+              retryCountExhausted: false,
+              retryCountFailureScreenShown: false,
+              sourceRef: 'runtime.rules.retry_count',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedRetryCount = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'consume_retry',
+              eventType: RULES_RETRY_COUNT_EVENT_TYPE,
+              eventTypes: [RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE, RULES_RETRY_COUNT_EVENT_TYPE],
+              retryCountConfigured: true,
+              retryCountInitial: RULES_RETRY_COUNT_INITIAL_RETRIES,
+              retryCountBefore: RULES_RETRY_COUNT_BEFORE,
+              retryCountAfter: RULES_RETRY_COUNT_AFTER,
+              retryCountRemaining: RULES_RETRY_COUNT_REMAINING,
+              retryCountConsumed: true,
+              retryCountDecremented: true,
+              retryCountExhausted: false,
+              retryCountFailureScreenShown: false,
+              sourceRef: 'runtime.rules.retry_count',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericRetryEvidence.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericRetryEvidence.requiredResults.find((entry) => entry.probeId === HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericRetryEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.retry_consumed`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${RULES_RETRY_COUNT_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.retry_consumed`,
+          status: 'failed',
+          message: expect.stringContaining('expected retryCountConfigured=true, observed <missing>')
+        })
+      ])
+    );
+    expect(wrongRetryEvidence.status).toBe('failed');
+    expect(wrongRetryEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.retry_consumed`,
+          status: 'failed',
+          message: expect.stringContaining(`expected retryCountAfter=${RULES_RETRY_COUNT_AFTER}`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.retry_consumed`,
+          status: 'failed',
+          message: expect.stringContaining('expected retryCountDecremented=true, observed false')
+        })
+      ])
+    );
+    expect(observedRetryCount.status).toBe('passed');
+  });
+
+  it('does not verify UI failure restart from generic restart evidence without failure-screen reset state', () => {
+    const capabilityId = 'ui.failure_restart.v1';
+    const probeId = UI_FAILURE_RESTART_REQUIRED_PROBE_ID;
+    const packages = [
+      createHealthPlayerHealthPointsPackageContract(),
+      createRulesRetryCountPackageContract(),
+      createUiFailureRestartPackageContract()
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const dependencyEvidence: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: 'health.player_health_points.v1',
+        probeId: HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+        action: 'observe_health_points',
+        eventType: HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE,
+        eventTypes: [HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE],
+        sourceRef: 'runtime.health.player_health_points',
+        status: 'observed'
+      },
+      {
+        capabilityId: 'rules.retry_count.v1',
+        probeId: RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
+        action: 'consume_retry',
+        eventType: RULES_RETRY_COUNT_EVENT_TYPE,
+        eventTypes: [RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE, RULES_RETRY_COUNT_EVENT_TYPE],
+        retryCountConfigured: true,
+        retryCountInitial: RULES_RETRY_COUNT_INITIAL_RETRIES,
+        retryCountBefore: RULES_RETRY_COUNT_BEFORE,
+        retryCountAfter: RULES_RETRY_COUNT_AFTER,
+        retryCountRemaining: RULES_RETRY_COUNT_REMAINING,
+        retryCountConsumed: true,
+        retryCountDecremented: true,
+        retryCountExhausted: false,
+        retryCountFailureScreenShown: false,
+        sourceRef: 'runtime.rules.retry_count',
+        status: 'observed'
+      }
+    ];
+    const genericRestartOnly = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'restart_from_failure',
+              eventType: UI_FAILURE_RESTART_RESTART_EVENT_TYPE,
+              eventTypes: ['game.lost', 'input.received', UI_FAILURE_RESTART_RESTART_EVENT_TYPE],
+              failureRestartFailureScreenShown: true,
+              failureRestartFailureText: UI_FAILURE_RESTART_FAILURE_TEXT,
+              failureRestartPromptVisible: true,
+              failureRestartPromptText: UI_FAILURE_RESTART_PROMPT_TEXT,
+              sourceRef: 'runtime.ui.generic_restart',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedFailureRestart = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'restart_from_failure',
+              eventType: UI_FAILURE_RESTART_EVENT_TYPE,
+              eventTypes: ['game.lost', 'input.received', UI_FAILURE_RESTART_RESTART_EVENT_TYPE, UI_FAILURE_RESTART_EVENT_TYPE],
+              failureRestartVerified: true,
+              failureRestartSchemaVersion: UI_FAILURE_RESTART_SCHEMA_VERSION,
+              failureRestartProfileId: UI_FAILURE_RESTART_PROFILE_ID,
+              failureRestartRuntimeFamily: UI_FAILURE_RESTART_RUNTIME_FAMILY,
+              failureRestartNoRetriesRemaining: true,
+              failureRestartFailureScreenShown: true,
+              failureRestartFailureText: UI_FAILURE_RESTART_FAILURE_TEXT,
+              failureRestartPromptVisible: true,
+              failureRestartPromptText: UI_FAILURE_RESTART_PROMPT_TEXT,
+              failureRestartInputReceived: true,
+              failureRestartInput: UI_FAILURE_RESTART_INPUT,
+              failureRestartGameRestarted: true,
+              failureRestartRestartEventType: UI_FAILURE_RESTART_RESTART_EVENT_TYPE,
+              failureRestartStateReset: true,
+              failureRestartPlayerHealthReset: true,
+              failureRestartRetryCountReset: true,
+              failureRestartFailureScreenCleared: true,
+              sourceRef: 'runtime.ui.failure_restart',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericRestartOnly.status).toBe('failed');
+    expect(genericRestartOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericRestartOnly.requiredResults.find((entry) => entry.probeId === HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericRestartOnly.requiredResults.find((entry) => entry.probeId === RULES_RETRY_COUNT_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericRestartOnly.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.failure_restart_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${UI_FAILURE_RESTART_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.failure_restart_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected failureRestartVerified=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.failure_restart_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected failureRestartStateReset=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedFailureRestart.status).toBe('passed');
+  });
+
+  it('does not verify UI win/failure transitions from generic terminal events without transition state', () => {
+    const capabilityId = 'ui.win_failure_transitions.v1';
+    const probeId = UI_WIN_FAILURE_TRANSITIONS_REQUIRED_PROBE_ID;
+    const packages = [
+      createEnemyBossLifecyclePackageContract(),
+      createFeedbackVictoryDeclarationPackageContract(),
+      createHealthPlayerHealthPointsPackageContract(),
+      createRulesRetryCountPackageContract(),
+      createUiFailureRestartPackageContract(),
+      createRulesStateTransitionGraphPackageContract(),
+      createUiWinFailureTransitionsPackageContract()
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const dependencyEvidence: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: 'enemy.boss_lifecycle.v1',
+        probeId: ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID,
+        action: 'verify_boss_lifecycle',
+        eventType: ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
+        eventTypes: [ENEMY_BOSS_LIFECYCLE_EVENT_TYPE],
+        bossLifecycleStarted: true,
+        bossEntityId: ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID,
+        bossMaxHealth: ENEMY_BOSS_LIFECYCLE_MAX_HEALTH,
+        bossHealthInitialized: true,
+        bossDefeated: true,
+        sourceRef: 'runtime.enemy.boss_lifecycle',
+        status: 'observed'
+      },
+      {
+        capabilityId: 'feedback.victory_declaration.v1',
+        probeId: FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID,
+        action: 'verify_victory_declaration',
+        eventType: FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE,
+        eventTypes: [FEEDBACK_VICTORY_DECLARATION_EVENT_TYPE],
+        victoryDeclarationShown: true,
+        victoryDeclarationText: FEEDBACK_VICTORY_DECLARATION_TEXT,
+        victoryDeclarationTrigger: FEEDBACK_VICTORY_DECLARATION_TRIGGER,
+        victoryDeclarationOutcome: FEEDBACK_VICTORY_DECLARATION_OUTCOME,
+        victoryDeclarationObjectiveCompleted: true,
+        sourceRef: 'runtime.feedback.victory_declaration',
+        status: 'observed'
+      },
+      {
+        capabilityId: 'health.player_health_points.v1',
+        probeId: HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+        action: 'observe_health_points',
+        eventType: HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE,
+        eventTypes: [HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE],
+        sourceRef: 'runtime.health.player_health_points',
+        status: 'observed'
+      },
+      {
+        capabilityId: 'rules.retry_count.v1',
+        probeId: RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
+        action: 'consume_retry',
+        eventType: RULES_RETRY_COUNT_EVENT_TYPE,
+        eventTypes: [RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE, RULES_RETRY_COUNT_EVENT_TYPE],
+        retryCountConfigured: true,
+        retryCountInitial: RULES_RETRY_COUNT_INITIAL_RETRIES,
+        retryCountBefore: RULES_RETRY_COUNT_BEFORE,
+        retryCountAfter: RULES_RETRY_COUNT_AFTER,
+        retryCountRemaining: RULES_RETRY_COUNT_REMAINING,
+        retryCountConsumed: true,
+        retryCountDecremented: true,
+        retryCountExhausted: false,
+        retryCountFailureScreenShown: false,
+        sourceRef: 'runtime.rules.retry_count',
+        status: 'observed'
+      },
+      {
+        capabilityId: 'ui.failure_restart.v1',
+        probeId: UI_FAILURE_RESTART_REQUIRED_PROBE_ID,
+        action: 'restart_from_failure',
+        eventType: UI_FAILURE_RESTART_EVENT_TYPE,
+        eventTypes: ['game.lost', 'input.received', UI_FAILURE_RESTART_RESTART_EVENT_TYPE, UI_FAILURE_RESTART_EVENT_TYPE],
+        failureRestartVerified: true,
+        failureRestartSchemaVersion: UI_FAILURE_RESTART_SCHEMA_VERSION,
+        failureRestartProfileId: UI_FAILURE_RESTART_PROFILE_ID,
+        failureRestartRuntimeFamily: UI_FAILURE_RESTART_RUNTIME_FAMILY,
+        failureRestartNoRetriesRemaining: true,
+        failureRestartFailureScreenShown: true,
+        failureRestartFailureText: UI_FAILURE_RESTART_FAILURE_TEXT,
+        failureRestartPromptVisible: true,
+        failureRestartPromptText: UI_FAILURE_RESTART_PROMPT_TEXT,
+        failureRestartInputReceived: true,
+        failureRestartInput: UI_FAILURE_RESTART_INPUT,
+        failureRestartGameRestarted: true,
+        failureRestartRestartEventType: UI_FAILURE_RESTART_RESTART_EVENT_TYPE,
+        failureRestartStateReset: true,
+        failureRestartPlayerHealthReset: true,
+        failureRestartRetryCountReset: true,
+        failureRestartFailureScreenCleared: true,
+        sourceRef: 'runtime.ui.failure_restart',
+        status: 'observed'
+      },
+      {
+        capabilityId: 'rules.state_transition_graph.v1',
+        probeId: RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID,
+        action: 'verify_graph',
+        eventType: RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE,
+        eventTypes: [RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE],
+        stateTransitionGraphDeclared: true,
+        stateTransitionGraphId: RULES_STATE_TRANSITION_GRAPH_ID,
+        stateTransitionGraphStateCount: RULES_STATE_TRANSITION_GRAPH_STATE_COUNT,
+        stateTransitionGraphTransitionCount: RULES_STATE_TRANSITION_GRAPH_TRANSITION_COUNT,
+        stateTransitionGraphFromState: RULES_STATE_TRANSITION_GRAPH_FROM_STATE,
+        stateTransitionGraphToState: RULES_STATE_TRANSITION_GRAPH_TO_STATE,
+        stateTransitionGraphTrigger: RULES_STATE_TRANSITION_GRAPH_TRIGGER,
+        stateTransitionGraphTerminalStatesIncluded: true,
+        stateTransitionGraphNoImplicitFallback: true,
+        stateTransitionGraphReachabilityVerified: true,
+        sourceRef: 'runtime.rules.state_transition_graph',
+        status: 'observed'
+      }
+    ];
+    const genericTerminalEventsOnly = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_terminal_ui_transitions',
+              eventType: 'game.won',
+              eventTypes: ['game.won', 'game.lost'],
+              winFailureTransitionsWinScreenShown: true,
+              winFailureTransitionsFailureScreenShown: true,
+              sourceRef: 'runtime.ui.generic_terminal_events',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedTerminalTransitions = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_terminal_ui_transitions',
+              eventType: UI_WIN_FAILURE_TRANSITIONS_EVENT_TYPE,
+              eventTypes: ['game.won', 'game.lost', UI_WIN_FAILURE_TRANSITIONS_EVENT_TYPE],
+              winFailureTransitionsVerified: true,
+              winFailureTransitionsSchemaVersion: UI_WIN_FAILURE_TRANSITIONS_SCHEMA_VERSION,
+              winFailureTransitionsProfileId: UI_WIN_FAILURE_TRANSITIONS_PROFILE_ID,
+              winFailureTransitionsRuntimeFamily: UI_WIN_FAILURE_TRANSITIONS_RUNTIME_FAMILY,
+              winFailureTransitionsWinScreenShown: true,
+              winFailureTransitionsWinText: UI_WIN_FAILURE_TRANSITIONS_WIN_TEXT,
+              winFailureTransitionsWinTrigger: UI_WIN_FAILURE_TRANSITIONS_WIN_TRIGGER,
+              winFailureTransitionsFailureScreenShown: true,
+              winFailureTransitionsFailureText: UI_WIN_FAILURE_TRANSITIONS_FAILURE_TEXT,
+              winFailureTransitionsFailureTrigger: UI_WIN_FAILURE_TRANSITIONS_FAILURE_TRIGGER,
+              winFailureTransitionsTerminalStatesDistinct: true,
+              winFailureTransitionsNoImplicitFallback: true,
+              winFailureTransitionsInputLockedOnTerminal: true,
+              sourceRef: 'runtime.ui.win_failure_transitions',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericTerminalEventsOnly.status).toBe('failed');
+    expect(genericTerminalEventsOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericTerminalEventsOnly.requiredResults.find((entry) => entry.probeId === FEEDBACK_VICTORY_DECLARATION_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericTerminalEventsOnly.requiredResults.find((entry) => entry.probeId === ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericTerminalEventsOnly.requiredResults.find((entry) => entry.probeId === HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericTerminalEventsOnly.requiredResults.find((entry) => entry.probeId === RULES_RETRY_COUNT_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericTerminalEventsOnly.requiredResults.find((entry) => entry.probeId === UI_FAILURE_RESTART_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericTerminalEventsOnly.requiredResults.find((entry) => entry.probeId === RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(genericTerminalEventsOnly.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.terminal_ui_transitions_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${UI_WIN_FAILURE_TRANSITIONS_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.terminal_ui_transitions_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected winFailureTransitionsVerified=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.terminal_ui_transitions_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected winFailureTransitionsNoImplicitFallback=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedTerminalTransitions.status).toBe('passed');
+  });
+
+  it('does not verify UI boss health HUD from boss lifecycle evidence without HUD binding fields', () => {
+    const capabilityId = 'ui.hud_boss_health.v1';
+    const probeId = UI_HUD_BOSS_HEALTH_REQUIRED_PROBE_ID;
+    const packages = [createEnemyBossLifecyclePackageContract(), createUiHudBossHealthPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const bossLifecycleEvidence: CapabilityRuntimeObservedProbeEvidence = {
+      capabilityId: 'enemy.boss_lifecycle.v1',
+      probeId: ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID,
+      action: 'verify_boss_lifecycle',
+      eventType: ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
+      eventTypes: [ENEMY_BOSS_LIFECYCLE_EVENT_TYPE],
+      bossLifecycleStarted: true,
+      bossEntityId: ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID,
+      bossMaxHealth: ENEMY_BOSS_LIFECYCLE_MAX_HEALTH,
+      bossHealthInitialized: true,
+      bossDefeated: true,
+      sourceRef: 'runtime.enemy.boss_lifecycle',
+      status: 'observed'
+    };
+    const lifecycleOnly = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            bossLifecycleEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'show_boss_health_hud',
+              eventType: ENEMY_BOSS_LIFECYCLE_EVENT_TYPE,
+              eventTypes: [ENEMY_BOSS_LIFECYCLE_EVENT_TYPE],
+              bossLifecycleStarted: true,
+              bossEntityId: ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID,
+              bossMaxHealth: ENEMY_BOSS_LIFECYCLE_MAX_HEALTH,
+              bossHealthInitialized: true,
+              sourceRef: 'runtime.enemy.boss_lifecycle',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedHud = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            bossLifecycleEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'show_boss_health_hud',
+              eventType: UI_HUD_BOSS_HEALTH_EVENT_TYPE,
+              eventTypes: [ENEMY_BOSS_LIFECYCLE_EVENT_TYPE, UI_HUD_BOSS_HEALTH_EVENT_TYPE],
+              hudBossHealthVisible: true,
+              hudBossHealthSchemaVersion: UI_HUD_BOSS_HEALTH_SCHEMA_VERSION,
+              hudBossHealthProfileId: UI_HUD_BOSS_HEALTH_PROFILE_ID,
+              hudBossHealthRuntimeFamily: UI_HUD_BOSS_HEALTH_RUNTIME_FAMILY,
+              hudBossHealthBossEntityId: ENEMY_BOSS_LIFECYCLE_BOSS_ENTITY_ID,
+              hudBossHealthCurrent: UI_HUD_BOSS_HEALTH_CURRENT,
+              hudBossHealthMax: ENEMY_BOSS_LIFECYCLE_MAX_HEALTH,
+              hudBossHealthRatio: UI_HUD_BOSS_HEALTH_RATIO,
+              hudBossHealthLabelVisible: true,
+              hudBossHealthLabelText: UI_HUD_BOSS_HEALTH_LABEL_TEXT,
+              hudBossHealthBarVisible: true,
+              hudBossHealthBarValueMatchesBoss: true,
+              hudBossHealthBoundToBossLifecycle: true,
+              hudBossHealthUpdatesOnDamage: true,
+              sourceRef: 'runtime.ui.hud_boss_health',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(lifecycleOnly.status).toBe('failed');
+    expect(lifecycleOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(lifecycleOnly.requiredResults.find((entry) => entry.probeId === ENEMY_BOSS_LIFECYCLE_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(lifecycleOnly.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.boss_health_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${UI_HUD_BOSS_HEALTH_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.boss_health_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected hudBossHealthVisible=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.boss_health_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected hudBossHealthBoundToBossLifecycle=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedHud.status).toBe('passed');
+  });
+
+  it('does not verify UI current weapon HUD from weapon events without HUD binding fields', () => {
+    const capabilityId = 'ui.hud_current_weapon.v1';
+    const probeId = UI_HUD_CURRENT_WEAPON_REQUIRED_PROBE_ID;
+    const packages = [createDefaultStraightSingleWeaponPackageContract(), createUiHudCurrentWeaponPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const defaultWeaponEvidence: CapabilityRuntimeObservedProbeEvidence = {
+      capabilityId: 'weapon.default_straight_single.v1',
+      probeId: DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID,
+      action: 'shoot_projectile',
+      eventType: 'player.fired',
+      eventTypes: ['player.fired', 'projectile.spawned'],
+      projectileEntityId: 'projectile_default_001',
+      sourceRef: 'runtime.weapon.default_straight_single',
+      status: 'observed'
+    };
+    const weaponEventOnly = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            defaultWeaponEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'show_current_weapon_hud',
+              eventType: 'player.fired',
+              eventTypes: ['player.fired', 'projectile.spawned'],
+              currentWeaponId: UI_HUD_CURRENT_WEAPON_WEAPON_ID,
+              sourceRef: 'runtime.weapon.default_straight_single',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedHud = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            defaultWeaponEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'show_current_weapon_hud',
+              eventType: UI_HUD_CURRENT_WEAPON_EVENT_TYPE,
+              eventTypes: ['player.fired', 'projectile.spawned', UI_HUD_CURRENT_WEAPON_EVENT_TYPE],
+              hudCurrentWeaponVisible: true,
+              hudCurrentWeaponSchemaVersion: UI_HUD_CURRENT_WEAPON_SCHEMA_VERSION,
+              hudCurrentWeaponProfileId: UI_HUD_CURRENT_WEAPON_PROFILE_ID,
+              hudCurrentWeaponRuntimeFamily: UI_HUD_CURRENT_WEAPON_RUNTIME_FAMILY,
+              hudCurrentWeaponWeaponId: UI_HUD_CURRENT_WEAPON_WEAPON_ID,
+              hudCurrentWeaponExpectedWeaponId: UI_HUD_CURRENT_WEAPON_WEAPON_ID,
+              hudCurrentWeaponSlot: UI_HUD_CURRENT_WEAPON_SLOT,
+              hudCurrentWeaponLabelVisible: true,
+              hudCurrentWeaponLabelText: UI_HUD_CURRENT_WEAPON_LABEL_TEXT,
+              hudCurrentWeaponIconVisible: true,
+              hudCurrentWeaponBoundToWeaponState: true,
+              hudCurrentWeaponMatchesCurrentWeapon: true,
+              sourceRef: 'runtime.ui.hud_current_weapon',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(weaponEventOnly.status).toBe('failed');
+    expect(weaponEventOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(weaponEventOnly.requiredResults.find((entry) => entry.probeId === DEFAULT_STRAIGHT_SINGLE_WEAPON_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(weaponEventOnly.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.current_weapon_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${UI_HUD_CURRENT_WEAPON_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.current_weapon_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected hudCurrentWeaponVisible=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.current_weapon_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected hudCurrentWeaponBoundToWeaponState=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedHud.status).toBe('passed');
+  });
+
+  it('does not verify UI player health HUD from health events without HUD binding fields', () => {
+    const capabilityId = 'ui.hud_player_health.v1';
+    const probeId = UI_HUD_PLAYER_HEALTH_REQUIRED_PROBE_ID;
+    const packages = [createHealthPlayerHealthPointsPackageContract(), createUiHudPlayerHealthPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const healthEvidence: CapabilityRuntimeObservedProbeEvidence = {
+      capabilityId: 'health.player_health_points.v1',
+      probeId: HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+      action: 'observe_health_points',
+      eventType: HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE,
+      eventTypes: [HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE],
+      sourceRef: 'runtime.health.player_health_points',
+      status: 'observed'
+    };
+    const healthOnly = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            healthEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'show_player_health_hud',
+              eventType: HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE,
+              eventTypes: [HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE],
+              sourceRef: 'runtime.health.player_health_points',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedHud = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            healthEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'show_player_health_hud',
+              eventType: UI_HUD_PLAYER_HEALTH_EVENT_TYPE,
+              eventTypes: [HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE, UI_HUD_PLAYER_HEALTH_EVENT_TYPE],
+              hudPlayerHealthVisible: true,
+              hudPlayerHealthSchemaVersion: UI_HUD_PLAYER_HEALTH_SCHEMA_VERSION,
+              hudPlayerHealthProfileId: UI_HUD_PLAYER_HEALTH_PROFILE_ID,
+              hudPlayerHealthRuntimeFamily: UI_HUD_PLAYER_HEALTH_RUNTIME_FAMILY,
+              hudPlayerHealthOwnerEntityId: 'player',
+              hudPlayerHealthCurrent: UI_HUD_PLAYER_HEALTH_CURRENT,
+              hudPlayerHealthMax: UI_HUD_PLAYER_HEALTH_MAX,
+              hudPlayerHealthRatio: UI_HUD_PLAYER_HEALTH_RATIO,
+              hudPlayerHealthLabelVisible: true,
+              hudPlayerHealthLabelText: UI_HUD_PLAYER_HEALTH_LABEL_TEXT,
+              hudPlayerHealthBarVisible: true,
+              hudPlayerHealthBarValueMatchesPlayerHealth: true,
+              hudPlayerHealthBoundToPlayerHealth: true,
+              hudPlayerHealthUpdatesOnDamage: true,
+              sourceRef: 'runtime.ui.hud_player_health',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(healthOnly.status).toBe('failed');
+    expect(healthOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(healthOnly.requiredResults.find((entry) => entry.probeId === HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(healthOnly.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.player_health_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${UI_HUD_PLAYER_HEALTH_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.player_health_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected hudPlayerHealthVisible=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.player_health_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected hudPlayerHealthBoundToPlayerHealth=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedHud.status).toBe('passed');
+  });
+
+  it('does not verify UI retries HUD from retry count evidence without HUD binding fields', () => {
+    const capabilityId = 'ui.hud_retries.v1';
+    const probeId = UI_HUD_RETRIES_REQUIRED_PROBE_ID;
+    const packages = [
+      createHealthPlayerHealthPointsPackageContract(),
+      createRulesRetryCountPackageContract(),
+      createUiHudRetriesPackageContract()
+    ];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const dependencyEvidence: CapabilityRuntimeObservedProbeEvidence[] = [
+      {
+        capabilityId: 'health.player_health_points.v1',
+        probeId: HEALTH_PLAYER_HEALTH_POINTS_REQUIRED_PROBE_ID,
+        action: 'observe_health_points',
+        eventType: HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE,
+        eventTypes: [HEALTH_PLAYER_HEALTH_POINTS_CURRENT_EVENT_TYPE],
+        sourceRef: 'runtime.health.player_health_points',
+        status: 'observed'
+      },
+      {
+        capabilityId: 'rules.retry_count.v1',
+        probeId: RULES_RETRY_COUNT_REQUIRED_PROBE_ID,
+        action: 'consume_retry',
+        eventType: RULES_RETRY_COUNT_EVENT_TYPE,
+        eventTypes: [RULES_RETRY_COUNT_DAMAGE_EVENT_TYPE, RULES_RETRY_COUNT_EVENT_TYPE],
+        retryCountConfigured: true,
+        retryCountInitial: RULES_RETRY_COUNT_INITIAL_RETRIES,
+        retryCountBefore: RULES_RETRY_COUNT_BEFORE,
+        retryCountAfter: RULES_RETRY_COUNT_AFTER,
+        retryCountRemaining: RULES_RETRY_COUNT_REMAINING,
+        retryCountConsumed: true,
+        retryCountDecremented: true,
+        retryCountExhausted: false,
+        retryCountFailureScreenShown: false,
+        sourceRef: 'runtime.rules.retry_count',
+        status: 'observed'
+      }
+    ];
+    const retryCountOnly = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'show_retries_hud',
+              eventType: RULES_RETRY_COUNT_EVENT_TYPE,
+              eventTypes: [RULES_RETRY_COUNT_EVENT_TYPE],
+              retryCountRemaining: RULES_RETRY_COUNT_REMAINING,
+              sourceRef: 'runtime.rules.retry_count',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedHud = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            ...dependencyEvidence,
+            {
+              capabilityId,
+              probeId,
+              action: 'show_retries_hud',
+              eventType: UI_HUD_RETRIES_EVENT_TYPE,
+              eventTypes: [RULES_RETRY_COUNT_EVENT_TYPE, UI_HUD_RETRIES_EVENT_TYPE],
+              hudRetriesVisible: true,
+              hudRetriesSchemaVersion: UI_HUD_RETRIES_SCHEMA_VERSION,
+              hudRetriesProfileId: UI_HUD_RETRIES_PROFILE_ID,
+              hudRetriesRuntimeFamily: UI_HUD_RETRIES_RUNTIME_FAMILY,
+              hudRetriesInitial: UI_HUD_RETRIES_INITIAL,
+              hudRetriesRemaining: UI_HUD_RETRIES_REMAINING,
+              hudRetriesConsumed: true,
+              hudRetriesLabelVisible: true,
+              hudRetriesLabelText: UI_HUD_RETRIES_LABEL_TEXT,
+              hudRetriesCounterVisible: true,
+              hudRetriesCounterValueMatchesRetryCount: true,
+              hudRetriesBoundToRetryCount: true,
+              hudRetriesUpdatesOnRetryConsumption: true,
+              sourceRef: 'runtime.ui.hud_retries',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(retryCountOnly.status).toBe('failed');
+    expect(retryCountOnly.missingRequiredProbeIds).toEqual([probeId]);
+    expect(retryCountOnly.requiredResults.find((entry) => entry.probeId === RULES_RETRY_COUNT_REQUIRED_PROBE_ID)).toMatchObject({
+      status: 'passed'
+    });
+    expect(retryCountOnly.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.retries_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${UI_HUD_RETRIES_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.retries_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected hudRetriesVisible=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.retries_hud_verified`,
+          status: 'failed',
+          message: expect.stringContaining('expected hudRetriesBoundToRetryCount=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedHud.status).toBe('passed');
+  });
+
+  it('does not verify state transition graph from win lose events without explicit graph fields', () => {
+    const capabilityId = 'rules.state_transition_graph.v1';
+    const probeId = RULES_STATE_TRANSITION_GRAPH_REQUIRED_PROBE_ID;
+    const packages = [createRulesStateTransitionGraphPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const genericWinLoseEvidence = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_graph',
+              eventType: 'game.won',
+              eventTypes: ['game.won', 'game.lost'],
+              sourceRef: 'runtime.rules.generic_win_lose',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const wrongGraphEvidence = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_graph',
+              eventType: RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE,
+              eventTypes: [RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE],
+              stateTransitionGraphDeclared: true,
+              stateTransitionGraphId: RULES_STATE_TRANSITION_GRAPH_ID,
+              stateTransitionGraphStateCount: RULES_STATE_TRANSITION_GRAPH_STATE_COUNT,
+              stateTransitionGraphTransitionCount: RULES_STATE_TRANSITION_GRAPH_TRANSITION_COUNT - 1,
+              stateTransitionGraphFromState: RULES_STATE_TRANSITION_GRAPH_FROM_STATE,
+              stateTransitionGraphToState: RULES_STATE_TRANSITION_GRAPH_TO_STATE,
+              stateTransitionGraphTrigger: RULES_STATE_TRANSITION_GRAPH_TRIGGER,
+              stateTransitionGraphTerminalStatesIncluded: false,
+              stateTransitionGraphNoImplicitFallback: true,
+              stateTransitionGraphReachabilityVerified: true,
+              sourceRef: 'runtime.rules.state_transition_graph',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedGraph = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_graph',
+              eventType: RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE,
+              eventTypes: [RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE],
+              stateTransitionGraphDeclared: true,
+              stateTransitionGraphId: RULES_STATE_TRANSITION_GRAPH_ID,
+              stateTransitionGraphStateCount: RULES_STATE_TRANSITION_GRAPH_STATE_COUNT,
+              stateTransitionGraphTransitionCount: RULES_STATE_TRANSITION_GRAPH_TRANSITION_COUNT,
+              stateTransitionGraphFromState: RULES_STATE_TRANSITION_GRAPH_FROM_STATE,
+              stateTransitionGraphToState: RULES_STATE_TRANSITION_GRAPH_TO_STATE,
+              stateTransitionGraphTrigger: RULES_STATE_TRANSITION_GRAPH_TRIGGER,
+              stateTransitionGraphTerminalStatesIncluded: true,
+              stateTransitionGraphNoImplicitFallback: true,
+              stateTransitionGraphReachabilityVerified: true,
+              sourceRef: 'runtime.rules.state_transition_graph',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericWinLoseEvidence.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericWinLoseEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.explicit_graph`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${RULES_STATE_TRANSITION_GRAPH_EVENT_TYPE} not observed`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.explicit_graph`,
+          status: 'failed',
+          message: expect.stringContaining('expected stateTransitionGraphDeclared=true, observed <missing>')
+        })
+      ])
+    );
+    expect(wrongGraphEvidence.status).toBe('failed');
+    expect(wrongGraphEvidence.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.explicit_graph`,
+          status: 'failed',
+          message: expect.stringContaining(`expected stateTransitionGraphTransitionCount=${RULES_STATE_TRANSITION_GRAPH_TRANSITION_COUNT}`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.explicit_graph`,
+          status: 'failed',
+          message: expect.stringContaining('expected stateTransitionGraphTerminalStatesIncluded=true, observed false')
+        })
+      ])
+    );
+    expect(observedGraph.status).toBe('passed');
+  });
+
+  it('does not verify runtime manifest binding when manifest evidence lacks binding state fields', () => {
+    const capabilityId = RUNTIME_MANIFEST_BINDING_CAPABILITY_ID;
+    const probeId = RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID;
+    const packages = [createRuntimeManifestBindingPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const genericManifestEvent = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'load_runtime_manifest',
+              eventType: 'profile.runtime_manifest.loaded',
+              eventTypes: ['profile.runtime_manifest.loaded'],
+              sourceRef: 'runtime.manifest.generic',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const missingBindingState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_binding',
+              eventType: RUNTIME_MANIFEST_BINDING_EVENT_TYPE,
+              eventTypes: [RUNTIME_MANIFEST_BINDING_EVENT_TYPE],
+              sourceRef: 'runtime.manifest.binding_report',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedBinding = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_binding',
+              eventType: RUNTIME_MANIFEST_BINDING_EVENT_TYPE,
+              eventTypes: [RUNTIME_MANIFEST_BINDING_EVENT_TYPE],
+              runtimeManifestBound: true,
+              runtimeManifestRuntimeFamily: RUNTIME_MANIFEST_BINDING_RUNTIME_FAMILY,
+              runtimeManifestProfileId: RUNTIME_MANIFEST_BINDING_PROFILE_ID,
+              runtimeManifestTemplateId: RUNTIME_MANIFEST_BINDING_TEMPLATE_ID,
+              runtimeManifestCapabilityLockBound: true,
+              runtimeManifestCapabilityId: RUNTIME_MANIFEST_BINDING_CAPABILITY_ID,
+              runtimeManifestSystemId: RUNTIME_MANIFEST_BINDING_RUNTIME_SYSTEM_ID,
+              runtimeManifestSystemVersion: RUNTIME_MANIFEST_BINDING_SYSTEM_VERSION,
+              runtimeManifestSystemPhase: RUNTIME_MANIFEST_BINDING_SYSTEM_PHASE,
+              runtimeManifestSystemDependencyCount: RUNTIME_MANIFEST_BINDING_SYSTEM_DEPENDENCY_COUNT,
+              runtimeManifestLoaderPlanBound: true,
+              sourceRef: 'runtime.manifest.binding_report',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericManifestEvent.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericManifestEvent.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.binding`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${RUNTIME_MANIFEST_BINDING_EVENT_TYPE} not observed`)
+        })
+      ])
+    );
+    expect(missingBindingState.status).toBe('failed');
+    expect(missingBindingState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.binding`,
+          status: 'failed',
+          message: expect.stringContaining('expected runtimeManifestBound=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.binding`,
+          status: 'failed',
+          message: expect.stringContaining(`expected runtimeManifestSystemId=${RUNTIME_MANIFEST_BINDING_RUNTIME_SYSTEM_ID}`)
+        })
+      ])
+    );
+    expect(observedBinding.status).toBe('passed');
+  });
+
+  it('does not verify runtime module load receipt when receipt evidence lacks integrity state fields', () => {
+    const capabilityId = RUNTIME_MODULE_LOAD_RECEIPT_CAPABILITY_ID;
+    const probeId = RUNTIME_MODULE_LOAD_RECEIPT_REQUIRED_PROBE_ID;
+    const packages = [createRuntimeManifestBindingPackageContract(), createRuntimeModuleLoadReceiptPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId, RUNTIME_MANIFEST_BINDING_CAPABILITY_ID]),
+      packages
+    });
+    const manifestBindingObserved: CapabilityRuntimeObservedProbeEvidence = {
+      capabilityId: RUNTIME_MANIFEST_BINDING_CAPABILITY_ID,
+      probeId: RUNTIME_MANIFEST_BINDING_REQUIRED_PROBE_ID,
+      action: 'load_runtime_manifest',
+      eventType: RUNTIME_MANIFEST_BINDING_EVENT_TYPE,
+      eventTypes: [RUNTIME_MANIFEST_BINDING_EVENT_TYPE],
+      sourceRef: 'runtime.manifest_binding',
+      status: 'observed',
+      runtimeManifestBound: true,
+      runtimeManifestRuntimeFamily: RUNTIME_MANIFEST_BINDING_RUNTIME_FAMILY,
+      runtimeManifestProfileId: RUNTIME_MANIFEST_BINDING_PROFILE_ID,
+      runtimeManifestTemplateId: RUNTIME_MANIFEST_BINDING_TEMPLATE_ID,
+      runtimeManifestCapabilityLockBound: true,
+      runtimeManifestCapabilityId: RUNTIME_MANIFEST_BINDING_CAPABILITY_ID,
+      runtimeManifestSystemId: RUNTIME_MANIFEST_BINDING_RUNTIME_SYSTEM_ID,
+      runtimeManifestSystemVersion: RUNTIME_MANIFEST_BINDING_SYSTEM_VERSION,
+      runtimeManifestSystemPhase: RUNTIME_MANIFEST_BINDING_SYSTEM_PHASE,
+      runtimeManifestSystemDependencyCount: RUNTIME_MANIFEST_BINDING_SYSTEM_DEPENDENCY_COUNT,
+      runtimeManifestLoaderPlanBound: true
+    };
+    const genericReceiptRef = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            manifestBindingObserved,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_receipt',
+              eventType: 'runtime.module_load_receipt.artifact_ref',
+              eventTypes: ['runtime.module_load_receipt.artifact_ref'],
+              sourceRef: 'runtime.module_load_receipt',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const missingReceiptState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            manifestBindingObserved,
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_receipt',
+              eventType: RUNTIME_MODULE_LOAD_RECEIPT_EVENT_TYPE,
+              eventTypes: [RUNTIME_MODULE_LOAD_RECEIPT_EVENT_TYPE],
+              sourceRef: 'runtime.module_load_receipt',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedReceipt = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            manifestBindingObserved,
+            runtimeModuleLoadReceiptObserved({
+              capabilityId,
+              probeId
+            })
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericReceiptRef.status).toBe('failed');
+    expect(genericReceiptRef.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericReceiptRef.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.receipt`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${RUNTIME_MODULE_LOAD_RECEIPT_EVENT_TYPE} not observed`)
+        })
+      ])
+    );
+    expect(missingReceiptState.status).toBe('failed');
+    expect(missingReceiptState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.receipt`,
+          status: 'failed',
+          message: expect.stringContaining('expected runtimeModuleLoadReceiptLoaded=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.receipt`,
+          status: 'failed',
+          message: expect.stringContaining(`expected runtimeModuleLoadReceiptKind=${RUNTIME_MODULE_LOAD_RECEIPT_KIND}`)
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.receipt`,
+          status: 'failed',
+          message: expect.stringContaining('expected runtimeModuleLoadReceiptLifecycleComplete=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedReceipt.status).toBe('passed');
+  });
+
+  it('does not verify runtime plan coverage when plan evidence lacks coverage state fields', () => {
+    const capabilityId = RUNTIME_PLAN_COVERAGE_CAPABILITY_ID;
+    const probeId = RUNTIME_PLAN_COVERAGE_REQUIRED_PROBE_ID;
+    const packages = [createRuntimePlanCoveragePackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const genericPlanEvent = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_coverage',
+              eventType: 'runtime.plan.generated',
+              eventTypes: ['runtime.plan.generated'],
+              sourceRef: 'runtime.plan',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const missingCoverageState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_coverage',
+              eventType: RUNTIME_PLAN_COVERAGE_EVENT_TYPE,
+              eventTypes: [RUNTIME_PLAN_COVERAGE_EVENT_TYPE],
+              sourceRef: 'runtime.plan_coverage',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedCoverage = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            runtimePlanCoverageObserved({
+              capabilityId,
+              probeId
+            })
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericPlanEvent.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericPlanEvent.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.coverage`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${RUNTIME_PLAN_COVERAGE_EVENT_TYPE} not observed`)
+        })
+      ])
+    );
+    expect(missingCoverageState.status).toBe('failed');
+    expect(missingCoverageState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.coverage`,
+          status: 'failed',
+          message: expect.stringContaining('expected runtimePlanCoverageComputed=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.coverage`,
+          status: 'failed',
+          message: expect.stringContaining(`expected runtimePlanCoverageKind=${RUNTIME_PLAN_COVERAGE_KIND}`)
+        })
+      ])
+    );
+    expect(observedCoverage.status).toBe('passed');
+  });
+
+  it('does not verify scene ordered segments when segment evidence lacks ordered state fields', () => {
+    const capabilityId = SCENE_ORDERED_SEGMENTS_CAPABILITY_ID;
+    const probeId = SCENE_ORDERED_SEGMENTS_REQUIRED_PROBE_ID;
+    const packages = [createSceneOrderedSegmentsPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const genericSegmentEvent = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'complete_segment',
+              eventType: 'level.segment.completed',
+              eventTypes: ['level.segment.completed'],
+              sourceRef: 'telemetry.level.segment.completed',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const missingOrderedState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_order',
+              eventType: SCENE_ORDERED_SEGMENTS_EVENT_TYPE,
+              eventTypes: [SCENE_ORDERED_SEGMENTS_EVENT_TYPE],
+              sourceRef: 'scene.ordered_segments',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedOrderedSegments = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            sceneOrderedSegmentsObserved({
+              capabilityId,
+              probeId
+            })
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericSegmentEvent.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericSegmentEvent.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.ordered_segments`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${SCENE_ORDERED_SEGMENTS_EVENT_TYPE} not observed`)
+        })
+      ])
+    );
+    expect(missingOrderedState.status).toBe('failed');
+    expect(missingOrderedState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.ordered_segments`,
+          status: 'failed',
+          message: expect.stringContaining('expected sceneOrderedSegmentsVerified=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.ordered_segments`,
+          status: 'failed',
+          message: expect.stringContaining(`expected sceneOrderedSegmentsFirstId=${SCENE_ORDERED_SEGMENTS_FIRST_ID}`)
+        })
+      ])
+    );
+    expect(observedOrderedSegments.status).toBe('passed');
+  });
+
+  it('does not verify scene visual presentation metadata without authoritative 16-bit pixel style fields', () => {
+    const capabilityId = SCENE_VISUAL_PRESENTATION_METADATA_CAPABILITY_ID;
+    const probeId = SCENE_VISUAL_PRESENTATION_METADATA_REQUIRED_PROBE_ID;
+    const packages = [createSceneVisualPresentationMetadataPackageContract()];
+    const plan = buildCapabilityRuntimeQaPlan({
+      profileId: 'side_scrolling_run_and_gun.v1',
+      capabilityLock: createLock(packages, [capabilityId]),
+      packages
+    });
+    const genericVisualTheme = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'observe_visual_theme',
+              eventType: 'world.visual_theme.bound',
+              eventTypes: ['world.visual_theme.bound'],
+              sourceRef: 'template_params.params.style.visualTheme',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const missingVisualState = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            {
+              capabilityId,
+              probeId,
+              action: 'verify_visual_metadata',
+              eventType: SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE,
+              eventTypes: [SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE],
+              sourceRef: 'scene.visual_presentation_metadata',
+              status: 'observed'
+            }
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const visualMetadataWithoutTemplateParams = sceneVisualPresentationMetadataObserved({
+      capabilityId,
+      probeId
+    });
+    delete visualMetadataWithoutTemplateParams.sceneVisualPresentationTemplateParamsBound;
+    const missingTemplateBinding = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [visualMetadataWithoutTemplateParams],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+    const observedVisualMetadata = evaluateCapabilityQaReport({
+      plan,
+      probeResults: buildCapabilityQaProbeResultsFromRuntimeEvidence({
+        plan,
+        evidence: {
+          status: 'PASSED',
+          observed: [
+            sceneVisualPresentationMetadataObserved({
+              capabilityId,
+              probeId
+            })
+          ],
+          missingProbeIds: [],
+          mismatches: []
+        }
+      })
+    });
+
+    expect(genericVisualTheme.missingRequiredProbeIds).toEqual([probeId]);
+    expect(genericVisualTheme.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.visual_metadata`,
+          status: 'failed',
+          message: expect.stringContaining(`observation ${SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE} not observed`)
+        })
+      ])
+    );
+    expect(missingVisualState.status).toBe('failed');
+    expect(missingVisualState.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.visual_metadata`,
+          status: 'failed',
+          message: expect.stringContaining('expected sceneVisualPresentationMetadataVerified=true, observed <missing>')
+        }),
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.visual_metadata`,
+          status: 'failed',
+          message: expect.stringContaining(`expected sceneVisualPresentationStyleId=${SCENE_VISUAL_PRESENTATION_METADATA_STYLE_ID}`)
+        })
+      ])
+    );
+    expect(missingTemplateBinding.status).toBe('failed');
+    expect(missingTemplateBinding.requiredResults.find((entry) => entry.probeId === probeId)?.assertionResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assertionId: `${probeId}.assertion.visual_metadata`,
+          status: 'failed',
+          message: expect.stringContaining('expected sceneVisualPresentationTemplateParamsBound=true, observed <missing>')
+        })
+      ])
+    );
+    expect(observedVisualMetadata.status).toBe('passed');
+  });
 });
+
+function finalOracleGateObserved(
+  overrides: Partial<CapabilityRuntimeObservedProbeEvidence> = {}
+): CapabilityRuntimeObservedProbeEvidence {
+  return {
+    capabilityId: 'review.oracle_final_gate.v1',
+    probeId: REVIEW_ORACLE_FINAL_GATE_REQUIRED_PROBE_ID,
+    action: 'verify_final_gate',
+    eventType: REVIEW_ORACLE_FINAL_GATE_EVENT_TYPE,
+    eventTypes: [REVIEW_ORACLE_FINAL_GATE_EVENT_TYPE],
+    finalOracleGateStatus: 'approved',
+    finalOracleCandidateCommitSha: 'abc1234reviewedcandidate',
+    finalOracleReviewedCommitSha: 'abc1234reviewedcandidate',
+    finalOracleCandidateSkillRevision: 'sha256:current-skill-digest',
+    finalOracleReviewedSkillRevision: 'sha256:current-skill-digest',
+    finalOracleResultId: 'oracle_result_approved_current_candidate',
+    finalOracleCheckpointId: 'stage4.review_oracle_final_gate_v1.complete_supported_package_slice',
+    finalOracleExpectedCheckpointId: 'stage4.review_oracle_final_gate_v1.complete_supported_package_slice',
+    finalOracleP0Count: 0,
+    finalOracleP1Count: 0,
+    finalOracleP2Count: 0,
+    status: 'observed',
+    sourceRef: 'oracle.final_gate.approval',
+    ...overrides
+  };
+}
+
+function userAcceptanceGateObserved(
+  overrides: Partial<CapabilityRuntimeObservedProbeEvidence> = {}
+): CapabilityRuntimeObservedProbeEvidence {
+  return {
+    capabilityId: 'validation.user_acceptance_gate.v1',
+    probeId: VALIDATION_USER_ACCEPTANCE_GATE_REQUIRED_PROBE_ID,
+    action: 'verify_user_acceptance',
+    eventType: VALIDATION_USER_ACCEPTANCE_GATE_EVENT_TYPE,
+    eventTypes: [VALIDATION_USER_ACCEPTANCE_GATE_EVENT_TYPE],
+    userAcceptanceDecision: VALIDATION_USER_ACCEPTANCE_GATE_DECISION,
+    userAcceptanceCandidateCommitSha: 'abc1234acceptedcandidate',
+    userAcceptanceAcceptedCommitSha: 'abc1234acceptedcandidate',
+    userAcceptanceCandidateSkillRevision: 'sha256:current-skill-digest',
+    userAcceptanceAcceptedSkillRevision: 'sha256:current-skill-digest',
+    userAcceptanceCheckpointId: 'stage4.validation_user_acceptance_gate_v1.complete_supported_package_slice',
+    userAcceptanceExpectedCheckpointId: 'stage4.validation_user_acceptance_gate_v1.complete_supported_package_slice',
+    userAcceptanceReceiptId: 'user_acceptance_result_current_candidate',
+    userAcceptanceFinalOracleGateStatus: VALIDATION_USER_ACCEPTANCE_GATE_FINAL_ORACLE_STATUS,
+    userAcceptanceBlockingFindingCount: 0,
+    status: 'observed',
+    sourceRef: 'validation.user_acceptance_gate',
+    ...overrides
+  };
+}
+
+function runtimeModuleLoadReceiptObserved(
+  overrides: Pick<CapabilityRuntimeObservedProbeEvidence, 'capabilityId' | 'probeId'>
+): CapabilityRuntimeObservedProbeEvidence {
+  return {
+    ...overrides,
+    action: 'verify_receipt',
+    eventType: RUNTIME_MODULE_LOAD_RECEIPT_EVENT_TYPE,
+    eventTypes: [RUNTIME_MODULE_LOAD_RECEIPT_EVENT_TYPE],
+    runtimeModuleLoadReceiptLoaded: true,
+    runtimeModuleLoadReceiptKind: RUNTIME_MODULE_LOAD_RECEIPT_KIND,
+    runtimeModuleLoadReceiptSchemaVersion: RUNTIME_MODULE_LOAD_RECEIPT_SCHEMA_VERSION,
+    runtimeModuleLoadReceiptHashPresent: true,
+    runtimeModuleLoadReceiptLoadOrderCount: RUNTIME_MODULE_LOAD_RECEIPT_MIN_LOAD_ORDER_COUNT,
+    runtimeModuleLoadReceiptLifecycleEventCount: RUNTIME_MODULE_LOAD_RECEIPT_MIN_LIFECYCLE_EVENT_COUNT,
+    runtimeModuleLoadReceiptIssuesCount: 0,
+    runtimeModuleLoadReceiptCapabilityLockHashMatched: true,
+    runtimeModuleLoadReceiptRuntimeManifestHashMatched: true,
+    runtimeModuleLoadReceiptRuntimePlanHashMatched: true,
+    runtimeModuleLoadReceiptLoaderPlanHashMatched: true,
+    runtimeModuleLoadReceiptLifecycleComplete: true,
+    sourceRef: 'runtime.module_load_receipt',
+    status: 'observed'
+  };
+}
+
+function runtimePlanCoverageObserved(
+  overrides: Pick<CapabilityRuntimeObservedProbeEvidence, 'capabilityId' | 'probeId'>
+): CapabilityRuntimeObservedProbeEvidence {
+  return {
+    ...overrides,
+    action: 'verify_coverage',
+    eventType: RUNTIME_PLAN_COVERAGE_EVENT_TYPE,
+    eventTypes: [RUNTIME_PLAN_COVERAGE_EVENT_TYPE],
+    runtimePlanCoverageComputed: true,
+    runtimePlanCoverageKind: RUNTIME_PLAN_COVERAGE_KIND,
+    runtimePlanCoverageSchemaVersion: RUNTIME_PLAN_COVERAGE_SCHEMA_VERSION,
+    runtimePlanCoverageProfileId: RUNTIME_PLAN_COVERAGE_PROFILE_ID,
+    runtimePlanCoverageRuntimeFamily: RUNTIME_PLAN_COVERAGE_RUNTIME_FAMILY,
+    runtimePlanCoverageCapabilityLockMatched: true,
+    runtimePlanCoverageRequiredCapabilitiesEnumerated: true,
+    runtimePlanCoveragePackageInventoryMatched: true,
+    runtimePlanCoverageMissingCapabilitiesReported: true,
+    runtimePlanCoverageNoUnclassifiedRequiredCapabilities: true,
+    runtimePlanCoverageReportHashPresent: true,
+    sourceRef: 'runtime.plan_coverage',
+    status: 'observed'
+  };
+}
+
+function sceneOrderedSegmentsObserved(
+  overrides: Pick<CapabilityRuntimeObservedProbeEvidence, 'capabilityId' | 'probeId'>
+): CapabilityRuntimeObservedProbeEvidence {
+  return {
+    ...overrides,
+    action: 'verify_order',
+    eventType: SCENE_ORDERED_SEGMENTS_EVENT_TYPE,
+    eventTypes: [SCENE_ORDERED_SEGMENTS_EVENT_TYPE],
+    sceneOrderedSegmentsVerified: true,
+    sceneOrderedSegmentsSchemaVersion: SCENE_ORDERED_SEGMENTS_SCHEMA_VERSION,
+    sceneOrderedSegmentsProfileId: SCENE_ORDERED_SEGMENTS_PROFILE_ID,
+    sceneOrderedSegmentsRuntimeFamily: SCENE_ORDERED_SEGMENTS_RUNTIME_FAMILY,
+    sceneOrderedSegmentsSceneId: SCENE_ORDERED_SEGMENTS_SCENE_ID,
+    sceneOrderedSegmentsCount: SCENE_ORDERED_SEGMENTS_COUNT,
+    sceneOrderedSegmentsFirstId: SCENE_ORDERED_SEGMENTS_FIRST_ID,
+    sceneOrderedSegmentsSecondId: SCENE_ORDERED_SEGMENTS_SECOND_ID,
+    sceneOrderedSegmentsThirdId: SCENE_ORDERED_SEGMENTS_THIRD_ID,
+    sceneOrderedSegmentsOrderMatched: true,
+    sceneOrderedSegmentsContinuous: true,
+    sceneOrderedSegmentsAllNamed: true,
+    sceneOrderedSegmentsSceneBindingMatched: true,
+    sceneOrderedSegmentsNoGaps: true,
+    sourceRef: 'scene.ordered_segments',
+    status: 'observed'
+  };
+}
+
+function sceneVisualPresentationMetadataObserved(
+  overrides: Pick<CapabilityRuntimeObservedProbeEvidence, 'capabilityId' | 'probeId'>
+): CapabilityRuntimeObservedProbeEvidence {
+  return {
+    ...overrides,
+    action: 'verify_visual_metadata',
+    eventType: SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE,
+    eventTypes: [SCENE_VISUAL_PRESENTATION_METADATA_EVENT_TYPE],
+    sceneVisualPresentationMetadataVerified: true,
+    sceneVisualPresentationSchemaVersion: SCENE_VISUAL_PRESENTATION_METADATA_SCHEMA_VERSION,
+    sceneVisualPresentationProfileId: SCENE_VISUAL_PRESENTATION_METADATA_PROFILE_ID,
+    sceneVisualPresentationRuntimeFamily: SCENE_VISUAL_PRESENTATION_METADATA_RUNTIME_FAMILY,
+    sceneVisualPresentationStyleId: SCENE_VISUAL_PRESENTATION_METADATA_STYLE_ID,
+    sceneVisualPresentationStyleLabel: SCENE_VISUAL_PRESENTATION_METADATA_STYLE_LABEL,
+    sceneVisualPresentationPixelArt: true,
+    sceneVisualPresentationColorDepthBits: SCENE_VISUAL_PRESENTATION_METADATA_COLOR_DEPTH_BITS,
+    sceneVisualPresentationOriginalityPolicy: SCENE_VISUAL_PRESENTATION_METADATA_ORIGINALITY_POLICY,
+    sceneVisualPresentationAssetPlanBound: true,
+    sceneVisualPresentationTemplateParamsBound: true,
+    sceneVisualPresentationNoProtectedReuse: true,
+    sourceRef: 'scene.visual_presentation_metadata',
+    status: 'observed'
+  };
+}
 
 function createLock(packages: readonly GameplayCapabilityPackageContract[], requestedCapabilities: readonly string[]) {
   const report = resolveGameplayCapabilityGraph({
@@ -337,6 +7318,7 @@ function createPackage(
   id: string,
   input: {
     probes?: GameplayCapabilityPackageContract['qa']['probes'];
+    dependencies?: GameplayCapabilityPackageContract['dependencies'];
   } = {}
 ): GameplayCapabilityPackageContract {
   const ownedPath = `/entities/components/${id}`;
@@ -381,7 +7363,7 @@ function createPackage(
       sceneBindings: [],
       fallbackPolicy: 'not_applicable'
     },
-    dependencies: [],
+    dependencies: input.dependencies ?? [],
     optionalDependencies: [],
     conflictsWith: [],
     provides: [{ id: `${id}.service`, version: 'v1' }],
@@ -415,6 +7397,33 @@ function createProbe(
     ],
     observations: [{ id: `${id}.observation`, kind: 'position_delta', runtimeSystemId, ref: 'player.x' }],
     assertions: [{ id: `${id}.assertion`, observationId: `${id}.observation`, comparator: 'increased', message: 'player x increased' }]
+  };
+}
+
+function createRuntimeEventProbe(
+  id: string,
+  capabilityId: string,
+  runtimeSystemId: string,
+  eventRefs: readonly string[]
+): CapabilityQaProbeDescriptor {
+  return {
+    id,
+    capabilityId,
+    severity: 'required',
+    prerequisites: ['runtime scene started'],
+    actions: [{ id: `${id}.action.fire`, kind: 'runtime_event', target: `${capabilityId}.fire`, parameters: {} }],
+    observations: eventRefs.map((ref) => ({
+      id: `${id}.observation.${ref.replaceAll('.', '_')}`,
+      kind: 'runtime_event',
+      runtimeSystemId,
+      ref
+    })),
+    assertions: eventRefs.map((ref) => ({
+      id: `${id}.assertion.${ref.replaceAll('.', '_')}`,
+      observationId: `${id}.observation.${ref.replaceAll('.', '_')}`,
+      comparator: 'exists',
+      message: `${ref} observed`
+    }))
   };
 }
 

@@ -1,0 +1,11 @@
+export const RUNTIME_MODULE_LOAD_RECEIPT_CAPABILITY_ID = 'runtime.module_load_receipt.v1';
+export const RUNTIME_MODULE_LOAD_RECEIPT_RUNTIME_SYSTEM_ID = 'runtime.module_load_receipt';
+export const RUNTIME_MODULE_LOAD_RECEIPT_EVENT_TYPE = 'runtime.module_load_receipt.verified';
+export const RUNTIME_MODULE_LOAD_RECEIPT_RUNTIME_FAMILY = 'phaser_2d_action_arcade.v1';
+export const RUNTIME_MODULE_LOAD_RECEIPT_PROFILE_ID = 'side_scrolling_run_and_gun.v1';
+export const RUNTIME_MODULE_LOAD_RECEIPT_KIND = 'runtime_module_load_receipt';
+export const RUNTIME_MODULE_LOAD_RECEIPT_SCHEMA_VERSION = 'runtime_module_load_receipt.v0.1';
+export const RUNTIME_MODULE_LOAD_RECEIPT_SYSTEM_VERSION = 'v1';
+export const RUNTIME_MODULE_LOAD_RECEIPT_SYSTEM_PHASE = 'telemetry';
+export const RUNTIME_MODULE_LOAD_RECEIPT_MIN_LOAD_ORDER_COUNT = 1;
+export const RUNTIME_MODULE_LOAD_RECEIPT_MIN_LIFECYCLE_EVENT_COUNT = 1;

@@ -151,9 +151,23 @@ describe('Step 33 Scene IR', () => {
     });
   });
 
-  it('treats v0.1 scenes as overlays and preserves runtime-plan gameplay coverage', () => {
+  it('does not let a partial authored scene truncate runtime-plan terrain, waves, pickups, or objectives', () => {
     const rawDsl = createSideScrollingSceneDsl();
-    rawDsl.scenes[0].platforms = rawDsl.scenes[0].platforms.slice(0, 1);
+    rawDsl.scenes[0].platforms = [
+      rawDsl.scenes[0].platforms[0],
+      {
+        id: 'platform_partial_visual',
+        x: 980,
+        y: 380,
+        width: 280,
+        height: 24,
+        shape: 'rectangle' as const,
+        materialRef: 'terrain_snow_metal',
+        visualAssetIntentRef: 'tile_snow_metal_bridge',
+        collision: { enabled: true },
+        tags: ['platform']
+      }
+    ];
     rawDsl.scenes[0].enemyInstances = rawDsl.scenes[0].enemyInstances.slice(0, 1);
     const normalized = validateAndNormalizeRawGameDsl(rawDsl);
 
@@ -161,8 +175,19 @@ describe('Step 33 Scene IR', () => {
     if (!normalized.ok) {
       return;
     }
+    expect(normalized.rawDsl.scenes?.[0].platforms).toHaveLength(2);
+    expect(normalized.rawDsl.scenes?.[0].enemyInstances).toHaveLength(1);
 
     const ir = withStep37ReferenceRuntimePlan(normalized.ir);
+    const runtimePlan = ir.runtime_plan.side_scrolling;
+    if (runtimePlan === undefined) {
+      throw new Error('Expected Step37 reference runtime plan.');
+    }
+    expect(runtimePlan.platforms).toHaveLength(5);
+    expect(runtimePlan.waves).toHaveLength(3);
+    expect(runtimePlan.pickups).toHaveLength(1);
+    expect(runtimePlan.winCondition).toMatchObject({ kind: 'reach_exit', targetX: 3800 });
+
     const sceneIr = buildSceneIr({
       projectId: 'proj_20260619_step37_scene_overlay',
       runId: 'run_20260619_step37_scene_overlay',
@@ -181,12 +206,36 @@ describe('Step 33 Scene IR', () => {
 
     expect(sceneIr.source).toBe('runtime_plan_derived');
     expect(sceneIr.scenes[0].platforms).toHaveLength(5);
+    const platformRuntimeIds = sceneIr.scenes[0].platforms.map((platform) => platform.runtimeId);
+    expect(platformRuntimeIds).toEqual([
+      'platform.ground_intro',
+      'platform.platform_bridge',
+      'platform.platform_mid',
+      'platform.platform_high',
+      'platform.ground_exit'
+    ]);
+    expect(platformRuntimeIds).not.toContain('platform.platform_partial_visual');
+    expect(sceneIr.provenance).not.toHaveProperty('platform.platform_partial_visual');
     expect(sceneIr.scenes[0].enemyInstances).toHaveLength(3);
+    expect(sceneIr.scenes[0].enemyInstances.map((enemy) => enemy.runtimeId)).toEqual([
+      'spawn.spawn_intro_drone',
+      'spawn.spawn_bridge_drone',
+      'spawn.spawn_exit_drone'
+    ]);
     expect(sceneIr.scenes[0].pickups).toHaveLength(1);
+    expect(sceneIr.scenes[0].pickups[0]).toMatchObject({ runtimeId: 'pickup.field_medkit', kind: 'health' });
     expect(sceneIr.scenes[0].goals[0]).toMatchObject({ kind: 'reach', x: 3800 });
     expect(sceneIr.scenes[0].backgrounds[0]).toMatchObject({
       runtimeId: 'background.sky_night',
       assetIntentRef: 'scene_night_sky'
+    });
+    expect(sceneIr.provenance['platform.platform_mid']).toMatchObject({
+      source: 'runtime_plan',
+      dslPath: '/runtime_plan/side_scrolling/platforms/2'
+    });
+    expect(sceneIr.provenance['spawn.spawn_exit_drone']).toMatchObject({
+      source: 'runtime_plan',
+      dslPath: '/runtime_plan/side_scrolling/waves/2'
     });
     expect(coverage).toMatchObject({
       status: 'PASS',

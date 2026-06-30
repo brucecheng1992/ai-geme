@@ -1,8 +1,10 @@
 import Phaser from 'phaser';
 
 import { SideScrollingRunAndGunScene, type SideScrollingDirection } from './GameScene.js';
+import { buildRuntimeAuthoritySnapshot } from '../../shared/runtime-authority.js';
 import generatedAssetManifest from './asset-manifest.generated.json';
 import generatedLiveEditRegistry from './live-edit-registry.generated.json';
+import generatedRuntimeAuthority from './runtime-authority.generated.json';
 import generatedRuntimePlan from './runtime-plan.generated.json';
 import generatedSceneIr from './scene-ir.generated.json';
 import { createSideScrollingArtRuntime } from './side-scrolling-art-library.js';
@@ -19,7 +21,14 @@ const sideScrollingRuntimePlan = mergeSideScrollingRuntimePlan(generatedRuntimeP
 const sideScrollingSceneRuntime = resolveSideScrollingRuntimeSliceWithSceneIr(sideScrollingRuntimePlan, generatedSceneIr as SideScrollingSceneIr);
 const sideScrollingRuntimeSlice = sideScrollingSceneRuntime.plan;
 const sideScrollingArt = createSideScrollingArtRuntime(generatedAssetManifest);
-const scene = new SideScrollingRunAndGunScene(sideScrollingParams, { side_scrolling: sideScrollingRuntimeSlice }, sideScrollingArt, sideScrollingSceneRuntime.bindingState);
+const runtimeAuthority = buildRuntimeAuthoritySnapshot(generatedRuntimeAuthority);
+const scene = new SideScrollingRunAndGunScene(
+  sideScrollingParams,
+  { side_scrolling: sideScrollingRuntimeSlice },
+  sideScrollingArt,
+  sideScrollingSceneRuntime.bindingState,
+  runtimeAuthority
+);
 
 if (typeof window !== 'undefined') {
   class SideScrollingPhaserScene extends Phaser.Scene {
@@ -69,6 +78,11 @@ if (typeof window !== 'undefined') {
       scene.fire();
     }
 
+    if (event.key === 'ArrowDown' || event.key.toLowerCase() === 's') {
+      event.preventDefault();
+      scene.crouch();
+    }
+
     const direction = directionFromKey(event.key);
     if (direction !== undefined) {
       event.preventDefault();
@@ -81,6 +95,11 @@ if (typeof window !== 'undefined') {
   });
 
   window.addEventListener('keyup', (event) => {
+    if (event.key === 'ArrowDown' || event.key.toLowerCase() === 's') {
+      event.preventDefault();
+      scene.stand();
+    }
+
     const direction = directionFromKey(event.key);
     if (direction !== undefined) {
       scene.setRunInput(direction, false);

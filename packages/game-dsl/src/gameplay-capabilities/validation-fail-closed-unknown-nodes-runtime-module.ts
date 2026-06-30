@@ -1,0 +1,10 @@
+export const VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_CAPABILITY_ID = 'validation.fail_closed_unknown_nodes.v1';
+export const VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_RUNTIME_SYSTEM_ID = 'validation.fail_closed_unknown_nodes';
+export const VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_EVENT_TYPE = 'validation.fail_closed_unknown_nodes.verified';
+export const VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PROFILE_ID = 'DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1';
+export const VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_RUNTIME_FAMILY = 'phaser_2d_action_arcade.v1';
+export const VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_SCHEMA_VERSION = 'validation_fail_closed_unknown_nodes.v0.1';
+export const VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_ERROR_CODE = 'UNKNOWN_NODE_REJECTED';
+export const VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_FIXTURE_ID = 'dsl_unknown_runtime_node';
+export const VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_KIND = 'runtime_system.unregistered_node';
+export const VALIDATION_FAIL_CLOSED_UNKNOWN_NODES_PATH = '/runtime/systems/unknown_node';

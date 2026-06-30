@@ -34,6 +34,7 @@ describe('Workbench pipeline evidence client', () => {
       'shadowRuntimeLoaderReport',
       'shadowCapabilityQaPlan',
       'shadowCapabilityQaReport',
+      'targetProfileRuntimeSupportReport',
       'runtimeCapabilityReport',
       'sceneIr',
       'runtimeSceneBindingReport'
@@ -229,6 +230,7 @@ function makeIndex(): PipelineArtifactIndex {
       artifact('shadowRuntimeLoaderReport', 'runtime', 'model-output', 'shadow_phaser_runtime_loader_report.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
       artifact('shadowCapabilityQaPlan', 'runtime', 'model-output', 'shadow_capability_qa_plan.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
       artifact('shadowCapabilityQaReport', 'runtime', 'model-output', 'shadow_capability_qa_report.json', 'skipped', false, 'capability-runtime', 'json', 'capability_runtime_shadow_artifact_not_resolved'),
+      artifact('targetProfileRuntimeSupportReport', 'runtime', 'model-output', 'generation_target_profile_runtime_support_report.json', 'skipped', false, 'capability-runtime', 'json', 'target_profile_runtime_support_overlay_not_resolved'),
       artifact('intentPlan', 'prompt', 'model-output', 'intent_plan.json', 'present', true, 'generation', 'json'),
       artifact('gameDsl', 'dsl', 'model-output', 'game_dsl.json', 'present', true, 'generation', 'json'),
       artifact('gameDslCandidate', 'dsl', 'model-output', 'game_dsl.candidate.json', 'skipped', false, 'generation', 'json', 'valid_dsl_path_uses_game_dsl_json'),

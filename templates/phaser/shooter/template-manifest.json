@@ -28,7 +28,7 @@
     "src/asset-manifest.generated.json",
     "src/runtime-plan.generated.json"
   ],
-  "shared_files": ["../shared/kernel.ts", "../shared/end-screen.ts"],
+  "shared_files": ["../shared/kernel.ts", "../shared/end-screen.ts", "../shared/runtime-authority.ts"],
   "required_telemetry_all": [
     "game.started",
     "input.received",

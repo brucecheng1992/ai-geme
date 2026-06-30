@@ -28,19 +28,26 @@ export const GenerationCapabilityReadinessReportSchema = z.strictObject({
     runtimeSupportStatus: z.string().min(1),
     runtimeExecutable: z.boolean(),
     runtimeTemplateId: z.string().min(1).optional(),
+    runtimeTemplateManifestId: z.string().min(1).optional(),
     qaProfile: z.string().min(1).optional(),
-    profileSupportStatus: z.enum(['capability_complete_supported', 'legacy_runtime_supported', 'unsupported']).optional()
+    profileSupportStatus: z.enum(['capability_complete_supported', 'active_profile_supported', 'legacy_runtime_supported', 'unsupported']).optional()
   }),
   capabilityRequirements: z.strictObject({
     requiredCapabilityIds: z.array(z.string().min(1)),
     completeSupportedCapabilityIds: z.array(z.string().min(1)),
     incompleteCapabilityIds: z.array(z.string().min(1)),
-    missingRegistryCapabilityAliases: z.array(z.string().min(1))
+    missingRegistryCapabilityAliases: z.array(z.string().min(1)),
+    declaredProfileCapabilityIds: z.array(z.string().min(1))
   }),
   targetDefaultPath: z.literal('capability_composed_v1'),
-  selectedDefaultPath: z.enum(['legacy_template_v1', 'fail_closed_unsupported_intent']),
-  capabilityPathReadiness: z.enum(['ready_for_resolver', 'blocked']),
-  exactLockStatus: z.enum(['not_attempted_until_resolver_phase', 'not_attempted_requirements_incomplete', 'not_applicable_unsupported_intent']),
+  selectedDefaultPath: z.enum(['capability_composed_v1', 'legacy_template_v1', 'fail_closed_unsupported_intent']),
+  capabilityPathReadiness: z.enum(['ready_for_active_profile', 'ready_for_resolver', 'blocked']),
+  exactLockStatus: z.enum([
+    'not_required_active_profile_bound',
+    'not_attempted_until_resolver_phase',
+    'not_attempted_requirements_incomplete',
+    'not_applicable_unsupported_intent'
+  ]),
   blockers: z.array(z.string().min(1)),
   reportHash: z.string().min(1)
 });
@@ -62,11 +69,14 @@ export function buildGenerationCapabilityPreflight(input: {
   const profileStatus = listGameplayProfileRuntimeStatuses({ registry: input.registry }).find(
     (status) => status.runtimeGenre === input.normalizedGenre
   );
-  const readiness = profileStatus?.profileSupportStatus === 'capability_complete_supported' ? 'ready_for_resolver' : 'blocked';
-  const selectedDefaultPath = profileStatus?.runtimeExecutable === true ? 'legacy_template_v1' : 'fail_closed_unsupported_intent';
+  const activeProfileReady =
+    profileStatus?.profileSupportStatus === 'capability_complete_supported' ||
+    profileStatus?.profileSupportStatus === 'active_profile_supported';
+  const readiness = activeProfileReady ? 'ready_for_active_profile' : 'blocked';
+  const selectedDefaultPath = activeProfileReady ? 'capability_composed_v1' : 'fail_closed_unsupported_intent';
   const exactLockStatus =
-    readiness === 'ready_for_resolver'
-      ? 'not_attempted_until_resolver_phase'
+    readiness === 'ready_for_active_profile'
+      ? 'not_required_active_profile_bound'
       : profileStatus === undefined || !profileStatus.runtimeExecutable
         ? 'not_applicable_unsupported_intent'
         : 'not_attempted_requirements_incomplete';
@@ -92,14 +102,21 @@ export function buildGenerationCapabilityPreflight(input: {
             runtimeSupportStatus: profileStatus.runtimeSupportStatus,
             runtimeExecutable: profileStatus.runtimeExecutable,
             ...(profileStatus.runtimeTemplateId === undefined ? {} : { runtimeTemplateId: profileStatus.runtimeTemplateId }),
+            ...(profileStatus.runtimeTemplateManifestId === undefined ? {} : { runtimeTemplateManifestId: profileStatus.runtimeTemplateManifestId }),
             ...(profileStatus.qaProfile === undefined ? {} : { qaProfile: profileStatus.qaProfile }),
             profileSupportStatus: profileStatus.profileSupportStatus
           },
     capabilityRequirements: {
-      requiredCapabilityIds: [...(profileStatus?.gameplayCapabilityIds ?? [])].sort(),
-      completeSupportedCapabilityIds: [...(profileStatus?.completeSupportedCapabilityIds ?? [])].sort(),
-      incompleteCapabilityIds: [...(profileStatus?.incompleteCapabilityIds ?? [])].sort(),
-      missingRegistryCapabilityAliases: [...(profileStatus?.missingRegistryCapabilityAliases ?? [])].sort()
+      requiredCapabilityIds: [...(profileStatus?.activeRequirementCapabilityIds ?? [])].sort(),
+      completeSupportedCapabilityIds: [...(profileStatus?.completeSupportedCapabilityIds ?? [])]
+        .filter((capabilityId) => profileStatus?.activeRequirementCapabilityIds.includes(capabilityId))
+        .sort(),
+      incompleteCapabilityIds:
+        profileStatus === undefined || activeProfileReady
+          ? []
+          : profileStatus.activeRequirementCapabilityIds.filter((capabilityId) => !profileStatus.completeSupportedCapabilityIds.includes(capabilityId)).sort(),
+      missingRegistryCapabilityAliases: [...(profileStatus?.missingRegistryCapabilityAliases ?? [])].sort(),
+      declaredProfileCapabilityIds: [...(profileStatus?.declaredProfileCapabilityIds ?? [])].sort()
     },
     targetDefaultPath: 'capability_composed_v1',
     selectedDefaultPath,
@@ -122,7 +139,9 @@ function buildReadinessBlockers(profileStatus: ReturnType<typeof listGameplayPro
   const blockers = [
     ...(profileStatus.runtimeExecutable ? [] : ['runtime_profile_not_executable']),
     ...profileStatus.missingRegistryCapabilityAliases.map((alias) => `missing_registry_alias:${alias}`),
-    ...profileStatus.incompleteCapabilityIds.map((capabilityId) => `incomplete_capability:${capabilityId}`)
+    ...(profileStatus.profileSupportStatus === 'active_profile_supported' || profileStatus.profileSupportStatus === 'capability_complete_supported'
+      ? []
+      : profileStatus.incompleteCapabilityIds.map((capabilityId) => `incomplete_capability:${capabilityId}`))
   ];
 
   return [...new Set(blockers)].sort();

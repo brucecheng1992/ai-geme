@@ -1,4 +1,4 @@
-import type { GameBrief } from '../../../../packages/game-dsl/src/index.js';
+import type { ActiveProfileLock, AuthorityBundle, AuthorityBundleRef, GameBrief, GenerationScopePlan } from '../../../../packages/game-dsl/src/index.js';
 
 export type SupportedGameGenre = GameBrief['genre'];
 
@@ -6,6 +6,20 @@ export type RawDslPromptContext = {
   idea: string;
   language: 'zh' | 'en';
   brief: GameBrief;
+  canonical_brief_ref?: {
+    artifactKind: 'canonical_game_brief';
+    path: 'canonical_game_brief.json';
+    contentHash: string;
+  };
+  authority_bundle_ref?: AuthorityBundleRef;
+  active_profile_lock_ref?: {
+    artifactKind: 'active_profile_lock';
+    path: 'active_profile_lock.json';
+    lockHash: string;
+  };
+  active_profile_lock?: ActiveProfileLock;
+  generation_scope_plan?: GenerationScopePlan;
+  raw_dsl_authority?: AuthorityBundle['rawDslConsumption'];
   selected_contract: unknown;
   runtime_generation_context?: DslGenerationContext;
   allowed_enums: {
@@ -63,4 +77,5 @@ export type BuildRawDslPromptContextParams = {
   idea: string;
   language: 'zh' | 'en';
   brief: GameBrief;
+  authorityBundle?: AuthorityBundle;
 };

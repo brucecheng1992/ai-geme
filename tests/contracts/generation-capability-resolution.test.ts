@@ -10,7 +10,7 @@ import {
 } from '../../packages/game-dsl/src/index.js';
 
 describe('Step 37 generation capability resolution shadow artifacts', () => {
-  it('skips resolver and exact lock when the current side-scrolling profile is not capability-ready', () => {
+  it('binds the current side-scrolling profile to active profile requirements without exact shadow lock', () => {
     const preflight = buildGenerationCapabilityPreflight({
       projectId: 'proj_20260619_capability_resolution',
       runId: 'run_20260619_capability_resolution',
@@ -38,21 +38,22 @@ describe('Step 37 generation capability resolution shadow artifacts', () => {
     expect(artifacts.resolutionReport).toMatchObject({
       artifactKind: 'generation_capability_resolution_report',
       schemaVersion: 'generation_capability_resolution_report.v0.1',
-      selectedPath: 'legacy_template_v1',
+      selectedPath: 'capability_composed_v1',
       targetPath: 'capability_composed_v1',
       shadowMode: true,
       activeLockWritten: false,
       candidatePackagePolicy: 'approved_installed_packages_only',
-      resolverAttempt: 'skipped_readiness_blocked',
-      resolutionStatus: 'blocked',
-      exactLockStatus: 'not_attempted_requirements_incomplete',
-      selectedCapabilityIds: [],
+      resolverAttempt: 'skipped_active_profile_bound',
+      resolutionStatus: 'resolved',
+      exactLockStatus: 'not_required_active_profile_bound',
+      selectedCapabilityIds: expect.arrayContaining(['camera.side_follow.v1', 'health.player_health_points.v1', 'rules.restart_loop.v1']),
       deferredOptionalCapabilityIds: [],
-      resolverDiagnostics: []
+      resolverDiagnostics: [],
+      blockers: []
     });
     expect(artifacts.resolutionReport.registrySnapshotHash).toBe(preflight.registrySnapshot.snapshotHash);
     expect(artifacts.resolutionReport.readinessReportHash).toBe(preflight.readinessReport.reportHash);
-    expect(artifacts.resolutionReport.blockers).toContain('incomplete_capability:telemetry.gameplay_events.v1');
+    expect(artifacts.resolutionReport.requestedCapabilityIds).toEqual(artifacts.resolutionReport.selectedCapabilityIds);
   });
 
   it('fails closed without resolver or lock for unsupported intent', () => {
@@ -102,7 +103,7 @@ describe('Step 37 generation capability resolution shadow artifacts', () => {
     expect(artifacts.resolutionReport).toMatchObject({
       profileId: 'collector.v1',
       runtimeFamily: 'phaser_2d_top_down_arcade.v1',
-      selectedPath: 'legacy_template_v1',
+      selectedPath: 'capability_composed_v1',
       resolverAttempt: 'attempted',
       resolutionStatus: 'blocked',
       exactLockStatus: 'blocked_resolver_diagnostics',
@@ -133,7 +134,7 @@ describe('Step 37 generation capability resolution shadow artifacts', () => {
     expect(artifacts.resolutionReport).toMatchObject({
       profileId: 'collector.v1',
       runtimeFamily: 'phaser_2d_top_down_arcade.v1',
-      selectedPath: 'legacy_template_v1',
+      selectedPath: 'capability_composed_v1',
       targetPath: 'capability_composed_v1',
       shadowMode: true,
       activeLockWritten: false,

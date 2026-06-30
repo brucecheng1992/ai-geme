@@ -2,13 +2,24 @@ import { z } from 'zod';
 
 import { type CapabilityDrivenGameIr } from './gameplay-capabilities/capability-ir.js';
 import {
+  buildCapabilityQaProbeResultsFromRuntimeEvidence,
   buildCapabilityRuntimeQaPlan,
   evaluateCapabilityQaReport,
   type CapabilityQaProbeResult,
   type CapabilityQaReport,
+  type CapabilityRuntimeProbeEvidenceReport,
   type CapabilityRuntimeQaPlan
 } from './gameplay-capabilities/capability-qa-probes.js';
-import { GameplayCapabilityLockSchema, type GameplayCapabilityLock } from './gameplay-capabilities/capability-lock.js';
+import {
+  GAMEPLAY_CAPABILITY_LOCK_KIND,
+  GAMEPLAY_CAPABILITY_LOCK_SCHEMA_VERSION,
+  GameplayCapabilityLockSchema,
+  type GameplayCapabilityLock
+} from './gameplay-capabilities/capability-lock.js';
+import {
+  GameplayCapabilityPackageContractSchema,
+  validateGameplayCapabilityPackage
+} from './gameplay-capabilities/package-contract.js';
 import {
   buildPhaserRuntimeSystemLoaderPlan,
   PHASER_2D_ACTION_ARCADE_RUNTIME_FAMILY,
@@ -17,6 +28,12 @@ import {
   type PhaserRuntimeSystemManifest
 } from './gameplay-capabilities/phaser-runtime-loader.js';
 import { hashStableJson } from './gameplay-capabilities/stable-json.js';
+import {
+  ActiveProfileLockRefSchema,
+  AuthorityBundleRefSchema,
+  type ActiveProfileLockRef,
+  type AuthorityBundleRef
+} from './authority-bundle.js';
 import {
   GenerationCapabilityResolutionReportSchema,
   SHADOW_GAMEPLAY_CAPABILITY_LOCK_PATH,
@@ -41,17 +58,20 @@ export const GenerationCapabilityRuntimeReportSchema = z.strictObject({
   normalizedGenre: z.string().min(1),
   resolutionReportHash: z.string().min(1),
   profileId: z.string().min(1).optional(),
-  selectedPath: z.enum(['legacy_template_v1', 'fail_closed_unsupported_intent']),
+  selectedPath: z.enum(['capability_composed_v1', 'legacy_template_v1', 'fail_closed_unsupported_intent']),
   targetPath: z.literal('capability_composed_v1'),
-  shadowMode: z.literal(true),
-  activeRuntimeManifestWritten: z.literal(false),
-  activeCapabilityQaWritten: z.literal(false),
+  shadowMode: z.boolean(),
+  activeRuntimeManifestWritten: z.boolean(),
+  activeCapabilityQaWritten: z.boolean(),
   exactLockHash: z.string().min(1).optional(),
   lockCapabilityIds: z.array(z.string().min(1)),
-  runtimeManifestStatus: z.enum(['not_attempted_no_shadow_lock', 'missing', 'exact_lock_match', 'lock_mismatch']),
+  runtimeManifestStatus: z.enum(['active_profile_bound', 'not_attempted_no_shadow_lock', 'missing', 'exact_lock_match', 'lock_mismatch']),
   runtimeLoaderStatus: z.enum(['not_attempted', 'ready', 'invalid']),
   capabilityQaPlanStatus: z.enum(['not_attempted', 'ready', 'blocked']),
   capabilityQaReportStatus: z.enum(['not_attempted', 'passed', 'failed', 'passed_with_optional_failures']),
+  qaRuntimeAuthorityStatus: z.enum(['not_required', 'missing', 'matched']),
+  authorityBundleRef: AuthorityBundleRefSchema.optional(),
+  activeProfileLockRef: ActiveProfileLockRefSchema.optional(),
   runtimeEvidenceStatus: z.enum(['not_attempted', 'observed', 'missing_required_probe_results', 'blocked']),
   runtimeSystemCapabilityIds: z.array(z.string().min(1)),
   runtimeLoaderPlanHash: z.string().min(1).optional(),
@@ -67,6 +87,16 @@ export const GenerationCapabilityRuntimeReportSchema = z.strictObject({
 });
 
 export type GenerationCapabilityRuntimeReport = z.infer<typeof GenerationCapabilityRuntimeReportSchema>;
+
+export const GenerationCapabilityActiveRuntimeAuthorityEvidenceSchema = z.strictObject({
+  authorityBundleRef: AuthorityBundleRefSchema,
+  activeProfileLockRef: ActiveProfileLockRefSchema
+});
+
+export type GenerationCapabilityActiveRuntimeAuthorityEvidence = {
+  authorityBundleRef: AuthorityBundleRef;
+  activeProfileLockRef: ActiveProfileLockRef;
+};
 
 export type GenerationCapabilityRuntimeShadowArtifacts = {
   runtimeReport: GenerationCapabilityRuntimeReport;
@@ -84,8 +114,14 @@ export function buildGenerationCapabilityRuntimeShadow(input: {
   runtimeSystemManifest?: unknown;
   approvedInstalledPackages?: readonly unknown[];
   capabilityQaProbeResults?: readonly CapabilityQaProbeResult[];
+  capabilityRuntimeEvidence?: CapabilityRuntimeProbeEvidenceReport;
+  activeRuntimeAuthority?: GenerationCapabilityActiveRuntimeAuthorityEvidence;
 }): GenerationCapabilityRuntimeShadowArtifacts {
   const resolutionReport = GenerationCapabilityResolutionReportSchema.parse(input.resolutionReport);
+  const activeRuntimeAuthority =
+    input.activeRuntimeAuthority === undefined
+      ? undefined
+      : GenerationCapabilityActiveRuntimeAuthorityEvidenceSchema.parse(input.activeRuntimeAuthority);
   const base = {
     projectId: input.projectId,
     runId: input.runId,
@@ -99,6 +135,67 @@ export function buildGenerationCapabilityRuntimeShadow(input: {
     activeCapabilityQaWritten: false as const
   };
 
+  if (resolutionReport.selectedPath === 'capability_composed_v1' && resolutionReport.exactLockStatus === 'not_required_active_profile_bound') {
+    if (activeRuntimeAuthority === undefined) {
+      return buildRuntimeReport({
+        ...base,
+        selectedPath: 'capability_composed_v1',
+        shadowMode: false,
+        activeRuntimeManifestWritten: false,
+        activeCapabilityQaWritten: false,
+        lockCapabilityIds: resolutionReport.requestedCapabilityIds,
+        runtimeManifestStatus: 'active_profile_bound',
+        runtimeLoaderStatus: 'not_attempted',
+        capabilityQaPlanStatus: 'not_attempted',
+        capabilityQaReportStatus: 'not_attempted',
+        qaRuntimeAuthorityStatus: 'missing',
+        runtimeEvidenceStatus: 'not_attempted',
+        runtimeSystemCapabilityIds: [],
+        blockers: ['runtime_authority_not_observed']
+      });
+    }
+
+    const activeCapabilityQa = buildActiveProfileCapabilityQaArtifacts({
+      profileId: resolutionReport.profileId,
+      packages: input.approvedInstalledPackages ?? [],
+      probeResults: input.capabilityQaProbeResults,
+      runtimeEvidence: input.capabilityRuntimeEvidence
+    });
+    const capabilityQaBlockers = activeCapabilityQa === undefined ? [] : buildCapabilityQaBlockers(activeCapabilityQa.qaPlan, activeCapabilityQa.qaReport);
+    const runtimeReport = buildRuntimeReport({
+      ...base,
+      selectedPath: 'capability_composed_v1',
+      shadowMode: false,
+      activeRuntimeManifestWritten: true,
+      activeCapabilityQaWritten: true,
+      lockCapabilityIds: resolutionReport.requestedCapabilityIds,
+      runtimeManifestStatus: 'active_profile_bound',
+      runtimeLoaderStatus: 'ready',
+      capabilityQaPlanStatus: activeCapabilityQa?.qaPlan.status ?? 'ready',
+      capabilityQaReportStatus: activeCapabilityQa?.qaReport.status ?? 'passed',
+      qaRuntimeAuthorityStatus: 'matched',
+      authorityBundleRef: activeRuntimeAuthority.authorityBundleRef,
+      activeProfileLockRef: activeRuntimeAuthority.activeProfileLockRef,
+      runtimeEvidenceStatus:
+        capabilityQaBlockers.length === 0 ? 'observed' : activeCapabilityQa?.qaReport.status === 'failed' ? 'missing_required_probe_results' : 'blocked',
+      runtimeSystemCapabilityIds: resolutionReport.requestedCapabilityIds,
+      capabilityQaPlanHash: activeCapabilityQa?.qaPlan.planHash,
+      capabilityQaReportHash: activeCapabilityQa?.qaReport.reportHash,
+      shadowCapabilityQaPlanRef: activeCapabilityQa === undefined ? undefined : SHADOW_CAPABILITY_QA_PLAN_PATH,
+      shadowCapabilityQaReportRef: activeCapabilityQa === undefined ? undefined : SHADOW_CAPABILITY_QA_REPORT_PATH,
+      blockers: capabilityQaBlockers
+    }).runtimeReport;
+    return {
+      runtimeReport,
+      ...(activeCapabilityQa === undefined
+        ? {}
+        : {
+            shadowCapabilityQaPlan: activeCapabilityQa.qaPlan,
+            shadowCapabilityQaReport: activeCapabilityQa.qaReport
+          })
+    };
+  }
+
   if (resolutionReport.shadowLock === undefined) {
     return buildRuntimeReport({
       ...base,
@@ -107,6 +204,7 @@ export function buildGenerationCapabilityRuntimeShadow(input: {
       runtimeLoaderStatus: 'not_attempted',
       capabilityQaPlanStatus: 'not_attempted',
       capabilityQaReportStatus: 'not_attempted',
+      qaRuntimeAuthorityStatus: 'not_required',
       runtimeEvidenceStatus: 'not_attempted',
       runtimeSystemCapabilityIds: [],
       blockers: resolutionReport.blockers.length === 0 ? ['shadow_lock_not_resolved'] : resolutionReport.blockers
@@ -124,6 +222,7 @@ export function buildGenerationCapabilityRuntimeShadow(input: {
       runtimeLoaderStatus: 'not_attempted',
       capabilityQaPlanStatus: 'not_attempted',
       capabilityQaReportStatus: 'not_attempted',
+      qaRuntimeAuthorityStatus: 'not_required',
       runtimeEvidenceStatus: 'not_attempted',
       runtimeSystemCapabilityIds: [],
       blockers: ['runtime_manifest_missing_or_invalid']
@@ -170,6 +269,7 @@ export function buildGenerationCapabilityRuntimeShadow(input: {
     runtimeLoaderStatus: loaderReport.status,
     capabilityQaPlanStatus: qaPlan.status,
     capabilityQaReportStatus: qaReport.status,
+    qaRuntimeAuthorityStatus: 'not_required',
     runtimeEvidenceStatus,
     runtimeSystemCapabilityIds,
     runtimeLoaderPlanHash: loaderReport.planHash,
@@ -192,6 +292,92 @@ export function buildGenerationCapabilityRuntimeShadow(input: {
   };
 }
 
+type ActiveProfileCapabilityQaArtifacts = {
+  qaPlan: CapabilityRuntimeQaPlan;
+  qaReport: CapabilityQaReport;
+};
+
+function buildActiveProfileCapabilityQaArtifacts(input: {
+  profileId: string | undefined;
+  packages: readonly unknown[];
+  probeResults: readonly CapabilityQaProbeResult[] | undefined;
+  runtimeEvidence: CapabilityRuntimeProbeEvidenceReport | undefined;
+}): ActiveProfileCapabilityQaArtifacts | undefined {
+  const lock = buildActiveProfileCapabilityQaLock({
+    profileId: input.profileId ?? 'active_profile_bound',
+    packages: input.packages
+  });
+  if (lock === undefined) {
+    return undefined;
+  }
+
+  const qaPlan = buildCapabilityRuntimeQaPlan({
+    profileId: lock.profileId,
+    capabilityLock: lock,
+    packages: input.packages
+  });
+  const derivedProbeResults = buildCapabilityQaProbeResultsFromRuntimeEvidence({ plan: qaPlan, evidence: input.runtimeEvidence });
+  const qaReport = evaluateCapabilityQaReport({
+    plan: qaPlan,
+    probeResults: mergeCapabilityQaProbeResults([...(input.probeResults ?? []), ...derivedProbeResults])
+  });
+  return { qaPlan, qaReport };
+}
+
+function buildActiveProfileCapabilityQaLock(input: { profileId: string; packages: readonly unknown[] }): GameplayCapabilityLock | undefined {
+  const lockedPackages = input.packages.flatMap((candidate) => {
+    const parsed = GameplayCapabilityPackageContractSchema.safeParse(candidate);
+    if (!parsed.success) {
+      return [];
+    }
+
+    const validation = validateGameplayCapabilityPackage(parsed.data);
+    if (!validation.supportEligible || validation.packageHash === undefined || validation.packageVersion === undefined) {
+      return [];
+    }
+
+    return [{ contract: parsed.data, packageHash: validation.packageHash, packageVersion: validation.packageVersion }];
+  });
+  if (lockedPackages.length === 0) {
+    return undefined;
+  }
+
+  const runtimeFamilies = uniqueSortedStrings(lockedPackages.flatMap((entry) => entry.contract.manifest.runtimeFamilies));
+  if (runtimeFamilies.length !== 1) {
+    return undefined;
+  }
+
+  const sortedPackages = [...lockedPackages].sort((left, right) => left.contract.manifest.id.localeCompare(right.contract.manifest.id));
+  const payload: Omit<GameplayCapabilityLock, 'lockHash'> = {
+    artifactKind: GAMEPLAY_CAPABILITY_LOCK_KIND,
+    schemaVersion: GAMEPLAY_CAPABILITY_LOCK_SCHEMA_VERSION,
+    profileId: input.profileId,
+    runtimeFamily: runtimeFamilies[0],
+    capabilityIds: sortedPackages.map((entry) => entry.contract.manifest.id),
+    packages: sortedPackages.map((entry) => ({
+      capabilityId: entry.contract.manifest.id,
+      packageVersion: entry.packageVersion,
+      packageHash: entry.packageHash
+    }))
+  };
+  return GameplayCapabilityLockSchema.parse({ ...payload, lockHash: hashStableJson(payload) });
+}
+
+function mergeCapabilityQaProbeResults(results: readonly CapabilityQaProbeResult[]): CapabilityQaProbeResult[] {
+  const byProbeId = new Map<string, CapabilityQaProbeResult>();
+  for (const result of results) {
+    byProbeId.set(result.probeId, result);
+  }
+  return [...byProbeId.values()].sort((left, right) => left.probeId.localeCompare(right.probeId));
+}
+
+function buildCapabilityQaBlockers(qaPlan: CapabilityRuntimeQaPlan, qaReport: CapabilityQaReport): string[] {
+  return [
+    ...(qaPlan.status === 'ready' ? [] : qaPlan.diagnostics.map((diagnostic) => `capability_qa_plan:${diagnostic.code}:${diagnostic.capabilityId ?? diagnostic.probeId ?? '<profile>'}`)),
+    ...(qaReport.status === 'failed' ? qaReport.missingRequiredProbeIds.map((probeId) => `capability_qa_report:missing_required_probe:${probeId}`) : [])
+  ];
+}
+
 function buildRuntimeReport(input: {
   projectId: string;
   runId: string;
@@ -200,15 +386,18 @@ function buildRuntimeReport(input: {
   profileId?: string;
   selectedPath: GenerationCapabilityRuntimeReport['selectedPath'];
   targetPath: 'capability_composed_v1';
-  shadowMode: true;
-  activeRuntimeManifestWritten: false;
-  activeCapabilityQaWritten: false;
+  shadowMode: boolean;
+  activeRuntimeManifestWritten: boolean;
+  activeCapabilityQaWritten: boolean;
   exactLockHash?: string;
   lockCapabilityIds: readonly string[];
   runtimeManifestStatus: GenerationCapabilityRuntimeReport['runtimeManifestStatus'];
   runtimeLoaderStatus: GenerationCapabilityRuntimeReport['runtimeLoaderStatus'];
   capabilityQaPlanStatus: GenerationCapabilityRuntimeReport['capabilityQaPlanStatus'];
   capabilityQaReportStatus: GenerationCapabilityRuntimeReport['capabilityQaReportStatus'];
+  qaRuntimeAuthorityStatus: GenerationCapabilityRuntimeReport['qaRuntimeAuthorityStatus'];
+  authorityBundleRef?: AuthorityBundleRef;
+  activeProfileLockRef?: ActiveProfileLockRef;
   runtimeEvidenceStatus: GenerationCapabilityRuntimeReport['runtimeEvidenceStatus'];
   runtimeSystemCapabilityIds: readonly string[];
   runtimeLoaderPlanHash?: string;
@@ -240,6 +429,9 @@ function buildRuntimeReport(input: {
     runtimeLoaderStatus: input.runtimeLoaderStatus,
     capabilityQaPlanStatus: input.capabilityQaPlanStatus,
     capabilityQaReportStatus: input.capabilityQaReportStatus,
+    qaRuntimeAuthorityStatus: input.qaRuntimeAuthorityStatus,
+    ...(input.authorityBundleRef === undefined ? {} : { authorityBundleRef: input.authorityBundleRef }),
+    ...(input.activeProfileLockRef === undefined ? {} : { activeProfileLockRef: input.activeProfileLockRef }),
     runtimeEvidenceStatus: input.runtimeEvidenceStatus,
     runtimeSystemCapabilityIds: [...input.runtimeSystemCapabilityIds].sort(),
     ...(input.runtimeLoaderPlanHash === undefined ? {} : { runtimeLoaderPlanHash: input.runtimeLoaderPlanHash }),

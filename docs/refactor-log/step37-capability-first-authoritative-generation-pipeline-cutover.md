@@ -1,18 +1,32 @@
 # Step 37 — Capability-first Authoritative Generation Pipeline Cutover
 
-Status: IMPLEMENTED — FINAL CLOSURE BLOCKED
+Status: COMPLETE — GLOBAL EXIT CONDITIONS MET
 Oracle Review: PASS
-Production Default Cutover: NOT ACTIVE
-Final Closure: BLOCKED
-Date: 2026-06-19
+Production Default Cutover: ACTIVE
+Legacy Authoritative Path: EXITED
+Final Closure: NOT BLOCKED
+Workspace Documentation: RECONCILED
+Documentation Reconciliation Oracle: APPROVED_FOR_RECEIPT
+Date: 2026-06-27
 Source draft: `/Users/dahufa/Documents/workspace/step37_capability_first_authoritative_generation_pipeline_cutover.md`
 
 This repository file is the durable execution log. The source draft path above is historical input, not a runtime dependency.
 
 ## Closure Attempts
 
-- `closure-attempt-001`: BLOCKED. Step37 A-F contracts and gates are implemented and Oracle-reviewed, but production default cutover is not active and the active capability-composed runtime evidence does not yet exist.
-- `closure-attempt-002`: RESERVED. Future production-path closure must preserve lineage to `closure-attempt-001` and may pass only after active capability-composed canary, lock, manifest, module load, telemetry, QA, build, parity and rollback evidence all bind to the same run.
+- `closure-attempt-001`: HISTORICAL_BLOCKED. Step37 A-F contracts and gates were implemented and Oracle-reviewed on 2026-06-19, but production default cutover was not active and active capability-composed runtime evidence did not yet exist.
+- `closure-attempt-002`: CLOSED. Stage11 production default cutover, Stage12 legacy authoritative path exit and Stage13 final closure receipts close the production-path closure while preserving lineage to `closure-attempt-001`.
+  - Stage11 production default cutover receipt: `f3250c18d4f44d2450478cbb79f990a0cf0e87d4`.
+  - Stage12 legacy authoritative path exit receipt: `03ba00f9ae23779e558bca40730a58073a083132`.
+  - Stage13 final closure receipt: `82972f4d51545fd9b708eaf4f64edd0d515506fd`.
+  - Stage13 reviewed candidate: `afabbf4c46c4333e96e46599e6da619cbc880650`.
+  - Stage13 Oracle result: `APPROVED_FOR_RECEIPT`, P0/P1/P2/P3 = 0/0/0/0.
+  - Documentation reconciliation candidate: `dd91c708e9e6aec1bf59d5497bb1e4abb5b7f148`.
+  - Documentation reconciliation Oracle submission: `019f0948-e97a-7211-8840-40ad2c3bbcaa`.
+  - Documentation reconciliation Oracle agent: `019f0813-ed9a-7ad0-8341-50ababd44fea`.
+  - Documentation reconciliation Oracle result: `APPROVED_FOR_RECEIPT`, P0/P1/P2/P3 = 0/0/0/0.
+  - Documentation reconciliation receipt: `external_git_history_only_not_embedded`.
+  - Parent Loop Driver receipt result: `COMPLETE_GLOBAL_LOOP` with `global_exit_conditions_met=true`, `user_input_required=false` and `next_atomic_step=none`.
 
 ## Closure Definition
 
@@ -66,23 +80,23 @@ type CompatibilityDisposition =
   | "LEGACY_FORBIDDEN";
 ```
 
-Step37 current disposition: `NEW_CONSUMER_REQUIRED`.
+Step37 final disposition after Stage13: `LEGACY_FORBIDDEN` for silent legacy authority or fallback; the capability-composed path is the active production default.
 
 | Check | Step37 answer |
 | --- | --- |
-| Producer change | `GameBrief v0.2`, `GenerationScopePlan`, generation path receipt, capability readiness/resolution/runtime/gap/cutover reports, Scene IR authority/coverage reports and final closure report were added or changed. |
+| Producer change | `GameBrief v0.2`, `GenerationScopePlan`, generation path receipt, capability readiness/resolution/runtime/gap/cutover reports, Scene IR authority/coverage reports, production cutover receipt, legacy exit receipt and final closure report were added or changed. |
 | Consumer list | Brief ingress, provider projection, generation pipeline, capability resolver, DSL normalizer, compiler, Scene IR builder, runtime template/loader, Workbench evidence client, QA and final closure evaluator. |
-| Compatibility type | `NEW_CONSUMER_REQUIRED` for open/long play-time and `capability_composed_v1`; `ADAPTER_REQUIRED` only for short v0.2 intents that can be losslessly projected into Raw DSL v0.1 during transition; `LEGACY_FORBIDDEN` for silent fixed-template fallback after a capability gap. |
-| Authority | Play-time intent authority is `GameBrief v0.2`; actual path authority is `generation_path_receipt.json`; gameplay domain authority is `scene_ir_authority_report.json`; future active runtime authority must be exact capability lock plus runtime system manifest. |
-| Legacy strategy | Current production may still run explicit `legacy_template_v1`; it remains auditable and rollbackable, but cannot be treated as the Step37 target path. |
+| Compatibility type | `LEGACY_FORBIDDEN` for silent fixed-template fallback or legacy authority; the capability-composed path is the production default and legacy may only appear as explicit, auditable rollback or migration evidence. |
+| Authority | Play-time intent authority is `GameBrief v0.2`; actual path authority is `generation_path_receipt.json`; gameplay domain authority is `scene_ir_authority_report.json`; active runtime authority is exact capability lock plus runtime system manifest; final closure authority is the Stage13 final closure receipt. |
+| Legacy strategy | Legacy authoritative path exited in Stage12. Legacy remains auditable and rollbackable only through explicit authorization and must not be treated as the Step37 production target path. |
 | Failure policy | If no consumer can preserve the new semantics, the run must fail closed with explicit evidence such as `LEGACY_DSL_NONREPRESENTABLE`, `BLOCKED_CAPABILITY_GAP` or final closure `blocked`, instead of shortening play time or deleting gameplay. |
-| Evidence | Required evidence is same-run active path receipt, exact lock, runtime manifest, module load receipt, capability-owned telemetry such as real `enemy.fired`, capability QA, build, parity and rollback reports. Current evidence shows these are not yet active. |
+| Evidence | Stage11, Stage12 and Stage13 receipts bind same-run active path receipt, exact lock, runtime manifest, module load receipt, capability-owned telemetry, capability QA, build, parity, rollback, Oracle approval and final closure to the current completed Step37 loop. |
 | Rollback | Rollback must create a new explicitly authorized legacy run with lineage to the source run and preserved evidence; it must not rewrite the original run or drop new semantics in place. |
 
-Current diagnostic note:
+Historical diagnostic note superseded by Stage11-13 receipts:
 
 - `proj_20260619_122107_9840` proved `GameBrief v0.2` can produce `play_time_intent` range `480..720`, but Raw DSL v0.1 cannot consume it. Commit 1 supersedes the earlier `FALLBACK_UNSUPPORTED` wording with `LEGACY_DSL_NONREPRESENTABLE`.
-- `proj_20260619_122635_e351` produced `game_dsl.json`, but `generation_path_receipt.json` recorded `selectedPath: legacy_template_v1`; the DSL source remained Raw DSL v0.1 with `target_play_time_sec: 120`, so this is not a completed `capability_composed_v1` cutover.
+- `proj_20260619_122635_e351` produced `game_dsl.json`, but `generation_path_receipt.json` recorded `selectedPath: legacy_template_v1`; the DSL source remained Raw DSL v0.1 with `target_play_time_sec: 120`, so this was not a completed `capability_composed_v1` cutover at that historical checkpoint.
 
 ## Production Realization Stages
 

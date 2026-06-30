@@ -188,7 +188,7 @@ async function runCanaryCase(
 
 function createCanaryProvider(brief: AssetSemanticCanaryBrief) {
   return {
-    async generateGameBrief() {
+    async generateGameBrief(params: { projectId: string; runId: string }) {
       const value: GameBrief = GameBriefSchema.parse({
         brief_version: 'game-brief-v0.1',
         title: brief.id,
@@ -198,11 +198,21 @@ function createCanaryProvider(brief: AssetSemanticCanaryBrief) {
         difficulty: 'easy',
         target_play_time_sec: 60
       });
-      return { ok: true as const, value, rawText: JSON.stringify(value), rawOutputPath: '' };
+      return {
+        ok: true as const,
+        value,
+        rawText: JSON.stringify(value),
+        rawOutputPath: workspace.getModelOutputPath(params.projectId, params.runId, 'game-brief.raw.json')
+      };
     },
-    async generateRawGameDsl() {
+    async generateRawGameDsl(params: { projectId: string; runId: string }) {
       const value = RawGameDslSchema.parse(createRawGameDslForCanary(brief));
-      return { ok: true as const, value, rawText: JSON.stringify(value), rawOutputPath: '' };
+      return {
+        ok: true as const,
+        value,
+        rawText: JSON.stringify(value),
+        rawOutputPath: workspace.getModelOutputPath(params.projectId, params.runId, 'raw-game-dsl.raw.json')
+      };
     }
   };
 }

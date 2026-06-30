@@ -14,6 +14,7 @@ import {
   exposeRuntime
 } from '../../shared/kernel.js';
 import { EndScreenRenderer } from '../../shared/end-screen.js';
+import type { RuntimeAuthoritySnapshot } from '../../shared/runtime-authority.js';
 import {
   advanceShooterWorld,
   createShooterRuntimeState,
@@ -56,7 +57,8 @@ export class ShooterGameScene {
     private readonly params: ShooterTemplateParams,
     runtimePlan: ShooterRuntimePlan = defaultShooterRuntimePlan,
     private readonly art?: ShooterArtRuntime,
-    liveEditRegistry?: Partial<ShooterLiveEditRegistry>
+    liveEditRegistry?: Partial<ShooterLiveEditRegistry>,
+    private readonly runtimeAuthority?: RuntimeAuthoritySnapshot
   ) {
     this.state = createRuntimeState(params.player.health);
     this.telemetry = new TelemetrySystem(this.state);
@@ -113,7 +115,8 @@ export class ShooterGameScene {
         projectilesActive: this.runtime.projectiles.length,
         enemyProjectilesActive: this.runtime.projectiles.filter((projectile) => projectile.owner === 'enemy').length,
         enemiesCleared: this.runtime.enemiesCleared,
-        enemyWavePlan: this.enemyWaveSnapshot()
+        enemyWavePlan: this.enemyWaveSnapshot(),
+        runtimeAuthority: this.runtimeAuthority
       })),
       () => ({ assets: this.art?.telemetry() })
     );

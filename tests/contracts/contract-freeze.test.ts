@@ -482,6 +482,168 @@ describe('Contract Freeze', () => {
     expect(shooterContract.required_telemetry_all).not.toContain('enemy.fired');
   });
 
+  it('allows package-owned flying enemy right-entry telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'enemy.flying_right_entry.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('enemy.flying_right_entry.verified');
+  });
+
+  it('allows package-owned patrol infantry telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'enemy.patrol_infantry.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('enemy.patrol_infantry.verified');
+  });
+
+  it('allows package-owned victory declaration telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'feedback.victory_declaration.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('feedback.victory_declaration.verified');
+  });
+
+  it('allows package-owned generation fallback fail-closed telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'generation.fallback_policy_fail_closed.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('generation.fallback_policy_fail_closed.verified');
+  });
+
+  it('allows package-owned validation fail-closed unknown nodes telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'validation.fail_closed_unknown_nodes.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('validation.fail_closed_unknown_nodes.verified');
+  });
+
+  it('allows package-owned boss unlock telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'goal.boss_unlock.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('goal.boss_unlock.verified');
+  });
+
+  it('allows package-owned falling hazard area telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'hazard.falling_area.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('hazard.falling_area.verified');
+  });
+
+  it('allows package-owned timed explosion telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'hazard.timed_explosion.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('hazard.timed_explosion.verified');
+  });
+
+  it('allows package-owned checkpoint restore telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'rules.checkpoint_restore.restored', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('rules.checkpoint_restore.restored');
+  });
+
+  it('allows package-owned encounter gate telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'rules.encounter_gate.closed', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('rules.encounter_gate.closed');
+  });
+
+  it('allows package-owned retry count telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'rules.retry_count.changed', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('rules.retry_count.changed');
+  });
+
+  it('allows package-owned state transition graph telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'rules.state_transition_graph.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('rules.state_transition_graph.verified');
+  });
+
+  it('allows package-owned weapon supply telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'pickup.weapon_supply.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('pickup.weapon_supply.verified');
+  });
+
+  it('allows package-owned DeepSeek authoritative draft telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'provider.deepseek_authoritative_draft.validated', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('provider.deepseek_authoritative_draft.validated');
+  });
+
+  it('allows package-owned fixed prompt end-to-end validation telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'validation.fixed_prompt_end_to_end.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('validation.fixed_prompt_end_to_end.verified');
+  });
+
+  it('allows package-owned metamorphic semantic hash validation telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'validation.metamorphic_semantic_hash.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('validation.metamorphic_semantic_hash.verified');
+  });
+
+  it('allows package-owned replay stability validation telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'validation.replay_stability.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('validation.replay_stability.verified');
+  });
+
+  it('allows package-owned user acceptance gate validation telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'validation.user_acceptance_gate.accepted', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('validation.user_acceptance_gate.accepted');
+  });
+
+  it('allows package-owned final Oracle gate telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'review.oracle_final_gate.approved', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('review.oracle_final_gate.approved');
+  });
+
+  it('allows package-owned runtime manifest binding telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'runtime.manifest_binding.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('runtime.manifest_binding.verified');
+  });
+
+  it('allows package-owned runtime module load receipt telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'runtime.module_load_receipt.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('runtime.module_load_receipt.verified');
+  });
+
+  it('allows package-owned runtime plan coverage telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'runtime.plan_coverage.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('runtime.plan_coverage.verified');
+  });
+
+  it('allows package-owned scene ordered segments telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'scene.ordered_segments.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('scene.ordered_segments.verified');
+  });
+
+  it('allows package-owned scene visual presentation metadata telemetry without making it a QA gate requirement', () => {
+    expect(() =>
+      TelemetryEventSchema.parse({ type: 'scene.visual_presentation_metadata.verified', timestamp_ms: 0, frame: 0 })
+    ).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('scene.visual_presentation_metadata.verified');
+  });
+
+  it('allows package-owned explicit spawn declarations telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'spawn.explicit_declarations.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('spawn.explicit_declarations.verified');
+  });
+
+  it('allows package-owned spawn stop-on-boss-defeat telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'spawn.stop_on_boss_defeat.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('spawn.stop_on_boss_defeat.verified');
+  });
+
+  it('allows package-owned UI failure-restart telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'ui.failure_restart.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('ui.failure_restart.verified');
+  });
+
+  it('allows package-owned UI win/failure transitions telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'ui.win_failure_transitions.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('ui.win_failure_transitions.verified');
+  });
+
+  it('allows package-owned UI boss-health HUD telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'ui.hud_boss_health.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('ui.hud_boss_health.verified');
+  });
+
+  it('allows package-owned UI current-weapon HUD telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'ui.hud_current_weapon.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('ui.hud_current_weapon.verified');
+  });
+
+  it('allows package-owned UI player-health HUD telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'ui.hud_player_health.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('ui.hud_player_health.verified');
+  });
+
+  it('allows package-owned UI retries HUD telemetry without making it a QA gate requirement', () => {
+    expect(() => TelemetryEventSchema.parse({ type: 'ui.hud_retries.verified', timestamp_ms: 0, frame: 0 })).not.toThrow();
+    expect(sideScrollingRunAndGunContract.required_telemetry_all).not.toContain('ui.hud_retries.verified');
+  });
+
   it('freezes QA gate all and any_groups evaluation semantics', () => {
     const shooterGate = qaGate.genre_required_events.shooter;
     const observedWithScore = [...shooterGate.all, 'score.changed'];

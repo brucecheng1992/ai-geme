@@ -2,7 +2,7 @@ import collectorContract from '../../../../packages/game-dsl/src/contracts/colle
 import dodgerContract from '../../../../packages/game-dsl/src/contracts/dodger.contract.json' with { type: 'json' };
 import shooterContract from '../../../../packages/game-dsl/src/contracts/shooter.contract.json' with { type: 'json' };
 import sideScrollingRunAndGunContract from '../../../../packages/game-dsl/src/contracts/side_scrolling_run_and_gun.contract.json' with { type: 'json' };
-import { findRuntimeGenreCapability, type RawGameDsl, type RuntimeGenreCapability } from '../../../../packages/game-dsl/src/index.js';
+import { authorityBundleRef, findRuntimeGenreCapability, type RawGameDsl, type RuntimeGenreCapability } from '../../../../packages/game-dsl/src/index.js';
 import type { BuildRawDslPromptContextParams, DslGenerationContext, RawDslPromptContext, SupportedGameGenre } from './prompt-context.types.js';
 
 const selectedContracts: Record<SupportedGameGenre, unknown> = {
@@ -401,6 +401,16 @@ export function buildRawDslPromptContext(params: BuildRawDslPromptContextParams)
     idea: params.idea,
     language: params.language,
     brief: params.brief,
+    ...(params.authorityBundle === undefined
+      ? {}
+      : {
+          canonical_brief_ref: params.authorityBundle.refs.canonicalBrief,
+          authority_bundle_ref: authorityBundleRef(params.authorityBundle),
+          active_profile_lock_ref: params.authorityBundle.refs.activeProfileLock,
+          active_profile_lock: params.authorityBundle.activeProfileLock,
+          generation_scope_plan: params.authorityBundle.generationScopePlan,
+          raw_dsl_authority: params.authorityBundle.rawDslConsumption
+        }),
     selected_contract: selectedContracts[params.brief.genre],
     ...buildRuntimeGenerationContext(params.brief.genre),
     allowed_enums: {

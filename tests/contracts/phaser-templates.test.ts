@@ -55,7 +55,7 @@ type ShooterTemplateSnapshot = TemplateSnapshot & {
 };
 
 type SideScrollingTemplateSnapshot = TemplateSnapshot & {
-  player: { x: number; y: number; onGround: boolean };
+  player: { x: number; y: number; onGround: boolean; crouching?: boolean; height?: number; standingHeight?: number; heightScale?: number };
   camera: {
     mode: 'side_follow';
     followTarget: 'player';
@@ -81,8 +81,44 @@ type SideScrollingTemplateSnapshot = TemplateSnapshot & {
     };
     bindings: Array<{ kind: string; sceneRuntimeId: string; runtimeInstanceId: string; sourceDslPath?: string; status: string }>;
   };
+  runtimeAuthority?: {
+    authorityBundleRef: { artifactKind: 'authority_bundle'; path: 'authority_bundle.json'; bundleHash: string };
+    activeProfileLockRef: { artifactKind: 'active_profile_lock'; path: 'active_profile_lock.json'; lockHash: string };
+    profileId: string;
+    runtimeTemplateId: string;
+    runtimeTemplateManifestId: string;
+    qaProfile: string;
+  };
+  capabilityRuntime?: {
+    source: 'side_scrolling_runtime';
+    probes: Array<{
+      capabilityId: string;
+      probeId: string;
+      runtimeModuleId: string;
+      action: string;
+      eventType: string;
+      eventTypes?: string[];
+      airborne?: boolean;
+      crouching?: boolean;
+      heightScale?: number;
+      bodyHeight?: number;
+      standingHeight?: number;
+      invulnerable?: boolean;
+      damagePrevented?: boolean;
+      health?: number;
+      maxHealth?: number;
+      projectileEntityId?: string;
+      projectileId?: string;
+      pickupCollected?: boolean;
+      pickupConsumed?: boolean;
+      pickupStateChanged?: boolean;
+      sourceRef: string;
+      status: 'observed';
+    }>;
+  };
   enemies: Array<{ id: string; entityId: string; x: number; y: number; health: number; cleared: boolean }>;
-  projectiles: Array<{ id: string; x: number; y: number }>;
+  pickups: Array<{ id: string; kind: string; x: number; y: number; active: boolean }>;
+  projectiles: Array<{ id: string; owner: string; x: number; y: number; sourceId?: string; capabilityId?: string; probeId?: string }>;
   waves: Array<{ id: string; triggered: boolean }>;
 };
 
@@ -157,6 +193,7 @@ describe('Phaser templates', () => {
     expect(shooterMain).toContain('asset-manifest.generated.json');
     expect(shooterMain).toContain('shooterArt.preload(this)');
     expect(sideScrollingMain).toContain('scene.jump()');
+    expect(sideScrollingMain).toContain('scene.crouch()');
     expect(sideScrollingMain).toContain('scene.fire()');
     expect(sideScrollingMain).toContain('scene.setRunInput');
     expect(sideScrollingMain).toContain('runtime-plan.generated.json');
@@ -190,12 +227,14 @@ describe('Phaser templates', () => {
       expect(main).toContain("from './template-params.generated.json'");
       if (genre === 'dodger') {
         expect(main).toContain("from './runtime-plan.generated.json'");
-        expect(main).toContain('new DodgerGameScene(dodgerParams, dodgerRuntimePlan, dodgerArt)');
+        expect(main).toContain("from './runtime-authority.generated.json'");
+        expect(main).toContain('new DodgerGameScene(dodgerParams, dodgerRuntimePlan, dodgerArt, runtimeAuthority)');
       } else if (genre === 'shooter') {
         expect(main).toContain("from './runtime-plan.generated.json'");
         expect(main).toContain("from './asset-manifest.generated.json'");
         expect(main).toContain("from './live-edit-registry.generated.json'");
-        expect(main).toContain('new ShooterGameScene(shooterParams, shooterRuntimePlan, shooterArt, generatedLiveEditRegistry)');
+        expect(main).toContain("from './runtime-authority.generated.json'");
+        expect(main).toContain('new ShooterGameScene(shooterParams, shooterRuntimePlan, shooterArt, generatedLiveEditRegistry, runtimeAuthority)');
         expect(main).toContain('AIGAME_RUNTIME_READY');
         expect(main).toContain('AIGAME_GET_CAPABILITIES');
         expect(main).toContain('AIGAME_APPLY_PATCH');
@@ -205,14 +244,17 @@ describe('Phaser templates', () => {
         expect(main).toContain('requestPatchId === undefined');
       } else if (genre === 'collector') {
         expect(main).toContain("from './asset-manifest.generated.json'");
-        expect(main).toContain('new CollectorGameScene(collectorParams, collectorArt)');
+        expect(main).toContain("from './runtime-authority.generated.json'");
+        expect(main).toContain('new CollectorGameScene(collectorParams, collectorArt, runtimeAuthority)');
       } else if (genre === 'side_scrolling_run_and_gun') {
         expect(main).toContain("from './runtime-plan.generated.json'");
         expect(main).toContain("from './scene-ir.generated.json'");
         expect(main).toContain("from './asset-manifest.generated.json'");
         expect(main).toContain("from './live-edit-registry.generated.json'");
+        expect(main).toContain("from './runtime-authority.generated.json'");
         expect(main).toContain('resolveSideScrollingRuntimeSliceWithSceneIr(sideScrollingRuntimePlan');
-        expect(main).toContain('new SideScrollingRunAndGunScene(sideScrollingParams, { side_scrolling: sideScrollingRuntimeSlice }, sideScrollingArt, sideScrollingSceneRuntime.bindingState)');
+        expect(main).toContain('new SideScrollingRunAndGunScene(');
+        expect(main).toContain('runtimeAuthority');
         expect(main).toContain('AIGAME_RUNTIME_READY');
         expect(main).toContain('AIGAME_GET_CAPABILITIES');
         expect(main).toContain('AIGAME_APPLY_PATCH');
@@ -1027,8 +1069,11 @@ describe('Phaser templates', () => {
 
   it('uses generated Scene IR to drive side-scrolling runtime structure and binding evidence', async () => {
     const sideScrollingMain = await readFile('templates/phaser/side_scrolling_run_and_gun/src/main.ts', 'utf8');
+    const runtimeAuthorityHelper = await readFile('templates/phaser/shared/runtime-authority.ts', 'utf8');
     expect(sideScrollingMain).toContain('scene-ir.generated.json');
     expect(sideScrollingMain).toContain('resolveSideScrollingRuntimeSliceWithSceneIr');
+    expect(runtimeAuthorityHelper).toContain('runtime-authority.generated.json must contain an authority bundle object.');
+    expect(runtimeAuthorityHelper).toContain('runtime-authority.generated.json is missing required active profile authority fields.');
     expect(sideScrollingManifest.source_files).toEqual(expect.arrayContaining(['src/side-scrolling-scene-ir.ts', 'src/scene-ir.generated.json']));
 
     const { SideScrollingRunAndGunScene } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/GameScene.js');
@@ -1063,7 +1108,21 @@ describe('Phaser templates', () => {
       }
     });
 
-    const scene = new SideScrollingRunAndGunScene(defaultSideScrollingParams, { side_scrolling: resolved.plan }, undefined, resolved.bindingState);
+    const runtimeAuthority = {
+      authorityBundleRef: { artifactKind: 'authority_bundle' as const, path: 'authority_bundle.json' as const, bundleHash: 'fnv1a_round4_bundle' },
+      activeProfileLockRef: { artifactKind: 'active_profile_lock' as const, path: 'active_profile_lock.json' as const, lockHash: 'fnv1a_round4_lock' },
+      profileId: 'side_scrolling_run_and_gun.v1',
+      runtimeTemplateId: 'phaser/side_scrolling_run_and_gun.v1',
+      runtimeTemplateManifestId: 'side_scrolling_run_and_gun.v1',
+      qaProfile: 'side_scrolling_run_and_gun_smoke'
+    };
+    const scene = new SideScrollingRunAndGunScene(
+      defaultSideScrollingParams,
+      { side_scrolling: resolved.plan },
+      undefined,
+      resolved.bindingState,
+      runtimeAuthority
+    );
     scene.create();
 
     const snapshot = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
@@ -1078,8 +1137,252 @@ describe('Phaser templates', () => {
       sceneBindings: {
         source: 'scene_ir',
         summary: expect.objectContaining({ boundCount: 7, unboundCount: 0 })
+      },
+      runtimeAuthority: {
+        authorityBundleRef: { bundleHash: 'fnv1a_round4_bundle' },
+        activeProfileLockRef: { lockHash: 'fnv1a_round4_lock' },
+        profileId: 'side_scrolling_run_and_gun.v1',
+        runtimeTemplateManifestId: 'side_scrolling_run_and_gun.v1',
+        qaProfile: 'side_scrolling_run_and_gun_smoke'
       }
     });
+  });
+
+  it('exposes package-owned capability runtime evidence through side-scrolling QA telemetry', async () => {
+    const { SideScrollingRunAndGunScene } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/GameScene.js');
+    const { defaultSideScrollingRuntimeSlice } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/side-scrolling-runtime-plan.js');
+    const { defaultSideScrollingParams } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/template-params.js');
+    const plan = {
+      ...defaultSideScrollingRuntimeSlice,
+      pickups: [{ id: 'qa_pickup', kind: 'score' as const, x: 620, y: 450 }]
+    };
+    const scene = new SideScrollingRunAndGunScene(defaultSideScrollingParams, { side_scrolling: plan });
+
+    scene.create();
+    scene.start();
+    scene.setRunInput('right', true);
+    for (let frame = 0; frame < 40; frame += 1) {
+      scene.update(1_000 + frame * 50, 50);
+    }
+    scene.setRunInput('right', false);
+    scene.crouch();
+    scene.jump();
+    scene.fire(1_000);
+
+    const expectedCameraProbe = {
+      capabilityId: 'camera.side_follow.v1',
+      probeId: 'camera.side_follow.v1.scroll.browser_qa.v1',
+      runtimeModuleId: 'camera.side_follow',
+      action: 'move',
+      eventType: 'camera.side_follow.active',
+      eventTypes: ['camera.side_follow.active'],
+      sourceRef: 'runtime_plan.side_scrolling.camera.bounds',
+      status: 'observed'
+    };
+    const expectedCollisionProbe = {
+      capabilityId: 'collision.platform.v1',
+      probeId: 'collision.platform.v1.grounded.browser_qa.v1',
+      runtimeModuleId: 'collision.platform',
+      action: 'collide',
+      eventType: 'collision.platform.grounded',
+      eventTypes: ['collision.platform.grounded'],
+      sourceRef: 'runtime_plan.side_scrolling.platforms',
+      status: 'observed'
+    };
+    const expectedWeaponProbe = {
+      capabilityId: 'weapon.default_straight_single.v1',
+      probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1',
+      runtimeModuleId: 'weapon.default_straight_single',
+      action: 'fire',
+      eventType: 'player.fired',
+      projectileEntityId: 'pulse_bolt',
+      sourceRef: 'runtime_plan.side_scrolling.player.projectileEntityId',
+      status: 'observed'
+    };
+    const expectedProjectileProbe = {
+      capabilityId: 'combat.projectile.v1',
+      probeId: 'combat.projectile.v1.spawn.browser_qa.v1',
+      runtimeModuleId: 'combat.projectile',
+      action: 'fire',
+      eventType: 'projectile.spawned',
+      projectileEntityId: 'pulse_bolt',
+      sourceRef: 'runtime_plan.side_scrolling.player.projectileEntityId',
+      status: 'observed'
+    };
+    const expectedAirborneFireProbe = {
+      capabilityId: 'combat.airborne_fire.v1',
+      probeId: 'combat.airborne_fire.v1.fired.browser_qa.v1',
+      runtimeModuleId: 'combat.airborne_fire',
+      action: 'fire',
+      eventType: 'combat.airborne_fire.fired',
+      eventTypes: ['combat.airborne_fire.fired'],
+      airborne: true,
+      projectileEntityId: 'pulse_bolt',
+      sourceRef: 'runtime_plan.side_scrolling.player.jumpVelocity + projectileEntityId',
+      status: 'observed'
+    };
+    const expectedCrouchProbe = {
+      capabilityId: 'movement.crouch.v1',
+      probeId: 'movement.crouch.v1.state.browser_qa.v1',
+      runtimeModuleId: 'movement.crouch',
+      action: 'crouch',
+      eventType: 'movement.crouch.entered',
+      eventTypes: ['movement.crouch.entered'],
+      crouching: true,
+      heightScale: 0.58,
+      bodyHeight: 32.48,
+      standingHeight: 56,
+      sourceRef: 'runtime_plan.side_scrolling.capability_configs.crouch_action_state',
+      status: 'observed'
+    };
+    const expectedMovementProbe = {
+      capabilityId: 'movement.run_jump.v1',
+      probeId: 'movement.run_jump.v1.jump.browser_qa.v1',
+      runtimeModuleId: 'movement.run_jump',
+      action: 'jump',
+      eventType: 'player.jumped',
+      sourceRef: 'runtime_plan.side_scrolling.player.jumpVelocity',
+      status: 'observed'
+    };
+    const expectedSpawnStaticProbe = {
+      capabilityId: 'spawn.static.v1',
+      probeId: 'spawn.static.v1.triggered.browser_qa.v1',
+      runtimeModuleId: 'spawn.static',
+      action: 'spawn',
+      eventType: 'spawn.static.triggered',
+      eventTypes: ['spawn.static.triggered'],
+      sourceRef: 'runtime_plan.side_scrolling.waves',
+      status: 'observed'
+    };
+    const expectedSpawnEnemyWaveProbe = {
+      capabilityId: 'spawn.enemy_wave.v1',
+      probeId: 'spawn.enemy_wave.v1.ordered.browser_qa.v1',
+      runtimeModuleId: 'spawn.enemy_wave',
+      action: 'spawn',
+      eventType: 'spawn.enemy_wave.ordered',
+      eventTypes: ['spawn.enemy_wave.ordered'],
+      orderedWaveSequence: true,
+      gateTriggered: true,
+      waveSpawned: true,
+      sequenceIndex: 0,
+      waveId: expect.any(String),
+      sourceRef: 'runtime_plan.side_scrolling.waves.ordered_sequence',
+      status: 'observed'
+    };
+    const expectedHealthProbe = {
+      capabilityId: 'health.player_health_points.v1',
+      probeId: 'health.player_health_points.v1.current.browser_qa.v1',
+      runtimeModuleId: 'health.player_health_points',
+      action: 'observe',
+      eventType: 'health.player_health.current',
+      eventTypes: ['health.player_health.current'],
+      health: expect.any(Number),
+      maxHealth: 3,
+      sourceRef: 'runtime_plan.side_scrolling.player.health',
+      status: 'observed'
+    };
+    const expectedDamageInvulnerabilityProbe = {
+      capabilityId: 'health.damage_invulnerability.v1',
+      probeId: 'health.damage_invulnerability.v1.window.browser_qa.v1',
+      runtimeModuleId: 'health.damage_invulnerability',
+      action: 'block_damage',
+      eventType: 'health.damage_invulnerability.blocked',
+      eventTypes: ['health.damage_invulnerability.activated', 'health.damage_invulnerability.blocked'],
+      invulnerable: true,
+      damagePrevented: true,
+      sourceRef: 'runtime_plan.side_scrolling.player.damageInvulnerability',
+      status: 'observed'
+    };
+    const expectedPickupProbe = {
+      capabilityId: 'pickup.collectible.v1',
+      probeId: 'pickup.collectible.v1.collection.browser_qa.v1',
+      runtimeModuleId: 'pickup.collectible',
+      action: 'collect',
+      eventType: 'pickup.collectible.collected',
+      eventTypes: ['pickup.collectible.collected', 'pickup.collectible.state_changed'],
+      pickupCollected: true,
+      pickupConsumed: true,
+      pickupStateChanged: true,
+      sourceRef: 'runtime_plan.side_scrolling.pickups',
+      status: 'observed'
+    };
+    const snapshot = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
+    const telemetry = globalThis.__GAME_QA__?.telemetry() ?? [];
+    const jumpedEvent = telemetry.find((event) => event.type === 'player.jumped');
+    const crouchedEvent = telemetry.find((event) => event.type === 'movement.crouch.entered');
+    const firedEvent = telemetry.find((event) => event.type === 'player.fired');
+    const pickupCollectedEvent = telemetry.find((event) => event.type === 'pickup.collectible.collected');
+    const pickupStateChangedEvent = telemetry.find((event) => event.type === 'pickup.collectible.state_changed');
+    const projectileEvent = telemetry.find(
+      (event) => event.type === 'projectile.spawned' && Array.isArray((event.payload as { capabilityRuntimeProbes?: unknown } | undefined)?.capabilityRuntimeProbes)
+    );
+
+    expect(crouchedEvent?.payload?.capabilityRuntime).toMatchObject(expectedCrouchProbe);
+    expect(jumpedEvent?.payload?.capabilityRuntime).toMatchObject(expectedMovementProbe);
+    expect(firedEvent?.payload?.capabilityRuntime).toMatchObject(expectedWeaponProbe);
+    expect(pickupCollectedEvent?.payload?.capabilityRuntime).toMatchObject(expectedPickupProbe);
+    expect(pickupStateChangedEvent?.payload?.capabilityRuntime).toMatchObject(expectedPickupProbe);
+    expect(projectileEvent?.payload?.capabilityRuntime).toMatchObject(expectedWeaponProbe);
+    expect(projectileEvent?.payload?.capabilityRuntimeProbes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining(expectedAirborneFireProbe),
+        expect.objectContaining(expectedProjectileProbe),
+        expect.objectContaining(expectedWeaponProbe)
+      ])
+    );
+    expect(snapshot?.capabilityRuntime).toMatchObject({
+      source: 'side_scrolling_runtime',
+      probes: expect.arrayContaining([
+        expect.objectContaining(expectedCameraProbe),
+        expect.objectContaining(expectedCollisionProbe),
+        expect.objectContaining(expectedAirborneFireProbe),
+        expect.objectContaining(expectedCrouchProbe),
+        expect.objectContaining(expectedDamageInvulnerabilityProbe),
+        expect.objectContaining(expectedHealthProbe),
+        expect.objectContaining(expectedMovementProbe),
+        expect.objectContaining(expectedPickupProbe),
+        expect.objectContaining(expectedSpawnEnemyWaveProbe),
+        expect.objectContaining(expectedSpawnStaticProbe),
+        expect.objectContaining(expectedProjectileProbe),
+        expect.objectContaining(expectedWeaponProbe)
+      ])
+    });
+    expect(snapshot?.capabilityRuntime?.probes).toHaveLength(12);
+    expect(snapshot?.player).toMatchObject({ crouching: true, height: 32.48, standingHeight: 56, heightScale: 0.58 });
+    expect(snapshot?.pickups).toEqual([expect.objectContaining({ id: 'qa_pickup', active: false })]);
+    const observedHealthProbe = snapshot?.capabilityRuntime?.probes.find((probe) => probe.probeId === 'health.player_health_points.v1.current.browser_qa.v1');
+    expect(observedHealthProbe?.health).toBe(snapshot?.health);
+    expect(observedHealthProbe?.maxHealth).toBe(3);
+    expect(snapshot?.waves.some((wave) => wave.triggered)).toBe(true);
+    expect(snapshot?.enemies.length).toBeGreaterThan(0);
+    expect(snapshot?.projectiles.find((projectile) => projectile.owner === 'player')).toMatchObject({
+      owner: 'player',
+      sourceId: 'pulse_bolt',
+      capabilityId: 'weapon.default_straight_single.v1',
+      probeId: 'weapon.default_straight_single.v1.fire.browser_qa.v1'
+    });
+  });
+
+  it('does not expose airborne fire capability evidence for grounded side-scrolling shots', async () => {
+    const { SideScrollingRunAndGunScene } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/GameScene.js');
+    const { defaultSideScrollingRuntimeSlice } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/side-scrolling-runtime-plan.js');
+    const { defaultSideScrollingParams } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/template-params.js');
+    const scene = new SideScrollingRunAndGunScene(defaultSideScrollingParams, { side_scrolling: defaultSideScrollingRuntimeSlice });
+
+    scene.create();
+    scene.start();
+    scene.fire(1_000);
+
+    const snapshot = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
+    const projectileEvent = globalThis.__GAME_QA__?.telemetry().find(
+      (event) => event.type === 'projectile.spawned' && Array.isArray((event.payload as { capabilityRuntimeProbes?: unknown } | undefined)?.capabilityRuntimeProbes)
+    );
+    const probeIds = snapshot?.capabilityRuntime?.probes.map((probe) => probe.probeId) ?? [];
+
+    expect(probeIds).not.toContain('combat.airborne_fire.v1.fired.browser_qa.v1');
+    expect(projectileEvent?.payload?.capabilityRuntimeProbes).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ probeId: 'combat.airborne_fire.v1.fired.browser_qa.v1' })])
+    );
   });
 
   it('preserves Scene IR wave counts and fails closed for unsupported runtime goals', async () => {
@@ -1156,6 +1459,10 @@ describe('Phaser templates', () => {
     expect((globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined)?.waves).toEqual([
       expect.objectContaining({ id: 'close_wave', triggered: true })
     ]);
+    const triggeredProbeIds =
+      (globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined)?.capabilityRuntime?.probes.map((probe) => probe.probeId) ?? [];
+    expect(triggeredProbeIds).toContain('spawn.static.v1.triggered.browser_qa.v1');
+    expect(triggeredProbeIds).not.toContain('spawn.enemy_wave.v1.ordered.browser_qa.v1');
 
     scene.fire(1000);
     for (let frame = 0; frame < 20 && globalThis.__GAME_QA__?.snapshot().score === 0; frame += 1) {
@@ -1209,6 +1516,45 @@ describe('Phaser templates', () => {
     const snapshot = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
     expect(snapshot?.health).toBeLessThan(3);
     expect(globalThis.__GAME_QA__?.telemetry().map((event) => event.type)).toEqual(expect.arrayContaining(['enemy.fired', 'projectile.spawned', 'player.damaged']));
+  });
+
+  it('blocks repeated side-scrolling damage during the invulnerability window', async () => {
+    const { SideScrollingRunAndGunScene } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/GameScene.js');
+    const { defaultSideScrollingRuntimeSlice } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/side-scrolling-runtime-plan.js');
+    const { defaultSideScrollingParams } = await import('../../templates/phaser/side_scrolling_run_and_gun/src/template-params.js');
+    const scene = new SideScrollingRunAndGunScene(defaultSideScrollingParams, { side_scrolling: defaultSideScrollingRuntimeSlice });
+
+    scene.create();
+    scene.start();
+    scene.damagePlayer(1, 'test_hit');
+    const afterFirstHit = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
+    scene.damagePlayer(1, 'test_hit');
+    const afterBlockedHit = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
+    scene.update(1_000, 1_000);
+    scene.damagePlayer(1, 'test_hit');
+    const afterExpiredWindowHit = globalThis.__GAME_QA__?.snapshot() as SideScrollingTemplateSnapshot | undefined;
+    const telemetryTypes = globalThis.__GAME_QA__?.telemetry().map((event) => event.type) ?? [];
+    const invulnerabilityProbe = afterBlockedHit?.capabilityRuntime?.probes.find(
+      (probe) => probe.probeId === 'health.damage_invulnerability.v1.window.browser_qa.v1'
+    );
+
+    expect(afterFirstHit?.health).toBe(2);
+    expect(afterBlockedHit?.health).toBe(2);
+    expect(afterExpiredWindowHit?.health).toBe(1);
+    expect(telemetryTypes).toEqual(
+      expect.arrayContaining(['player.damaged', 'health.damage_invulnerability.activated', 'health.damage_invulnerability.blocked'])
+    );
+    expect(invulnerabilityProbe).toMatchObject({
+      capabilityId: 'health.damage_invulnerability.v1',
+      runtimeModuleId: 'health.damage_invulnerability',
+      action: 'block_damage',
+      eventType: 'health.damage_invulnerability.blocked',
+      eventTypes: ['health.damage_invulnerability.activated', 'health.damage_invulnerability.blocked'],
+      invulnerable: true,
+      damagePrevented: true,
+      health: 2,
+      maxHealth: 3
+    });
   });
 
   it('clears side-scrolling static render objects before restart re-renders the first frame', async () => {

@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+import { AuthorityBundleRefSchema, type AuthorityBundleRef } from './authority-bundle.js';
+import { buildDeepSeekRunAndGunValidationProfileSupportSummary } from './deepseek-run-and-gun-validation-profile-v1.js';
+import { GAMEPLAY_CAPABILITY_SUPPORT_EVIDENCE_PREREQUISITES } from './gameplay-capabilities/registry.js';
 import type { NormalizedGameIr } from './schemas/normalized-game-ir-v0.1.schema.js';
 import type { RawGameDsl } from './schemas/raw-game-dsl-v0.1.schema.js';
 
@@ -23,10 +26,44 @@ export const DslConsumptionEntrySchema = z.strictObject({
   runtimeProfile: z.string().min(1)
 });
 
+export const DslConsumptionTargetProfileSupportSchema = z.strictObject({
+  profileId: z.string().min(1),
+  profileVersion: z.string().min(1),
+  requirementCount: z.number().int().min(0),
+  capabilityClusterCount: z.number().int().min(0),
+  requiredCapabilityCount: z.number().int().min(0),
+  registeredCapabilityCount: z.number().int().min(0),
+  completeSupportedCount: z.number().int().min(0),
+  completePackageClosure: z.strictObject({
+    status: z.enum(['ready_for_exact_lock', 'blocked_incomplete_target_profile']),
+    exactLockAllowed: z.boolean(),
+    incompleteCapabilityIds: z.array(z.string().min(1)),
+    blockers: z.array(z.string().min(1))
+  }),
+  capabilities: z.array(
+    z.strictObject({
+      capabilityId: z.string().min(1),
+      classification: z.enum(['COMPLETE_SUPPORTED', 'CONDITIONAL_LEGACY_BACKED', 'UNSUPPORTED', 'DEFERRED', 'CONTRACT_SEEDED']),
+      completeSupported: z.boolean(),
+      legacyBacked: z.boolean(),
+      evidenceDimensions: z.strictObject({
+        schema_expressible: z.boolean(),
+        normalized: z.boolean(),
+        compiled: z.boolean(),
+        runtime_consumed: z.boolean(),
+        qa_observed: z.boolean()
+      }),
+      missingEvidenceDimensions: z.array(z.enum(['schema_expressible', 'normalized', 'compiled', 'runtime_consumed', 'qa_observed'])),
+      missingSupportEvidencePrerequisites: z.array(z.enum(GAMEPLAY_CAPABILITY_SUPPORT_EVIDENCE_PREREQUISITES)).default([])
+    })
+  )
+});
+
 export const DslConsumptionReportSchema = z.strictObject({
   schemaVersion: z.literal('step33.dsl-consumption.v1'),
   projectId: z.string().regex(/^proj_[A-Za-z0-9_-]+$/),
   runId: z.string().regex(/^run_[A-Za-z0-9_-]+$/),
+  authorityBundleRef: AuthorityBundleRefSchema.optional(),
   dslHash: z.string().min(1),
   runtimeProfile: z.string().min(1),
   entries: z.array(DslConsumptionEntrySchema).min(1),
@@ -38,11 +75,13 @@ export const DslConsumptionReportSchema = z.strictObject({
     unsupportedCount: z.number().int().min(0),
     ignoredAuthoritativeCount: z.number().int().min(0),
     coverageRatio: z.number().min(0).max(1)
-  })
+  }),
+  targetProfileSupport: DslConsumptionTargetProfileSupportSchema.optional()
 });
 
 export type DslConsumptionStatus = z.infer<typeof DslConsumptionStatusSchema>;
 export type DslConsumptionEntry = z.infer<typeof DslConsumptionEntrySchema>;
+export type DslConsumptionTargetProfileSupport = z.infer<typeof DslConsumptionTargetProfileSupportSchema>;
 export type DslConsumptionReport = z.infer<typeof DslConsumptionReportSchema>;
 
 type BuildDslConsumptionReportInput = {
@@ -50,6 +89,7 @@ type BuildDslConsumptionReportInput = {
   runId: string;
   rawDsl: RawGameDsl;
   ir: NormalizedGameIr;
+  authorityBundleRef?: AuthorityBundleRef;
 };
 
 type EntrySpec = {
@@ -72,11 +112,55 @@ export function buildDslConsumptionReport(input: BuildDslConsumptionReportInput)
     schemaVersion: 'step33.dsl-consumption.v1',
     projectId: input.projectId,
     runId: input.runId,
+    ...(input.authorityBundleRef === undefined ? {} : { authorityBundleRef: input.authorityBundleRef }),
     dslHash: stableDslHash(input.rawDsl),
     runtimeProfile,
     entries,
-    summary
+    summary,
+    targetProfileSupport: buildDslConsumptionTargetProfileSupport()
   });
+}
+
+function buildDslConsumptionTargetProfileSupport(): DslConsumptionTargetProfileSupport {
+  const support = buildDeepSeekRunAndGunValidationProfileSupportSummary();
+  const incompleteCapabilityIds = support.capabilities
+    .filter((capability) => !capability.completeSupported)
+    .map((capability) => capability.capabilityId)
+    .sort();
+  const exactLockAllowed =
+    support.summary.requiredCapabilityCount > 0 &&
+    support.summary.completeSupportedCount === support.summary.requiredCapabilityCount &&
+    incompleteCapabilityIds.length === 0;
+  return {
+    profileId: support.profileId,
+    profileVersion: support.profileVersion,
+    requirementCount: support.summary.requirementCount,
+    capabilityClusterCount: support.summary.capabilityClusterCount,
+    requiredCapabilityCount: support.summary.requiredCapabilityCount,
+    registeredCapabilityCount: support.summary.registeredCapabilityCount,
+    completeSupportedCount: support.summary.completeSupportedCount,
+    completePackageClosure: {
+      status: exactLockAllowed ? 'ready_for_exact_lock' : 'blocked_incomplete_target_profile',
+      exactLockAllowed,
+      incompleteCapabilityIds,
+      blockers: exactLockAllowed
+        ? []
+        : [
+            'complete_package_closure_incomplete',
+            `complete_supported_count:${support.summary.completeSupportedCount}/${support.summary.requiredCapabilityCount}`,
+            'stage5_exact_lock_blocked'
+          ]
+    },
+    capabilities: support.capabilities.map((capability) => ({
+      capabilityId: capability.capabilityId,
+      classification: capability.classification,
+      completeSupported: capability.completeSupported,
+      legacyBacked: capability.legacyBacked,
+      evidenceDimensions: capability.evidenceDimensions,
+      missingEvidenceDimensions: capability.missingEvidenceDimensions,
+      missingSupportEvidencePrerequisites: capability.missingSupportEvidencePrerequisites
+    }))
+  };
 }
 
 function collectDslConsumptionEntries(rawDsl: RawGameDsl, ir: NormalizedGameIr): EntrySpec[] {

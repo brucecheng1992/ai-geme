@@ -9,7 +9,7 @@ import {
 } from '../../packages/game-dsl/src/index.js';
 
 describe('Step 37 generation capability gap escalation report', () => {
-  it('binds a side-scrolling capability gap to source hashes without mutating production registry or lock state', () => {
+  it('binds active side-scrolling profile consumption to source hashes without mutating production registry or lock state', () => {
     const preflight = buildGenerationCapabilityPreflight({
       projectId: 'proj_20260619_capability_gap',
       runId: 'run_20260619_capability_gap',
@@ -26,7 +26,8 @@ describe('Step 37 generation capability gap escalation report', () => {
       projectId: 'proj_20260619_capability_gap',
       runId: 'run_20260619_capability_gap',
       normalizedGenre: 'side_scrolling_run_and_gun',
-      resolutionReport: resolution.resolutionReport
+      resolutionReport: resolution.resolutionReport,
+      activeRuntimeAuthority: activeRuntimeAuthorityEvidence()
     });
 
     const report = buildGenerationCapabilityGapReport({
@@ -51,13 +52,13 @@ describe('Step 37 generation capability gap escalation report', () => {
     expect(report).toMatchObject({
       artifactKind: 'generation_capability_gap_report',
       schemaVersion: 'generation_capability_gap_report.v0.1',
-      selectedPath: 'legacy_template_v1',
+      selectedPath: 'capability_composed_v1',
       targetPath: 'capability_composed_v1',
-      shadowMode: true,
-      capabilityPathGate: 'blocked_before_provider',
-      gapStatus: 'required_capability_gap',
-      providerInvocationPolicy: 'block_capability_provider_until_exact_lock',
-      step36EscalationStatus: 'eligible_blocked_gap',
+      shadowMode: false,
+      capabilityPathGate: 'ready_for_active_profile_provider',
+      gapStatus: 'not_required',
+      providerInvocationPolicy: 'active_profile_provider_allowed',
+      step36EscalationStatus: 'not_required',
       missingRegistryCapabilityAliases: [],
       installPolicy: {
         resolverPackageNamespace: 'active_immutable_registry_snapshot',
@@ -75,17 +76,17 @@ describe('Step 37 generation capability gap escalation report', () => {
         profileResolutionBound: true,
         capabilityRequirementsBound: true,
         registrySnapshotBound: true,
-        blockedRequiredGapPresent: true,
+        blockedRequiredGapPresent: false,
         activeInstallAllowedFromGenerationRun: false
-      }
+      },
+      blockers: []
     });
-    expect(report.missingRequiredCapabilityIds).toContain('telemetry.gameplay_events.v1');
+    expect(report.missingRequiredCapabilityIds).toEqual([]);
     expect(report.registrySnapshotHash).toBe(preflight.registrySnapshot.snapshotHash);
     expect(report.readinessReportHash).toBe(preflight.readinessReport.reportHash);
     expect(report.resolutionReportHash).toBe(resolution.resolutionReport.reportHash);
     expect(report.runtimeReportHash).toBe(runtime.runtimeReport.reportHash);
-    expect(report.runtimeEvidenceBlockers).toContain('incomplete_capability:telemetry.gameplay_events.v1');
-    expect(report.blockers).toContain('missing_required_capability:telemetry.gameplay_events.v1');
+    expect(report.runtimeEvidenceBlockers).toEqual([]);
   });
 
   it('does not route unsupported intent into Step36 capability synthesis', () => {
@@ -148,7 +149,8 @@ describe('Step 37 generation capability gap escalation report', () => {
       projectId: 'proj_20260619_capability_gap',
       runId: 'run_20260619_candidate_capability_gap',
       normalizedGenre: 'side_scrolling_run_and_gun',
-      resolutionReport: resolution.resolutionReport
+      resolutionReport: resolution.resolutionReport,
+      activeRuntimeAuthority: activeRuntimeAuthorityEvidence()
     });
 
     const report = buildGenerationCapabilityGapReport({
@@ -169,3 +171,18 @@ describe('Step 37 generation capability gap escalation report', () => {
     expect(report.blockers).toContain('candidate_package_input_forbidden');
   });
 });
+
+function activeRuntimeAuthorityEvidence() {
+  return {
+    authorityBundleRef: {
+      artifactKind: 'authority_bundle' as const,
+      path: 'authority_bundle.json' as const,
+      bundleHash: 'fnv1a_12345678'
+    },
+    activeProfileLockRef: {
+      artifactKind: 'active_profile_lock' as const,
+      path: 'active_profile_lock.json' as const,
+      lockHash: 'fnv1a_87654321'
+    }
+  };
+}

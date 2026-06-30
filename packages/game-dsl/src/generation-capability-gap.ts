@@ -29,8 +29,8 @@ export const GenerationCapabilityGapReportSchema = z.strictObject({
   normalizedGenre: z.string().min(1),
   profileId: z.string().min(1).optional(),
   targetPath: z.literal('capability_composed_v1'),
-  selectedPath: z.enum(['legacy_template_v1', 'fail_closed_unsupported_intent']),
-  shadowMode: z.literal(true),
+  selectedPath: z.enum(['capability_composed_v1', 'legacy_template_v1', 'fail_closed_unsupported_intent']),
+  shadowMode: z.boolean(),
   registrySnapshotHash: z.string().min(1),
   readinessReportHash: z.string().min(1),
   resolutionReportHash: z.string().min(1),
@@ -38,11 +38,13 @@ export const GenerationCapabilityGapReportSchema = z.strictObject({
   capabilityPathGate: z.enum([
     'blocked_before_provider',
     'blocked_integrity_mismatch',
+    'ready_for_active_profile_provider',
     'ready_for_capability_provider',
     'unsupported_intent_fail_closed'
   ]),
   gapStatus: z.enum(['required_capability_gap', 'blocked_not_capability_gap', 'not_required', 'unsupported_intent']),
   providerInvocationPolicy: z.enum([
+    'active_profile_provider_allowed',
     'block_capability_provider_until_exact_lock',
     'ready_for_capability_provider',
     'unsupported_intent_not_sent_to_provider'
@@ -103,8 +105,11 @@ export function buildGenerationCapabilityGapReport(input: {
   const attemptedCandidatePackageInputCount = input.attemptedCandidatePackageInputCount ?? 0;
   const attemptedCandidatePackageInputRejected = attemptedCandidatePackageInputCount > 0;
   const unsupportedIntent = resolutionReport.selectedPath === 'fail_closed_unsupported_intent' || readinessReport.profileResolution.status === 'unresolved';
+  const activeProfileBound = resolutionReport.selectedPath === 'capability_composed_v1';
   const blockedRequiredGapPresent =
-    !unsupportedIntent && (missingRequiredCapabilityIds.length > 0 || missingRegistryCapabilityAliases.length > 0 || resolverMissingCapabilityIds.length > 0);
+    !unsupportedIntent &&
+    !activeProfileBound &&
+    (missingRequiredCapabilityIds.length > 0 || missingRegistryCapabilityAliases.length > 0 || resolverMissingCapabilityIds.length > 0);
   const blockedWithoutCapabilityGap =
     !unsupportedIntent &&
     !blockedRequiredGapPresent &&
@@ -118,6 +123,7 @@ export function buildGenerationCapabilityGapReport(input: {
   ]);
 
   const capabilityPathGate = deriveCapabilityPathGate({
+    activeProfileBound,
     unsupportedIntent,
     blockedRequiredGapPresent,
     blockedWithoutCapabilityGap,
@@ -132,7 +138,7 @@ export function buildGenerationCapabilityGapReport(input: {
     ...(resolutionReport.profileId === undefined ? {} : { profileId: resolutionReport.profileId }),
     targetPath: 'capability_composed_v1',
     selectedPath: resolutionReport.selectedPath,
-    shadowMode: true,
+    shadowMode: runtimeReport.shadowMode,
     registrySnapshotHash: readinessReport.registrySnapshotHash,
     readinessReportHash: readinessReport.reportHash,
     resolutionReportHash: resolutionReport.reportHash,
@@ -189,6 +195,7 @@ function buildIntegrityBlockers(
 }
 
 function deriveCapabilityPathGate(input: {
+  activeProfileBound: boolean;
   unsupportedIntent: boolean;
   blockedRequiredGapPresent: boolean;
   blockedWithoutCapabilityGap: boolean;
@@ -199,6 +206,9 @@ function deriveCapabilityPathGate(input: {
   }
   if (input.integrityBlockers.length > 0) {
     return 'blocked_integrity_mismatch';
+  }
+  if (input.activeProfileBound && !input.blockedWithoutCapabilityGap) {
+    return 'ready_for_active_profile_provider';
   }
   if (input.blockedRequiredGapPresent || input.blockedWithoutCapabilityGap) {
     return 'blocked_before_provider';
@@ -228,6 +238,9 @@ function deriveProviderInvocationPolicy(
 ): GenerationCapabilityGapReport['providerInvocationPolicy'] {
   if (capabilityPathGate === 'unsupported_intent_fail_closed') {
     return 'unsupported_intent_not_sent_to_provider';
+  }
+  if (capabilityPathGate === 'ready_for_active_profile_provider') {
+    return 'active_profile_provider_allowed';
   }
   if (capabilityPathGate === 'ready_for_capability_provider') {
     return 'ready_for_capability_provider';

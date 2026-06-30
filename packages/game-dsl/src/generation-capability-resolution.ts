@@ -50,14 +50,15 @@ export const GenerationCapabilityResolutionReportSchema = z.strictObject({
   runtimeFamily: RuntimeFamilyIdSchema.optional(),
   requestedCapabilityIds: z.array(z.string().min(1)),
   targetPath: z.literal('capability_composed_v1'),
-  selectedPath: z.enum(['legacy_template_v1', 'fail_closed_unsupported_intent']),
+  selectedPath: z.enum(['capability_composed_v1', 'legacy_template_v1', 'fail_closed_unsupported_intent']),
   shadowMode: z.literal(true),
   activeLockWritten: z.literal(false),
   candidatePackagePolicy: z.literal('approved_installed_packages_only'),
   approvedInstalledPackageCount: z.number().int().min(0),
-  resolverAttempt: z.enum(['skipped_readiness_blocked', 'skipped_unsupported_intent', 'attempted']),
+  resolverAttempt: z.enum(['skipped_active_profile_bound', 'skipped_readiness_blocked', 'skipped_unsupported_intent', 'attempted']),
   resolutionStatus: z.enum(['resolved', 'blocked']),
   exactLockStatus: z.enum([
+    'not_required_active_profile_bound',
     'not_attempted_requirements_incomplete',
     'not_applicable_unsupported_intent',
     'blocked_runtime_family_ambiguous',
@@ -115,7 +116,22 @@ export function buildGenerationCapabilityResolutionShadow(input: {
     });
   }
 
-  if (readinessReport.capabilityPathReadiness !== 'ready_for_resolver') {
+  if (
+    readinessReport.selectedDefaultPath === 'capability_composed_v1' &&
+    readinessReport.profileResolution.profileSupportStatus === 'active_profile_supported'
+  ) {
+    return buildActiveProfileBoundReport({
+      ...base,
+      requestedCapabilityIds,
+      selectedCapabilityIds: requestedCapabilityIds,
+      blockers: []
+    });
+  }
+
+  if (
+    readinessReport.capabilityPathReadiness !== 'ready_for_resolver' &&
+    readinessReport.profileResolution.profileSupportStatus !== 'capability_complete_supported'
+  ) {
     return buildBlockedReport({
       ...base,
       resolverAttempt: 'skipped_readiness_blocked',
@@ -160,6 +176,52 @@ export function buildGenerationCapabilityResolutionShadow(input: {
     resolverReport,
     shadowLock
   });
+}
+
+function buildActiveProfileBoundReport(input: {
+  projectId: string;
+  runId: string;
+  normalizedGenre: string;
+  registrySnapshotHash: string;
+  readinessReportHash: string;
+  profileId?: string;
+  requestedCapabilityIds: string[];
+  targetPath: 'capability_composed_v1';
+  selectedPath: GenerationCapabilityResolutionReport['selectedPath'];
+  shadowMode: true;
+  activeLockWritten: false;
+  candidatePackagePolicy: 'approved_installed_packages_only';
+  approvedInstalledPackageCount: number;
+  selectedCapabilityIds: string[];
+  blockers: string[];
+}): GenerationCapabilityResolutionShadowArtifacts {
+  const payload: Omit<GenerationCapabilityResolutionReport, 'reportHash'> = {
+    artifactKind: GENERATION_CAPABILITY_RESOLUTION_REPORT_KIND,
+    schemaVersion: GENERATION_CAPABILITY_RESOLUTION_REPORT_SCHEMA_VERSION,
+    projectId: input.projectId,
+    runId: input.runId,
+    normalizedGenre: input.normalizedGenre,
+    registrySnapshotHash: input.registrySnapshotHash,
+    readinessReportHash: input.readinessReportHash,
+    ...(input.profileId === undefined ? {} : { profileId: input.profileId }),
+    requestedCapabilityIds: input.requestedCapabilityIds,
+    targetPath: input.targetPath,
+    selectedPath: input.selectedPath,
+    shadowMode: input.shadowMode,
+    activeLockWritten: input.activeLockWritten,
+    candidatePackagePolicy: input.candidatePackagePolicy,
+    approvedInstalledPackageCount: input.approvedInstalledPackageCount,
+    resolverAttempt: 'skipped_active_profile_bound',
+    resolutionStatus: 'resolved',
+    exactLockStatus: 'not_required_active_profile_bound',
+    selectedCapabilityIds: [...input.selectedCapabilityIds].sort(),
+    deferredOptionalCapabilityIds: [],
+    resolverDiagnostics: [],
+    blockers: [...new Set(input.blockers)].sort()
+  };
+  return {
+    resolutionReport: GenerationCapabilityResolutionReportSchema.parse({ ...payload, reportHash: hashStableJson(payload) })
+  };
 }
 
 function buildResolvedReport(input: {

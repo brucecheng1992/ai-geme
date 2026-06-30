@@ -24,6 +24,7 @@ export const RUN_AND_GUN_REFERENCE_CAPABILITY_IDS = [
   'enemy.ranged_attack.v1',
   'goal.destroy_target.v1',
   'health.damage_invulnerability.v1',
+  'health.player_health_points.v1',
   'movement.run_jump.v1',
   'physics.gravity_platformer.v1',
   'scene.parallax_background.v1',

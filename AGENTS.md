@@ -45,3 +45,23 @@ Completion rule:
 - A Step cannot be closed when the disposition is `ADAPTER_REQUIRED`, `NEW_CONSUMER_REQUIRED` or `LEGACY_FORBIDDEN` unless the Step records same-run evidence that the named downstream consumer actually read and acted on the new contract.
 - A successful schema parse, generated JSON file or accepted field is only producer evidence. It is not consumer evidence.
 - If no listed consumer can preserve the new semantics, the pipeline must fail closed instead of silently dropping fields, shortening intent, rewriting authority or falling back to a fixed template.
+
+## Hierarchical Completion Scope
+
+Completion is always scoped. Closing an atomic step, creating a candidate commit, receiving Oracle PASS, writing a receipt, or passing post-commit checks only closes that atomic step; it does not close the parent Stage, parent Loop, or final Step37 goal.
+
+After every atomic closure, run the Parent Loop Driver or equivalent state evaluation. The only legal parent-loop outcomes are `CONTINUE_PARENT_LOOP`, `PAUSE_FOR_USER`, and `COMPLETE_GLOBAL_LOOP`.
+
+- Use `COMPLETE_GLOBAL_LOOP` only when all global exit conditions are true.
+- Use `PAUSE_FOR_USER` only when a verified blocker genuinely requires a user decision.
+- Otherwise use `CONTINUE_PARENT_LOOP` and record a non-empty `next_atomic_step`.
+
+When global exits are unmet and no verified user blocker exists, missing `next_atomic_step` is a validation failure, not a fourth outcome. The driver must fail closed with a structured error such as `NEXT_ATOMIC_STEP_REQUIRED`; it must not return `CONTINUE_PARENT_LOOP` with a null step, convert the state to pause/complete, or treat the atomic closure as the parent-loop stop.
+
+`parent_stage.status` only expresses lifecycle and may be `running` or `complete`; blockers and recovery failures belong in separate fields.
+
+Running loops must not use unscoped `stop marker`, `completed`, `closed`, `task finished`, or similar wording as a stopping reason. Use structured scoped fields such as `closure_scope: atomic_step`, `parent_loop.status`, `parent_loop.global_exit_conditions_met`, `parent_loop.next_action`, and `parent_loop.next_atomic_step`.
+
+After compaction, resume, or a new session, rebuild loop state from repository facts: current worktree, branch, `HEAD`, status, plan/checkpoint identity, closure contract, and current evidence. New feedback belongs to the next atomic step and must not expand a step already being closed.
+
+Focused validation must follow the actual diff impact. If a step changes telemetry event identity, event names, schema version, required or optional fields, field types, enum values, or producer/reader field shape, include the telemetry schema freeze contract such as `tests/contracts/contract-freeze.test.ts` in the focused set. Focused GREEN is local evidence only and never replaces full related contracts, `npm test`, typecheck, diff check, final diff scope review, or external Skill freshness checks.

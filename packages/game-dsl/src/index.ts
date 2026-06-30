@@ -25,6 +25,16 @@ export {
   type LegacyRepresentabilityResult
 } from './schemas/legacy-raw-game-dsl-representability.js';
 export {
+  CANONICAL_GAME_BRIEF_ARTIFACT_KIND,
+  CANONICAL_GAME_BRIEF_PATH,
+  CANONICAL_GAME_BRIEF_SCHEMA_VERSION,
+  GAME_BRIEF_RAW_MODEL_OUTPUT_KIND,
+  GAME_BRIEF_RAW_MODEL_OUTPUT_PATH,
+  CanonicalGameBriefArtifactSchema,
+  buildCanonicalGameBriefArtifact,
+  type CanonicalGameBriefArtifact
+} from './canonical-game-brief-artifact.js';
+export {
   CAPABILITY_GAME_DSL_DRAFT_ARTIFACT_KIND,
   CAPABILITY_GAME_DSL_DRAFT_RAW_PATH,
   CAPABILITY_GAME_DSL_DRAFT_SCHEMA_VERSION,
@@ -60,6 +70,33 @@ export {
   buildGenerationScopePlan,
   type GenerationScopePlan
 } from './generation-scope-plan.js';
+export {
+  ACTIVE_PROFILE_LOCK_ARTIFACT_KIND,
+  ACTIVE_PROFILE_LOCK_PATH,
+  ACTIVE_PROFILE_LOCK_SCHEMA_VERSION,
+  GENERATION_CAPABILITY_READINESS_REPORT_PATH,
+  GENERATION_SCOPE_PLAN_ARTIFACT_KIND,
+  GENERATION_SCOPE_PLAN_PATH,
+  ActiveProfileLockSchema,
+  buildActiveProfileLock,
+  type ActiveProfileLock,
+  type BuildActiveProfileLockResult
+} from './active-profile-lock.js';
+export {
+  AUTHORITY_BUNDLE_ARTIFACT_KIND,
+  AUTHORITY_BUNDLE_PATH,
+  AUTHORITY_BUNDLE_SCHEMA_VERSION,
+  ActiveProfileLockRefSchema,
+  AuthorityBundleRefSchema,
+  AuthorityBundleSchema,
+  authorityBundleRef,
+  buildAuthorityBundle,
+  validateAuthorityBundleForRun,
+  type AuthorityBundle,
+  type AuthorityBundleRef,
+  type ActiveProfileLockRef,
+  type BuildAuthorityBundleResult
+} from './authority-bundle.js';
 export {
   GENERATION_PATH_RECEIPT_KIND,
   GENERATION_PATH_RECEIPT_SCHEMA_VERSION,
@@ -195,10 +232,207 @@ export {
   DslConsumptionEntrySchema,
   DslConsumptionReportSchema,
   DslConsumptionStatusSchema,
+  DslConsumptionTargetProfileSupportSchema,
   type DslConsumptionEntry,
   type DslConsumptionReport,
-  type DslConsumptionStatus
+  type DslConsumptionStatus,
+  type DslConsumptionTargetProfileSupport
 } from './dsl-consumption-report.js';
+export {
+  DEEPSEEK_RUN_AND_GUN_FIXED_PROMPT_CHARACTER_COUNT,
+  DEEPSEEK_RUN_AND_GUN_FIXED_PROMPT_SHA256,
+  DEEPSEEK_RUN_AND_GUN_FIXED_USER_VALIDATION_PROMPT,
+  DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1,
+  DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1_ID,
+  DEEPSEEK_RUN_AND_GUN_VALIDATION_PROFILE_V1_VERSION,
+  buildDeepSeekRunAndGunValidationProfileSupportSummary,
+  type DeepSeekRunAndGunCapabilityCluster,
+  type DeepSeekRunAndGunProfileCapabilitySupport,
+  type DeepSeekRunAndGunProfileSupportSummary,
+  type DeepSeekRunAndGunRequirement,
+  type DeepSeekRunAndGunRequirementCompletionState,
+  type DeepSeekRunAndGunTargetProfile,
+  type DeepSeekRunAndGunVerificationClass
+} from './deepseek-run-and-gun-validation-profile-v1.js';
+export {
+  STEP37_REMAINING_CAPABILITY_STATES,
+  STEP37_REMAINING_INVENTORY_ARTIFACT_KIND,
+  STEP37_REMAINING_INVENTORY_SCHEMA_VERSION,
+  STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_CHECKPOINT_ID,
+  STEP37_STAGE4_EXIT_AUDIT_AFTER_SUPPORT_PROMOTION_NEXT_ATOMIC_STEP,
+  STEP37_STAGE5_ENTRY_AUDIT_AFTER_STAGE4_EXIT_CHECKPOINT_ID,
+  STEP37_STAGE5_ENTRY_AUDIT_AFTER_STAGE4_EXIT_NEXT_ATOMIC_STEP,
+  STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_CHECKPOINT_ID,
+  STEP37_STAGE5_EXACT_CAPABILITY_LOCK_FROM_COMPLETE_SUPPORTED_PACKAGES_NEXT_ATOMIC_STEP,
+  STEP37_STAGE6_CAPABILITY_DSL_DRAFT_FROM_COMPOSED_SCHEMA_CHECKPOINT_ID,
+  STEP37_STAGE6_CAPABILITY_DSL_DRAFT_FROM_COMPOSED_SCHEMA_NEXT_ATOMIC_STEP,
+  STEP37_STAGE6_COMPOSED_DSL_SCHEMA_FROM_EXACT_CAPABILITY_LOCK_CHECKPOINT_ID,
+  STEP37_STAGE6_COMPOSED_DSL_SCHEMA_FROM_EXACT_CAPABILITY_LOCK_NEXT_ATOMIC_STEP,
+  STEP37_STAGE7_NORMALIZE_CAPABILITY_DSL_DRAFT_FROM_COMPOSED_SCHEMA_CHECKPOINT_ID,
+  STEP37_STAGE7_NORMALIZE_CAPABILITY_DSL_DRAFT_FROM_COMPOSED_SCHEMA_NEXT_ATOMIC_STEP,
+  STEP37_STAGE8_COMPILE_NORMALIZED_CAPABILITY_DSL_TO_RUNTIME_IR_CHECKPOINT_ID,
+  STEP37_STAGE8_COMPILE_NORMALIZED_CAPABILITY_DSL_TO_RUNTIME_IR_NEXT_ATOMIC_STEP,
+  STEP37_STAGE9_CONSUME_COMPILED_RUNTIME_IR_IN_RUNTIME_CHECKPOINT_ID,
+  STEP37_STAGE9_CONSUME_COMPILED_RUNTIME_IR_IN_RUNTIME_NEXT_ATOMIC_STEP,
+  STEP37_STAGE10_OBSERVE_RUNTIME_CONSUMED_IR_WITH_QA_CHECKPOINT_ID,
+  STEP37_STAGE10_OBSERVE_RUNTIME_CONSUMED_IR_WITH_QA_NEXT_ATOMIC_STEP,
+  STEP37_STAGE11_ACTIVATE_PRODUCTION_DEFAULT_CUTOVER_CHECKPOINT_ID,
+  STEP37_STAGE11_ACTIVATE_PRODUCTION_DEFAULT_CUTOVER_NEXT_ATOMIC_STEP,
+  STEP37_STAGE12_EXIT_LEGACY_AUTHORITATIVE_PATH_CHECKPOINT_ID,
+  STEP37_STAGE12_EXIT_LEGACY_AUTHORITATIVE_PATH_NEXT_ATOMIC_STEP,
+  STEP37_STAGE13_FINAL_CLOSURE_CHECKPOINT_ID,
+  STEP37_STAGE13_FINAL_CLOSURE_NEXT_ATOMIC_STEP,
+  STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_CHECKPOINT_ID,
+  STEP37_SUPPORT_PROMOTION_AFTER_PACKAGE_EXHAUSTION_NEXT_ATOMIC_STEP,
+  buildStep37RemainingCompleteSupportedInventory,
+  deriveStep37RemainingCapabilityState,
+  type Step37CommittedCapabilityClosure,
+  type Step37RemainingCapabilityInventoryItem,
+  type Step37RemainingCapabilityState,
+  type Step37RemainingInventoryDriverInput,
+  type Step37RemainingInventoryReport,
+  type Step37RemainingInventorySelectionFailure
+} from './step37-remaining-inventory-driver.js';
+export {
+  STEP37_STAGE6_CAPABILITY_DSL_DRAFT_ARTIFACT_KIND,
+  STEP37_STAGE6_CAPABILITY_DSL_DRAFT_SCHEMA_VERSION,
+  buildStep37CapabilityDslDraftReport,
+  type Step37CapabilityDslDraftBlocker,
+  type Step37CapabilityDslDraftReport,
+  type Step37CapabilityDslDraftStatus
+} from './step37-capability-dsl-draft.js';
+export {
+  STEP37_STAGE7_NORMALIZE_CAPABILITY_DSL_DRAFT_ARTIFACT_KIND,
+  STEP37_STAGE7_NORMALIZE_CAPABILITY_DSL_DRAFT_SCHEMA_VERSION,
+  STEP37_STAGE7_NORMALIZE_CAPABILITY_DSL_PROJECT_ID,
+  STEP37_STAGE7_NORMALIZE_CAPABILITY_DSL_RUN_ID,
+  buildStep37NormalizationCapabilityLock,
+  buildStep37NormalizeCapabilityDslDraftReport,
+  type Step37NormalizeCapabilityDslDraftBlocker,
+  type Step37NormalizeCapabilityDslDraftReport,
+  type Step37NormalizeCapabilityDslDraftStatus
+} from './step37-normalize-capability-dsl-draft.js';
+export {
+  STEP37_STAGE8_COMPILE_NORMALIZED_RUNTIME_IR_ARTIFACT_KIND,
+  STEP37_STAGE8_COMPILE_NORMALIZED_RUNTIME_IR_SCHEMA_VERSION,
+  STEP37_STAGE8_COMPILED_RUNTIME_IR_PATH,
+  buildStep37CompileNormalizedCapabilityDslReport,
+  type Step37CompileAdapterAction,
+  type Step37CompileNormalizedCapabilityDslBlocker,
+  type Step37CompileNormalizedCapabilityDslReport,
+  type Step37CompileNormalizedCapabilityDslStatus
+} from './step37-compile-normalized-capability-dsl.js';
+export {
+  STEP37_STAGE9_CONSUME_COMPILED_RUNTIME_IR_ARTIFACT_KIND,
+  STEP37_STAGE9_CONSUME_COMPILED_RUNTIME_IR_SCHEMA_VERSION,
+  STEP37_STAGE9_RUNTIME_CONSUMPTION_PATH,
+  buildStep37ConsumeCompiledRuntimeIrReport,
+  type Step37ConsumeCompiledRuntimeIrBlocker,
+  type Step37ConsumeCompiledRuntimeIrReport,
+  type Step37ConsumeCompiledRuntimeIrStatus
+} from './step37-consume-compiled-runtime-ir.js';
+export {
+  STEP37_STAGE10_OBSERVE_RUNTIME_CONSUMED_IR_WITH_QA_ARTIFACT_KIND,
+  STEP37_STAGE10_OBSERVE_RUNTIME_CONSUMED_IR_WITH_QA_SCHEMA_VERSION,
+  STEP37_STAGE10_RUNTIME_QA_OBSERVATION_PATH,
+  buildStep37ObserveRuntimeConsumedIrWithQaReport,
+  type Step37ObserveRuntimeConsumedIrWithQaBlocker,
+  type Step37ObserveRuntimeConsumedIrWithQaReport,
+  type Step37ObserveRuntimeConsumedIrWithQaStatus,
+  type Step37RuntimeQaObservation
+} from './step37-observe-runtime-consumed-ir-with-qa.js';
+export {
+  STEP37_STAGE11_ACTIVATE_PRODUCTION_DEFAULT_CUTOVER_ARTIFACT_KIND,
+  STEP37_STAGE11_ACTIVATE_PRODUCTION_DEFAULT_CUTOVER_SCHEMA_VERSION,
+  STEP37_STAGE11_PRODUCTION_DEFAULT_CUTOVER_PATH,
+  buildStep37ActivateProductionDefaultCutoverReport,
+  type Step37ActivateProductionDefaultCutoverBlocker,
+  type Step37ActivateProductionDefaultCutoverReport,
+  type Step37ActivateProductionDefaultCutoverStatus
+} from './step37-activate-production-default-cutover.js';
+export {
+  STEP37_STAGE12_EXIT_LEGACY_AUTHORITATIVE_PATH_ARTIFACT_KIND,
+  STEP37_STAGE12_EXIT_LEGACY_AUTHORITATIVE_PATH_SCHEMA_VERSION,
+  STEP37_STAGE12_LEGACY_AUTHORITATIVE_PATH_EXIT_PATH,
+  buildStep37ExitLegacyAuthoritativePathReport,
+  type Step37ExitLegacyAuthoritativePathBlocker,
+  type Step37ExitLegacyAuthoritativePathReport,
+  type Step37ExitLegacyAuthoritativePathStatus
+} from './step37-exit-legacy-authoritative-path.js';
+export {
+  STEP37_STAGE4_EXIT_AUDIT_ARTIFACT_KIND,
+  STEP37_STAGE4_EXIT_AUDIT_SCHEMA_VERSION,
+  buildStep37Stage4ExitAuditReport,
+  type Step37Stage4ExitAuditBlocker,
+  type Step37Stage4ExitAuditReport,
+  type Step37Stage4ExitAuditStatus
+} from './step37-stage4-exit-audit.js';
+export {
+  STEP37_STAGE5_ENTRY_AUDIT_ARTIFACT_KIND,
+  STEP37_STAGE5_ENTRY_AUDIT_SCHEMA_VERSION,
+  buildStep37Stage5EntryAuditReport,
+  type Step37Stage5EntryAuditBlocker,
+  type Step37Stage5EntryAuditReport,
+  type Step37Stage5EntryAuditStatus
+} from './step37-stage5-entry-audit.js';
+export {
+  STEP37_STAGE5_EXACT_CAPABILITY_LOCK_ARTIFACT_KIND,
+  STEP37_STAGE5_EXACT_CAPABILITY_LOCK_SCHEMA_VERSION,
+  buildStep37ExactCapabilityLockReport,
+  createStep37CompleteSupportedPackageContracts,
+  type Step37ExactCapabilityLockBlocker,
+  type Step37ExactCapabilityLockReport,
+  type Step37ExactCapabilityLockStatus
+} from './step37-exact-capability-lock.js';
+export {
+  STEP37_STAGE6_COMPOSED_DSL_SCHEMA_ARTIFACT_KIND,
+  STEP37_STAGE6_COMPOSED_DSL_SCHEMA_SCHEMA_VERSION,
+  buildStep37ComposedDslSchemaReport,
+  type Step37ComposedDslSchemaBlocker,
+  type Step37ComposedDslSchemaReport,
+  type Step37ComposedDslSchemaStatus
+} from './step37-composed-dsl-schema.js';
+export {
+  STEP37_SUPPORT_PROMOTION_COMPLETE_SUPPORTED_VIEW_ARTIFACT_KIND,
+  STEP37_SUPPORT_PROMOTION_COMPLETE_SUPPORTED_VIEW_SCHEMA_VERSION,
+  STEP37_SUPPORT_PROMOTION_INVENTORY_ARTIFACT_KIND,
+  STEP37_SUPPORT_PROMOTION_INVENTORY_CHECKPOINT_ID,
+  STEP37_SUPPORT_PROMOTION_INVENTORY_SCHEMA_VERSION,
+  buildStep37PromotedSupportSummary,
+  buildStep37SupportPromotionApplicationReport,
+  buildStep37SupportPromotionInventory,
+  hashStep37SupportPromotionInventoryArtifact,
+  parseStep37SupportPromotionInventoryArtifact,
+  type Step37SupportPromotionApplicationBlocker,
+  type Step37SupportPromotionApplicationReport,
+  type Step37SupportPromotionApplicationStatus,
+  type Step37SupportPromotionCapabilityClosureRecord,
+  type Step37SupportPromotionClosureStatus,
+  type Step37SupportPromotionDuplicateEntry,
+  type Step37SupportPromotionEligibleEntry,
+  type Step37SupportPromotionEvidenceRunScope,
+  type Step37SupportPromotionEvidenceScope,
+  type Step37SupportPromotionGapType,
+  type Step37SupportPromotionInputStatus,
+  type Step37SupportPromotionInventoryArtifact,
+  type Step37SupportPromotionInventoryInput,
+  type Step37SupportPromotionInventoryReport,
+  type Step37SupportPromotionReceiptStatus,
+  type Step37SupportPromotionStaleEntry,
+  type Step37SupportPromotionWrongCheckpointEntry,
+  type Step37SupportPromotionWrongPackageEntry,
+  type Step37SupportPromotionWrongParentStageEntry
+} from './step37-support-promotion-inventory.js';
+export {
+  GENERATION_TARGET_PROFILE_RUNTIME_SUPPORT_REPORT_KIND,
+  GENERATION_TARGET_PROFILE_RUNTIME_SUPPORT_REPORT_PATH,
+  GENERATION_TARGET_PROFILE_RUNTIME_SUPPORT_REPORT_SCHEMA_VERSION,
+  GenerationTargetProfileRuntimeSupportCapabilitySchema,
+  GenerationTargetProfileRuntimeSupportReportSchema,
+  buildGenerationTargetProfileRuntimeSupportReport,
+  type GenerationTargetProfileRuntimeSupportCapability,
+  type GenerationTargetProfileRuntimeSupportReport
+} from './generation-target-profile-runtime-support.js';
 export {
   buildSceneIr,
   buildSceneIrAuthorityReport,
@@ -458,3 +692,5 @@ export type {
   ValidateAndNormalizeResult,
   ValidateAndNormalizeSuccess
 } from './validation.types.js';
+export * from './step37-parent-loop-driver.js';
+export * from './step37-focused-validation.js';

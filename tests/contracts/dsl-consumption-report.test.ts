@@ -149,6 +149,545 @@ describe('Step 33 DSL consumption report', () => {
     );
   });
 
+  it('surfaces default weapon runtime consumer evidence and normalized M3 weapon evidence in target profile support', () => {
+    const normalized = validateAndNormalizeRawGameDsl(createSideScrollingRunAndGunRawDsl());
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const report = buildDslConsumptionReport({
+      projectId: 'proj_20260625_m3_weapon_support',
+      runId: 'run_20260625_m3_weapon_support',
+      rawDsl: normalized.rawDsl,
+      ir: normalized.ir
+    });
+    const capabilities = new Map(report.targetProfileSupport?.capabilities.map((capability) => [capability.capabilityId, capability]));
+
+    expect(report.targetProfileSupport).toMatchObject({
+      requiredCapabilityCount: 59,
+      registeredCapabilityCount: 59,
+      completeSupportedCount: 0,
+      completePackageClosure: {
+        status: 'blocked_incomplete_target_profile',
+        exactLockAllowed: false,
+        incompleteCapabilityIds: expect.arrayContaining(['weapon.default_straight_single.v1']),
+        blockers: [
+          'complete_package_closure_incomplete',
+          'complete_supported_count:0/59',
+          'stage5_exact_lock_blocked'
+        ]
+      }
+    });
+    expect(capabilities.get('validation.fail_closed_unknown_nodes.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('validation.metamorphic_semantic_hash.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('validation.replay_stability.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('validation.user_acceptance_gate.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('weapon.default_straight_single.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('ui.hud_current_weapon.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('ui.hud_player_health.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('ui.hud_retries.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('ui.win_failure_transitions.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('artifact.lineage_no_manual_patch.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('artifact.no_hidden_script.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('camera.bounds_clamp.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('canonical.semantic_preservation.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('collision.damage_affinity_matrix.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('enemy.boss_attack_pattern.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('enemy.boss_lifecycle.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('enemy.boss_phase_transition.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('enemy.fixed_turret.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('enemy.flying_right_entry.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('enemy.patrol_infantry.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('feedback.victory_declaration.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('generation.fallback_policy_fail_closed.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('goal.boss_unlock.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('hazard.falling_area.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('hazard.timed_explosion.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('rules.checkpoint_restore.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('rules.encounter_gate.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('rules.retry_count.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('rules.state_transition_graph.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('pickup.weapon_supply.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('provider.deepseek_authoritative_draft.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('validation.fixed_prompt_end_to_end.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('review.oracle_final_gate.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('scene.visual_presentation_metadata.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('weapon.spread_shot.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('weapon.rapid_fire.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+    expect(capabilities.get('weapon.replacement_rule.v1')).toMatchObject({
+      classification: 'DEFERRED',
+      completeSupported: false,
+      evidenceDimensions: {
+        schema_expressible: true,
+        normalized: true,
+        compiled: true,
+        runtime_consumed: true,
+        qa_observed: false
+      },
+      missingEvidenceDimensions: ['qa_observed'],
+      missingSupportEvidencePrerequisites: ['requiredProbesVerified']
+    });
+  });
+
+  it('parses older target profile support reports without prerequisite blockers', () => {
+    const normalized = validateAndNormalizeRawGameDsl(createSideScrollingRunAndGunRawDsl());
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) {
+      return;
+    }
+
+    const report = buildDslConsumptionReport({
+      projectId: 'proj_20260625_legacy_prerequisites',
+      runId: 'run_20260625_legacy_prerequisites',
+      rawDsl: normalized.rawDsl,
+      ir: normalized.ir
+    });
+    const legacyReport = {
+      ...report,
+      targetProfileSupport: {
+        ...report.targetProfileSupport,
+        capabilities: report.targetProfileSupport?.capabilities.map(({ missingSupportEvidencePrerequisites: _omitted, ...capability }) => capability)
+      }
+    };
+
+    const parsed = DslConsumptionReportSchema.parse(legacyReport);
+    const weapon = parsed.targetProfileSupport?.capabilities.find((capability) => capability.capabilityId === 'weapon.default_straight_single.v1');
+    expect(weapon?.missingSupportEvidencePrerequisites).toEqual([]);
+  });
+
   it('does not point non-side-scrolling world gravity to side-scrolling runtime refs', () => {
     const base = createShooterRawDsl();
     const rawDsl = {

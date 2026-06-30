@@ -3,14 +3,19 @@ import { dirname } from 'node:path';
 
 import type { Browser, Page } from 'playwright';
 
-import { TelemetryEventSchema } from '../../../../packages/runtime-core/src/index.js';
+import { TelemetryEventSchema, type TelemetryEvent } from '../../../../packages/runtime-core/src/index.js';
 import type {
   QaAssetRuntimeTelemetry,
   QaBrowserResult,
   QaBrowserRunner,
+  QaCapabilityRuntimeEvidence,
+  QaCapabilityRuntimeExpectation,
+  QaCapabilityRuntimeObservedProbe,
   QaFailureCode,
   QaGenre,
   QaRequiredEvents,
+  QaRuntimeAuthorityEvidence,
+  QaRuntimeAuthorityExpectation,
   QaVisualMetrics,
   RunQaInput
 } from './qa.types.js';
@@ -112,7 +117,11 @@ export const runPlaywrightQaBrowser: QaBrowserRunner = async (input, requiredEve
     });
     const telemetry = result.telemetry.map((event) => TelemetryEventSchema.parse(event));
     const gateReady = requiredTelemetryObserved(telemetry.map((event) => event.type), requiredEvents);
-    const interactionReady = consoleErrors.length === 0 && gateReady && interactionAssertion.ok;
+    const runtimeAuthority = evaluateRuntimeAuthorityEvidence(result.snapshot, input.expectedRuntimeAuthority);
+    const capabilityRuntime = evaluateCapabilityRuntimeEvidence(result.snapshot, telemetry, input.expectedCapabilityRuntime);
+    const runtimeAuthorityReady = runtimeAuthority?.status !== 'FAILED';
+    const capabilityRuntimeReady = capabilityRuntime?.status !== 'FAILED';
+    const interactionReady = consoleErrors.length === 0 && gateReady && interactionAssertion.ok && runtimeAuthorityReady && capabilityRuntimeReady;
 
     return {
       ok: interactionReady && visualGate.ok,
@@ -122,11 +131,13 @@ export const runPlaywrightQaBrowser: QaBrowserRunner = async (input, requiredEve
       telemetry,
       snapshot: result.snapshot,
       console_errors: consoleErrors,
-      failure_code: consoleErrors.length > 0 ? 'FATAL_CONSOLE_ERROR' : !gateReady ? 'REQUIRED_TELEMETRY_MISSING' : interactionAssertion.ok ? undefined : 'QA_RUNNER_FAILED',
-      message: interactionAssertion.message,
+      failure_code: resolveInteractionFailureCode({ consoleErrors, gateReady, interactionAssertion, runtimeAuthority, capabilityRuntime }),
+      message: buildInteractionMessage(interactionAssertion.message, runtimeAuthority, capabilityRuntime),
       screenshot_path: visualGate.screenshot_path,
       visual_metrics: visualGate.visual_metrics,
-      asset_runtime: assetAssertion.telemetry
+      asset_runtime: assetAssertion.telemetry,
+      runtime_authority: runtimeAuthority,
+      capability_runtime: capabilityRuntime
     };
   } catch (error) {
     return {
@@ -155,6 +166,421 @@ function failedBrowserResult(failureCode: QaBrowserResult['failure_code'], conso
     failure_code: failureCode,
     message: error instanceof Error ? error.message : 'Playwright QA failed'
   };
+}
+
+export function evaluateRuntimeAuthorityEvidence(
+  snapshot: unknown,
+  expected: QaRuntimeAuthorityExpectation | undefined
+): QaRuntimeAuthorityEvidence | undefined {
+  if (expected === undefined) {
+    return undefined;
+  }
+
+  const observed = readRuntimeAuthoritySnapshot(snapshot);
+  if (observed === undefined) {
+    return {
+      status: 'FAILED',
+      expected,
+      mismatches: ['snapshot.runtimeAuthority: missing']
+    };
+  }
+
+  const mismatches = [
+    ...compareScalar('authorityBundleRef.artifactKind', observed.authorityBundleRef?.artifactKind, expected.authorityBundleRef.artifactKind),
+    ...compareScalar('authorityBundleRef.path', observed.authorityBundleRef?.path, expected.authorityBundleRef.path),
+    ...compareScalar('authorityBundleRef.bundleHash', observed.authorityBundleRef?.bundleHash, expected.authorityBundleRef.bundleHash),
+    ...compareScalar('activeProfileLockRef.artifactKind', observed.activeProfileLockRef?.artifactKind, expected.activeProfileLockRef.artifactKind),
+    ...compareScalar('activeProfileLockRef.path', observed.activeProfileLockRef?.path, expected.activeProfileLockRef.path),
+    ...compareScalar('activeProfileLockRef.lockHash', observed.activeProfileLockRef?.lockHash, expected.activeProfileLockRef.lockHash),
+    ...compareScalar('profileId', observed.profileId, expected.profileId),
+    ...compareScalar('runtimeTemplateId', observed.runtimeTemplateId, expected.runtimeTemplateId),
+    ...compareScalar('runtimeTemplateManifestId', observed.runtimeTemplateManifestId, expected.runtimeTemplateManifestId),
+    ...compareScalar('qaProfile', observed.qaProfile, expected.qaProfile)
+  ];
+
+  return {
+    status: mismatches.length === 0 ? 'PASSED' : 'FAILED',
+    expected,
+    observed,
+    mismatches
+  };
+}
+
+export function evaluateCapabilityRuntimeEvidence(
+  snapshot: unknown,
+  telemetry: readonly TelemetryEvent[],
+  expected: QaCapabilityRuntimeExpectation | undefined
+): QaCapabilityRuntimeEvidence | undefined {
+  if (expected === undefined) {
+    return undefined;
+  }
+
+  const observed = collectCapabilityRuntimeObservedProbes(snapshot, telemetry);
+  const observedByProbeId = new Map(observed.map((probe) => [probe.probeId, probe]));
+  const missingProbeIds: string[] = [];
+  const mismatches: string[] = [];
+
+  for (const expectedProbe of expected.requiredProbes) {
+    const observedProbe = observedByProbeId.get(expectedProbe.probeId);
+    if (observedProbe === undefined) {
+      missingProbeIds.push(expectedProbe.probeId);
+      mismatches.push(`capabilityRuntime.probes[${expectedProbe.probeId}]: missing`);
+      continue;
+    }
+
+    mismatches.push(...compareScalar(`capabilityRuntime.probes[${expectedProbe.probeId}].capabilityId`, observedProbe.capabilityId, expectedProbe.capabilityId));
+    mismatches.push(...compareScalar(`capabilityRuntime.probes[${expectedProbe.probeId}].action`, observedProbe.action, expectedProbe.action));
+    mismatches.push(...compareScalar(`capabilityRuntime.probes[${expectedProbe.probeId}].eventType`, observedProbe.eventType, expectedProbe.eventType));
+    if (expectedProbe.airborne !== undefined) {
+      mismatches.push(...compareBoolean(`capabilityRuntime.probes[${expectedProbe.probeId}].airborne`, observedProbe.airborne, expectedProbe.airborne));
+    }
+    if (expectedProbe.crouching !== undefined) {
+      mismatches.push(...compareBoolean(`capabilityRuntime.probes[${expectedProbe.probeId}].crouching`, observedProbe.crouching, expectedProbe.crouching));
+    }
+    if (expectedProbe.heightScale !== undefined) {
+      mismatches.push(...compareNumber(`capabilityRuntime.probes[${expectedProbe.probeId}].heightScale`, observedProbe.heightScale, expectedProbe.heightScale));
+    }
+    if (expectedProbe.invulnerable !== undefined) {
+      mismatches.push(
+        ...compareBoolean(`capabilityRuntime.probes[${expectedProbe.probeId}].invulnerable`, observedProbe.invulnerable, expectedProbe.invulnerable)
+      );
+    }
+    if (expectedProbe.damagePrevented !== undefined) {
+      mismatches.push(
+        ...compareBoolean(
+          `capabilityRuntime.probes[${expectedProbe.probeId}].damagePrevented`,
+          observedProbe.damagePrevented,
+          expectedProbe.damagePrevented
+        )
+      );
+    }
+    if (expectedProbe.projectileEntityId !== undefined) {
+      mismatches.push(
+        ...compareScalar(
+          `capabilityRuntime.probes[${expectedProbe.probeId}].projectileEntityId`,
+          observedProbe.projectileEntityId,
+          expectedProbe.projectileEntityId
+        )
+      );
+    }
+    if (expectedProbe.pickupCollected !== undefined) {
+      mismatches.push(
+        ...compareBoolean(
+          `capabilityRuntime.probes[${expectedProbe.probeId}].pickupCollected`,
+          observedProbe.pickupCollected,
+          expectedProbe.pickupCollected
+        )
+      );
+    }
+    if (expectedProbe.pickupConsumed !== undefined) {
+      mismatches.push(
+        ...compareBoolean(`capabilityRuntime.probes[${expectedProbe.probeId}].pickupConsumed`, observedProbe.pickupConsumed, expectedProbe.pickupConsumed)
+      );
+    }
+    if (expectedProbe.pickupStateChanged !== undefined) {
+      mismatches.push(
+        ...compareBoolean(
+          `capabilityRuntime.probes[${expectedProbe.probeId}].pickupStateChanged`,
+          observedProbe.pickupStateChanged,
+          expectedProbe.pickupStateChanged
+        )
+      );
+    }
+    if (expectedProbe.orderedWaveSequence !== undefined) {
+      mismatches.push(
+        ...compareBoolean(
+          `capabilityRuntime.probes[${expectedProbe.probeId}].orderedWaveSequence`,
+          observedProbe.orderedWaveSequence,
+          expectedProbe.orderedWaveSequence
+        )
+      );
+    }
+    if (expectedProbe.gateTriggered !== undefined) {
+      mismatches.push(
+        ...compareBoolean(`capabilityRuntime.probes[${expectedProbe.probeId}].gateTriggered`, observedProbe.gateTriggered, expectedProbe.gateTriggered)
+      );
+    }
+    if (expectedProbe.waveSpawned !== undefined) {
+      mismatches.push(...compareBoolean(`capabilityRuntime.probes[${expectedProbe.probeId}].waveSpawned`, observedProbe.waveSpawned, expectedProbe.waveSpawned));
+    }
+    if (expectedProbe.sequenceIndex !== undefined) {
+      mismatches.push(
+        ...compareNumber(`capabilityRuntime.probes[${expectedProbe.probeId}].sequenceIndex`, observedProbe.sequenceIndex, expectedProbe.sequenceIndex)
+      );
+    }
+    if (expectedProbe.waveId !== undefined) {
+      mismatches.push(...compareScalar(`capabilityRuntime.probes[${expectedProbe.probeId}].waveId`, observedProbe.waveId, expectedProbe.waveId));
+    }
+  }
+
+  return {
+    status: missingProbeIds.length === 0 && mismatches.length === 0 ? 'PASSED' : 'FAILED',
+    expected,
+    observed,
+    missingProbeIds,
+    mismatches
+  };
+}
+
+function readRuntimeAuthoritySnapshot(snapshot: unknown): Partial<QaRuntimeAuthorityExpectation> | undefined {
+  if (snapshot === null || typeof snapshot !== 'object' || !('runtimeAuthority' in snapshot)) {
+    return undefined;
+  }
+
+  const runtimeAuthority = (snapshot as { runtimeAuthority?: unknown }).runtimeAuthority;
+  if (runtimeAuthority === null || typeof runtimeAuthority !== 'object') {
+    return undefined;
+  }
+
+  return {
+    authorityBundleRef: readAuthorityBundleRef((runtimeAuthority as { authorityBundleRef?: unknown }).authorityBundleRef),
+    activeProfileLockRef: readActiveProfileLockRef((runtimeAuthority as { activeProfileLockRef?: unknown }).activeProfileLockRef),
+    profileId: readString((runtimeAuthority as { profileId?: unknown }).profileId),
+    runtimeTemplateId: readString((runtimeAuthority as { runtimeTemplateId?: unknown }).runtimeTemplateId),
+    runtimeTemplateManifestId: readString((runtimeAuthority as { runtimeTemplateManifestId?: unknown }).runtimeTemplateManifestId),
+    qaProfile: readString((runtimeAuthority as { qaProfile?: unknown }).qaProfile)
+  };
+}
+
+function readAuthorityBundleRef(value: unknown): QaRuntimeAuthorityExpectation['authorityBundleRef'] | undefined {
+  if (value === null || typeof value !== 'object') {
+    return undefined;
+  }
+  const ref = value as { artifactKind?: unknown; path?: unknown; bundleHash?: unknown };
+  if (typeof ref.artifactKind !== 'string' || typeof ref.path !== 'string' || typeof ref.bundleHash !== 'string') {
+    return undefined;
+  }
+  return {
+    artifactKind: ref.artifactKind as QaRuntimeAuthorityExpectation['authorityBundleRef']['artifactKind'],
+    path: ref.path as QaRuntimeAuthorityExpectation['authorityBundleRef']['path'],
+    bundleHash: ref.bundleHash
+  };
+}
+
+function readActiveProfileLockRef(value: unknown): QaRuntimeAuthorityExpectation['activeProfileLockRef'] | undefined {
+  if (value === null || typeof value !== 'object') {
+    return undefined;
+  }
+  const ref = value as { artifactKind?: unknown; path?: unknown; lockHash?: unknown };
+  if (typeof ref.artifactKind !== 'string' || typeof ref.path !== 'string' || typeof ref.lockHash !== 'string') {
+    return undefined;
+  }
+  return {
+    artifactKind: ref.artifactKind as QaRuntimeAuthorityExpectation['activeProfileLockRef']['artifactKind'],
+    path: ref.path as QaRuntimeAuthorityExpectation['activeProfileLockRef']['path'],
+    lockHash: ref.lockHash
+  };
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+function readBoolean(value: unknown): boolean | undefined {
+  return typeof value === 'boolean' ? value : undefined;
+}
+
+function readNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function collectCapabilityRuntimeObservedProbes(snapshot: unknown, telemetry: readonly TelemetryEvent[]): QaCapabilityRuntimeObservedProbe[] {
+  const probesById = new Map<string, QaCapabilityRuntimeObservedProbe>();
+  for (const probe of readSnapshotCapabilityRuntimeProbes(snapshot)) {
+    mergeCapabilityRuntimeProbe(probesById, probe, 'snapshot');
+  }
+
+  for (const event of telemetry) {
+    const payload = isRecord(event.payload) ? event.payload : undefined;
+    const probes = [
+      ...readCapabilityRuntimeProbes(payload?.capabilityRuntime, event.type),
+      ...readCapabilityRuntimeProbes(payload?.capabilityRuntimeProbes, event.type)
+    ];
+    for (const probe of probes) {
+      mergeCapabilityRuntimeProbe(probesById, probe, 'telemetry');
+    }
+  }
+
+  return [...probesById.values()].sort((left, right) => left.probeId.localeCompare(right.probeId));
+}
+
+function readSnapshotCapabilityRuntimeProbes(snapshot: unknown): Array<Omit<QaCapabilityRuntimeObservedProbe, 'observedIn'>> {
+  if (!isRecord(snapshot) || !isRecord(snapshot.capabilityRuntime) || !Array.isArray(snapshot.capabilityRuntime.probes)) {
+    return [];
+  }
+
+  return snapshot.capabilityRuntime.probes.flatMap((probe) => readCapabilityRuntimeProbes(probe));
+}
+
+function readCapabilityRuntimeProbes(value: unknown, eventTypeFallback?: string): Array<Omit<QaCapabilityRuntimeObservedProbe, 'observedIn'>> {
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) => readCapabilityRuntimeProbes(entry, eventTypeFallback));
+  }
+
+  const probe = readCapabilityRuntimeProbe(value, eventTypeFallback);
+  return probe === undefined ? [] : [probe];
+}
+
+function readCapabilityRuntimeProbe(value: unknown, eventTypeFallback?: string): Omit<QaCapabilityRuntimeObservedProbe, 'observedIn'> | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const capabilityId = readString(value.capabilityId);
+  const probeId = readString(value.probeId);
+  const action = readString(value.action);
+  const eventType = readString(value.eventType) ?? eventTypeFallback;
+  if (capabilityId === undefined || probeId === undefined || action === undefined || eventType === undefined) {
+    return undefined;
+  }
+
+  const airborne = readBoolean(value.airborne);
+  const crouching = readBoolean(value.crouching);
+  const heightScale = readNumber(value.heightScale);
+  const invulnerable = readBoolean(value.invulnerable);
+  const damagePrevented = readBoolean(value.damagePrevented);
+  const pickupCollected = readBoolean(value.pickupCollected);
+  const pickupConsumed = readBoolean(value.pickupConsumed);
+  const pickupStateChanged = readBoolean(value.pickupStateChanged);
+  const orderedWaveSequence = readBoolean(value.orderedWaveSequence);
+  const gateTriggered = readBoolean(value.gateTriggered);
+  const waveSpawned = readBoolean(value.waveSpawned);
+  const sequenceIndex = readNumber(value.sequenceIndex);
+  const waveId = readString(value.waveId);
+  const projectileEntityId = readString(value.projectileEntityId);
+  const runtimeModuleId = readString(value.runtimeModuleId);
+  const projectileId = readString(value.projectileId);
+  const sourceRef = readString(value.sourceRef);
+  const status = readString(value.status);
+  const eventTypes = uniqueStrings([
+    ...readRuntimeEventTypes(value.eventTypes),
+    eventType,
+    ...(eventTypeFallback === undefined ? [] : [eventTypeFallback])
+  ]);
+
+  return {
+    capabilityId,
+    probeId,
+    action,
+    eventType,
+    eventTypes,
+    ...(airborne === undefined ? {} : { airborne }),
+    ...(crouching === undefined ? {} : { crouching }),
+    ...(heightScale === undefined ? {} : { heightScale }),
+    ...(invulnerable === undefined ? {} : { invulnerable }),
+    ...(damagePrevented === undefined ? {} : { damagePrevented }),
+    ...(pickupCollected === undefined ? {} : { pickupCollected }),
+    ...(pickupConsumed === undefined ? {} : { pickupConsumed }),
+    ...(pickupStateChanged === undefined ? {} : { pickupStateChanged }),
+    ...(orderedWaveSequence === undefined ? {} : { orderedWaveSequence }),
+    ...(gateTriggered === undefined ? {} : { gateTriggered }),
+    ...(waveSpawned === undefined ? {} : { waveSpawned }),
+    ...(sequenceIndex === undefined ? {} : { sequenceIndex }),
+    ...(waveId === undefined ? {} : { waveId }),
+    ...(projectileEntityId === undefined ? {} : { projectileEntityId }),
+    ...(runtimeModuleId === undefined ? {} : { runtimeModuleId }),
+    ...(projectileId === undefined ? {} : { projectileId }),
+    ...(sourceRef === undefined ? {} : { sourceRef }),
+    ...(status === undefined ? {} : { status })
+  };
+}
+
+function mergeCapabilityRuntimeProbe(
+  probesById: Map<string, QaCapabilityRuntimeObservedProbe>,
+  probe: Omit<QaCapabilityRuntimeObservedProbe, 'observedIn'>,
+  observedIn: 'snapshot' | 'telemetry'
+): void {
+  const existing = probesById.get(probe.probeId);
+  if (existing === undefined) {
+    probesById.set(probe.probeId, { ...probe, observedIn: [observedIn] });
+    return;
+  }
+
+  if (!existing.observedIn.includes(observedIn)) {
+    existing.observedIn.push(observedIn);
+  }
+  existing.eventTypes = uniqueStrings([...(existing.eventTypes ?? [existing.eventType]), ...(probe.eventTypes ?? [probe.eventType])]);
+  mergeOptionalProbeFields(existing, probe);
+}
+
+function mergeOptionalProbeFields(existing: QaCapabilityRuntimeObservedProbe, probe: Omit<QaCapabilityRuntimeObservedProbe, 'observedIn'>): void {
+  if (existing.airborne === undefined && probe.airborne !== undefined) existing.airborne = probe.airborne;
+  if (existing.crouching === undefined && probe.crouching !== undefined) existing.crouching = probe.crouching;
+  if (existing.heightScale === undefined && probe.heightScale !== undefined) existing.heightScale = probe.heightScale;
+  if (existing.invulnerable === undefined && probe.invulnerable !== undefined) existing.invulnerable = probe.invulnerable;
+  if (existing.damagePrevented === undefined && probe.damagePrevented !== undefined) existing.damagePrevented = probe.damagePrevented;
+  if (existing.pickupCollected === undefined && probe.pickupCollected !== undefined) existing.pickupCollected = probe.pickupCollected;
+  if (existing.pickupConsumed === undefined && probe.pickupConsumed !== undefined) existing.pickupConsumed = probe.pickupConsumed;
+  if (existing.pickupStateChanged === undefined && probe.pickupStateChanged !== undefined) existing.pickupStateChanged = probe.pickupStateChanged;
+  if (existing.orderedWaveSequence === undefined && probe.orderedWaveSequence !== undefined) existing.orderedWaveSequence = probe.orderedWaveSequence;
+  if (existing.gateTriggered === undefined && probe.gateTriggered !== undefined) existing.gateTriggered = probe.gateTriggered;
+  if (existing.waveSpawned === undefined && probe.waveSpawned !== undefined) existing.waveSpawned = probe.waveSpawned;
+  if (existing.sequenceIndex === undefined && probe.sequenceIndex !== undefined) existing.sequenceIndex = probe.sequenceIndex;
+  if (existing.waveId === undefined && probe.waveId !== undefined) existing.waveId = probe.waveId;
+  if (existing.projectileEntityId === undefined && probe.projectileEntityId !== undefined) existing.projectileEntityId = probe.projectileEntityId;
+  if (existing.runtimeModuleId === undefined && probe.runtimeModuleId !== undefined) existing.runtimeModuleId = probe.runtimeModuleId;
+  if (existing.projectileId === undefined && probe.projectileId !== undefined) existing.projectileId = probe.projectileId;
+  if (existing.sourceRef === undefined && probe.sourceRef !== undefined) existing.sourceRef = probe.sourceRef;
+  if (existing.status === undefined && probe.status !== undefined) existing.status = probe.status;
+}
+
+function compareScalar(path: string, observed: string | undefined, expected: string): string[] {
+  return observed === expected ? [] : [`${path}: expected ${expected}, observed ${observed ?? '<missing>'}`];
+}
+
+function compareBoolean(path: string, observed: boolean | undefined, expected: boolean): string[] {
+  return observed === expected ? [] : [`${path}: expected ${expected}, observed ${observed === undefined ? '<missing>' : String(observed)}`];
+}
+
+function compareNumber(path: string, observed: number | undefined, expected: number): string[] {
+  return observed === expected ? [] : [`${path}: expected ${expected}, observed ${observed === undefined ? '<missing>' : String(observed)}`];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function readRuntimeEventTypes(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string' && item.length > 0) : [];
+}
+
+function uniqueStrings(values: readonly string[]): string[] {
+  return [...new Set(values.filter((value) => value.length > 0))].sort();
+}
+
+function resolveInteractionFailureCode(input: {
+  consoleErrors: readonly string[];
+  gateReady: boolean;
+  interactionAssertion: { ok: boolean };
+  runtimeAuthority: QaRuntimeAuthorityEvidence | undefined;
+  capabilityRuntime: QaCapabilityRuntimeEvidence | undefined;
+}): QaFailureCode | undefined {
+  if (input.consoleErrors.length > 0) {
+    return 'FATAL_CONSOLE_ERROR';
+  }
+  if (!input.gateReady) {
+    return 'REQUIRED_TELEMETRY_MISSING';
+  }
+  if (input.runtimeAuthority?.status === 'FAILED') {
+    return 'RUNTIME_AUTHORITY_MISMATCH';
+  }
+  if (input.capabilityRuntime?.status === 'FAILED') {
+    return 'CAPABILITY_RUNTIME_MISMATCH';
+  }
+  return input.interactionAssertion.ok ? undefined : 'QA_RUNNER_FAILED';
+}
+
+function buildInteractionMessage(
+  interactionMessage: string | undefined,
+  runtimeAuthority: QaRuntimeAuthorityEvidence | undefined,
+  capabilityRuntime: QaCapabilityRuntimeEvidence | undefined
+): string | undefined {
+  const messages = [
+    interactionMessage,
+    runtimeAuthority?.status === 'FAILED' ? `Runtime authority mismatch: ${runtimeAuthority.mismatches.join('; ')}` : undefined,
+    capabilityRuntime?.status === 'FAILED' ? `Capability runtime mismatch: ${capabilityRuntime.mismatches.join('; ')}` : undefined
+  ].filter((message): message is string => message !== undefined && message.length > 0);
+  return messages.length === 0 ? undefined : messages.join(' ');
 }
 
 function failedInteractionResult(
@@ -357,6 +783,18 @@ async function runDeterministicInteraction(page: Page, genre: QaGenre, timeoutMs
       return movementAssertion;
     }
 
+    await page.keyboard.down('ArrowDown');
+    const crouchAssertion = await verifyTelemetryEvent(
+      page,
+      'movement.crouch.entered',
+      'Side-scrolling QA expected ArrowDown to emit movement.crouch.entered.'
+    );
+    await page.keyboard.up('ArrowDown');
+    if (!crouchAssertion.ok) {
+      await page.keyboard.press('r');
+      return crouchAssertion;
+    }
+
     await page.keyboard.press(' ');
     const jumpAssertion = await verifyTelemetryEvent(page, 'player.jumped', 'Side-scrolling QA expected Space to emit player.jumped.');
     if (!jumpAssertion.ok) {
@@ -368,7 +806,11 @@ async function runDeterministicInteraction(page: Page, genre: QaGenre, timeoutMs
     await page.keyboard.press('r');
     return progressed
       ? { ok: true }
-      : { ok: false, message: 'Side-scrolling QA expected run-and-gun input to produce enemy.fired plus enemy.hit, enemy.cleared, or mission completion.' };
+      : {
+          ok: false,
+          message:
+            'Side-scrolling QA expected run-and-gun input to produce enemy.fired, combat progress, and health.damage_invulnerability.blocked.'
+        };
   }
 
   if (genre !== 'shooter') {
@@ -805,6 +1247,13 @@ async function runSideScrollingCombat(page: Page, timeoutMs: number): Promise<bo
                 }
 
                 return event.type === 'enemy.hit' || event.type === 'enemy.cleared' || event.type === 'level.segment.completed' || event.type === 'game.won';
+              }) === true &&
+              qa?.telemetry().some((event) => {
+                if (typeof event !== 'object' || event === null || !('type' in event)) {
+                  return false;
+                }
+
+                return event.type === 'health.damage_invulnerability.blocked';
               }) === true
             );
           },

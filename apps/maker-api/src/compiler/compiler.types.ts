@@ -1,4 +1,9 @@
-import type { NormalizedGameIr, RawGameDsl, UnsupportedRuntimeCapability } from '../../../../packages/game-dsl/src/index.js';
+import type {
+  AuthorityBundle,
+  NormalizedGameIr,
+  RawGameDsl,
+  UnsupportedRuntimeCapability
+} from '../../../../packages/game-dsl/src/index.js';
 
 export type RuntimeCompileInput = {
   projectId: string;
@@ -9,6 +14,7 @@ export type RuntimeCompileInput = {
     originalPrompt?: string;
     brief?: unknown;
   };
+  authorityBundle: AuthorityBundle;
 };
 
 export type RuntimeCompileSuccess = {

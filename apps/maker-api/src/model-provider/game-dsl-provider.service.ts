@@ -9,7 +9,10 @@ import {
   classifyLegacyRawGameDslRepresentability,
   parseAndNormalizeGameBrief,
   toLegacyTargetPlayTimeSec,
+  validateAuthorityBundleForRun,
+  type AuthorityBundle,
   type GameBrief,
+  type GameBriefIngressResult,
   type GameBriefV02,
   type RawGameDsl
 } from '../../../../packages/game-dsl/src/index.js';
@@ -29,6 +32,7 @@ type GenerateGameBriefParams = {
 
 type GenerateRawGameDslParams = GenerateGameBriefParams & {
   brief: ProviderGameBrief;
+  authorityBundle: AuthorityBundle;
 };
 
 type SchemaValidationFailure = {
@@ -47,6 +51,7 @@ type GameDslProviderSuccess<T> = {
   value: T;
   rawText: string;
   rawOutputPath: string;
+  sourceFormat?: GameBriefIngressResult['sourceFormat'];
 };
 
 export type GameDslProviderResult<T> = GameDslProviderSuccess<T> | GameDslProviderFailure;
@@ -62,6 +67,24 @@ function isJsonObject(value: unknown): value is Record<string, unknown> {
 function normalizeRunAndGunDescription(description: string, language: Language): string {
   const replacement = language === 'zh' ? '原创横版跑枪' : 'generic side-scrolling run-and-gun';
   return description.replace(runAndGunSourceReferencePattern, replacement);
+}
+
+function validateRawDslAuthorityPrerequisites(params: GenerateRawGameDslParams): { ok: true } | SchemaValidationFailure {
+  const validation = validateAuthorityBundleForRun({
+    projectId: params.projectId,
+    runId: params.runId,
+    bundle: params.authorityBundle,
+    brief: params.brief
+  });
+
+  return validation.ok
+    ? { ok: true }
+    : {
+        ok: false,
+        code: 'MODEL_SCHEMA_VALIDATION_FAILED',
+        message: 'Raw Game DSL authority bundle is invalid.',
+        issues: validation.issues
+      };
 }
 
 @Injectable()
@@ -141,6 +164,11 @@ export class GameDslProviderService {
   }
 
   async generateRawGameDsl(params: GenerateRawGameDslParams): Promise<GameDslProviderResult<RawGameDsl>> {
+    const authority = validateRawDslAuthorityPrerequisites(params);
+    if (!authority.ok) {
+      return authority;
+    }
+
     const legacyBrief = toLegacyRawDslBrief(params.brief);
     if (!legacyBrief.ok) {
       return legacyBrief;
@@ -155,7 +183,11 @@ export class GameDslProviderService {
         'Return one JSON object matching game-dsl-v0.1.',
         'Do not include runtime engine names, scripts, callbacks, functions or executable expressions.'
       ].join('\n'),
-      user: buildRawDslPromptContext({ ...params, brief: legacyBrief.value }),
+      user: buildRawDslPromptContext({
+        ...params,
+        brief: legacyBrief.value,
+        authorityBundle: params.authorityBundle
+      }),
       temperature: 0.1,
       maxTokens: 3500
     });
@@ -185,7 +217,8 @@ export class GameDslProviderService {
         ok: true,
         value: parsed.canonical,
         rawText: result.rawText,
-        rawOutputPath: result.rawOutputPath
+        rawOutputPath: result.rawOutputPath,
+        sourceFormat: parsed.sourceFormat
       };
     } catch (error) {
       return {

@@ -20,6 +20,26 @@ import {
 } from '../../packages/game-dsl/src/index.js';
 
 describe('Step37 final capability-first generation closure contract', () => {
+  it('keeps required validation commands executable against the current worktree', () => {
+    expect(STEP37_FINAL_REQUIRED_VALIDATION_COMMANDS).toContain('npm run test:contracts');
+    expect(STEP37_FINAL_REQUIRED_VALIDATION_COMMANDS).toContain('npm test');
+    expect(STEP37_FINAL_REQUIRED_VALIDATION_COMMANDS).toContain('npm run typecheck');
+    expect(STEP37_FINAL_REQUIRED_VALIDATION_COMMANDS).toContain('git diff --check');
+    expect(STEP37_FINAL_REQUIRED_VALIDATION_COMMANDS).toContain(
+      'git diff --check -- packages/game-dsl/src/step37-final-closure.ts'
+    );
+    expect(STEP37_FINAL_REQUIRED_VALIDATION_COMMANDS).toContain(
+      'git diff --check -- tests/contracts/step37-final-closure.test.ts'
+    );
+    expect(STEP37_FINAL_REQUIRED_VALIDATION_COMMANDS).toContain(
+      'git diff --check -- docs/refactor-log/step37-capability-first-authoritative-generation-pipeline-cutover.md'
+    );
+    expect(STEP37_FINAL_REQUIRED_VALIDATION_COMMANDS.some((command) => command.includes('git diff --no-index'))).toBe(
+      false
+    );
+    expect(STEP37_FINAL_REQUIRED_VALIDATION_COMMANDS.some((command) => command.includes('/dev/null'))).toBe(false);
+  });
+
   it('closes only when every acceptance item, evidence ref, validation, reference regression and Oracle gate passes', () => {
     const first = buildStep37FinalClosureReport(validClosureInput());
     const second = buildStep37FinalClosureReport(validClosureInput());
@@ -145,14 +165,14 @@ describe('Step37 final capability-first generation closure contract', () => {
     const report = buildStep37FinalClosureReport({
       ...validClosureInput(),
       validationReceipts: [
-        ...receipts.filter((receipt) => receipt.command !== 'npm run typecheck:root'),
+        ...receipts.filter((receipt) => receipt.command !== 'npm run typecheck'),
         receipts[0],
         staleReceipt
       ]
     });
 
     expect(report.status).toBe('blocked');
-    expect(report.missingValidationCommands).toEqual(['npm run typecheck:root']);
+    expect(report.missingValidationCommands).toEqual(['npm run typecheck']);
     expect(report.duplicateValidationCommands).toEqual([STEP37_FINAL_REQUIRED_VALIDATION_COMMANDS[0]]);
     expect(report.failedValidationCommands).toEqual(['git diff --check', STEP37_FINAL_REQUIRED_VALIDATION_COMMANDS[0]]);
     expect(issueCodes(report)).toEqual(

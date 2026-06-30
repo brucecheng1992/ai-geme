@@ -14,6 +14,7 @@ import {
   exposeRuntime
 } from '../../shared/kernel.js';
 import { EndScreenRenderer } from '../../shared/end-screen.js';
+import type { RuntimeAuthoritySnapshot } from '../../shared/runtime-authority.js';
 import type { CollectorAssetTelemetry } from './collector-art-library.js';
 import type { CollectorTemplateParams } from './template-params.js';
 
@@ -55,7 +56,8 @@ export class CollectorGameScene {
 
   constructor(
     private readonly params: CollectorTemplateParams,
-    private readonly art?: CollectorArtRuntime
+    private readonly art?: CollectorArtRuntime,
+    private readonly runtimeAuthority?: RuntimeAuthoritySnapshot
   ) {
     this.state = createRuntimeState(1);
     this.telemetry = new TelemetrySystem(this.state);
@@ -79,7 +81,8 @@ export class CollectorGameScene {
       this.state,
       new QaBridge(this.state, () => this.start(), () => this.restart(), () => ({
         player: { ...this.playerPosition },
-        collectible: { ...this.collectiblePosition }
+        collectible: { ...this.collectiblePosition },
+        runtimeAuthority: this.runtimeAuthority
       })),
       () => ({
         assets: this.art?.telemetry()
