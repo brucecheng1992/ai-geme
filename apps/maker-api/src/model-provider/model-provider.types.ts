@@ -2,6 +2,7 @@ export type JsonChatParams = {
   model?: string;
   system: string;
   user: unknown;
+  callPath?: string;
   temperature?: number;
   maxTokens?: number;
   timeoutMs?: number;

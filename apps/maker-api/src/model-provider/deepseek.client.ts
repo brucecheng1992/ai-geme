@@ -206,7 +206,8 @@ export class DeepSeekClient {
       timeoutMs,
       systemPromptLength: params.system.length,
       userPromptLength: body.messages.find((message) => message.role === 'user')?.content.length ?? 0,
-      callPath: 'ProjectsController.generateProject>GenerationPipelineService.generateRawDsl>GameDslProviderService>DeepSeekClient.generateJson'
+      callPath:
+        params.callPath ?? 'ProjectsController.generateProject>GenerationPipelineService.generateRawDsl>GameDslProviderService>DeepSeekClient.generateJson'
     };
   }
 
