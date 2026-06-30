@@ -66,8 +66,11 @@ export {
   type NormalizeCapabilityGameDslDraftToCanonicalV02Result
 } from './schemas/game-dsl-v0.2.schema.js';
 export {
+  DurationResolutionGateSchema,
   GenerationScopePlanSchema,
+  buildDurationResolutionGate,
   buildGenerationScopePlan,
+  type DurationResolutionGate,
   type GenerationScopePlan
 } from './generation-scope-plan.js';
 export {

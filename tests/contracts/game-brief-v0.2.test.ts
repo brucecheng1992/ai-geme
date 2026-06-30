@@ -87,6 +87,18 @@ describe('Step37 GameBrief v0.2 play-time intent contract', () => {
     expect(first).not.toHaveProperty('target_play_time_sec');
     expect(v01Brief.target_play_time_sec).toBe(60);
   });
+
+  it('projects unspecified intent to the normal legacy target without rewriting canonical intent', () => {
+    const brief = GameBriefV02Schema.parse({
+      ...stripV01Duration(v01Brief),
+      schema_version: GAME_BRIEF_V02_SCHEMA_VERSION,
+      play_time_intent: { mode: 'unspecified' }
+    });
+
+    expect(brief.play_time_intent).toEqual({ mode: 'unspecified' });
+    expect(getRepresentativePlayTimeSec(brief.play_time_intent)).toBeNull();
+    expect(toLegacyTargetPlayTimeSec(brief.play_time_intent)).toBe(60);
+  });
 });
 
 function stripV01Duration(brief: typeof v01Brief) {

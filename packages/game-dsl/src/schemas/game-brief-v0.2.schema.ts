@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { GameBriefSchema as GameBriefV01Schema } from './game-brief-v0.1.schema.js';
 
 export const GAME_BRIEF_V02_SCHEMA_VERSION = '0.2' as const;
+export const DEFAULT_UNSPECIFIED_PLAY_TIME_SEC = 60 as const;
 
 /**
  * Product-level duration intent. Generation and QA budgets are represented by
@@ -90,5 +91,14 @@ export function getPlanningUpperBoundSec(intent: PlayTimeIntent): number | null 
 
 /** Compatibility projection for legacy v0.1-only downstream prompts. */
 export function toLegacyTargetPlayTimeSec(intent: PlayTimeIntent): number | null {
-  return getRepresentativePlayTimeSec(intent);
+  switch (intent.mode) {
+    case 'target':
+      return intent.target_sec;
+    case 'range':
+      return Math.round((intent.min_sec + intent.max_sec) / 2);
+    case 'unspecified':
+      return DEFAULT_UNSPECIFIED_PLAY_TIME_SEC;
+    case 'endless':
+      return null;
+  }
 }

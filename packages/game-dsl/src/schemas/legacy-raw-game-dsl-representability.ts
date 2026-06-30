@@ -1,5 +1,9 @@
 import type { GameBrief } from './game-brief-v0.1.schema.js';
-import type { GameBriefV02, PlayTimeIntent } from './game-brief-v0.2.schema.js';
+import {
+  DEFAULT_UNSPECIFIED_PLAY_TIME_SEC,
+  type GameBriefV02,
+  type PlayTimeIntent
+} from './game-brief-v0.2.schema.js';
 import {
   RAW_GAME_DSL_V01_CONTRACT_STATUS,
   RAW_GAME_DSL_V01_DIALECT,
@@ -21,7 +25,7 @@ export type LegacyRepresentabilityReason =
   | 'TARGET_PLAY_TIME_OUT_OF_RANGE'
   | 'RANGE_PLAY_TIME_NOT_REPRESENTABLE'
   | 'ENDLESS_PLAY_TIME_NOT_REPRESENTABLE'
-  | 'UNSPECIFIED_PLAY_TIME_NOT_REPRESENTABLE';
+  | 'UNSPECIFIED_PLAY_TIME_DEFAULTED';
 
 export type LegacyRepresentabilityResult =
   | {
@@ -105,9 +109,16 @@ function classifyV02PlayTimeIntent(
     ]);
   }
 
-  return nonrepresentable('UNSPECIFIED_PLAY_TIME_NOT_REPRESENTABLE', [
-    'play_time_intent: Raw Game DSL v0.1 requires target_play_time_sec and cannot preserve unspecified duration intent'
-  ]);
+  return {
+    representable: true,
+    disposition: 'ADAPTER_REQUIRED',
+    legacyDialect: RAW_GAME_DSL_V01_DIALECT,
+    contractStatus: RAW_GAME_DSL_V01_CONTRACT_STATUS,
+    reason: 'UNSPECIFIED_PLAY_TIME_DEFAULTED',
+    projectedBrief: projectBrief(DEFAULT_UNSPECIFIED_PLAY_TIME_SEC),
+    projectedTargetPlayTimeSec: DEFAULT_UNSPECIFIED_PLAY_TIME_SEC,
+    issues: []
+  };
 }
 
 function nonrepresentable(

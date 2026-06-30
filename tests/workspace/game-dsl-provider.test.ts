@@ -5,6 +5,8 @@ import { buildIntentPlan } from '../../apps/maker-api/src/model-provider/intent-
 import { buildRawDslPromptContext } from '../../apps/maker-api/src/model-provider/prompt-context.builder.js';
 import type { GenerateJsonResult, JsonChatParams } from '../../apps/maker-api/src/model-provider/model-provider.types.js';
 import {
+  CapabilityGameDslDraftV1Schema,
+  DEEPSEEK_RUN_AND_GUN_FIXED_USER_VALIDATION_PROMPT,
   buildGameDslArtifact,
   buildActiveProfileLock,
   buildAuthorityBundle,
@@ -17,6 +19,7 @@ import {
   validateAndNormalizeRawGameDsl,
   validateGameDslArtifact,
   type AuthorityBundle,
+  type CapabilityGameDslDraftV1,
   type GameBrief,
   type GameBriefV02,
   type GameDslArtifact
@@ -158,6 +161,262 @@ function runtimeGenreForBrief(brief: GameBriefV02): string {
 function omitSpawn<T extends { spawn?: unknown }>(entity: T): Omit<T, 'spawn'> {
   const { spawn: _spawn, ...rest } = entity;
   return rest;
+}
+
+function createStep38CapabilityDraft(): CapabilityGameDslDraftV1 {
+  return CapabilityGameDslDraftV1Schema.parse({
+    artifactKind: 'capability_game_dsl_draft',
+    schemaVersion: 'capability-game-dsl-draft.v1',
+    profile: { id: 'side_scrolling_run_and_gun.v1' },
+    play_time_intent: { mode: 'range', min_sec: 480, max_sec: 720 },
+    capabilities: [
+      'camera.bounds_clamp.v1',
+      'camera.side_follow.v1',
+      'collision.damage_affinity_matrix.v1',
+      'collision.platform.v1',
+      'combat.airborne_fire.v1',
+      'combat.projectile.v1',
+      'enemy.boss_attack_pattern.v1',
+      'enemy.boss_lifecycle.v1',
+      'enemy.boss_phase_transition.v1',
+      'enemy.fixed_turret.v1',
+      'enemy.flying_right_entry.v1',
+      'enemy.patrol_infantry.v1',
+      'feedback.victory_declaration.v1',
+      'goal.boss_unlock.v1',
+      'hazard.falling_area.v1',
+      'hazard.timed_explosion.v1',
+      'health.damage_invulnerability.v1',
+      'health.player_health_points.v1',
+      'movement.crouch.v1',
+      'movement.run_jump.v1',
+      'pickup.weapon_supply.v1',
+      'rules.checkpoint_restore.v1',
+      'rules.encounter_gate.v1',
+      'rules.retry_count.v1',
+      'rules.state_transition_graph.v1',
+      'scene.ordered_segments.v1',
+      'spawn.enemy_wave.v1',
+      'spawn.explicit_declarations.v1',
+      'spawn.static.v1',
+      'spawn.stop_on_boss_defeat.v1',
+      'ui.failure_restart.v1',
+      'ui.hud_boss_health.v1',
+      'ui.hud_current_weapon.v1',
+      'ui.hud_player_health.v1',
+      'ui.hud_retries.v1',
+      'ui.win_failure_transitions.v1',
+      'weapon.death_reset.v1',
+      'weapon.default_straight_single.v1',
+      'weapon.rapid_fire.v1',
+      'weapon.replacement_rule.v1',
+      'weapon.spread_shot.v1'
+    ].sort(),
+    progression: {
+      estimated_total_sec: { min_sec: 480, max_sec: 720 },
+      segments: [
+        {
+          id: 'jungle_entrance',
+          order: 0,
+          label: '丛林入口',
+          duration_target_sec: { min_sec: 160, max_sec: 240 },
+          capability_refs: ['scene.ordered_segments.v1', 'spawn.static.v1']
+        },
+        {
+          id: 'metal_bridge',
+          order: 1,
+          label: '金属桥',
+          duration_target_sec: { min_sec: 160, max_sec: 240 },
+          capability_refs: ['scene.ordered_segments.v1', 'hazard.timed_explosion.v1', 'pickup.weapon_supply.v1']
+        },
+        {
+          id: 'enemy_core',
+          order: 2,
+          label: '敌军核心',
+          duration_target_sec: { min_sec: 160, max_sec: 240 },
+          capability_refs: ['scene.ordered_segments.v1', 'rules.encounter_gate.v1', 'goal.boss_unlock.v1']
+        }
+      ]
+    },
+    scenes: [
+      {
+        id: 'continuous_level',
+        segment_refs: ['jungle_entrance', 'metal_bridge', 'enemy_core'],
+        entity_refs: ['player', 'patrol_infantry', 'fixed_turret', 'flying_enemy', 'spread_pickup', 'rapid_pickup', 'molten_core_guard'],
+        capability_refs: ['camera.side_follow.v1', 'camera.bounds_clamp.v1', 'collision.platform.v1']
+      }
+    ],
+    entities: [
+      {
+        id: 'player',
+        role: 'player',
+        label: 'Player',
+        capability_refs: [
+          'movement.run_jump.v1',
+          'movement.crouch.v1',
+          'combat.airborne_fire.v1',
+          'combat.projectile.v1',
+          'health.player_health_points.v1',
+          'health.damage_invulnerability.v1',
+          'weapon.default_straight_single.v1'
+        ]
+      },
+      { id: 'patrol_infantry', role: 'enemy', capability_refs: ['enemy.patrol_infantry.v1', 'combat.projectile.v1'] },
+      { id: 'fixed_turret', role: 'enemy', capability_refs: ['enemy.fixed_turret.v1', 'combat.projectile.v1'] },
+      { id: 'flying_enemy', role: 'enemy', capability_refs: ['enemy.flying_right_entry.v1', 'combat.projectile.v1'] },
+      { id: 'spread_pickup', role: 'pickup', capability_refs: ['weapon.spread_shot.v1', 'pickup.weapon_supply.v1'] },
+      { id: 'rapid_pickup', role: 'pickup', capability_refs: ['weapon.rapid_fire.v1', 'pickup.weapon_supply.v1'] },
+      {
+        id: 'molten_core_guard',
+        role: 'boss',
+        label: '熔核守卫',
+        capability_refs: ['enemy.boss_lifecycle.v1', 'enemy.boss_phase_transition.v1', 'enemy.boss_attack_pattern.v1']
+      }
+    ],
+    behaviors: [
+      {
+        id: 'player_directional_fire',
+        owner_entity_id: 'player',
+        capability_id: 'combat.projectile.v1',
+        trigger: { input: 'shoot' },
+        config: { direction_mode: 'multi_direction' }
+      },
+      {
+        id: 'patrol_infantry_counterfire',
+        owner_entity_id: 'patrol_infantry',
+        capability_id: 'combat.projectile.v1',
+        trigger: { event: 'player.in_range' },
+        config: { pattern: 'aimed_single', cooldown_ms: 1700, range_px: 820 }
+      },
+      {
+        id: 'fixed_turret_burst',
+        owner_entity_id: 'fixed_turret',
+        capability_id: 'combat.projectile.v1',
+        trigger: { event: 'player.in_range' },
+        config: { pattern: 'burst', shots: 2, cooldown_ms: 1500, range_px: 950 }
+      },
+      {
+        id: 'flying_enemy_strafe_fire',
+        owner_entity_id: 'flying_enemy',
+        capability_id: 'combat.projectile.v1',
+        trigger: { event: 'entered_viewport' },
+        config: { movement: 'sine_strafe', pattern: 'diagonal_aimed_single', cooldown_ms: 1250 }
+      },
+      {
+        id: 'boss_attack_cycle',
+        owner_entity_id: 'molten_core_guard',
+        capability_id: 'enemy.boss_attack_pattern.v1',
+        trigger: { event: 'boss.phase_active' },
+        config: { phase_one: 'straight_projectile', phase_two: ['three_way_projectile', 'falling_hazard'], cooldown_ms: 1300 }
+      },
+      {
+        id: 'boss_phase_attacks',
+        owner_entity_id: 'molten_core_guard',
+        capability_id: 'enemy.boss_attack_pattern.v1',
+        trigger: { event: 'boss.phase_active' },
+        config: { alternates: ['three_way_shot', 'falling_hazard'] }
+      }
+    ],
+    waves: [
+      {
+        id: 'jungle_patrol_wave',
+        segment_id: 'jungle_entrance',
+        enemy_entity_id: 'patrol_infantry',
+        count: 6,
+        spawn: { side: 'right', x: 760, y: 456 },
+        capability_refs: ['spawn.enemy_wave.v1']
+      },
+      {
+        id: 'core_lock_wave_one',
+        segment_id: 'enemy_core',
+        enemy_entity_id: 'patrol_infantry',
+        count: 5,
+        spawn: { side: 'right', x: 2140, y: 456 },
+        capability_refs: ['spawn.enemy_wave.v1', 'rules.encounter_gate.v1']
+      },
+      {
+        id: 'core_lock_wave_two',
+        segment_id: 'enemy_core',
+        enemy_entity_id: 'fixed_turret',
+        count: 3,
+        spawn: { side: 'right', x: 2460, y: 456 },
+        capability_refs: ['spawn.enemy_wave.v1', 'goal.boss_unlock.v1']
+      }
+    ],
+    pickups: [
+      {
+        id: 'spread_supply',
+        segment_id: 'metal_bridge',
+        pickup_entity_id: 'spread_pickup',
+        count: 1,
+        spawn: { x: 1520, y: 420 },
+        capability_refs: ['weapon.spread_shot.v1', 'weapon.replacement_rule.v1']
+      },
+      {
+        id: 'rapid_supply',
+        segment_id: 'metal_bridge',
+        pickup_entity_id: 'rapid_pickup',
+        count: 1,
+        spawn: { x: 1760, y: 420 },
+        capability_refs: ['weapon.rapid_fire.v1', 'weapon.replacement_rule.v1']
+      }
+    ],
+    objectives: [
+      {
+        id: 'defeat_molten_core_guard',
+        kind: 'boss_defeated',
+        target: { boss_id: 'molten_core_guard' },
+        success_condition: { event: 'boss.defeated' },
+        capability_refs: ['ui.win_failure_transitions.v1', 'feedback.victory_declaration.v1']
+      },
+      {
+        id: 'failure_no_retries',
+        kind: 'destroy_target',
+        target: { state: 'no_retries' },
+        success_condition: { event: 'player.retries_exhausted' },
+        capability_refs: ['ui.failure_restart.v1']
+      }
+    ],
+    bosses: [
+      {
+        id: 'molten_core_guard_boss',
+        boss_entity_id: 'molten_core_guard',
+        segment_refs: ['enemy_core'],
+        phases: [
+          {
+            id: 'phase_ground_straight_fire',
+            order: 0,
+            health_threshold_pct: 100,
+            pattern: { movement: 'ground_patrol', attack: 'straight_bullet' },
+            capability_refs: ['enemy.boss_lifecycle.v1']
+          },
+          {
+            id: 'phase_fast_alternating_hazards',
+            order: 1,
+            health_threshold_pct: 50,
+            pattern: { movement_speed: 'increased', attacks: ['three_way_shot', 'falling_hazard'] },
+            capability_refs: ['enemy.boss_phase_transition.v1', 'enemy.boss_attack_pattern.v1', 'hazard.falling_area.v1']
+          }
+        ]
+      }
+    ],
+    capability_configs: [
+      { id: 'movement_config', capability_id: 'movement.run_jump.v1', applies_to: ['player'], config: { move_speed: 260, jump_velocity: 520 } },
+      { id: 'crouch_config', capability_id: 'movement.crouch.v1', applies_to: ['player'], config: { input: 'down', posture: 'crouch', height_scale: 0.58 } },
+      { id: 'airborne_fire_config', capability_id: 'combat.airborne_fire.v1', applies_to: ['player'], config: { allowed_when: ['jumping', 'falling'], fire_action: 'shoot_projectile' } },
+      { id: 'default_weapon_config', capability_id: 'weapon.default_straight_single.v1', applies_to: ['player'], config: { slot: 'primary', pattern: 'straight', projectile_count: 1, fire_action: 'shoot_projectile' } },
+      { id: 'spread_weapon_config', capability_id: 'weapon.spread_shot.v1', applies_to: ['spread_pickup'], config: { slot: 'primary', pattern: 'spread', projectile_count: 3, spread_angle_deg: 30, fire_action: 'shoot_projectile' } },
+      { id: 'rapid_weapon_config', capability_id: 'weapon.rapid_fire.v1', applies_to: ['rapid_pickup'], config: { slot: 'primary', pattern: 'straight', projectile_count: 1, cooldown_ms: 120, fire_action: 'shoot_projectile' } },
+      { id: 'health_config', capability_id: 'health.player_health_points.v1', applies_to: ['player'], config: { health_points: 3 } },
+      { id: 'retry_config', capability_id: 'rules.retry_count.v1', applies_to: ['player'], config: { retries: 2 } },
+      { id: 'checkpoint_config', capability_id: 'rules.checkpoint_restore.v1', applies_to: ['player'], config: { checkpoint_id: 'checkpoint_jungle_entrance_1' } },
+      { id: 'hud_health_config', capability_id: 'ui.hud_player_health.v1', applies_to: ['player'], config: { visible: true } },
+      { id: 'hud_retries_config', capability_id: 'ui.hud_retries.v1', applies_to: ['player'], config: { visible: true } },
+      { id: 'hud_weapon_config', capability_id: 'ui.hud_current_weapon.v1', applies_to: ['player'], config: { visible: true } },
+      { id: 'hud_boss_config', capability_id: 'ui.hud_boss_health.v1', applies_to: ['molten_core_guard'], config: { visible_during: 'boss_encounter' } }
+    ],
+    metadata: { title: '赤焰突围', summary: '原创 16 位像素风横版跑射游戏。', language: 'zh-CN', tags: ['original_no_existing_ip', 'pixel_16_bit'] }
+  });
 }
 
 describe('buildRawDslPromptContext', () => {
@@ -370,6 +629,16 @@ describe('buildIntentPlan', () => {
       unsupportedCapabilities: ['recognized_2d_genre']
     });
   });
+
+  it('keeps the fixed DeepSeek run-and-gun prompt on the side-scrolling run-and-gun path', () => {
+    expect(buildIntentPlan({ idea: DEEPSEEK_RUN_AND_GUN_FIXED_USER_VALIDATION_PROMPT, language: 'zh' })).toMatchObject({
+      normalizedGenre: 'side_scrolling_run_and_gun',
+      matchedAlias: '横版跑射',
+      runtimeDslSupport: 'supported',
+      runtimeTemplateId: 'phaser/side_scrolling_run_and_gun.v1',
+      qaProfile: 'side_scrolling_run_and_gun_smoke'
+    });
+  });
 });
 
 describe('GameDslProviderService', () => {
@@ -530,7 +799,174 @@ describe('GameDslProviderService', () => {
     expect(calls).toEqual([]);
   });
 
-  it.each(['endless', 'unspecified'] as const)('blocks %s v0.2 play-time intent before legacy Raw DSL v0.1 generation', async (mode) => {
+  it('generates a schema-validated authoritative CapabilityGameDslDraft without falling back to legacy Raw DSL', async () => {
+    const calls: JsonChatParams[] = [];
+    const draft = createStep38CapabilityDraft();
+    const step38Brief: GameBriefV02 = {
+      ...briefV02,
+      title: '赤焰突围',
+      genre: 'side_scrolling_run_and_gun',
+      camera: 'side_view',
+      core_loop: ['从左向右推进。', '跳跃、下蹲并射击。', '清空敌军核心并击败首领。'],
+      difficulty: 'normal'
+    };
+    const service = new GameDslProviderService(createModelClient(success(draft), calls));
+
+    await expect(
+      service.generateCapabilityGameDslDraft({
+        ...requestBase,
+        idea: DEEPSEEK_RUN_AND_GUN_FIXED_USER_VALIDATION_PROMPT,
+        language: 'zh',
+        brief: step38Brief,
+        authorityBundle: createAuthorityBundleForBrief(step38Brief, requestBase),
+        capabilityIds: draft.capabilities
+      })
+    ).resolves.toMatchObject({
+      ok: true,
+      value: {
+        artifactKind: 'capability_game_dsl_draft',
+        schemaVersion: 'capability-game-dsl-draft.v1',
+        play_time_intent: { mode: 'range', min_sec: 480, max_sec: 720 },
+        metadata: { title: '赤焰突围' }
+      },
+      rawOutputPath: '/tmp/model-output.json'
+    });
+    expect(CapabilityGameDslDraftV1Schema.parse(draft)).toEqual(draft);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({
+      outputName: 'capability-game-dsl-draft.raw.json',
+      maxTokens: expect.any(Number)
+    });
+    expect(calls[0]?.user).toMatchObject({
+      schema_name: 'capability-game-dsl-draft.v1',
+      capability_ids: draft.capabilities,
+      output_contract: expect.objectContaining({
+        artifactKind: 'capability_game_dsl_draft',
+        schemaVersion: 'capability-game-dsl-draft.v1',
+        profile: { id: 'side_scrolling_run_and_gun.v1' }
+      }),
+      forbidden_authority_fields: expect.arrayContaining(['runtimeManifestHash', 'capabilityLockHash', 'trustedArtifacts'])
+    });
+    expect(JSON.stringify(calls[0]?.user)).toContain('8-12');
+    expect(JSON.stringify(calls[0]?.user)).toContain('sum of progression.segments[].duration_target_sec must be between 480 and 720 seconds');
+    expect(JSON.stringify(calls[0]?.user)).toContain('Do not put the compressed 50-second manual preview duration');
+    expect(JSON.stringify(calls[0]?.user)).toContain('scene capability_refs must include only scene-level capabilities');
+    expect(JSON.stringify(calls[0]?.user)).toContain('capability_configs.applies_to may reference declared entity ids only');
+    expect(JSON.stringify(calls[0]?.user)).toContain('Every waves[] entry must include a locked spawn capability');
+    expect(JSON.stringify(calls[0]?.user)).toContain('one fixed_turret wave/static placement');
+    expect(calls[0]?.user).not.toHaveProperty('exact_output_shape');
+    expect(JSON.stringify(calls[0]?.user)).not.toContain('wave_bridge_flyers');
+    expect(JSON.stringify(calls[0]?.user)).not.toContain('encounter_bands');
+    expect(JSON.stringify(calls[0]?.user)).not.toContain('patrol_infantry_counterfire');
+    expect(JSON.stringify(calls[0]?.user)).not.toContain('fixed_turret_burst');
+    expect(JSON.stringify(calls[0]?.user)).not.toContain('flying_enemy_strafe_fire');
+    expect(JSON.stringify(calls[0]?.user)).not.toContain('boss_attack_cycle');
+    expect(JSON.stringify(calls[0]?.user)).toContain('visual_theme');
+    expect(JSON.stringify(calls[0]?.user)).toContain('asset_intent_ref');
+    expect(JSON.stringify(calls[0]?.user)).not.toContain('flare_projectile');
+    expect(JSON.stringify(calls[0]?.user)).not.toContain('raw-game-dsl');
+  });
+
+  it('normalizes model scene-scoped capability config applies_to values to omitted ingress scope', async () => {
+    const modelDraft = JSON.parse(JSON.stringify(createStep38CapabilityDraft())) as Record<string, unknown>;
+    const capabilityConfigs = modelDraft.capability_configs as Array<Record<string, unknown>>;
+    capabilityConfigs.push(
+      {
+        id: 'camera_follow_config',
+        capability_id: 'camera.side_follow.v1',
+        applies_to: ['continuous_level'],
+        config: { target_scene_id: 'continuous_level', follow_entity_id: 'player' }
+      },
+      {
+        id: 'state_transition_graph',
+        capability_id: 'rules.state_transition_graph.v1',
+        applies_to: [],
+        config: { start: 'playing', win: 'mission_complete', loss: 'retry' }
+      }
+    );
+    const calls: JsonChatParams[] = [];
+    const step38Brief: GameBriefV02 = {
+      ...briefV02,
+      title: '赤焰突围',
+      genre: 'side_scrolling_run_and_gun',
+      camera: 'side_view',
+      core_loop: ['从左向右推进。', '跳跃、下蹲并射击。', '清空敌军核心并击败首领。'],
+      difficulty: 'normal'
+    };
+    const service = new GameDslProviderService(createModelClient(success(modelDraft), calls));
+
+    const result = await service.generateCapabilityGameDslDraft({
+      ...requestBase,
+      idea: DEEPSEEK_RUN_AND_GUN_FIXED_USER_VALIDATION_PROMPT,
+      language: 'zh',
+      brief: step38Brief,
+      authorityBundle: createAuthorityBundleForBrief(step38Brief, requestBase),
+      capabilityIds: (modelDraft.capabilities as string[]) ?? []
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.capability_configs.find((config) => config.id === 'camera_follow_config')).not.toHaveProperty('applies_to');
+    expect(result.value.capability_configs.find((config) => config.id === 'state_transition_graph')).not.toHaveProperty('applies_to');
+  });
+
+  it('normalizes known declarative model config keys before capability draft schema validation', async () => {
+    const modelDraft = JSON.parse(JSON.stringify(createStep38CapabilityDraft())) as Record<string, unknown>;
+    const capabilityConfigs = modelDraft.capability_configs as Array<Record<string, unknown>>;
+    capabilityConfigs.push({
+      id: 'retry_count',
+      capability_id: 'rules.retry_count.v1',
+      config: {
+        target_scene_id: 'continuous_level',
+        max_retries: 2,
+        on_zero_retries: 'failure_screen',
+        rules: [
+          {
+            id: 'hazard_contact_rule',
+            on_contact: 'damage_player'
+          }
+        ]
+      }
+    });
+    const calls: JsonChatParams[] = [];
+    const step38Brief: GameBriefV02 = {
+      ...briefV02,
+      title: '赤焰突围',
+      genre: 'side_scrolling_run_and_gun',
+      camera: 'side_view',
+      core_loop: ['从左向右推进。', '跳跃、下蹲并射击。', '清空敌军核心并击败首领。'],
+      difficulty: 'normal'
+    };
+    const service = new GameDslProviderService(createModelClient(success(modelDraft), calls));
+
+    const result = await service.generateCapabilityGameDslDraft({
+      ...requestBase,
+      idea: DEEPSEEK_RUN_AND_GUN_FIXED_USER_VALIDATION_PROMPT,
+      language: 'zh',
+      brief: step38Brief,
+      authorityBundle: createAuthorityBundleForBrief(step38Brief, requestBase),
+      capabilityIds: (modelDraft.capabilities as string[]) ?? []
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const retryConfig = result.value.capability_configs.find((config) => config.id === 'retry_count');
+    expect(retryConfig?.config).toMatchObject({
+      target_scene_id: 'continuous_level',
+      max_retries: 2,
+      zero_retries_result: 'failure_screen',
+      rules: [
+        {
+          id: 'hazard_contact_rule',
+          contact_result: 'damage_player'
+        }
+      ]
+    });
+    expect(retryConfig?.config).not.toHaveProperty('on_zero_retries');
+    expect(JSON.stringify(retryConfig?.config)).not.toContain('on_contact');
+  });
+
+  it('blocks endless v0.2 play-time intent before legacy Raw DSL v0.1 generation', async () => {
     const calls: JsonChatParams[] = [];
     const service = new GameDslProviderService(createModelClient(success(createCollectorRawDsl()), calls));
 
@@ -538,14 +974,14 @@ describe('GameDslProviderService', () => {
       ...requestBase,
       brief: {
         ...briefV02,
-        play_time_intent: { mode }
+        play_time_intent: { mode: 'endless' }
       }
     }));
 
     expect(result).toMatchObject({
       ok: false,
       code: 'LEGACY_DSL_NONREPRESENTABLE',
-      issues: expect.arrayContaining([`legacy_representability: ${mode === 'endless' ? 'ENDLESS_PLAY_TIME_NOT_REPRESENTABLE' : 'UNSPECIFIED_PLAY_TIME_NOT_REPRESENTABLE'}`])
+      issues: expect.arrayContaining(['legacy_representability: ENDLESS_PLAY_TIME_NOT_REPRESENTABLE'])
     });
     expect(calls).toEqual([]);
   });
@@ -569,6 +1005,28 @@ describe('GameDslProviderService', () => {
       }
     });
     expect(shortBrief).not.toHaveProperty('target_play_time_sec');
+  });
+
+  it('projects unspecified v0.2 intent into the normal legacy target instead of failing the default Workbench prompt', async () => {
+    const calls: JsonChatParams[] = [];
+    const rawDsl = createCollectorRawDsl();
+    const unspecifiedBrief: GameBriefV02 = {
+      ...briefV02,
+      play_time_intent: { mode: 'unspecified' }
+    };
+    const service = new GameDslProviderService(createModelClient(success(rawDsl), calls));
+
+    await expect(service.generateRawGameDsl(withAuthority({ ...requestBase, brief: unspecifiedBrief }))).resolves.toMatchObject({
+      ok: true,
+      value: rawDsl
+    });
+    expect(calls[0]?.user).toMatchObject({
+      brief: {
+        target_play_time_sec: 60
+      }
+    });
+    expect(unspecifiedBrief.play_time_intent).toEqual({ mode: 'unspecified' });
+    expect(unspecifiedBrief).not.toHaveProperty('target_play_time_sec');
   });
 
   it.each(['做一个魂斗罗式横版射击游戏', '魂斗罗一样的跑枪游戏', '横版跑枪打外星人'])(
