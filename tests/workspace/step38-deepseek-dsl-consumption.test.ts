@@ -9,6 +9,7 @@ import {
   evaluateStep38DslConsumption,
   resolveStep38SmokeMode
 } from '../../scripts/step38-deepseek-dsl-consumption.js';
+import { evaluateStep38FullGameExpansionEvidence } from '../../scripts/step38-full-game-expansion-gate.js';
 import { buildStep38MainJs, buildStep38SpriteAssets } from '../../scripts/run-step38-deepseek-dsl-smoke.js';
 import {
   buildStep38AssetTemplateFingerprintReport,
@@ -2348,6 +2349,7 @@ describe('Step38 DeepSeek DSL consumption gate', () => {
       encounter_band_count: 8,
       minimum_encounter_band_count_for_duration: 10,
       preview_minimum_encounter_band_count: 8,
+      full_game_expansion_evidence: buildPassingFullGameExpansionEvidence(),
       wave_segment_coverage_count: 3,
       minimum_wave_segment_coverage_count: 3,
       max_gap_between_encounter_bands_sec: 3.5,
@@ -2410,6 +2412,103 @@ describe('Step38 DeepSeek DSL consumption gate', () => {
 
     expect(result.readyState).toBe('BLOCKED');
     expect(result.blockers).toContain('encounter_coverage_evidence_missing');
+  });
+
+  it('evaluates full-game expansion evidence without letting preview visual slice coverage imply full-duration pass', () => {
+    const result = evaluateStep38FullGameExpansionEvidence(
+      {
+        play_time_intent_seconds: { min: 480, max: 720 },
+        runtime_coverage_seconds: 50,
+        mission_complete_reached: false,
+        encounter_band_count: 8,
+        enemy_spawn_count: 17,
+        enemy_defeat_count: 17,
+        preview_visual_slice_coverage_status: 'PASSED',
+        full_duration_runtime_coverage_status: 'FAILED',
+        model_fallback_used: false,
+        procedural_asset_fallback_used: true,
+        failure_reasons: []
+      },
+      {
+        minimumEncounterBandCount: 10,
+        minimumEnemySpawnCount: 40,
+        minimumEnemyDefeatCount: 40
+      }
+    );
+
+    expect(result.status).toBe('FAILED');
+    expect(result.preview_visual_slice_coverage_status).toBe('PASSED');
+    expect(result.full_duration_runtime_coverage_status).toBe('FAILED');
+    expect(result.model_fallback_used).toBe(false);
+    expect(result.procedural_asset_fallback_used).toBe(true);
+    expect(result.failure_reasons).toEqual(
+      expect.arrayContaining([
+        'runtime_coverage_below_play_time_intent_min',
+        'mission_complete_not_reached',
+        'encounter_band_count_below_threshold',
+        'enemy_spawn_count_below_threshold',
+        'enemy_defeat_count_below_threshold',
+        'full_duration_runtime_coverage_not_passed'
+      ])
+    );
+  });
+
+  it('fails full-game expansion evidence when runtime coverage is missing or out of the requested band', () => {
+    const thresholds = {
+      minimumEncounterBandCount: 10,
+      minimumEnemySpawnCount: 40,
+      minimumEnemyDefeatCount: 40
+    };
+
+    expect(
+      evaluateStep38FullGameExpansionEvidence(
+        {
+          play_time_intent_seconds: { min: 480, max: 720 },
+          mission_complete_reached: true,
+          mission_complete_time_seconds: 600,
+          encounter_band_count: 10,
+          enemy_spawn_count: 40,
+          enemy_defeat_count: 40,
+          preview_visual_slice_coverage_status: 'FAILED',
+          full_duration_runtime_coverage_status: 'PASSED'
+        },
+        thresholds
+      ).failure_reasons
+    ).toContain('missing_runtime_coverage');
+
+    expect(
+      evaluateStep38FullGameExpansionEvidence(
+        {
+          play_time_intent_seconds: { min: 480, max: 720 },
+          runtime_coverage_seconds: 900,
+          mission_complete_reached: true,
+          mission_complete_time_seconds: 900,
+          encounter_band_count: 10,
+          enemy_spawn_count: 40,
+          enemy_defeat_count: 40,
+          preview_visual_slice_coverage_status: 'NOT_APPLICABLE',
+          full_duration_runtime_coverage_status: 'PASSED'
+        },
+        thresholds
+      ).failure_reasons
+    ).toContain('runtime_coverage_above_play_time_intent_max');
+  });
+
+  it('passes full-game expansion evidence only when duration, completion, encounter, and enemy thresholds are satisfied', () => {
+    const result = evaluateStep38FullGameExpansionEvidence(buildPassingFullGameExpansionEvidence(), {
+      minimumEncounterBandCount: 10,
+      minimumEnemySpawnCount: 40,
+      minimumEnemyDefeatCount: 40
+    });
+
+    expect(result).toMatchObject({
+      status: 'PASSED',
+      preview_visual_slice_coverage_status: 'NOT_APPLICABLE',
+      full_duration_runtime_coverage_status: 'PASSED',
+      model_fallback_used: false,
+      procedural_asset_fallback_used: false,
+      failure_reasons: []
+    });
   });
 
   it('blocks preview-safe visual-slice encounter density when product duration status is not proven', () => {
@@ -3324,6 +3423,7 @@ function buildInteractiveQaReport(extraEvents: string[] = []): Record<string, un
       encounter_band_count: 24,
       minimum_encounter_band_count_for_duration: 10,
       preview_minimum_encounter_band_count: 8,
+      full_game_expansion_evidence: buildPassingFullGameExpansionEvidence(),
       wave_segment_coverage_count: 3,
       minimum_wave_segment_coverage_count: 3,
       max_gap_between_encounter_bands_sec: 34,
@@ -3397,6 +3497,23 @@ function buildInteractiveQaReport(extraEvents: string[] = []): Record<string, un
       boss_three_way_event_count: 1,
       boss_falling_hazard_event_count: 1
     }
+  };
+}
+
+function buildPassingFullGameExpansionEvidence(): Record<string, unknown> {
+  return {
+    play_time_intent_seconds: { min: 480, max: 720 },
+    runtime_coverage_seconds: 600,
+    mission_complete_reached: true,
+    mission_complete_time_seconds: 600,
+    encounter_band_count: 24,
+    enemy_spawn_count: 61,
+    enemy_defeat_count: 60,
+    preview_visual_slice_coverage_status: 'NOT_APPLICABLE',
+    full_duration_runtime_coverage_status: 'PASSED',
+    model_fallback_used: false,
+    procedural_asset_fallback_used: false,
+    failure_reasons: []
   };
 }
 
