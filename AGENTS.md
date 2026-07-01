@@ -1,7 +1,7 @@
 ---
 description: Repository-local global rules for ai-game-maker agents.
 alwaysApply: true
-version: 0.1
+version: 0.3
 ---
 
 # ai-game-maker Agent Rules
@@ -45,6 +45,38 @@ Completion rule:
 - A Step cannot be closed when the disposition is `ADAPTER_REQUIRED`, `NEW_CONSUMER_REQUIRED` or `LEGACY_FORBIDDEN` unless the Step records same-run evidence that the named downstream consumer actually read and acted on the new contract.
 - A successful schema parse, generated JSON file or accepted field is only producer evidence. It is not consumer evidence.
 - If no listed consumer can preserve the new semantics, the pipeline must fail closed instead of silently dropping fields, shortening intent, rewriting authority or falling back to a fixed template.
+
+## Prompt Completeness & Default Duration
+
+The project must preserve normal product usability. A normal Workbench or user prompt is allowed to omit explicit game duration, and missing duration alone must not make the generation `FAILED`, block preview/build/QA, create `unsupported_required_capabilities=["duration"]`, or mark canonical DSL generation as missing.
+
+Distinguish strict validation fixtures from normal product prompts:
+
+- Strict Step37/Step38 fixtures that explicitly require an 8-12 minute product duration must preserve and validate the explicit `480..720` second intent.
+- Normal product and Workbench prompts without duration must resolve through product/profile defaults and continue generation.
+
+Duration defaulting must be recorded as machine-readable evidence. The pipeline must write a duration resolution gate, such as `duration_resolution_gate`, showing:
+
+- `duration_intent_resolved=true`
+- `duration_defaulted=true` when the prompt omitted duration
+- `duration_source="product_default"` or `"profile_default"` for defaulted prompts
+- `missing_duration_was_fatal=false`
+- `generation_failed_due_to_missing_duration=false`
+
+Defaulting duration is not a DSL consumption failure. It must not weaken unrelated gates: art fidelity, gameplay route, win/lose state, manual review, Step38 review gates, and final loop completion remain blocked until their own evidence passes.
+
+## Legacy Asset & Resource Cutover
+
+After a Step updates an art pipeline, asset materializer, runtime renderer, resource manifest, DSL-to-runtime consumer, or generated playable contract, the updated production path must not keep using old assets or old resource logic as success evidence.
+
+This applies even when the output files are newly generated, run-scoped, loaded by the runtime, bound to render objects, or marked `placeholder=false`. Re-generated files still count as old resource logic when they are produced by legacy hardcoded sprite templates, fixed role-to-shape renderers, stale generated assets, stale manifests, or legacy fallback/resource paths.
+
+Completion evidence must prove both:
+
+- provenance: the current run's canonical authority produced the asset/resource/manifest used by runtime objects;
+- cutover quality: the updated consumer no longer relies on the old template, fallback, placeholder-style, stale, or resource-manifest logic being replaced.
+
+If a fresh browser/manual review shows the visible result is materially unchanged after the update, or still reads as legacy template output, the Step must fail closed with a blocker such as `legacy_resource_logic_still_active`, `stale_asset_reused`, `legacy_template_asset_logic_still_active`, or `production_art_fidelity_failed`. Text labels, metadata, asset counts, `placeholder=false`, and runtime binding flags cannot override this blocker.
 
 ## Hierarchical Completion Scope
 
