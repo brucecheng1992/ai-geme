@@ -1,7 +1,10 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
-import { evaluateStep38FullGameExpansionEvidence } from './step38-full-game-expansion-gate.js';
+import {
+  evaluateStep38FullGameExpansionEvidence,
+  isStep38ProducedFullGameExpansionEvidence
+} from './step38-full-game-expansion-gate.js';
 
 export const STEP38_BASELINE_COMMIT = '5ae9cd3a1c1058929db0482e89b2f46b469e7c24';
 export const STEP38_EXPECTED_PROVIDER_MODEL = 'deepseek-v4-flash';
@@ -2352,6 +2355,10 @@ function hasEncounterCoverageEvidence(value: unknown): boolean {
   if (!isRecord(value)) {
     return false;
   }
+  const expectedRunId = typeof value.run_id === 'string' && value.run_id.length > 0 ? value.run_id : null;
+  if (expectedRunId === null) {
+    return false;
+  }
 
   const encounterCoverage = value.encounter_coverage;
   if (!isRecord(encounterCoverage) || encounterCoverage.status !== 'PASSED') {
@@ -2378,12 +2385,20 @@ function hasEncounterCoverageEvidence(value: unknown): boolean {
     typeof encounterCoverage.preview_minimum_encounter_band_count === 'number'
       ? encounterCoverage.preview_minimum_encounter_band_count
       : null;
+  const fullGameExpansionEvidence = isRecord(encounterCoverage.full_game_expansion_evidence)
+    ? encounterCoverage.full_game_expansion_evidence
+    : null;
+  const fullGameExpansionProducerIdentityOk = isStep38ProducedFullGameExpansionEvidence(
+    fullGameExpansionEvidence,
+    expectedRunId
+  );
   const fullGameExpansionGate = evaluateStep38FullGameExpansionEvidence(
-    isRecord(encounterCoverage.full_game_expansion_evidence) ? encounterCoverage.full_game_expansion_evidence : encounterCoverage,
+    fullGameExpansionEvidence,
     {
       minimumEncounterBandCount: minimumEncounterBandCountForDuration ?? Number.POSITIVE_INFINITY,
       minimumEnemySpawnCount: expectedEnemyCount ?? Number.POSITIVE_INFINITY,
-      minimumEnemyDefeatCount: expectedEnemyCount ?? Number.POSITIVE_INFINITY
+      minimumEnemyDefeatCount: expectedEnemyCount ?? Number.POSITIVE_INFINITY,
+      expectedRunId
     }
   );
   const fullGameExpansionPassed = fullGameExpansionGate.status === 'PASSED';
@@ -2404,15 +2419,16 @@ function hasEncounterCoverageEvidence(value: unknown): boolean {
     realizedEnemyCount >= expectedEnemyCount &&
     encounterBandCount >= minimumEncounterBandCountForDuration;
   const fullDurationRuntimeCoverageDispositionOk =
-    fullGameExpansionPassed ||
-    (encounterCoverage.visual_slice_preview_mode === true &&
-      encounterCoverage.full_duration_runtime_coverage_status === 'FAILED' &&
-      fullGameExpansionGate.failure_reasons.length > 0 &&
-      encounterCoverage.full_duration_runtime_coverage_disposition === 'DEFERRED_NON_BLOCKING' &&
-      encounterCoverage.full_duration_runtime_coverage_deferred === true &&
-      encounterCoverage.full_duration_runtime_coverage_blocking_current_milestone === false &&
-      encounterCoverage.full_duration_enemy_count_disposition === 'DEFERRED_NON_BLOCKING' &&
-      encounterCoverage.full_duration_encounter_band_count_disposition === 'DEFERRED_NON_BLOCKING');
+    fullGameExpansionProducerIdentityOk &&
+    (fullGameExpansionPassed ||
+      (encounterCoverage.visual_slice_preview_mode === true &&
+        encounterCoverage.full_duration_runtime_coverage_status === 'FAILED' &&
+        fullGameExpansionGate.failure_reasons.length > 0 &&
+        encounterCoverage.full_duration_runtime_coverage_disposition === 'DEFERRED_NON_BLOCKING' &&
+        encounterCoverage.full_duration_runtime_coverage_deferred === true &&
+        encounterCoverage.full_duration_runtime_coverage_blocking_current_milestone === false &&
+        encounterCoverage.full_duration_enemy_count_disposition === 'DEFERRED_NON_BLOCKING' &&
+        encounterCoverage.full_duration_encounter_band_count_disposition === 'DEFERRED_NON_BLOCKING'));
   const previewVisualSliceCoverageOk =
     encounterCoverage.visual_slice_preview_mode === true &&
     encounterCoverage.preview_visual_slice_coverage_status === 'PASSED' &&

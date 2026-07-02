@@ -9,8 +9,11 @@ import {
   evaluateStep38DslConsumption,
   resolveStep38SmokeMode
 } from '../../scripts/step38-deepseek-dsl-consumption.js';
-import { evaluateStep38FullGameExpansionEvidence } from '../../scripts/step38-full-game-expansion-gate.js';
-import { buildStep38MainJs, buildStep38SpriteAssets } from '../../scripts/run-step38-deepseek-dsl-smoke.js';
+import {
+  buildStep38EncounterCoverageWithFullGameExpansionEvidence,
+  evaluateStep38FullGameExpansionEvidence
+} from '../../scripts/step38-full-game-expansion-gate.js';
+import { buildStep38MainJs, buildStep38SpriteAssets, hasStep38EncounterCoverageQaEvidence } from '../../scripts/run-step38-deepseek-dsl-smoke.js';
 import {
   buildStep38AssetTemplateFingerprintReport,
   buildStep38RoleStaticTemplateProbeCanvasSha,
@@ -2343,6 +2346,7 @@ describe('Step38 DeepSeek DSL consumption gate', () => {
       dsl_enemy_count: 17,
       expected_enemy_count: 40,
       realized_enemy_count: 17,
+      enemy_defeat_count: 17,
       preview_expected_enemy_count: 17,
       preview_realized_enemy_count: 17,
       minimum_enemy_count_for_duration: 40,
@@ -2372,6 +2376,143 @@ describe('Step38 DeepSeek DSL consumption gate', () => {
     expect(result.readyState).toBe('READY_FOR_MANUAL_TEST');
     expect(result.blockers).not.toContain('encounter_coverage_evidence_missing');
     expect(result.blockers).not.toContain('playable_duration_support_missing');
+  });
+
+  it('builds producer-backed full-game expansion evidence from runtime QA artifacts', () => {
+    const qaReport = buildInteractiveQaReport();
+    const rawEncounterCoverage = { ...(qaReport.encounter_coverage as Record<string, unknown>) };
+    delete rawEncounterCoverage.full_game_expansion_evidence;
+
+    const encounterCoverage = buildStep38EncounterCoverageWithFullGameExpansionEvidence({
+      encounterCoverage: rawEncounterCoverage,
+      playableDurationSupport: qaReport.playable_duration_support,
+      realPlaythroughCompletionEvidence: qaReport.real_playthrough_completion_evidence,
+      runId: 'run_step38_ready',
+      modelFallbackUsed: false,
+      proceduralAssetFallbackUsed: false
+    });
+    const fullGameEvidence = encounterCoverage.full_game_expansion_evidence;
+
+    expect(fullGameEvidence).toMatchObject({
+      evidence_source: 'runtime_qa_encounter_coverage',
+      run_id: 'run_step38_ready',
+      play_time_intent_seconds: { min: 480, max: 720 },
+      runtime_coverage_seconds: 600,
+      mission_complete_reached: true,
+      encounter_band_count: 24,
+      enemy_spawn_count: 61,
+      enemy_defeat_count: 61,
+      preview_visual_slice_coverage_status: 'NOT_APPLICABLE',
+      full_duration_runtime_coverage_status: 'PASSED',
+      model_fallback_used: false,
+      procedural_asset_fallback_used: false
+    });
+    expect(evaluateStep38FullGameExpansionEvidence(fullGameEvidence, {
+      expectedRunId: 'run_step38_ready',
+      minimumEncounterBandCount: 10,
+      minimumEnemySpawnCount: 60,
+      minimumEnemyDefeatCount: 60
+    }).status).toBe('PASSED');
+
+    qaReport.encounter_coverage = encounterCoverage;
+    const result = evaluateStep38DslConsumption(buildReadyEvaluationInput(qaReport));
+
+    expect(hasStep38EncounterCoverageQaEvidence(encounterCoverage, 'run_step38_ready')).toBe(true);
+    expect(result.readyState).toBe('READY_FOR_MANUAL_TEST');
+    expect(result.blockers).not.toContain('encounter_coverage_evidence_missing');
+  });
+
+  it('fails closed when preview visual-slice coverage lacks producer-backed full-game evidence', () => {
+    const qaReport = buildInteractiveQaReport();
+    qaReport.encounter_coverage = buildPreviewDeferredEncounterCoverage();
+
+    const result = evaluateStep38DslConsumption(buildReadyEvaluationInput(qaReport));
+
+    expect(hasStep38EncounterCoverageQaEvidence(qaReport.encounter_coverage, 'run_step38_ready')).toBe(false);
+    expect(result.readyState).toBe('BLOCKED');
+    expect(result.blockers).toContain('encounter_coverage_evidence_missing');
+  });
+
+  it('fails closed when nested full-game evidence is not produced for the same run', () => {
+    const qaReport = buildInteractiveQaReport();
+    const encounterCoverage = qaReport.encounter_coverage as Record<string, unknown>;
+    encounterCoverage.full_game_expansion_evidence = {
+      ...buildPassingFullGameExpansionEvidence(),
+      evidence_source: 'manual_fixture',
+      generated_by: 'handwritten_test_fixture',
+      run_id: 'run_step38_stale'
+    };
+
+    const result = evaluateStep38DslConsumption(buildReadyEvaluationInput(qaReport));
+
+    expect(hasStep38EncounterCoverageQaEvidence(encounterCoverage, 'run_step38_ready')).toBe(false);
+    expect(result.readyState).toBe('BLOCKED');
+    expect(result.blockers).toContain('encounter_coverage_evidence_missing');
+  });
+
+  it('does not infer enemy defeat count from route completion booleans', () => {
+    const qaReport = buildInteractiveQaReport();
+    const rawEncounterCoverage = { ...(qaReport.encounter_coverage as Record<string, unknown>) };
+    delete rawEncounterCoverage.full_game_expansion_evidence;
+    delete rawEncounterCoverage.enemy_defeat_count;
+
+    const encounterCoverage = buildStep38EncounterCoverageWithFullGameExpansionEvidence({
+      encounterCoverage: rawEncounterCoverage,
+      playableDurationSupport: qaReport.playable_duration_support,
+      realPlaythroughCompletionEvidence: qaReport.real_playthrough_completion_evidence,
+      runId: 'run_step38_ready',
+      modelFallbackUsed: false,
+      proceduralAssetFallbackUsed: false
+    });
+    const fullGameEvidence = encounterCoverage.full_game_expansion_evidence;
+
+    expect(fullGameEvidence).not.toHaveProperty('enemy_defeat_count');
+    expect(evaluateStep38FullGameExpansionEvidence(fullGameEvidence, {
+      expectedRunId: 'run_step38_ready',
+      minimumEncounterBandCount: 10,
+      minimumEnemySpawnCount: 60,
+      minimumEnemyDefeatCount: 60
+    }).failure_reasons).toContain('enemy_defeat_count_below_threshold');
+  });
+
+  it('keeps preview visual-slice evidence distinct from full-duration runtime proof', () => {
+    const qaReport = buildInteractiveQaReport();
+    const encounterCoverage = buildStep38EncounterCoverageWithFullGameExpansionEvidence({
+      encounterCoverage: buildPreviewDeferredEncounterCoverage(),
+      playableDurationSupport: qaReport.playable_duration_support,
+      realPlaythroughCompletionEvidence: qaReport.real_playthrough_completion_evidence,
+      runId: 'run_step38_ready',
+      modelFallbackUsed: false,
+      proceduralAssetFallbackUsed: false
+    });
+    const fullGameEvidence = encounterCoverage.full_game_expansion_evidence;
+
+    const fullGameResult = evaluateStep38FullGameExpansionEvidence(fullGameEvidence, {
+      expectedRunId: 'run_step38_ready',
+      minimumEncounterBandCount: 10,
+      minimumEnemySpawnCount: 40,
+      minimumEnemyDefeatCount: 40
+    });
+    qaReport.encounter_coverage = encounterCoverage;
+    const result = evaluateStep38DslConsumption(buildReadyEvaluationInput(qaReport));
+
+    expect(fullGameEvidence).toMatchObject({
+      preview_visual_slice_coverage_status: 'PASSED',
+      full_duration_runtime_coverage_status: 'FAILED'
+    });
+    expect(fullGameResult.status).toBe('FAILED');
+    expect(fullGameResult.failure_reasons).toEqual(
+      expect.arrayContaining([
+        'runtime_coverage_below_play_time_intent_min',
+        'encounter_band_count_below_threshold',
+        'enemy_spawn_count_below_threshold',
+        'enemy_defeat_count_below_threshold',
+        'full_duration_runtime_coverage_not_passed'
+      ])
+    );
+    expect(hasStep38EncounterCoverageQaEvidence(encounterCoverage, 'run_step38_ready')).toBe(true);
+    expect(result.readyState).toBe('READY_FOR_MANUAL_TEST');
+    expect(result.blockers).not.toContain('encounter_coverage_evidence_missing');
   });
 
   it('blocks preview-safe visual-slice encounter density when full-duration failure is not marked deferred non-blocking', () => {
@@ -3314,6 +3455,7 @@ function buildInteractiveQaReport(extraEvents: string[] = []): Record<string, un
   ];
 
   return {
+    run_id: 'run_step38_ready',
     status: 'PASSED',
     interaction_source: 'playwright_keyboard',
     observed_events: eventRecords.map((record) => record.event),
@@ -3417,6 +3559,7 @@ function buildInteractiveQaReport(extraEvents: string[] = []): Record<string, un
       preview_visual_slice_coverage_status: 'NOT_APPLICABLE',
       expected_enemy_count: 60,
       realized_enemy_count: 61,
+      enemy_defeat_count: 61,
       preview_expected_enemy_count: 17,
       preview_realized_enemy_count: 17,
       minimum_enemy_count_for_duration: 40,
@@ -3502,6 +3645,9 @@ function buildInteractiveQaReport(extraEvents: string[] = []): Record<string, un
 
 function buildPassingFullGameExpansionEvidence(): Record<string, unknown> {
   return {
+    evidence_source: 'runtime_qa_encounter_coverage',
+    run_id: 'run_step38_ready',
+    generated_by: 'step38_full_game_expansion_evidence_builder',
     play_time_intent_seconds: { min: 480, max: 720 },
     runtime_coverage_seconds: 600,
     mission_complete_reached: true,
@@ -3514,6 +3660,47 @@ function buildPassingFullGameExpansionEvidence(): Record<string, unknown> {
     model_fallback_used: false,
     procedural_asset_fallback_used: false,
     failure_reasons: []
+  };
+}
+
+function buildPreviewDeferredEncounterCoverage(): Record<string, unknown> {
+  return {
+    status: 'PASSED',
+    visual_slice_preview_mode: true,
+    product_duration_coverage_status: 'PASSED',
+    full_duration_runtime_coverage_status: 'FAILED',
+    full_duration_runtime_coverage_disposition: 'DEFERRED_NON_BLOCKING',
+    full_duration_runtime_coverage_deferred: true,
+    full_duration_runtime_coverage_blocking_current_milestone: false,
+    full_duration_enemy_count_disposition: 'DEFERRED_NON_BLOCKING',
+    full_duration_encounter_band_count_disposition: 'DEFERRED_NON_BLOCKING',
+    preview_visual_slice_coverage_status: 'PASSED',
+    preview_target_sec: 50,
+    dsl_enemy_count: 17,
+    expected_enemy_count: 40,
+    realized_enemy_count: 17,
+    enemy_defeat_count: 17,
+    preview_expected_enemy_count: 17,
+    preview_realized_enemy_count: 17,
+    minimum_enemy_count_for_duration: 40,
+    encounter_band_count: 8,
+    minimum_encounter_band_count_for_duration: 10,
+    preview_minimum_encounter_band_count: 8,
+    wave_segment_coverage_count: 3,
+    minimum_wave_segment_coverage_count: 3,
+    max_gap_between_encounter_bands_sec: 3.5,
+    max_allowed_gap_between_encounter_bands_sec: 45,
+    segments_below_minimum_band_count: [],
+    first_encounter_estimated_sec: 3.8,
+    first_viewport_enemy_count: 4,
+    static_enemy_node_count: 1,
+    realized_static_enemy_node_count: 1,
+    wave_node_count: 4,
+    realized_wave_node_count: 5,
+    pickup_node_count: 2,
+    realized_pickup_node_count: 2,
+    boss_node_count: 1,
+    realized_boss_count: 1
   };
 }
 
@@ -3986,6 +4173,10 @@ function buildRealPlaythroughScreenshot(label: string): Record<string, unknown> 
     direct_phase_trigger_used: false,
     label_only_visual_evidence: false,
     placeholder_objects_seen: false,
+    elapsed_sec_from_spawn: Math.max(
+      0,
+      STEP38_TEST_REQUIRED_REAL_PLAYTHROUGH_SCREENSHOTS.findIndex((entry) => entry === label)
+    ) + 1,
     pixel_probe_passed: true,
     visible_canonical_objects: ['player', `canonical_${label}`],
     visible_runtime_roles: expected.roles,
