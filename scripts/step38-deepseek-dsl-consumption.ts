@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
+import { evaluateStep38FullGameExpansionEvidence } from './step38-full-game-expansion-gate.js';
+
 export const STEP38_BASELINE_COMMIT = '5ae9cd3a1c1058929db0482e89b2f46b469e7c24';
 export const STEP38_EXPECTED_PROVIDER_MODEL = 'deepseek-v4-flash';
 export const STEP38_EXPECTED_PROMPT_SHA256 = '5bff34f8b97ea7ee5b0e66b5a17b893eda11fd327d3dadc128c30f3123c64686';
@@ -2376,6 +2378,15 @@ function hasEncounterCoverageEvidence(value: unknown): boolean {
     typeof encounterCoverage.preview_minimum_encounter_band_count === 'number'
       ? encounterCoverage.preview_minimum_encounter_band_count
       : null;
+  const fullGameExpansionGate = evaluateStep38FullGameExpansionEvidence(
+    isRecord(encounterCoverage.full_game_expansion_evidence) ? encounterCoverage.full_game_expansion_evidence : encounterCoverage,
+    {
+      minimumEncounterBandCount: minimumEncounterBandCountForDuration ?? Number.POSITIVE_INFINITY,
+      minimumEnemySpawnCount: expectedEnemyCount ?? Number.POSITIVE_INFINITY,
+      minimumEnemyDefeatCount: expectedEnemyCount ?? Number.POSITIVE_INFINITY
+    }
+  );
+  const fullGameExpansionPassed = fullGameExpansionGate.status === 'PASSED';
 
   const productDurationCoverageOk =
     encounterCoverage.product_duration_coverage_status === 'PASSED' &&
@@ -2389,12 +2400,14 @@ function hasEncounterCoverageEvidence(value: unknown): boolean {
     encounterBandCount !== null &&
     minimumEncounterBandCountForDuration !== null &&
     expectedEnemyCount !== null &&
+    fullGameExpansionPassed &&
     realizedEnemyCount >= expectedEnemyCount &&
     encounterBandCount >= minimumEncounterBandCountForDuration;
   const fullDurationRuntimeCoverageDispositionOk =
-    encounterCoverage.full_duration_runtime_coverage_status === 'PASSED' ||
+    fullGameExpansionPassed ||
     (encounterCoverage.visual_slice_preview_mode === true &&
       encounterCoverage.full_duration_runtime_coverage_status === 'FAILED' &&
+      fullGameExpansionGate.failure_reasons.length > 0 &&
       encounterCoverage.full_duration_runtime_coverage_disposition === 'DEFERRED_NON_BLOCKING' &&
       encounterCoverage.full_duration_runtime_coverage_deferred === true &&
       encounterCoverage.full_duration_runtime_coverage_blocking_current_milestone === false &&
