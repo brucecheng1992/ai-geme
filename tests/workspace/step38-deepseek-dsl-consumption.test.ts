@@ -11,6 +11,7 @@ import {
 } from '../../scripts/step38-deepseek-dsl-consumption.js';
 import {
   buildStep38EncounterCoverageWithFullGameExpansionEvidence,
+  evaluateStep38EncounterCoverageRuntimeEvidence,
   evaluateStep38FullGameExpansionEvidence
 } from '../../scripts/step38-full-game-expansion-gate.js';
 import { buildStep38MainJs, buildStep38SpriteAssets, hasStep38EncounterCoverageQaEvidence } from '../../scripts/run-step38-deepseek-dsl-smoke.js';
@@ -2413,13 +2414,191 @@ describe('Step38 DeepSeek DSL consumption gate', () => {
       minimumEnemySpawnCount: 60,
       minimumEnemyDefeatCount: 60
     }).status).toBe('PASSED');
+    expect(encounterCoverage.runtime_evidence_evaluation).toMatchObject({
+      status: 'PASSED',
+      provenance: {
+        expected_run_id: 'run_step38_ready',
+        actual_run_id: 'run_step38_ready',
+        producer_identity_passed: true,
+        run_id_matches: true,
+        evidence_source_matches: true,
+        generated_by_matches: true
+      },
+      expected_encounter_summary: {
+        expected_enemy_count: 60,
+        minimum_enemy_count_for_duration: 40,
+        minimum_encounter_band_count_for_duration: 10
+      },
+      observed_encounter_summary: {
+        realized_enemy_count: 61,
+        enemy_defeat_count: 61,
+        encounter_band_count: 24
+      },
+      proof_boundary: {
+        visual_slice_preview_mode: false,
+        full_duration_runtime_coverage_status: 'PASSED',
+        preview_deferred_non_blocking_accepted: false
+      }
+    });
 
     qaReport.encounter_coverage = encounterCoverage;
     const result = evaluateStep38DslConsumption(buildReadyEvaluationInput(qaReport));
 
     expect(hasStep38EncounterCoverageQaEvidence(encounterCoverage, 'run_step38_ready')).toBe(true);
     expect(result.readyState).toBe('READY_FOR_MANUAL_TEST');
+    expect(result.evidence_details.encounter_coverage.status).toBe('PASSED');
     expect(result.blockers).not.toContain('encounter_coverage_evidence_missing');
+  });
+
+  it('surfaces actionable detail for missing or malformed full-game evidence under the stable blocker', () => {
+    const qaReport = buildInteractiveQaReport();
+    const encounterCoverage = qaReport.encounter_coverage as Record<string, unknown>;
+    delete encounterCoverage.full_game_expansion_evidence;
+
+    const missingResult = evaluateStep38DslConsumption(buildReadyEvaluationInput(qaReport));
+    const missingDetail = missingResult.blocker_details.encounter_coverage_evidence_missing;
+
+    expect(missingResult.readyState).toBe('BLOCKED');
+    expect(missingResult.blockers).toContain('encounter_coverage_evidence_missing');
+    expect(missingDetail).toMatchObject({
+      status: 'FAILED',
+      blocker_category: 'encounter_coverage_evidence_missing',
+      failure_reasons: expect.arrayContaining([
+        'full_game_expansion_evidence_missing',
+        'full_game_expansion_evaluator_failed'
+      ]),
+      provenance: {
+        expected_run_id: 'run_step38_ready',
+        producer_identity_passed: false
+      },
+      expected_encounter_summary: {
+        expected_enemy_count: 60,
+        minimum_enemy_count_for_duration: 40,
+        minimum_encounter_band_count_for_duration: 10
+      },
+      observed_encounter_summary: {
+        realized_enemy_count: 61,
+        enemy_defeat_count: 61,
+        encounter_band_count: 24
+      }
+    });
+
+    encounterCoverage.full_game_expansion_evidence = 'not-an-evidence-object';
+    const malformedResult = evaluateStep38DslConsumption(buildReadyEvaluationInput(qaReport));
+
+    expect(malformedResult.readyState).toBe('BLOCKED');
+    expect(malformedResult.blocker_details.encounter_coverage_evidence_missing?.failure_reasons).toEqual(
+      expect.arrayContaining(['full_game_expansion_evidence_malformed', 'full_game_expansion_evaluator_failed'])
+    );
+  });
+
+  it('does not let generic encounter detail hide specific blocker precedence', () => {
+    const qaReport = buildInteractiveQaReport();
+    const encounterCoverage = qaReport.encounter_coverage as Record<string, unknown>;
+    delete encounterCoverage.full_game_expansion_evidence;
+    qaReport.playable_duration_support = {
+      ...(qaReport.playable_duration_support as Record<string, unknown>),
+      status: 'FAILED'
+    };
+
+    const result = evaluateStep38DslConsumption(buildReadyEvaluationInput(qaReport));
+
+    expect(result.readyState).toBe('BLOCKED');
+    expect(result.blockers).toEqual(
+      expect.arrayContaining(['playable_duration_support_missing', 'encounter_coverage_evidence_missing'])
+    );
+    expect(result.blocker_details.encounter_coverage_evidence_missing?.failure_reasons).toContain(
+      'full_game_expansion_evidence_missing'
+    );
+  });
+
+  it('reports producer provenance mismatches without renaming the stable blocker', () => {
+    const cases: Array<{ field: string; value: unknown; reason: string }> = [
+      { field: 'run_id', value: 'run_step38_stale', reason: 'full_game_expansion_run_id_mismatch' },
+      { field: 'generated_by', value: 'handwritten_test_fixture', reason: 'full_game_expansion_generated_by_mismatch' },
+      { field: 'evidence_source', value: 'manual_fixture', reason: 'full_game_expansion_evidence_source_mismatch' }
+    ];
+
+    for (const { field, value, reason } of cases) {
+      const qaReport = buildInteractiveQaReport();
+      const encounterCoverage = qaReport.encounter_coverage as Record<string, unknown>;
+      encounterCoverage.full_game_expansion_evidence = {
+        ...buildPassingFullGameExpansionEvidence(),
+        [field]: value
+      };
+
+      const sharedEvaluation = evaluateStep38EncounterCoverageRuntimeEvidence(encounterCoverage, 'run_step38_ready');
+      const result = evaluateStep38DslConsumption(buildReadyEvaluationInput(qaReport));
+
+      expect(sharedEvaluation.status, field).toBe('FAILED');
+      expect(sharedEvaluation.failure_reasons).toContain(reason);
+      expect(hasStep38EncounterCoverageQaEvidence(encounterCoverage, 'run_step38_ready')).toBe(false);
+      expect(result.readyState).toBe('BLOCKED');
+      expect(result.blockers).toContain('encounter_coverage_evidence_missing');
+      expect(result.blocker_details.encounter_coverage_evidence_missing?.failure_reasons).toContain(reason);
+    }
+  });
+
+  it('fails closed when encounter segment evidence contains malformed entries', () => {
+    const qaReport = buildInteractiveQaReport();
+    const encounterCoverage = qaReport.encounter_coverage as Record<string, unknown>;
+    encounterCoverage.segments_below_minimum_band_count = [123];
+
+    const sharedEvaluation = evaluateStep38EncounterCoverageRuntimeEvidence(encounterCoverage, 'run_step38_ready');
+    const result = evaluateStep38DslConsumption(buildReadyEvaluationInput(qaReport));
+
+    expect(sharedEvaluation.status).toBe('FAILED');
+    expect(sharedEvaluation.failure_reasons).toContain('segments_below_minimum_band_count_malformed');
+    expect(hasStep38EncounterCoverageQaEvidence(encounterCoverage, 'run_step38_ready')).toBe(false);
+    expect(result.readyState).toBe('BLOCKED');
+    expect(result.blockers).toContain('encounter_coverage_evidence_missing');
+    expect(result.blocker_details.encounter_coverage_evidence_missing?.failure_reasons).toContain(
+      'segments_below_minimum_band_count_malformed'
+    );
+  });
+
+  it('keeps enemy defeat count and encounter summaries actionable when full-game evidence is insufficient', () => {
+    const qaReport = buildInteractiveQaReport();
+    const encounterCoverage = qaReport.encounter_coverage as Record<string, unknown>;
+    encounterCoverage.enemy_defeat_count = 12;
+    encounterCoverage.full_game_expansion_evidence = {
+      ...buildPassingFullGameExpansionEvidence(),
+      enemy_defeat_count: 12
+    };
+
+    const result = evaluateStep38DslConsumption(buildReadyEvaluationInput(qaReport));
+    const detail = result.blocker_details.encounter_coverage_evidence_missing;
+
+    expect(result.readyState).toBe('BLOCKED');
+    expect(detail?.failure_reasons).toEqual(
+      expect.arrayContaining(['full_game_expansion_evaluator_failed', 'enemy_defeat_count_insufficient'])
+    );
+    expect(detail?.observed_encounter_summary).toMatchObject({
+      realized_enemy_count: 61,
+      enemy_defeat_count: 12,
+      encounter_band_count: 24
+    });
+    expect(detail?.full_game_expansion_gate.failure_reasons).toContain('enemy_defeat_count_below_threshold');
+  });
+
+  it('keeps smoke, DSL, and full-game gate evaluation aligned for the same encounter payload', () => {
+    const qaReport = buildInteractiveQaReport();
+    const encounterCoverage = qaReport.encounter_coverage as Record<string, unknown>;
+    const sharedEvaluation = evaluateStep38EncounterCoverageRuntimeEvidence(encounterCoverage, 'run_step38_ready');
+    const result = evaluateStep38DslConsumption(buildReadyEvaluationInput(qaReport));
+    const fullGameGate = evaluateStep38FullGameExpansionEvidence(encounterCoverage.full_game_expansion_evidence, {
+      expectedRunId: 'run_step38_ready',
+      minimumEncounterBandCount: 10,
+      minimumEnemySpawnCount: 60,
+      minimumEnemyDefeatCount: 60
+    });
+
+    expect(hasStep38EncounterCoverageQaEvidence(encounterCoverage, 'run_step38_ready')).toBe(
+      sharedEvaluation.status === 'PASSED'
+    );
+    expect(result.evidence_details.encounter_coverage).toEqual(sharedEvaluation);
+    expect(sharedEvaluation.full_game_expansion_gate).toEqual(fullGameGate);
+    expect(result.readyState).toBe('READY_FOR_MANUAL_TEST');
   });
 
   it('fails closed when preview visual-slice coverage lacks producer-backed full-game evidence', () => {
@@ -2512,6 +2691,20 @@ describe('Step38 DeepSeek DSL consumption gate', () => {
     );
     expect(hasStep38EncounterCoverageQaEvidence(encounterCoverage, 'run_step38_ready')).toBe(true);
     expect(result.readyState).toBe('READY_FOR_MANUAL_TEST');
+    expect(result.evidence_details.encounter_coverage).toMatchObject({
+      status: 'PASSED',
+      proof_boundary: {
+        visual_slice_preview_mode: true,
+        full_duration_runtime_coverage_status: 'FAILED',
+        full_duration_runtime_coverage_disposition: 'DEFERRED_NON_BLOCKING',
+        preview_visual_slice_coverage_status: 'PASSED',
+        preview_deferred_non_blocking_accepted: true
+      },
+      full_game_expansion_gate: {
+        status: 'FAILED',
+        failure_reasons: expect.arrayContaining(['full_duration_runtime_coverage_not_passed'])
+      }
+    });
     expect(result.blockers).not.toContain('encounter_coverage_evidence_missing');
   });
 
@@ -2553,6 +2746,9 @@ describe('Step38 DeepSeek DSL consumption gate', () => {
 
     expect(result.readyState).toBe('BLOCKED');
     expect(result.blockers).toContain('encounter_coverage_evidence_missing');
+    expect(result.blocker_details.encounter_coverage_evidence_missing?.failure_reasons).toContain(
+      'preview_visual_slice_deferred_boundary_missing'
+    );
   });
 
   it('evaluates full-game expansion evidence without letting preview visual slice coverage imply full-duration pass', () => {

@@ -67,8 +67,7 @@ import {
 } from './step38-deepseek-dsl-consumption.js';
 import {
   buildStep38EncounterCoverageWithFullGameExpansionEvidence,
-  evaluateStep38FullGameExpansionEvidence,
-  isStep38ProducedFullGameExpansionEvidence
+  evaluateStep38EncounterCoverageRuntimeEvidence
 } from './step38-full-game-expansion-gate.js';
 
 type ProviderLogRecord = { level: 'log' | 'warn' | 'error'; event?: string; [key: string]: unknown };
@@ -10819,110 +10818,7 @@ function hasStep38DurationQaEvidence(value: unknown): boolean {
 }
 
 export function hasStep38EncounterCoverageQaEvidence(value: unknown, expectedRunId: string): boolean {
-  if (!isRecord(value) || value.status !== 'PASSED') {
-    return false;
-  }
-
-  const expectedEnemyCount = typeof value.expected_enemy_count === 'number' ? value.expected_enemy_count : null;
-  const realizedEnemyCount = typeof value.realized_enemy_count === 'number' ? value.realized_enemy_count : null;
-  const minimumEnemyCountForDuration =
-    typeof value.minimum_enemy_count_for_duration === 'number' ? value.minimum_enemy_count_for_duration : null;
-  const encounterBandCount = typeof value.encounter_band_count === 'number' ? value.encounter_band_count : null;
-  const minimumEncounterBandCountForDuration =
-    typeof value.minimum_encounter_band_count_for_duration === 'number' ? value.minimum_encounter_band_count_for_duration : null;
-  const previewExpectedEnemyCount =
-    typeof value.preview_expected_enemy_count === 'number' ? value.preview_expected_enemy_count : null;
-  const previewRealizedEnemyCount =
-    typeof value.preview_realized_enemy_count === 'number' ? value.preview_realized_enemy_count : null;
-  const previewMinimumEncounterBandCount =
-    typeof value.preview_minimum_encounter_band_count === 'number' ? value.preview_minimum_encounter_band_count : null;
-  const fullGameExpansionEvidence = isRecord(value.full_game_expansion_evidence) ? value.full_game_expansion_evidence : null;
-  const fullGameExpansionProducerIdentityOk = isStep38ProducedFullGameExpansionEvidence(
-    fullGameExpansionEvidence,
-    expectedRunId
-  );
-  const fullGameExpansionGate = evaluateStep38FullGameExpansionEvidence(fullGameExpansionEvidence, {
-    minimumEncounterBandCount: minimumEncounterBandCountForDuration ?? Number.POSITIVE_INFINITY,
-    minimumEnemySpawnCount: expectedEnemyCount ?? Number.POSITIVE_INFINITY,
-    minimumEnemyDefeatCount: expectedEnemyCount ?? Number.POSITIVE_INFINITY,
-    expectedRunId
-  });
-  const fullGameExpansionPassed = fullGameExpansionGate.status === 'PASSED';
-
-  const productDurationCoverageOk =
-    value.product_duration_coverage_status === 'PASSED' &&
-    expectedEnemyCount !== null &&
-    minimumEnemyCountForDuration !== null &&
-    expectedEnemyCount >= minimumEnemyCountForDuration;
-  const fullDurationRuntimeCoverageOk =
-    productDurationCoverageOk &&
-    value.full_duration_runtime_coverage_status === 'PASSED' &&
-    realizedEnemyCount !== null &&
-    encounterBandCount !== null &&
-    minimumEncounterBandCountForDuration !== null &&
-    expectedEnemyCount !== null &&
-    fullGameExpansionPassed &&
-    realizedEnemyCount >= expectedEnemyCount &&
-    encounterBandCount >= minimumEncounterBandCountForDuration;
-  const fullDurationRuntimeCoverageDispositionOk =
-    fullGameExpansionProducerIdentityOk &&
-    (fullGameExpansionPassed ||
-      (value.visual_slice_preview_mode === true &&
-        value.full_duration_runtime_coverage_status === 'FAILED' &&
-        fullGameExpansionGate.failure_reasons.length > 0 &&
-        value.full_duration_runtime_coverage_disposition === 'DEFERRED_NON_BLOCKING' &&
-        value.full_duration_runtime_coverage_deferred === true &&
-        value.full_duration_runtime_coverage_blocking_current_milestone === false &&
-        value.full_duration_enemy_count_disposition === 'DEFERRED_NON_BLOCKING' &&
-        value.full_duration_encounter_band_count_disposition === 'DEFERRED_NON_BLOCKING'));
-  const previewVisualSliceCoverageOk =
-    value.visual_slice_preview_mode === true &&
-    value.preview_visual_slice_coverage_status === 'PASSED' &&
-    previewExpectedEnemyCount !== null &&
-    previewRealizedEnemyCount !== null &&
-    previewMinimumEncounterBandCount !== null &&
-    encounterBandCount !== null &&
-    previewRealizedEnemyCount >= previewExpectedEnemyCount &&
-    encounterBandCount >= previewMinimumEncounterBandCount;
-
-  return (
-    typeof value.expected_enemy_count === 'number' &&
-    typeof value.realized_enemy_count === 'number' &&
-    typeof value.minimum_enemy_count_for_duration === 'number' &&
-    typeof value.encounter_band_count === 'number' &&
-    typeof value.minimum_encounter_band_count_for_duration === 'number' &&
-    typeof value.wave_segment_coverage_count === 'number' &&
-    typeof value.minimum_wave_segment_coverage_count === 'number' &&
-    typeof value.max_gap_between_encounter_bands_sec === 'number' &&
-    typeof value.max_allowed_gap_between_encounter_bands_sec === 'number' &&
-    Array.isArray(value.segments_below_minimum_band_count) &&
-    typeof value.first_encounter_estimated_sec === 'number' &&
-    typeof value.first_viewport_enemy_count === 'number' &&
-    typeof value.static_enemy_node_count === 'number' &&
-    typeof value.realized_static_enemy_node_count === 'number' &&
-    typeof value.wave_node_count === 'number' &&
-    typeof value.realized_wave_node_count === 'number' &&
-    typeof value.pickup_node_count === 'number' &&
-    typeof value.realized_pickup_node_count === 'number' &&
-    typeof value.boss_node_count === 'number' &&
-    typeof value.realized_boss_count === 'number' &&
-    productDurationCoverageOk &&
-    fullDurationRuntimeCoverageDispositionOk &&
-    (value.visual_slice_preview_mode === true ? previewVisualSliceCoverageOk : fullDurationRuntimeCoverageOk) &&
-    value.wave_segment_coverage_count >= value.minimum_wave_segment_coverage_count &&
-    value.max_gap_between_encounter_bands_sec <= value.max_allowed_gap_between_encounter_bands_sec &&
-    value.segments_below_minimum_band_count.length === 0 &&
-    value.first_encounter_estimated_sec <= 8 &&
-    value.first_viewport_enemy_count >= 2 &&
-    value.static_enemy_node_count >= 1 &&
-    value.realized_static_enemy_node_count >= value.static_enemy_node_count &&
-    value.wave_node_count >= 2 &&
-    value.realized_wave_node_count >= value.wave_node_count &&
-    value.pickup_node_count >= 1 &&
-    value.realized_pickup_node_count >= value.pickup_node_count &&
-    value.boss_node_count >= 1 &&
-    value.realized_boss_count >= 1
-  );
+  return evaluateStep38EncounterCoverageRuntimeEvidence(value, expectedRunId).status === 'PASSED';
 }
 
 function hasStep38EnemyBehaviorQaEvidence(value: unknown, eventRecords: Array<Record<string, unknown>>): boolean {
