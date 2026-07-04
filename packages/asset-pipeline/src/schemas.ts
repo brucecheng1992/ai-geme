@@ -2,6 +2,8 @@ import { isAbsolute } from 'node:path';
 
 import { z } from 'zod';
 
+import { ArtSourceTypeSchema } from './art-source-manifest.js';
+
 const AssetIdSchema = z.string().regex(/^[a-z][a-z0-9_]{1,39}$/);
 export const AssetRoleSchema = z.enum([
   'player_character',
@@ -21,6 +23,12 @@ export const SemanticTagSchema = z.string().regex(/^[a-z][a-z0-9_]{1,39}$/);
 const AssetSizeSchema = z.strictObject({ w: z.number().int().min(1).max(1920), h: z.number().int().min(1).max(1080) });
 const AssetRenderTransformSchema = z.strictObject({
   rotationDegrees: z.number().int().min(0).max(359)
+});
+const AssetIntentIdSchema = z.string().regex(/^[a-z][a-z0-9_.-]{1,79}$/);
+const ArtSourceManifestIdSchema = z.string().regex(/^[a-z][a-z0-9_]{1,79}$/);
+const Sha256Schema = z.string().regex(/^[a-f0-9]{64}$/);
+const SafeMetadataRefSchema = z.string().min(1).max(240).refine(isSafeProjectRelativePath, {
+  message: 'metadata ref must be project-relative and must not contain .., URL schemes, or absolute path segments'
 });
 export const AssetCatalogRefSchema = z.strictObject({
   catalogVersion: z.literal('template_asset_catalog.v1'),
@@ -49,6 +57,17 @@ export const AssetSemanticFitSchema = z.strictObject({
   missingTags: z.array(SemanticTagSchema).max(12).optional(),
   conflictingTags: z.array(SemanticTagSchema).max(32).optional(),
   reason: z.string().min(1).max(240).optional()
+});
+
+export const AssetManifestArtSourceSchema = z.strictObject({
+  type: ArtSourceTypeSchema,
+  assetIntentId: AssetIntentIdSchema,
+  sourceManifestId: ArtSourceManifestIdSchema.optional(),
+  contentSha256: Sha256Schema.optional(),
+  locked: z.boolean(),
+  providerMayReplace: z.boolean(),
+  normalizedMetadataRef: SafeMetadataRefSchema.optional(),
+  provenance: z.array(z.string().min(1).max(240)).min(1).max(24)
 });
 
 export const AssetPlanItemSchema = z.strictObject({
@@ -114,7 +133,8 @@ export const AssetManifestAssetSchema = z.strictObject({
   status: z.enum(['ready', 'fallback_used', 'missing']),
   size: AssetSizeSchema,
   renderTransform: AssetRenderTransformSchema.optional(),
-  semanticFit: AssetSemanticFitSchema.optional()
+  semanticFit: AssetSemanticFitSchema.optional(),
+  artSource: AssetManifestArtSourceSchema.optional()
 });
 
 export const AssetManifestSchema = z
@@ -165,6 +185,7 @@ export type AssetPlanItem = z.infer<typeof AssetPlanItemSchema>;
 export type AssetSemanticConstraint = z.infer<typeof AssetSemanticConstraintSchema>;
 export type AssetManifest = z.infer<typeof AssetManifestSchema>;
 export type AssetManifestAsset = z.infer<typeof AssetManifestAssetSchema>;
+export type AssetManifestArtSource = z.infer<typeof AssetManifestArtSourceSchema>;
 export type AssetCatalogRef = z.infer<typeof AssetCatalogRefSchema>;
 export type AssetSemanticFitStatus = z.infer<typeof AssetSemanticFitStatusSchema>; export type AssetSemanticFit = z.infer<typeof AssetSemanticFitSchema>;
 export function summarizeManifestAssets(assets: AssetManifestAsset[]): AssetManifest['summary'] {
@@ -249,4 +270,12 @@ function isSafeRelativeAssetPath(value: string): boolean {
   }
 
   return /^assets\/[a-z][a-z0-9_]{1,39}\.(svg|png)$/.test(value);
+}
+
+function isSafeProjectRelativePath(value: string): boolean {
+  if (isAbsolute(value) || value.includes('\\') || /^[a-z][a-z0-9+.-]*:/i.test(value)) {
+    return false;
+  }
+
+  return value.split('/').every((segment) => segment.length > 0 && segment !== '.' && segment !== '..');
 }

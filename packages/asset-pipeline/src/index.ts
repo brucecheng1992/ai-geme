@@ -24,6 +24,7 @@ export {
   createRuntimeExportUsageErrorDiagnostic,
   exportRuntimeArtAssetMetadataFromDirectory,
   exportRuntimeArtAssetMetadataFromFile,
+  exportRuntimeArtAssetMetadataFromResolvedSources,
   exportRuntimeArtAssetMetadataFromTargets,
   formatRuntimeArtAssetMetadataExportArtifactJson,
   formatRuntimeArtAssetMetadataExportDiagnosticsText,
@@ -41,6 +42,44 @@ export {
   type RuntimeArtAssetSemanticMetadata,
   type RuntimeArtAssetTechnicalMetadata
 } from './art-asset-metadata.runtime-export.js';
+export {
+  ART_SOURCE_MANIFEST_VERSION,
+  ART_SOURCE_PRIORITY,
+  ArtSourceContentTypeSchema,
+  ArtSourceManifestRecordSchema,
+  ArtSourceManifestSchema,
+  ArtSourceReviewStatusSchema,
+  ArtSourceTypeSchema,
+  isSafeArtSourceProjectRelativePath,
+  type ArtSourceContentType,
+  type ArtSourceManifest,
+  type ArtSourceManifestRecord,
+  type ArtSourceReviewStatus,
+  type ArtSourceType
+} from './art-source-manifest.js';
+export {
+  ART_SOURCE_RESOLUTION_REPORT_VERSION,
+  ArtSourceResolutionBlockerSchema,
+  ArtSourceResolutionFailureSchema,
+  ArtSourceResolutionReportSchema,
+  ResolvedArtSourceAssetSchema,
+  resolveArtSources,
+  type ArtSourceResolutionBlocker,
+  type ArtSourceResolutionFailure,
+  type ArtSourceResolutionReport,
+  type ResolveArtSourcesInput,
+  type ResolvedArtSourceAsset
+} from './art-source-resolver.js';
+export {
+  DETERMINISTIC_FAKE_ART_PROVIDER_ID,
+  createDeterministicFakeArtProvider,
+  type ArtProvider,
+  type ArtProviderGenerationFailure,
+  type ArtProviderGenerationResult,
+  type ArtProviderGenerationSuccess,
+  type DeterministicFakeArtProviderOptions,
+  type FakeArtProviderMode
+} from './fake-art-provider.js';
 export {
   createAssetPackMetadataBridgeSummary,
   type AssetPackBridgeCandidate,
@@ -105,6 +144,7 @@ export {
 } from './local-asset-pack.schema.js';
 export {
   AssetRoleSchema,
+  AssetManifestArtSourceSchema,
   AssetManifestAssetSchema,
   AssetManifestSchema,
   AssetPlanItemSchema,
@@ -114,6 +154,7 @@ export {
   AssetSemanticFitStatusSchema,
   SemanticTagSchema,
   type AssetManifest,
+  type AssetManifestArtSource,
   type AssetManifestAsset,
   type AssetPlan,
   type AssetPlanItem,
