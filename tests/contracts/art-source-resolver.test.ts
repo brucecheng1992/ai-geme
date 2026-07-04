@@ -8,11 +8,13 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   ArtSourceManifestSchema,
   AssetManifestAssetSchema,
+  DETERMINISTIC_FAKE_ART_PROVIDER_CAPABILITIES,
   createDeterministicFakeArtProvider,
   exportRuntimeArtAssetMetadataFromResolvedSources,
   resolveArtSources,
   type ArtAssetMetadata,
   type ArtProvider,
+  type ArtProviderRequest,
   type ArtSourceManifest,
   type AssetIntent,
   type AssetIntentManifest,
@@ -434,15 +436,19 @@ function providerMissingMetadata(): ArtProvider {
   let calls = 0;
   return {
     providerId: 'missing_metadata_fake_provider',
+    mode: 'deterministic_fake',
+    capabilities: DETERMINISTIC_FAKE_ART_PROVIDER_CAPABILITIES,
     get calls() {
       return calls;
     },
-    async generate(intent) {
+    async generate(request: ArtProviderRequest) {
       calls += 1;
       return {
         ok: true,
         providerId: 'missing_metadata_fake_provider',
-        assetIntentId: intent.id,
+        providerMode: 'deterministic_fake',
+        assetIntentId: request.intent.id,
+        outputKind: 'art_source_manifest_record',
         source: { ...providerSourceRecord(), metadata: undefined }
       };
     }

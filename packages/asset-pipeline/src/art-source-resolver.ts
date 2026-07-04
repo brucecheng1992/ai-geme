@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 import { ArtAssetMetadataSchema, type ArtAssetMetadata } from './art-asset-metadata.schema.js';
 import { AssetIntentManifestSchema, type AssetIntent } from './asset-intent-manifest.js';
-import type { ArtProvider } from './fake-art-provider.js';
+import { createArtProviderRequest, type ArtProvider, type ArtProviderResult } from './art-provider-contract.js';
 import {
   ART_SOURCE_PRIORITY,
   ART_SOURCE_MANIFEST_VERSION,
@@ -27,6 +27,7 @@ export const ArtSourceResolutionBlockerSchema = z.enum([
   'local_asset_path_missing',
   'local_asset_sha256_mismatch',
   'local_asset_metadata_malformed',
+  'art_provider_live_call_not_allowed',
   'provider_output_malformed',
   'provider_generation_failed',
   'raw_provider_output_bypassed_normalization',
@@ -236,7 +237,11 @@ async function resolveIntent(input: ResolveIntentInput): Promise<ResolveIntentRe
   }
 
   if (input.provider !== undefined) {
-    const providerResult = await input.provider.generate(input.intent);
+    const providerResult = await input.provider.generate(createArtProviderRequest(input.intent, input.provider.mode));
+    if (!providerEnvelopeMatches(providerResult, input.provider, input.intent)) {
+      return providerMalformed(input.intent);
+    }
+
     if (!providerResult.ok) {
       return {
         ok: false,
@@ -247,6 +252,10 @@ async function resolveIntent(input: ResolveIntentInput): Promise<ResolveIntentRe
         },
         providerCalls: 1
       };
+    }
+
+    if (providerResult.outputKind !== 'art_source_manifest_record') {
+      return providerMalformed(input.intent);
     }
 
     const sourceResult = ArtSourceManifestRecordSchema.safeParse(providerResult.source);
@@ -431,6 +440,14 @@ function providerMalformed(intent: AssetIntent): ResolveIntentResult {
     },
     providerCalls: 1
   };
+}
+
+function providerEnvelopeMatches(result: ArtProviderResult, provider: ArtProvider, intent: AssetIntent): boolean {
+  return (
+    result.providerId === provider.providerId &&
+    result.providerMode === provider.mode &&
+    result.assetIntentId === intent.id
+  );
 }
 
 function buildReport(input: {

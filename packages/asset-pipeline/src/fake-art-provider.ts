@@ -2,34 +2,22 @@ import { createHash } from 'node:crypto';
 
 import type { ArtAssetMetadata } from './art-asset-metadata.schema.js';
 import type { AssetIntent } from './asset-intent-manifest.js';
+import {
+  DETERMINISTIC_FAKE_ART_PROVIDER_CAPABILITIES,
+  type ArtProvider,
+  type ArtProviderFailure,
+  type ArtProviderRequest,
+  type ArtProviderResult,
+  type ArtProviderSuccess
+} from './art-provider-contract.js';
 import type { ArtSourceManifestRecord } from './art-source-manifest.js';
 
 export const DETERMINISTIC_FAKE_ART_PROVIDER_ID = 'deterministic_fake_art_provider' as const;
 
 export type FakeArtProviderMode = 'success' | 'malformed' | 'failure';
-
-export type ArtProviderGenerationFailure = {
-  ok: false;
-  providerId: string;
-  assetIntentId: string;
-  blocker: 'provider_generation_failed';
-  message: string;
-};
-
-export type ArtProviderGenerationSuccess = {
-  ok: true;
-  providerId: string;
-  assetIntentId: string;
-  source: unknown;
-};
-
-export type ArtProviderGenerationResult = ArtProviderGenerationFailure | ArtProviderGenerationSuccess;
-
-export type ArtProvider = {
-  readonly providerId: string;
-  readonly calls: number;
-  generate(intent: AssetIntent): Promise<ArtProviderGenerationResult>;
-};
+export type ArtProviderGenerationFailure = ArtProviderFailure;
+export type ArtProviderGenerationSuccess = ArtProviderSuccess;
+export type ArtProviderGenerationResult = ArtProviderResult;
 
 export type DeterministicFakeArtProviderOptions = {
   mode?: FakeArtProviderMode;
@@ -41,17 +29,22 @@ export function createDeterministicFakeArtProvider(options: DeterministicFakeArt
 
   return {
     providerId: DETERMINISTIC_FAKE_ART_PROVIDER_ID,
+    mode: 'deterministic_fake',
+    capabilities: DETERMINISTIC_FAKE_ART_PROVIDER_CAPABILITIES,
     get calls() {
       return calls;
     },
-    async generate(intent: AssetIntent): Promise<ArtProviderGenerationResult> {
+    async generate(request: ArtProviderRequest): Promise<ArtProviderGenerationResult> {
       calls += 1;
+      const intent = request.intent;
 
       if (mode === 'failure') {
         return {
           ok: false,
           providerId: DETERMINISTIC_FAKE_ART_PROVIDER_ID,
+          providerMode: 'deterministic_fake',
           assetIntentId: intent.id,
+          errorCode: 'art_provider_generation_failed',
           blocker: 'provider_generation_failed',
           message: `Deterministic fake provider failed for ${intent.id}.`
         };
@@ -61,7 +54,9 @@ export function createDeterministicFakeArtProvider(options: DeterministicFakeArt
         return {
           ok: true,
           providerId: DETERMINISTIC_FAKE_ART_PROVIDER_ID,
+          providerMode: 'deterministic_fake',
           assetIntentId: intent.id,
+          outputKind: 'art_source_manifest_record',
           source: {
             source_id: `fake_${toSlug(intent.id)}`,
             asset_id: intent.assetPlanId,
@@ -77,7 +72,9 @@ export function createDeterministicFakeArtProvider(options: DeterministicFakeArt
       return {
         ok: true,
         providerId: DETERMINISTIC_FAKE_ART_PROVIDER_ID,
+        providerMode: 'deterministic_fake',
         assetIntentId: intent.id,
+        outputKind: 'art_source_manifest_record',
         source: buildFakeProviderSource(intent)
       };
     }
