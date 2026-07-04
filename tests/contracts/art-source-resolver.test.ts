@@ -170,8 +170,9 @@ describe('Loop4 source-resolved art pipeline contracts', () => {
 
   it('uses deterministic fake provider metadata without network, API keys, or secret leakage', async () => {
     const originalFetch = globalThis.fetch;
+    const originalSecret = process.env.DEEPSEEK_API_KEY;
     let fetchCalls = 0;
-    const secretFixture = 'loop4-secret-that-must-not-appear';
+    process.env.DEEPSEEK_API_KEY = 'loop4-secret-that-must-not-appear';
     globalThis.fetch = (async () => {
       fetchCalls += 1;
       throw new Error('network calls are forbidden in fake art provider tests');
@@ -214,9 +215,14 @@ describe('Loop4 source-resolved art pipeline contracts', () => {
       });
       const providerJson = JSON.stringify(first);
       expect(providerJson).toContain('deterministic_fake_art_provider');
-      expect(providerJson).not.toContain(secretFixture);
+      expect(providerJson).not.toContain('loop4-secret-that-must-not-appear');
       expect(providerJson).not.toContain('DEEPSEEK_API_KEY');
     } finally {
+      if (originalSecret === undefined) {
+        delete process.env.DEEPSEEK_API_KEY;
+      } else {
+        process.env.DEEPSEEK_API_KEY = originalSecret;
+      }
       globalThis.fetch = originalFetch;
     }
   });
