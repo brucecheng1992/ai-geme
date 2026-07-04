@@ -88,6 +88,20 @@ export {
   type DisabledLiveArtProviderOptions
 } from './art-provider-contract.js';
 export {
+  ART_PROVIDER_POLICY_VERSION,
+  readArtProviderPolicyFromEnv,
+  resolveArtProviderPolicy,
+  type ArtProviderPolicyBlocker,
+  type ArtProviderPolicyErrorCode,
+  type ArtProviderPolicyFailure,
+  type ArtProviderPolicyInput,
+  type ArtProviderPolicyReason,
+  type ArtProviderPolicyRequestedMode,
+  type ArtProviderPolicyResult,
+  type ArtProviderPolicySource,
+  type ArtProviderPolicySuccess
+} from './art-provider-policy.js';
+export {
   DETERMINISTIC_FAKE_ART_PROVIDER_ID,
   createDeterministicFakeArtProvider,
   type ArtProviderGenerationFailure,

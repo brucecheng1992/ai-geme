@@ -6,7 +6,13 @@ import { z } from 'zod';
 
 import { ArtAssetMetadataSchema, type ArtAssetMetadata } from './art-asset-metadata.schema.js';
 import { AssetIntentManifestSchema, type AssetIntent } from './asset-intent-manifest.js';
-import { createArtProviderRequest, type ArtProvider, type ArtProviderResult } from './art-provider-contract.js';
+import {
+  createArtProviderRequest,
+  createDisabledLiveArtProvider,
+  type ArtProvider,
+  type ArtProviderResult
+} from './art-provider-contract.js';
+import { resolveArtProviderPolicy, type ArtProviderPolicyInput, type ArtProviderPolicyResult } from './art-provider-policy.js';
 import {
   ART_SOURCE_PRIORITY,
   ART_SOURCE_MANIFEST_VERSION,
@@ -17,6 +23,7 @@ import {
   type ArtSourceManifestRecord,
   type ArtSourceType
 } from './art-source-manifest.js';
+import { createDeterministicFakeArtProvider } from './fake-art-provider.js';
 import { AssetPlanSchema, type AssetPlan, type AssetPlanItem } from './schemas.js';
 
 export const ART_SOURCE_RESOLUTION_REPORT_VERSION = 'art-source-resolution-report-v0.1' as const;
@@ -28,6 +35,7 @@ export const ArtSourceResolutionBlockerSchema = z.enum([
   'local_asset_sha256_mismatch',
   'local_asset_metadata_malformed',
   'art_provider_live_call_not_allowed',
+  'art_provider_policy_invalid_mode',
   'provider_output_malformed',
   'provider_generation_failed',
   'raw_provider_output_bypassed_normalization',
@@ -91,6 +99,7 @@ export type ResolveArtSourcesInput = {
   sourceManifest?: unknown;
   checkedInDefaults?: readonly ArtSourceManifestRecord[];
   provider?: ArtProvider;
+  providerPolicy?: ArtProviderPolicyInput;
   allowExplicitPlaceholder?: boolean;
   requireManualLocked?: boolean;
 };
@@ -178,11 +187,27 @@ export async function resolveArtSources(input: ResolveArtSourcesInput): Promise<
     });
   }
 
+  const policyDecision = input.provider === undefined && input.providerPolicy !== undefined ? resolveArtProviderPolicy(input.providerPolicy) : undefined;
+  if (policyDecision !== undefined && !policyDecision.ok) {
+    return buildReport({
+      projectId: planResult.data.projectId,
+      assets: [],
+      failures: intentManifestResult.data.intents.map((intent) => ({
+        assetId: intent.assetPlanId,
+        assetIntentId: intent.id,
+        blockers: [policyDecision.blocker]
+      })),
+      blockers: [policyDecision.blocker],
+      providerCalls: 0
+    });
+  }
+
   const records = [...manifestResult.records, ...checkedInDefaults.records];
   const planById = new Map(planResult.data.items.map((item) => [item.id, item]));
   const assets: ResolvedArtSourceAsset[] = [];
   const failures: ArtSourceResolutionFailure[] = [];
   let providerCalls = 0;
+  const provider = input.provider ?? providerFromPolicyDecision(policyDecision);
 
   for (const intent of intentManifestResult.data.intents) {
     const result = await resolveIntent({
@@ -190,7 +215,7 @@ export async function resolveArtSources(input: ResolveArtSourcesInput): Promise<
       intent,
       planItem: planById.get(intent.assetPlanId),
       records,
-      provider: input.provider,
+      provider,
       allowExplicitPlaceholder: input.allowExplicitPlaceholder === true
     });
     providerCalls += result.providerCalls;
@@ -208,6 +233,13 @@ export async function resolveArtSources(input: ResolveArtSourcesInput): Promise<
     blockers: uniqueBlockers(failures.flatMap((failure) => failure.blockers)),
     providerCalls
   });
+}
+
+function providerFromPolicyDecision(policyDecision: ArtProviderPolicyResult | undefined): ArtProvider | undefined {
+  if (policyDecision === undefined) {
+    return undefined;
+  }
+  return policyDecision.providerMode === 'deterministic_fake' ? createDeterministicFakeArtProvider() : createDisabledLiveArtProvider();
 }
 
 async function resolveIntent(input: ResolveIntentInput): Promise<ResolveIntentResult> {
