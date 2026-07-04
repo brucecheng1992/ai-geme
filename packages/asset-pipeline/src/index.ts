@@ -71,9 +71,25 @@ export {
   type ResolvedArtSourceAsset
 } from './art-source-resolver.js';
 export {
+  ART_PROVIDER_CONTRACT_VERSION,
+  DETERMINISTIC_FAKE_ART_PROVIDER_CAPABILITIES,
+  DISABLED_LIVE_ART_PROVIDER_CAPABILITIES,
+  createArtProviderRequest,
+  createDisabledLiveArtProvider,
+  type ArtProvider,
+  type ArtProviderCapabilities,
+  type ArtProviderErrorCode,
+  type ArtProviderFailure,
+  type ArtProviderMode,
+  type ArtProviderRequest,
+  type ArtProviderResolutionBlocker,
+  type ArtProviderResult,
+  type ArtProviderSuccess,
+  type DisabledLiveArtProviderOptions
+} from './art-provider-contract.js';
+export {
   DETERMINISTIC_FAKE_ART_PROVIDER_ID,
   createDeterministicFakeArtProvider,
-  type ArtProvider,
   type ArtProviderGenerationFailure,
   type ArtProviderGenerationResult,
   type ArtProviderGenerationSuccess,

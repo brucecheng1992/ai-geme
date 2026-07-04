@@ -8,11 +8,13 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   ArtSourceManifestSchema,
   AssetManifestAssetSchema,
+  DETERMINISTIC_FAKE_ART_PROVIDER_CAPABILITIES,
   createDeterministicFakeArtProvider,
   exportRuntimeArtAssetMetadataFromResolvedSources,
   resolveArtSources,
   type ArtAssetMetadata,
   type ArtProvider,
+  type ArtProviderRequest,
   type ArtSourceManifest,
   type AssetIntent,
   type AssetIntentManifest,
@@ -168,9 +170,8 @@ describe('Loop4 source-resolved art pipeline contracts', () => {
 
   it('uses deterministic fake provider metadata without network, API keys, or secret leakage', async () => {
     const originalFetch = globalThis.fetch;
-    const originalSecret = process.env.DEEPSEEK_API_KEY;
     let fetchCalls = 0;
-    process.env.DEEPSEEK_API_KEY = 'loop4-secret-that-must-not-appear';
+    const secretFixture = 'loop4-secret-that-must-not-appear';
     globalThis.fetch = (async () => {
       fetchCalls += 1;
       throw new Error('network calls are forbidden in fake art provider tests');
@@ -213,14 +214,9 @@ describe('Loop4 source-resolved art pipeline contracts', () => {
       });
       const providerJson = JSON.stringify(first);
       expect(providerJson).toContain('deterministic_fake_art_provider');
-      expect(providerJson).not.toContain('loop4-secret-that-must-not-appear');
+      expect(providerJson).not.toContain(secretFixture);
       expect(providerJson).not.toContain('DEEPSEEK_API_KEY');
     } finally {
-      if (originalSecret === undefined) {
-        delete process.env.DEEPSEEK_API_KEY;
-      } else {
-        process.env.DEEPSEEK_API_KEY = originalSecret;
-      }
       globalThis.fetch = originalFetch;
     }
   });
@@ -434,15 +430,19 @@ function providerMissingMetadata(): ArtProvider {
   let calls = 0;
   return {
     providerId: 'missing_metadata_fake_provider',
+    mode: 'deterministic_fake',
+    capabilities: DETERMINISTIC_FAKE_ART_PROVIDER_CAPABILITIES,
     get calls() {
       return calls;
     },
-    async generate(intent) {
+    async generate(request: ArtProviderRequest) {
       calls += 1;
       return {
         ok: true,
         providerId: 'missing_metadata_fake_provider',
-        assetIntentId: intent.id,
+        providerMode: 'deterministic_fake',
+        assetIntentId: request.intent.id,
+        outputKind: 'art_source_manifest_record',
         source: { ...providerSourceRecord(), metadata: undefined }
       };
     }
