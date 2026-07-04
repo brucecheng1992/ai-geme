@@ -1,4 +1,10 @@
 import type { ArtProviderErrorCode, ArtProviderMode, ArtProviderResolutionBlocker } from './art-provider-contract.js';
+import {
+  readArtProviderLivePreflightFromEnv,
+  resolveArtProviderLivePreflight,
+  type ArtProviderLivePreflightInput,
+  type ArtProviderLivePreflightResult
+} from './art-provider-live-preflight.js';
 
 export const ART_PROVIDER_POLICY_VERSION = 'art-provider-policy-v0.1' as const;
 
@@ -9,22 +15,29 @@ export type ArtProviderPolicyReason =
   | 'explicit_fake_provider'
   | 'disabled_live_provider_selected'
   | 'live_provider_requires_explicit_allow'
+  | 'live_provider_preflight_blocked'
   | 'live_provider_disabled_pending_implementation'
   | 'invalid_provider_mode';
 export type ArtProviderPolicyBlocker = Extract<
   ArtProviderResolutionBlocker,
-  'art_provider_live_call_not_allowed' | 'art_provider_policy_invalid_mode'
+  | 'art_provider_live_call_not_allowed'
+  | 'art_provider_policy_invalid_mode'
+  | 'art_provider_live_network_not_allowed'
+  | 'art_provider_live_credentials_missing'
+  | 'art_provider_live_cost_not_acknowledged'
+  | 'art_provider_live_artifact_write_not_approved'
+  | 'art_provider_live_preflight_invalid'
 >;
-export type ArtProviderPolicyErrorCode = Extract<
-  ArtProviderErrorCode,
-  'art_provider_live_call_not_allowed' | 'art_provider_policy_invalid_mode'
->;
+export type ArtProviderPolicyErrorCode = Extract<ArtProviderErrorCode, ArtProviderPolicyBlocker>;
 
 export type ArtProviderPolicyInput = {
   requestedMode?: string;
   allowLiveProvider?: boolean;
   source?: ArtProviderPolicySource;
-};
+} & Pick<
+  ArtProviderLivePreflightInput,
+  'allowNetwork' | 'credentialRef' | 'credentialAvailable' | 'costAcknowledged' | 'budgetLimitCents' | 'artifactWriteIntent'
+>;
 
 export type ArtProviderPolicySuccess = {
   ok: true;
@@ -36,6 +49,7 @@ export type ArtProviderPolicySuccess = {
   allowLiveProvider: boolean;
   reason: ArtProviderPolicyReason;
   requestedModeRaw?: string;
+  preflight?: ArtProviderLivePreflightResult;
 };
 
 export type ArtProviderPolicyFailure = {
@@ -51,6 +65,7 @@ export type ArtProviderPolicyFailure = {
   message: string;
   requestedMode?: ArtProviderPolicyRequestedMode;
   requestedModeRaw?: string;
+  preflight?: ArtProviderLivePreflightResult;
 };
 
 export type ArtProviderPolicyResult = ArtProviderPolicySuccess | ArtProviderPolicyFailure;
@@ -135,6 +150,39 @@ export function resolveArtProviderPolicy(input: ArtProviderPolicyInput = {}): Ar
     );
   }
 
+  const preflight = resolveArtProviderLivePreflight({
+    requestedProvider: requestedMode,
+    allowLiveProvider,
+    allowNetwork: input.allowNetwork,
+    credentialRef: input.credentialRef,
+    credentialAvailable: input.credentialAvailable,
+    costAcknowledged: input.costAcknowledged,
+    budgetLimitCents: input.budgetLimitCents,
+    artifactWriteIntent: input.artifactWriteIntent
+  });
+
+  if (!preflight.ok) {
+    const blocker = preflight.blockers[0] ?? 'art_provider_live_preflight_invalid';
+    return withOptionalRawMode(
+      {
+        ok: false,
+        version: ART_PROVIDER_POLICY_VERSION,
+        source,
+        requestedMode,
+        selectedMode: 'live_disabled',
+        providerMode: 'live_disabled',
+        allowLiveProvider,
+        reason: preflight.status === 'invalid' && blocker === 'art_provider_policy_invalid_mode' ? 'invalid_provider_mode' : 'live_provider_preflight_blocked',
+        blocker,
+        errorCode: blocker,
+        message: `Live art provider preflight failed: ${preflight.blockers.join(', ')}.`,
+        preflight
+      },
+      requestedModeRaw,
+      requestedMode
+    );
+  }
+
   return withOptionalRawMode(
     {
       ok: true,
@@ -144,7 +192,8 @@ export function resolveArtProviderPolicy(input: ArtProviderPolicyInput = {}): Ar
       selectedMode: 'live_disabled',
       providerMode: 'live_disabled',
       allowLiveProvider,
-      reason: 'live_provider_disabled_pending_implementation'
+      reason: 'live_provider_disabled_pending_implementation',
+      preflight
     },
     requestedModeRaw,
     requestedMode
@@ -157,11 +206,17 @@ export function resolveArtProviderPolicy(input: ArtProviderPolicyInput = {}): Ar
 export function readArtProviderPolicyFromEnv(env: Record<string, string | undefined>): ArtProviderPolicyInput {
   const requestedMode = normalizeRawMode(env.AI_GEME_ART_PROVIDER);
   const allowLiveProvider = parseBooleanEnv(env.AI_GEME_ALLOW_LIVE_ART_PROVIDER);
+  const livePreflightInput = readArtProviderLivePreflightFromEnv(env);
 
   return {
     source: 'env',
     ...(requestedMode === undefined ? {} : { requestedMode }),
-    ...(allowLiveProvider === undefined ? {} : { allowLiveProvider })
+    ...(allowLiveProvider === undefined ? {} : { allowLiveProvider }),
+    ...(livePreflightInput.allowNetwork === undefined ? {} : { allowNetwork: livePreflightInput.allowNetwork }),
+    ...(livePreflightInput.credentialAvailable === undefined ? {} : { credentialAvailable: livePreflightInput.credentialAvailable }),
+    ...(livePreflightInput.costAcknowledged === undefined ? {} : { costAcknowledged: livePreflightInput.costAcknowledged }),
+    ...(livePreflightInput.budgetLimitCents === undefined ? {} : { budgetLimitCents: livePreflightInput.budgetLimitCents }),
+    ...(livePreflightInput.artifactWriteIntent === undefined ? {} : { artifactWriteIntent: livePreflightInput.artifactWriteIntent })
   };
 }
 
@@ -169,7 +224,16 @@ function policySourceFor(input: ArtProviderPolicyInput): ArtProviderPolicySource
   if (input.source !== undefined) {
     return input.source;
   }
-  if (input.requestedMode === undefined && input.allowLiveProvider === undefined) {
+  if (
+    input.requestedMode === undefined &&
+    input.allowLiveProvider === undefined &&
+    input.allowNetwork === undefined &&
+    input.credentialRef === undefined &&
+    input.credentialAvailable === undefined &&
+    input.costAcknowledged === undefined &&
+    input.budgetLimitCents === undefined &&
+    input.artifactWriteIntent === undefined
+  ) {
     return 'default';
   }
   return 'caller';

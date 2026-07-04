@@ -7,6 +7,11 @@ export type ArtProviderMode = 'deterministic_fake' | 'live_disabled';
 export type ArtProviderErrorCode =
   | 'art_provider_live_call_not_allowed'
   | 'art_provider_policy_invalid_mode'
+  | 'art_provider_live_network_not_allowed'
+  | 'art_provider_live_credentials_missing'
+  | 'art_provider_live_cost_not_acknowledged'
+  | 'art_provider_live_artifact_write_not_approved'
+  | 'art_provider_live_preflight_invalid'
   | 'art_provider_generation_failed'
   | 'art_provider_output_malformed'
   | 'art_provider_secret_access_not_allowed';
@@ -14,6 +19,11 @@ export type ArtProviderErrorCode =
 export type ArtProviderResolutionBlocker =
   | 'art_provider_live_call_not_allowed'
   | 'art_provider_policy_invalid_mode'
+  | 'art_provider_live_network_not_allowed'
+  | 'art_provider_live_credentials_missing'
+  | 'art_provider_live_cost_not_acknowledged'
+  | 'art_provider_live_artifact_write_not_approved'
+  | 'art_provider_live_preflight_invalid'
   | 'provider_generation_failed'
   | 'provider_output_malformed';
 
