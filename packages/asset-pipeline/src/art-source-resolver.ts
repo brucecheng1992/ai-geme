@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 import { ArtAssetMetadataSchema, type ArtAssetMetadata } from './art-asset-metadata.schema.js';
 import { AssetIntentManifestSchema, type AssetIntent } from './asset-intent-manifest.js';
-import { createArtProviderRequest, type ArtProvider } from './art-provider-contract.js';
+import { createArtProviderRequest, type ArtProvider, type ArtProviderResult } from './art-provider-contract.js';
 import {
   ART_SOURCE_PRIORITY,
   ART_SOURCE_MANIFEST_VERSION,
@@ -238,6 +238,10 @@ async function resolveIntent(input: ResolveIntentInput): Promise<ResolveIntentRe
 
   if (input.provider !== undefined) {
     const providerResult = await input.provider.generate(createArtProviderRequest(input.intent, input.provider.mode));
+    if (!providerEnvelopeMatches(providerResult, input.provider, input.intent)) {
+      return providerMalformed(input.intent);
+    }
+
     if (!providerResult.ok) {
       return {
         ok: false,
@@ -250,11 +254,7 @@ async function resolveIntent(input: ResolveIntentInput): Promise<ResolveIntentRe
       };
     }
 
-    if (
-      providerResult.providerMode !== input.provider.mode ||
-      providerResult.assetIntentId !== input.intent.id ||
-      providerResult.outputKind !== 'art_source_manifest_record'
-    ) {
+    if (providerResult.outputKind !== 'art_source_manifest_record') {
       return providerMalformed(input.intent);
     }
 
@@ -440,6 +440,14 @@ function providerMalformed(intent: AssetIntent): ResolveIntentResult {
     },
     providerCalls: 1
   };
+}
+
+function providerEnvelopeMatches(result: ArtProviderResult, provider: ArtProvider, intent: AssetIntent): boolean {
+  return (
+    result.providerId === provider.providerId &&
+    result.providerMode === provider.mode &&
+    result.assetIntentId === intent.id
+  );
 }
 
 function buildReport(input: {

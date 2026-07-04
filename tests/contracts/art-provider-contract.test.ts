@@ -155,27 +155,54 @@ describe('Loop6 art provider contract and no-network safety skeleton', () => {
     });
   });
 
-  it('fails closed when provider success envelope does not match the request', async () => {
-    const provider = providerReturningMismatchedEnvelope();
+  it('fails closed when provider success envelope identity does not match the request', async () => {
+    const mismatches: ProviderEnvelopeMismatch[] = ['providerId', 'providerMode', 'assetIntentId'];
 
-    await expect(
-      resolveArtSources({
-        projectRoot: root,
-        plan: assetPlan(),
-        intentManifest: assetIntentManifest(),
-        provider
-      })
-    ).resolves.toMatchObject({
-      ok: false,
-      blockers: ['provider_output_malformed'],
-      failures: [
-        {
-          assetId: 'player',
-          assetIntentId: 'player_sprite',
-          blockers: ['provider_output_malformed']
-        }
-      ]
-    });
+    for (const mismatch of mismatches) {
+      await expect(
+        resolveArtSources({
+          projectRoot: root,
+          plan: assetPlan(),
+          intentManifest: assetIntentManifest(),
+          provider: providerReturningMismatchedSuccessEnvelope(mismatch)
+        })
+      ).resolves.toMatchObject({
+        ok: false,
+        blockers: ['provider_output_malformed'],
+        failures: [
+          {
+            assetId: 'player',
+            assetIntentId: 'player_sprite',
+            blockers: ['provider_output_malformed']
+          }
+        ]
+      });
+    }
+  });
+
+  it('fails closed when provider failure envelope identity does not match the request', async () => {
+    const mismatches: ProviderEnvelopeMismatch[] = ['providerId', 'providerMode', 'assetIntentId'];
+
+    for (const mismatch of mismatches) {
+      await expect(
+        resolveArtSources({
+          projectRoot: root,
+          plan: assetPlan(),
+          intentManifest: assetIntentManifest(),
+          provider: providerReturningMismatchedFailureEnvelope(mismatch)
+        })
+      ).resolves.toMatchObject({
+        ok: false,
+        blockers: ['provider_output_malformed'],
+        failures: [
+          {
+            assetId: 'player',
+            assetIntentId: 'player_sprite',
+            blockers: ['provider_output_malformed']
+          }
+        ]
+      });
+    }
   });
 
   it('does not call providers when manual_locked and provider-generated candidates both exist', async () => {
@@ -248,7 +275,9 @@ function providerReturningRawOutput(): ArtProvider {
   };
 }
 
-function providerReturningMismatchedEnvelope(): ArtProvider {
+type ProviderEnvelopeMismatch = 'providerId' | 'providerMode' | 'assetIntentId';
+
+function providerReturningMismatchedSuccessEnvelope(mismatch: ProviderEnvelopeMismatch): ArtProvider {
   let calls = 0;
   return {
     providerId: 'mismatched_envelope_provider',
@@ -267,11 +296,41 @@ function providerReturningMismatchedEnvelope(): ArtProvider {
       calls += 1;
       return {
         ok: true,
-        providerId: 'mismatched_envelope_provider',
-        providerMode: 'deterministic_fake',
-        assetIntentId: `${request.intent.id}_other`,
+        providerId: mismatch === 'providerId' ? 'other_provider' : 'mismatched_envelope_provider',
+        providerMode: mismatch === 'providerMode' ? 'live_disabled' : 'deterministic_fake',
+        assetIntentId: mismatch === 'assetIntentId' ? `${request.intent.id}_other` : request.intent.id,
         outputKind: 'art_source_manifest_record',
         source: providerSourceRecord()
+      };
+    }
+  };
+}
+
+function providerReturningMismatchedFailureEnvelope(mismatch: ProviderEnvelopeMismatch): ArtProvider {
+  let calls = 0;
+  return {
+    providerId: 'mismatched_failure_provider',
+    mode: 'deterministic_fake',
+    capabilities: {
+      deterministic: true,
+      network: 'forbidden',
+      credentials: 'not_required',
+      binaryWrites: 'forbidden',
+      rawOutputMayBypassNormalization: false
+    },
+    get calls() {
+      return calls;
+    },
+    async generate(request: ArtProviderRequest) {
+      calls += 1;
+      return {
+        ok: false,
+        providerId: mismatch === 'providerId' ? 'other_provider' : 'mismatched_failure_provider',
+        providerMode: mismatch === 'providerMode' ? 'live_disabled' : 'deterministic_fake',
+        assetIntentId: mismatch === 'assetIntentId' ? `${request.intent.id}_other` : request.intent.id,
+        errorCode: 'art_provider_generation_failed',
+        blocker: 'provider_generation_failed',
+        message: 'Mismatched failure envelope should not be accepted.'
       };
     }
   };
