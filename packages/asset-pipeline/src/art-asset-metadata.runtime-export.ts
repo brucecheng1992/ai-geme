@@ -4,6 +4,7 @@ import { dirname, isAbsolute, resolve } from 'node:path';
 import { ArtAssetMetadataSchema, type ArtAssetMetadata } from './art-asset-metadata.schema.js';
 import { validateArtAssetMetadataFiles } from './art-asset-metadata-validation.js';
 import type { ArtAssetMetadataValidationDiagnostic } from './art-asset-metadata-validation.types.js';
+import { ResolvedArtSourceAssetSchema } from './art-source-resolver.js';
 
 export const ART_ASSET_RUNTIME_METADATA_VERSION = '0.1' as const;
 export const ART_ASSET_RUNTIME_METADATA_GENERATOR = 'metadata:export-runtime' as const;
@@ -17,6 +18,7 @@ export type ArtAssetRuntimeExportDiagnosticCode =
   | 'ART_ASSET_METADATA_RUNTIME_EXPORT_DUPLICATE_ASSET_ID'
   | 'ART_ASSET_METADATA_RUNTIME_EXPORT_EMPTY_INPUT'
   | 'ART_ASSET_METADATA_RUNTIME_EXPORT_ABSOLUTE_PATH_REJECTED'
+  | 'ART_ASSET_METADATA_RUNTIME_EXPORT_RAW_PROVIDER_OUTPUT_REJECTED'
   | 'ART_ASSET_METADATA_RUNTIME_EXPORT_USAGE_ERROR';
 
 export type ArtAssetRuntimeExportDiagnostic = {
@@ -121,6 +123,113 @@ export async function exportRuntimeArtAssetMetadataFromTargets(
   options: ExportRuntimeArtAssetMetadataOptions = {}
 ): Promise<ExportRuntimeArtAssetMetadataResult> {
   return exportRuntimeArtAssetMetadataFromTargetsInternal(targets, options);
+}
+
+export async function exportRuntimeArtAssetMetadataFromResolvedSources(
+  records: readonly unknown[],
+  options: ExportRuntimeArtAssetMetadataOptions = {}
+): Promise<ExportRuntimeArtAssetMetadataResult> {
+  if (records.length === 0) {
+    return failedResult(
+      [createRuntimeExportDiagnostic('ART_ASSET_METADATA_RUNTIME_EXPORT_EMPTY_INPUT', 'No resolved art source metadata records were provided.')],
+      options.outputPath
+    );
+  }
+
+  const metadataRecords: ArtAssetMetadata[] = [];
+  const diagnostics: ArtAssetRuntimeExportDiagnostic[] = [];
+
+  for (const [index, record] of records.entries()) {
+    const jsonPath = `$[${index}]`;
+    if (!isObjectRecord(record)) {
+      diagnostics.push(
+        createRuntimeExportDiagnostic(
+          'ART_ASSET_METADATA_RUNTIME_EXPORT_RAW_PROVIDER_OUTPUT_REJECTED',
+          'Resolved art source runtime export requires normalizedMetadata records.',
+          undefined,
+          jsonPath
+        )
+      );
+      continue;
+    }
+
+    if ('raw_provider_output' in record) {
+      diagnostics.push(
+        createRuntimeExportDiagnostic(
+          'ART_ASSET_METADATA_RUNTIME_EXPORT_RAW_PROVIDER_OUTPUT_REJECTED',
+          'Raw provider output cannot bypass art source normalization.',
+          undefined,
+          `${jsonPath}.raw_provider_output`
+        )
+      );
+      continue;
+    }
+
+    const parsed = ResolvedArtSourceAssetSchema.safeParse(record);
+    if (!parsed.success) {
+      diagnostics.push(
+        createRuntimeExportDiagnostic(
+          'ART_ASSET_METADATA_RUNTIME_EXPORT_RAW_PROVIDER_OUTPUT_REJECTED',
+          'Runtime export requires a complete resolver-produced art source record.',
+          undefined,
+          jsonPath
+        )
+      );
+      continue;
+    }
+
+    if (parsed.data.blockers.length > 0) {
+      diagnostics.push(
+        createRuntimeExportDiagnostic(
+          'ART_ASSET_METADATA_RUNTIME_EXPORT_VALIDATION_FAILED',
+          'Blocked resolved art source records cannot be exported to runtime metadata.',
+          undefined,
+          `${jsonPath}.blockers`,
+          parsed.data.normalizedMetadata.asset_id
+        )
+      );
+      continue;
+    }
+
+    metadataRecords.push(parsed.data.normalizedMetadata);
+  }
+
+  if (diagnostics.length > 0) {
+    return failedResult(diagnostics, options.outputPath);
+  }
+
+  const duplicateDiagnostics = findDuplicateAssetDiagnostics(metadataRecords);
+  if (duplicateDiagnostics.length > 0) {
+    return failedResult(duplicateDiagnostics, options.outputPath);
+  }
+
+  const assets = metadataRecords.map((metadata) => buildRuntimeAssetMetadata(metadata));
+  const pathDiagnostics = assets.flatMap((asset) => validateRuntimeAssetPaths(asset));
+  if (pathDiagnostics.length > 0) {
+    return failedResult(sortRuntimeExportDiagnostics(pathDiagnostics), options.outputPath);
+  }
+
+  assets.sort((left, right) => left.asset_id.localeCompare(right.asset_id));
+  const artifact: RuntimeArtAssetMetadataExportArtifact = {
+    runtime_metadata_version: ART_ASSET_RUNTIME_METADATA_VERSION,
+    generated_by: ART_ASSET_RUNTIME_METADATA_GENERATOR,
+    asset_count: assets.length,
+    assets
+  };
+
+  if (options.outputPath !== undefined) {
+    const writeResult = await writeRuntimeExportArtifact(options.outputPath, artifact);
+    if (!writeResult.ok) {
+      return failedResult([writeResult.diagnostic], options.outputPath);
+    }
+  }
+
+  return {
+    ok: true,
+    diagnostics: [],
+    artifact,
+    ...(options.outputPath === undefined ? {} : { outputPath: options.outputPath })
+  };
 }
 
 async function exportRuntimeArtAssetMetadataFromTargetsInternal(
@@ -339,6 +448,26 @@ function validateRuntimeAssetPaths(asset: RuntimeArtAssetMetadata): ArtAssetRunt
   ].filter((diagnostic): diagnostic is ArtAssetRuntimeExportDiagnostic => diagnostic !== undefined);
 }
 
+function findDuplicateAssetDiagnostics(records: readonly ArtAssetMetadata[]): ArtAssetRuntimeExportDiagnostic[] {
+  const seen = new Set<string>();
+  const diagnostics: ArtAssetRuntimeExportDiagnostic[] = [];
+  for (const record of records) {
+    if (seen.has(record.asset_id)) {
+      diagnostics.push(
+        createRuntimeExportDiagnostic(
+          'ART_ASSET_METADATA_RUNTIME_EXPORT_DUPLICATE_ASSET_ID',
+          `Duplicate asset_id in resolved art source metadata: ${record.asset_id}.`,
+          undefined,
+          '$.normalizedMetadata.asset_id',
+          record.asset_id
+        )
+      );
+    }
+    seen.add(record.asset_id);
+  }
+  return diagnostics;
+}
+
 function validateRuntimePath(value: string, jsonPath: string, assetId: string): ArtAssetRuntimeExportDiagnostic | undefined {
   if (isRuntimeSafeRelativePath(value)) {
     return undefined;
@@ -358,6 +487,10 @@ function isRuntimeSafeRelativePath(value: string): boolean {
     return false;
   }
   return value.split('/').every((segment) => segment.length > 0 && segment !== '.' && segment !== '..');
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function toRuntimeExportValidationDiagnostic(validationDiagnostic: ArtAssetMetadataValidationDiagnostic): ArtAssetRuntimeExportDiagnostic {
