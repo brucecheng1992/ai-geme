@@ -12,6 +12,10 @@ import {
   type ArtProvider,
   type ArtProviderResult
 } from './art-provider-contract.js';
+import {
+  ArtProviderLivePreflightEvidenceSchema,
+  type ArtProviderLivePreflightEvidence
+} from './art-provider-live-preflight-evidence.js';
 import { resolveArtProviderPolicy, type ArtProviderPolicyInput, type ArtProviderPolicyResult } from './art-provider-policy.js';
 import {
   ART_SOURCE_PRIORITY,
@@ -90,7 +94,8 @@ export const ArtSourceResolutionReportSchema = z.strictObject({
     fallbackUsed: z.number().int().min(0)
   }),
   assets: z.array(ResolvedArtSourceAssetSchema),
-  failures: z.array(ArtSourceResolutionFailureSchema)
+  failures: z.array(ArtSourceResolutionFailureSchema),
+  livePreflightEvidence: z.array(ArtProviderLivePreflightEvidenceSchema).max(4).optional()
 });
 
 export type ResolvedArtSourceAsset = z.infer<typeof ResolvedArtSourceAssetSchema>;
@@ -203,7 +208,8 @@ export async function resolveArtSources(input: ResolveArtSourcesInput): Promise<
         blockers: [policyDecision.blocker]
       })),
       blockers: [policyDecision.blocker],
-      providerCalls: 0
+      providerCalls: 0,
+      livePreflightEvidence: livePreflightEvidenceForPolicy(policyDecision)
     });
   }
 
@@ -236,7 +242,8 @@ export async function resolveArtSources(input: ResolveArtSourcesInput): Promise<
     assets,
     failures,
     blockers: uniqueBlockers(failures.flatMap((failure) => failure.blockers)),
-    providerCalls
+    providerCalls,
+    livePreflightEvidence: livePreflightEvidenceForPolicy(policyDecision)
   });
 }
 
@@ -493,8 +500,10 @@ function buildReport(input: {
   failures: ArtSourceResolutionFailure[];
   blockers: ArtSourceResolutionBlocker[];
   providerCalls: number;
+  livePreflightEvidence?: readonly ArtProviderLivePreflightEvidence[];
 }): ArtSourceResolutionReport {
   const blockers = uniqueBlockers(input.blockers);
+  const livePreflightEvidence = uniqueLivePreflightEvidence(input.livePreflightEvidence ?? []);
   return ArtSourceResolutionReportSchema.parse({
     version: ART_SOURCE_RESOLUTION_REPORT_VERSION,
     sourceManifestVersion: ART_SOURCE_MANIFEST_VERSION,
@@ -510,7 +519,8 @@ function buildReport(input: {
       fallbackUsed: input.assets.filter((asset) => asset.fallback).length
     },
     assets: input.assets,
-    failures: input.failures
+    failures: input.failures,
+    ...(livePreflightEvidence.length === 0 ? {} : { livePreflightEvidence })
   });
 }
 
@@ -563,4 +573,29 @@ function sha256(value: Buffer): string {
 
 function uniqueBlockers(blockers: readonly ArtSourceResolutionBlocker[]): ArtSourceResolutionBlocker[] {
   return [...new Set(blockers)];
+}
+
+function livePreflightEvidenceForPolicy(policyDecision: ArtProviderPolicyResult | undefined): ArtProviderLivePreflightEvidence[] {
+  return policyDecision?.livePreflightEvidence === undefined ? [] : [policyDecision.livePreflightEvidence];
+}
+
+function uniqueLivePreflightEvidence(evidence: readonly ArtProviderLivePreflightEvidence[]): ArtProviderLivePreflightEvidence[] {
+  const seen = new Set<string>();
+  const unique: ArtProviderLivePreflightEvidence[] = [];
+  for (const item of evidence) {
+    const key = [
+      item.contractVersion,
+      item.requestedProvider,
+      item.effectiveProvider,
+      item.readinessStatus,
+      item.summaryCode,
+      item.blockerCodes.join(','),
+      item.invalidFieldNames.join(',')
+    ].join('|');
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(item);
+    }
+  }
+  return unique;
 }

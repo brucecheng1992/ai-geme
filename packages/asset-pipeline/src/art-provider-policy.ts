@@ -1,5 +1,9 @@
 import type { ArtProviderErrorCode, ArtProviderMode, ArtProviderResolutionBlocker } from './art-provider-contract.js';
 import {
+  createArtProviderLivePreflightEvidence,
+  type ArtProviderLivePreflightEvidence
+} from './art-provider-live-preflight-evidence.js';
+import {
   readArtProviderLivePreflightFromEnv,
   resolveArtProviderLivePreflight,
   type ArtProviderLivePreflightInput,
@@ -56,6 +60,7 @@ export type ArtProviderPolicySuccess = {
   reason: ArtProviderPolicyReason;
   requestedModeRaw?: string;
   preflight?: ArtProviderLivePreflightResult;
+  livePreflightEvidence?: ArtProviderLivePreflightEvidence;
 };
 
 export type ArtProviderPolicyFailure = {
@@ -72,6 +77,7 @@ export type ArtProviderPolicyFailure = {
   requestedMode?: ArtProviderPolicyRequestedMode;
   requestedModeRaw?: string;
   preflight?: ArtProviderLivePreflightResult;
+  livePreflightEvidence?: ArtProviderLivePreflightEvidence;
 };
 
 export type ArtProviderPolicyResult = ArtProviderPolicySuccess | ArtProviderPolicyFailure;
@@ -147,9 +153,11 @@ export function resolveArtProviderPolicy(input: ArtProviderPolicyInput = {}): Ar
     artifactWriteIntent: input.artifactWriteIntent,
     invalidEnvFields: input.invalidEnvFields
   };
+  const preflight = resolveArtProviderLivePreflight(preflightInput);
+  const livePreflightEvidence = createArtProviderLivePreflightEvidence(preflight);
 
   if (input.invalidEnvFields !== undefined && input.invalidEnvFields.length > 0) {
-    return preflightPolicyFailure(resolveArtProviderLivePreflight(preflightInput), {
+    return preflightPolicyFailure(preflight, {
       source,
       requestedMode,
       requestedModeRaw,
@@ -170,14 +178,14 @@ export function resolveArtProviderPolicy(input: ArtProviderPolicyInput = {}): Ar
         reason: 'live_provider_requires_explicit_allow',
         blocker: 'art_provider_live_call_not_allowed',
         errorCode: 'art_provider_live_call_not_allowed',
-        message: 'Live art provider selection requires explicit allowLiveProvider=true.'
+        message: 'Live art provider selection requires explicit allowLiveProvider=true.',
+        preflight,
+        livePreflightEvidence
       },
       requestedModeRaw,
       requestedMode
     );
   }
-
-  const preflight = resolveArtProviderLivePreflight(preflightInput);
 
   if (!preflight.ok) {
     return preflightPolicyFailure(preflight, {
@@ -198,7 +206,8 @@ export function resolveArtProviderPolicy(input: ArtProviderPolicyInput = {}): Ar
       providerMode: 'live_disabled',
       allowLiveProvider,
       reason: 'live_provider_disabled_pending_implementation',
-      preflight
+      preflight,
+      livePreflightEvidence
     },
     requestedModeRaw,
     requestedMode
@@ -298,7 +307,8 @@ function preflightPolicyFailure(
       blocker,
       errorCode: blocker,
       message: `Live art provider preflight failed: ${preflight.blockers.join(', ')}.`,
-      preflight
+      preflight,
+      livePreflightEvidence: createArtProviderLivePreflightEvidence(preflight)
     },
     context.requestedModeRaw,
     context.requestedMode
