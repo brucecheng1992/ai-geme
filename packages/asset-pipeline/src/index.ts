@@ -74,12 +74,14 @@ export {
   ART_PROVIDER_CONTRACT_VERSION,
   DETERMINISTIC_FAKE_ART_PROVIDER_CAPABILITIES,
   DISABLED_LIVE_ART_PROVIDER_CAPABILITIES,
+  LIVE_DRY_RUN_ART_PROVIDER_CAPABILITIES,
   createArtProviderRequest,
   createDisabledLiveArtProvider,
   type ArtProvider,
   type ArtProviderCapabilities,
   type ArtProviderErrorCode,
   type ArtProviderFailure,
+  type ArtProviderLiveDryRunResultEnvelope,
   type ArtProviderMode,
   type ArtProviderRequest,
   type ArtProviderResolutionBlocker,
@@ -111,6 +113,14 @@ export {
   createArtProviderLivePreflightReport,
   type ArtProviderLivePreflightReport
 } from './art-provider-live-preflight-report.js';
+export {
+  ART_PROVIDER_LIVE_DRY_RUN_ADAPTER_VERSION,
+  LIVE_DRY_RUN_ART_PROVIDER_ID,
+  ArtProviderLiveDryRunResultSchema,
+  createLiveDryRunArtProvider,
+  type ArtProviderLiveDryRunResult,
+  type LiveDryRunArtProviderOptions
+} from './art-provider-live-dry-run-adapter.js';
 export {
   ART_PROVIDER_POLICY_VERSION,
   readArtProviderPolicyFromEnv,

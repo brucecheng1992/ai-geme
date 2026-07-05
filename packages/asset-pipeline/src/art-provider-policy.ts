@@ -21,6 +21,7 @@ export type ArtProviderPolicyReason =
   | 'live_provider_requires_explicit_allow'
   | 'live_provider_preflight_blocked'
   | 'live_provider_disabled_pending_implementation'
+  | 'live_provider_dry_run_enabled'
   | 'invalid_provider_mode';
 export type ArtProviderPolicyBlocker = Extract<
   ArtProviderResolutionBlocker,
@@ -37,6 +38,7 @@ export type ArtProviderPolicyErrorCode = Extract<ArtProviderErrorCode, ArtProvid
 export type ArtProviderPolicyInput = {
   requestedMode?: string;
   allowLiveProvider?: boolean;
+  allowLiveDryRun?: boolean;
   source?: ArtProviderPolicySource;
 } & Pick<
   ArtProviderLivePreflightInput,
@@ -57,6 +59,7 @@ export type ArtProviderPolicySuccess = {
   selectedMode: ArtProviderMode;
   providerMode: ArtProviderMode;
   allowLiveProvider: boolean;
+  allowLiveDryRun: boolean;
   reason: ArtProviderPolicyReason;
   requestedModeRaw?: string;
   preflight?: ArtProviderLivePreflightResult;
@@ -70,6 +73,7 @@ export type ArtProviderPolicyFailure = {
   selectedMode: 'live_disabled';
   providerMode: 'live_disabled';
   allowLiveProvider: boolean;
+  allowLiveDryRun: boolean;
   reason: ArtProviderPolicyReason;
   blocker: ArtProviderPolicyBlocker;
   errorCode: ArtProviderPolicyErrorCode;
@@ -89,6 +93,7 @@ export type ArtProviderPolicyResult = ArtProviderPolicySuccess | ArtProviderPoli
 export function resolveArtProviderPolicy(input: ArtProviderPolicyInput = {}): ArtProviderPolicyResult {
   const source = policySourceFor(input);
   const allowLiveProvider = input.allowLiveProvider === true;
+  const allowLiveDryRun = input.allowLiveDryRun === true;
   const requestedModeRaw = normalizeRawMode(input.requestedMode);
   const requestedMode = requestedModeRaw === undefined ? 'fake' : parseRequestedMode(requestedModeRaw);
 
@@ -100,6 +105,7 @@ export function resolveArtProviderPolicy(input: ArtProviderPolicyInput = {}): Ar
       selectedMode: 'live_disabled',
       providerMode: 'live_disabled',
       allowLiveProvider,
+      allowLiveDryRun,
       reason: 'invalid_provider_mode',
       blocker: 'art_provider_policy_invalid_mode',
       errorCode: 'art_provider_policy_invalid_mode',
@@ -118,6 +124,7 @@ export function resolveArtProviderPolicy(input: ArtProviderPolicyInput = {}): Ar
         selectedMode: 'deterministic_fake',
         providerMode: 'deterministic_fake',
         allowLiveProvider,
+        allowLiveDryRun,
         reason: source === 'default' ? 'default_fake_provider' : 'explicit_fake_provider'
       },
       requestedModeRaw,
@@ -135,6 +142,7 @@ export function resolveArtProviderPolicy(input: ArtProviderPolicyInput = {}): Ar
         selectedMode: 'live_disabled',
         providerMode: 'live_disabled',
         allowLiveProvider,
+        allowLiveDryRun,
         reason: 'disabled_live_provider_selected'
       },
       requestedModeRaw,
@@ -161,7 +169,8 @@ export function resolveArtProviderPolicy(input: ArtProviderPolicyInput = {}): Ar
       source,
       requestedMode,
       requestedModeRaw,
-      allowLiveProvider
+      allowLiveProvider,
+      allowLiveDryRun
     });
   }
 
@@ -175,6 +184,7 @@ export function resolveArtProviderPolicy(input: ArtProviderPolicyInput = {}): Ar
         selectedMode: 'live_disabled',
         providerMode: 'live_disabled',
         allowLiveProvider,
+        allowLiveDryRun,
         reason: 'live_provider_requires_explicit_allow',
         blocker: 'art_provider_live_call_not_allowed',
         errorCode: 'art_provider_live_call_not_allowed',
@@ -192,8 +202,29 @@ export function resolveArtProviderPolicy(input: ArtProviderPolicyInput = {}): Ar
       source,
       requestedMode,
       requestedModeRaw,
-      allowLiveProvider
+      allowLiveProvider,
+      allowLiveDryRun
     });
+  }
+
+  if (allowLiveDryRun) {
+    return withOptionalRawMode(
+      {
+        ok: true,
+        version: ART_PROVIDER_POLICY_VERSION,
+        source,
+        requestedMode,
+        selectedMode: 'live_dry_run',
+        providerMode: 'live_dry_run',
+        allowLiveProvider,
+        allowLiveDryRun,
+        reason: 'live_provider_dry_run_enabled',
+        preflight,
+        livePreflightEvidence
+      },
+      requestedModeRaw,
+      requestedMode
+    );
   }
 
   return withOptionalRawMode(
@@ -205,6 +236,7 @@ export function resolveArtProviderPolicy(input: ArtProviderPolicyInput = {}): Ar
       selectedMode: 'live_disabled',
       providerMode: 'live_disabled',
       allowLiveProvider,
+      allowLiveDryRun,
       reason: 'live_provider_disabled_pending_implementation',
       preflight,
       livePreflightEvidence
@@ -242,6 +274,7 @@ function policySourceFor(input: ArtProviderPolicyInput): ArtProviderPolicySource
   if (
     input.requestedMode === undefined &&
     input.allowLiveProvider === undefined &&
+    input.allowLiveDryRun === undefined &&
     input.allowNetwork === undefined &&
     input.credentialRef === undefined &&
     input.credentialAvailable === undefined &&
@@ -291,6 +324,7 @@ function preflightPolicyFailure(
     requestedMode: ArtProviderPolicyRequestedMode;
     requestedModeRaw: string | undefined;
     allowLiveProvider: boolean;
+    allowLiveDryRun: boolean;
   }
 ): ArtProviderPolicyFailure {
   const blocker = preflight.blockers[0] ?? 'art_provider_live_preflight_invalid';
@@ -303,6 +337,7 @@ function preflightPolicyFailure(
       selectedMode: 'live_disabled',
       providerMode: 'live_disabled',
       allowLiveProvider: context.allowLiveProvider,
+      allowLiveDryRun: context.allowLiveDryRun,
       reason: preflight.status === 'invalid' && blocker === 'art_provider_policy_invalid_mode' ? 'invalid_provider_mode' : 'live_provider_preflight_blocked',
       blocker,
       errorCode: blocker,
