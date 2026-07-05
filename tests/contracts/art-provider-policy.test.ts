@@ -26,6 +26,12 @@ type PolicyDecision = {
   reason: string;
   blocker?: string;
   errorCode?: string;
+  preflight?: {
+    ok: boolean;
+    status: string;
+    executionEnabled: boolean;
+    blockers: string[];
+  };
 };
 
 const policyApi = assetPipeline as unknown as PolicyApi;
@@ -66,12 +72,24 @@ describe('Loop7 art provider policy gate', () => {
     const envInput = policyApi.readArtProviderPolicyFromEnv?.({
       AI_GEME_ART_PROVIDER: 'live',
       AI_GEME_ALLOW_LIVE_ART_PROVIDER: 'true',
+      AI_GEME_ALLOW_LIVE_ART_NETWORK: 'true',
+      AI_GEME_ART_PROVIDER_CREDENTIAL_REF: 'must-not-be-copied',
+      AI_GEME_ART_PROVIDER_CREDENTIAL_AVAILABLE: 'true',
+      AI_GEME_ART_PROVIDER_COST_ACKNOWLEDGED: 'true',
+      AI_GEME_ART_PROVIDER_BUDGET_LIMIT_CENTS: '2500',
+      AI_GEME_ART_PROVIDER_ARTIFACT_WRITE_INTENT: 'write-through-approved',
       DEEPSEEK_API_KEY: 'must-not-be-copied'
     });
     expect(envInput).toEqual({
       source: 'env',
       requestedMode: 'live',
-      allowLiveProvider: true
+      allowLiveProvider: true,
+      allowNetwork: true,
+      credentialRef: 'env:AI_GEME_ART_PROVIDER_CREDENTIAL_REF',
+      credentialAvailable: true,
+      costAcknowledged: true,
+      budgetLimitCents: 2500,
+      artifactWriteIntent: 'write-through-approved'
     });
 
     const livePolicy = policyApi.resolveArtProviderPolicy?.(envInput);
@@ -82,9 +100,103 @@ describe('Loop7 art provider policy gate', () => {
       selectedMode: 'live_disabled',
       providerMode: 'live_disabled',
       allowLiveProvider: true,
-      reason: 'live_provider_disabled_pending_implementation'
+      reason: 'live_provider_disabled_pending_implementation',
+      preflight: {
+        ok: true,
+        status: 'preflight_ready_provider_unimplemented',
+        executionEnabled: false,
+        blockers: []
+      }
     });
     expect(JSON.stringify({ envInput, livePolicy })).not.toContain('must-not-be-copied');
+  });
+
+  it('returns typed invalid policy blockers for malformed env-like boolean values', () => {
+    const envInput = policyApi.readArtProviderPolicyFromEnv?.({
+      AI_GEME_ART_PROVIDER: 'live',
+      AI_GEME_ALLOW_LIVE_ART_PROVIDER: 'maybe',
+      AI_GEME_ALLOW_LIVE_ART_NETWORK: 'true',
+      AI_GEME_ART_PROVIDER_CREDENTIAL_REF: 'must-not-be-copied',
+      AI_GEME_ART_PROVIDER_CREDENTIAL_AVAILABLE: 'true',
+      AI_GEME_ART_PROVIDER_COST_ACKNOWLEDGED: 'true',
+      AI_GEME_ART_PROVIDER_BUDGET_LIMIT_CENTS: '2500',
+      AI_GEME_ART_PROVIDER_ARTIFACT_WRITE_INTENT: 'write-through-approved'
+    });
+
+    expect(envInput).toMatchObject({
+      source: 'env',
+      requestedMode: 'live',
+      invalidEnvFields: ['allowLiveProvider']
+    });
+
+    expect(policyApi.resolveArtProviderPolicy?.(envInput)).toMatchObject({
+      ok: false,
+      source: 'env',
+      requestedMode: 'live',
+      selectedMode: 'live_disabled',
+      providerMode: 'live_disabled',
+      blocker: 'art_provider_live_preflight_invalid',
+      errorCode: 'art_provider_live_preflight_invalid',
+      reason: 'live_provider_preflight_blocked',
+      preflight: {
+        ok: false,
+        status: 'invalid',
+        executionEnabled: false,
+        blockers: ['art_provider_live_preflight_invalid'],
+        invalidFields: ['allowLiveProvider']
+      }
+    });
+    expect(JSON.stringify(envInput)).not.toContain('must-not-be-copied');
+  });
+
+  it('ignores malformed live-lane env fields for fake and disabled-live policy modes', () => {
+    const fakeEnvInput = policyApi.readArtProviderPolicyFromEnv?.({
+      AI_GEME_ART_PROVIDER: 'fake',
+      AI_GEME_ALLOW_LIVE_ART_PROVIDER: 'maybe',
+      AI_GEME_ALLOW_LIVE_ART_NETWORK: '1',
+      AI_GEME_ART_PROVIDER_CREDENTIAL_AVAILABLE: 'yes',
+      AI_GEME_ART_PROVIDER_COST_ACKNOWLEDGED: 'no',
+      AI_GEME_ART_PROVIDER_BUDGET_LIMIT_CENTS: 'not-a-number',
+      AI_GEME_ART_PROVIDER_ARTIFACT_WRITE_INTENT: 'write-through-approved'
+    });
+
+    expect(fakeEnvInput).toMatchObject({
+      source: 'env',
+      requestedMode: 'fake',
+      invalidEnvFields: ['allowLiveProvider', 'allowNetwork', 'credentialAvailable', 'costAcknowledged', 'budgetLimitCents']
+    });
+    expect(policyApi.resolveArtProviderPolicy?.(fakeEnvInput)).toMatchObject({
+      ok: true,
+      source: 'env',
+      requestedMode: 'fake',
+      selectedMode: 'deterministic_fake',
+      providerMode: 'deterministic_fake',
+      reason: 'explicit_fake_provider'
+    });
+
+    const disabledLiveEnvInput = policyApi.readArtProviderPolicyFromEnv?.({
+      AI_GEME_ART_PROVIDER: 'disabled-live',
+      AI_GEME_ALLOW_LIVE_ART_PROVIDER: 'maybe',
+      AI_GEME_ALLOW_LIVE_ART_NETWORK: '1',
+      AI_GEME_ART_PROVIDER_CREDENTIAL_AVAILABLE: 'yes',
+      AI_GEME_ART_PROVIDER_COST_ACKNOWLEDGED: 'no',
+      AI_GEME_ART_PROVIDER_BUDGET_LIMIT_CENTS: 'not-a-number',
+      AI_GEME_ART_PROVIDER_ARTIFACT_WRITE_INTENT: 'write-through-approved'
+    });
+
+    expect(disabledLiveEnvInput).toMatchObject({
+      source: 'env',
+      requestedMode: 'disabled-live',
+      invalidEnvFields: ['allowLiveProvider', 'allowNetwork', 'credentialAvailable', 'costAcknowledged', 'budgetLimitCents']
+    });
+    expect(policyApi.resolveArtProviderPolicy?.(disabledLiveEnvInput)).toMatchObject({
+      ok: true,
+      source: 'env',
+      requestedMode: 'disabled-live',
+      selectedMode: 'live_disabled',
+      providerMode: 'live_disabled',
+      reason: 'disabled_live_provider_selected'
+    });
   });
 
   it('fails closed for live policy without explicit allow and for invalid provider modes', () => {
@@ -109,6 +221,30 @@ describe('Loop7 art provider policy gate', () => {
       blocker: 'art_provider_policy_invalid_mode',
       errorCode: 'art_provider_policy_invalid_mode',
       reason: 'invalid_provider_mode'
+    });
+  });
+
+  it('fails closed when live policy is explicitly allowed but live preflight prerequisites are missing', () => {
+    expect(policyApi.resolveArtProviderPolicy?.({ requestedMode: 'live', allowLiveProvider: true })).toMatchObject({
+      ok: false,
+      requestedMode: 'live',
+      selectedMode: 'live_disabled',
+      providerMode: 'live_disabled',
+      allowLiveProvider: true,
+      blocker: 'art_provider_live_network_not_allowed',
+      errorCode: 'art_provider_live_network_not_allowed',
+      reason: 'live_provider_preflight_blocked',
+      preflight: {
+        ok: false,
+        status: 'blocked',
+        executionEnabled: false,
+        blockers: [
+          'art_provider_live_network_not_allowed',
+          'art_provider_live_credentials_missing',
+          'art_provider_live_cost_not_acknowledged',
+          'art_provider_live_artifact_write_not_approved'
+        ]
+      }
     });
   });
 
@@ -166,8 +302,28 @@ describe('Loop7 art provider policy gate', () => {
       const allowedLive = await resolveArtSources({
         plan: assetPlan(),
         intentManifest: assetIntentManifest(),
-        providerPolicy: { requestedMode: 'live', allowLiveProvider: true }
-      } satisfies ResolveArtSourcesInput & { providerPolicy: { requestedMode: string; allowLiveProvider: boolean } });
+        providerPolicy: {
+          requestedMode: 'live',
+          allowLiveProvider: true,
+          allowNetwork: true,
+          credentialRef: 'credential-ref-live-art-provider',
+          credentialAvailable: true,
+          costAcknowledged: true,
+          budgetLimitCents: 2500,
+          artifactWriteIntent: 'write-through-approved'
+        }
+      } satisfies ResolveArtSourcesInput & {
+        providerPolicy: {
+          requestedMode: string;
+          allowLiveProvider: boolean;
+          allowNetwork: boolean;
+          credentialRef: string;
+          credentialAvailable: boolean;
+          costAcknowledged: boolean;
+          budgetLimitCents: number;
+          artifactWriteIntent: string;
+        };
+      });
 
       expect(fetchCalls).toBe(0);
       expect(allowedLive).toMatchObject({
@@ -183,6 +339,26 @@ describe('Loop7 art provider policy gate', () => {
         ]
       });
       expect(JSON.stringify(allowedLive)).not.toMatch(/API_KEY|authorization|Bearer|secret/i);
+
+      const missingPreflight = await resolveArtSources({
+        plan: assetPlan(),
+        intentManifest: assetIntentManifest(),
+        providerPolicy: { requestedMode: 'live', allowLiveProvider: true }
+      } satisfies ResolveArtSourcesInput & { providerPolicy: { requestedMode: string; allowLiveProvider: boolean } });
+
+      expect(fetchCalls).toBe(0);
+      expect(missingPreflight).toMatchObject({
+        ok: false,
+        blockers: ['art_provider_live_network_not_allowed'],
+        summary: { providerCalls: 0 },
+        failures: [
+          {
+            assetId: 'player',
+            assetIntentId: 'player_sprite',
+            blockers: ['art_provider_live_network_not_allowed']
+          }
+        ]
+      });
     } finally {
       globalThis.fetch = originalFetch;
     }

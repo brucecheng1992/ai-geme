@@ -88,6 +88,18 @@ export {
   type DisabledLiveArtProviderOptions
 } from './art-provider-contract.js';
 export {
+  ART_PROVIDER_LIVE_PREFLIGHT_VERSION,
+  readArtProviderLivePreflightFromEnv,
+  resolveArtProviderLivePreflight,
+  type ArtProviderLivePreflightArtifactWriteIntent,
+  type ArtProviderLivePreflightBlocker,
+  type ArtProviderLivePreflightErrorCode,
+  type ArtProviderLivePreflightInput,
+  type ArtProviderLivePreflightRequestedProvider,
+  type ArtProviderLivePreflightResult,
+  type ArtProviderLivePreflightStatus
+} from './art-provider-live-preflight.js';
+export {
   ART_PROVIDER_POLICY_VERSION,
   readArtProviderPolicyFromEnv,
   resolveArtProviderPolicy,
