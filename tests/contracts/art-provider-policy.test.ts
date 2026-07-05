@@ -74,6 +74,7 @@ describe('Loop7 art provider policy gate', () => {
       AI_GEME_ALLOW_LIVE_ART_PROVIDER: 'true',
       AI_GEME_ALLOW_LIVE_ART_NETWORK: 'true',
       AI_GEME_ART_PROVIDER_CREDENTIAL_REF: 'must-not-be-copied',
+      AI_GEME_ART_PROVIDER_CREDENTIAL_AVAILABLE: 'true',
       AI_GEME_ART_PROVIDER_COST_ACKNOWLEDGED: 'true',
       AI_GEME_ART_PROVIDER_BUDGET_LIMIT_CENTS: '2500',
       AI_GEME_ART_PROVIDER_ARTIFACT_WRITE_INTENT: 'write-through-approved',
@@ -84,6 +85,7 @@ describe('Loop7 art provider policy gate', () => {
       requestedMode: 'live',
       allowLiveProvider: true,
       allowNetwork: true,
+      credentialRef: 'env:AI_GEME_ART_PROVIDER_CREDENTIAL_REF',
       credentialAvailable: true,
       costAcknowledged: true,
       budgetLimitCents: 2500,
@@ -107,6 +109,94 @@ describe('Loop7 art provider policy gate', () => {
       }
     });
     expect(JSON.stringify({ envInput, livePolicy })).not.toContain('must-not-be-copied');
+  });
+
+  it('returns typed invalid policy blockers for malformed env-like boolean values', () => {
+    const envInput = policyApi.readArtProviderPolicyFromEnv?.({
+      AI_GEME_ART_PROVIDER: 'live',
+      AI_GEME_ALLOW_LIVE_ART_PROVIDER: 'maybe',
+      AI_GEME_ALLOW_LIVE_ART_NETWORK: 'true',
+      AI_GEME_ART_PROVIDER_CREDENTIAL_REF: 'must-not-be-copied',
+      AI_GEME_ART_PROVIDER_CREDENTIAL_AVAILABLE: 'true',
+      AI_GEME_ART_PROVIDER_COST_ACKNOWLEDGED: 'true',
+      AI_GEME_ART_PROVIDER_BUDGET_LIMIT_CENTS: '2500',
+      AI_GEME_ART_PROVIDER_ARTIFACT_WRITE_INTENT: 'write-through-approved'
+    });
+
+    expect(envInput).toMatchObject({
+      source: 'env',
+      requestedMode: 'live',
+      invalidEnvFields: ['allowLiveProvider']
+    });
+
+    expect(policyApi.resolveArtProviderPolicy?.(envInput)).toMatchObject({
+      ok: false,
+      source: 'env',
+      requestedMode: 'live',
+      selectedMode: 'live_disabled',
+      providerMode: 'live_disabled',
+      blocker: 'art_provider_live_preflight_invalid',
+      errorCode: 'art_provider_live_preflight_invalid',
+      reason: 'live_provider_preflight_blocked',
+      preflight: {
+        ok: false,
+        status: 'invalid',
+        executionEnabled: false,
+        blockers: ['art_provider_live_preflight_invalid'],
+        invalidFields: ['allowLiveProvider']
+      }
+    });
+    expect(JSON.stringify(envInput)).not.toContain('must-not-be-copied');
+  });
+
+  it('ignores malformed live-lane env fields for fake and disabled-live policy modes', () => {
+    const fakeEnvInput = policyApi.readArtProviderPolicyFromEnv?.({
+      AI_GEME_ART_PROVIDER: 'fake',
+      AI_GEME_ALLOW_LIVE_ART_PROVIDER: 'maybe',
+      AI_GEME_ALLOW_LIVE_ART_NETWORK: '1',
+      AI_GEME_ART_PROVIDER_CREDENTIAL_AVAILABLE: 'yes',
+      AI_GEME_ART_PROVIDER_COST_ACKNOWLEDGED: 'no',
+      AI_GEME_ART_PROVIDER_BUDGET_LIMIT_CENTS: 'not-a-number',
+      AI_GEME_ART_PROVIDER_ARTIFACT_WRITE_INTENT: 'write-through-approved'
+    });
+
+    expect(fakeEnvInput).toMatchObject({
+      source: 'env',
+      requestedMode: 'fake',
+      invalidEnvFields: ['allowLiveProvider', 'allowNetwork', 'credentialAvailable', 'costAcknowledged', 'budgetLimitCents']
+    });
+    expect(policyApi.resolveArtProviderPolicy?.(fakeEnvInput)).toMatchObject({
+      ok: true,
+      source: 'env',
+      requestedMode: 'fake',
+      selectedMode: 'deterministic_fake',
+      providerMode: 'deterministic_fake',
+      reason: 'explicit_fake_provider'
+    });
+
+    const disabledLiveEnvInput = policyApi.readArtProviderPolicyFromEnv?.({
+      AI_GEME_ART_PROVIDER: 'disabled-live',
+      AI_GEME_ALLOW_LIVE_ART_PROVIDER: 'maybe',
+      AI_GEME_ALLOW_LIVE_ART_NETWORK: '1',
+      AI_GEME_ART_PROVIDER_CREDENTIAL_AVAILABLE: 'yes',
+      AI_GEME_ART_PROVIDER_COST_ACKNOWLEDGED: 'no',
+      AI_GEME_ART_PROVIDER_BUDGET_LIMIT_CENTS: 'not-a-number',
+      AI_GEME_ART_PROVIDER_ARTIFACT_WRITE_INTENT: 'write-through-approved'
+    });
+
+    expect(disabledLiveEnvInput).toMatchObject({
+      source: 'env',
+      requestedMode: 'disabled-live',
+      invalidEnvFields: ['allowLiveProvider', 'allowNetwork', 'credentialAvailable', 'costAcknowledged', 'budgetLimitCents']
+    });
+    expect(policyApi.resolveArtProviderPolicy?.(disabledLiveEnvInput)).toMatchObject({
+      ok: true,
+      source: 'env',
+      requestedMode: 'disabled-live',
+      selectedMode: 'live_disabled',
+      providerMode: 'live_disabled',
+      reason: 'disabled_live_provider_selected'
+    });
   });
 
   it('fails closed for live policy without explicit allow and for invalid provider modes', () => {
@@ -216,6 +306,7 @@ describe('Loop7 art provider policy gate', () => {
           requestedMode: 'live',
           allowLiveProvider: true,
           allowNetwork: true,
+          credentialRef: 'credential-ref-live-art-provider',
           credentialAvailable: true,
           costAcknowledged: true,
           budgetLimitCents: 2500,
@@ -226,6 +317,7 @@ describe('Loop7 art provider policy gate', () => {
           requestedMode: string;
           allowLiveProvider: boolean;
           allowNetwork: boolean;
+          credentialRef: string;
           credentialAvailable: boolean;
           costAcknowledged: boolean;
           budgetLimitCents: number;

@@ -33,6 +33,7 @@ describe('Loop8 art provider live-lane preflight gate', () => {
     const otherwiseReady = {
       requestedProvider: 'live',
       allowNetwork: true,
+      credentialRef: 'credential-ref-live-art-provider',
       credentialAvailable: true,
       costAcknowledged: true,
       budgetLimitCents: 2500,
@@ -43,9 +44,21 @@ describe('Loop8 art provider live-lane preflight gate', () => {
       ok: false,
       blockers: ['art_provider_live_call_not_allowed'],
       network: { status: 'allowed' },
-      credential: { status: 'available_without_ref' },
+      credential: { status: 'ready' },
       cost: { status: 'acknowledged' },
       artifactWrite: { status: 'approved' }
+    });
+
+    expect(resolveArtProviderLivePreflight({ ...otherwiseReady, allowLiveProvider: true, credentialRef: undefined })).toMatchObject({
+      ok: false,
+      blockers: ['art_provider_live_credentials_missing'],
+      credential: { status: 'available_without_ref', credentialRefPresent: false, credentialAvailable: true }
+    });
+
+    expect(resolveArtProviderLivePreflight({ ...otherwiseReady, allowLiveProvider: true, credentialRef: '   ' })).toMatchObject({
+      ok: false,
+      blockers: ['art_provider_live_credentials_missing'],
+      credential: { status: 'available_without_ref', credentialRefPresent: false, credentialAvailable: true }
     });
 
     expect(resolveArtProviderLivePreflight({ ...otherwiseReady, allowLiveProvider: true, allowNetwork: false })).toMatchObject({
@@ -58,13 +71,12 @@ describe('Loop8 art provider live-lane preflight gate', () => {
       resolveArtProviderLivePreflight({
         ...otherwiseReady,
         allowLiveProvider: true,
-        credentialAvailable: false,
-        credentialRef: undefined
+        credentialAvailable: false
       })
     ).toMatchObject({
       ok: false,
       blockers: ['art_provider_live_credentials_missing'],
-      credential: { status: 'missing' }
+      credential: { status: 'referenced_unavailable', credentialRefPresent: true, credentialAvailable: false }
     });
 
     expect(resolveArtProviderLivePreflight({ ...otherwiseReady, allowLiveProvider: true, costAcknowledged: false })).toMatchObject({
@@ -110,6 +122,26 @@ describe('Loop8 art provider live-lane preflight gate', () => {
       status: 'disabled',
       blockers: []
     });
+
+    expect(resolveArtProviderLivePreflight({ requestedProvider: 'fake', invalidEnvFields: ['allowNetwork'] })).toMatchObject({
+      ok: true,
+      requestedProvider: 'fake',
+      effectiveProvider: 'deterministic_fake',
+      liveProviderRequested: false,
+      status: 'not_required',
+      blockers: [],
+      invalidFields: []
+    });
+
+    expect(resolveArtProviderLivePreflight({ requestedProvider: 'disabled-live', invalidEnvFields: ['allowNetwork'] })).toMatchObject({
+      ok: true,
+      requestedProvider: 'disabled-live',
+      effectiveProvider: 'live_disabled',
+      liveProviderRequested: false,
+      status: 'disabled',
+      blockers: [],
+      invalidFields: []
+    });
   });
 
   it('marks fully satisfied live preflight ready while still disabling live execution', () => {
@@ -118,6 +150,7 @@ describe('Loop8 art provider live-lane preflight gate', () => {
       allowLiveProvider: true,
       allowNetwork: true,
       credentialRef: 'credential-ref-live-art-provider',
+      credentialAvailable: true,
       costAcknowledged: true,
       budgetLimitCents: 2500,
       artifactWriteIntent: 'write-through-approved'
@@ -133,8 +166,9 @@ describe('Loop8 art provider live-lane preflight gate', () => {
       status: 'preflight_ready_provider_unimplemented',
       blockers: [],
       credential: {
-        status: 'referenced',
-        credentialRefPresent: true
+        status: 'ready',
+        credentialRefPresent: true,
+        credentialAvailable: true
       },
       cost: {
         status: 'acknowledged',
@@ -182,6 +216,7 @@ describe('Loop8 art provider live-lane preflight gate', () => {
       AI_GEME_ALLOW_LIVE_ART_PROVIDER: 'true',
       AI_GEME_ALLOW_LIVE_ART_NETWORK: 'true',
       AI_GEME_ART_PROVIDER_CREDENTIAL_REF: 'secret-value-must-not-be-returned',
+      AI_GEME_ART_PROVIDER_CREDENTIAL_AVAILABLE: 'true',
       AI_GEME_ART_PROVIDER_COST_ACKNOWLEDGED: 'true',
       AI_GEME_ART_PROVIDER_BUDGET_LIMIT_CENTS: '2500',
       AI_GEME_ART_PROVIDER_ARTIFACT_WRITE_INTENT: 'write-through-approved',
@@ -192,6 +227,7 @@ describe('Loop8 art provider live-lane preflight gate', () => {
       requestedProvider: 'live',
       allowLiveProvider: true,
       allowNetwork: true,
+      credentialRef: 'env:AI_GEME_ART_PROVIDER_CREDENTIAL_REF',
       credentialAvailable: true,
       costAcknowledged: true,
       budgetLimitCents: 2500,
@@ -199,5 +235,35 @@ describe('Loop8 art provider live-lane preflight gate', () => {
     });
     expect(JSON.stringify(envInput)).not.toContain('secret-value-must-not-be-returned');
     expect(JSON.stringify(envInput)).not.toContain('must-not-be-read');
+  });
+
+  it('marks malformed env-like boolean and number values invalid instead of silently treating them as false', () => {
+    const envInput = readArtProviderLivePreflightFromEnv({
+      AI_GEME_ART_PROVIDER: 'live',
+      AI_GEME_ALLOW_LIVE_ART_PROVIDER: 'maybe',
+      AI_GEME_ALLOW_LIVE_ART_NETWORK: '1',
+      AI_GEME_ART_PROVIDER_CREDENTIAL_REF: 'secret-value-must-not-be-returned',
+      AI_GEME_ART_PROVIDER_CREDENTIAL_AVAILABLE: 'yes',
+      AI_GEME_ART_PROVIDER_COST_ACKNOWLEDGED: 'no',
+      AI_GEME_ART_PROVIDER_BUDGET_LIMIT_CENTS: 'not-a-number',
+      AI_GEME_ART_PROVIDER_ARTIFACT_WRITE_INTENT: 'write-through-approved'
+    });
+
+    expect(envInput).toEqual({
+      requestedProvider: 'live',
+      credentialRef: 'env:AI_GEME_ART_PROVIDER_CREDENTIAL_REF',
+      artifactWriteIntent: 'write-through-approved',
+      invalidEnvFields: ['allowLiveProvider', 'allowNetwork', 'credentialAvailable', 'costAcknowledged', 'budgetLimitCents']
+    });
+
+    expect(resolveArtProviderLivePreflight(envInput)).toMatchObject({
+      ok: false,
+      status: 'invalid',
+      blockers: ['art_provider_live_preflight_invalid'],
+      errorCode: 'art_provider_live_preflight_invalid',
+      invalidFields: ['allowLiveProvider', 'allowNetwork', 'credentialAvailable', 'costAcknowledged', 'budgetLimitCents'],
+      executionEnabled: false
+    });
+    expect(JSON.stringify(envInput)).not.toContain('secret-value-must-not-be-returned');
   });
 });
