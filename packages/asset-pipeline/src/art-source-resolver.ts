@@ -13,10 +13,20 @@ import {
   type ArtProviderResult
 } from './art-provider-contract.js';
 import {
+  ArtProviderLiveDryRunResultSchema,
+  createLiveDryRunArtProvider,
+  type ArtProviderLiveDryRunResult
+} from './art-provider-live-dry-run-adapter.js';
+import {
   ArtProviderLivePreflightEvidenceSchema,
   type ArtProviderLivePreflightEvidence
 } from './art-provider-live-preflight-evidence.js';
-import { resolveArtProviderPolicy, type ArtProviderPolicyInput, type ArtProviderPolicyResult } from './art-provider-policy.js';
+import {
+  resolveArtProviderPolicy,
+  type ArtProviderPolicyFailure,
+  type ArtProviderPolicyInput,
+  type ArtProviderPolicyResult
+} from './art-provider-policy.js';
 import {
   ART_SOURCE_PRIORITY,
   ART_SOURCE_MANIFEST_VERSION,
@@ -70,13 +80,15 @@ export const ResolvedArtSourceAssetSchema = z.strictObject({
   placeholder: z.boolean(),
   fallback: z.boolean(),
   provenance: z.array(z.string().min(1).max(240)).min(1).max(24),
-  blockers: z.array(ArtSourceResolutionBlockerSchema).max(12)
+  blockers: z.array(ArtSourceResolutionBlockerSchema).max(12),
+  liveDryRunResult: ArtProviderLiveDryRunResultSchema.optional()
 });
 
 export const ArtSourceResolutionFailureSchema = z.strictObject({
   assetId: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/),
   assetIntentId: z.string().regex(/^[a-z][a-z0-9_.-]{1,79}$/),
-  blockers: z.array(ArtSourceResolutionBlockerSchema).min(1)
+  blockers: z.array(ArtSourceResolutionBlockerSchema).min(1),
+  liveDryRunResult: ArtProviderLiveDryRunResultSchema.optional()
 });
 
 export const ArtSourceResolutionReportSchema = z.strictObject({
@@ -95,7 +107,8 @@ export const ArtSourceResolutionReportSchema = z.strictObject({
   }),
   assets: z.array(ResolvedArtSourceAssetSchema),
   failures: z.array(ArtSourceResolutionFailureSchema),
-  livePreflightEvidence: z.array(ArtProviderLivePreflightEvidenceSchema).max(4).optional()
+  livePreflightEvidence: z.array(ArtProviderLivePreflightEvidenceSchema).max(4).optional(),
+  liveDryRunResults: z.array(ArtProviderLiveDryRunResultSchema).max(24).optional()
 });
 
 export type ResolvedArtSourceAsset = z.infer<typeof ResolvedArtSourceAssetSchema>;
@@ -133,6 +146,7 @@ type NormalizeRecordInput = {
   planItem: AssetPlanItem | undefined;
   record: ArtSourceManifestRecord;
   providerId: string | undefined;
+  liveDryRunResult?: ArtProviderLiveDryRunResult;
   allowExplicitPlaceholder: boolean;
 };
 
@@ -199,17 +213,25 @@ export async function resolveArtSources(input: ResolveArtSourcesInput): Promise<
 
   const policyDecision = input.provider === undefined && input.providerPolicy !== undefined ? resolveArtProviderPolicy(input.providerPolicy) : undefined;
   if (policyDecision !== undefined && !policyDecision.ok) {
+    const dryRunFailureEvidence = await blockedLiveDryRunEvidenceForPolicyFailure(policyDecision, intentManifestResult.data.intents);
     return buildReport({
       projectId: planResult.data.projectId,
       assets: [],
-      failures: intentManifestResult.data.intents.map((intent) => ({
-        assetId: intent.assetPlanId,
-        assetIntentId: intent.id,
-        blockers: [policyDecision.blocker]
-      })),
-      blockers: [policyDecision.blocker],
-      providerCalls: 0,
-      livePreflightEvidence: livePreflightEvidenceForPolicy(policyDecision)
+      failures:
+        dryRunFailureEvidence.failures.length === 0
+          ? intentManifestResult.data.intents.map((intent) => ({
+              assetId: intent.assetPlanId,
+              assetIntentId: intent.id,
+              blockers: [policyDecision.blocker]
+            }))
+          : dryRunFailureEvidence.failures,
+      blockers:
+        dryRunFailureEvidence.failures.length === 0
+          ? [policyDecision.blocker]
+          : uniqueBlockers(dryRunFailureEvidence.failures.flatMap((failure) => failure.blockers)),
+      providerCalls: dryRunFailureEvidence.providerCalls,
+      livePreflightEvidence: livePreflightEvidenceForPolicy(policyDecision),
+      liveDryRunResults: dryRunFailureEvidence.liveDryRunResults
     });
   }
 
@@ -251,7 +273,55 @@ function providerFromPolicyDecision(policyDecision: ArtProviderPolicyResult | un
   if (policyDecision === undefined) {
     return undefined;
   }
-  return policyDecision.providerMode === 'deterministic_fake' ? createDeterministicFakeArtProvider() : createDisabledLiveArtProvider();
+  if (policyDecision.providerMode === 'deterministic_fake') {
+    return createDeterministicFakeArtProvider();
+  }
+  if (policyDecision.providerMode === 'live_dry_run') {
+    return createLiveDryRunArtProvider({ livePreflightEvidence: policyDecision.livePreflightEvidence });
+  }
+  return createDisabledLiveArtProvider();
+}
+
+async function blockedLiveDryRunEvidenceForPolicyFailure(
+  policyDecision: ArtProviderPolicyFailure,
+  intents: readonly AssetIntent[]
+): Promise<{
+  failures: ArtSourceResolutionFailure[];
+  providerCalls: number;
+  liveDryRunResults: ArtProviderLiveDryRunResult[];
+}> {
+  if (!policyDecision.allowLiveDryRun || policyDecision.requestedMode !== 'live' || policyDecision.livePreflightEvidence === undefined) {
+    return { failures: [], providerCalls: 0, liveDryRunResults: [] };
+  }
+
+  const provider = createLiveDryRunArtProvider({ livePreflightEvidence: policyDecision.livePreflightEvidence });
+  const failures: ArtSourceResolutionFailure[] = [];
+  const liveDryRunResults: ArtProviderLiveDryRunResult[] = [];
+
+  for (const intent of intents) {
+    const providerResult = await provider.generate(createArtProviderRequest(intent, provider.mode));
+    const liveDryRunResult = providerEnvelopeMatches(providerResult, provider, intent) ? liveDryRunResultForProviderResult(providerResult, provider) : false;
+    if (providerResult.ok || liveDryRunResult === false) {
+      failures.push({
+        assetId: intent.assetPlanId,
+        assetIntentId: intent.id,
+        blockers: ['provider_output_malformed']
+      });
+      continue;
+    }
+
+    failures.push({
+      assetId: intent.assetPlanId,
+      assetIntentId: intent.id,
+      blockers: [providerResult.blocker],
+      ...(liveDryRunResult === undefined ? {} : { liveDryRunResult })
+    });
+    if (liveDryRunResult !== undefined) {
+      liveDryRunResults.push(liveDryRunResult);
+    }
+  }
+
+  return { failures, providerCalls: provider.calls, liveDryRunResults };
 }
 
 async function resolveIntent(input: ResolveIntentInput): Promise<ResolveIntentResult> {
@@ -285,6 +355,10 @@ async function resolveIntent(input: ResolveIntentInput): Promise<ResolveIntentRe
     if (!providerEnvelopeMatches(providerResult, input.provider, input.intent)) {
       return providerMalformed(input.intent);
     }
+    const liveDryRunResult = liveDryRunResultForProviderResult(providerResult, input.provider);
+    if (liveDryRunResult === false) {
+      return providerMalformed(input.intent);
+    }
 
     if (!providerResult.ok) {
       return {
@@ -292,7 +366,8 @@ async function resolveIntent(input: ResolveIntentInput): Promise<ResolveIntentRe
         failure: {
           assetId: input.intent.assetPlanId,
           assetIntentId: input.intent.id,
-          blockers: [providerResult.blocker]
+          blockers: [providerResult.blocker],
+          ...(liveDryRunResult === undefined ? {} : { liveDryRunResult })
         },
         providerCalls: 1
       };
@@ -313,6 +388,7 @@ async function resolveIntent(input: ResolveIntentInput): Promise<ResolveIntentRe
       planItem: input.planItem,
       record: sourceResult.data,
       providerId: providerResult.providerId,
+      liveDryRunResult,
       allowExplicitPlaceholder: input.allowExplicitPlaceholder
     });
     if (!normalized.ok) {
@@ -396,7 +472,8 @@ async function normalizeSelectedRecord(
     placeholder: record.source_type === 'explicit_placeholder',
     fallback: record.source_type === 'explicit_placeholder',
     provenance: record.provenance,
-    blockers: []
+    blockers: [],
+    ...(input.liveDryRunResult === undefined ? {} : { liveDryRunResult: input.liveDryRunResult })
   });
 
   return { ok: true, asset };
@@ -494,6 +571,23 @@ function providerEnvelopeMatches(result: ArtProviderResult, provider: ArtProvide
   );
 }
 
+function liveDryRunResultForProviderResult(result: ArtProviderResult, provider: ArtProvider): ArtProviderLiveDryRunResult | undefined | false {
+  if (result.liveDryRunResult === undefined) {
+    return provider.mode === 'live_dry_run' ? false : undefined;
+  }
+
+  const parsed = ArtProviderLiveDryRunResultSchema.safeParse(result.liveDryRunResult);
+  if (!parsed.success) {
+    return false;
+  }
+
+  if (provider.mode !== 'live_dry_run' || parsed.data.providerId !== provider.providerId || parsed.data.providerMode !== provider.mode) {
+    return false;
+  }
+
+  return parsed.data;
+}
+
 function buildReport(input: {
   projectId: string;
   assets: ResolvedArtSourceAsset[];
@@ -501,9 +595,15 @@ function buildReport(input: {
   blockers: ArtSourceResolutionBlocker[];
   providerCalls: number;
   livePreflightEvidence?: readonly ArtProviderLivePreflightEvidence[];
+  liveDryRunResults?: readonly ArtProviderLiveDryRunResult[];
 }): ArtSourceResolutionReport {
   const blockers = uniqueBlockers(input.blockers);
   const livePreflightEvidence = uniqueLivePreflightEvidence(input.livePreflightEvidence ?? []);
+  const reportLiveDryRunResults = [
+    ...input.assets.map((asset) => asset.liveDryRunResult),
+    ...input.failures.map((failure) => failure.liveDryRunResult)
+  ].filter((result): result is ArtProviderLiveDryRunResult => result !== undefined);
+  const liveDryRunResults = uniqueLiveDryRunResults(input.liveDryRunResults ?? reportLiveDryRunResults);
   return ArtSourceResolutionReportSchema.parse({
     version: ART_SOURCE_RESOLUTION_REPORT_VERSION,
     sourceManifestVersion: ART_SOURCE_MANIFEST_VERSION,
@@ -520,7 +620,8 @@ function buildReport(input: {
     },
     assets: input.assets,
     failures: input.failures,
-    ...(livePreflightEvidence.length === 0 ? {} : { livePreflightEvidence })
+    ...(livePreflightEvidence.length === 0 ? {} : { livePreflightEvidence }),
+    ...(liveDryRunResults.length === 0 ? {} : { liveDryRunResults })
   });
 }
 
@@ -595,6 +696,19 @@ function uniqueLivePreflightEvidence(evidence: readonly ArtProviderLivePreflight
     if (!seen.has(key)) {
       seen.add(key);
       unique.push(item);
+    }
+  }
+  return unique;
+}
+
+function uniqueLiveDryRunResults(results: readonly ArtProviderLiveDryRunResult[]): ArtProviderLiveDryRunResult[] {
+  const seen = new Set<string>();
+  const unique: ArtProviderLiveDryRunResult[] = [];
+  for (const result of results) {
+    const key = [result.contractVersion, result.providerId, result.providerRequestId, result.assetIntentId, result.status].join('|');
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(result);
     }
   }
   return unique;

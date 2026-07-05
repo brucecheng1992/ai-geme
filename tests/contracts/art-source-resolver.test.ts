@@ -11,6 +11,7 @@ import {
   DETERMINISTIC_FAKE_ART_PROVIDER_CAPABILITIES,
   createDeterministicFakeArtProvider,
   exportRuntimeArtAssetMetadataFromResolvedSources,
+  readArtProviderPolicyFromEnv,
   resolveArtSources,
   type ArtAssetMetadata,
   type ArtProvider,
@@ -170,32 +171,33 @@ describe('Loop4 source-resolved art pipeline contracts', () => {
 
   it('uses deterministic fake provider metadata without network, API keys, or secret leakage', async () => {
     const originalFetch = globalThis.fetch;
-    const originalSecret = process.env.DEEPSEEK_API_KEY;
     let fetchCalls = 0;
-    process.env.DEEPSEEK_API_KEY = 'loop4-secret-that-must-not-appear';
+    const envLikeSecret = 'loop4-sensitive-token-that-must-not-appear';
+    const providerPolicy = readArtProviderPolicyFromEnv({
+      AI_GEME_ART_PROVIDER: 'fake',
+      UNUSED_SECRET_TOKEN: envLikeSecret
+    });
     globalThis.fetch = (async () => {
       fetchCalls += 1;
       throw new Error('network calls are forbidden in fake art provider tests');
     }) as typeof fetch;
 
     try {
-      const firstProvider = createDeterministicFakeArtProvider();
-      const secondProvider = createDeterministicFakeArtProvider();
       const first = await resolveArtSources({
         projectRoot: root,
         plan: assetPlan(),
         intentManifest: assetIntentManifest(),
-        provider: firstProvider
+        providerPolicy
       });
       const second = await resolveArtSources({
         projectRoot: root,
         plan: assetPlan(),
         intentManifest: assetIntentManifest(),
-        provider: secondProvider
+        providerPolicy
       });
 
       expect(fetchCalls).toBe(0);
-      expect(firstProvider.calls).toBe(1);
+      expect(first.summary.providerCalls).toBe(1);
       expect(first).toMatchObject({ ok: true, blockers: [] });
       expect(second).toMatchObject({ ok: true, blockers: [] });
       expect(first.assets[0]).toMatchObject({
@@ -215,14 +217,9 @@ describe('Loop4 source-resolved art pipeline contracts', () => {
       });
       const providerJson = JSON.stringify(first);
       expect(providerJson).toContain('deterministic_fake_art_provider');
-      expect(providerJson).not.toContain('loop4-secret-that-must-not-appear');
-      expect(providerJson).not.toContain('DEEPSEEK_API_KEY');
+      expect(providerJson).not.toContain(envLikeSecret);
+      expect(providerJson).not.toMatch(/authorization|Bearer|sensitive-token|base64|Uint8Array|ArrayBuffer/i);
     } finally {
-      if (originalSecret === undefined) {
-        delete process.env.DEEPSEEK_API_KEY;
-      } else {
-        process.env.DEEPSEEK_API_KEY = originalSecret;
-      }
       globalThis.fetch = originalFetch;
     }
   });

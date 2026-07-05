@@ -2,7 +2,7 @@ import type { AssetIntent } from './asset-intent-manifest.js';
 
 export const ART_PROVIDER_CONTRACT_VERSION = 'art-provider-contract-v0.1' as const;
 
-export type ArtProviderMode = 'deterministic_fake' | 'live_disabled';
+export type ArtProviderMode = 'deterministic_fake' | 'live_disabled' | 'live_dry_run';
 
 export type ArtProviderErrorCode =
   | 'art_provider_live_call_not_allowed'
@@ -35,6 +35,43 @@ export type ArtProviderCapabilities = {
   rawOutputMayBypassNormalization: false;
 };
 
+export type ArtProviderLiveDryRunResultEnvelope = {
+  contractVersion: string;
+  source: 'art_provider_live_dry_run_adapter';
+  adapterMode: 'live-dry-run';
+  executionMode: 'dry-run';
+  dryRun: true;
+  realLiveExecutionEnabled: false;
+  providerId: string;
+  providerMode: 'live_dry_run';
+  providerRequestId: string;
+  requestedProvider: 'live';
+  assetIntentId: string;
+  assetPlanId: string;
+  status: 'ready' | 'blocked';
+  artifactWrite: {
+    artifactWriteApproved: boolean;
+    wouldWriteArtifact: false;
+    intent: 'none' | 'write-through-approved';
+  };
+  evidence: {
+    evidenceContractVersion?: string;
+    readinessStatus: string;
+    summaryCode: string;
+    blockerCodes: string[];
+    invalidFieldNames: string[];
+  };
+  normalizedProviderResult?: {
+    outputKind: 'art_source_manifest_record';
+    sourceType: 'provider_generated';
+    contentType: 'metadata/json';
+    path: string;
+    contentSha256: string;
+    width: number;
+    height: number;
+  };
+};
+
 export type ArtProviderRequest = {
   contractVersion: typeof ART_PROVIDER_CONTRACT_VERSION;
   mode: ArtProviderMode;
@@ -57,6 +94,7 @@ export type ArtProviderFailure = {
   credentialRef?: {
     status: 'not_read';
   };
+  liveDryRunResult?: ArtProviderLiveDryRunResultEnvelope;
 };
 
 export type ArtProviderSuccess = {
@@ -66,6 +104,7 @@ export type ArtProviderSuccess = {
   assetIntentId: string;
   outputKind: 'art_source_manifest_record';
   source: unknown;
+  liveDryRunResult?: ArtProviderLiveDryRunResultEnvelope;
 };
 
 export type ArtProviderResult = ArtProviderFailure | ArtProviderSuccess;
@@ -94,6 +133,14 @@ export const DETERMINISTIC_FAKE_ART_PROVIDER_CAPABILITIES: ArtProviderCapabiliti
 export const DISABLED_LIVE_ART_PROVIDER_CAPABILITIES: ArtProviderCapabilities = {
   deterministic: false,
   network: 'requires_future_approval',
+  credentials: 'read_forbidden',
+  binaryWrites: 'forbidden',
+  rawOutputMayBypassNormalization: false
+};
+
+export const LIVE_DRY_RUN_ART_PROVIDER_CAPABILITIES: ArtProviderCapabilities = {
+  deterministic: true,
+  network: 'forbidden',
   credentials: 'read_forbidden',
   binaryWrites: 'forbidden',
   rawOutputMayBypassNormalization: false
