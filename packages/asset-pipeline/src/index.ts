@@ -90,6 +90,31 @@ export {
   type DisabledLiveArtProviderOptions
 } from './art-provider-contract.js';
 export {
+  ART_PROVIDER_ARTIFACT_SANDBOX_CUTOVER_RECORD,
+  ART_PROVIDER_ARTIFACT_WRITE_SANDBOX_VERSION,
+  ArtifactSandboxBlockerSchema,
+  ArtifactSandboxManifestSchema,
+  ArtifactSandboxWritePlanSchema,
+  cleanupArtifactSandboxWrite,
+  createArtifactSandboxManifest,
+  planArtifactSandboxWrite,
+  writeArtifactToSandbox,
+  type ArtifactSandboxBlocker,
+  type ArtifactSandboxCleanupEvidence,
+  type ArtifactSandboxCleanupResult,
+  type ArtifactSandboxFileHandle,
+  type ArtifactSandboxFileOps,
+  type ArtifactSandboxFileStat,
+  type ArtifactSandboxFilesystemErrorCode,
+  type ArtifactSandboxFilesystemErrorEvidence,
+  type ArtifactSandboxFilesystemOperation,
+  type ArtifactSandboxFilesystemPathRole,
+  type ArtifactSandboxManifest,
+  type ArtifactSandboxWritePlan,
+  type ArtifactSandboxWriteResult,
+  type PlanArtifactSandboxWriteInput
+} from './art-provider-artifact-write-sandbox.js';
+export {
   ART_PROVIDER_LIVE_PREFLIGHT_VERSION,
   readArtProviderLivePreflightFromEnv,
   resolveArtProviderLivePreflight,

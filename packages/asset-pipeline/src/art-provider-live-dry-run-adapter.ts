@@ -5,6 +5,10 @@ import { z } from 'zod';
 import type { ArtAssetMetadata } from './art-asset-metadata.schema.js';
 import type { AssetIntent } from './asset-intent-manifest.js';
 import {
+  ArtifactSandboxWritePlanSchema,
+  planArtifactSandboxWrite
+} from './art-provider-artifact-write-sandbox.js';
+import {
   LIVE_DRY_RUN_ART_PROVIDER_CAPABILITIES,
   type ArtProvider,
   type ArtProviderLiveDryRunResultEnvelope,
@@ -34,7 +38,8 @@ export const ArtProviderLiveDryRunResultSchema: z.ZodType<ArtProviderLiveDryRunR
   artifactWrite: z.strictObject({
     artifactWriteApproved: z.boolean(),
     wouldWriteArtifact: z.literal(false),
-    intent: z.enum(['none', 'write-through-approved'])
+    intent: z.enum(['none', 'write-through-approved']),
+    sandboxWritePlan: ArtifactSandboxWritePlanSchema.optional()
   }),
   evidence: z.strictObject({
     evidenceContractVersion: z.string().min(1).optional(),
@@ -180,6 +185,23 @@ function buildDryRunResult(input: {
   status: ArtProviderLiveDryRunResult['status'];
   source?: ArtSourceManifestRecord;
 }): ArtProviderLiveDryRunResult {
+  const artifactWriteApproved = input.evidence?.artifactWriteApproved === true;
+  const sandboxWritePlan =
+    input.source === undefined
+      ? undefined
+      : planArtifactSandboxWrite({
+          artifactId: input.intent.assetPlanId,
+          artifactPlanId: input.intent.id,
+          targetPath: artifactSandboxMetadataFilename(input.intent.assetPlanId),
+          content: `${stableStringify(input.source)}\n`,
+          contentType: input.source.content_type,
+          artifactWriteApproved,
+          artifactWriteIntent: artifactWriteApproved ? 'sandbox-write-approved' : 'none',
+          providerMode: 'live_dry_run',
+          adapterMode: 'live-dry-run',
+          evidenceRef: input.evidence?.contractVersion,
+          reportRef: providerRequestIdFor(input.providerId, input.intent, input.evidence)
+        });
   const result = {
     contractVersion: ART_PROVIDER_LIVE_DRY_RUN_ADAPTER_VERSION,
     source: 'art_provider_live_dry_run_adapter',
@@ -195,9 +217,10 @@ function buildDryRunResult(input: {
     assetPlanId: input.intent.assetPlanId,
     status: input.status,
     artifactWrite: {
-      artifactWriteApproved: input.evidence?.artifactWriteApproved === true,
+      artifactWriteApproved,
       wouldWriteArtifact: false,
-      intent: input.evidence?.artifactWriteApproved === true ? 'write-through-approved' : 'none'
+      intent: artifactWriteApproved ? 'write-through-approved' : 'none',
+      ...(sandboxWritePlan === undefined ? {} : { sandboxWritePlan })
     },
     evidence: {
       ...(input.evidence === undefined ? {} : { evidenceContractVersion: input.evidence.contractVersion }),
@@ -266,6 +289,10 @@ function buildLiveDryRunProviderSource(input: {
     provenance: [`${input.providerId}:${providerRequestId}`],
     metadata: buildProviderMetadata(input.intent, input.providerId, providerRequestId, sourcePath, width, height)
   };
+}
+
+function artifactSandboxMetadataFilename(assetPlanId: string): string {
+  return `${toSlug(assetPlanId)}.metadata.json`;
 }
 
 function buildProviderMetadata(
