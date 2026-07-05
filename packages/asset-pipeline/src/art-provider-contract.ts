@@ -1,4 +1,5 @@
 import type { AssetIntent } from './asset-intent-manifest.js';
+import type { ArtifactSandboxWritePlan } from './art-provider-artifact-write-sandbox.js';
 
 export const ART_PROVIDER_CONTRACT_VERSION = 'art-provider-contract-v0.1' as const;
 
@@ -53,6 +54,7 @@ export type ArtProviderLiveDryRunResultEnvelope = {
     artifactWriteApproved: boolean;
     wouldWriteArtifact: false;
     intent: 'none' | 'write-through-approved';
+    sandboxWritePlan?: ArtifactSandboxWritePlan;
   };
   evidence: {
     evidenceContractVersion?: string;
