@@ -1,0 +1,198 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  safety-guards:
+    name: safety-guards
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check diff hygiene and guarded paths
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE_SHA: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          is_zero_sha() {
+            [[ -z "$1" || "$1" =~ ^0+$ ]]
+          }
+
+          diff_range=""
+          single_commit=""
+
+          case "$EVENT_NAME" in
+            pull_request)
+              if [[ -z "$BASE_REF" ]]; then
+                echo "pull_request event is missing github.base_ref."
+                exit 1
+              fi
+
+              if ! git rev-parse --verify "origin/${BASE_REF}" >/dev/null 2>&1; then
+                git fetch --no-tags --depth=1 origin "$BASE_REF"
+              fi
+
+              diff_range="origin/${BASE_REF}...HEAD"
+              ;;
+            push)
+              if is_zero_sha "$BEFORE_SHA"; then
+                single_commit="$CURRENT_SHA"
+              else
+                diff_range="${BEFORE_SHA}..${CURRENT_SHA}"
+              fi
+              ;;
+            workflow_dispatch)
+              if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+                diff_range="HEAD^..HEAD"
+              else
+                single_commit="HEAD"
+              fi
+              ;;
+            *)
+              echo "Unsupported event for PR validation safety guard: $EVENT_NAME"
+              exit 1
+              ;;
+          esac
+
+          if [[ -n "$diff_range" ]]; then
+            echo "Checking diff range: $diff_range"
+            git diff --check "$diff_range"
+            changed="$(git diff --name-only "$diff_range")"
+          else
+            echo "Checking single commit: $single_commit"
+            git show --check --format='' "$single_commit"
+            changed="$(git show --name-only --format='' "$single_commit")"
+          fi
+
+          echo "$changed"
+
+          if echo "$changed" | grep -E '(^|/)(generated|archive)(/|$)|(^|/)art-assets(/|$)|(^|/)artifacts(/|$)' ; then
+            echo "Generated/archive/art asset path changes are not allowed in PR validation bootstrap."
+            exit 1
+          fi
+
+  contract-tests:
+    name: contract-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run Art Provider contract tests
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tests=(
+            tests/contracts/art-provider-contract.test.ts
+            tests/contracts/art-source-resolver.test.ts
+            tests/contracts/art-provider-policy.test.ts
+            tests/contracts/art-provider-live-preflight.test.ts
+            tests/contracts/art-provider-live-preflight-evidence.test.ts
+            tests/contracts/art-provider-live-dry-run-adapter.test.ts
+            tests/contracts/art-provider-artifact-write-sandbox.test.ts
+          )
+
+          if [[ -f tests/contracts/art-provider-live-preflight-report.test.ts ]]; then
+            tests+=(tests/contracts/art-provider-live-preflight-report.test.ts)
+          fi
+
+          existing=()
+          for test_file in "${tests[@]}"; do
+            if [[ -f "$test_file" ]]; then
+              existing+=("$test_file")
+            fi
+          done
+
+          if [[ "${#existing[@]}" -eq 0 ]]; then
+            echo "No Art Provider contract tests found."
+            exit 1
+          fi
+
+          npx vitest run "${existing[@]}"
+
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm run typecheck
+
+  full-test:
+    name: full-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm test
+
+  required:
+    name: required
+    runs-on: ubuntu-latest
+    needs:
+      - safety-guards
+      - contract-tests
+      - typecheck
+      - full-test
+    if: always()
+    steps:
+      - name: Verify required jobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "safety-guards: ${{ needs.safety-guards.result }}"
+          echo "contract-tests: ${{ needs.contract-tests.result }}"
+          echo "typecheck: ${{ needs.typecheck.result }}"
+          echo "full-test: ${{ needs.full-test.result }}"
+
+          test "${{ needs.safety-guards.result }}" = "success"
+          test "${{ needs.contract-tests.result }}" = "success"
+          test "${{ needs.typecheck.result }}" = "success"
+          test "${{ needs.full-test.result }}" = "success"
