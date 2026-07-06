@@ -173,6 +173,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
       - name: Prepare Step37 local Skill fixture
         shell: bash
         run: |
