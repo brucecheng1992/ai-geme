@@ -147,6 +147,36 @@ export {
   type LiveDryRunArtProviderOptions
 } from './art-provider-live-dry-run-adapter.js';
 export {
+  ALIYUN_BAILIAN_DASHSCOPE_CREDENTIAL_REF,
+  ALIYUN_BAILIAN_IMAGE_ADAPTER_VERSION,
+  ALIYUN_BAILIAN_IMAGE_PROVIDER_ID,
+  ALIYUN_BAILIAN_QWEN_IMAGE_DEFAULT_MODEL,
+  ALIYUN_BAILIAN_QWEN_IMAGE_SMOKE_MODEL,
+  ART_PROVIDER_ALIYUN_BAILIAN_IMAGE_CUTOVER_RECORD,
+  buildAliyunBailianImageGenerationRequest,
+  createAliyunBailianImageProvider,
+  normalizeAliyunBailianImageResponse,
+  type AliyunBailianImageBlocker,
+  type AliyunBailianImageCredentialResolver,
+  type AliyunBailianImageGenerateInput,
+  type AliyunBailianImageGenerationRequest,
+  type AliyunBailianImageHttpClient,
+  type AliyunBailianImageHttpRequest,
+  type AliyunBailianImageHttpResponse,
+  type AliyunBailianImageIntendedUse,
+  type AliyunBailianImageProvider,
+  type AliyunBailianImageProviderOptions,
+  type AliyunBailianImageProviderErrorEvidence,
+  type AliyunBailianImageSourceAssetBudget,
+  type AliyunBailianImageSourceCandidate,
+  type AliyunBailianImageSourceFailure,
+  type AliyunBailianImageSourceResult,
+  type AliyunBailianImageSourceSuccess,
+  type AliyunBailianQwenImageModel,
+  type BuildAliyunBailianImageGenerationRequestInput,
+  type NormalizeAliyunBailianImageResponseInput
+} from './art-provider-aliyun-bailian-image-adapter.js';
+export {
   ART_PROVIDER_POLICY_VERSION,
   readArtProviderPolicyFromEnv,
   resolveArtProviderPolicy,
