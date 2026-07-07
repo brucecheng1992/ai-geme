@@ -40,7 +40,7 @@ describe('Loop13A Aliyun Bailian Qwen image source-asset adapter', () => {
     });
   });
 
-  it('builds the official-style Qwen image generation request with deterministic defaults', () => {
+  it('builds the Qwen-Image text-to-image generation request with deterministic defaults', () => {
     const request = buildAliyunBailianImageGenerationRequest({
       endpoint: ENDPOINT,
       prompt: 'side-view heroic runner sprite reference',
@@ -76,7 +76,8 @@ describe('Loop13A Aliyun Bailian Qwen image source-asset adapter', () => {
         }
       }
     });
-    expect(JSON.stringify(request)).not.toMatch(/Authorization|Bearer|sk-live-secret|raw_provider_response/i);
+    expect(request.body.input.messages[0].content).toEqual([{ text: 'side-view heroic runner sprite reference' }]);
+    expect(JSON.stringify(request)).not.toMatch(/Authorization|Bearer|X-DashScope-Async|qwen-mt-image|image-synthesis|image_url|source_lang|target_lang|sk-live-secret|raw_provider_response/i);
   });
 
   it('fails closed before execution when any live, credential, cost, artifact, source, or budget gate is missing', async () => {
@@ -156,6 +157,31 @@ describe('Loop13A Aliyun Bailian Qwen image source-asset adapter', () => {
     expect(JSON.stringify(result)).not.toMatch(/attacker\.dashscope|fake-credential|Authorization|Bearer/i);
   });
 
+  it('requires an explicit endpoint override so real smoke cannot silently default to legacy DashScope host', async () => {
+    let credentialCalls = 0;
+    let httpCalls = 0;
+    const provider = createAliyunBailianImageProvider({
+      httpClient: async () => {
+        httpCalls += 1;
+        throw new Error('http client must not be reached without an explicit endpoint');
+      },
+      credentialResolver: async () => {
+        credentialCalls += 1;
+        return 'fake-credential';
+      }
+    });
+
+    const result = await provider.generateSourceImage(readyInput());
+
+    expect(credentialCalls).toBe(0);
+    expect(httpCalls).toBe(0);
+    expect(result).toMatchObject({
+      ok: false,
+      blocker: 'art_provider_live_endpoint_missing'
+    });
+    expect(JSON.stringify(result)).not.toMatch(/dashscope\.aliyuncs\.com|fake-credential|Authorization|Bearer/i);
+  });
+
   it('converts credential and HTTP dependency throws into sanitized typed failures', async () => {
     const credentialFailure = await createAliyunBailianImageProvider({
       endpoint: ENDPOINT,
@@ -198,6 +224,7 @@ describe('Loop13A Aliyun Bailian Qwen image source-asset adapter', () => {
         Authorization: 'Bearer fake-credential',
         'Content-Type': 'application/json'
       });
+      expect(request.headers).not.toHaveProperty('X-DashScope-Async');
       expect(request.body.parameters).toMatchObject({ size: '1024*1024', n: 1 });
       return {
         status: 200,
@@ -275,6 +302,59 @@ describe('Loop13A Aliyun Bailian Qwen image source-asset adapter', () => {
       }
     });
     expect(JSON.stringify(result)).not.toMatch(/fake-credential|Authorization|Bearer|temporary\.example|signature=|sk-live-secret|raw_provider_response_secret/i);
+  });
+
+  it('converts provider HTTP errors into safe redacted diagnostics without leaking raw provider payloads', async () => {
+    const result = await createAliyunBailianImageProvider({
+      endpoint: ENDPOINT,
+      httpClient: async () => ({
+        status: 401,
+        json: {
+          code: 'InvalidApiKey',
+          message: 'Authorization failed for Bearer fake-credential at https://temporary.example/source.png?signature=must-not-persist',
+          request_id: 'req_safe_http_401',
+          raw_provider_response_secret: 'sk-live-secret-123'
+        }
+      }),
+      credentialResolver: async () => 'fake-credential'
+    }).generateSourceImage(readyInput());
+
+    expect(result).toMatchObject({
+      ok: false,
+      blocker: 'provider_generation_failed',
+      errorCode: 'provider_generation_failed',
+      providerErrorEvidence: {
+        httpStatus: 401,
+        providerErrorCode: 'InvalidApiKey',
+        providerMessageSha256: expect.stringMatching(/^[a-f0-9]{16}$/),
+        providerRequestIdSha256: expect.stringMatching(/^[a-f0-9]{16}$/)
+      }
+    });
+    expect(JSON.stringify(result)).not.toMatch(/fake-credential|Authorization|Bearer|temporary\.example|signature=|req_safe_http_401|sk-live-secret|raw_provider_response_secret/i);
+
+    const unsafeCode = 'aHR0cHM6Ly90ZW1wb3JhcnkuZXhhbXBsZS9zb3VyY2UucG5n';
+    const unsafeCodeResult = await createAliyunBailianImageProvider({
+      endpoint: ENDPOINT,
+      httpClient: async () => ({
+        status: 401,
+        json: {
+          code: unsafeCode,
+          message: 'provider returned an unsafe diagnostic code',
+          request_id: 'req_safe_http_402'
+        }
+      }),
+      credentialResolver: async () => 'fake-credential'
+    }).generateSourceImage(readyInput());
+
+    expect(unsafeCodeResult).toMatchObject({
+      ok: false,
+      blocker: 'provider_generation_failed',
+      providerErrorEvidence: {
+        httpStatus: 401,
+        providerErrorCode: expect.stringMatching(/^sha256:[a-f0-9]{16}$/)
+      }
+    });
+    expect(JSON.stringify(unsafeCodeResult)).not.toContain(unsafeCode);
   });
 
   it('normalizes malformed fake provider responses into typed blockers', () => {

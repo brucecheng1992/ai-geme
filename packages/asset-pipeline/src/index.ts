@@ -166,6 +166,7 @@ export {
   type AliyunBailianImageIntendedUse,
   type AliyunBailianImageProvider,
   type AliyunBailianImageProviderOptions,
+  type AliyunBailianImageProviderErrorEvidence,
   type AliyunBailianImageSourceAssetBudget,
   type AliyunBailianImageSourceCandidate,
   type AliyunBailianImageSourceFailure,

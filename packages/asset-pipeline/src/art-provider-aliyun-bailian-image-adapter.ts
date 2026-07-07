@@ -138,6 +138,13 @@ export type AliyunBailianImageSourceCandidate = {
   transientOutputKind: 'temporary_url' | 'provider_reference';
 };
 
+export type AliyunBailianImageProviderErrorEvidence = {
+  httpStatus: number;
+  providerErrorCode?: string;
+  providerMessageSha256?: string;
+  providerRequestIdSha256?: string;
+};
+
 type SourceResultCommon = {
   providerId: string;
   model: string;
@@ -177,6 +184,7 @@ export type AliyunBailianImageSourceFailure = SourceResultCommon & {
     credentialRefKind: 'env' | 'unsafe' | 'missing';
     credentialAvailable: boolean;
   };
+  providerErrorEvidence?: AliyunBailianImageProviderErrorEvidence;
 };
 
 export type AliyunBailianImageSourceResult = AliyunBailianImageSourceSuccess | AliyunBailianImageSourceFailure;
@@ -226,6 +234,18 @@ const DEFAULT_SOURCE_ASSET_BUDGET: AliyunBailianImageSourceAssetBudget = {
 
 const TRUSTED_ALIYUN_ENDPOINT_HOSTS = ['dashscope.aliyuncs.com', 'dashscope-intl.aliyuncs.com'] as const;
 const TRUSTED_ALIYUN_WORKSPACE_ENDPOINT_PATTERN = /^[A-Za-z0-9-]+\.(cn-beijing|ap-southeast-1)\.maas\.aliyuncs\.com$/;
+const SAFE_PROVIDER_ERROR_CODES = new Set([
+  'InvalidApiKey',
+  'InvalidParameter',
+  'BadRequest',
+  'Unauthorized',
+  'Forbidden',
+  'Throttling',
+  'RateLimit',
+  'QuotaExceeded',
+  'InternalError',
+  'ServiceUnavailable'
+]);
 
 /**
  * Builds the provider request body without headers or credentials. Authorization
@@ -345,7 +365,9 @@ export function createAliyunBailianImageProvider(options: AliyunBailianImageProv
         return blockedSourceResult(providerId, effectiveModel, input, sourceAssetBudget, 'provider_generation_failed');
       }
       if (!Number.isInteger(response.status) || response.status < 200 || response.status > 299) {
-        return blockedSourceResult(providerId, effectiveModel, input, sourceAssetBudget, 'provider_generation_failed');
+        return blockedSourceResult(providerId, effectiveModel, input, sourceAssetBudget, 'provider_generation_failed', {
+          providerErrorEvidence: providerErrorEvidenceFor(response.status, response.json)
+        });
       }
 
       return normalizeAliyunBailianImageResponse({
@@ -494,7 +516,8 @@ function blockedSourceResult(
   model: string,
   input: Pick<AliyunBailianImageGenerateInput, 'intendedUse' | 'credentialRef' | 'credentialAvailable'>,
   sourceAssetBudget: AliyunBailianImageSourceAssetBudget,
-  blocker: AliyunBailianImageBlocker
+  blocker: AliyunBailianImageBlocker,
+  evidence: { providerErrorEvidence?: AliyunBailianImageProviderErrorEvidence } = {}
 ): AliyunBailianImageSourceFailure {
   const intendedUse = isSupportedIntendedUse(input.intendedUse) ? input.intendedUse : 'concept_reference';
   return {
@@ -515,7 +538,8 @@ function blockedSourceResult(
     credentialEvidence: {
       credentialRefKind: credentialRefKind(input.credentialRef),
       credentialAvailable: input.credentialAvailable === true
-    }
+    },
+    ...evidence
   };
 }
 
@@ -681,6 +705,33 @@ function candidatesFitBudget(
 
 function isTrustedAliyunEndpointHost(hostname: string): boolean {
   return TRUSTED_ALIYUN_ENDPOINT_HOSTS.some((host) => hostname === host) || TRUSTED_ALIYUN_WORKSPACE_ENDPOINT_PATTERN.test(hostname);
+}
+
+function providerErrorEvidenceFor(status: number, responseJson: unknown): AliyunBailianImageProviderErrorEvidence {
+  const code =
+    readString(readPath(responseJson, ['code'])) ??
+    readString(readPath(responseJson, ['error_code'])) ??
+    readString(readPath(responseJson, ['errorCode']));
+  const message =
+    readString(readPath(responseJson, ['message'])) ??
+    readString(readPath(responseJson, ['error_message'])) ??
+    readString(readPath(responseJson, ['errorMessage']));
+  const requestId =
+    readString(readPath(responseJson, ['request_id'])) ??
+    readString(readPath(responseJson, ['requestId'])) ??
+    readString(readPath(responseJson, ['output', 'task_id'])) ??
+    readString(readPath(responseJson, ['task_id']));
+
+  return {
+    httpStatus: status,
+    ...(code === undefined ? {} : { providerErrorCode: safeProviderDiagnosticCode(code) }),
+    ...(message === undefined ? {} : { providerMessageSha256: sha256(message).slice(0, 16) }),
+    ...(requestId === undefined ? {} : { providerRequestIdSha256: sha256(requestId).slice(0, 16) })
+  };
+}
+
+function safeProviderDiagnosticCode(value: string): string {
+  return SAFE_PROVIDER_ERROR_CODES.has(value) ? value : `sha256:${sha256(value).slice(0, 16)}`;
 }
 
 function credentialRefKind(value: string | undefined): 'env' | 'unsafe' | 'missing' {
