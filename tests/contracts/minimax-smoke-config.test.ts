@@ -19,6 +19,7 @@ describe('MiniMax live smoke configuration', () => {
     expect(envExample).toContain('MINIMAX_IMAGE_MODEL=image-01');
     expect(envExample).toContain('RUN_MINIMAX_LIVE_TESTS=0');
     expect(JSON.parse(packageJson).scripts['minimax:smoke']).toBe('tsx scripts/minimax-smoke.ts');
+    expect(JSON.parse(packageJson).scripts['art-task:minimax-smoke']).toBe('tsx scripts/art-task-minimax-smoke.ts');
     expect(docs).toContain('MiniMax is the first ArtProviderAdapter, not a business dependency.');
     expect(docs).toContain('RUN_MINIMAX_LIVE_TESTS=1');
     expect(docs).toContain('provider URLs are temporary');
@@ -35,5 +36,33 @@ describe('MiniMax live smoke configuration', () => {
 
     expect(result.stdout).toContain('Skipping MiniMax live smoke test');
     expect(result.stderr).toBe('');
+  });
+
+  it('skips the business ArtTask MiniMax smoke unless explicitly enabled', async () => {
+    const result = await execFileAsync('npx', ['tsx', 'scripts/art-task-minimax-smoke.ts'], {
+      env: {
+        ...process.env,
+        RUN_MINIMAX_LIVE_TESTS: '0',
+        MINIMAX_API_KEY: ''
+      }
+    });
+
+    expect(result.stdout).toContain('Skipping live MiniMax ArtTask smoke test');
+    expect(result.stderr).toBe('');
+  });
+
+  it('fails the business ArtTask MiniMax smoke clearly when live mode has no API key', async () => {
+    await expect(
+      execFileAsync('npx', ['tsx', 'scripts/art-task-minimax-smoke.ts'], {
+        env: {
+          ...process.env,
+          RUN_MINIMAX_LIVE_TESTS: '1',
+          MINIMAX_API_KEY: ''
+        }
+      })
+    ).rejects.toMatchObject({
+      code: 1,
+      stderr: expect.stringContaining('MiniMax ArtTask live smoke test requires MINIMAX_API_KEY when RUN_MINIMAX_LIVE_TESTS=1.')
+    });
   });
 });

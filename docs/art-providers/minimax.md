@@ -29,13 +29,19 @@ These tests use injected `fetch` mocks and do not require `MINIMAX_API_KEY`.
 
 ## Live Smoke
 
-The live smoke script is opt-in and must not run in CI by default.
+Live smoke scripts are opt-in and must not run in CI by default.
 
 ```bash
 RUN_MINIMAX_LIVE_TESTS=1 MINIMAX_API_KEY=<redacted> npm run minimax:smoke
 ```
 
-When `RUN_MINIMAX_LIVE_TESTS` is not `1`, the script prints `Skipping MiniMax live smoke test` and exits with status 0. When enabled, it requests one `skill_icon` image with `responseFormat: "base64"` and writes the first result under `artifacts/minimax-smoke/`, which is already ignored by git.
+`minimax:smoke` calls the raw MiniMax adapter. When `RUN_MINIMAX_LIVE_TESTS` is not `1`, the script prints `Skipping MiniMax live smoke test` and exits with status 0. When enabled, it requests one `skill_icon` image with `responseFormat: "base64"` and writes the first result under `artifacts/minimax-smoke/`, which is already ignored by git.
+
+```bash
+RUN_MINIMAX_LIVE_TESTS=1 MINIMAX_API_KEY=<redacted> npm run art-task:minimax-smoke
+```
+
+`art-task:minimax-smoke` calls MiniMax through the business-level `ArtTaskRunner`: it creates a provider-agnostic `ArtTask`, resolves the MiniMax provider profile, records a `ProviderCall`, writes a `GeneratedAsset` under `artifacts/generated-assets/`, then selects and approves the asset through `ReviewDecision` records. It does not import MiniMax request payload details into business code.
 
 If using `responseFormat: "url"`, provider URLs are temporary and must be copied into our own storage before they become durable asset sources.
 
