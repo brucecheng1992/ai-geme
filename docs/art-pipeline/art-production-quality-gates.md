@@ -60,7 +60,7 @@ The combined Batch 002c preflight can automatically verify prompt, manifest, and
 
 It cannot guarantee that the generated image actually contains no text, logo, watermark, signature, corner mark, footer, or fake UI label.
 
-Batch 002c is the concrete case: prompt gates passed, but image content human review failed for production approval. The batch remains useful as diagnostic/reference material, but its production approval status is `production_blocked`.
+Batch 002c is the concrete case: automated prompt/manifest checks returned `pass`, but image content human review failed for production approval. The batch remains useful as diagnostic/reference material, but its production approval status is `production_blocked`.
 
 Production approval must therefore depend on an `ImageContentGate` outcome:
 
@@ -75,6 +75,33 @@ Any asset containing actual text, fake text, logo, watermark, signature, corner 
 The manifest `blockingIssues` field contains only failures produced by the current automated evaluation. Potential human-review issue categories remain in the profile/check metadata and do not appear as active blockers while the prompt gate passes.
 
 Future OCR or vision post-checks may assist review, but until such a pipeline exists and is validated, image-content compliance remains a manual gate.
+
+## Production Status Model
+
+Production review uses five separate dimensions. None may be inferred from generated-asset counts alone:
+
+- `GenerationExecutionStatus` records only whether execution was skipped, failed before/provider-side, or completed.
+- `promptGateStatus` records the persisted review receipt's `passed` / `failed` prompt result; it adapts the shared gate's `pass` / `fail` wording without changing that existing contract.
+- `ImageContentGateStatus` records pending, failed, manual-passed, or validated automated-passed image-content review.
+- `ProductionApprovalStatus` remains `pending_human_review`, `production_blocked`, or `production_approved`.
+- `ProductionClosureStatus` makes open review, blocked closure, and approved closure explicit.
+
+`generation_completed` and prompt `passed` never imply production approval. Pending human review maps to `open_pending_review`. A consistent explicit review outcome maps `production_blocked` to `closed_blocked`; this is a valid blocked closeout, not production success. `closed_approved` requires image-content pass, manifest-owned expected-asset coverage, explicit approved outcomes for the full set, and no selected or blocking asset.
+
+`evaluateArtBatchReviewOutcome` receives expected asset ids separately from the human-review receipt. This prevents a receipt from authorizing its own coverage. Unknown ids, missing required coverage, selected/approved list mismatches, blocking reasons, or inconsistent approval/closure claims fail closed.
+
+## Runtime Review Input Contract
+
+Compile-time TypeScript types do not replace a runtime input contract. Persisted review JSON must pass `parseArtBatchReviewOutcomeJson` and its strict Zod schema before it can reach `evaluateArtBatchReviewOutcome`; `JSON.parse` alone proves only JSON syntax. Malformed JSON, missing or mistyped fields, illegal enum values, invalid nested/array shapes, and unknown fields fail closed with a structured `BLOCKED` diagnostic. Parser failures must not be swallowed and reclassified as ordinary art-quality findings.
+
+The structured parser diagnostic records a stable error code, input source, fixture id, parser stage, Zod issue path/code, expected type, actual runtime type, and failure kind without echoing input values. The Zod schema is the single runtime shape authority and is compile-time checked against the public `ArtBatchReviewOutcome` type.
+
+Module responsibilities remain deliberately narrow:
+
+- `scripts/art-quality-gates.ts` owns the quality-gate profile, prompt/manifest checks, public status types, and the compatibility re-exports.
+- `scripts/art-production-status.ts` owns the strict runtime schema/parser and review-outcome approval/closure derivation.
+
+The original `scripts/art-quality-gates.ts` import path remains supported for the schema, parser, evaluator, and public types. The extracted module uses type-only imports back to the public contract, so it does not create a runtime import cycle or a second schema source of truth. This extraction is structural only: it does not change provider routing, live flags, CLI command names, or generated-asset behavior.
 
 ## Asset-Type Generation Strategy
 
@@ -134,11 +161,11 @@ If a future production batch omits `qualityGateProfile`, it must fail closed bef
 
 | Check | Required answer |
 | --- | --- |
-| Producer change | Added reusable production art gate profile and manifest quality-gate fields for production batches. |
-| Consumer list | `scripts/art-quality-gates.ts`, Batch 002c runner, contract tests, and human review docs consume the profile. |
+| Producer change | Added explicit generation-execution and production-closure states, persisted review status fields, manifest-owned expected-asset binding, and candidate-only review-index disclosures. |
+| Consumer list | The strict parser and `evaluateArtBatchReviewOutcome` in `scripts/art-production-status.ts`, the compatibility exports in `scripts/art-quality-gates.ts`, the Batch 002c manifest/index/summary builders, contract tests, and human review docs consume and act on the new fields. |
 | Compatibility type | NEW_CONSUMER_REQUIRED |
-| Authority | `ProductionCleanSideRunnerV1` in `scripts/art-quality-gates.ts`. |
-| Legacy strategy | Batch 002 and Batch 002b remain historical artifacts; Batch 002c and later production batches declare quality gates. |
-| Failure policy | Missing quality gate profile, missing prompt lineage, missing side-runner constraints, or missing human-review state fails closed before provider calls. |
-| Evidence | Contract tests cover pass/fail quality-gate behavior without provider calls. |
-| Rollback | Disable the new batch flag; historical artifacts remain intact. |
+| Authority | `ProductionCleanSideRunnerV1` defines prompt/review requirements; manifest-owned expected asset ids plus the explicit human review outcome determine derived approval and closure. |
+| Legacy strategy | Historical generated artifacts remain read-only and are not rewritten. Existing `pass` / `fail` prompt-gate fields remain supported; new persisted review receipts use the explicit adapter wording. |
+| Failure policy | Malformed/shape-invalid persisted review input, missing quality gates, unknown/missing expected assets, mismatched selected/approved ids, blocking reasons, or inconsistent approval/closure claims fail closed. |
+| Evidence | Contract tests directly exercise malformed and shape-invalid parser failures, the public compatibility import, legal review outcomes, the evaluator, and Batch 002c future index/fixture/summary consumers without provider calls; automated prompt checks do not establish image-content compliance or approval. |
+| Rollback | Disable the opt-in batch runner and stop producing the additive status fields; preserve historical artifacts and review outcomes without rewriting their semantics. |

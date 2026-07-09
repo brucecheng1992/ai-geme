@@ -23,7 +23,7 @@ import {
 } from '../packages/asset-pipeline/src/index.js';
 
 export const BATCH_002B_ID = 'batch-002b' as const;
-export const BATCH_002B_PURPOSE = 'ChiYan side-scrolling run-and-gun production pass' as const;
+export const BATCH_002B_PURPOSE = 'ChiYan side-scrolling run-and-gun production-candidate generation batch' as const;
 export const BATCH_002B_MAX_IMAGES = 11 as const;
 export const BATCH_002B_GAME_FORMAT = 'side_scrolling_run_and_gun' as const;
 export const CHIYAN_SIDE_RUNNER_SOURCE_DSL_ID = 'chiyan-battlefield-side-runner-dsl-v1' as const;

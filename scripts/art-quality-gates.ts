@@ -1,11 +1,29 @@
 import type { ArtAssetType } from '../packages/asset-pipeline/src/index.js';
 
+export {
+  ArtBatchReviewOutcomeParseError,
+  ArtBatchReviewOutcomeSchema,
+  evaluateArtBatchReviewOutcome,
+  parseArtBatchReviewOutcome,
+  parseArtBatchReviewOutcomeJson
+} from './art-production-status.js';
+export type {
+  ArtBatchReviewOutcomeParseContext,
+  ArtBatchReviewOutcomeParseDiagnostic,
+  ArtBatchReviewOutcomeParseDiagnosticIssue
+} from './art-production-status.js';
+
 export type ArtQualityGateProfileId = 'ProductionCleanSideRunnerV1';
 export type ArtQualityGateVersion = '1.0';
 export type ArtQualityGateCheckStatus = 'pass' | 'fail' | 'manual_review_required';
 export type PromptQualityGateStatus = 'pass' | 'fail';
-export type ImageContentGateStatus = 'not_evaluated' | 'manual_review_required' | 'manual_failed' | 'manual_passed';
+export type ImageContentGateStatus = 'not_evaluated' | 'manual_review_required' | 'manual_failed' | 'manual_passed' | 'automated_passed';
 export type ProductionApprovalStatus = 'pending_human_review' | 'production_blocked' | 'production_approved';
+/** Records provider/file execution only; it never implies production approval. */
+export type GenerationExecutionStatus = 'skipped' | 'failed_before_provider_call' | 'provider_failed' | 'generation_completed';
+/** Separates an open review from a blocked or approved production decision. */
+export type ProductionClosureStatus = 'open_pending_review' | 'closed_blocked' | 'closed_approved';
+export type ArtBatchPromptGateStatus = 'passed' | 'failed';
 export type ArtAssetReviewStatus = 'approved' | 'selected' | 'needs_revision' | 'rejected';
 
 export type ArtReviewFailureReason =
@@ -65,17 +83,43 @@ export type ArtAssetReviewOutcome = {
 export type ArtBatchReviewOutcome = {
   batchId: string;
   parentBatchId?: string;
+  generationExecutionStatus: GenerationExecutionStatus;
+  promptGateStatus: ArtBatchPromptGateStatus;
   productionApprovalStatus: ProductionApprovalStatus;
   imageContentGateStatus: ImageContentGateStatus;
+  productionClosureStatus: ProductionClosureStatus;
+  selectedAssetIds: string[];
+  approvedAssetIds: string[];
   reviewedAt: string;
   reviewer: string;
   assetOutcomes: ArtAssetReviewOutcome[];
   batchLevelFindings: string[];
 };
 
+export type EvaluateArtBatchReviewOutcomeOptions = {
+  /** Manifest-owned asset ids; kept outside the review outcome so the receipt cannot self-authorize coverage. */
+  expectedAssetIds?: readonly string[];
+  allowPartialReview?: boolean;
+};
+
 export type ArtBatchReviewOutcomeIssue =
   | 'image_content_manual_failed_blocks_approval'
-  | 'production_approval_requires_manual_pass'
+  | 'production_approval_requires_image_content_pass'
+  | 'production_approval_requires_generation_completed'
+  | 'production_approval_requires_prompt_gate_pass'
+  | 'production_approval_requires_expected_asset_ids'
+  | 'production_approval_requires_full_review_coverage'
+  | 'pending_human_review_requires_open_pending_review'
+  | 'production_blocked_requires_closed_blocked'
+  | 'production_approved_requires_closed_approved'
+  | 'review_outcome_references_unknown_asset'
+  | 'review_outcome_references_wrong_batch'
+  | 'review_outcome_contains_duplicate_asset'
+  | 'review_outcome_missing_expected_asset'
+  | 'selected_asset_ids_mismatch'
+  | 'approved_asset_ids_mismatch'
+  | 'production_approval_status_mismatch'
+  | 'production_closure_status_mismatch'
   | 'production_approved_without_approved_asset'
   | 'production_approved_has_unresolved_asset'
   | 'production_blocked_has_selected_asset'
@@ -88,6 +132,8 @@ export type ArtBatchReviewOutcomeIssue =
 export type ArtBatchReviewOutcomeResult = {
   ok: boolean;
   issues: ArtBatchReviewOutcomeIssue[];
+  derivedProductionApprovalStatus: ProductionApprovalStatus;
+  derivedProductionClosureStatus: ProductionClosureStatus;
 };
 
 export type ArtPromptQualityGate = {
@@ -144,24 +190,6 @@ export const PRODUCTION_CLEAN_SIDE_RUNNER_BLOCKING_ISSUES: readonly ArtQualityGa
   'gameplay_scale_readability'
 ] as const;
 
-const IMAGE_CONTENT_BLOCKING_REASONS = new Set<ArtReviewFailureReason>([
-  'actual_text',
-  'fake_text',
-  'logo',
-  'watermark',
-  'signature',
-  'corner_mark',
-  'footer',
-  'fake_ui_label',
-  'not_strict_side_view',
-  'not_gameplay_scale',
-  'poster_layout',
-  'card_frame',
-  'concept_sheet_layout',
-  'chibi_wrong_style',
-  'ui_should_be_deterministic',
-  'icon_should_be_glyph_only'
-]);
 
 export const ProductionCleanSideRunnerV1: ArtQualityGateProfile = {
   profile: 'ProductionCleanSideRunnerV1',
@@ -208,6 +236,15 @@ export const ProductionCleanSideRunnerV1: ArtQualityGateProfile = {
   reviewGate: {
     id: 'HumanReviewGate',
     requiredChecklistItems: [
+      'Generation Execution Status',
+      'Prompt Gate Status',
+      'Image Content Gate Status',
+      'Production Approval Status',
+      'Production Closure Status',
+      'Generated assets are review candidates only.',
+      'Generated does not mean approved.',
+      'Prompt gate pass does not mean image content pass.',
+      'No asset is selected or approved until an explicit review outcome records it.',
       'game format fit',
       'gameplay readability',
       'ChiYan direction fit',
@@ -264,61 +301,6 @@ export function evaluateArtProductionQualityGate(
   };
 }
 
-export function evaluateArtBatchReviewOutcome(outcome: ArtBatchReviewOutcome): ArtBatchReviewOutcomeResult {
-  const issues: ArtBatchReviewOutcomeIssue[] = [];
-  const selectedAssets = outcome.assetOutcomes.filter((asset) => asset.status === 'selected');
-  const approvedAssets = outcome.assetOutcomes.filter((asset) => asset.status === 'approved');
-
-  if (outcome.imageContentGateStatus === 'manual_failed' && outcome.productionApprovalStatus === 'production_approved') {
-    issues.push('image_content_manual_failed_blocks_approval');
-  }
-
-  if (outcome.productionApprovalStatus === 'production_approved' && outcome.imageContentGateStatus !== 'manual_passed') {
-    issues.push('production_approval_requires_manual_pass');
-  }
-
-  if (outcome.productionApprovalStatus === 'production_approved') {
-    if (approvedAssets.length === 0) {
-      issues.push('production_approved_without_approved_asset');
-    }
-    if (outcome.assetOutcomes.some((asset) => asset.status !== 'approved')) {
-      issues.push('production_approved_has_unresolved_asset');
-    }
-  }
-
-  if (outcome.productionApprovalStatus === 'production_blocked') {
-    if (selectedAssets.length > 0) {
-      issues.push('production_blocked_has_selected_asset');
-    }
-    if (approvedAssets.length > 0) {
-      issues.push('production_blocked_has_approved_asset');
-    }
-  }
-
-  if (outcome.imageContentGateStatus === 'manual_failed') {
-    if (selectedAssets.length > 0) {
-      issues.push('manual_failed_has_selected_asset');
-    }
-    if (approvedAssets.length > 0) {
-      issues.push('manual_failed_has_approved_asset');
-    }
-  }
-
-  for (const asset of outcome.assetOutcomes) {
-    if (!asset.reasons.some((reason) => IMAGE_CONTENT_BLOCKING_REASONS.has(reason))) {
-      continue;
-    }
-
-    if (asset.status === 'selected') {
-      issues.push('asset_with_blocking_reason_cannot_be_selected');
-    }
-    if (asset.status === 'approved') {
-      issues.push('asset_with_blocking_reason_cannot_be_approved');
-    }
-  }
-
-  return { ok: issues.length === 0, issues: unique(issues) };
-}
 
 function checkProfile(profile: ArtQualityGateProfile, manifest: ArtQualityGateManifest): ArtQualityGateCheck {
   const ok = manifest.qualityGateProfile === profile.profile && manifest.qualityGateVersion === profile.version;

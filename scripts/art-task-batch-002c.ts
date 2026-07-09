@@ -25,14 +25,17 @@ import {
   evaluateArtProductionQualityGate,
   type ArtQualityGateBlockingIssue,
   type ArtQualityGateCheck,
+  type ArtBatchPromptGateStatus,
+  type GenerationExecutionStatus,
   type ImageContentGateStatus,
   type ProductionApprovalStatus,
+  type ProductionClosureStatus,
   type PromptQualityGateStatus
 } from './art-quality-gates.js';
 
 export const BATCH_002C_ID = 'batch-002c' as const;
 export const BATCH_002C_PARENT_BATCH_ID = 'batch-002b' as const;
-export const BATCH_002C_PURPOSE = 'ChiYan side-scrolling run-and-gun cleanup pass' as const;
+export const BATCH_002C_PURPOSE = 'ChiYan side-scrolling run-and-gun production-candidate cleanup generation batch' as const;
 export const BATCH_002C_GAME_FORMAT = 'side_scrolling_run_and_gun' as const;
 export const BATCH_002C_TOTAL_REQUESTED_IMAGES = 13 as const;
 export const BATCH_002C_DEFAULT_BASE_URL = 'https://api.minimaxi.com' as const;
@@ -156,6 +159,7 @@ export type Batch002cManifest = {
   providerCallCount: number;
   totalRequestedImages: number;
   generatedAssetCount: number;
+  generationExecutionStatus: GenerationExecutionStatus;
   reviewState: 'pending_human_review';
   autoApproval: false;
   autoSelection: false;
@@ -163,8 +167,10 @@ export type Batch002cManifest = {
   qualityGateVersion: '1.0';
   qualityGateStatus: 'pending_human_review' | 'fail';
   promptQualityGateStatus: PromptQualityGateStatus;
+  promptGateStatus: ArtBatchPromptGateStatus;
   imageContentGateStatus: ImageContentGateStatus;
   productionApprovalStatus: ProductionApprovalStatus;
+  productionClosureStatus: ProductionClosureStatus;
   qualityGateChecks: ArtQualityGateCheck[];
   blockingIssues: readonly ArtQualityGateBlockingIssue[];
   tasks: Batch002cTaskManifest[];
@@ -344,6 +350,7 @@ export function buildBatch002cQualityGateManifest(input: {
   batchRunId?: string;
   providerCallCount?: number;
   generatedAssetCount?: number;
+  generationExecutionStatus?: GenerationExecutionStatus;
   taskDefinitions?: readonly Batch002cTaskDefinition[];
   assets?: Batch002cAssetManifest[];
   now?: () => Date;
@@ -366,6 +373,7 @@ export function buildBatch002cQualityGateManifest(input: {
     providerCallCount: input.providerCallCount ?? 0,
     totalRequestedImages: getBatch002cRequestedImageCount(taskDefinitions),
     generatedAssetCount: input.generatedAssetCount ?? 0,
+    generationExecutionStatus: input.generationExecutionStatus ?? 'skipped',
     reviewState: 'pending_human_review',
     autoApproval: false,
     autoSelection: false,
@@ -373,8 +381,10 @@ export function buildBatch002cQualityGateManifest(input: {
     qualityGateVersion: ProductionCleanSideRunnerV1.version,
     qualityGateStatus: 'pending_human_review',
     promptQualityGateStatus: 'pass',
+    promptGateStatus: 'passed',
     imageContentGateStatus: 'manual_review_required',
     productionApprovalStatus: 'pending_human_review',
+    productionClosureStatus: 'open_pending_review',
     qualityGateChecks: [],
     blockingIssues: [],
     tasks,
@@ -386,8 +396,10 @@ export function buildBatch002cQualityGateManifest(input: {
     ...draft,
     qualityGateStatus: qualityGateResult.qualityGateStatus === 'fail' ? 'fail' : 'pending_human_review',
     promptQualityGateStatus: qualityGateResult.promptQualityGateStatus,
+    promptGateStatus: qualityGateResult.promptQualityGateStatus === 'pass' ? 'passed' : 'failed',
     imageContentGateStatus: qualityGateResult.imageContentGateStatus,
     productionApprovalStatus: qualityGateResult.productionApprovalStatus,
+    productionClosureStatus: qualityGateResult.productionApprovalStatus === 'production_blocked' ? 'closed_blocked' : 'open_pending_review',
     qualityGateChecks: qualityGateResult.checks,
     blockingIssues: qualityGateResult.blockingIssues
   };
@@ -405,16 +417,19 @@ export function renderBatch002cReviewIndex(manifest: Batch002cManifest): string 
     `Source DSL: ${manifest.sourceDslPath}`,
     `Source DSL hash: ${manifest.sourceDslHash}`,
     `Review state: ${manifest.reviewState}`,
-    `Prompt Gate Status: ${manifest.promptQualityGateStatus}`,
+    `Generation Execution Status: ${manifest.generationExecutionStatus}`,
+    `Prompt Gate Status: ${manifest.promptGateStatus}`,
     `Image Content Gate Status: ${manifest.imageContentGateStatus}`,
     `Production Approval Status: ${manifest.productionApprovalStatus}`,
+    `Production Closure Status: ${manifest.productionClosureStatus}`,
     `Requested images: ${manifest.totalRequestedImages}`,
     '',
-    'Human review can change production approval status to production_blocked or production_approved.',
+    'Generated assets are review candidates only.',
+    'Generated does not mean approved.',
+    'Prompt gate pass does not mean image content pass.',
+    'No asset is selected or approved until an explicit review outcome records it.',
     '',
-    'Assets remain generated for human review. No asset is selected or approved by this script.',
-    '',
-    renderBatch002cReviewIndexBase(),
+    renderBatch002cReviewChecklist(),
     ''
   ];
 
@@ -445,6 +460,76 @@ export function renderBatch002cReviewIndex(manifest: Batch002cManifest): string 
   }
 
   return `${lines.join('\n')}\n`;
+}
+
+export type Batch002cRunSummary = {
+  batchRunId: string;
+  sourceDslPath: string;
+  sourceDslHash: string;
+  gameFormat: typeof BATCH_002C_GAME_FORMAT;
+  qualityGateProfile: 'ProductionCleanSideRunnerV1';
+  qualityGateVersion: '1.0';
+  qualityGateStatus: Batch002cManifest['qualityGateStatus'];
+  generationExecutionStatus: GenerationExecutionStatus;
+  promptGateStatus: ArtBatchPromptGateStatus;
+  imageContentGateStatus: ImageContentGateStatus;
+  productionApprovalStatus: ProductionApprovalStatus;
+  productionClosureStatus: ProductionClosureStatus;
+  taskCount: number;
+  providerCallCount: number;
+  totalRequestedImages: number;
+  generatedAssetCount: number;
+  selectedAssetCount: number;
+  approvedAssetCount: number;
+  outputFolderPath: string;
+  reviewManifestPath: string;
+  reviewIndexPath: string;
+  reviewState: Batch002cManifest['reviewState'];
+  autoApproval: false;
+  autoSelection: false;
+  productionStatusMessages: string[];
+};
+
+/** Builds the machine-readable completion summary without running a provider. */
+export function buildBatch002cRunSummary(
+  manifest: Batch002cManifest,
+  artifactPaths: { manifestPath: string; indexPath: string }
+): Batch002cRunSummary {
+  const productionStatusMessages: string[] = [];
+  if (manifest.productionApprovalStatus !== 'production_approved') {
+    productionStatusMessages.push('Production not approved.');
+  }
+  if (manifest.productionApprovalStatus === 'production_blocked' && manifest.imageContentGateStatus === 'manual_failed') {
+    productionStatusMessages.push('Production blocked by human image content review.');
+  }
+
+  return {
+    batchRunId: manifest.batchRunId,
+    sourceDslPath: manifest.sourceDslPath,
+    sourceDslHash: manifest.sourceDslHash,
+    gameFormat: manifest.gameFormat,
+    qualityGateProfile: manifest.qualityGateProfile,
+    qualityGateVersion: manifest.qualityGateVersion,
+    qualityGateStatus: manifest.qualityGateStatus,
+    generationExecutionStatus: manifest.generationExecutionStatus,
+    promptGateStatus: manifest.promptGateStatus,
+    imageContentGateStatus: manifest.imageContentGateStatus,
+    productionApprovalStatus: manifest.productionApprovalStatus,
+    productionClosureStatus: manifest.productionClosureStatus,
+    taskCount: manifest.taskCount,
+    providerCallCount: manifest.providerCallCount,
+    totalRequestedImages: manifest.totalRequestedImages,
+    generatedAssetCount: manifest.generatedAssetCount,
+    selectedAssetCount: manifest.assets.filter((asset) => asset.status === 'selected').length,
+    approvedAssetCount: manifest.assets.filter((asset) => asset.status === 'approved').length,
+    outputFolderPath: join('artifacts', 'generated-assets', BATCH_002C_ID),
+    reviewManifestPath: artifactPaths.manifestPath,
+    reviewIndexPath: artifactPaths.indexPath,
+    reviewState: manifest.reviewState,
+    autoApproval: manifest.autoApproval,
+    autoSelection: manifest.autoSelection,
+    productionStatusMessages
+  };
 }
 
 async function main(): Promise<void> {
@@ -509,45 +594,22 @@ async function main(): Promise<void> {
     try {
       await runner.runTask(task.taskId);
     } catch (error) {
-      const failedManifest = createBatch002cManifestFromRepositories(batchRunId, dslSource, repositories);
+      const failedManifest = createBatch002cManifestFromRepositories(batchRunId, dslSource, repositories, 'provider_failed');
       await writeBatch002cReviewArtifacts(failedManifest);
       throw error;
     }
   }
 
-  const manifest = createBatch002cManifestFromRepositories(batchRunId, dslSource, repositories);
+  const manifest = createBatch002cManifestFromRepositories(batchRunId, dslSource, repositories, 'generation_completed');
   const artifactPaths = await writeBatch002cReviewArtifacts(manifest);
-  console.log(
-    JSON.stringify(
-      {
-        batchRunId,
-        sourceDslPath: dslSource.path,
-        sourceDslHash: dslSource.sha256,
-        gameFormat: manifest.gameFormat,
-        qualityGateProfile: manifest.qualityGateProfile,
-        qualityGateVersion: manifest.qualityGateVersion,
-        qualityGateStatus: manifest.qualityGateStatus,
-        taskCount: manifest.taskCount,
-        providerCallCount: manifest.providerCallCount,
-        totalRequestedImages: manifest.totalRequestedImages,
-        generatedAssetCount: manifest.generatedAssetCount,
-        outputFolderPath: join('artifacts', 'generated-assets', BATCH_002C_ID),
-        reviewManifestPath: artifactPaths.manifestPath,
-        reviewIndexPath: artifactPaths.indexPath,
-        reviewState: manifest.reviewState,
-        autoApproval: manifest.autoApproval,
-        autoSelection: manifest.autoSelection
-      },
-      null,
-      2
-    )
-  );
+  console.log(JSON.stringify(buildBatch002cRunSummary(manifest, artifactPaths), null, 2));
 }
 
 function createBatch002cManifestFromRepositories(
   batchRunId: string,
   dslSource: Extract<Batch002cDslSourceResult, { ok: true }>,
-  repositories: ArtTaskRepositories
+  repositories: ArtTaskRepositories,
+  generationExecutionStatus: GenerationExecutionStatus
 ): Batch002cManifest {
   const assets = repositories.generatedAssets.list().map((asset) => assetManifestFromAsset(asset, repositories));
   const manifest = buildBatch002cQualityGateManifest({
@@ -556,6 +618,7 @@ function createBatch002cManifestFromRepositories(
     sourceDslHash: dslSource.sha256,
     providerCallCount: repositories.providerCalls.list().length,
     generatedAssetCount: assets.length,
+    generationExecutionStatus,
     assets
   });
   return {
@@ -645,11 +708,22 @@ async function writeBatch002cReviewArtifacts(manifest: Batch002cManifest): Promi
 
 function renderBatch002cReviewIndexBase(): string {
   return [
-    'Prompt Gate Status: pass after automated manifest/prompt checks',
-    'Image Content Gate Status: manual_review_required',
-    'Production Approval Status: pending_human_review',
-    'Human review can change it to production_blocked / production_approved.',
+    'Generation Execution Status',
+    'Prompt Gate Status',
+    'Image Content Gate Status',
+    'Production Approval Status',
+    'Production Closure Status',
+    'Generated assets are review candidates only.',
+    'Generated does not mean approved.',
+    'Prompt gate pass does not mean image content pass.',
+    'No asset is selected or approved until an explicit review outcome records it.',
     '',
+    renderBatch002cReviewChecklist()
+  ].join('\n');
+}
+
+function renderBatch002cReviewChecklist(): string {
+  return [
     'Review checklist for each asset:',
     '',
     '- text/logo/watermark/signature',

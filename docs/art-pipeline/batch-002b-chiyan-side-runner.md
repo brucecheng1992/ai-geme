@@ -1,4 +1,4 @@
-# Batch 002b ChiYan Side-Runner Production Pass
+# Batch 002b ChiYan Side-Runner Production-Candidate Generation Batch
 
 Batch 002b is the production-oriented follow-up to Batch 002 for `赤炎战场 / ChiYan Battlefield`.
 
@@ -99,7 +99,7 @@ Human review should check:
 
 ## Review Finding
 
-Batch 002b succeeded as a side-scrolling direction pass. It is not final production-approved.
+Batch 002b generated side-scrolling candidates for human review. It is not final production-approved.
 
 Known blockers from review:
 

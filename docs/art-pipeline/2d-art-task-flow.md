@@ -1,6 +1,6 @@
 # 2D ArtTask Flow
 
-This document records the first business-level 2D art production path. MiniMax live smoke has passed, but MiniMax remains an `ArtProviderAdapter`, not business logic.
+This document records the first business-level 2D art production path. A historical provider-connectivity smoke completed before this checkpoint, but MiniMax remains an `ArtProviderAdapter`, not business logic. This does not imply production approval, production cutover, or provider same-run validation for later checkpoints.
 
 ## Flow
 

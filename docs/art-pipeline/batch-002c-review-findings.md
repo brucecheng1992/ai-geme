@@ -1,12 +1,12 @@
 # Batch 002c Human Review Findings
 
-Batch 002c generation succeeded and produced 13 local review candidates.
+Provider generation completed and produced 13 local review candidates; final production status is `production_blocked`.
 
 - Batch ID: `batch-002c`
 - Parent batch: `batch-002b`
 - Quality gate profile: `ProductionCleanSideRunnerV1`
 - Quality gate version: `1.0`
-- Prompt gate result: passed
+- Automated prompt gate result: `pass`; this does not imply image-content compliance or production approval
 - Image content gate result: manual review failed
 - Production approval status: `production_blocked`
 
@@ -32,7 +32,7 @@ Batch 002c remains useful as diagnostic/reference material, but it is not produc
 
 ## Recommendation
 
-Do not blindly rerun prompt-only cleanup. The prompt gate passed; the remaining risk is actual generated image content.
+Do not blindly rerun prompt-only cleanup. Automated prompt checks returned `pass`; the remaining risk is actual generated image content.
 
 Recommended next steps:
 

@@ -1,8 +1,13 @@
 {
   "batchId": "batch-002c",
   "parentBatchId": "batch-002b",
-  "productionApprovalStatus": "production_blocked",
+  "generationExecutionStatus": "generation_completed",
+  "promptGateStatus": "passed",
   "imageContentGateStatus": "manual_failed",
+  "productionApprovalStatus": "production_blocked",
+  "productionClosureStatus": "closed_blocked",
+  "selectedAssetIds": [],
+  "approvedAssetIds": [],
   "reviewedAt": "2026-07-10T00:00:00.000Z",
   "reviewer": "human",
   "assetOutcomes": [
@@ -99,7 +104,14 @@
     }
   ],
   "batchLevelFindings": [
-    "Prompt and manifest gates passed.",
+    "prompt_compliance_not_image_compliance",
+    "actual_text",
+    "fake_text",
+    "logo",
+    "watermark",
+    "signature",
+    "fake_ui_label",
+    "Automated prompt and manifest checks returned pass; this did not establish image-content compliance.",
     "Image content human review failed production approval.",
     "Watermark, logo, signature, corner mark, and footer artifacts remain present.",
     "Fake text and unreadable Chinese-like or English-like labels remain present.",

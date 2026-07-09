@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   BATCH_002B_MAX_IMAGES,
+  BATCH_002B_PURPOSE,
   BATCH_002B_TASK_DEFINITIONS,
   buildChiyanBatch002bPrompt,
   evaluateBatch002bGate,
@@ -33,12 +34,17 @@ const SIDE_RUNNER_DSL = [
   'no generic fantasy fallback'
 ].join('\n');
 
-describe('ChiYan ArtTask Batch 002b side-runner production pass', () => {
+describe('ChiYan ArtTask Batch 002b production-candidate generation batch', () => {
   const tempRoots: string[] = [];
 
   afterEach(async () => {
     await Promise.all(tempRoots.map((root) => rm(root, { recursive: true, force: true })));
     tempRoots.length = 0;
+  });
+
+  it('describes Batch 002b as production-candidate generation rather than production approval', () => {
+    expect(BATCH_002B_PURPOSE).toContain('production-candidate generation batch');
+    expect(BATCH_002B_PURPOSE).not.toMatch(/production approved|production pass/i);
   });
 
   it('skips when RUN_CHIYAN_BATCH_002B is not enabled and records zero provider calls', async () => {

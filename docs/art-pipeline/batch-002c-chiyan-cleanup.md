@@ -1,8 +1,8 @@
-# Batch 002c ChiYan Cleanup Pass
+# Batch 002c ChiYan Production-Candidate Cleanup Generation Batch
 
-Batch 002c is a selective cleanup pass after Batch 002b. It does not delete, overwrite, or rerun Batch 002 or Batch 002b.
+Batch 002c is a selective production-candidate cleanup generation batch after Batch 002b. It does not delete, overwrite, or rerun Batch 002 or Batch 002b.
 
-Batch 002b succeeded as a `side_scrolling_run_and_gun` direction pass, but human review found production blockers:
+Batch 002b established `side_scrolling_run_and_gun` direction evidence, but human review found production blockers:
 
 - watermark / logo / fake text / signature / title-card artifacts
 - some character and enemy outputs still reading as 3/4 splash art instead of strict side-view gameplay assets
@@ -100,9 +100,10 @@ Human review must check:
 
 ## Live Review Finding
 
-Batch 002c live generation completed and produced 13 assets.
+Batch 002c generated 13 review candidates. Production approval is decided only by explicit human review outcome.
 
-- Prompt and manifest gates passed.
+- Automated prompt and manifest checks returned `pass`; this did not establish image-content compliance or production approval.
+- Prompt gates passed, but image content human review failed; `productionApprovalStatus=production_blocked`.
 - `ProductionCleanSideRunnerV1` was applied.
 - No asset was auto-selected.
 - No asset was auto-approved.
@@ -133,11 +134,11 @@ docs/art-pipeline/review-outcomes/batch-002c-human-review.json
 
 | Check | Required answer |
 | --- | --- |
-| Producer change | Added Batch 002c cleanup runner, cleanup DSL, review manifest fields, and `ProductionCleanSideRunnerV1` quality gate metadata. |
-| Consumer list | `scripts/art-task-batch-002c.ts`, `scripts/art-quality-gates.ts`, contract tests, and human review index consume the new fields. |
+| Producer change | Added explicit execution/prompt/image/approval/closure fields, candidate-only index disclosures, summary counts/messages, and a blocked human-review outcome receipt. |
+| Consumer list | The Batch 002c manifest factory, future review-index renderer, run-summary builder, strict Zod review-outcome parser, `evaluateArtBatchReviewOutcome`, and contract tests consume and act on the fields. |
 | Compatibility type | NEW_CONSUMER_REQUIRED |
-| Authority | `docs/art-pipeline/dsl/chiyan-battlefield-side-runner-cleanup.dsl` and `ProductionCleanSideRunnerV1`. |
+| Authority | The cleanup DSL and `ProductionCleanSideRunnerV1` govern generation/prompt requirements; manifest asset ids and the explicit human review outcome govern final approval/closure. |
 | Legacy strategy | Batch 002 and Batch 002b remain historical artifacts and are not rewritten. |
-| Failure policy | Missing DSL, missing cleanup constraints, missing live key, or failed quality gate exits before provider calls. |
-| Evidence | Contract tests exercise gate failure and pass paths without live provider calls. |
+| Failure policy | Missing DSL, cleanup constraints or live authorization fails before provider calls; malformed/shape-invalid review input, review integrity errors, or approval/closure mismatches fail closed without promoting assets. |
+| Evidence | No-provider contracts directly render all five future index statuses, build summary status/count messages, parse the raw fixture through the strict runtime boundary, and validate the 13-asset blocked review receipt against an independent expected-id list. |
 | Rollback | Disable `RUN_CHIYAN_BATCH_002C`; existing Batch 002/002b artifacts remain intact. |

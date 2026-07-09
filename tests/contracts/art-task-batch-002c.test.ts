@@ -6,10 +6,16 @@ import { promisify } from 'node:util';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { ProductionCleanSideRunnerV1, evaluateArtBatchReviewOutcome, evaluateArtProductionQualityGate } from '../../scripts/art-quality-gates.js';
+import {
+  ProductionCleanSideRunnerV1,
+  evaluateArtBatchReviewOutcome,
+  evaluateArtProductionQualityGate,
+  parseArtBatchReviewOutcomeJson
+} from '../../scripts/art-quality-gates.js';
 import {
   BATCH_002C_TOTAL_REQUESTED_IMAGES,
   BATCH_002C_TASK_DEFINITIONS,
+  buildBatch002cRunSummary,
   buildBatch002cQualityGateManifest,
   evaluateBatch002cGate,
   getBatch002cRequestedImageCount,
@@ -20,6 +26,21 @@ import {
 
 const execFileAsync = promisify(execFile);
 const CANONICAL_CLEANUP_DSL_PATH = 'docs/art-pipeline/dsl/chiyan-battlefield-side-runner-cleanup.dsl';
+const BATCH_002C_EXPECTED_ASSET_IDS = [
+  'batch-002c-2026-07-09T18-36-05-280Z-player_character_concept_chiyan_clean-asset-1',
+  'batch-002c-2026-07-09T18-36-05-280Z-player_character_concept_chiyan_clean-asset-2',
+  'batch-002c-2026-07-09T18-36-05-280Z-player_character_concept_chiyan_clean-asset-3',
+  'batch-002c-2026-07-09T18-36-05-280Z-enemy_concept_chiyan_clean-asset-1',
+  'batch-002c-2026-07-09T18-36-05-280Z-enemy_concept_chiyan_clean-asset-2',
+  'batch-002c-2026-07-09T18-36-05-280Z-enemy_concept_chiyan_clean-asset-3',
+  'batch-002c-2026-07-09T18-36-05-280Z-skill_icon_chiyan_flame_slash_clean-asset-1',
+  'batch-002c-2026-07-09T18-36-05-280Z-skill_icon_chiyan_flame_slash_clean-asset-2',
+  'batch-002c-2026-07-09T18-36-05-280Z-skill_icon_chiyan_ash_guard_clean-asset-1',
+  'batch-002c-2026-07-09T18-36-05-280Z-skill_icon_chiyan_ash_guard_clean-asset-2',
+  'batch-002c-2026-07-09T18-36-05-280Z-skill_icon_chiyan_battle_burst_clean-asset-1',
+  'batch-002c-2026-07-09T18-36-05-280Z-skill_icon_chiyan_battle_burst_clean-asset-2',
+  'batch-002c-2026-07-09T18-36-05-280Z-ui_concept_chiyan_battle_hud_clean-asset-1'
+] as const;
 
 const VALID_CLEANUP_DSL = [
   'CHIYAN_BATTLEFIELD_DSL_VERSION 1.2',
@@ -189,14 +210,33 @@ describe('ChiYan ArtTask Batch 002c production quality gate', () => {
     });
 
     const index = renderBatch002cReviewIndex(manifest);
+    const firstTaskHeadingOffset = index.indexOf(`## ${manifest.tasks[0]?.taskId}`);
+    const statusLabels = [
+      'Generation Execution Status',
+      'Prompt Gate Status',
+      'Image Content Gate Status',
+      'Production Approval Status',
+      'Production Closure Status'
+    ];
 
-    expect(index).toContain('Prompt Gate Status');
+    expect(index).toContain('Generation Execution Status: skipped');
+    expect(index).toContain('Prompt Gate Status: passed');
     expect(index).toContain('Image Content Gate Status: manual_review_required');
     expect(index).toContain('Production Approval Status: pending_human_review');
+    expect(index).toContain('Production Closure Status: open_pending_review');
+    expect(index).toContain('Generated assets are review candidates only.');
+    expect(index).toContain('Generated does not mean approved.');
+    expect(index).toContain('Prompt gate pass does not mean image content pass.');
+    expect(index).toContain('No asset is selected or approved until an explicit review outcome records it.');
     expect(index).toContain('text/logo/watermark/signature check');
+    expect(firstTaskHeadingOffset).toBeGreaterThan(0);
+    for (const label of statusLabels) {
+      expect(index.indexOf(label)).toBeLessThan(firstTaskHeadingOffset);
+      expect(index.match(new RegExp(label, 'g'))).toHaveLength(1);
+    }
   });
 
-  it('passes ProductionCleanSideRunnerV1 for every Batch 002c prompt', () => {
+  it('accepts every Batch 002c prompt in automated preflight while keeping production pending', () => {
     const manifest = buildBatch002cQualityGateManifest({
       sourceDslPath: CANONICAL_CLEANUP_DSL_PATH,
       sourceDslHash: 'a'.repeat(64)
@@ -225,15 +265,74 @@ describe('ChiYan ArtTask Batch 002c production quality gate', () => {
   });
 
   it('records Batch 002c human review outcome as production_blocked with no selected or approved assets', async () => {
-    const outcome = JSON.parse(await readFile('docs/art-pipeline/review-outcomes/batch-002c-human-review.json', 'utf8'));
+    const fixturePath = 'docs/art-pipeline/review-outcomes/batch-002c-human-review.json';
+    const outcome = parseArtBatchReviewOutcomeJson(await readFile(fixturePath, 'utf8'), {
+      inputSource: fixturePath,
+      fixtureId: 'batch-002c-human-review'
+    });
 
     expect(outcome.batchId).toBe('batch-002c');
+    expect(outcome.generationExecutionStatus).toBe('generation_completed');
+    expect(outcome.promptGateStatus).toBe('passed');
     expect(outcome.productionApprovalStatus).toBe('production_blocked');
     expect(outcome.imageContentGateStatus).toBe('manual_failed');
+    expect(outcome.productionClosureStatus).toBe('closed_blocked');
+    expect(outcome.selectedAssetIds).toEqual([]);
+    expect(outcome.approvedAssetIds).toEqual([]);
+    expect(outcome.batchLevelFindings).toEqual(
+      expect.arrayContaining(['prompt_compliance_not_image_compliance', 'actual_text', 'fake_text', 'logo', 'watermark', 'signature', 'fake_ui_label'])
+    );
     expect(outcome.assetOutcomes).toHaveLength(13);
-    expect(outcome.assetOutcomes.some((asset: { status: string }) => asset.status === 'selected')).toBe(false);
-    expect(outcome.assetOutcomes.some((asset: { status: string }) => asset.status === 'approved')).toBe(false);
-    expect(evaluateArtBatchReviewOutcome(outcome).ok).toBe(true);
+    expect(new Set(outcome.assetOutcomes.map((asset) => asset.assetId))).toEqual(new Set(BATCH_002C_EXPECTED_ASSET_IDS));
+    expect(outcome.assetOutcomes.some((asset) => asset.status === 'selected')).toBe(false);
+    expect(outcome.assetOutcomes.some((asset) => asset.status === 'approved')).toBe(false);
+    expect(evaluateArtBatchReviewOutcome(outcome, { expectedAssetIds: BATCH_002C_EXPECTED_ASSET_IDS })).toMatchObject({
+      ok: true,
+      derivedProductionApprovalStatus: 'production_blocked',
+      derivedProductionClosureStatus: 'closed_blocked'
+    });
+  });
+
+  it('builds an explicit no-approval runner summary without provider calls', () => {
+    const manifest = buildBatch002cQualityGateManifest({
+      sourceDslPath: CANONICAL_CLEANUP_DSL_PATH,
+      sourceDslHash: 'a'.repeat(64)
+    });
+    const summary = buildBatch002cRunSummary(manifest, {
+      manifestPath: 'artifacts/generated-assets/batch-002c/review-manifest.json',
+      indexPath: 'artifacts/generated-assets/batch-002c/review-index.md'
+    });
+
+    expect(summary).toMatchObject({
+      generationExecutionStatus: 'skipped',
+      promptGateStatus: 'passed',
+      imageContentGateStatus: 'manual_review_required',
+      productionApprovalStatus: 'pending_human_review',
+      productionClosureStatus: 'open_pending_review',
+      providerCallCount: 0,
+      generatedAssetCount: 0,
+      selectedAssetCount: 0,
+      approvedAssetCount: 0
+    });
+    expect(summary.productionStatusMessages).toContain('Production not approved.');
+
+    const blockedSummary = buildBatch002cRunSummary(
+      {
+        ...manifest,
+        generationExecutionStatus: 'generation_completed',
+        imageContentGateStatus: 'manual_failed',
+        productionApprovalStatus: 'production_blocked',
+        productionClosureStatus: 'closed_blocked'
+      },
+      {
+        manifestPath: 'artifacts/generated-assets/batch-002c/review-manifest.json',
+        indexPath: 'artifacts/generated-assets/batch-002c/review-index.md'
+      }
+    );
+    expect(blockedSummary.productionStatusMessages).toEqual([
+      'Production not approved.',
+      'Production blocked by human image content review.'
+    ]);
   });
 
   it('defines 6 tasks and 13 requested images with no auto review actions', () => {
