@@ -17,6 +17,8 @@
     "test:workspace": "vitest run tests/workspace",
     "qa:asset-semantic:canary": "tsx scripts/run-asset-semantic-canary.ts",
     "qa:asset-semantic:compare": "tsx scripts/compare-asset-semantic-canaries.ts",
+    "minimax:smoke": "tsx scripts/minimax-smoke.ts",
+    "art-task:mock": "tsx scripts/art-task-mock.ts",
     "metadata:validate": "tsx scripts/validate-art-asset-metadata.ts",
     "metadata:export-runtime": "tsx scripts/export-art-runtime-metadata.ts",
     "typecheck": "npm run typecheck:root && npm run typecheck --workspace @ai-game-maker/maker-api && npm run typecheck --workspace @ai-game-maker/maker-workbench",
