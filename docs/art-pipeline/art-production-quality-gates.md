@@ -88,6 +88,8 @@ Production review uses five separate dimensions. None may be inferred from gener
 
 `generation_completed` and prompt `passed` never imply production approval. Pending human review maps to `open_pending_review`. A consistent explicit review outcome maps `production_blocked` to `closed_blocked`; this is a valid blocked closeout, not production success. `closed_approved` requires image-content pass, manifest-owned expected-asset coverage, explicit approved outcomes for the full set, and no selected or blocking asset.
 
+Provider-connectivity smoke follows the same boundary. The ArtTask shared-path smoke can record `generation_completed`, but it always remains `pending_human_review` / `open_pending_review`, never creates selected or approved review decisions, and never feeds its output into formal asset selection. Same-run connectivity evidence is scoped to the exact executed HEAD; any later code commit invalidates that evidence and requires a new controlled smoke.
+
 `evaluateArtBatchReviewOutcome` receives expected asset ids separately from the human-review receipt. This prevents a receipt from authorizing its own coverage. Unknown ids, missing required coverage, selected/approved list mismatches, blocking reasons, or inconsistent approval/closure claims fail closed.
 
 ## Runtime Review Input Contract

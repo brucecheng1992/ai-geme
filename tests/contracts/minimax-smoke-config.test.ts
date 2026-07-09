@@ -20,8 +20,12 @@ describe('MiniMax live smoke configuration', () => {
     expect(envExample).toContain('RUN_MINIMAX_LIVE_TESTS=0');
     expect(JSON.parse(packageJson).scripts['minimax:smoke']).toBe('tsx scripts/minimax-smoke.ts');
     expect(JSON.parse(packageJson).scripts['art-task:minimax-smoke']).toBe('tsx scripts/art-task-minimax-smoke.ts');
+    expect(JSON.parse(packageJson).scripts['art-task:minimax-same-run-smoke']).toBe('tsx scripts/art-task-minimax-smoke.ts');
     expect(docs).toContain('MiniMax is the first ArtProviderAdapter, not a business dependency.');
     expect(docs).toContain('RUN_MINIMAX_LIVE_TESTS=1');
+    expect(docs).toContain('RUN_MINIMAX_ART_TASK_SMOKE=1');
+    expect(docs).toContain('productionApprovalStatus=pending_human_review');
+    expect(docs).toContain('productionClosureStatus=open_pending_review');
     expect(docs).toContain('provider URLs are temporary');
   });
 
@@ -42,12 +46,29 @@ describe('MiniMax live smoke configuration', () => {
     const result = await execFileAsync('npx', ['tsx', 'scripts/art-task-minimax-smoke.ts'], {
       env: {
         ...process.env,
+        RUN_MINIMAX_ART_TASK_SMOKE: '0',
         RUN_MINIMAX_LIVE_TESTS: '0',
         MINIMAX_API_KEY: ''
       }
     });
 
-    expect(result.stdout).toContain('Skipping live MiniMax ArtTask smoke test');
+    expect(result.stdout).toContain('Skipping MiniMax ArtTask shared-path smoke');
+    expect(result.stdout).toContain('providerCallCount=0');
+    expect(result.stderr).toBe('');
+  });
+
+  it('keeps the business ArtTask MiniMax smoke disabled when only its smoke-specific flag is enabled', async () => {
+    const result = await execFileAsync('npx', ['tsx', 'scripts/art-task-minimax-smoke.ts'], {
+      env: {
+        ...process.env,
+        RUN_MINIMAX_ART_TASK_SMOKE: '1',
+        RUN_MINIMAX_LIVE_TESTS: '0',
+        MINIMAX_API_KEY: ''
+      }
+    });
+
+    expect(result.stdout).toContain('live_flag_disabled');
+    expect(result.stdout).toContain('providerCallCount=0');
     expect(result.stderr).toBe('');
   });
 
@@ -56,13 +77,16 @@ describe('MiniMax live smoke configuration', () => {
       execFileAsync('npx', ['tsx', 'scripts/art-task-minimax-smoke.ts'], {
         env: {
           ...process.env,
+          RUN_MINIMAX_ART_TASK_SMOKE: '1',
           RUN_MINIMAX_LIVE_TESTS: '1',
           MINIMAX_API_KEY: ''
         }
       })
     ).rejects.toMatchObject({
       code: 1,
-      stderr: expect.stringContaining('MiniMax ArtTask live smoke test requires MINIMAX_API_KEY when RUN_MINIMAX_LIVE_TESTS=1.')
+      stderr: expect.stringContaining(
+        'MiniMax ArtTask shared-path smoke requires MINIMAX_API_KEY when RUN_MINIMAX_LIVE_TESTS=1 and RUN_MINIMAX_ART_TASK_SMOKE=1; providerCallCount=0.'
+      )
     });
   });
 });

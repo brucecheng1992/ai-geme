@@ -42,12 +42,14 @@ RUN_MINIMAX_LIVE_TESTS=1 MINIMAX_BASE_URL=https://api.minimaxi.com MINIMAX_IMAGE
 Run the opt-in business-level MiniMax smoke:
 
 ```bash
-RUN_MINIMAX_LIVE_TESTS=1 MINIMAX_BASE_URL=https://api.minimaxi.com MINIMAX_IMAGE_MODEL=image-01 MINIMAX_API_KEY=<redacted> npm run art-task:minimax-smoke
+RUN_MINIMAX_LIVE_TESTS=1 RUN_MINIMAX_ART_TASK_SMOKE=1 MINIMAX_BASE_URL=https://api.minimaxi.com MINIMAX_IMAGE_MODEL=image-01 MINIMAX_API_KEY=<redacted> npm run art-task:minimax-smoke
 ```
 
-`minimax:smoke` calls the raw MiniMax adapter and is useful for provider connectivity. `art-task:minimax-smoke` creates a real `skill_icon` `ArtTask`, resolves MiniMax through the minimal provider profile/resolver path, runs `ArtTaskRunner`, writes a `GeneratedAsset`, and records selected/approved `ReviewDecision` states. The business flow remains provider-agnostic; MiniMax-specific headers, payloads, and response parsing stay inside the adapter.
+`minimax:smoke` calls the adapter directly and proves adapter transport only; it is not shared-path evidence. `art-task:minimax-smoke` (also exposed as `art-task:minimax-same-run-smoke`) creates one provider-neutral `skill_icon` task, resolves MiniMax through `ProviderResolver`, runs it through `ArtTaskRunner` and `ArtProviderAdapter`, records one `ProviderCall`, and writes one review candidate plus `smoke-result.json` under `artifacts/generated-assets/minimax-same-run-smoke/<run-id>/`.
 
-Keep `RUN_MINIMAX_LIVE_TESTS=0` unless a live validation step explicitly authorizes provider calls.
+The shared-path smoke never calls `selectAsset` or `approveAsset`. It records `autoSelection=false`, `autoApproval=false`, empty selected/approved lists, `productionApprovalStatus=pending_human_review`, and `productionClosureStatus=open_pending_review`. Its output does not enter formal asset selection. Generation completion demonstrates connectivity and execution-contract behavior only; it does not establish image-content compliance, production approval, or production cutover. Same-run evidence is valid only for the exact HEAD executed and becomes stale after any later code commit.
+
+Keep both `RUN_MINIMAX_LIVE_TESTS=0` and `RUN_MINIMAX_ART_TASK_SMOKE=0` unless a live validation step explicitly authorizes the single provider call.
 
 ## Batch 001 Real 2D Asset Testing
 
