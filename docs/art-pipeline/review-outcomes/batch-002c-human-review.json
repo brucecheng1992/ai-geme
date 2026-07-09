@@ -1,0 +1,112 @@
+{
+  "batchId": "batch-002c",
+  "parentBatchId": "batch-002b",
+  "productionApprovalStatus": "production_blocked",
+  "imageContentGateStatus": "manual_failed",
+  "reviewedAt": "2026-07-10T00:00:00.000Z",
+  "reviewer": "human",
+  "assetOutcomes": [
+    {
+      "assetId": "batch-002c-2026-07-09T18-36-05-280Z-player_character_concept_chiyan_clean-asset-1",
+      "batchId": "batch-002c",
+      "status": "needs_revision",
+      "reasons": ["not_strict_side_view", "not_gameplay_scale", "concept_sheet_layout"],
+      "notes": "Human review found the candidate is useful as reference but not production approved."
+    },
+    {
+      "assetId": "batch-002c-2026-07-09T18-36-05-280Z-player_character_concept_chiyan_clean-asset-2",
+      "batchId": "batch-002c",
+      "status": "needs_revision",
+      "reasons": ["not_strict_side_view", "poster_layout", "concept_sheet_layout"],
+      "notes": "Human review found the candidate is still too poster-like for clean production use."
+    },
+    {
+      "assetId": "batch-002c-2026-07-09T18-36-05-280Z-player_character_concept_chiyan_clean-asset-3",
+      "batchId": "batch-002c",
+      "status": "needs_revision",
+      "reasons": ["not_strict_side_view", "not_gameplay_scale", "concept_sheet_layout"],
+      "notes": "Human review requires stricter side-view and gameplay-scale readability."
+    },
+    {
+      "assetId": "batch-002c-2026-07-09T18-36-05-280Z-enemy_concept_chiyan_clean-asset-1",
+      "batchId": "batch-002c",
+      "status": "needs_revision",
+      "reasons": ["not_strict_side_view", "poster_layout"],
+      "notes": "Human review found the enemy candidate is not clean enough for production approval."
+    },
+    {
+      "assetId": "batch-002c-2026-07-09T18-36-05-280Z-enemy_concept_chiyan_clean-asset-2",
+      "batchId": "batch-002c",
+      "status": "needs_revision",
+      "reasons": ["not_strict_side_view", "not_gameplay_scale"],
+      "notes": "Human review requires stricter horizontal lane readability."
+    },
+    {
+      "assetId": "batch-002c-2026-07-09T18-36-05-280Z-enemy_concept_chiyan_clean-asset-3",
+      "batchId": "batch-002c",
+      "status": "needs_revision",
+      "reasons": ["not_strict_side_view", "poster_layout"],
+      "notes": "Human review found remaining splash-art tendency."
+    },
+    {
+      "assetId": "batch-002c-2026-07-09T18-36-05-280Z-skill_icon_chiyan_flame_slash_clean-asset-1",
+      "batchId": "batch-002c",
+      "status": "rejected",
+      "reasons": ["fake_text", "logo", "watermark", "signature", "corner_mark", "card_frame", "icon_should_be_glyph_only"],
+      "notes": "Human review found visible text/logo/watermark-like artifacts."
+    },
+    {
+      "assetId": "batch-002c-2026-07-09T18-36-05-280Z-skill_icon_chiyan_flame_slash_clean-asset-2",
+      "batchId": "batch-002c",
+      "status": "rejected",
+      "reasons": ["fake_text", "logo", "signature", "card_frame", "icon_should_be_glyph_only"],
+      "notes": "Human review found the result reads as badge/logo layout rather than isolated glyph."
+    },
+    {
+      "assetId": "batch-002c-2026-07-09T18-36-05-280Z-skill_icon_chiyan_ash_guard_clean-asset-1",
+      "batchId": "batch-002c",
+      "status": "rejected",
+      "reasons": ["fake_text", "logo", "watermark", "corner_mark", "card_frame", "icon_should_be_glyph_only"],
+      "notes": "Human review found persistent non-production markings."
+    },
+    {
+      "assetId": "batch-002c-2026-07-09T18-36-05-280Z-skill_icon_chiyan_ash_guard_clean-asset-2",
+      "batchId": "batch-002c",
+      "status": "rejected",
+      "reasons": ["fake_text", "signature", "footer", "card_frame", "icon_should_be_glyph_only"],
+      "notes": "Human review found footer/signature-like artifacts."
+    },
+    {
+      "assetId": "batch-002c-2026-07-09T18-36-05-280Z-skill_icon_chiyan_battle_burst_clean-asset-1",
+      "batchId": "batch-002c",
+      "status": "rejected",
+      "reasons": ["fake_text", "logo", "watermark", "card_frame", "icon_should_be_glyph_only"],
+      "notes": "Human review found card/logo layout risk."
+    },
+    {
+      "assetId": "batch-002c-2026-07-09T18-36-05-280Z-skill_icon_chiyan_battle_burst_clean-asset-2",
+      "batchId": "batch-002c",
+      "status": "rejected",
+      "reasons": ["fake_text", "corner_mark", "card_frame", "icon_should_be_glyph_only"],
+      "notes": "Human review found fake mark and non-isolated icon layout."
+    },
+    {
+      "assetId": "batch-002c-2026-07-09T18-36-05-280Z-ui_concept_chiyan_battle_hud_clean-asset-1",
+      "batchId": "batch-002c",
+      "status": "rejected",
+      "reasons": ["actual_text", "fake_text", "fake_ui_label", "logo", "ui_should_be_deterministic"],
+      "notes": "Human review found fake labels/typography; HUD should move to deterministic layout."
+    }
+  ],
+  "batchLevelFindings": [
+    "Prompt and manifest gates passed.",
+    "Image content human review failed production approval.",
+    "Watermark, logo, signature, corner mark, and footer artifacts remain present.",
+    "Fake text and unreadable Chinese-like or English-like labels remain present.",
+    "UI output still contains fake labels and typography.",
+    "Some icon outputs still look like card frames or badge/logo layouts.",
+    "Some character and enemy outputs are still concept-sheet or poster-like rather than clean isolated production assets.",
+    "No asset is selected.",
+    "No asset is approved."
+  ]
+}

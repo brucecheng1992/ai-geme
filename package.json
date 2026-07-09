@@ -23,6 +23,7 @@
     "art-task:batch-001": "tsx scripts/art-task-batch-001.ts",
     "art-task:batch-002": "tsx scripts/art-task-batch-002.ts",
     "art-task:batch-002b": "tsx scripts/art-task-batch-002b.ts",
+    "art-task:batch-002c": "tsx scripts/art-task-batch-002c.ts",
     "metadata:validate": "tsx scripts/validate-art-asset-metadata.ts",
     "metadata:export-runtime": "tsx scripts/export-art-runtime-metadata.ts",
     "typecheck": "npm run typecheck:root && npm run typecheck --workspace @ai-game-maker/maker-api && npm run typecheck --workspace @ai-game-maker/maker-workbench",
